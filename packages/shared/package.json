@@ -7,6 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./constants": "./src/constants.ts",
+    "./schedule-words/it": "./src/schedule-words-it.ts",
+    "./schedule-words/es": "./src/schedule-words-es.ts",
+    "./schedule-words/de": "./src/schedule-words-de.ts",
+    "./schedule-words/fr": "./src/schedule-words-fr.ts",
+    "./schedule-words/pt": "./src/schedule-words-pt.ts",
     "./shot-words/it": "./src/shot-words-it.ts",
     "./shot-words/es": "./src/shot-words-es.ts",
     "./shot-words/de": "./src/shot-words-de.ts",

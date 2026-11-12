@@ -27,6 +27,7 @@ export * from './project-archive.ts';
 export * from './projects.ts';
 export * from './reviews.ts';
 export * from './schedule.ts';
+export * from './schedule-words.ts';
 export * from './search.ts';
 export * from './server-status.ts';
 export * from './sharing.ts';
