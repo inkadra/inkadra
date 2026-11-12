@@ -417,7 +417,8 @@ export function PlanProperties({
     </Field>
   );
   const baseOf = (icon: PlanIcon) => (icon.on ? icons.find((i) => i.id === icon.on) : undefined);
-  const supportName = (base: PlanIcon) => supportText(base, icons, t, scale, lang);
+  // "Dolly on track", as the mockup's Support field; Elements says how long the track is.
+  const supportName = (base: PlanIcon) => supportText(base, icons, t);
   /** "On Stool · Detach": where an attached icon sits. */
   const onRow = (icon: PlanIcon) => {
     const base = baseOf(icon);
@@ -766,9 +767,9 @@ export function PlanProperties({
           </Field>
         )}
         {onRow(icon)}
-        <div className="plan-props__sep" />
         {sliders}
-        <div className="plan-props__grid">
+        {/* Height, tilt and circuit on one row, so the light's panel fits as the mockup's. */}
+        <div className="plan-props__grid plan-props__grid--three">
           <Field label={t('board.plan.height')}>
             <NumberField
               value={icon.height ?? 0}
@@ -791,8 +792,7 @@ export function PlanProperties({
               onCommit={(d) => ed.write({ ...icon, tilt: Math.round(d) })}
             />
           </Field>
-        </div>
-        <Field label={t('board.plan.circuit')}>
+          <Field label={t('board.plan.circuit')}>
           <Select
             aria-label={t('board.plan.circuit')}
             value={icon.circuit ?? ''}
@@ -815,7 +815,8 @@ export function PlanProperties({
               })),
             ]}
           />
-        </Field>
+          </Field>
+        </div>
         {note(icon)}
         {actions(icon)}
       </>

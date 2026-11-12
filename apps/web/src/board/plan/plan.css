@@ -1517,6 +1517,9 @@ button.plan__badge:hover {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
+.plan-props__grid--three {
+  grid-template-columns: 76px 76px minmax(0, 1fr);
+}
 .plan-props__grid--fixture {
   grid-template-columns: minmax(0, 1fr) 96px;
 }
@@ -1582,6 +1585,12 @@ span.plan-pill {
 .plan-editor--v2 .plan-range__slider {
   width: 100%;
 }
+/* The mockup's rows with a mouse: the slider's own height; a finger keeps its 44 px target. */
+@media (pointer: fine) {
+  .plan-editor--v2 .plan-range__slider {
+    height: 20px;
+  }
+}
 .plan-props__actions {
   display: flex;
   gap: 4px;
@@ -1606,7 +1615,9 @@ span.plan-pill {
   padding: 8px 16px 12px;
   background: var(--ink-bg-panel);
 }
-.plan-props__bordered {
+.plan-props .plan-props__bordered {
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--ink-border-default);
 }
 .plan-swatch--static {

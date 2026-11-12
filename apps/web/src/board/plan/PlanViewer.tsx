@@ -54,7 +54,8 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
                   (icon.label || t(`board.plan.icons.${icon.kind}`)) +
                   (count > 1 ? ` ×${count}` : '');
                 // An actor's way through the scene: the notes of its positions, in order.
-                const route = icon.steps?.length
+                const route =
+                  categoryOf(icon.kind).id === 'people' && icon.steps?.length
                   ? [...icon.steps.map((s) => s.note), icon.note].filter(Boolean).join(' → ')
                   : '';
                 const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
