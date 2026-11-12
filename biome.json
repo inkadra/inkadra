@@ -12,7 +12,8 @@
       "!relay/**",
       "!**/openapi.json",
       "!**/drizzle/meta",
-      "!**/ui/src/tokens.css"
+      "!**/ui/src/tokens.css",
+      "!docs/decisions/**/*.html"
     ]
   },
   "formatter": {
