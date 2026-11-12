@@ -30,28 +30,40 @@ decision 0102 makes the default. The editor keeps an item within the reach (`cla
 `toPlanGrid`, `encodeStroke` with a `reach`).
 
 **Outputs frame what is drawn** (`planFrame`): the card on the board, the slides, the call sheet,
-the scene sheets, board exports and the plan sheet show the box of the plan's items and walls
-(and the background picture where it is drawn), with a margin for labels, widened to 3:2 and
-never narrower than 400 view units; an empty plan shows the old extent. The card keeps its 3:2
-shape and size. Plans drawn before are framed on what they hold rather than on the old box, so
-most look closer; nothing stored changes. The plan sheet prints what the editor showed when it
-asks for the visible area, else the frame, and its grid covers what it prints.
+the scene sheets, board exports and the plan sheet show the box of what is drawn: the items of
+the layers shown (the plan's hidden layers, a setup's and the viewer's own left out), each with
+everything drawn for it (`itemDrawnBox`: its label and a light's second line, its beam, cone or
+glow, its earlier positions with their numbers and ways, a measure's chip), the walls and the
+background picture where it is drawn, with a margin, widened to 3:2 and never narrower than 400
+view units. When nothing is drawn, the old extent. Hit testing keeps the body's box (`itemBox`).
+The card keeps its 3:2 shape and size. Plans drawn before are framed on what they hold rather than
+on the old box, so most look closer; nothing stored changes. The plan sheet prints what the editor
+showed when it asks for the visible area, else the frame, and its grid covers what it prints. The
+words drawn by the icons (`iconLabel`, `iconSubLabel`, `wattsText`) live in canvas-core with the
+frame, which measures them (decision 0116).
 
 **The editor and the read-only view draw on a surface** (`plan-view.ts` in canvas-core, the
 board's `Viewport`; `PlanSurface.tsx` in the web): the whole area, the dots of the plan's grid all
-over it, no frame and no scroll bars.
-- a drag on empty space, the middle button, or Space held pans; on a phone one finger on empty
-  space pans and a long press draws the selection box, as before; Shift and a mouse draw the box,
-  adding to the selection; a click on empty space lets go of the selection;
-- the wheel zooms round the pointer (a notch is the board's step, a trackpad pinch is direct),
-  Shift + wheel and a sideways swipe pan; two fingers pan and zoom round their middle with the
-  maths of the board's pinch;
+over it, no frame and no scroll bars. It moves as the board does (`Canvas.tsx`), so the two
+surfaces of the app behave alike:
+- with the Select tool, a mouse dragged on empty space draws the selection box (Shift adds to the
+  selection), and a click there lets go of it; Space held, the middle button, a scroll (Shift
+  turns it sideways) or two fingers pan;
+- Ctrl/⌘ + wheel and a trackpad pinch zoom round the pointer, a wheel notch being the board's
+  step; two fingers pan and zoom round their middle with the maths of the board's pinch;
+- on a phone, as decision 0071 had it, a long press draws the selection box; a finger that moves
+  before it pans, since a phone has no Space nor wheel;
+- keys, as on the board and in the read-only view: + and − (with or without Ctrl/⌘) zoom, Shift+1
+  or 0 fits, and the arrows pan when nothing is picked;
 - the zoom control steps from 25 to 800 % round the middle, 100 % being the old extent fitted to
-  the area; **Fit** frames what is on the plan, never closer than 250 %, leaving free the bars
-  that float over the surface; the plan opens fitted;
-- at least 64 px of the old extent stay in view, so the plan cannot be lost;
+  the area; **Fit** frames what is drawn, never closer than 250 %, leaving free the bars that
+  float over the surface; the plan opens fitted; a phone fits by width, from the top;
+- the view keeps at least 64 px of the plan's reach in the area, so anything that can be placed
+  can be panned to and framed, and the view never drifts where nothing can be;
 - panning writes the transform without a render, so a plan of 300 icons pans at the screen's
   rate; a change of zoom renders once a frame.
+A picked closed room shows its size outside its walls ("8.0 m" over the top, "6.3 m" down the
+left), as the mockup draws it, next to the length of each side.
 
 **What a click picks** (`planItemsAt`, `nextPlanItemAt`):
 - the item drawn on top, except that a light comes before the modifiers on its front, so a click
