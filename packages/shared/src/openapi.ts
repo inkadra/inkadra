@@ -121,6 +121,7 @@ import {
   UnreadCount,
   UpdateNotificationPreferences,
 } from './notifications.ts';
+import { GuestPlanSheetQuery, PlanSheetQuery } from './plan-sheet.ts';
 import { UpdateUserPreferences, UserPreferences } from './preferences.ts';
 import {
   CreateProject,
@@ -166,7 +167,6 @@ import {
   SearchResult,
   TagCount,
 } from './search.ts';
-import { GuestPlanSheetQuery, PlanSheetQuery } from './plan-sheet.ts';
 import {
   RetriedProblems,
   ServerAlerts,
@@ -2193,7 +2193,10 @@ registry.registerPath({
   request: { params: planSheetParams, query: PlanSheetQuery, headers: planSheetIfNoneMatch },
   responses: {
     ...planSheetOk,
-    400: { description: 'Invalid query (unknown part, language or parameter), or more than 20 setups', ...json(ApiError) },
+    400: {
+      description: 'Invalid query (unknown part, language or parameter), or more than 20 setups',
+      ...json(ApiError),
+    },
     401: errors[401],
     404: {
       description: 'No role on the board, no such plan, or not a set plan',
@@ -2804,7 +2807,10 @@ registry.registerPath({
   },
   responses: {
     ...planSheetOk,
-    400: { description: 'Invalid query (unknown part, language or parameter), or more than 20 setups', ...json(ApiError) },
+    400: {
+      description: 'Invalid query (unknown part, language or parameter), or more than 20 setups',
+      ...json(ApiError),
+    },
     401: guestErrors[401],
     403: {
       description:

@@ -64,11 +64,14 @@ const guestFields = {
 export const PlanSheetQuery = z
   .object({
     ...guestFields,
-    audience: z.enum(['team', 'client']).default('team').openapi({
-      description:
-        '`team`: every card, and "Day N" from the schedule. `client`: the client copy, ' +
-        'without cards hidden from guests and without "Day N".',
-    }),
+    audience: z
+      .enum(['team', 'client'])
+      .default('team')
+      .openapi({
+        description:
+          '`team`: every card, and "Day N" from the schedule. `client`: the client copy, ' +
+          'without cards hidden from guests and without "Day N".',
+      }),
   })
   .strict();
 export type PlanSheetQuery = z.infer<typeof PlanSheetQuery>;
