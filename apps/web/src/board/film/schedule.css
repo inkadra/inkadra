@@ -305,6 +305,12 @@
 .schedule__filters .schedule__group-by {
   flex-basis: 100%;
 }
+/* The Storyboard filter of the Production board takes its own row (decision 0123). */
+.schedule__filter {
+  display: flex;
+  flex-basis: 100%;
+  min-width: 0;
+}
 /* "Group by: Setup": a scene's shots under their setups (decision 0115). */
 .schedule__setup {
   display: grid;
