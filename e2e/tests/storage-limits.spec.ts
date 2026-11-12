@@ -149,7 +149,7 @@ test('storage limits: own space, refused uploads, limits and members', async ({
     await shoot(page, 'space-full');
     await card.getByRole('button', { name: 'Vedi i file più grandi' }).click();
     const files = page.getByRole('dialog', { name: 'I tuoi file più grandi' });
-    await expect(files.getByRole('rowheader', { name: /Sopralluogo_stazione\.mov/ })).toBeVisible();
+    await expect(files.getByRole('link', { name: /Sopralluogo_stazione\.mov/ })).toBeVisible();
     await shoot(page, 'largest-files');
     await files.getByRole('button', { name: 'Fatto' }).click();
 

@@ -356,6 +356,7 @@ export function Team() {
         open={filesOf !== null}
         path={`/instance/members/${filesOf?.id ?? ''}/files`}
         title={t('storageSpace.filesOf', { name: filesOf?.name ?? '' })}
+        theirs={filesOf?.id !== user?.id}
         onClose={() => setFilesOf(null)}
       />
       <Dialog

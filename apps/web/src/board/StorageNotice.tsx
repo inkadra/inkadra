@@ -163,7 +163,7 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
             total,
           })}
         </p>
-        <div className="space-files">
+        <div className="space-refused">
           <table>
             <thead className="ink-sr-only">
               <tr>
@@ -175,7 +175,7 @@ function NoticeView({ notice, onClose: close }: { notice: Notice; onClose: () =>
               {refusedFiles.map((f) => (
                 <tr key={f.key}>
                   <th scope="row">
-                    <span className="space-files__name">{f.name}</span>
+                    <span className="space-refused__name">{f.name}</span>
                   </th>
                   <td>{size(f.size)}</td>
                 </tr>
