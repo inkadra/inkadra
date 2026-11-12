@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { greyPixels } from '@inkadra/print';
 import type { Asset } from '@inkadra/shared';
 import { fetchAsset, getCachedAsset } from '../assets.ts';
 import type { ImageInfo } from './pages.ts';
+
+// Moved to @inkadra/print (decision 0116).
+export { greyPixels } from '@inkadra/print';
 
 /**
  * A picture for one backend: decoded (`bitmap`) for the canvas, or JPEG or PNG bytes for the
@@ -121,21 +125,6 @@ export async function pool<T>(
   };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
   signal?.throwIfAborted();
-}
-
-/** Pixels (RGBA) turned to greys in place, by their luma (Rec. 601), alpha kept. */
-export function greyPixels(data: Uint8ClampedArray): Uint8ClampedArray {
-  for (let i = 0; i + 3 < data.length; i += 4) {
-    const y = Math.round(
-      0.299 * (data[i] as number) +
-        0.587 * (data[i + 1] as number) +
-        0.114 * (data[i + 2] as number),
-    );
-    data[i] = y;
-    data[i + 1] = y;
-    data[i + 2] = y;
-  }
-  return data;
 }
 
 /** A picture drawn in greys on a canvas of its size, for a renderer to draw from. */
