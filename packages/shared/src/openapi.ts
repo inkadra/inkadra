@@ -210,6 +210,8 @@ import {
 import {
   BoardRestoreQuery,
   BoardRestores,
+  BoardWriters,
+  BoardWritersQuery,
   BoardVersion,
   BoardVersionConflict,
   BoardVersionQuery,
@@ -3016,6 +3018,33 @@ registry.registerPath({
     'out of reach. Servers that keep this list advertise `board-restore-history`.',
   request: { params: idParam('boardId'), query: BoardRestoreQuery },
   responses: { 200: { description: 'Restores', ...json(BoardRestores) }, ...errors },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: v1('/boards/{boardId}/writers'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'Who wrote under some Yjs client ids of a board. Needs viewer.',
+  description:
+    'For a client that finds a field changed by someone else while it edited offline: the ' +
+    'winning item’s `id.client` and `id.clock` name the account and about when (decision ' +
+    '0120). The server records the id per authenticated socket when it stores the board, so ' +
+    'a write of the last few seconds reads as `unknown` until then; retry for a few seconds. ' +
+    'Removed members are named; deleted accounts read `deleted`. Guests and share links have ' +
+    'no route. Servers that answer advertise `board-writers` on `GET /instance/version`: check ' +
+    'it before calling, and without it show the change without a name. An older server ' +
+    'answers 404 with error code `not_found`, the same as for a board the caller has no role ' +
+    'on, so only the capability tells “not supported” apart; 5xx and network errors mean ' +
+    'the lookup failed, try again later. At most 60 requests a minute per account.',
+  request: { params: idParam('boardId'), body: { required: true, ...json(BoardWritersQuery) } },
+  responses: {
+    200: { description: 'One answer per lookup, in order', ...json(BoardWriters) },
+    ...errors,
+    400: { description: 'Invalid request: 0 or more than 50 items, or an id out of range', ...json(ApiError) },
+    404: { description: 'No role on the board, or it does not exist', ...json(ApiError) },
+    ...tooMany,
+  },
 });
 
 // Clip -----------------------------------------------------------------------
