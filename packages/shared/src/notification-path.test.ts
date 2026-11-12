@@ -69,4 +69,16 @@ describe('notificationPath', () => {
       notificationPath({ projectId: null, boardId: null, elementId: null, commentId: null }),
     ).toBeNull();
   });
+
+  it('opens Settings › Segnalazioni for a new feedback report (decision 0124)', () => {
+    expect(
+      notificationPath({
+        type: 'feedback_received',
+        projectId: null,
+        boardId: null,
+        elementId: null,
+        commentId: null,
+      }),
+    ).toBe('/settings?section=reports');
+  });
 });
