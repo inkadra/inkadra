@@ -2,8 +2,11 @@ import { listElements, type Rect, storyboardOf as sceneGroups } from '@inkadra/c
 import {
   atLeast,
   type Board,
+  type BoardCount,
   type BoardDetail,
+  type BoardOptionalView,
   defaultProjectIcon,
+  OPTIONAL_VIEWS,
   type Project,
   type ProjectRole,
 } from '@inkadra/shared';
@@ -36,14 +39,16 @@ import { renameProject } from '../routes/projects.ts';
 import {
   boardPath,
   canRenameBoard,
+  createBoard,
   fetchBoard,
   renameBoard,
   setBoardIcon,
+  setBoardViews,
   useProjectBoards,
 } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
-import { ContextMenu, Toast } from './chrome.tsx';
+import { ContextMenu, type MenuItem, Toast } from './chrome.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState } from './DeniedState.tsx';
 import { ExportDialog } from './export/ExportDialog.tsx';
@@ -73,15 +78,20 @@ import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import { beginViewSwitch, slideTabPill, type ViewSwitchMotion } from './view-switch.ts';
 import {
   type BoardView,
+  boardViews,
+  defaultView,
+  hasOutsideCards,
   headerViews,
-  isBoardView,
-  storyboardOf,
-  viewDestination,
+  kindIcon,
+  openView,
   viewHref,
   viewIcon,
+  viewLabelKey,
+  viewsOn,
 } from './views.ts';
 import './film/film.css';
 import { type Peer, usePeers } from './presence.ts';
+import { ScenePlan } from './plan/ScenePlan.tsx';
 import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
@@ -91,27 +101,24 @@ const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || ro
 
 export { type BoardView, VIEWS } from './views.ts';
 
-/** Storyboards open on the storyboard; `?view=` picks another view of the same board. */
+/**
+ * A board opens on the view of its kind; `?view=` picks another of its views (decision 0121).
+ * An address that asks for a view the board does not have opens its first view.
+ */
 export function useBoardView(
-  kind: Board['kind'] | undefined,
+  board: Pick<Board, 'kind' | 'views'> | undefined,
+  counts: Parameters<typeof openView>[2],
 ): [BoardView, (v: BoardView, motion?: ViewSwitchMotion) => void] {
   const [params, setParams] = useSearchParams();
-  const asked = params.get('view');
-  const view: BoardView = isBoardView(asked)
-    ? asked
-    : kind === 'storyboard'
-      ? 'storyboard'
-      : 'canvas';
+  const kind = board?.kind;
+  const view: BoardView = openView(params.get('view'), board, counts) ?? defaultView(kind);
   const setView = useCallback(
     (v: BoardView, motion?: ViewSwitchMotion) =>
       setParams(
         (p) => {
           const next = new URLSearchParams(p);
-          if (kind === 'storyboard' ? v === 'storyboard' : v === 'canvas') {
-            next.delete('view');
-          } else {
-            next.set('view', v);
-          }
+          if (v === defaultView(kind)) next.delete('view');
+          else next.set('view', v);
           return next;
         },
         { replace: true, ...motion },
@@ -229,15 +236,58 @@ function CurrentCrumb({
   );
 }
 
+/**
+ * "Views of this board" in the ⋯ menu (decision 0121): the view of its kind, ticked and fixed,
+ * then the views it may turn on, ticked when on.
+ */
+function viewItems(
+  board: Pick<Board, 'kind' | 'views'>,
+  counts: BoardCount | undefined,
+  toggle: (view: BoardOptionalView) => void,
+  t: (key: string) => string,
+): MenuItem[] {
+  const on = viewsOn(board, counts);
+  const optional = OPTIONAL_VIEWS[board.kind];
+  return [
+    { heading: t('board.views.title') },
+    ...boardViews({ kind: board.kind, views: [] }, counts).map(
+      (v): MenuItem => ({
+        label: t(`film.views.${v}`),
+        icon: viewIcon(v),
+        kind: v,
+        checked: true,
+        toggle: true,
+        disabled: true,
+        hint: t('board.views.always'),
+      }),
+    ),
+    ...optional.map(
+      (v): MenuItem => ({
+        label: t(`film.views.${v}`),
+        icon: viewIcon(v),
+        kind: v,
+        checked: on.includes(v),
+        toggle: true,
+        action: () => toggle(v),
+      }),
+    ),
+    ...(optional.length === 0 ? [{ label: t('board.views.none'), disabled: true }] : []),
+    { note: t('board.views.note') },
+    { divider: true },
+  ];
+}
+
 /** The bar of a board's views in the header. */
 function ViewTabs({
   id,
+  kind,
   tabs,
   view,
   onChoose,
 }: {
   /** Names the tabs `${id}-${view}` and the view they control `${id}-panel`. */
   id: string;
+  kind: Board['kind'] | undefined;
   tabs: BoardView[];
   view: BoardView;
   onChoose: (view: BoardView) => void;
@@ -267,8 +317,8 @@ function ViewTabs({
           tabIndex={view === v ? 0 : -1}
           className="view-tabs__tab"
           // On narrow desktops only the open tab keeps its name: the rest say it on hover.
-          aria-label={t(`film.views.${v}`)}
-          data-ink-tooltip={t(`film.views.${v}`)}
+          aria-label={t(viewLabelKey(v, kind))}
+          data-ink-tooltip={t(viewLabelKey(v, kind))}
           // Focus on press would scroll a tab cut off by the strip out from under the
           // pointer: the release lands on its neighbour and the click is lost.
           onMouseDown={(e) => e.preventDefault()}
@@ -278,7 +328,7 @@ function ViewTabs({
           }}
         >
           <Icon name={viewIcon(v)} contentKind={v} size={14} />
-          <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
+          <span className="view-tabs__label">{t(viewLabelKey(v, kind))}</span>
         </button>
       ))}
     </div>
@@ -306,8 +356,8 @@ function BoardScreen({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useSession();
-  // The sidebar's rule for the film links, so the header tabs never disagree with it.
-  const { filmLinks, projects } = useProjects();
+  // The counts the sidebar reads, so the header never disagrees with it on a board's views.
+  const { boardCounts, projects } = useProjects();
   // The project's dates for the schedule. The page waits for the list; a grant on one board has
   // no project in it, so its dates are unavailable rather than loading forever.
   const listed = projects?.find((p) => p.id === projectId);
@@ -323,8 +373,11 @@ function BoardScreen({
   }, [conn]);
   useLiveBoardCounts(conn, boardId);
   const [detail, setDetail] = useState<BoardDetail | null>(null);
-  const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
-  const [view, setView] = useBoardView(kind);
+  // The list follows a change of views at once; the detail stands in for a board not in it.
+  const board = boards?.find((b) => b.id === boardId) ?? detail ?? undefined;
+  const kind = board?.kind;
+  const counts = boardCounts.get(boardId);
+  const [view, setView] = useBoardView(board, counts);
   const [openedFilmViews, setOpenedFilmViews] = useState({ schedule: false, troupe: false });
   useEffect(() => {
     if (view === 'schedule' || view === 'troupe')
@@ -399,47 +452,54 @@ function BoardScreen({
     [previewStore],
   );
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
-  // Film views open on the project's storyboard, as they do from the sidebar and the rail.
-  const storyboardId = useMemo(() => storyboardOf(boards), [boards]);
-  const { film, review, reviewBoard } = filmLinks;
+  // Every view is one of the open board's: choosing one changes the address of this board only.
   const chooseView = useCallback(
-    (next: BoardView) => {
-      const destination = viewDestination(
-        next,
-        { boardId, kind, rootBoardId },
-        storyboardId,
-        reviewBoard,
-      );
-      const motion = beginViewSwitch(view, next);
-      if (destination.boardId) {
-        navigate(viewHref(projectId, destination, { boardId, rootBoardId, kind }), motion);
-        return;
-      }
-      setView(next, motion);
-    },
-    [boardId, kind, rootBoardId, storyboardId, reviewBoard, navigate, projectId, setView, view],
+    (next: BoardView) => setView(next, beginViewSwitch(view, next)),
+    [setView, view],
   );
 
   /** Opens the storyboard and starts its presentation, which StoryboardView reads from the URL. */
   const startPresentation = useCallback(() => {
-    const destination = viewDestination(
-      'storyboard',
-      { boardId, kind, rootBoardId },
-      storyboardId,
-      reviewBoard,
-    );
-    const href = viewHref(projectId, destination, { boardId, rootBoardId, kind });
+    const href = viewHref(projectId, { id: boardId, kind }, 'storyboard', rootBoardId);
     navigate(
       `${href}${href.includes('?') ? '&' : '?'}present=1`,
       beginViewSwitch(view, 'storyboard'),
     );
-  }, [boardId, kind, rootBoardId, storyboardId, reviewBoard, navigate, projectId, view]);
+  }, [boardId, kind, rootBoardId, navigate, projectId, view]);
 
-  // The layout builds its links anew on every render: the tabs depend on their fields, so the
-  // palette's actions below are not registered again each time.
-  const tabs = useMemo(
-    () => headerViews(kind, view, { film, review, reviewBoard }),
-    [kind, view, film, review, reviewBoard],
+  // The counts change with every edit: the tabs depend on what they decide, so the palette's
+  // actions below are not registered again each time.
+  const tabKey = headerViews(board, counts, view).join();
+  const tabs = useMemo(() => (tabKey ? (tabKey.split(',') as BoardView[]) : []), [tabKey]);
+  // Optional views on and off, for the ⋯ menu; editors only (decision 0121).
+  const viewsKey = board ? viewsOn(board, counts).join() : '';
+  const toggleView = useCallback(
+    (v: BoardOptionalView) => {
+      if (!board) return;
+      const on = viewsKey ? (viewsKey.split(',') as BoardOptionalView[]) : [];
+      const next = on.includes(v) ? on.filter((x) => x !== v) : [...on, v];
+      void setBoardViews(projectId, boardId, next)
+        .then((b) => setDetail((prev) => (prev && prev.id === b.id ? { ...prev, ...b } : prev)))
+        .catch(() => {});
+    },
+    [board, viewsKey, projectId, boardId],
+  );
+  // On a storyboard, the cards other than its scenes and frames: its old canvas shows them.
+  const outside = kind === 'storyboard' ? (counts?.looseCount ?? 0) : 0;
+  const openOutside = useCallback(
+    () => setView('canvas', beginViewSwitch(view, 'canvas')),
+    [setView, view],
+  );
+  // Send to storyboard asks which one when the project has several (decision 0121).
+  const storyboards = useMemo(
+    () => (boards ?? []).filter((b) => b.kind === 'storyboard' && b.id !== boardId),
+    [boards, boardId],
+  );
+  const newStoryboard = useCallback(
+    async () =>
+      (await createBoard(projectId, rootBoardId ?? boardId, t('film.views.storyboard'), 'storyboard'))
+        .id,
+    [projectId, rootBoardId, boardId, t],
   );
 
   // The palette offers a view only when the header shows its tab.
@@ -447,9 +507,9 @@ function BoardScreen({
     conn?.status !== 'synced'
       ? []
       : [
-          ...tabs.map((target) => ({
+          ...(tabs.length > 1 ? tabs : []).map((target) => ({
             id: `view-${target}`,
-            label: t(`film.views.${target}`),
+            label: t(viewLabelKey(target, kind)),
             run: () => chooseView(target),
           })),
           ...(editable
@@ -602,12 +662,17 @@ function BoardScreen({
           <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs" data-feedback-secret>
             {/* The project's glyph before its name; phones show the last crumb only. */}
             {projectIcon && crumbs[0]?.id === rootBoardId && <ProjectGlyph {...projectIcon} />}
+
             {crumbs.map((c, i) => (
               <Fragment key={c.id}>
                 {i > 0 && (
                   <span className="crumb__sep" aria-hidden="true">
                     /
                   </span>
+                )}
+                {/* A sub-board shows its kind before its name, with the icon of the sidebar. */}
+                {i === crumbs.length - 1 && c.id !== rootBoardId && kind && (
+                  <Icon name={kindIcon(kind)} contentKind={kind} size={14} />
                 )}
                 {i === crumbs.length - 1 ? (
                   <CurrentCrumb
@@ -635,13 +700,14 @@ function BoardScreen({
               </Fragment>
             ))}
           </nav>
-          {tabs.length > 0 && (
-            <ViewTabs id={tabsId} tabs={tabs} view={view} onChoose={chooseView} />
+          {tabs.length > 1 && (
+            <ViewTabs id={tabsId} kind={kind} tabs={tabs} view={view} onChoose={chooseView} />
           )}
-          {editable && (
+          {(editable || outside > 0) && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
                 id="board-header-menu"
+                data-tour="board-menu"
                 icon="more"
                 label={t('versions.boardMenu')}
                 aria-haspopup="menu"
@@ -653,6 +719,21 @@ function BoardScreen({
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
                   items={[
+                    ...(editable && board ? viewItems(board, counts, toggleView, t) : []),
+                    ...(outside > 0
+                      ? [
+                          {
+                            label: t('board.outside.menu', { count: outside }),
+                            icon: 'board' as const,
+                            checked: view === 'canvas' ? true : undefined,
+                            action: openOutside,
+                          },
+                          ...(editable ? [{ divider: true as const }] : []),
+                        ]
+                      : []),
+                    // Readers get only the way to the cards outside the storyboard.
+                    ...(editable
+                      ? ([
                     ...(canRenameCurrent
                       ? [
                           {
@@ -710,6 +791,8 @@ function BoardScreen({
                             action: () => openFeedback(),
                           },
                         ]
+                      : []),
+                        ] as MenuItem[])
                       : []),
                   ]}
                 />
@@ -868,9 +951,8 @@ function BoardScreen({
         userId={user.id}
         readOnly={!!preview || !editable}
         boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
-        storyboardBoardId={
-          viewDestination('storyboard', { boardId, kind, rootBoardId }, storyboardId).boardId
-        }
+        storyboards={storyboards}
+        onNewStoryboard={rootBoardId ? newStoryboard : undefined}
       />
     ) : preview ? (
       <Canvas
@@ -956,6 +1038,17 @@ function BoardScreen({
         </div>
       )}
       {content}
+      {/* A scene's set plan opens on its own wherever there is no canvas around it. */}
+      {view !== 'canvas' && !preview && (
+        <ScenePlan
+          store={conn.store}
+          projectId={projectId}
+          boardId={boardId}
+          userId={user.id}
+          readOnly={!editable}
+          ready={conn.status === 'synced'}
+        />
+      )}
       {shareDialog}
       {iconBoard && (
         <ProjectAppearanceDialog

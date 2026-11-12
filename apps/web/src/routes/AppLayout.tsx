@@ -44,7 +44,6 @@ import {
 } from 'react-router';
 import {
   childBoards,
-  hasListedBoards,
   useProjectBoards,
   useSharedBoards,
 } from '../board/boards.ts';
@@ -52,21 +51,15 @@ import { useBoardCounts } from '../board/live-counts.ts';
 import { isMac } from '../board/shortcuts.ts';
 import { beginViewSwitch, type ViewSwitchMotion } from '../board/view-switch.ts';
 import {
-  ALL_FILM_LINKS,
-  askedView,
   type BoardView,
-  clientReviewBoard,
+  boardViews,
   defaultView,
-  type FilmLinks,
-  filmLinks,
-  isBoardView,
-  isFilmView,
-  pickerViews,
-  projectHasStoryboard,
-  storyboardOf,
-  viewDestination,
+  headerViews,
+  kindIcon,
+  openView,
   viewHref,
   viewIcon,
+  viewLabelKey,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
 import { DemoBar } from '../demo/DemoPill.tsx';
@@ -85,7 +78,7 @@ import {
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
 import { TutorialHost } from '../tutorial/TutorialHost.tsx';
-import { addStoryboardItem } from './add-storyboard.ts';
+import { addBoardItems } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
 import { useInstanceSetup } from './InstanceSetup.tsx';
 import { MobileNavigation } from './MobileNavigation.tsx';
@@ -122,8 +115,8 @@ interface ProjectsState {
   openInbox: () => void;
   unread: number;
   refreshUnread: () => Promise<void>;
-  /** The film links of the open project: what the sidebar, the header tabs and the phone offer. */
-  filmLinks: FilmLinks;
+  /** Counts of the open project's boards, which choose the views of boards from before 0121. */
+  boardCounts: ReadonlyMap<string, BoardCount>;
 }
 
 const ProjectsContext = createContext<ProjectsState>({
@@ -136,7 +129,7 @@ const ProjectsContext = createContext<ProjectsState>({
   openInbox: () => {},
   unread: 0,
   refreshUnread: async () => {},
-  filmLinks: ALL_FILM_LINKS,
+  boardCounts: new Map(),
 });
 export const useProjects = () => useContext(ProjectsContext);
 
@@ -451,49 +444,24 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // Inside a project the bottom bar's New adds the board there, when the person may.
   const here = writable.find((p) => p.id === projectId);
   const openBoardId = boardId ?? current?.rootBoardId;
-  const storyboardId = storyboardOf(projectBoards);
-  // Without a storyboard, Review opens the board that has a live client review link.
-  const reviewBoardId = clientReviewBoard(projectBoards, counts);
   // Until the project's boards are known the kind is too: no tab is active before that.
   const openBoard = projectBoards?.find((b) => b.id === openBoardId);
   const openKind: BoardKind | undefined = openBoard?.kind;
+  const openCounts = openBoardId ? counts.get(openBoardId) : undefined;
 
-  const asked = new URLSearchParams(search).get('view');
-  // While the boards load a board with no ?view= has no known default: nothing is active yet.
-  const currentView: BoardView | null =
-    openBoardId && !projectBoards
-      ? isBoardView(asked)
-        ? asked
-        : null
-      : askedView(asked, openKind);
+  // The views of the open board are the one rule of the sidebar, the header and the phone.
+  const currentView: BoardView | null = openView(
+    new URLSearchParams(search).get('view'),
+    openBoard,
+    openCounts,
+  );
+  const openViews = headerViews(openBoard, openCounts, currentView);
 
-  const destination = (v: BoardView) =>
-    viewDestination(
-      v,
-      { boardId: openBoardId, kind: openKind, rootBoardId: current?.rootBoardId },
-      storyboardId,
-      reviewBoardId,
-    );
-
-  const hrefFor = (v: BoardView) => {
-    if (!projectId) return pathname;
-    return viewHref(projectId, destination(v), {
-      boardId: openBoardId ?? '',
-      rootBoardId: current?.rootBoardId,
-      kind: openKind,
-    });
-  };
-
-  // The header switcher, the rail and the sidebar all open a view the same way.
+  // The header switcher, the sidebar and the phone open a view of the open board the same way.
   const showView = (v: BoardView, motion?: ViewSwitchMotion) => {
     if (!projectId) return;
     setDrawerOpen(false);
     leaveInbox();
-    const target = destination(v);
-    if (target.boardId) {
-      navigate(hrefFor(v), motion);
-      return;
-    }
     setParams(
       (p) => {
         const next = new URLSearchParams(p);
@@ -506,113 +474,40 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   };
 
   const setupPending = !!(setup.error || setup.checks?.some((c) => !c.ok));
-  const storyboardCounts = storyboardId ? counts.get(storyboardId) : undefined;
-  // One row is current at a time: a film view lights its module row, the storyboard's own
-  // canvas lights the Storyboard row (the board is not listed again under Boards), and the
-  // project row is current only on the root board's own views.
-  const filmView = isFilmView(currentView);
-  // The film links appear with the project's first storyboard (or frame) and while a film view is
-  // open, so there is always a way back; until the boards are known they stay out.
-  // One rule for the sidebar, the header tabs and the phone switcher (BoardPage reads it here).
-  const links = filmLinks(projectHasStoryboard(projectBoards, counts), reviewBoardId, currentView);
-  const showFilmLinks = links.film;
-  const showReview = links.review;
-  const filmRowActive = (v: BoardView) =>
-    !inboxOpen &&
-    (currentView === v ||
-      (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId));
+  // The project row is the root board: current there, unless its views are listed under it.
+  const rootBoard = projectBoards?.find((b) => b.id === current?.rootBoardId);
+  const rootViews = rootBoard ? boardViews(rootBoard, counts.get(rootBoard.id)) : [];
 
   const renderProject = (p: Project, onDropProject?: (id: string, after: boolean) => void) => (
     <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
       <ProjectNavItem
         project={p}
         onDropProject={onDropProject}
-        extra={addStoryboardItem(p, t, (to) => {
+        extra={addBoardItems(p, t, (to) => {
           setDrawerOpen(false);
           navigate(to);
         })}
-        active={!inboxOpen && p.id === projectId && !boardId && !filmView}
+        active={!inboxOpen && p.id === projectId && !boardId && rootViews.length < 2}
         onClick={go(`/p/${p.id}`)}
       />
       {p.id === projectId && (
         <div className="ink-sidebar__modules">
-          {showFilmLinks && (
-            <>
-              <NavItem
-                icon="storyboard"
-                contentKind="storyboard"
-                label={t('nav.storyboard')}
-                count={storyboardCounts?.frameCount}
-                title={
-                  storyboardCounts
-                    ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
-                    : undefined
-                }
-                active={filmRowActive('storyboard')}
-                href={hrefFor('storyboard')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('storyboard');
-                }}
-              />
-              <NavItem
-                icon="shotlist"
-                contentKind="shotlist"
-                label={t('nav.shotlist')}
-                count={storyboardCounts?.frameCount}
-                title={
-                  storyboardCounts
-                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
-                    : undefined
-                }
-                active={filmRowActive('shotlist')}
-                href={hrefFor('shotlist')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('shotlist');
-                }}
-              />
-              <NavItem
-                icon="calendar"
-                contentKind="schedule"
-                label={t('nav.schedule')}
-                active={filmRowActive('schedule')}
-                href={hrefFor('schedule')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('schedule');
-                }}
-              />
-              <NavItem
-                icon="people"
-                label={t('nav.troupe')}
-                active={filmRowActive('troupe')}
-                href={hrefFor('troupe')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('troupe');
-                }}
-              />
-            </>
-          )}
-          {showReview && (
-            <NavItem
-              icon="people"
-              contentKind="review"
-              label={t('nav.clients')}
-              active={filmRowActive('review')}
-              href={hrefFor('review')}
-              onClick={(e) => {
-                e.preventDefault();
-                showView('review');
-              }}
+          {rootBoard && rootViews.length > 1 && (
+            <BoardViewRows
+              projectId={p.id}
+              rootBoardId={p.rootBoardId}
+              board={rootBoard}
+              views={rootViews}
+              active={!inboxOpen && !boardId ? currentView : null}
+              depth={1}
+              go={go}
             />
           )}
           <ProjectBoards
             projectId={p.id}
             rootBoardId={p.rootBoardId}
             activeId={inboxOpen ? undefined : boardId}
-            hiddenId={storyboardId}
+            activeView={currentView}
             go={go}
             counts={counts}
             onNewBoard={
@@ -904,7 +799,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           />
         </div>
       </div>
-      {projectId && (
+      {projectId && openViews.length > 1 && (
         <div className="mobile-view-picker">
           <Icon
             name={viewIcon(currentView ?? defaultView(openKind))}
@@ -920,9 +815,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             value={currentView ?? ''}
             onChange={(e) => showView(e as BoardView, beginViewSwitch(currentView, e as BoardView))}
           >
-            {pickerViews(openKind, currentView, links).map((v) => (
+            {openViews.map((v) => (
               <option key={v} value={v}>
-                {t(`film.views.${v}`)}
+                {t(viewLabelKey(v, openKind))}
               </option>
             ))}
           </Select>
@@ -944,7 +839,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           openInbox: () => setInboxOpen(true),
           unread,
           refreshUnread,
-          filmLinks: links,
+          boardCounts: counts,
         }}
       >
         <FeedbackLauncher />
@@ -1164,7 +1059,7 @@ function ProjectBoards({
   projectId,
   rootBoardId,
   activeId,
-  hiddenId,
+  activeView,
   go,
   counts,
   onNewBoard,
@@ -1172,14 +1067,14 @@ function ProjectBoards({
   projectId: string;
   rootBoardId: string;
   activeId: string | undefined;
-  hiddenId: string | null;
+  activeView: BoardView | null;
   go: (to: string) => (e: MouseEvent) => void;
   counts: Map<string, BoardCount>;
   onNewBoard: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const { items } = useProjectBoards(projectId);
-  const listed = hasListedBoards(items, rootBoardId, hiddenId);
+  const listed = childBoards(items, rootBoardId).length > 0;
   if (!items || (!listed && !onNewBoard)) return null;
   return (
     <div className="ink-sidebar__collapsible">
@@ -1187,9 +1082,10 @@ function ProjectBoards({
       {listed ? (
         <BoardTree
           projectId={projectId}
+          rootBoardId={rootBoardId}
           parentId={rootBoardId}
           activeId={activeId}
-          hiddenId={hiddenId}
+          activeView={activeView}
           depth={1}
           go={go}
           counts={counts}
@@ -1206,21 +1102,25 @@ function ProjectBoards({
   );
 }
 
-/** Sub-boards of the open project, as nested links under the project in the sidebar. */
+/**
+ * The project's boards as a tree (decision 0121): each a row with the icon of its kind, and a
+ * board with more than one view lists them under it.
+ */
 function BoardTree({
   projectId,
+  rootBoardId,
   parentId,
   activeId,
-  hiddenId,
+  activeView,
   depth,
   go,
   counts,
 }: {
   projectId: string;
+  rootBoardId: string;
   parentId: string;
   activeId: string | undefined;
-  /** The storyboard, already listed as the Storyboard module: its sub-boards take its place. */
-  hiddenId: string | null;
+  activeView: BoardView | null;
   depth: number;
   go: (to: string) => (e: MouseEvent) => void;
   counts: Map<string, BoardCount>;
@@ -1232,38 +1132,86 @@ function BoardTree({
   return (
     <>
       {children.map((b) => {
-        const below = (
-          <BoardTree
-            projectId={projectId}
-            parentId={b.id}
-            activeId={activeId}
-            hiddenId={hiddenId}
-            depth={b.id === hiddenId ? depth : depth + 1}
-            go={go}
-            counts={counts}
-          />
-        );
-        if (b.id === hiddenId) return <div key={b.id}>{below}</div>;
         const size = counts.get(b.id)?.elementCount || undefined;
+        const views = boardViews(b, counts.get(b.id));
+        const open = b.id === activeId;
         return (
           <div key={b.id}>
             <NavItem
-              icon={b.kind === 'storyboard' ? 'storyboard' : 'board'}
+              icon={kindIcon(b.kind)}
               contentKind={b.kind}
               label={b.title}
               count={size}
               title={size ? `${b.title} · ${t('nav.items', { count: size })}` : undefined}
               href={`/p/${projectId}/b/${b.id}`}
-              active={b.id === activeId}
+              // With its views listed, the row of the open view is the current one.
+              active={open && views.length < 2}
               onClick={go(`/p/${projectId}/b/${b.id}`)}
               style={{ paddingLeft: 8 + depth * 14 }}
             />
-            {below}
+            {views.length > 1 && (
+              <BoardViewRows
+                projectId={projectId}
+                rootBoardId={rootBoardId}
+                board={b}
+                views={views}
+                active={open ? activeView : null}
+                depth={depth + 1}
+                go={go}
+              />
+            )}
+            <BoardTree
+              projectId={projectId}
+              rootBoardId={rootBoardId}
+              parentId={b.id}
+              activeId={activeId}
+              activeView={activeView}
+              depth={depth + 1}
+              go={go}
+              counts={counts}
+            />
           </div>
         );
       })}
     </>
   );
+}
+
+/** The views of one board under its row in the sidebar. */
+function BoardViewRows({
+  projectId,
+  rootBoardId,
+  board,
+  views,
+  active,
+  depth,
+  go,
+}: {
+  projectId: string;
+  rootBoardId: string;
+  board: Board;
+  views: BoardView[];
+  /** The open view, when this board is the one open. */
+  active: BoardView | null;
+  depth: number;
+  go: (to: string) => (e: MouseEvent) => void;
+}) {
+  const { t } = useTranslation();
+  return views.map((v) => {
+    const href = viewHref(projectId, board, v, rootBoardId);
+    return (
+      <NavItem
+        key={v}
+        icon={viewIcon(v)}
+        contentKind={v}
+        label={t(viewLabelKey(v, board.kind))}
+        href={href}
+        active={active === v}
+        onClick={go(href)}
+        style={{ paddingLeft: 8 + depth * 14 }}
+      />
+    );
+  });
 }
 
 const COLLAPSED_KEY = 'inkadra.sidebar.collapsed';

@@ -93,10 +93,8 @@
     "navigation": "Navigation",
     "home": "Home",
     "board": "Boards",
-    "storyboard": "Storyboard",
     "shotlist": "Shot list",
     "schedule": "Schedule",
-    "clients": "Review",
     "inbox": "Inbox",
     "search": "Search",
     "settings": "Settings",
@@ -117,14 +115,10 @@
     "collapse": "Collapse navigation",
     "expand": "Expand navigation",
     "boards": "Boards",
-    "addStoryboard": "Add storyboard…",
-    "shots_one": "{{count}} shot",
-    "shots_other": "{{count}} shots",
-    "toShoot_one": "{{left}} of {{count}} shot still to shoot",
-    "toShoot_other": "{{left}} of {{count}} shots still to shoot",
+    "addStoryboard": "Add storyboard",
     "items_one": "{{count}} item on the board",
     "items_other": "{{count}} items on the board",
-    "troupe": "Crew"
+    "addMoodboard": "Add moodboard"
   },
   "home": {
     "greeting": {
@@ -373,7 +367,8 @@
       "section": "Section heading",
       "table": "Table",
       "map": "Map",
-      "plan": "Set plan"
+      "plan": "Set plan",
+      "moodboard": "Moodboard"
     },
     "tools": {
       "select": "Select",
@@ -1851,6 +1846,17 @@
       "showGuests": "Show to the client",
       "toStoryboard": "Add to Storyboard",
       "replyTo": "Reply to {{name}}…"
+    },
+    "outside": {
+      "title": "Cards outside the storyboard",
+      "menu_one": "Cards outside the storyboard ({{count}})",
+      "menu_other": "Cards outside the storyboard ({{count}})"
+    },
+    "views": {
+      "title": "Views of this board",
+      "always": "always",
+      "none": "This type has no other views",
+      "note": "A view that is off leaves the bar and the tree. Its data stays."
     }
   },
   "tags": {
@@ -3280,7 +3286,8 @@
     "sent_other": "{{count}} frames added to the storyboard",
     "sendFailed": "They couldn't be added to the storyboard. Check your connection and permissions, then try again.",
     "lockedSkipped_one": "{{count}} reference is locked and didn't change.",
-    "lockedSkipped_other": "{{count}} references are locked and didn't change."
+    "lockedSkipped_other": "{{count}} references are locked and didn't change.",
+    "whichStoryboard": "Which storyboard?"
   },
   "callSheet": {
     "day": "Day",
@@ -4954,8 +4961,8 @@
             "text": "A card’s tools appear right above it."
           },
           "4": {
-            "title": "One story, many views",
-            "text": "Storyboard, shot list and schedule share the same data."
+            "title": "Each board, its own views",
+            "text": "A storyboard also has a shot list and review: turn them on from the ⋯ menu."
           },
           "5": {
             "title": "Work as a team",
@@ -5022,11 +5029,15 @@
           },
           "1": {
             "title": "Everything else",
-            "text": "+ adds storyboards and shot lists; change the bar in Settings."
+            "text": "+ adds boards and moodboards; change the bar in Settings."
           },
           "2": {
             "title": "Select a card",
             "text": "Its tools appear right above it."
+          },
+          "3": {
+            "title": "The board’s views",
+            "text": "Turn on this board’s moodboard from the ⋯ menu. A view that is off keeps its data."
           }
         }
       },
@@ -5035,7 +5046,7 @@
         "steps": {
           "0": {
             "title": "References in a grid",
-            "text": "The project’s images, links and colours, together."
+            "text": "The board’s images, links and colours, together."
           },
           "1": {
             "title": "Filter",

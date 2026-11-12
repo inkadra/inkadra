@@ -11,7 +11,7 @@ All JSON is UTF-8; timestamps are ISO 8601 with offset; ids are UUIDs of the exp
 | `manifest.json`                  | `format: "inkadra-project"`, `formatVersion`, app version, date, counts   |
 | `project.json`                   | Name, icon, type, shooting dates, archived                                |
 | `people.json`                    | Id and name of every author and mentioned person (never emails)           |
-| `boards.json`                    | Board tree: id, parent (null for root), kind, title, icon, schema version |
+| `boards.json`                    | Board tree: id, parent (null: root), kind, views, title, icon, schema     |
 | `boards/<boardId>/document.yjs`  | The board's Yjs document, one full update (`Y.encodeStateAsUpdate`)       |
 | `boards/<boardId>/elements.json` | The same board readable: elements as in `@inkadra/doc-schema`, note text  |
 | `versions.json`                  | Named versions: id, board, name, schema version, author, date             |

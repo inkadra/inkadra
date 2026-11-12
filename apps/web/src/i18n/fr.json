@@ -93,10 +93,8 @@
     "navigation": "Navigation",
     "home": "Accueil",
     "board": "Tableaux",
-    "storyboard": "Storyboard",
     "shotlist": "Liste de plans",
     "schedule": "Plan de travail",
-    "clients": "Révision",
     "inbox": "Réception",
     "search": "Rechercher",
     "settings": "Paramètres",
@@ -117,14 +115,10 @@
     "collapse": "Réduire la navigation",
     "expand": "Développer la navigation",
     "boards": "Tableaux",
-    "addStoryboard": "Ajouter un storyboard…",
-    "shots_one": "{{count}} plan",
-    "shots_other": "{{count}} plans",
-    "toShoot_one": "{{left}} plan sur {{count}} encore à tourner",
-    "toShoot_other": "{{left}} plans sur {{count}} encore à tourner",
+    "addStoryboard": "Ajouter un storyboard",
     "items_one": "{{count}} élément sur le tableau",
     "items_other": "{{count}} éléments sur le tableau",
-    "troupe": "Équipe"
+    "addMoodboard": "Ajouter un moodboard"
   },
   "home": {
     "greeting": {
@@ -373,7 +367,8 @@
       "section": "Titre de section",
       "table": "Table",
       "map": "Carte",
-      "plan": "Plan au sol"
+      "plan": "Plan au sol",
+      "moodboard": "Moodboard"
     },
     "tools": {
       "select": "Sélectionner",
@@ -1851,6 +1846,17 @@
       "showGuests": "Montrer au client",
       "toStoryboard": "Ajouter au storyboard",
       "replyTo": "Répondre à {{name}}…"
+    },
+    "outside": {
+      "title": "Cartes hors du storyboard",
+      "menu_one": "Cartes hors du storyboard ({{count}})",
+      "menu_other": "Cartes hors du storyboard ({{count}})"
+    },
+    "views": {
+      "title": "Vues de ce tableau",
+      "always": "toujours",
+      "none": "Ce type n’a pas d’autres vues",
+      "note": "Une vue désactivée quitte la barre et l’arbre. Ses données restent."
     }
   },
   "tags": {
@@ -3280,7 +3286,8 @@
     "sent_other": "{{count}} plans ajoutés au storyboard",
     "sendFailed": "Impossible de les ajouter au storyboard. Vérifiez la connexion et les autorisations, puis réessayez.",
     "lockedSkipped_one": "{{count}} référence est verrouillée et n'a pas changé.",
-    "lockedSkipped_other": "{{count}} références sont verrouillées et n'ont pas changé."
+    "lockedSkipped_other": "{{count}} références sont verrouillées et n'ont pas changé.",
+    "whichStoryboard": "Dans quel storyboard ?"
   },
   "callSheet": {
     "day": "Jour",
@@ -4954,8 +4961,8 @@
             "text": "Les outils d’une carte apparaissent juste au-dessus."
           },
           "4": {
-            "title": "Une histoire, plusieurs vues",
-            "text": "Storyboard, liste des plans et plan de tournage partagent les mêmes données."
+            "title": "Chaque tableau, ses vues",
+            "text": "Un storyboard a aussi une liste de plans et une révision : activez-les depuis le menu ⋯."
           },
           "5": {
             "title": "Travailler en équipe",
@@ -5022,11 +5029,15 @@
           },
           "1": {
             "title": "Tout le reste",
-            "text": "+ ajoute storyboards et listes de plans ; la barre se change dans les Réglages."
+            "text": "+ ajoute tableaux et moodboards ; la barre se change dans les Réglages."
           },
           "2": {
             "title": "Sélectionner une carte",
             "text": "Ses outils apparaissent juste au-dessus."
+          },
+          "3": {
+            "title": "Les vues du tableau",
+            "text": "Depuis le menu ⋯, activez le moodboard de ce tableau. Une vue désactivée garde ses données."
           }
         }
       },
@@ -5035,7 +5046,7 @@
         "steps": {
           "0": {
             "title": "Des références en grille",
-            "text": "Images, liens et couleurs du projet, ensemble."
+            "text": "Images, liens et couleurs du tableau, ensemble."
           },
           "1": {
             "title": "Filtrer",

@@ -8,6 +8,7 @@ import {
 import { type Element, type ElementType, readElement, roots } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
+  type BoardKind,
   CastAppearancesQuery,
   classificationOption,
   Id,
@@ -312,7 +313,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
           projectName: r.name as string,
           boardId: r.id as string,
           boardTitle: r.title as string,
-          boardKind: r.kind as 'board' | 'storyboard',
+          boardKind: r.kind as BoardKind,
           elementId: null,
           elementType: null,
           title: r.title as string,
@@ -371,7 +372,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
           projectName: r.name as string,
           boardId: r.board_id as string,
           boardTitle: r.board_title as string,
-          boardKind: r.board_kind as 'board' | 'storyboard',
+          boardKind: r.board_kind as BoardKind,
           elementId: r.id as string,
           elementType: 'shootingDay',
           // Its first line names the place; a map link is no title.
@@ -450,7 +451,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
         projectName: r.name as string,
         boardId: r.board_id as string,
         boardTitle: r.board_title as string,
-        boardKind: r.board_kind as 'board' | 'storyboard',
+        boardKind: r.board_kind as BoardKind,
         elementId: r.element_id as string,
         elementType: r.type as string,
         title: (r.title as string) || (r.board_title as string),

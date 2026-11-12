@@ -13,6 +13,7 @@ import { ASPECT_RATIOS, type AspectRatio, setBoardAspect } from '@inkadra/doc-sc
 import { Button, EmptyState, Icon, IconButton, Segmented, Select } from '@inkadra/ui';
 import { type DragEvent, memo, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import { useRegisterActions } from '../../commands/actions.ts';
 import { duplicateInStore } from '../../commands/board-actions.ts';
 import { api } from '../../lib/api.ts';
@@ -109,6 +110,31 @@ export function StoryboardView({
       .querySelector(`[data-story-scene="${CSS.escape(sceneParam)}"]`)
       ?.scrollIntoView({ block: 'start' });
   }, [sceneParam, takeSceneParam, groups]);
+  // "Go to the card" of a comment, a search hit or a notification (decision 0121): a frame opens
+  // selected and a scene comes into view; any other card is outside the storyboard, on its canvas.
+  const [elParam, takeElParam] = useTakeParam('el');
+  const [, setParams] = useSearchParams();
+  useEffect(() => {
+    if (!elParam || !ready) return;
+    const el = store.getSnapshot().byId.get(elParam);
+    if (el && el.type !== 'frame' && el.type !== 'scene') {
+      setParams(
+        (p) => {
+          const next = new URLSearchParams(p);
+          next.set('view', 'canvas');
+          return next;
+        },
+        { replace: true },
+      );
+      return;
+    }
+    takeElParam();
+    if (!el) return;
+    if (el.type === 'frame') setSelected(el.id);
+    document
+      .querySelector(`[data-story-${el.type}="${CSS.escape(el.id)}"]`)
+      ?.scrollIntoView({ block: 'center' });
+  }, [elParam, ready, store, setParams, takeElParam]);
   const [present, setPresent] = useState(false);
   // The board menu links to ?present=1 from any view: start once, when there is something to show.
   const [presentParam, takePresentParam] = useTakeParam('present');

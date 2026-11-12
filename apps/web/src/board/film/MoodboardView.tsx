@@ -13,6 +13,7 @@ import {
 import { ASPECT_RATIOS, aspectValue, compareZ, type Element, MAX_TAGS } from '@inkadra/doc-schema';
 import { Button, Checkbox, EmptyState, Icon, IconButton, Segmented } from '@inkadra/ui';
 import {
+  type CSSProperties,
   type ReactNode,
   useCallback,
   useEffect,
@@ -21,12 +22,13 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
 import { getCachedAsset, pickVariant, useAsset, useAssetPalettes } from '../assets.ts';
 import { CroppedImage } from '../CroppedImage.tsx';
 import { CopyHexButton } from '../cards.tsx';
-import { Toast, UploadPanel } from '../chrome.tsx';
+import { ContextMenu, Toast, UploadPanel } from '../chrome.tsx';
 import { copyHex, hexToRgb } from '../colors.ts';
 import { uploadBoardId } from '../frame-grab.ts';
 import { croppedRotatedSize, hasImageTransform } from '../image-crop.ts';
@@ -477,15 +479,18 @@ export function MoodboardView({
   userId,
   readOnly,
   boardTitle,
-  storyboardBoardId = null,
+  storyboards = [],
+  onNewStoryboard,
 }: {
   store: BoardStore;
   projectId: string;
   userId: string;
   readOnly: boolean;
   boardTitle?: string;
-  /** The board that holds the project's storyboard; null when it is this one. */
-  storyboardBoardId?: string | null;
+  /** The project's storyboards, where Send to storyboard adds frames (decision 0121). */
+  storyboards?: ReadonlyArray<{ id: string; title: string }>;
+  /** Makes a storyboard for a project that has none, and gives its id. */
+  onNewStoryboard?: (() => Promise<string>) | undefined;
 }) {
   const { tagLabel, tagOption } = useClassifications();
   const { t } = useTranslation();
@@ -664,13 +669,17 @@ export function MoodboardView({
     );
     store.undo.stopCapturing();
   };
-  const sendToStoryboard = async () => {
+  // With several storyboards the button asks which one first.
+  const [pickingStoryboard, setPickingStoryboard] = useState<CSSProperties | null>(null);
+  const sendButton = useRef<HTMLButtonElement | null>(null);
+  const sendToStoryboard = async (chosenId?: string) => {
     const lookup = (id: string) => snapshot.byId.get(id);
     const frames = framesFromReferences(chosenMedia, lookup);
     setNotice('');
     setSending(true);
     try {
-      if (storyboardBoardId) await addFramesToBoard(storyboardBoardId, frames, userId);
+      const target = chosenId ?? storyboards[0]?.id ?? (await onNewStoryboard?.());
+      if (target) await addFramesToBoard(target, frames, userId);
       else {
         store.undo.stopCapturing();
         placeFrames(store.doc, frames, { userId, origin: LOCAL });
@@ -962,10 +971,44 @@ export function MoodboardView({
             )}
             <Button
               disabled={sending || chosenMedia.length === 0}
-              onClick={() => void sendToStoryboard()}
+              aria-haspopup={storyboards.length > 1 ? 'menu' : undefined}
+              aria-expanded={storyboards.length > 1 ? !!pickingStoryboard : undefined}
+              onClick={(e) => {
+                if (storyboards.length < 2) return void sendToStoryboard();
+                // Above the button, as the Canvas menu opens above its own.
+                const rect = e.currentTarget.getBoundingClientRect();
+                sendButton.current = e.currentTarget;
+                setPickingStoryboard({
+                  left: rect.left,
+                  bottom: window.innerHeight - rect.top + 8,
+                });
+              }}
             >
               {t('moodboard.sendToStoryboard')}
             </Button>
+            {pickingStoryboard &&
+              createPortal(
+              <ContextMenu
+                className="menu--canvas"
+                style={pickingStoryboard}
+                label={t('moodboard.whichStoryboard')}
+                anchor={sendButton}
+                items={[
+                  { heading: t('moodboard.whichStoryboard') },
+                  ...storyboards.map((b) => ({
+                    label: b.title,
+                    icon: 'storyboard' as const,
+                    kind: 'storyboard' as const,
+                    action: () => void sendToStoryboard(b.id),
+                  })),
+                ]}
+                onClose={(reason) => {
+                  setPickingStoryboard(null);
+                  if (reason === 'escape') sendButton.current?.focus();
+                }}
+              />,
+                document.body,
+              )}
             <IconButton
               icon="close"
               label={t('moodboard.clearSelection')}

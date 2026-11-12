@@ -110,7 +110,11 @@ export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
     result = contentCounts(
       [...roots(doc).elements.values()]
         .filter((el) => el instanceof Y.Map)
-        .map((el) => ({ type: el.get('type'), status: el.get('status') })),
+        .map((el) => ({
+          type: el.get('type'),
+          status: el.get('status'),
+          sceneIds: el.get('sceneIds'),
+        })),
     );
   } catch {
     return empty;

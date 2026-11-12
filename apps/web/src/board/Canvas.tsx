@@ -78,7 +78,13 @@ import {
   zoomAt,
 } from '@inkadra/canvas-core';
 import { type Element, TODO_LISTS, UNSORTED } from '@inkadra/doc-schema';
-import { API_PREFIX, type Board, defaultProjectIcon, isMapLink } from '@inkadra/shared';
+import {
+  API_PREFIX,
+  type Board,
+  type BoardKind,
+  defaultProjectIcon,
+  isMapLink,
+} from '@inkadra/shared';
 import { Button, Icon, kindStyle } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
@@ -997,14 +1003,14 @@ export function Canvas({
 
   /** An empty board card from the Canvas menu. */
   const insertCanvas = useCallback(
-    async (kind: 'board' | 'storyboard' = 'board', at?: Point) => {
+    async (kind: BoardKind = 'board', at?: Point) => {
       if (readOnly) return;
       const pos = place(at ?? center(DEFAULT_WIDTH.board, NEW_SHORT.board));
       try {
         const board = await createBoard(
           projectId,
           boardId,
-          t(kind === 'board' ? 'board.board.untitled' : 'film.views.storyboard'),
+          t(kind === 'board' ? 'board.board.untitled' : `film.views.${kind}`),
           kind,
         );
         store.undo.stopCapturing();
@@ -4261,7 +4267,7 @@ export function Canvas({
               tool={tool}
               onTool={setTool}
               onAdd={(type) => void add(type)}
-              onCanvas={() => void insertCanvas()}
+              onCanvas={(kind) => void insertCanvas(kind)}
               onScreenplay={() => setImportingScript(true)}
               onVoiceNote={canRecord() ? () => setRecording(center()) : undefined}
               phone={isPhone}

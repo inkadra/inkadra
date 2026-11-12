@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import { BoardKind, BoardOptionalView } from './boards.ts';
 import { CommentPin, CommentVisibility, ElementRef, MAX_COMMENT_LENGTH } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
 import { GuestRole, PickValue } from './guests.ts';
@@ -107,7 +108,9 @@ export const ArchiveBoard = z.object({
   id: Id,
   /** Null for the root board, exactly one. */
   parentId: Id.nullable(),
-  kind: z.enum(['board', 'storyboard']),
+  kind: BoardKind,
+  /** The optional views that are on; absent in archives from before decision 0121. */
+  views: z.array(BoardOptionalView).nullable().optional(),
   title: z.string().max(200),
   position: z.string().min(1).max(64),
   coverAssetId: Id.nullable(),

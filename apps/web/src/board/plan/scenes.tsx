@@ -23,23 +23,24 @@ export function plansOfScene(elements: Iterable<Element>, sceneId: string): Plan
 export { scenesOfPlan } from '@inkadra/canvas-core';
 
 /**
- * Links between plans and scenes travel in the address: `?view=canvas&plan=<id>` opens a plan
- * in its editor, `?view=storyboard&scene=<id>` shows a scene in the storyboard.
+ * Links between plans and scenes travel in the address: `?plan=<id>` opens a plan in its editor
+ * over the view that is open (the canvas, or on a storyboard the plan alone, decision 0121),
+ * `?view=storyboard&scene=<id>` shows a scene in the storyboard.
  */
 export function usePlanNav() {
   const [, setParams] = useSearchParams();
   const go = useCallback(
-    (view: string, key: string, id: string) =>
+    (view: string | null, key: string, id: string) =>
       setParams((p) => {
         const next = new URLSearchParams(p);
-        next.set('view', view);
+        if (view) next.set('view', view);
         next.set(key, id);
         return next;
       }),
     [setParams],
   );
   return {
-    openPlan: useCallback((id: string) => go('canvas', 'plan', id), [go]),
+    openPlan: useCallback((id: string) => go(null, 'plan', id), [go]),
     openScene: useCallback((id: string) => go('storyboard', 'scene', id), [go]),
   };
 }

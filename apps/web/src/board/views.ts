@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { Board, BoardCount, BoardKind } from '@inkadra/shared';
+import {
+  type Board,
+  type BoardCount,
+  type BoardKind,
+  type BoardOptionalView,
+  OPTIONAL_VIEWS,
+} from '@inkadra/shared';
 import type { IconName } from '@inkadra/ui';
 import { boardPath } from './boards.ts';
 
@@ -23,10 +29,7 @@ export const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
   { view: 'canvas', icon: 'board' },
 ];
 
-/** The views that only a storyboard board holds: shots, scenes, shooting days and review. */
-const FILM_VIEWS: readonly BoardView[] = ['storyboard', 'shotlist', 'schedule', 'troupe', 'review'];
-
-/** Reading order of the switcher: the board first, then the film views. */
+/** Reading order of the header, the sidebar and the phone picker. */
 export const ALL_VIEWS: readonly BoardView[] = [
   'canvas',
   'storyboard',
@@ -37,145 +40,103 @@ export const ALL_VIEWS: readonly BoardView[] = [
   'moodboard',
 ];
 
-export function isFilmView(view: BoardView | null): boolean {
-  return view !== null && FILM_VIEWS.includes(view);
-}
+/** The view each kind always has, and opens on (decision 0121). */
+const ALWAYS: Record<BoardKind, BoardView> = {
+  board: 'canvas',
+  moodboard: 'moodboard',
+  storyboard: 'storyboard',
+};
 
 export function isBoardView(value: string | null): value is BoardView {
   return ALL_VIEWS.includes(value as BoardView);
 }
 
-/** The icon a view is drawn with in the switcher, the rail and the sidebar. */
+/** The icon a view is drawn with in the switcher and the sidebar. */
 export function viewIcon(view: BoardView): IconName {
   return VIEWS.find((v) => v.view === view)?.icon ?? 'board';
 }
 
+/** The icon of a kind of board, in the sidebar, on its card and before its name. */
+export function kindIcon(kind: BoardKind | undefined): IconName {
+  return kind === 'storyboard' ? 'storyboard' : kind === 'moodboard' ? 'image' : 'board';
+}
+
 /** The view a board opens on when the address has no `?view=`. */
-export function defaultView(kind: BoardKind | undefined): 'storyboard' | 'canvas' {
-  return kind === 'storyboard' ? 'storyboard' : 'canvas';
+export function defaultView(kind: BoardKind | undefined): BoardView {
+  return ALWAYS[kind ?? 'board'];
 }
 
-/** Where the address bar already points, or the board default when it says nothing usable. */
-export function askedView(asked: string | null, kind: BoardKind | undefined): BoardView {
-  return isBoardView(asked) ? asked : defaultView(kind);
-}
-
-/** The project's storyboard, where the film views live; null when the project has none. */
-export function storyboardOf(boards: readonly Board[] | null | undefined): string | null {
-  return boards?.find((b) => b.kind === 'storyboard')?.id ?? null;
-}
+type ViewsOf = Pick<Board, 'kind' | 'views'>;
+type CountsOf = Pick<BoardCount, 'referenceCount' | 'looseCount'> | undefined;
 
 /**
- * Whether the project has a storyboard: a board of that kind, or any board that already holds
- * frames. The sidebar lists the film views only then. Unknown boards count as none.
+ * The optional views that are on. Boards from before decision 0121 store none: a storyboard
+ * keeps all of its views, an ordinary board its moodboard when it holds images, links or colours.
  */
-export function projectHasStoryboard(
-  boards: readonly Board[] | null | undefined,
-  counts: ReadonlyMap<string, Pick<BoardCount, 'frameCount'>>,
-): boolean {
-  if (storyboardOf(boards)) return true;
-  return !!boards?.some((b) => (counts.get(b.id)?.frameCount ?? 0) > 0);
+export function viewsOn(board: ViewsOf, counts: CountsOf): BoardOptionalView[] {
+  const allowed = OPTIONAL_VIEWS[board.kind];
+  if (board.views) return allowed.filter((v) => board.views?.includes(v));
+  if (board.kind === 'board') return (counts?.referenceCount ?? 0) > 0 ? ['moodboard'] : [];
+  return [...allowed];
+}
+
+/** The views of a board, in reading order: the one of its kind, then those turned on. */
+export function boardViews(board: ViewsOf, counts: CountsOf): BoardView[] {
+  const on: readonly BoardView[] = viewsOn(board, counts);
+  return ALL_VIEWS.filter((v) => v === ALWAYS[board.kind] || on.includes(v));
 }
 
 /**
- * The board with a live client review link, in the order of the boards: where Review opens for a
- * project without a storyboard. Null when there is none, and while the boards are unknown.
+ * Whether a storyboard still opens its old canvas: it holds cards other than its scenes and
+ * frames. A storyboard has no Board view, so that canvas shows only while there is something
+ * on it; while the counts are unknown it stays reachable.
  */
-export function clientReviewBoard(
-  boards: readonly Board[] | null | undefined,
-  counts: ReadonlyMap<string, Pick<BoardCount, 'clientReview'>>,
-): string | null {
-  return boards?.find((b) => counts.get(b.id)?.clientReview)?.id ?? null;
-}
-
-/** Which film links the sidebar, the header tabs and the phone switcher offer, for one project. */
-export interface FilmLinks {
-  /** Storyboard, Shot list and Schedule. */
-  film: boolean;
-  /** Review. */
-  review: boolean;
-  /** Where Review opens without a storyboard: the board with a live client review link. */
-  reviewBoard: string | null;
+export function hasOutsideCards(board: ViewsOf | undefined, counts: CountsOf): boolean {
+  return board?.kind === 'storyboard' && (counts?.looseCount ?? 1) > 0;
 }
 
 /**
- * The one rule for the film links, so the sidebar, the header and the phone never disagree. The
- * film views show with the project's storyboard, and while one of them is open so there is a way
- * back. Review also shows alone while a client review link is live (`reviewBoard`) or its view
- * is open.
+ * The view an address opens: the one it asks for when the board has it, otherwise the board's
+ * first. While the board is unknown only a valid asked view is known.
  */
-export function filmLinks(
-  hasStoryboard: boolean,
-  reviewBoard: string | null,
-  active: BoardView | null,
-): FilmLinks {
-  const film = hasStoryboard || (isFilmView(active) && active !== 'review');
-  return { film, review: film || active === 'review' || !!reviewBoard, reviewBoard };
+export function openView(
+  asked: string | null,
+  board: ViewsOf | undefined,
+  counts: CountsOf,
+): BoardView | null {
+  if (!board) return isBoardView(asked) ? asked : null;
+  if (asked === 'canvas' && hasOutsideCards(board, counts)) return 'canvas';
+  const views = boardViews(board, counts);
+  return isBoardView(asked) && views.includes(asked) ? asked : (views[0] ?? defaultView(board.kind));
 }
 
-/** Everything is offered: the layout's default before it has worked the rule out. */
-export const ALL_FILM_LINKS: FilmLinks = { film: true, review: true, reviewBoard: null };
-
 /**
- * What the header offers: canvas always, the film views the project allows (`links`), and the
- * moodboard, except on a storyboard, where pictures live in the frames and references get a
- * board of their own. An address that asks for a view still shows its tab, so the open view
- * always has one. Nothing while the board's kind is still loading.
+ * The views the header, the sidebar and the phone offer for the open board: its own, and the
+ * canvas of a storyboard while its cards outside the storyboard are open. Nothing while the
+ * board is unknown.
  */
 export function headerViews(
-  kind: BoardKind | undefined,
-  active: BoardView,
-  links: FilmLinks,
-): BoardView[] {
-  if (!kind && !isFilmView(active)) return [];
-  return pickerViews(kind, active, links);
-}
-
-/** The phone's view picker: the same views as the header. */
-export function pickerViews(
-  kind: BoardKind | undefined,
+  board: ViewsOf | undefined,
+  counts: CountsOf,
   active: BoardView | null,
-  links: FilmLinks,
 ): BoardView[] {
-  return ALL_VIEWS.filter((v) => {
-    if (v === active || v === 'canvas') return true;
-    if (v === 'moodboard') return kind !== 'storyboard';
-    return v === 'review' ? links.review : links.film;
-  });
+  if (!board) return [];
+  const views = boardViews(board, counts);
+  return active === 'canvas' && board.kind === 'storyboard' ? [...views, 'canvas'] : views;
 }
 
-/**
- * Where each view opens. Film views belong to the project's storyboard, so choosing one from
- * an ordinary board opens that board; without a storyboard they open on the project's root
- * board, so the sidebar and rail always lead to the same place, except Review, which opens the
- * board with a live client review link (`reviewBoardId`) when there is one. `boardId: null`
- * means the board that is already open.
- */
-export function viewDestination(
-  view: BoardView,
-  current: {
-    boardId: string | undefined;
-    kind: BoardKind | undefined;
-    rootBoardId: string | undefined;
-  },
-  storyboardId: string | null,
-  reviewBoardId: string | null = null,
-): { boardId: string | null; view: BoardView; kind?: BoardKind } {
-  const film = FILM_VIEWS.includes(view);
-  if (!film || current.kind === 'storyboard') return { boardId: null, view };
-  const target = storyboardId ?? (view === 'review' ? reviewBoardId : null) ?? current.rootBoardId;
-  if (!target || target === current.boardId) return { boardId: null, view };
-  return { boardId: target, view, kind: storyboardId ? 'storyboard' : 'board' };
+/** The name key of a view; on a storyboard the canvas holds only the cards outside it. */
+export function viewLabelKey(view: BoardView, kind: BoardKind | undefined): string {
+  return view === 'canvas' && kind === 'storyboard' ? 'board.outside.title' : `film.views.${view}`;
 }
 
-/** The address of a destination, leaving out `?view=` when it is the target board's default. */
+/** The address of a board's view, leaving out `?view=` when it is the board's default. */
 export function viewHref(
   projectId: string,
-  destination: { boardId: string | null; view: BoardView; kind?: BoardKind },
-  current: { boardId: string; rootBoardId: string | undefined; kind: BoardKind | undefined },
+  board: { id: string; kind: BoardKind | undefined },
+  view: BoardView,
+  rootBoardId: string | undefined,
 ): string {
-  const board = destination.boardId ?? current.boardId;
-  const kind = destination.boardId ? (destination.kind ?? 'storyboard') : current.kind;
-  const path = boardPath(projectId, board, current.rootBoardId);
-  return destination.view === defaultView(kind) ? path : `${path}?view=${destination.view}`;
+  const path = boardPath(projectId, board.id, rootBoardId);
+  return view === defaultView(board.kind) ? path : `${path}?view=${view}`;
 }

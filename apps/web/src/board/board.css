@@ -2053,6 +2053,13 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   font-weight: 600;
   color: var(--ink-text-muted);
 }
+.menu__note {
+  margin: 4px 8px;
+  max-width: 240px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-text-muted);
+}
 .menu__item > .needed-kind {
   margin-left: -2px;
 }

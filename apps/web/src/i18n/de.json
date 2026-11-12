@@ -93,10 +93,8 @@
     "navigation": "Navigation",
     "home": "Home",
     "board": "Boards",
-    "storyboard": "Storyboard",
     "shotlist": "Shotlist",
     "schedule": "Drehplan",
-    "clients": "Review",
     "inbox": "Inbox",
     "search": "Suchen",
     "settings": "Einstellungen",
@@ -117,14 +115,10 @@
     "collapse": "Navigation einklappen",
     "expand": "Navigation ausklappen",
     "boards": "Boards",
-    "addStoryboard": "Storyboard hinzufügen…",
-    "shots_one": "{{count}} Shot",
-    "shots_other": "{{count}} Shots",
-    "toShoot_one": "{{left}} von {{count}} Shot noch zu drehen",
-    "toShoot_other": "{{left}} von {{count}} Shots noch zu drehen",
+    "addStoryboard": "Storyboard hinzufügen",
     "items_one": "{{count}} Element im Board",
     "items_other": "{{count}} Elemente im Board",
-    "troupe": "Team"
+    "addMoodboard": "Moodboard hinzufügen"
   },
   "home": {
     "greeting": {
@@ -373,7 +367,8 @@
       "section": "Abschnittstitel",
       "table": "Tabelle",
       "map": "Karte",
-      "plan": "Setplan"
+      "plan": "Setplan",
+      "moodboard": "Moodboard"
     },
     "tools": {
       "select": "Auswählen",
@@ -1851,6 +1846,17 @@
       "showGuests": "Dem Kunden zeigen",
       "toStoryboard": "Zum Storyboard hinzufügen",
       "replyTo": "{{name}} antworten…"
+    },
+    "outside": {
+      "title": "Karten außerhalb des Storyboards",
+      "menu_one": "Karten außerhalb des Storyboards ({{count}})",
+      "menu_other": "Karten außerhalb des Storyboards ({{count}})"
+    },
+    "views": {
+      "title": "Ansichten dieses Boards",
+      "always": "immer",
+      "none": "Dieser Typ hat keine weiteren Ansichten",
+      "note": "Eine ausgeschaltete Ansicht verschwindet aus der Leiste und dem Baum. Die Daten bleiben."
     }
   },
   "tags": {
@@ -3280,7 +3286,8 @@
     "sent_other": "{{count}} Einstellungen zum Storyboard hinzugefügt",
     "sendFailed": "Sie konnten nicht zum Storyboard hinzugefügt werden. Prüfe Verbindung und Berechtigungen und versuche es erneut.",
     "lockedSkipped_one": "{{count}} Referenz ist gesperrt und wurde nicht geändert.",
-    "lockedSkipped_other": "{{count}} Referenzen sind gesperrt und wurden nicht geändert."
+    "lockedSkipped_other": "{{count}} Referenzen sind gesperrt und wurden nicht geändert.",
+    "whichStoryboard": "In welches Storyboard?"
   },
   "callSheet": {
     "day": "Tag",
@@ -4954,8 +4961,8 @@
             "text": "Die Werkzeuge einer Karte erscheinen direkt darüber."
           },
           "4": {
-            "title": "Eine Geschichte, viele Ansichten",
-            "text": "Storyboard, Shotlist und Drehplan teilen dieselben Daten."
+            "title": "Jedes Board, seine Ansichten",
+            "text": "Ein Storyboard hat auch Shotlist und Review: schalte sie im Menü ⋯ ein."
           },
           "5": {
             "title": "Im Team arbeiten",
@@ -5022,11 +5029,15 @@
           },
           "1": {
             "title": "Alles andere",
-            "text": "+ fügt Storyboards und Shotlisten hinzu; die Leiste änderst du in den Einstellungen."
+            "text": "+ fügt Boards und Moodboards hinzu; die Leiste änderst du in den Einstellungen."
           },
           "2": {
             "title": "Eine Karte auswählen",
             "text": "Ihre Werkzeuge erscheinen direkt darüber."
+          },
+          "3": {
+            "title": "Die Ansichten des Boards",
+            "text": "Im Menü ⋯ schaltest du das Moodboard dieses Boards ein. Eine ausgeschaltete Ansicht behält ihre Daten."
           }
         }
       },
@@ -5035,7 +5046,7 @@
         "steps": {
           "0": {
             "title": "Referenzen im Raster",
-            "text": "Bilder, Links und Farben des Projekts, zusammen."
+            "text": "Bilder, Links und Farben des Boards, zusammen."
           },
           "1": {
             "title": "Filtern",
