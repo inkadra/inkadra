@@ -15,11 +15,18 @@ function inter(): Record<FontWeight, Uint8Array> {
   return { 400: file(400), 500: file(500), 600: semibold, 700: file(700), heading: semibold };
 }
 
+interface Width {
+  text: string;
+  size: number;
+  weight: FontWeight;
+  width: number;
+}
+
 /** The web's widths of the plan sheet's texts (the web's `fonts.test.ts` records them). */
 const fixture = readFileSync(`${import.meta.dirname}/measure.fixture.txt`, 'utf8')
   .trim()
   .split('\n')
-  .map((line) => JSON.parse(line) as { text: string; size: number; weight: FontWeight; width: number });
+  .map((line) => JSON.parse(line) as Width);
 
 describe('measureFrom', () => {
   it("gives the web's widths of the plan sheet's texts", () => {
