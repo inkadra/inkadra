@@ -22,7 +22,14 @@ import { moveTabFocus } from '../../lib/tabs.ts';
 import { SetupChips } from '../plan/SetupChips.tsx';
 import { ScenePlanButton } from '../plan/scenes.tsx';
 import { groupBySetup, type ShotSetup } from '../plan/setups.ts';
-import { clockString, minutesLabel, monthGrid, parseDuration, SHOT_DRAG_TYPE } from './calendar.ts';
+import {
+  clockString,
+  minutesLabel,
+  monthGrid,
+  parseDuration,
+  SHOT_DRAG_TYPE,
+  shiftBlock,
+} from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { AutoTime, TokenField } from './fields.tsx';
@@ -94,7 +101,10 @@ export function ScheduleQueue({
   onPickDate,
   onAdd,
   onAddScene,
+  onCollapse,
 }: {
+  /** Folds the month and the queue to their rail; not in the phone's sheet. */
+  onCollapse?: (() => void) | undefined;
   groups: readonly SourceGroup[];
   labels: ReadonlyMap<string, string>;
   /** Frames (`shot:board/id`) and scenes (`scene:board/id`) already planned. */
@@ -222,6 +232,7 @@ export function ScheduleQueue({
         visibleDates={visibleDates}
         dropDate={dropDate}
         onPick={onPickDate}
+        onCollapse={onCollapse}
       />
       <h2 className="story__sidebar-title">
         {t('schedule.toPlan')} <span>{loading || failed ? '' : count}</span>
@@ -456,15 +467,53 @@ function QueueShot({
   );
 }
 
+/**
+ * The month and the queue folded to a 36 px rail (option 2): one button opens the column, the
+ * others open it on the month or on the queue, which shows how many frames wait.
+ */
+export function QueueRail({
+  count,
+  onOpen,
+}: {
+  count: number | null;
+  onOpen: (on: 'side' | 'month' | 'queue') => void;
+}) {
+  const { t } = useTranslation();
+  const queue = count === null ? t('schedule.toPlan') : t('schedule.queueCount', { count });
+  return (
+    <aside className="schedule__rail" aria-label={t('schedule.queue')} data-tour="schedule-queue">
+      <IconButton icon="chevronRight" label={t('schedule.showSide')} onClick={() => onOpen('side')} />
+      <IconButton icon="calendar" label={t('schedule.month')} onClick={() => onOpen('month')} />
+      <button
+        type="button"
+        className="ink-iconbtn schedule__rail-queue"
+        aria-label={queue}
+        data-ink-tooltip={queue}
+        onClick={() => onOpen('queue')}
+      >
+        <Icon name="list" />
+        {count !== null && (
+          <span className="schedule__rail-count" aria-hidden="true">
+            {count}
+          </span>
+        )}
+      </button>
+    </aside>
+  );
+}
+
 /** The month of the date on screen, shooting days marked; a click shows that date. */
-function MiniMonth({
+export function MiniMonth({
   focusDate,
   today,
   shootingDates,
   visibleDates,
   dropDate,
   onPick,
+  onCollapse,
 }: {
+  /** Folds the month and the queue to their rail (option 2). */
+  onCollapse?: (() => void) | undefined;
   focusDate: string;
   today: string;
   shootingDates: ReadonlySet<string>;
@@ -489,6 +538,14 @@ function MiniMonth({
       <div className="schedule__month-head">
         <b>{format(`${month}-01`, { month: 'long', year: 'numeric' })}</b>
         <span>{t('schedule.days', { count: inMonth })}</span>
+        {onCollapse && (
+          <IconButton
+            icon="chevronLeft"
+            className="schedule__collapse"
+            label={t('schedule.hideSide')}
+            onClick={onCollapse}
+          />
+        )}
       </div>
       <table className="schedule__month-grid">
         <thead>
@@ -810,6 +867,19 @@ export function BlockEditor({
           )}
           {variant === 'sheet' && (
             <>
+              {/* The phone's list has no drag: the order changes here (mockup option 8). */}
+              <Button
+                disabled={index === 0}
+                onClick={() => onChange(shiftBlock(draft, block.id, -1))}
+              >
+                {t('schedule.earlier')}
+              </Button>
+              <Button
+                disabled={index === draft.blocks.length - 1}
+                onClick={() => onChange(shiftBlock(draft, block.id, 1))}
+              >
+                {t('schedule.later')}
+              </Button>
               <Button onClick={onDuplicate}>{t('schedule.duplicate')}</Button>
               <Button variant="danger" onClick={onRemove}>
                 {t('schedule.remove')}

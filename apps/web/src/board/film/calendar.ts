@@ -11,8 +11,47 @@ import { clockMinutes, scheduleTimes } from './schedule.ts';
 /** What a shot from the queue carries while it is dragged. */
 export const SHOT_DRAG_TYPE = 'application/x-inkadra-schedule-shot';
 
-/** Grid scale: one pixel per minute. */
+/** Grid scale: one pixel per minute ("Compatto", the default). */
 export const MINUTE_PX = 1;
+/** The grid's pixels per minute at each density; "Comodo" is the mockup's 1.6×. */
+export const DENSITY = { compact: MINUTE_PX, comfy: 1.6 } as const;
+export type Density = keyof typeof DENSITY;
+
+/** Where a block sits in the hour grid at `scale` px per minute: on its minute, inside its slot. */
+export function blockBox(start: number, end: number, scale: number) {
+  return { top: start * scale, height: Math.max(1, (end - start) * scale) };
+}
+
+/**
+ * A choice remembered in this browser only (the column, the density). Storage may be missing or
+ * blocked (private windows, previews): then the choice lasts for the page.
+ */
+export function readChoice(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+export function saveChoice(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Kept for the page only.
+  }
+}
+export const SIDE_KEY = 'inkadra.schedule.side';
+export const DENSITY_KEY = 'inkadra.schedule.density';
+
+/**
+ * Whether the month and queue column is open: the person's own choice wins; otherwise it opens
+ * when something waits in the queue and folds to its rail when nothing does.
+ */
+export function sideOpen(stored: string | null, waiting: number): boolean {
+  if (stored === 'open') return true;
+  if (stored === 'closed') return false;
+  return waiting > 0;
+}
 /** Drags and resizes snap to five minutes; Shift gives single minutes. */
 export const SNAP = 5;
 

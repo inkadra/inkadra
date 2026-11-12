@@ -37,14 +37,21 @@ import { CallSheetModal } from './CallSheetModal.tsx';
 import {
   addDays,
   clockString,
+  DENSITY,
+  DENSITY_KEY,
+  type Density,
   duplicateBlock,
   insertDrawnBlock,
   localDate,
   minutesLabel,
   moveDay,
   placeBlock,
+  readChoice,
   SHOT_DRAG_TYPE,
+  SIDE_KEY,
+  saveChoice,
   sameScheduleInput as sameInput,
+  sideOpen,
   weekDates,
   weekStart,
 } from './calendar.ts';
@@ -57,6 +64,7 @@ import { neededForDay, sceneIdsOf, updateNeededRow } from './needed.ts';
 import {
   type CalendarColumn,
   type CalendarDay,
+  ConflictTag,
   type DayChange,
   ScheduleCalendar,
 } from './ScheduleCalendar.tsx';
@@ -64,12 +72,22 @@ import {
   BlockEditor,
   DayPanel,
   type DayTab,
+  MiniMonth,
   MoveDayDialog,
+  QueueRail,
   ScheduleQueue,
   StaleChoice,
   SunLine,
 } from './ScheduleParts.tsx';
-import { castConflicts, clockLabel, newScheduleBlock, nowOnDay, whileVisible } from './schedule.ts';
+import {
+  castConflicts,
+  clockLabel,
+  conflictNotes,
+  conflictPairs,
+  newScheduleBlock,
+  nowOnDay,
+  whileVisible,
+} from './schedule.ts';
 import {
   type BlockLook,
   dayElements,
@@ -241,6 +259,16 @@ export function ScheduleView({
   const crew = useCrew(projectId, boardId);
   const [chosenView, setView] = useState<'week' | 'day'>('week');
   const view = phone ? 'day' : chosenView;
+  // Personal choices kept in this browser: the grid's density and the month and queue column.
+  const [density, setDensity] = useState<Density>(() =>
+    readChoice(DENSITY_KEY) === 'comfy' ? 'comfy' : 'compact',
+  );
+  const [sideChoice, setSideChoice] = useState(() => readChoice(SIDE_KEY));
+  /** What waited in the queue when the plan opened: the column's default, kept while here. */
+  const [waitingAtOpen, setWaitingAtOpen] = useState<number | null>(null);
+  const [monthOpen, setMonthOpen] = useState<DOMRect | null>(null);
+  // The day whose "N conflicts" note is open.
+  const [hotDay, setHotDay] = useState<string | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const [popover, setPopover] = useState<{ day: string; block: string; rect: DOMRect } | null>(
     null,
@@ -1137,6 +1165,46 @@ export function ScheduleView({
         : savedAt
           ? t('schedule.statusSaved', { time: formatClock(localClock(savedAt)) })
           : '';
+  // Open when something waits in the queue, folded when nothing does, unless the person chose.
+  if (waitingAtOpen === null && !loading && !sources.loading) setWaitingAtOpen(unscheduled.length);
+  const side = sideOpen(sideChoice, waitingAtOpen ?? 1);
+  const chooseSide = (open: boolean) => {
+    const value = open ? 'open' : 'closed';
+    setSideChoice(value);
+    saveChoice(SIDE_KEY, value);
+  };
+  const openSide = (on: 'side' | 'month' | 'queue') => {
+    chooseSide(true);
+    requestAnimationFrame(() => {
+      const queue = document.querySelector<HTMLElement>('.schedule__queue');
+      const target =
+        on === 'month'
+          ? queue?.querySelector<HTMLElement>('.schedule__month-day[aria-pressed="true"]')
+          : on === 'queue'
+            ? queue?.querySelector<HTMLElement>('.schedule__search input, .schedule__shot')
+            : null;
+      (target ?? queue?.querySelector<HTMLElement>('.schedule__collapse'))?.focus();
+    });
+  };
+  const chooseDensity = (value: Density) => {
+    setDensity(value);
+    saveChoice(DENSITY_KEY, value);
+  };
+  const scale = phone ? DENSITY.compact : DENSITY[density];
+  const conflictCount = (entry: CalendarDay) =>
+    entry.draft.blocks.filter((b) => conflicts.has(b.id)).length;
+  // A note stays open only while its day still has conflicts.
+  if (hotDay && !drafted.some((d) => d.day.id === hotDay && conflictCount(d) > 0)) setHotDay(null);
+  const notesOf = (entry: CalendarDay) =>
+    conflictNotes(
+      conflictPairs(
+        drafted.map((d) => d.draft),
+        entry.draft.date,
+      ).filter((pair) => entry.draft.blocks.some((b) => b.id === pair.a.id || b.id === pair.b.id)),
+      blockTitle,
+      t,
+      i18n.language,
+    );
   const failedCount = Object.keys(failed).length;
   const popoverEntry = popover ? findEntry(popover.day) : undefined;
   const popoverBlock = popoverEntry?.draft.blocks.find((b) => b.id === popover?.block);
@@ -1284,6 +1352,7 @@ export function ScheduleView({
         addShot(selectedEntry, shotId);
         if (phone) setSheet(null);
       }}
+      onCollapse={phone ? undefined : () => chooseSide(false)}
       onAddScene={
         across
           ? (from, sceneId) => {
@@ -1349,7 +1418,27 @@ export function ScheduleView({
                 onClick={() => step(1)}
               />
             </span>
-            <h2 className="schedule__range">{rangeTitle}</h2>
+            <h2 className="schedule__range">
+              {side ? (
+                rangeTitle
+              ) : (
+                // With the column folded the title opens the month (option 2).
+                <button
+                  type="button"
+                  className="schedule__range-button"
+                  aria-haspopup="dialog"
+                  aria-expanded={!!monthOpen}
+                  aria-label={`${rangeTitle} · ${t('schedule.month')}`}
+                  data-popover-anchor
+                  onClick={(event) =>
+                    setMonthOpen(monthOpen ? null : event.currentTarget.getBoundingClientRect())
+                  }
+                >
+                  {rangeTitle}
+                  <Icon name="chevronDown" size={14} />
+                </button>
+              )}
+            </h2>
             <Segmented
               label={t('schedule.viewLabel')}
               value={view}
@@ -1362,6 +1451,17 @@ export function ScheduleView({
                 { value: 'week', label: t('schedule.viewWeek') },
               ]}
             />
+            <span className="schedule__density">
+              <Segmented
+                label={t('schedule.densityLabel')}
+                value={density}
+                onChange={chooseDensity}
+                options={[
+                  { value: 'compact', label: t('schedule.densityCompact') },
+                  { value: 'comfy', label: t('schedule.densityComfy') },
+                ]}
+              />
+            </span>
             <span className="ink-header__spacer" />
             {statusText && (
               <span
@@ -1460,7 +1560,7 @@ export function ScheduleView({
         {notice}
       </p>
       <div className="story__main schedule__main">
-        {!phone && queue}
+        {!phone && (side ? queue : <QueueRail count={loading ? null : unscheduled.length} onOpen={openSide} />)}
         <div className="schedule__body">
           {phone && !loading && !loadError && (
             <PhoneDays
@@ -1475,9 +1575,10 @@ export function ScheduleView({
             />
           )}
           {phone && selectedEntry && (
+            <div className="schedule__summary-card">
             <button
               type="button"
-              className="schedule__summary-card"
+              className="schedule__summary-main"
               onClick={() => setSheet('day')}
             >
               <span>
@@ -1495,6 +1596,15 @@ export function ScheduleView({
               </span>
               <span className="schedule__summary-link">{t('schedule.details')}</span>
             </button>
+              {conflictCount(selectedEntry) > 0 && (
+                <ConflictTag
+                  dayId={selectedEntry.day.id}
+                  count={conflictCount(selectedEntry)}
+                  open={hotDay === selectedEntry.day.id}
+                  onToggle={(open) => setHotDay(open ? selectedEntry.day.id : null)}
+                />
+              )}
+            </div>
           )}
           {loadError ? (
             <div className="board-state">
@@ -1545,6 +1655,10 @@ export function ScheduleView({
             <ScheduleCalendar
               view={view}
               phone={phone}
+              scale={scale}
+              hotDay={hotDay}
+              notesOf={notesOf}
+              onHotDay={setHotDay}
               columns={columns}
               days={drafted}
               today={today}
@@ -1605,6 +1719,27 @@ export function ScheduleView({
         </div>
         {!phone && view === 'day' && panel}
       </div>
+      {monthOpen && !side && !phone && (
+        <BlockPopover
+          rect={monthOpen}
+          below
+          onClose={() => setMonthOpen(null)}
+          label={t('schedule.month')}
+        >
+          <MiniMonth
+            focusDate={focusDate}
+            today={today}
+            shootingDates={shootingDates}
+            visibleDates={new Set(dates)}
+            dropDate={dayTarget}
+            onPick={(date) => {
+              setFocus(date);
+              setPopover(null);
+              setMonthOpen(null);
+            }}
+          />
+        </BlockPopover>
+      )}
       {popover && popoverEntry && popoverBlock && !phone && (
         <BlockPopover
           rect={popover.rect}
@@ -1807,11 +1942,14 @@ function PhoneDays({
 function BlockPopover({
   rect,
   label,
+  below = false,
   onClose,
   children,
 }: {
   rect: DOMRect;
   label: string;
+  /** Under its anchor (the period's title) rather than beside it (a block). */
+  below?: boolean;
   onClose: () => void;
   children: React.ReactNode;
 }) {
@@ -1823,19 +1961,32 @@ function BlockPopover({
     const width = el.offsetWidth;
     const height = el.offsetHeight;
     const gap = 8;
+    if (below) {
+      setPlace({
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+        top: rect.bottom + gap,
+      });
+      el.querySelector<HTMLElement>('[aria-pressed="true"], button')?.focus();
+      return;
+    }
     const right = rect.right + gap + width <= window.innerWidth - 8;
     const left = right ? rect.right + gap : Math.max(8, rect.left - gap - width);
     const top = Math.min(Math.max(8, rect.top), window.innerHeight - height - 8);
     setPlace({ left, top: Math.max(8, top) });
     el.querySelector<HTMLElement>('button, input, [tabindex]')?.focus();
-  }, [rect]);
+  }, [rect, below]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !document.querySelector('dialog[open]')) onClose();
     };
     const onDown = (event: PointerEvent) => {
       const target = event.target as Element | null;
-      if (ref.current?.contains(target) || target?.closest?.('.ink-select__panel, dialog')) return;
+      // A press on its anchor toggles it there.
+      if (
+        ref.current?.contains(target) ||
+        target?.closest?.('.ink-select__panel, dialog, [data-popover-anchor]')
+      )
+        return;
       onClose();
     };
     window.addEventListener('keydown', onKey);

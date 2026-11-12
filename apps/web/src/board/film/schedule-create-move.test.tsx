@@ -2,7 +2,7 @@
 import type { ScheduleBlock, ShootingDay } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
 import { BoardStore } from '../store.ts';
@@ -17,7 +17,10 @@ vi.mock('react-i18next', () => {
 });
 
 const disposals: Array<() => void> = [];
+// These tests pick dates in the month: the column stays open although the queue is empty.
+beforeEach(() => localStorage.setItem('inkadra.schedule.side', 'open'));
 afterEach(() => {
+  localStorage.clear();
   vi.restoreAllMocks();
   for (const dispose of disposals.splice(0).reverse()) dispose();
 });
