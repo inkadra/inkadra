@@ -112,8 +112,17 @@ export interface CardContext {
   characterLine(card: Extract<Element, { type: 'character' }>): string;
   /** Actor or INT./EXT. and the scene count of a character or location, on one line. */
   storyMeta(card: Extract<Element, { type: 'character' | 'location' }>): string;
-  /** `plan`: the name of a set plan, in its header. */
+  /** `plan`: the name of a set plan, when no `planCard` gives its card's words. */
   words: { board: string; file: string; plan?: string };
+  /**
+   * The words of a plan's card as the board shows them under its drawing (decision 0119): its
+   * name, its scenes ("Scene 2") and its counts ("3 setups", "2 cameras").
+   */
+  planCard?(el: Extract<Element, { type: 'plan' }>): {
+    title: string;
+    scenes: string;
+    chips: readonly string[];
+  };
   /** Another element of the board: the base of a plan variant, whose Set layer it shows. */
   element?(id: string): Element | undefined;
   /** The cards this export's audience may see, which set plans' links resolve against. */
@@ -174,7 +183,7 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
     case 'table':
       return el.rows.length * TABLE_ROW;
     case 'plan':
-      return PLAN_HEAD + w / PLAN_ASPECT;
+      return w / PLAN_ASPECT + PLAN_FOOT;
     case 'map':
       return (ctx.image(el.imageAssetId) ? (w * 560) / 1024 : 0) + 52;
     case 'location': {
@@ -640,32 +649,60 @@ export function body(p: Placed, ctx: CardContext): Op[] {
       const base = el.variantOf ? ctx.element?.(el.variantOf) : undefined;
       // A setup's Set and title are its base's (decisions 0062 and 0117).
       const drawn = base?.type === 'plan' ? variantView(el, base) : el;
-      const title =
-        el.variantOf && el.variant
-          ? [drawn.title || ctx.words.plan, el.variant].filter(Boolean).join(' · ')
-          : [ctx.words.plan, drawn.title].filter(Boolean).join(' · ');
+      // As the card on the board (decision 0119): the drawing, then its name, scenes and counts.
+      const words = ctx.planCard?.(el) ?? {
+        title:
+          el.variantOf && el.variant
+            ? [drawn.title || ctx.words.plan, el.variant].filter(Boolean).join(' · ')
+            : [ctx.words.plan, drawn.title].filter(Boolean).join(' · '),
+        scenes: '',
+        chips: [],
+      };
+      const box = { x: p.x, y: p.y, w: p.w, h: p.w / PLAN_ASPECT };
+      const foot = box.y + box.h;
+      const sceneW = words.scenes ? m(words.scenes, 11, 600) : 0;
       const ops: Op[] = [
-        {
-          kind: 'text',
-          x,
-          y: p.y + 21,
-          text: ellipsize(title, inner, 12, 500, m),
-          size: 12,
-          weight: 500,
-          color: c['text-primary'],
-        },
+        ...framedPlanOps(drawn, box, ctx),
         {
           kind: 'line',
           x1: p.x,
-          y1: p.y + PLAN_HEAD,
+          y1: foot,
           x2: p.x + p.w,
-          y2: p.y + PLAN_HEAD,
+          y2: foot,
           color: c['border-default'],
           width: 1,
         },
+        {
+          kind: 'text',
+          x,
+          y: foot + 20,
+          text: ellipsize(words.title, inner - (sceneW ? sceneW + 8 : 0), 12, 600, m),
+          size: 12,
+          weight: 600,
+          color: c['text-primary'],
+        },
       ];
-      const box = { x: p.x, y: p.y + PLAN_HEAD, w: p.w, h: p.w / PLAN_ASPECT };
-      return [...ops, ...framedPlanOps(drawn, box, ctx)];
+      if (words.scenes)
+        ops.push({
+          kind: 'text',
+          x: x + inner - sceneW,
+          y: foot + 20,
+          text: words.scenes,
+          size: 11,
+          weight: 600,
+          color: c['accent-primary'],
+        });
+      if (words.chips.length)
+        ops.push({
+          kind: 'text',
+          x,
+          y: foot + 38,
+          text: ellipsize(words.chips.join(' · '), inner, 11, 400, m),
+          size: 11,
+          weight: 400,
+          color: c['text-secondary'],
+        });
+      return ops;
     }
     case 'map': {
       const ops: Op[] = [];
@@ -940,8 +977,8 @@ function shapeOps(shape: FrameShape, box: Rect): Op[] {
   }
 }
 
-/** Height of a set plan's header, on the board and in exports. */
-const PLAN_HEAD = 34;
+/** Height of a set plan card's foot in exports: its name and scenes, then its counts. */
+const PLAN_FOOT = 48;
 
 /** `hex` mixed with `base` (both #RRGGBB), `t` of the way to `hex`; other colours stay. */
 function mix(hex: string, base: string, t: number): string {
