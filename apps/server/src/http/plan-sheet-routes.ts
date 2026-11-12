@@ -22,15 +22,15 @@ import { asset, assetVariant, boardDoc, shootingDay, user } from '../db/schema.t
 import {
   guestSheetSource,
   memberSheetSource,
+  planSheetLayout,
+  SHEET_PICTURE_PIXELS,
   type SheetAsk,
   type SheetSource,
-  planSheetLayout,
   sheetFileName,
   sheetFonts,
   sheetLanguage,
   sheetPdf,
   sheetPicture,
-  SHEET_PICTURE_PIXELS,
 } from '../plan-sheet.ts';
 import type { Storage } from '../storage.ts';
 import { contentDisposition, fileHeaders, isThumbnail } from './assets-routes.ts';
@@ -193,11 +193,17 @@ export function createPlanSheets(deps: Deps) {
       }
       const pdf = await sheetPdf(layout, images, ask.language, signal);
       reply.header('content-type', 'application/pdf');
-      reply.header('content-disposition', contentDisposition('attachment', sheetFileName(layout.title)));
+      reply.header(
+        'content-disposition',
+        contentDisposition('attachment', sheetFileName(layout.title)),
+      );
       return reply.send(Buffer.from(pdf.buffer, pdf.byteOffset, pdf.byteLength));
     } catch (err) {
       if (signal.aborted && !(err instanceof HttpError)) {
-        req.log.error({ boardId: sheet.boardId, planId: sheet.ask.planId }, 'set plan sheet timed out');
+        req.log.error(
+          { boardId: sheet.boardId, planId: sheet.ask.planId },
+          'set plan sheet timed out',
+        );
         throw new HttpError('internal', 'The sheet took too long to make.');
       }
       throw err;
@@ -244,15 +250,15 @@ export function createPlanSheets(deps: Deps) {
       // The schedule's days as it shows them to this member (decision 0092): dates and blocks.
       const days: ScheduledDay[] = team
         ? (
-              await db
-                .select({ date: shootingDay.date, blocks: shootingDay.blocks })
-                .from(shootingDay)
-                .where(eq(shootingDay.boardId, boardId))
-            ).map((d) => ({
-              date: d.date,
-              blocks: d.blocks.map((b) => ({ shotId: b.shotId ?? null })),
-            }))
-          : [];
+            await db
+              .select({ date: shootingDay.date, blocks: shootingDay.blocks })
+              .from(shootingDay)
+              .where(eq(shootingDay.boardId, boardId))
+          ).map((d) => ({
+            date: d.date,
+            blocks: d.blocks.map((b) => ({ shotId: b.shotId ?? null })),
+          }))
+        : [];
       return send(req, reply, {
         who: `user:${actor.id}`,
         boardId,

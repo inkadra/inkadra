@@ -12,13 +12,7 @@ import type { Op, Page } from '@inkadra/print';
 import { PLAN_SHEET_PDF_CAPABILITY } from '@inkadra/shared';
 import fontkit from '@pdf-lib/fontkit';
 import { sql } from 'drizzle-orm';
-import {
-  decodePDFRawStream,
-  PDFDict,
-  PDFDocument,
-  PDFName,
-  PDFRawStream,
-} from 'pdf-lib';
+import { decodePDFRawStream, PDFDict, PDFDocument, PDFName, PDFRawStream } from 'pdf-lib';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pino from 'pino';
 import sharp from 'sharp';
@@ -33,10 +27,10 @@ import {
   greyRaw,
   guestSheetSource,
   memberSheetSource,
+  planSheetLayout,
   type SheetAsk,
   type SheetLayout,
   type SheetSource,
-  planSheetLayout,
   sheetFonts,
   sheetLanguage,
   sheetPdf,
@@ -174,7 +168,9 @@ describe('the sheet laid out by the server (parity with the web, decision 0122)'
     expect(one.pages).toHaveLength(1);
     expect(one.title).toBe('Set plan · Bancone');
     const texts = (layout: SheetLayout) =>
-      JSON.stringify(layout.pages).match(/"text":"[^"]*"/g)?.join('\n') ?? '';
+      JSON.stringify(layout.pages)
+        .match(/"text":"[^"]*"/g)
+        ?.join('\n') ?? '';
     const bare = planSheetLayout(source, ask(fixture, { include: new Set() }), measure);
     // No "Date and scene": no scene in the heading, no day at the foot.
     expect(texts(bare)).not.toContain('Day 2');
@@ -282,7 +278,12 @@ describe('the pictures and the fonts of the PDF', () => {
         { kind: 'text', text, x: 10, y: 60, size: 10, weight: 600, color: '#202020' },
       ],
     };
-    const layout: SheetLayout = { pages: [page], title: 'Fonts', t: sheetWords('en'), pictures: [] };
+    const layout: SheetLayout = {
+      pages: [page],
+      title: 'Fonts',
+      t: sheetWords('en'),
+      pictures: [],
+    };
     const pdf = await PDFDocument.load(await sheetPdf(layout, new Map(), 'en'));
     const { bytes: fonts } = await sheetFonts();
     const source = { Regular: fonts[400], SemiBold: fonts[600] };
@@ -317,7 +318,12 @@ describe('the pictures and the fonts of the PDF', () => {
         background: { assetId: fixture.backgroundId, grey: true },
       });
       const photo = await sharp({
-        create: { width: 2048, height: 1365, channels: 3, noise: { type: 'gaussian', mean: 128, sigma: 40 } },
+        create: {
+          width: 2048,
+          height: 1365,
+          channels: 3,
+          noise: { type: 'gaussian', mean: 128, sigma: 40 },
+        },
       })
         .webp()
         .toBuffer();
@@ -335,7 +341,18 @@ describe('the pictures and the fonts of the PDF', () => {
         const { measure } = await sheetFonts();
         const layout = planSheetLayout(
           memberSheetSource(listElements(fixture.doc), 'team', fixture.days),
-          ask(fixture, { include: new Set(['legend', 'kit', 'power', 'notes', 'scale', 'background', 'dateScene', 'grid']) }),
+          ask(fixture, {
+            include: new Set([
+              'legend',
+              'kit',
+              'power',
+              'notes',
+              'scale',
+              'background',
+              'dateScene',
+              'grid',
+            ]),
+          }),
           measure,
         );
         const picture = await sheetPicture(photo);
@@ -556,16 +573,26 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
   });
 
   it('writes the client copy without hidden cards nor days, in the language asked', async () => {
-    const res = await request('GET', sheetPath(fixture.planIds[0], '?audience=client&lang=it'), 'viewer');
+    const res = await request(
+      'GET',
+      sheetPath(fixture.planIds[0], '?audience=client&lang=it'),
+      'viewer',
+    );
     expect(res.statusCode).toBe(200);
     const text = await pdfText(new Uint8Array(res.rawPayload));
     for (const word of fixture.hiddenName.split(' ')) expect(text).not.toContain(word);
     expect(text).not.toMatch(/Giorno \d|Day \d/);
     expect(text.toLowerCase()).toContain('pianta del set');
     // Accept-Language, without a query or an account language.
-    const de = await request('GET', sheetPath(fixture.planIds[0], '?setups=this'), 'viewer', undefined, {
-      'accept-language': 'ja, de-CH;q=0.9',
-    });
+    const de = await request(
+      'GET',
+      sheetPath(fixture.planIds[0], '?setups=this'),
+      'viewer',
+      undefined,
+      {
+        'accept-language': 'ja, de-CH;q=0.9',
+      },
+    );
     expect(await pdfText(new Uint8Array(de.rawPayload))).toContain('Tag 2');
   });
 
@@ -644,17 +671,22 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
     const pictures = pdfPictures(await PDFDocument.load(bytes));
     expect(pictures).toHaveLength(1);
     const etag = String(res.headers.etag);
-    expect((await request('GET', path, guest, undefined, { 'if-none-match': etag })).statusCode).toBe(
-      304,
-    );
+    expect(
+      (await request('GET', path, guest, undefined, { 'if-none-match': etag })).statusCode,
+    ).toBe(304);
     expect((await request('GET', path, null)).statusCode).toBe(401);
     expect(
-      (await request('GET', `/guest/links/${guest.id}/boards/${randomUUID()}/plans/${fixture.planIds[0]}/sheet`, guest))
-        .statusCode,
+      (
+        await request(
+          'GET',
+          `/guest/links/${guest.id}/boards/${randomUUID()}/plans/${fixture.planIds[0]}/sheet`,
+          guest,
+        )
+      ).statusCode,
     ).toBe(404);
   });
 
-  it("answers 404 to a guest for a plan hidden from guests", async () => {
+  it('answers 404 to a guest for a plan hidden from guests', async () => {
     const hidden = planSheetFixture();
     updateElement(hidden.doc, hidden.planIds[2], { guestHidden: true });
     const board = await newBoard('Hidden setup');
@@ -701,7 +733,10 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
       await expect.poll(() => spy.mock.calls.length, { timeout: 10_000 }).toBe(2);
       const third = await request('GET', path, 'busy3');
       expect(third.statusCode).toBe(429);
-      expect(third.json().error).toMatchObject({ code: 'rate_limited', details: { reason: 'busy' } });
+      expect(third.json().error).toMatchObject({
+        code: 'rate_limited',
+        details: { reason: 'busy' },
+      });
       expect(third.headers['retry-after']).toBe('5');
       release();
       expect((await one).statusCode).toBe(200);
@@ -715,9 +750,15 @@ describe.skipIf(!url)('the sheet routes (needs DATABASE_URL)', () => {
 
   it('reads the account language when the query has none', async () => {
     await request('PATCH', '/me', 'owner', { locale: 'es' });
-    const res = await request('GET', sheetPath(fixture.planIds[0], '?setups=this'), 'owner', undefined, {
-      'accept-language': 'it',
-    });
+    const res = await request(
+      'GET',
+      sheetPath(fixture.planIds[0], '?setups=this'),
+      'owner',
+      undefined,
+      {
+        'accept-language': 'it',
+      },
+    );
     expect(res.statusCode).toBe(200);
     expect((await pdfText(new Uint8Array(res.rawPayload))).toLowerCase()).toContain(
       sheetWords('es')('board.plan.name').toLowerCase(),

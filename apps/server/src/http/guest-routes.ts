@@ -701,12 +701,15 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     });
 
     // The set plan's sheet as a PDF, the client copy (decision 0122).
-    scope.get(v1('/guest/links/:linkId/boards/:boardId/plans/:planId/sheet'), async (req, reply) => {
-      const { linkId, boardId } = PlanParams.parse(req.params);
-      const ctx = await guests.requireGuest(req, reply, linkId);
-      guests.requireBoard(ctx, boardId);
-      return deps.sheets.guest(req, reply, ctx, boardId);
-    });
+    scope.get(
+      v1('/guest/links/:linkId/boards/:boardId/plans/:planId/sheet'),
+      async (req, reply) => {
+        const { linkId, boardId } = PlanParams.parse(req.params);
+        const ctx = await guests.requireGuest(req, reply, linkId);
+        guests.requireBoard(ctx, boardId);
+        return deps.sheets.guest(req, reply, ctx, boardId);
+      },
+    );
 
     scope.get(v1('/guest/links/:linkId/assets/:assetId/variants/:size'), async (req, reply) => {
       const { linkId, assetId, size } = VariantParams.parse(req.params);

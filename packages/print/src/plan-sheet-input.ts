@@ -116,9 +116,7 @@ export function planSheetInputOf(
   const scene = sceneIds.map(see).find((el) => el?.type === 'scene');
   const location = owner ? linkedLocation(owner, cards) : null;
   const day =
-    scene?.type === 'scene' && request.include.dateScene
-      ? sceneDay(days, scene.id, cards)
-      : null;
+    scene?.type === 'scene' && request.include.dateScene ? sceneDay(days, scene.id, cards) : null;
   return {
     setups: plans.map((p) => {
       const base = baseOf(p);

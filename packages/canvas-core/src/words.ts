@@ -18,7 +18,8 @@ export function wordsFrom(language: string, catalogues: readonly object[]): Word
     const text = key
       .split('.')
       .reduce<unknown>(
-        (o, part) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[part] : undefined),
+        (o, part) =>
+          o && typeof o === 'object' ? (o as Record<string, unknown>)[part] : undefined,
         catalogue,
       );
     return typeof text === 'string' ? text : undefined;

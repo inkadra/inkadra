@@ -6,8 +6,8 @@ import {
   type PlanElement,
   planTitle,
   roomSizeText,
-  SHEET_WORDS_EN,
   type ScheduledDay,
+  SHEET_WORDS_EN,
   storyboardOf,
   variantFamily,
   variantView,
@@ -166,7 +166,9 @@ export interface SheetLayout {
 
 /** The parts of the query as the sheet reads them. */
 function includeOf(parts: ReadonlySet<PlanSheetPart>): PlanSheetInclude {
-  return Object.fromEntries(PlanSheetPart.options.map((p) => [p, parts.has(p)])) as unknown as PlanSheetInclude;
+  return Object.fromEntries(
+    PlanSheetPart.options.map((p) => [p, parts.has(p)]),
+  ) as unknown as PlanSheetInclude;
 }
 
 /** Asset ids of the `image` operations, inside clips too. */
