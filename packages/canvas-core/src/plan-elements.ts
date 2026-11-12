@@ -152,14 +152,15 @@ export function elementSections(
 
 /**
  * What an item stands on, as the panels say it: "Dolly on 4 m track" for a dolly on a track
- * (its length with a scale), else the base's name or type.
+ * (its length with a scale, in the app's language: "4,5 m" in Italian), else the base's name or
+ * type. The locale is required: the host's (browser, device) is not the app's.
  */
 export function supportText(
   base: PlanIcon,
   icons: readonly PlanIcon[],
   t: Words,
-  scale?: number,
-  locale?: string,
+  scale: number | undefined,
+  locale: string,
 ): string {
   const under = base.on ? icons.find((i) => i.id === base.on) : undefined;
   const name = base.label || t(`board.plan.icons.${base.kind}`);
