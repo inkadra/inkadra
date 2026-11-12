@@ -32,6 +32,12 @@ image=${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}
 tag=${INKADRA_TAG:-edge}
 from_tag=${INKADRA_FROM_TAG:-$tag}
 email=upgrade@example.com
+# shortcut: PostgreSQL 16.16 (2026-11-12) gives every new column the option pg_attver, which the
+# pg_upgrade of 18.6 in pgautoupgrade:18-alpine cannot restore ('unrecognized parameter
+# "pg_attver"'); 18.7 knows it. Seed on 16.15 with pgautoupgrade 18.6 until pgautoupgrade
+# publishes an image of 18.7 or newer, then move both back to postgres 16 and pgautoupgrade 18.
+pg16=16.15
+pgautoupgrade=pgautoupgrade/pgautoupgrade:18.6-alpine
 password=correct-horse-battery
 
 cat >"$work/.env" <<ENV
@@ -46,7 +52,7 @@ ENV
 compose() { docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" "$@"; }
 # The stack as it was (PostgreSQL 16 on the volume postgres-data) and as compose.yaml has it now.
 # The in-place upgrade goes on in the old layout, with the same files and the new version.
-old() { INKADRA_TAG=$from_tag compose -f "$root/compose.yaml" -f "$root/deploy/compose.postgres-old-layout.yaml" "$@"; }
+old() { POSTGRES_MAJOR=$pg16 INKADRA_TAG=$from_tag compose -f "$root/compose.yaml" -f "$root/deploy/compose.postgres-old-layout.yaml" "$@"; }
 new() { compose -f "$root/compose.yaml" "$@"; }
 if [[ $mode == dump ]]; then
   now() { new "$@"; }
@@ -64,7 +70,7 @@ cleanup() {
   # Whatever volume a stack of this test still holds (which one depends on how far it got).
   docker volume ls -q --filter "label=com.docker.compose.project=$project" | xargs -r docker volume rm >/dev/null 2>&1 || true
   # Folders made by containers belong to other users.
-  docker run --rm -v "$work:/w" --entrypoint sh postgres:16-alpine -c 'rm -rf /w/* /w/.[!.]*' >/dev/null 2>&1 || true
+  docker run --rm -v "$work:/w" --entrypoint sh postgres:$pg16-alpine -c 'rm -rf /w/* /w/.[!.]*' >/dev/null 2>&1 || true
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -169,11 +175,11 @@ else
   docker run --rm -e POSTGRES_PASSWORD=unused -e POSTGRES_USER=inkadra -e POSTGRES_DB=inkadra \
     -e PGDATA=/var/lib/postgresql/data -e PGAUTO_ONESHOT=yes \
     -v "${project}_postgres-data:/var/lib/postgresql/data" \
-    pgautoupgrade/pgautoupgrade:18-alpine >"$work/autoupgrade.log" 2>&1 &&
+    "$pgautoupgrade" >"$work/autoupgrade.log" 2>&1 &&
     pass "pgautoupgrade upgraded the volume" || {
     fail "pgautoupgrade: $(tail -n10 "$work/autoupgrade.log")"
     # pg_upgrade keeps its logs in the volume only when it fails: show their ends.
-    docker run --rm -v "${project}_postgres-data:/d:ro" --entrypoint sh postgres:16-alpine -c \
+    docker run --rm -v "${project}_postgres-data:/d:ro" --entrypoint sh postgres:$pg16-alpine -c \
       'for f in /d/new/pg_upgrade_output.d/*/log/*.log /d/new/pg_upgrade_output.d/*/*.txt; do [ -f "$f" ] && echo "--- $f" && tail -n 30 "$f"; done' || true
   }
   stack=now
@@ -208,7 +214,7 @@ now exec -T -u node inkadra node /app/dist/main.js backup create >"$work/backup1
 backup_file=$(newest_backup)
 now down
 mkdir "$work/pg16-new"
-docker run --rm -v "$work/pg16-new:/p" --entrypoint chown postgres:16-alpine 70:70 /p
+docker run --rm -v "$work/pg16-new:/p" --entrypoint chown postgres:$pg16-alpine 70:70 /p
 stack=old
 from_tag=$tag # the application stays as it is: only the database goes back
 export POSTGRES_DATA="$work/pg16-new"
