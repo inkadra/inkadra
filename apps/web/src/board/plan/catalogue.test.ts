@@ -61,20 +61,20 @@ describe.each(LOCALES)('the set plan catalogue in %s (decision 0104)', (locale) 
 });
 
 it.each([
-  ['en', PLAN_WORDS_EN, SHEET_WORDS_EN],
-  ['it', PLAN_WORDS_IT, SHEET_WORDS_IT],
-  ['es', PLAN_WORDS_ES, SHEET_WORDS_ES],
-  ['de', PLAN_WORDS_DE, SHEET_WORDS_DE],
-  ['fr', PLAN_WORDS_FR, SHEET_WORDS_FR],
-  ['pt', PLAN_WORDS_PT, SHEET_WORDS_PT],
-])('says the same in %s as the shared words of canvas-core (decision 0116)', (locale, planWords, sheetWords) => {
+  ['en', { ...PLAN_WORDS_EN, ...SHEET_WORDS_EN }],
+  ['it', { ...PLAN_WORDS_IT, ...SHEET_WORDS_IT }],
+  ['es', { ...PLAN_WORDS_ES, ...SHEET_WORDS_ES }],
+  ['de', { ...PLAN_WORDS_DE, ...SHEET_WORDS_DE }],
+  ['fr', { ...PLAN_WORDS_FR, ...SHEET_WORDS_FR }],
+  ['pt', { ...PLAN_WORDS_PT, ...SHEET_WORDS_PT }],
+])('says the same in %s as the shared words of canvas-core (decision 0116)', (locale, words) => {
   // The package is what another client loads; the web's catalogue must not drift from it.
   const web = JSON.parse(readFileSync(join(__dirname, `../../i18n/${locale}.json`), 'utf8'));
   const leaves = (o: object, at: string[] = []): Array<[string[], string]> =>
     Object.entries(o).flatMap(([k, v]) =>
       typeof v === 'object' ? leaves(v, [...at, k]) : [[[...at, k], v as string]],
     );
-  const differ = [...leaves(planWords), ...leaves(sheetWords)].filter(
+  const differ = leaves(words).filter(
     ([path, text]) => path.reduce<any>((o, k) => o?.[k], web) !== text,
   );
   expect(differ).toEqual([]);
