@@ -415,6 +415,9 @@ export const PLAN_WORDS_DE: PlanWords = {
         av: 'Ton und Video',
         notes: 'Anmerkungen',
       },
+      lib: {
+        alsoCalled: 'Auch genannt: {{names}}',
+      },
       kitGroups: {
         lights: 'Licht',
         grip: 'Lichtformer, Grip und Stative',

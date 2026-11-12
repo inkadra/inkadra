@@ -24,3 +24,24 @@ describe('image crop geometry', () => {
     expect(size).toEqual({ width: 200, height: 300 });
   });
 });
+
+describe('crop geometry as React Native worklets', () => {
+  it("starts every exported function with the 'worklet' directive", () => {
+    for (const fn of [sanitizeCrop, rotatedBounds, croppedRotatedSize]) {
+      expect(fn.toString()).toMatch(/^[^{]*\{\s*['"]worklet['"]/);
+    }
+  });
+
+  it('gives the same sizes for a few rotations and crops', () => {
+    const diagonal = rotatedBounds(400, 300, 45);
+    expect(diagonal.width).toBeCloseTo(494.975);
+    expect(diagonal.height).toBeCloseTo(494.975);
+    expect(rotatedBounds(400, 300, -30).width).toBeCloseTo(496.41);
+    const turned = croppedRotatedSize(400, 300, { x: 0.25, y: 0.1, w: 0.5, h: 0.8 }, 90);
+    expect(turned.width).toBeCloseTo(150);
+    expect(turned.height).toBeCloseTo(320);
+    const unknown = croppedRotatedSize(0, 0, null, 180);
+    expect(unknown.width).toBeCloseTo(4);
+    expect(unknown.height).toBeCloseTo(3);
+  });
+});

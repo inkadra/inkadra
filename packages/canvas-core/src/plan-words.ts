@@ -425,6 +425,9 @@ export const PLAN_WORDS_EN = {
         av: 'Sound and video',
         notes: 'Annotations',
       },
+      lib: {
+        alsoCalled: 'Also called: {{names}}',
+      },
       kitGroups: {
         lights: 'Lights',
         grip: 'Modifiers, grip and stands',
