@@ -178,6 +178,17 @@ test('a scene of a new storyboard gets a set plan without a canvas', async ({ pa
   const origin = baseURL ?? '';
   const project = await setup(page, origin);
   const story = await addStoryboard(page.request, origin, project, ['shotlist']);
+  // The editor takes `?plan=` out of the address as it opens: keep the id it was asked for.
+  await page.addInitScript(() => {
+    for (const key of ['pushState', 'replaceState'] as const) {
+      const original = history[key].bind(history);
+      history[key] = (state, unused, url) => {
+        const id = new URL(String(url ?? ''), location.href).searchParams.get('plan');
+        if (id) sessionStorage.setItem('askedPlan', id);
+        original(state, unused, url);
+      };
+    }
+  });
   await page.goto(`/p/${project.id}/b/${story.id}`);
   await page.locator('.board-state').getByRole('button', { name: 'Nuova scena' }).click();
   const scene = page.locator('[data-story-scene]').first();
@@ -199,11 +210,13 @@ test('a scene of a new storyboard gets a set plan without a canvas', async ({ pa
   await expect(editor).toBeVisible();
   // "Go to the card" of a comment or a search hit on that plan (`?el=`) opens the editor too:
   // this storyboard has no canvas to send it to.
-  const planId = new URL(page.url()).searchParams.get('plan');
+  const planId = await page.evaluate(() => sessionStorage.getItem('askedPlan'));
   expect(planId).toBeTruthy();
+  await editor.getByRole('button', { name: 'Fatto', exact: true }).click();
+  await expect(editor).toHaveCount(0);
   await page.goto(`/p/${project.id}/b/${story.id}?el=${planId}`);
   await expect(editor).toBeVisible();
-  await expect(page).toHaveURL(/[?&]plan=/);
+  await expect(page.getByTestId('canvas')).toHaveCount(0);
   await expect(page).not.toHaveURL(/[?&](el|view)=/);
 });
 
