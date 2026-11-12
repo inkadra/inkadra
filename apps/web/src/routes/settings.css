@@ -807,7 +807,8 @@
  */
 .team-table {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  /* Space wraps "/ 1 MB · own" under the size rather than take room from who the person is. */
+  grid-template-columns: minmax(0, 1fr) fit-content(96px) auto auto auto;
   column-gap: 12px;
   width: 100%;
   border-collapse: collapse;
@@ -864,9 +865,6 @@
 }
 .team-member .settings-row__label > :not(.team-member__name) {
   flex: none;
-}
-.team-col--space {
-  min-width: 72px;
 }
 /* "251,66 MB / 1 MB": the limit goes to the next line whole, never split. */
 .team-member .space-mini em {
@@ -1082,27 +1080,31 @@
     white-space: nowrap;
   }
   .team-table .team-member {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 12px;
+    display: grid;
+    grid-template-columns: 32px auto minmax(0, 1fr);
+    gap: 6px 12px;
     position: relative;
-    padding-right: 52px;
   }
   .team-table .team-col--who {
-    flex: 1 0 100%;
+    grid-column: 1 / -1;
+    padding-right: 40px;
   }
   .team-table .team-col--space {
-    flex: 1 0 100%;
-    padding-left: 44px;
+    grid-column: 2 / -1;
   }
   .team-table .team-col--space:empty {
     display: none;
   }
   .team-table .team-col--role {
-    margin-left: 44px;
+    grid-column: 2;
+  }
+  .team-table .team-col--create {
+    grid-column: 3;
+    justify-self: start;
   }
   .team-member .team-role {
     width: auto;
+    max-width: 100%;
   }
   .team-member .team-col--actions {
     position: absolute;

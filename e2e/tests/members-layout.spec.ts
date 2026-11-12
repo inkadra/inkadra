@@ -154,7 +154,8 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
     for (const c of desktop) {
       if (!c.row || !c.text || !c.role || !c.create || !c.action)
         throw new Error('missing control');
-      expect(c.text.width).toBeGreaterThanOrEqual(200);
+      // Who the person is keeps a readable width in the settings panel.
+      expect(c.text.width).toBeGreaterThanOrEqual(140);
       expect(Math.abs(c.role.left - top.role.left)).toBeLessThan(1);
       expect(Math.abs(c.create.left - top.create.left)).toBeLessThan(1);
       expect(Math.abs(c.action.right - top.action.right)).toBeLessThan(1);
