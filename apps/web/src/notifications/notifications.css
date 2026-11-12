@@ -793,9 +793,8 @@
   width: 100%;
   border-radius: var(--ink-radius-md);
 }
-.notifications__list-container > .home__section {
-  padding: 0 16px 16px;
-  margin-top: 16px;
+.notifications__list-container > .my-tasks {
+  padding: 0 0 16px;
 }
 
 .notifications--tasks .notifications__list-pane {
@@ -805,7 +804,7 @@
   max-width: none;
   border-right: 0;
 }
-.notifications--tasks .home__section {
+.notifications--tasks .my-tasks {
   max-width: 960px;
   margin-inline: auto;
 }
