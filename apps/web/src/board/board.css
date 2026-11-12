@@ -2140,7 +2140,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .new-board {
   position: relative;
   display: grid;
-  height: 100%;
+  align-self: stretch;
   grid-template-rows: auto auto 1fr;
   align-content: start;
   gap: 2px;
