@@ -44,7 +44,7 @@ const ODD: unknown[] = [
   1.5,
   4096,
   4097,
-  // A plan's reach (decision 0117): its points may lie beyond the extent, a frame's may not.
+  // A plan's reach (decision 0118): its points may lie beyond the extent, a frame's may not.
   -1,
   -16384,
   -16385,

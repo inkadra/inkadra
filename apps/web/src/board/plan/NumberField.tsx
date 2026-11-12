@@ -28,7 +28,11 @@ export function NumberField({
 }) {
   const { i18n } = useTranslation();
   const show = (v: number) =>
-    v.toLocaleString(i18n.language, { maximumFractionDigits: step < 1 ? 2 : 0 });
+    // "5600 K", as the mockup: no thousands separator in a short field.
+    v.toLocaleString(i18n.language, {
+      maximumFractionDigits: step < 1 ? 2 : 0,
+      useGrouping: false,
+    });
   const [draft, setDraft] = useState(show(value));
   // biome-ignore lint/correctness/useExhaustiveDependencies: follows the value, not the locale.
   useEffect(() => setDraft(show(value)), [value]);
@@ -40,7 +44,8 @@ export function NumberField({
     else setDraft(show(value));
   };
   return (
-    <span className="plan-num">
+    // "60%", "45°": these units sit against the number.
+    <span className={`plan-num${unit === '%' || unit === '°' ? ' plan-num--tight' : ''}`}>
       <input
         inputMode="decimal"
         aria-label={label}

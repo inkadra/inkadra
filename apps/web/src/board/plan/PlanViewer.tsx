@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
 import { sheetInclude } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
-import { itemSummary } from './elements.ts';
+import { foldIcons, itemSummary } from './elements.ts';
 import { kitList, powerLines } from './kit.ts';
 import { planTitle } from './PlanCard.tsx';
 import { PlanDrawing, PlanGlyph, planCss, useLinkedPlan } from './PlanDrawing.tsx';
@@ -56,12 +56,20 @@ function Legend({ plan, guest }: { plan: PlanElement; guest: boolean }) {
           <section key={title} className="plan-view__group">
             <h3 className="plan-props__cap">{title}</h3>
             <ul>
-              {list.map((icon) => {
-                const name = icon.label || t(`board.plan.icons.${icon.kind}`);
+              {foldIcons(list, icons).map(({ icon, count }) => {
+                const name =
+                  (icon.label || t(`board.plan.icons.${icon.kind}`)) +
+                  (count > 1 ? ` ×${count}` : '');
+                // An actor's way through the scene: the notes of its positions, in order.
+                const route =
+                  categoryOf(icon.kind).id === 'people' && icon.steps?.length
+                    ? [...icon.steps.map((s) => s.note), icon.note].filter(Boolean).join(' → ')
+                    : '';
                 const lens = catalogueKind(icon.kind) === 'camera' ? `${icon.lens ?? 35} mm` : '';
                 const kelvin = icon.kelvin ? `${icon.kelvin} K` : '';
                 // The lens is in the name: the summary goes on with the support and the moves.
-                const summary = itemSummary(icon, icons, t, { lens: !lens });
+                const shown = { lens: !lens, scale: plan.scale, locale: i18n.language };
+                const summary = route || itemSummary(icon, icons, t, shown);
                 const sub = [summary, kelvin].filter(Boolean).join(' · ');
                 return (
                   <li key={icon.id} className="plan-view__item">
@@ -144,7 +152,7 @@ export function PlanViewer({
   const [busy, setBusy] = useState(false);
   const [cache] = useState(() => new ExportCache());
   const shown = useLinkedPlan(variantView(plan, base));
-  // The same surface as the editor's (decision 0117): the dots, pan and zoom, Fit on the content.
+  // The same surface as the editor's (decision 0118): the dots, pan and zoom, Fit on the content.
   const content = useMemo(() => planContentBox(shown), [shown]);
   const surface = usePlanSurface({
     content,
@@ -171,7 +179,7 @@ export function PlanViewer({
     try {
       await downloadPlanSheet(
         planSheetRequest('pdf', [plan.id], null, sheetInclude(shown), guest),
-        planSheetEnv(store, plan, t, i18n.language, cache),
+        planSheetEnv(store, shown, t, i18n.language, cache),
       );
     } finally {
       setBusy(false);
@@ -186,7 +194,7 @@ export function PlanViewer({
       data-chrome=""
       role="dialog"
       aria-modal="true"
-      aria-label={planTitle(t, plan)}
+      aria-label={planTitle(t, shown)}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
         else if (e.key === '+' || e.key === '=') surface.zoomBy(1);
@@ -204,7 +212,7 @@ export function PlanViewer({
       <header className="plan-top plan-view__top">
         <div className="plan-top__start">
           <b className="plan-top__name">{t('board.plan.name')}</b>
-          {!phone && <span className="plan-view__title">{place || plan.title || base?.title}</span>}
+          {!phone && <span className="plan-view__title">{place || shown.title}</span>}
           <span className="plan-view__only">
             <Icon name="eye" size={13} />
             {t('board.plan.view.only')}

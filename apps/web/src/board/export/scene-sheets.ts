@@ -556,9 +556,10 @@ export function sceneSheetPages(
 
   const planBlocks = (plans: readonly Plan[]): Block[] =>
     plans.flatMap((plan) => {
-      const title = plan.variant
-        ? [plan.title || words.setPlan, plan.variant].filter(Boolean).join(' · ')
-        : [words.setPlan, plan.title].filter(Boolean).join(' · ');
+      const title =
+        plan.variantOf && plan.variant
+          ? [plan.title || words.setPlan, plan.variant].filter(Boolean).join(' · ')
+          : [words.setPlan, plan.title].filter(Boolean).join(' · ');
       // Short, as in the mockup: the plan fits under a scene's frames on the same page.
       const h = Math.min(w / PLAN_ASPECT, 180);
       return [

@@ -98,3 +98,21 @@ it('still takes a typed 0 when it is in range', async () => {
   expect(f.commit).toHaveBeenLastCalledWith(0);
   await f.done();
 });
+
+it('writes "5600 K" and "60%" as the mockup: no separator, % and ° against the number', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <>
+        <NumberField value={5600} min={1000} max={20000} unit="K" label="K" onCommit={vi.fn()} />
+        <NumberField value={60} min={0} max={100} unit="%" label="P" onCommit={vi.fn()} />
+      </>,
+    ),
+  );
+  const [kelvin, percent] = host.querySelectorAll('.plan-num');
+  expect(kelvin?.querySelector('input')?.value).toBe('5600');
+  expect(kelvin?.classList.contains('plan-num--tight')).toBe(false);
+  expect(percent?.classList.contains('plan-num--tight')).toBe(true);
+  await act(async () => root.unmount());
+});

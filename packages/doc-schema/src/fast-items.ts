@@ -35,7 +35,7 @@ const isPlain = (value: unknown): value is Record<string, unknown> => {
   return proto === Object.prototype || proto === null;
 };
 
-/** A stroke's points, within the frame's grid, or with `plan` within a plan's reach (0117). */
+/** A stroke's points, within the frame's grid, or with `plan` within a plan's reach (0118). */
 function points(value: unknown, plan: boolean): number[] | null {
   const min = plan ? PLAN_COORD_MIN : 0;
   const max = plan ? PLAN_COORD_MAX : STROKE_GRID;

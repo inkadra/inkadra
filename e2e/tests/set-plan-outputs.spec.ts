@@ -199,7 +199,7 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       await expect(legend).not.toContainText('Segreto');
       await expect(legend).toContainText('Potenza a 230 V');
       await expect(legend).toContainText('Circuito A · 16 A: Chiave');
-      // Pan and zoom: the wheel zooms round the pointer (decision 0117).
+      // Pan and zoom: the wheel zooms round the pointer (decision 0118).
       const stage = viewer.locator('.plan-view__stage');
       const box = (await stage.boundingBox())!;
       const percent = async () =>

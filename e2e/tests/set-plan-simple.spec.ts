@@ -262,7 +262,7 @@ for (const theme of ['dark', 'light'] as const) {
     await shot('actor');
 
     // Several items: a box over the two lamps, drawn with Shift (a plain drag on empty space
-    // pans, decision 0117); align them; the mix is named.
+    // pans, decision 0118); align them; the mix is named.
     const a = await point([170, 110]);
     const b = await point([730, 190]);
     await page.keyboard.press('Escape');
@@ -314,16 +314,19 @@ for (const theme of ['dark', 'light'] as const) {
     await page.getByRole('option', { name: 'Circuito A · 16 A' }).click();
     await expect.poll(async () => (await key())?.circuit).toBe((await saved()).circuits?.[0]?.id);
     await editor.getByRole('tab', { name: 'Materiale' }).click();
+    // A circuit reads as the mockup's card; its pencil opens the fields.
+    await expect(kit).toContainText('Circuito A · 16 A');
+    await kit.getByRole('button', { name: 'Modifica Circuito A' }).click();
     const breaker = kit.getByRole('textbox', { name: 'Interruttore' });
     await breaker.fill('1');
     await breaker.press('Enter');
     await expect(kit.locator('.plan-kit__circuit.is-over')).toHaveCount(1);
     await kit.getByRole('radio', { name: '120 V' }).check();
     await expect.poll(async () => (await saved()).voltage).toBe(120);
-    await expect(kit).toContainText('Potenza a 120 V');
+    await expect(kit.getByRole('radio', { name: '120 V' })).toBeChecked();
     await shot('kit');
 
-    // Zoom in and back to fit: the plan opens fitted to what is drawn (decision 0117).
+    // Zoom in and back to fit: the plan opens fitted to what is drawn (decision 0118).
     const percent = editor.locator('.plan-canvas__percent');
     await editor.getByRole('button', { name: 'Adatta la pianta' }).click();
     // The percent follows the view on the next frame.
@@ -351,7 +354,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.mouse.move(from.x + 80, from.y - 40, { steps: 5 });
     await page.mouse.up();
     await expect(note).toContainText('A cam spostato');
-    await note.getByRole('button', { name: 'Mostra 1 · Base in trasparenza' }).click();
+    await note.getByRole('button', { name: 'Mostra Base in trasparenza' }).click();
     await expect(setup.locator('.plan-canvas__ghost')).toHaveCount(1);
     await page.keyboard.press('Escape');
     await settle(page, setup);
@@ -455,7 +458,7 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(viewer.locator('.plan__svg')).toBeVisible();
       await expect(viewer.getByRole('toolbar', { name: 'Strumenti della pianta' })).toHaveCount(0);
       await expect(viewer.locator('.plan-editor__stage')).toHaveCount(0);
-      // Opened fitted to what is drawn (decision 0117); the button zooms in.
+      // Opened fitted to what is drawn (decision 0118); the button zooms in.
       const percent = async () =>
         Number((await viewer.locator('.plan-viewer__zoom').innerText()).replace('%', ''));
       const opened = await percent();
@@ -498,31 +501,29 @@ test('every library name fits its tile, in all six languages, at 1280 and 390 px
       await categories.nth(i).click();
       if (i === 1)
         await library.screenshot({ path: join(out, `library-${label.replace(' ', '-')}.png`) });
-      // A name is cut when it overflows its tile, or when a piece of it between two places it may
-      // break (a space, a soft hyphen, a hyphen) is wider than the tile: the browser then breaks
-      // that piece where no hyphen shows.
+      // A name is cut when a word of it is wider than the room the name has (a word is never
+      // broken, decision 0117), or when it needs more than the two lines the tile shows.
       const bad = await library.locator('.plan-lib__tile').evaluateAll((tiles) =>
         tiles.flatMap((tile) => {
-          const span = tile.querySelector('span') as HTMLElement;
+          // The name, after the glyph.
+          const span = tile.lastElementChild as HTMLElement;
           const value = span.textContent ?? '';
-          const probe = document.createElement('span');
+          // A div: the tile's rule for its name's span must not size the probe.
+          const probe = document.createElement('div');
           probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
-          span.append(probe);
-          // The span is as wide as its text; what it may take is the tile's inner width.
-          const style = getComputedStyle(tile);
-          const room =
-            tile.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-          const wide = value.split(/[\s\u00AD-]/).filter((piece) => {
-            probe.textContent = `${piece}-`;
+          tile.append(probe);
+          const room = span.clientWidth;
+          const wide = value.split(/[\s-]/).filter((piece) => {
+            probe.textContent = piece;
             return probe.getBoundingClientRect().width > room + 0.5;
           });
           probe.remove();
           const s = span.getBoundingClientRect();
           const t = tile.getBoundingClientRect();
-          const over = s.width > room + 1 || s.bottom > t.bottom + 1;
+          const over = span.scrollHeight > span.clientHeight + 1 || s.bottom > t.bottom + 1;
           const why = [...wide.map((w) => `"${w}" too wide`), over ? 'overflows' : ''];
           const said = why.filter(Boolean).join(', ');
-          return said ? [`${value.replaceAll('\u00AD', '')} (${said})`] : [];
+          return said ? [`${value} (${said})`] : [];
         }),
       );
       cut.push(...bad.map((name) => `${label}: ${name}`));
@@ -734,8 +735,9 @@ test('on a phone a selection can be dragged, and a tap still takes an item out o
       await end();
     };
 
-    // A long press and a drag pick the two lamps.
-    const a = await pointOf(stage, 170, 110);
+    // A long press and a drag pick the two lamps. The press starts clear of the kit pill at the
+    // top left (the mockup's place): a touch near a button is taken by the button.
+    const a = await pointOf(stage, 170, 130);
     const b = await pointOf(stage, 730, 190);
     await touch('touchStart', a);
     await expect(full.locator('.plan-canvas__toast')).toContainText('Tieni premuto', {

@@ -388,7 +388,7 @@ function simplify(points: Point[], tolerance: number): Point[] {
 /**
  * Turns the points of a drawn line, relative to the picture (0 to 1 on both axes), into the
  * stored form: simplified, quantized to the STROKE_GRID and at most MAX_STROKE_POINTS points.
- * `reach` lets the points lie that far beyond the picture on every side (a set plan, 0117).
+ * `reach` lets the points lie that far beyond the picture on every side (a set plan, 0118).
  */
 export function encodeStroke(points: Point[], reach = 0): number[] {
   const keep = (n: number) => Math.max(0 - reach, Math.min(1 + reach, n));

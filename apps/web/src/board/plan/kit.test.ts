@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
+import type { PlanElement } from '@inkadra/canvas-core';
 import { type PlanIcon, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 import { kitList, measureValue, planCounts, powerLines } from './kit.ts';
 import { measureText } from './PlanDrawing.tsx';
+import { familyKitCount, foldNames } from './PlanKit.tsx';
 
 const t = ((key: string) => key.split('.').at(-1)) as unknown as TFunction;
 /** The name and count of each line, what these tests are about. */
@@ -84,10 +87,10 @@ it('counts watts, modifiers, gels and the stands named on lights (decision 0104)
   };
   expect(lines(kitList(plan, t))).toEqual([
     { name: 'cob 300 W', count: 1 },
-    { name: 'softbox', count: 1 },
     { name: 'led', count: 1 },
     { name: 'cstand', count: 1 },
     { name: 'camera', count: 1 },
+    { name: 'softbox', count: 1 },
     { name: 'gel: CTO ½', count: 2 },
     { name: 'combo', count: 1 },
     { name: 'tripod', count: 1 },
@@ -106,7 +109,7 @@ it('sorts each line into its section, with the watts of a light each', () => {
     t,
   );
   expect(kit).toEqual([
-    { name: 'fresnel 2000 W', count: 1, group: 'lights', watts: 2000 },
+    { name: 'fresnel 2K', count: 1, group: 'lights', watts: 2000 },
     { name: 'flag', count: 1, group: 'grip' },
     { name: 'camera', count: 1, group: 'camera' },
     { name: 'tripod', count: 1, group: 'camera' },
@@ -135,6 +138,48 @@ it('prints the power per circuit, computed from the lights', () => {
     ],
   });
   expect(powerLines({ icons: [icon('chair')] }, t2, 'en')).toBeNull();
+});
+
+it('puts the modifiers of a light on one line, every gel on one, video under camera', () => {
+  const plan = {
+    icons: [
+      icon('cob', { id: 'keyAAAAAAAAAA', watts: 300, gel: '216' }),
+      icon('softbox', { id: 'boxAAAAAAAAAA', on: 'keyAAAAAAAAAA' }),
+      icon('grid', { id: 'gridAAAAAAAAA', on: 'keyAAAAAAAAAA' }),
+      icon('fresnel', { id: 'sodAAAAAAAAAA', watts: 1200, gel: 'CTO full' }),
+      icon('flag', { id: 'flagAAAAAAAAA' }),
+      icon('village', { id: 'villAAAAAAAAA' }),
+    ],
+  };
+  expect(kitList(plan, t, 'en')).toEqual([
+    { name: 'cob 300 W', count: 1, group: 'lights', watts: 300 },
+    { name: 'fresnel 1.2K', count: 1, group: 'lights', watts: 1200 },
+    { name: 'flag', count: 1, group: 'grip' },
+    { name: 'village', count: 1, group: 'camera' },
+    { name: 'softbox, grid', count: 1, group: 'grip' },
+    { name: 'gel: 216, CTO full', count: 2, group: 'grip' },
+  ]);
+});
+
+it('counts all setups as the most any one needs, not their sum (decision 0117)', () => {
+  const base = {
+    id: 'baseAAAAAAAAA',
+    type: 'plan',
+    createdAt: 1,
+    icons: [icon('fresnel', { watts: 2000 }), icon('cob', { watts: 300 })],
+  } as unknown as PlanElement;
+  const setup = {
+    ...base,
+    id: 'setupAAAAAAAA',
+    variantOf: base.id,
+    createdAt: 2,
+    icons: [icon('fresnel', { watts: 2000 }), icon('flag')],
+  } as unknown as PlanElement;
+  // The Fresnel moves from one setup to the next: one, not two.
+  expect(familyKitCount([base, setup], t, 'en')).toBe(3);
+  expect(foldNames(['Key', 'Practical', 'Hair', 'Practical', 'Practical'])).toBe(
+    'Key, Practical ×3, Hair',
+  );
 });
 
 it('leaves the sun and the other sources that are no kit out of the kit and the power', () => {

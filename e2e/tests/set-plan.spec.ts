@@ -231,7 +231,7 @@ for (const theme of ['dark', 'light'] as const) {
     await card.dblclick();
     const editor = page.getByRole('dialog', { name: 'Pianta del set · Cucina, giorno 2' });
     await expect(editor.getByRole('toolbar', { name: 'Strumenti della pianta' })).toBeVisible();
-    // The dots of the grid cover the whole surface (decision 0117).
+    // The dots of the grid cover the whole surface (decision 0118).
     await expect
       .poll(() =>
         editor
@@ -244,7 +244,7 @@ for (const theme of ['dark', 'light'] as const) {
     for (const key of ['Delete', 'n', 'Control+d', 'ArrowLeft']) await page.keyboard.press(key);
     await expect.poll(async () => (await saved()).count).toBe(1);
     expect((await saved()).notes).toBe(1);
-    // 163 icons in 6 categories of the rail, and the annotations.
+    // 163 icons in the 6 categories of the rail; annotations are the toolbar's.
     const library = editor.getByRole('complementary', { name: 'Icone da set' });
     const rail = library.getByRole('navigation', { name: 'Categorie di icone' });
     let tiles = 0;
@@ -254,13 +254,12 @@ for (const theme of ['dark', 'light'] as const) {
       'Persone',
       'Set e oggetti',
       'Audio e video',
-      'Annotazioni',
       'Luci',
     ]) {
       await rail.getByRole('button', { name, exact: true }).click();
       tiles += await library.locator('.plan-lib__tile').count();
     }
-    expect(tiles).toBe(167);
+    expect(tiles).toBe(163);
     const tile = (name: string) => library.getByRole('button', { name, exact: true }).first();
     // Nothing floats over the drawing: the tools sit inside its area.
     const area = (await editor.locator('.plan-main__canvas').boundingBox())!;
@@ -379,7 +378,7 @@ for (const theme of ['dark', 'light'] as const) {
 
     // Several items: a box dragged over the table and Marco picks both; Group keeps them
     // together.
-    // A plain drag on empty space pans (decision 0117): Shift draws the box.
+    // A plain drag on empty space pans (decision 0118): Shift draws the box.
     const from2 = at(160, 95);
     const to2 = at(250, 185);
     await page.keyboard.down('Shift');
@@ -539,7 +538,7 @@ for (const theme of ['dark', 'light'] as const) {
     await expect(note).toContainText('Per ora uguale alla base.');
     // The walls and the sofa of the base are drawn in the variant too.
     await expect(variantEditor.locator('[data-icon]')).not.toHaveCount(0);
-    await note.getByRole('button', { name: 'Mostra 1 · Base in trasparenza' }).click();
+    await note.getByRole('button', { name: 'Mostra Base in trasparenza' }).click();
     await expect(variantEditor.locator('.plan-canvas__ghost')).toHaveCount(1);
     await variantEditor.evaluate((el) =>
       Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),

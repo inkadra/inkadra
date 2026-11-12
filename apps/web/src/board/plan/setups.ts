@@ -57,28 +57,51 @@ const distance = (a: PlanIcon, b: PlanIcon) => {
   return Math.hypot(p.x - q.x, p.y - q.y);
 };
 
-export function setupChanges(base: readonly PlanIcon[], setup: readonly PlanIcon[]): SetupChange[] {
-  const own = (list: readonly PlanIcon[]) => list.filter((i) => layerOf(i) !== 'set');
-  const left = own(base);
+/**
+ * Each icon of the setup paired with the nearest icon of the base of the same kind not paired
+ * yet, named pairs first. Linear in the base's icons of that kind: no sorting, so a plan of 300
+ * icons is paired in about a millisecond.
+ */
+function pairUp(left: readonly PlanIcon[], mine: readonly PlanIcon[]): Map<PlanIcon, PlanIcon> {
+  const byKind = new Map<string, PlanIcon[]>();
+  for (const b of left) {
+    const k = catalogueKind(b.kind);
+    const list = byKind.get(k);
+    if (list) list.push(b);
+    else byKind.set(k, [b]);
+  }
   const pairs = new Map<PlanIcon, PlanIcon>();
   const taken = new Set<PlanIcon>();
-  const mine = own(setup);
   // Named first, so a renamed icon does not take the place of one that kept its name.
   for (const pass of ['named', 'any'] as const)
     for (const icon of mine) {
       if (pairs.has(icon)) continue;
-      const candidates = left.filter(
-        (b) =>
-          !taken.has(b) &&
-          catalogueKind(b.kind) === catalogueKind(icon.kind) &&
-          (pass === 'any' || (name(b) !== '' && name(b) === name(icon))),
-      );
-      const best = candidates.sort((a, b) => distance(a, icon) - distance(b, icon))[0];
+      const own = name(icon);
+      let best: PlanIcon | undefined;
+      let bestAt = Number.POSITIVE_INFINITY;
+      for (const b of byKind.get(catalogueKind(icon.kind)) ?? []) {
+        if (taken.has(b) || (pass === 'named' && (own === '' || name(b) !== own))) continue;
+        const d = distance(b, icon);
+        // The first of equals, as the catalogue's order had it.
+        if (d < bestAt) {
+          best = b;
+          bestAt = d;
+        }
+      }
       if (best) {
         pairs.set(icon, best);
         taken.add(best);
       }
     }
+  return pairs;
+}
+
+export function setupChanges(base: readonly PlanIcon[], setup: readonly PlanIcon[]): SetupChange[] {
+  const own = (list: readonly PlanIcon[]) => list.filter((i) => layerOf(i) !== 'set');
+  const left = own(base);
+  const mine = own(setup);
+  const pairs = pairUp(left, mine);
+  const taken = new Set(pairs.values());
   const out: SetupChange[] = [];
   for (const icon of mine) {
     const was = pairs.get(icon);

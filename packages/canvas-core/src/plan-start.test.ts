@@ -64,7 +64,7 @@ describe('drawing walls', () => {
     expect(sideAngle({ x: 100, y: 0 }, { x: 200, y: 100 }, { x: 0, y: 0 })).toBe(135);
   });
 
-  it("keeps wall points within the plan's reach, in grid units (decision 0117)", () => {
+  it("keeps wall points within the plan's reach, in grid units (decision 0118)", () => {
     expect(toWallPoints([{ x: -5, y: PLAN_VIEW_H * 2 }])).toEqual([-20, STROKE_GRID * 2]);
     expect(toWallPoints([{ x: -1e6, y: 1e6 }])).toEqual([PLAN_COORD_MIN, PLAN_COORD_MAX]);
     expect(toWallPoints([{ x: PLAN_VIEW_W / 2, y: 0 }])).toEqual([STROKE_GRID / 2, 0]);

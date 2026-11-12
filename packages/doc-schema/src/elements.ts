@@ -321,7 +321,7 @@ export const MAX_STROKES = 2000;
 const GridCoord = z.int().min(0).max(STROKE_GRID);
 /**
  * How far a set plan's items may lie beyond its 3:2 extent, in STROKE_GRID units on every side
- * (since version 25, decision 0117): the plan is drawn on a surface without edges, and the
+ * (since version 25, decision 0118): the plan is drawn on a surface without edges, and the
  * extent is only the unit its coordinates are counted in.
  */
 export const PLAN_REACH = 4 * STROKE_GRID;

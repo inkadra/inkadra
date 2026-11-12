@@ -40,7 +40,7 @@ interface Pinch {
 }
 
 /**
- * The drawing surface of a set plan (decision 0117), shared by the editor and the read-only
+ * The drawing surface of a set plan (decision 0118), shared by the editor and the read-only
  * view: it fills its area with the dot grid, and the plan's 3:2 extent (the stage) lies in it,
  * panned and zoomed with the board's maths (canvas-core `zoomAt`, `pinchViewport`, the wheel's
  * `wheelZoomFactor`): a drag on empty space, the middle button or Space pans, the wheel and a

@@ -161,14 +161,23 @@ test('icons snap together: seats, modifiers, stands; the base carries them; Alt 
   // The light dragged onto the stand stands on it; moving the stand carries light and modifiers.
   await drag(P.light, P.stand, true);
   await expect.poll(async () => (await find('cob'))[0]?.on).toBe('iconStandAAAA');
-  // A base covered by what is on it is picked in Elements; moving it carries the rest along.
+  // A base covered by what is on it is listed with it (decision 0117) and picked from the
+  // Properties of what it carries; moving it carries the rest along.
   const elements = editor.getByRole('tabpanel', { name: 'Elementi' });
   const pick = async (name: string) => {
     await editor.getByRole('tab', { name: 'Elementi' }).click();
+    // The Set is one line of counts until it is opened.
+    const closed = elements.locator('.plan-elements__toggle[aria-expanded="false"]');
+    if (await closed.count()) await closed.click();
     await elements.getByRole('button', { name: new RegExp(`^${name}`) }).click();
   };
   const before = (await find('softbox'))[0]?.x ?? 0;
-  await pick('C-stand');
+  await pick('LED COB');
+  await editor.getByRole('tab', { name: 'Proprietà' }).click();
+  await editor
+    .getByRole('tabpanel', { name: 'Proprietà' })
+    .getByRole('button', { name: 'Seleziona', exact: true })
+    .click();
   for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft');
   await expect.poll(async () => (await find('softbox'))[0]?.x ?? 0).toBeLessThan(before);
   expect((await find('cob'))[0]?.on).toBe('iconStandAAAA');

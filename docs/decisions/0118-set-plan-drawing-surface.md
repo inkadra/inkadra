@@ -1,4 +1,4 @@
-# 0117 · Set plan: a surface without edges, and what a click picks
+# 0118 · Set plan: a surface without edges, and what a click picks
 
 Proposed, 2026-11. Builds on decisions 0062 (the plan's 3:2 drawing), 0104 (stacking and
 attachments), 0110 (walls), 0102 (writer schemas) and 0116 (logic clients share lives in a

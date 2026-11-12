@@ -83,6 +83,40 @@ const PAD = 24;
 const PLAN_W = 480;
 const GAP = 21;
 const CAP = 8.25;
+/** Where the drawing sits on the sheet, below the title block: the export dialog previews it. */
+export const PLAN_SHEET_FRAME = {
+  x: PAD,
+  y: PAD + 52,
+  w: PLAN_W,
+  h: PAPER.height - PAD - 18 - (PAD + 52),
+} as const;
+
+/**
+ * How the export dialog previews a sheet: the page drawn at `scale` (device pixels per point) on
+ * a canvas of `page` pixels, then the part under `frame` copied from `from` into a canvas of
+ * `size` pixels, so the drawing fills a preview `cssWidth` wide, sharp at `dpr`.
+ */
+export function previewCrop(
+  page: { width: number; height: number },
+  frame: { x: number; y: number; w: number; h: number },
+  cssWidth: number,
+  dpr: number,
+): {
+  scale: number;
+  page: { w: number; h: number };
+  from: { x: number; y: number };
+  size: { w: number; h: number };
+} {
+  // A preview not laid out yet has no width: the dialog's column, 232 px.
+  const scale = ((cssWidth > 0 ? cssWidth : 232) / frame.w) * (dpr > 0 ? dpr : 1);
+  const px = (v: number) => Math.round(v * scale);
+  return {
+    scale,
+    page: { w: px(page.width), h: px(page.height) },
+    from: { x: frame.x * scale, y: frame.y * scale },
+    size: { w: px(frame.w), h: px(frame.h) },
+  };
+}
 const TEXT = 9.75;
 const ROW = 15;
 
@@ -186,9 +220,9 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     });
 
     // The drawing.
-    const top = lineY + 12;
-    const bottom = PAPER.height - PAD - 18;
-    const frame = { x: PAD, y: top, w: PLAN_W, h: bottom - top };
+    const frame = PLAN_SHEET_FRAME;
+    const top = frame.y;
+    const bottom = frame.y + frame.h;
     ops.push({
       kind: 'rect',
       ...frame,
@@ -197,7 +231,7 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
       stroke: c['border-default'],
       lineWidth: 0.75,
     });
-    // What the editor showed, or what is drawn on the plan (decision 0117).
+    // What the editor showed, or what is drawn on the plan (decision 0118).
     const area = input.area ?? planFrame(plan, include.background);
     const k = Math.min((frame.w - 16) / area.w, (frame.h - 16) / area.h);
     const shown = { w: area.w * k, h: area.h * k };
@@ -232,7 +266,7 @@ export function planSheetPages(input: PlanSheetInput, ctx: CardContext): Page[] 
     }
     if (include.grid) {
       const step = gridStep(plan) * k;
-      // The lines of the plan's grid over what is shown, beyond the old extent too (0117).
+      // The lines of the plan's grid over what is shown, beyond the old extent too (0118).
       const first = (from: number, origin: number) =>
         origin + Math.ceil((from - origin) / step - 1e-6) * step;
       for (let x = first(view.x, whole.x); x <= view.x + view.w + 0.1; x += step)

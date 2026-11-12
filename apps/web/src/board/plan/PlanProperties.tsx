@@ -4,6 +4,7 @@ import {
   attachRole,
   catalogueKind,
   categoryOf,
+  circuitOf,
   DEFAULT_LENS,
   detachIcon,
   iconCentre,
@@ -47,7 +48,8 @@ import { type CSSProperties, type ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu, type MenuItem } from '../chrome.tsx';
 import { type Ed, isIcon, MAX_UNITS } from './editing.ts';
-import { itemName, selectionMix } from './elements.ts';
+import { itemName, SEAT_SURFACES, seatsAround, selectionMix, supportText } from './elements.ts';
+import { wattsText } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 import { selectionMenu } from './PlanCanvas.tsx';
 import { measureText, PLAN_COLORS, PlanGlyph, planCss, TEXT_SIZES } from './PlanDrawing.tsx';
@@ -242,7 +244,7 @@ export function PlanProperties({
     if (frozen && !after) return null;
     const isLocked = itemLocked(target);
     return (
-      <div className="plan-props__actions">
+      <div className="plan-props__actions plan-props__actions--foot">
         <Button onClick={ed.duplicate}>{t('board.plan.duplicate')}</Button>
         <Button
           aria-pressed={isLocked}
@@ -254,17 +256,20 @@ export function PlanProperties({
         <Button variant="danger" disabled={isLocked} onClick={() => ed.remove()}>
           {t('board.plan.delete')}
         </Button>
-        <IconButton
-          icon="more"
-          label={t('board.plan.selectionMenu')}
-          aria-haspopup="menu"
-          onClick={(e) =>
-            openMenu(selectionMenu(ed, t), t('board.plan.selectionMenu'), e.currentTarget)
-          }
-        />
       </div>
     );
   };
+  /** The selection's menu (as a right click on the plan), in the head: layer, order, turn. */
+  const moreButton = (
+    <IconButton
+      icon="more"
+      label={t('board.plan.selectionMenu')}
+      aria-haspopup="menu"
+      onClick={(e) =>
+        openMenu(selectionMenu(ed, t), t('board.plan.selectionMenu'), e.currentTarget)
+      }
+    />
+  );
 
   /** Name field of an icon: its label; an actor's follows the character it plays. */
   const head = (icon: PlanIcon, sub?: string) => {
@@ -293,6 +298,24 @@ export function PlanProperties({
           />
         )}
         {!compact && !played && swatch(icon.color)}
+        {!compact && played && (
+          // A linked actor takes its character's colour (decision 0111): shown, not picked.
+          <span
+            className="plan-swatch plan-swatch--static"
+            role="img"
+            aria-label={t('board.plan.tagColourFollows')}
+            data-ink-tooltip={t('board.plan.tagColourFollows')}
+          >
+            <i
+              style={{
+                background: planCss(
+                  ed.linked.icons?.find((i) => i.id === icon.id)?.color ?? icon.color,
+                ),
+              }}
+            />
+          </span>
+        )}
+        {!compact && !frozen && moreButton}
         {compact && <IconButton icon="more" label={t('board.plan.moreProps')} onClick={onMore} />}
       </div>
     );
@@ -395,6 +418,8 @@ export function PlanProperties({
     </Field>
   );
   const baseOf = (icon: PlanIcon) => (icon.on ? icons.find((i) => i.id === icon.on) : undefined);
+  // "Dolly on track", as the mockup's Support field; Elements says how long the track is.
+  const supportName = (base: PlanIcon) => supportText(base, icons, t);
   /** "On Stool · Detach": where an attached icon sits. */
   const onRow = (icon: PlanIcon) => {
     const base = baseOf(icon);
@@ -405,6 +430,10 @@ export function PlanProperties({
         <span>
           {t('board.plan.onBase', { name: base.label || t(`board.plan.icons.${base.kind}`) })}
         </span>
+        {/* The base is listed with what it carries (decision 0117): this picks it. */}
+        <Button variant="ghost" onClick={() => ed.setSelection([{ kind: 'icons', id: base.id }])}>
+          {t('board.plan.selectBase')}
+        </Button>
         <Button variant="ghost" onClick={() => ed.write(detachIcon(icons, icon.id))}>
           {t('board.plan.detach')}
         </Button>
@@ -425,7 +454,19 @@ export function PlanProperties({
           {[...(icon.steps ?? []), null].map((stepAt, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: a position is its place in the order.
             <li key={i}>
-              <span className="plan-props__num">{i + 1}</span>
+              <span
+                className="plan-props__num"
+                // In the item's colour, as its badges on the plan (a linked actor's is its card's).
+                style={
+                  {
+                    '--plan-tag': planCss(
+                      ed.linked.icons?.find((x) => x.id === icon.id)?.color ?? icon.color,
+                    ),
+                  } as CSSProperties
+                }
+              >
+                {i + 1}
+              </span>
               <input
                 className="plan-field"
                 aria-label={t('board.plan.stepNote', { number: i + 1 })}
@@ -489,7 +530,7 @@ export function PlanProperties({
     const kelvin = icon.kelvin ?? 5600;
     const gelOther = otherGel || (!!icon.gel && !GELS.includes(icon.gel));
     const sub = [
-      icon.power || (watts ? `${watts} W` : ''),
+      icon.power || (watts ? wattsText(watts, lang) : ''),
       mods.map((m) => t(`board.plan.icons.${m.kind}`)).join(', '),
     ]
       .filter(Boolean)
@@ -727,9 +768,9 @@ export function PlanProperties({
           </Field>
         )}
         {onRow(icon)}
-        <div className="plan-props__sep" />
         {sliders}
-        <div className="plan-props__grid">
+        {/* Height, tilt and circuit on one row, so the light's panel fits as the mockup's. */}
+        <div className="plan-props__grid plan-props__grid--three">
           <Field label={t('board.plan.height')}>
             <NumberField
               value={icon.height ?? 0}
@@ -752,31 +793,32 @@ export function PlanProperties({
               onCommit={(d) => ed.write({ ...icon, tilt: Math.round(d) })}
             />
           </Field>
+          <Field label={t('board.plan.circuit')}>
+            <Select
+              aria-label={t('board.plan.circuit')}
+              // A circuit since removed reads "On no circuit", as the power does.
+              value={circuitOf(icon, drawn.circuits)?.id ?? ''}
+              onChange={(v) =>
+                ed.write(
+                  v
+                    ? { ...icon, circuit: v }
+                    : (() => {
+                        const n = { ...icon };
+                        delete n.circuit;
+                        return n;
+                      })(),
+                )
+              }
+              options={[
+                { value: '', label: t('board.plan.noCircuit') },
+                ...(drawn.circuits ?? []).map((c) => ({
+                  value: c.id,
+                  label: `${c.name} · ${num(c.amps, 0)} A`,
+                })),
+              ]}
+            />
+          </Field>
         </div>
-        <Field label={t('board.plan.circuit')}>
-          <Select
-            aria-label={t('board.plan.circuit')}
-            value={icon.circuit ?? ''}
-            onChange={(v) =>
-              ed.write(
-                v
-                  ? { ...icon, circuit: v }
-                  : (() => {
-                      const n = { ...icon };
-                      delete n.circuit;
-                      return n;
-                    })(),
-              )
-            }
-            options={[
-              { value: '', label: t('board.plan.noCircuit') },
-              ...(ed.plan.circuits ?? []).map((c) => ({
-                value: c.id,
-                label: `${c.name} · ${num(c.amps, 0)} A`,
-              })),
-            ]}
-          />
-        </Field>
         {note(icon)}
         {actions(icon)}
       </>
@@ -790,7 +832,11 @@ export function PlanProperties({
     // The cone of the lens shown: the plan's own, else the linked frame's (decision 0111).
     const cone = iconCone({ ...icon, lens }, ed.plan.sensor);
     const base = baseOf(icon);
-    const other = otherLens || !LENSES.includes(lens);
+    // The frame's lens among the presets, as the mockup's 24 · 32 · 50 · 85 (decision 0111).
+    const presets = [
+      ...new Set([...LENSES.filter((mm) => mm !== DEFAULT_LENS), shot?.frameLens ?? DEFAULT_LENS]),
+    ].sort((a, b) => a - b);
+    const other = otherLens || !presets.includes(lens);
     const lensRow = (
       <div className="plan-prop">
         <div className="plan-range__head">
@@ -805,7 +851,7 @@ export function PlanProperties({
           label={t('board.plan.lens')}
           value={other ? 'other' : String(lens)}
           options={[
-            ...LENSES.map((mm) => ({ value: String(mm), label: String(mm) })),
+            ...presets.map((mm) => ({ value: String(mm), label: String(mm) })),
             { value: 'other', label: t('board.plan.otherLens') },
           ]}
           onPick={(v) => {
@@ -852,21 +898,6 @@ export function PlanProperties({
         {head(icon)}
         <ShotLink ed={ed} icon={icon} />
         {lensRow}
-        {(ed.lenses ?? []).length > 0 && (
-          <div className="plan-props__hints">
-            <span>{t('board.plan.fromFrames')}</span>
-            {(ed.lenses ?? []).map((l) => (
-              <button
-                key={l.label}
-                type="button"
-                className="plan__badge"
-                onClick={() => ed.write({ ...icon, lens: l.mm })}
-              >
-                {l.label} · {l.mm} mm
-              </button>
-            ))}
-          </div>
-        )}
         <div className="plan-props__grid">
           <Field label={t('board.plan.sensor')}>
             <Select
@@ -881,9 +912,25 @@ export function PlanProperties({
           </Field>
           {base ? (
             <Field label={t('board.plan.support')}>
-              <span className="plan-field plan-field--static">
-                {base.label || t(`board.plan.icons.${base.kind}`)}
-              </span>
+              {/* What it stands on, and Detach to take it off (decision 0104). */}
+              <Select
+                aria-label={t('board.plan.support')}
+                value="on"
+                onChange={(v) => {
+                  if (v === 'detach') ed.write(detachIcon(icons, icon.id));
+                  else if (v === 'select') ed.setSelection([{ kind: 'icons', id: base.id }]);
+                }}
+                options={[
+                  { value: 'on', label: supportName(base) },
+                  {
+                    value: 'select',
+                    label: t('board.plan.selectNamed', {
+                      name: base.label || t(`board.plan.icons.${base.kind}`),
+                    }),
+                  },
+                  { value: 'detach', label: t('board.plan.detach') },
+                ]}
+              />
             </Field>
           ) : (
             <Field label={t('board.plan.support')}>
@@ -925,7 +972,6 @@ export function PlanProperties({
           </Field>
           {angleField(icon)}
         </div>
-        {onRow(icon)}
         {reachRange}
         {/* biome-ignore lint/a11y/noLabelWithoutControl: the checkbox is the child. */}
         <label className="plan-props__check">
@@ -995,7 +1041,8 @@ export function PlanProperties({
           {sizeField(icon)}
         </div>
         {positions(icon, t('board.plan.movement'))}
-        {note(icon)}
+        {/* With positions, the last one's note is the item's note (decision 0104): one field. */}
+        {!icon.steps?.length && note(icon)}
         {actions(icon)}
       </>
     );
@@ -1035,6 +1082,13 @@ export function PlanProperties({
               </span>
             </Field>
           )}
+          {SEAT_SURFACES.has(catalogueKind(icon.kind)) && (
+            <Field label={t('board.plan.seats')}>
+              <span className="plan-field plan-field--static">
+                {t('board.plan.seatsAround', { count: seatsAround(icon, icons) })}
+              </span>
+            </Field>
+          )}
         </div>
         {note(icon)}
         {actions(icon)}
@@ -1057,7 +1111,8 @@ export function PlanProperties({
             ed.edit(icon, { beam: Math.round(v) }),
           )}
         {positions(icon, t('board.plan.movement'))}
-        {note(icon)}
+        {/* With positions, the last one's note is the item's note (decision 0104): one field. */}
+        {!icon.steps?.length && note(icon)}
         {actions(icon)}
       </>
     );
@@ -1147,7 +1202,10 @@ export function PlanProperties({
       <>
         <div className="plan-props__row">
           <b>{t('board.plan.selectedCount', { count: many.length })}</b>
-          <span className="plan-prop__label">{selectionMix(many, t)}</span>
+          <span className="plan-props__buttons">
+            <span className="plan-prop__label">{selectionMix(many, t)}</span>
+            {moreButton}
+          </span>
         </div>
         <div className="plan-props__row">
           <span className="plan-prop__label">{t('board.plan.alignLabel')}</span>
@@ -1155,6 +1213,7 @@ export function PlanProperties({
             {alignIcons.map(([how, icon]) => (
               <IconButton
                 key={how}
+                className="plan-props__bordered"
                 icon={icon}
                 label={t(`board.plan.align.${how}`)}
                 disabled={allLocked}
@@ -1199,31 +1258,15 @@ export function PlanProperties({
             />
           </Field>
         </div>
-        <div className="plan-props__actions">
+        <div className="plan-props__actions plan-props__actions--foot">
           <Button disabled={allLocked} onClick={() => ed.write(toggleGroup(many))}>
             {t(grouped ? 'board.plan.ungroup' : 'board.plan.group')}
           </Button>
           <Button onClick={ed.duplicate}>{t('board.plan.duplicate')}</Button>
-          <Button
-            aria-pressed={allLocked}
-            data-ink-tooltip={t(
-              allLocked ? 'board.plan.unlockItemHint' : 'board.plan.lockItemHint',
-            )}
-            onClick={() => ed.toggleItemLock()}
-          >
-            {t(allLocked ? 'board.plan.unlock' : 'board.plan.lock')}
-          </Button>
+          {/* Lock and Unlock are in the menu above, as the mockup keeps three buttons. */}
           <Button variant="danger" disabled={allLocked} onClick={() => ed.remove()}>
             {t('board.plan.delete')}
           </Button>
-          <IconButton
-            icon="more"
-            label={t('board.plan.selectionMenu')}
-            aria-haspopup="menu"
-            onClick={(e) =>
-              openMenu(selectionMenu(ed, t), t('board.plan.selectionMenu'), e.currentTarget)
-            }
-          />
         </div>
       </>
     );

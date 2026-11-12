@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
 import type { Ed } from './editing.ts';
 import { itemName } from './elements.ts';
-import { KIT_GROUPS, kitList } from './kit.ts';
+import { KIT_GROUPS, type KitLine, kitList } from './kit.ts';
 import { NumberField } from './NumberField.tsx';
 
 /** "2.5 kW · 10.8 A": a power and the amperes it draws, in the way of this language. */
@@ -24,6 +24,16 @@ export function powerText(watts: number, amps: number, lang: string): string {
   const kw = watts >= 1000;
   const n = (v: number, d: number) => v.toLocaleString(lang, { maximumFractionDigits: d });
   return `${kw ? `${n(watts / 1000, 1)} kW` : `${n(watts, 0)} W`} · ${n(amps, 1)} A`;
+}
+
+/** Copies the kit list as text ("Fresnel 2K ×1" a line); false if the clipboard refused. */
+export async function copyKit(kit: readonly KitLine[]): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(kit.map((l) => `${l.name} ×${l.count}`).join('\n'));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** The kit of a setup as it is shown and counted: the setup over its base's Set. */
@@ -37,14 +47,38 @@ export function setupKit(
   return kitList(merged, t, lang);
 }
 
-/** The name of a setup: "1 · Master", the base first. */
+/**
+ * How many items all the setups of a plan need together (decision 0117): per kit line, the most
+ * any one setup needs, since the same lamp moves from setup to setup.
+ */
+export function familyKitCount(family: readonly PlanElement[], t: TFunction, lang: string): number {
+  const most = new Map<string, number>();
+  for (const p of family) {
+    const base = p.variantOf ? family.find((f) => f.id === p.variantOf) : undefined;
+    for (const l of setupKit(p, base, t, lang))
+      most.set(l.name, Math.max(most.get(l.name) ?? 0, l.count));
+  }
+  return [...most.values()].reduce((n, c) => n + c, 0);
+}
+
+/** "Key, Hair, Practical ×3": names in order, each repeated one once with how many. */
+export function foldNames(names: readonly string[]): string {
+  const counts = new Map<string, number>();
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
+  return [...counts].map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join(', ');
+}
+
+/**
+ * The name of a setup: "1 · Master", the base first. The base is "Base" until it is renamed like
+ * any other setup (decision 0117).
+ */
 export function setupName(p: PlanElement, family: readonly PlanElement[], t: TFunction): string {
   const n =
     Math.max(
       0,
       family.findIndex((f) => f.id === p.id),
     ) + 1;
-  const name = p.variantOf ? p.variant || t('board.plan.variant') : t('board.plan.base');
+  const name = p.variant || t(p.variantOf ? 'board.plan.variant' : 'board.plan.base');
   return `${n} · ${name}`;
 }
 
@@ -63,42 +97,31 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
   const kit = kitList(drawn, t, lang);
   const items = kit.reduce((n, l) => n + l.count, 0);
   const power = planPower(drawn);
-  const familyItems = family.reduce(
-    (n, p) =>
-      n +
-      setupKit(
-        p,
-        p.variantOf ? family.find((f) => f.id === p.variantOf) : undefined,
-        t,
-        lang,
-      ).reduce((m, l) => m + l.count, 0),
-    0,
-  );
-  const circuits = plan.circuits ?? [];
+  const familyItems = familyKitCount(family, t, lang);
+  const [editing, setEditing] = useState<string | null>(null);
+  // The base's circuits, shared by its setups (decision 0117), then any a setup kept of its own.
+  const circuits = drawn.circuits ?? [];
+  const ownerOf = (c: PlanCircuit) =>
+    ed.base?.circuits?.some((b) => b.id === c.id) ? ed.base.id : plan.id;
   // One circuit at a time, field by field: two people editing two circuits both keep theirs.
   const editCircuit = (c: PlanCircuit) =>
-    ed.change(() => updatePlanCircuits(ed.doc, plan.id, [c], LOCAL));
+    ed.change(() => updatePlanCircuits(ed.doc, ownerOf(c), [c], LOCAL));
   const names = (load: CircuitLoad) =>
-    load.lights
-      .map((id) => drawn.icons?.find((i) => i.id === id))
-      .filter((i): i is PlanIcon => !!i)
-      .map((i) => itemName(i, t))
-      .join(', ');
+    foldNames(
+      load.lights
+        .map((id) => drawn.icons?.find((i) => i.id === id))
+        .filter((i): i is PlanIcon => !!i)
+        .map((i) => itemName(i, t)),
+    );
   const copy = async () => {
-    const text = kit.map((l) => `${l.name} ×${l.count}`).join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
+    setCopied(await copyKit(kit));
+    setTimeout(() => setCopied(false), 2000);
   };
   const scenes = ed.scenes.filter((s) => plan.sceneIds?.includes(s.id));
   return (
     <div className="plan-kit" data-tour="plan-kit">
       <div className="plan-props__row">
-        <b>{setupName(plan, family, t)}</b>
+        <b>{`${t('board.plan.sheet.setup')} ${setupName(plan, family, t)}`}</b>
         <span className="plan-prop__label">{t('board.plan.items', { count: items })}</span>
       </div>
       {kit.length === 0 && <p className="plan-props__hint">{t('board.plan.kitEmpty')}</p>}
@@ -124,18 +147,17 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
       <div className="plan-props__sep" />
       <section className="plan-kit__section" aria-label={t('board.plan.power')}>
         <div className="plan-props__row">
-          <span className="plan-props__cap">
-            {t('board.plan.powerAt', { volts: power.voltage })}
-          </span>
+          <span className="plan-props__cap">{t('board.plan.power')}</span>
           <span className="plan-kit__n plan-kit__total">
             {powerText(power.watts, power.amps, lang)}
           </span>
         </div>
         {power.circuits.map((c) => {
           const own = c.id ? circuits.find((x) => x.id === c.id) : undefined;
+          const amps = `${c.amps.toLocaleString(lang, { maximumFractionDigits: 1 })} A`;
           return (
             <div key={c.id ?? 'none'} className={`plan-kit__circuit is-${c.status}`}>
-              {own ? (
+              {own && editing === own.id ? (
                 <div className="plan-kit__circuit-head">
                   <CircuitName
                     value={own.name}
@@ -154,25 +176,45 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
                     icon="trash"
                     label={t('board.plan.removeCircuit', { name: own.name })}
                     onClick={() =>
-                      ed.change(() => removePlanCircuits(ed.doc, plan.id, [own.id], LOCAL))
+                      ed.change(() => removePlanCircuits(ed.doc, ownerOf(own), [own.id], LOCAL))
                     }
+                  />
+                  <IconButton
+                    icon="check"
+                    label={t('board.plan.doneCircuit', { name: own.name })}
+                    onClick={() => setEditing(null)}
                   />
                 </div>
               ) : (
-                <b>{t('board.plan.noCircuit')}</b>
+                // Read as the mockup: "Circuit A · 16 A" and its load; Edit opens the fields.
+                <div className="plan-props__row">
+                  <b>
+                    {own
+                      ? t('board.plan.links.circuitLine', {
+                          name: own.name,
+                          amps: own.amps.toLocaleString(lang),
+                        })
+                      : t('board.plan.noCircuit')}
+                  </b>
+                  <span className="plan-kit__amps">
+                    <b className="plan-kit__total">{amps}</b>
+                    {own && (
+                      <IconButton
+                        icon="pen"
+                        label={t('board.plan.editCircuit', { name: own.name })}
+                        onClick={() => setEditing(own.id)}
+                      />
+                    )}
+                  </span>
+                </div>
               )}
-              <div className="plan-props__row">
+              {c.status !== 'ok' && (
                 <span className="plan-prop__label">
                   {c.status === 'over'
                     ? t('board.plan.circuitOver')
-                    : c.status === 'warning'
-                      ? t('board.plan.circuitWarning')
-                      : ''}
+                    : t('board.plan.circuitWarning')}
                 </span>
-                <span className="plan-kit__n">
-                  {c.amps.toLocaleString(lang, { maximumFractionDigits: 1 })} A
-                </span>
-              </div>
+              )}
               {c.breaker && (
                 <span className="plan-kit__bar" aria-hidden="true">
                   <i style={{ width: `${Math.min(100, c.load * 100)}%` }} />
@@ -187,10 +229,10 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
           icon="plus"
           disabled={circuits.length >= MAX_PLAN_CIRCUITS}
           onClick={() =>
-            ed.change(() =>
-              addPlanCircuit(
+            ed.change(() => {
+              const id = addPlanCircuit(
                 ed.doc,
-                plan.id,
+                ed.scaleOwner,
                 {
                   name: t('board.plan.circuitNamed', {
                     letter: String.fromCharCode(65 + (circuits.length % 26)),
@@ -198,8 +240,10 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
                   amps: power.voltage === 120 ? 20 : 16,
                 },
                 LOCAL,
-              ),
-            )
+              );
+              // A new circuit opens its fields, to name it.
+              if (id) setEditing(id);
+            })
           }
         >
           {t('board.plan.addCircuit')}
@@ -213,13 +257,20 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
               { value: '120', label: '120 V' },
               { value: '230', label: '230 V' },
             ]}
-            onChange={(v) => ed.editPlan({ voltage: v === '120' ? 120 : undefined })}
+            onChange={(v) => ed.editPlan({ voltage: v === '120' ? 120 : undefined }, ed.scaleOwner)}
           />
         </div>
       </section>
       <div className="plan-props__sep" />
       {family.length > 1 && (
-        <p className="plan-props__hint">{t('board.plan.allSetups', { count: familyItems })}</p>
+        <p className="plan-props__hint">
+          {scenes.length
+            ? t('board.plan.allSetupsOfScene', {
+                count: familyItems,
+                scene: scenes.map((s) => s.number || '—').join(', '),
+              })
+            : t('board.plan.allSetups', { count: familyItems })}
+        </p>
       )}
       {scenes.length > 0 && (
         <p className="plan-props__hint">
@@ -227,9 +278,12 @@ export function PlanKit({ ed, onCallSheet }: { ed: Ed; onCallSheet: (at: DOMRect
         </p>
       )}
       <div className="plan-props__actions">
-        <Button onClick={copy} disabled={!kit.length}>
-          {copied ? t('board.plan.copied') : t('board.plan.copyList')}
-        </Button>
+        {/* On a phone the list is copied from the sheet's header, as the mockup. */}
+        {!ed.phone && (
+          <Button onClick={copy} disabled={!kit.length}>
+            {copied ? t('board.plan.copied') : t('board.plan.copyList')}
+          </Button>
+        )}
         <Button
           variant={ed.phone ? 'primary' : 'secondary'}
           onClick={(e) => onCallSheet(e.currentTarget.getBoundingClientRect())}

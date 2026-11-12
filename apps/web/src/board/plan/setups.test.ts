@@ -2,6 +2,7 @@
 import type { Element, PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
 import { expect, it } from 'vitest';
+import { planTitle } from './PlanCard.tsx';
 import { dayBySetup, groupBySetup, type ShotSetup, setupChanges, shotSetups } from './setups.ts';
 
 const icon = (id: string, kind: PlanIcon['kind'], extra: Partial<PlanIcon> = {}): PlanIcon => ({
@@ -111,4 +112,41 @@ it("puts a day's shot blocks under their setups, leaving out omitted scenes and 
     { setup, shots: [{ id: 'f1', block: { shotId: 'f1' } }] },
   ]);
   expect(dayBySetup([{ shotId: 'f2' }], byId, new Map())).toEqual([]);
+});
+
+it('pairs each icon with the nearest of its kind, named ones first, on plans of 300 icons', () => {
+  // Three lamps in a row, the setup's moved a little: each finds the one it came from.
+  const base = [0, 1, 2].map((n) => icon(`l${n}`, 'practical', { x: 1000 + n * 500 }));
+  const setup = [2, 0, 1].map((n) => icon(`m${n}`, 'practical', { x: 1003 + n * 500 }));
+  expect(setupChanges(base, setup)).toEqual([]);
+  // A named camera keeps its pair even when another camera stands nearer.
+  const named = [
+    icon('a', 'camera', { label: 'A cam', x: 3000 }),
+    icon('b', 'camera', { x: 1000 }),
+  ];
+  const moved = [icon('a2', 'camera', { label: 'A cam', x: 1010 })];
+  expect(setupChanges(named, moved).map((c) => [c.kind, c.icon.id.slice(0, 2)])).toEqual([
+    ['moved', 'a2'],
+    ['removed', 'bA'],
+  ]);
+  // 300 icons each side, of a few kinds: every one paired, nothing reported.
+  const kinds = ['practical', 'cob', 'stool', 'camera', 'actor'] as const;
+  const big = Array.from({ length: 300 }, (_, n) =>
+    icon(`p${n}`, kinds[n % kinds.length] as PlanIcon['kind'], {
+      x: (n * 37) % 4000,
+      y: (n * 53) % 4000,
+    }),
+  );
+  const copy = big.map((i) => ({ ...i, id: `${i.id.slice(0, 12)}C` }));
+  expect(setupChanges(big, copy)).toEqual([]);
+});
+
+it('names a setup as a set plan with its base title and its own name (decision 0117)', () => {
+  const t = ((key: string) => key) as unknown as TFunction;
+  expect(planTitle(t, { title: 'Diner' })).toBe('board.plan.name · Diner');
+  expect(planTitle(t, { title: 'Diner', variant: 'Night', variantOf: 'baseAAAAAAAAA' })).toBe(
+    'board.plan.name · Diner · Night',
+  );
+  // A base renamed "Master" keeps that name on its tab, not in its title.
+  expect(planTitle(t, { variant: 'Master' })).toBe('board.plan.name');
 });

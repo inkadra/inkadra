@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { PlanElement } from '@inkadra/canvas-core';
+import { type PlanElement, variantView } from '@inkadra/canvas-core';
 import {
   Button,
   Checkbox,
@@ -13,7 +13,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
 import type { ExportEnv, ExportFormat, ExportRequest } from '../export/engine.ts';
-import { type PlanSheetInclude, sheetInclude } from '../export/plan-sheet.ts';
+import {
+  PLAN_SHEET_FRAME,
+  type PlanSheetInclude,
+  previewCrop,
+  sheetInclude,
+} from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
 import { planTitle } from './PlanCard.tsx';
 import './outputs.css';
@@ -27,7 +32,7 @@ export function visibleArea(root: ParentNode, viewW: number, viewH: number): Are
   const viewport = root.querySelector('.plan-main__canvas')?.getBoundingClientRect();
   const sheet = root.querySelector('.plan-main__canvas .plan__svg')?.getBoundingClientRect();
   if (!viewport || !sheet || sheet.width <= 0 || sheet.height <= 0) return null;
-  // In the drawing's units, beyond its old extent too (decision 0117).
+  // In the drawing's units, beyond its old extent too (decision 0118).
   const x0 = ((viewport.left - sheet.left) / sheet.width) * viewW;
   const y0 = ((viewport.top - sheet.top) / sheet.height) * viewH;
   const x1 = ((viewport.right - sheet.left) / sheet.width) * viewW;
@@ -131,7 +136,9 @@ export function PlanExport({
   const [busy, setBusy] = useState(false);
   const planIds = setups === 'all' ? family.map((p) => p.id) : [plan.id];
   const req = planSheetRequest(format, planIds, where === 'view' ? area : null, include, false);
-  const env = planSheetEnv(store, plan, t, i18n.language, cache);
+  // Named as the plan is shown: a setup with its base's title (decision 0117).
+  const base = family.find((f) => f.id === plan.variantOf);
+  const env = planSheetEnv(store, base ? variantView(plan, base) : plan, t, i18n.language, cache);
   const envRef = useRef(env);
   envRef.current = env;
   const key = JSON.stringify(req);
@@ -155,12 +162,26 @@ export function PlanExport({
         const el = preview.current;
         if (controller.signal.aborted) return;
         if (el && page) {
-          const css = el.clientWidth || 232;
-          const scale = (css / page.width) * (window.devicePixelRatio || 1);
-          el.width = Math.round(page.width * scale);
-          el.height = Math.round(page.height * scale);
-          const ctx = el.getContext('2d');
-          if (ctx) drawPage(ctx, page, scale, built.images, 0, built.fonts.headingFamily);
+          // The drawing of the first page, large, as the mockup: the sheet cropped to its frame.
+          const crop = previewCrop(page, PLAN_SHEET_FRAME, el.clientWidth, window.devicePixelRatio);
+          const full = document.createElement('canvas');
+          full.width = crop.page.w;
+          full.height = crop.page.h;
+          const off = full.getContext('2d');
+          if (off) drawPage(off, page, crop.scale, built.images, 0, built.fonts.headingFamily);
+          el.width = crop.size.w;
+          el.height = crop.size.h;
+          el.getContext('2d')?.drawImage(
+            full,
+            crop.from.x,
+            crop.from.y,
+            crop.size.w,
+            crop.size.h,
+            0,
+            0,
+            crop.size.w,
+            crop.size.h,
+          );
         }
         setPages(built.pages.length);
         setStatus('ready');

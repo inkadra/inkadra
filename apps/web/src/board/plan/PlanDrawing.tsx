@@ -730,7 +730,7 @@ const PlanDrawingView = memo(function PlanDrawingView({
   /**
    * Draws in the coordinates of the plan's 3:2 extent, what lies beyond it too, for a surface
    * that pans and zooms (the editor, the view). Otherwise the drawing frames what is on the plan
-   * (planFrame, decision 0117): the card, the slides, the call sheet.
+   * (planFrame, decision 0118): the card, the slides, the call sheet.
    */
   extent?: boolean;
   /**

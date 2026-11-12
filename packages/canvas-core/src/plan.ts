@@ -92,12 +92,12 @@ export function snapPlanPoint(p: Point, step = PLAN_GRID): Point {
   };
 }
 
-/** How far beyond its 3:2 extent a plan reaches, in units of the extent (decision 0117). */
+/** How far beyond its 3:2 extent a plan reaches, in units of the extent (decision 0118). */
 export const PLAN_REACH_UNITS = PLAN_REACH / STROKE_GRID;
 /** A plan coordinate in STROKE_GRID units, rounded and kept within the plan's reach. */
 export const clampGrid = (n: number) =>
   Math.round(Math.max(PLAN_COORD_MIN, Math.min(PLAN_COORD_MAX, n)));
-/** A point of the drawing (0 to 1 across the extent) as a plan coordinate (decision 0117). */
+/** A point of the drawing (0 to 1 across the extent) as a plan coordinate (decision 0118). */
 export const toPlanGrid = (n: number) => clampGrid(n * STROKE_GRID);
 
 /** The layer an item goes to without one of its own: its family's, Notes for texts and measures. */
@@ -699,7 +699,7 @@ export function lockAllows(
 
 /**
  * Every item under `p` (relative to the drawing, 0 to 1), in the order a click picks them
- * (decisions 0104 and 0117): what the renderers draw on top first (planStack), except that
+ * (decisions 0104 and 0118): what the renderers draw on top first (planStack), except that
  * - a light comes before the modifiers attached to its front, which follow it nearest first: a
  *   click on a light with a softbox picks the light, a second click the softbox;
  * - a measure yields to the icons its ends sit on (`from`, `to`) where they are under `p`: a thin
@@ -768,7 +768,7 @@ export function planItemAt(
 }
 
 /**
- * The item a click on `p` picks when `current` is already picked (decision 0117): the next one
+ * The item a click on `p` picks when `current` is already picked (decision 0118): the next one
  * under the point, round to the first, so what is covered (a stool under a person, a softbox on
  * its light) is reached by clicking again. The first one when `current` is not under `p`.
  */
@@ -1097,13 +1097,20 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
         | 'rulers'
         | 'walls'
         | 'openings'
+        | 'circuits'
+        | 'voltage'
         | 'background'
+        | 'title'
       >
     | undefined,
 ): P {
   if (!base) return plan;
   // The Set is the base's, and so is its scale: walls measured once, metres in every variant.
-  const shared = base as Partial<Pick<PlanElement, 'scale' | 'grid' | 'rulers'>>;
+  const shared = base as Partial<
+    Pick<PlanElement, 'scale' | 'grid' | 'rulers' | 'circuits' | 'voltage'>
+  >;
+  const own = (plan as Partial<Pick<PlanElement, 'circuits'>>).circuits ?? [];
+  const baseCircuits = shared.circuits ?? [];
   return {
     ...plan,
     scale: shared.scale,
@@ -1115,8 +1122,14 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     // Walls and their openings are the Set: the base's (decision 0104).
     walls: base.walls,
     openings: base.openings,
+    // So are the electrics of the location (decision 0117): the base's circuits and voltage,
+    // then any circuit a setup was given by an earlier build, so none of its lights loses its own.
+    circuits: [...baseCircuits, ...own.filter((c) => !baseCircuits.some((b) => b.id === c.id))],
+    voltage: shared.voltage,
     // So is the picture under them (decision 0110).
     background: base.background,
+    // And the title: the base owns it, a setup's own copy is never shown (decision 0117).
+    title: base.title,
   };
 }
 
@@ -1161,7 +1174,7 @@ export function addVariant(
       createdAt: Date.now(),
       variantOf: baseId,
       variant: name,
-      ...(source.title ? { title: source.title } : {}),
+      // No title: a setup shows its base's, the one owner of it (decision 0117).
       ...(source.h ? { h: source.h } : {}),
       ...(source.sensor ? { sensor: source.sensor } : {}),
       // What the card is to guests, to editing and to search, as for any copy.
@@ -1195,7 +1208,8 @@ export function addVariant(
     copy.set('strokes', Y.Array.from(strokes));
     copy.set('shapes', Y.Array.from(shapes));
     copy.set('icons', Y.Array.from(icons.map((i) => new Y.Map<unknown>(Object.entries(i)))));
-    // The setup's own circuits, added one by one (decision 0104).
+    // Circuits are the base's, shared by its setups (decision 0117): the setup's own list stays
+    // empty, as the card's shape expects.
     copy.set('circuits', new Y.Array());
     roots(doc).elements.set(id, copy);
   }, opts.origin);

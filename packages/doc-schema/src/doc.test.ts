@@ -1399,7 +1399,7 @@ describe('items locked on their own (version 24, decision 0114)', () => {
   });
 });
 
-describe('plans beyond their extent (version 25, decision 0117)', () => {
+describe('plans beyond their extent (version 25, decision 0118)', () => {
   const plan = (extra: Record<string, unknown> = {}) => ({
     ...base(),
     type: 'plan' as const,

@@ -7,7 +7,7 @@ import { backgroundBox } from './plan-start.ts';
 import { wallBounds } from './plan-walls.ts';
 
 /**
- * The view of a plan's drawing surface (decision 0117): a surface without edges that fills the
+ * The view of a plan's drawing surface (decision 0118): a surface without edges that fills the
  * area between the panels, panned and zoomed; the plan's old 3:2 extent is the unit its
  * coordinates count in, and 100 % fits it to the area. A view is the board's
  * `Viewport`: screen px = (view units - x, y) × zoom, zoom being px per view unit.
@@ -176,7 +176,7 @@ const FRAME_SHARE = 0.06;
 const FRAME_MIN_W = 400;
 
 /**
- * Where a plan is shown on its card, its slides, sheets and exports (decision 0117): what is
+ * Where a plan is shown on its card, its slides, sheets and exports (decision 0118): what is
  * drawn on it, with a margin for labels, widened to the plan's 3:2 shape and never narrower than
  * FRAME_MIN_W; the whole extent for an empty plan. View units.
  */

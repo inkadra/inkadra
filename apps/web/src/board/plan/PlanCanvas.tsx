@@ -172,7 +172,7 @@ export interface CanvasHandle {
   zoomBy: (dir: 1 | -1) => void;
   /** Frames what is on the plan. */
   fit: () => void;
-  /** Space held: a drag pans, whatever the tool (decision 0117). */
+  /** Space held: a drag pans, whatever the tool (decision 0118). */
   space: (down: boolean) => void;
   /** A key for the tool in use (the length typed for a wall); true when it took it. */
   key: (e: KeyboardEvent) => boolean;
@@ -240,7 +240,7 @@ export function selectionMenu(ed: Ed, t: TFunction): MenuItem[] {
 }
 
 /**
- * The drawing of the editor (decisions 0104 and 0117): a surface that fills the area between the
+ * The drawing of the editor (decisions 0104 and 0118): a surface that fills the area between the
  * panels, the plan's extent a quiet frame in it, panned and zoomed (PlanSurface); the gestures of
  * decision 0071 (draw, place, move, turn, resize, box selection, blocking), the bar of tools at
  * the bottom, the zoom and, with a scale, the scale bar. Nothing floats over the drawing for the
@@ -318,7 +318,7 @@ export function PlanCanvas({
     if (!r || r.width === 0) return { x: 0, y: 0 };
     return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
   };
-  /** Within the plan's reach (decision 0117): anywhere on the surface, in practice. */
+  /** Within the plan's reach (decision 0118): anywhere on the surface, in practice. */
   const inside = (p: Point) =>
     Math.min(p.x, p.y) >= -PLAN_REACH_UNITS && Math.max(p.x, p.y) <= 1 + PLAN_REACH_UNITS;
   const snapped = (p: Point) => (ed.snap ? snapPlanPoint(p, step) : p);
@@ -416,7 +416,7 @@ export function PlanCanvas({
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest('.plan-editor__text')) return;
     e.stopPropagation();
-    // A second finger pinches: what the first one started is dropped (decision 0117).
+    // A second finger pinches: what the first one started is dropped (decision 0118).
     if (surf.down(e)) {
       onPointerCancel();
       return;
@@ -534,7 +534,7 @@ export function PlanCanvas({
       return;
     }
     if (tool === 'select' || tool === 'icons') {
-      // What a click picks (decision 0117): the top item, a light before its modifiers; Alt, or
+      // What a click picks (decision 0118): the top item, a light before its modifiers; Alt, or
       // a click again on what is picked, the next one under the pointer (a stool under a person).
       const top = planItemAt(drawn, p, viewOf);
       const single = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
@@ -607,7 +607,7 @@ export function PlanCanvas({
       const beneath = planItemAt(drawn, p, { hidden: ed.hiddenLayers });
       const lockedOne = beneath && planItem(drawn, beneath);
       if (lockedOne) ed.setLockedItem(lockedOne);
-      // A drag on empty space pans (decision 0117); a click there lets go of the selection.
+      // A drag on empty space pans (decision 0118); a click there lets go of the selection.
       // Shift and a mouse draw a box that adds; a finger draws one after a long press.
       const touch = e.pointerType === 'touch';
       if (!e.shiftKey) surf.startPan(e);

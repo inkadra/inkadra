@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// The drawing surface of the set plan editor (decision 0117): it fills the area, pans and zooms
+// The drawing surface of the set plan editor (decision 0118): it fills the area, pans and zooms
 // round the pointer, Fit frames the plan, items go beyond the old 3:2 extent; a click picks a
 // light before its modifiers, a click again or Alt the item under the picked one; Shift adds and
 // takes away; the dolly slides along its track; people stack over furniture whatever the order.
@@ -174,7 +174,7 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
     .toBe(Math.round(fitted.x));
   expect(Math.round((await stage.boundingBox())!.width)).toBe(Math.round(fitted.width));
 
-  // An item dragged beyond the old extent stays there (decision 0117).
+  // An item dragged beyond the old extent stays there (decision 0118).
   await editor.getByRole('button', { name: 'Riduci' }).click();
   await editor.getByRole('button', { name: 'Riduci' }).click();
   const table = at(await find('Tavolo'));

@@ -33,14 +33,18 @@ export interface ProjectKitEntry {
   lenses: number[];
 }
 
+/** Lamps of the set: their watts alone are no setup, the bulb in a table lamp (decision 0117). */
+const PRACTICALS = new Set<PlanIconKind>(['practical', 'pendant', 'floorlamp', 'candle']);
 const configuredLight = (i: PlanIcon, mods: number) =>
-  !!(i.make || i.watts || i.power || i.gel || i.stand || i.kelvin || mods);
+  !!(i.make || i.gel || i.stand || i.kelvin || mods) ||
+  (!!(i.watts || i.power) && i.role !== 'practical' && !PRACTICALS.has(catalogueKind(i.kind)));
 const configuredCamera = (i: PlanIcon) => !!(i.label || i.make);
 
 /**
  * The project kit (decision 0104): the distinct configured lights and cameras found in the given
  * plans, derived every time, never stored, so it cannot drift. A light counts when it has a make,
- * power, gel, stand, colour temperature or modifiers; a camera when it has a name or a make.
+ * gel, stand, colour temperature or modifiers, or a power unless it is a practical (decision
+ * 0117); a camera when it has a name or a make.
  * Lights are the same when every kept field and their modifiers match; cameras when their name
  * and make match, their lenses gathered.
  */
