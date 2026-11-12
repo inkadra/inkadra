@@ -61,6 +61,24 @@ package disagree, and a package test fails when a language lacks a key English h
 other placeholders. All of these words were written by the project; before a word moves into the
 package, its author must be one who can license it under the MPL.
 
+For the mobile app to edit a set plan as the web does, the editing operations of the plan
+editor moved out of the web's `usePlanEditing` hook into `packages/canvas-core`
+(`plan-editing.ts`), as functions over the plan, its base and the items to write: `planEdit`
+(the plan as drawn and written, a setup with its base's Set), `planItemOwner` and
+`planLayerOwner` (the Set layer is the base's), `writePlanItems` (locks, then attachments, then
+only what changed, each item where it lives), `removeUnlockedItems`, `removeUnlockedWalls`,
+`lockWrites`, `rotateWrites`, `nudgeWrites`, `restackWrites`, `moveToPlanLayer` (to Set on a
+setup: into the base), `hiddenToggle` (on a setup the document, else this person's preference,
+which the client keeps), `lockedLayersToggle`, `ensurePlanScale`, `planIconsFull`,
+`freshPlanIcon` and `placePlanIcon` (the icon, its attachment and a project-kit light's
+modifiers in one transaction), `planSnapAt` (never to a hidden icon), and from the canvas's
+gestures `planDropTarget` (free with snapping off, Alt held, or a kind that never attaches) and
+`dropWrites` (pulled off a base: detached; let go on one: attached). Writers take the document
+and an origin; the client keeps the undo steps. The new icon's colour is a parameter until the
+plan colours move. Stays in the web: the hook's state (tool, armed tile, selection, tabs,
+preview, the person's preferences, undo grouping with `change`) and duplicating, which was
+already `duplicatePlanItems`.
+
 For the mobile app to name a frame's shot size, angle and movement as the web does, these moved
 to `packages/shared`, beside the catalogs in `classifications.ts`: `shotText` (a field's value is
 the id of a catalog value, archived too, or text the person typed; an id of a catalog not loaded
