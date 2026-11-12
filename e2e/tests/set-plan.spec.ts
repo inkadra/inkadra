@@ -379,12 +379,15 @@ for (const theme of ['dark', 'light'] as const) {
 
     // Several items: a box dragged over the table and Marco picks both; Group keeps them
     // together.
+    // A plain drag on empty space pans (decision 0117): Shift draws the box.
     const from2 = at(160, 95);
     const to2 = at(250, 185);
+    await page.keyboard.down('Shift');
     await page.mouse.move(from2.x, from2.y);
     await page.mouse.down();
     await page.mouse.move(to2.x, to2.y, { steps: 5 });
     await page.mouse.up();
+    await page.keyboard.up('Shift');
     await expect(props).toContainText(/\d+ elementi selezionati/);
     await props.getByRole('button', { name: 'Raggruppa', exact: true }).click();
     await expect

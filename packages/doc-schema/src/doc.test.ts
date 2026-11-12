@@ -1395,7 +1395,7 @@ describe('items locked on their own (version 24, decision 0114)', () => {
   });
 
   it('keeps clients of schema 23 read-only on a version 24 document', () => {
-    expect(WRITER_SCHEMAS[24]).toEqual({ min: 24 });
+    expect(WRITER_SCHEMAS[24, 25]).toEqual({ min: 24 });
   });
 });
 
@@ -1501,13 +1501,13 @@ describe('writer schemas (decision 0102)', () => {
     // A test that exists but proves nothing about the version does not count.
     const file =
       "it('duplicates a card', () => {});\nit('schema 24 from 23: keeps the new field', () => {});";
-    expect(unproven({ 24: { min: 23, proof: 'duplicates a card' } }, file)).toEqual([24]);
+    expect(unproven({ 24: { min: 23, proof: 'duplicates a card' } }, file)).toEqual([24, 25]);
     expect(
       unproven({ 24: { min: 23, proof: 'schema 24 from 22: keeps the new field' } }, file),
-    ).toEqual([24]);
+    ).toEqual([24, 25]);
     expect(
       unproven({ 24: { min: 23, proof: 'schema 24 from 23: keeps the new field' } }, file),
     ).toEqual([]);
-    expect(unproven({ 24: { min: 25 } }, file)).toEqual([24]);
+    expect(unproven({ 24: { min: 25 } }, file)).toEqual([24, 25]);
   });
 });

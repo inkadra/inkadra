@@ -265,6 +265,7 @@ for (const theme of ['dark', 'light'] as const) {
     // pans, decision 0117); align them; the mix is named.
     const a = await point([170, 110]);
     const b = await point([730, 190]);
+    await page.keyboard.press('Escape');
     await page.keyboard.down('Shift');
     await page.mouse.move(a.x, a.y);
     await page.mouse.down();
@@ -447,8 +448,12 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(viewer.locator('.plan__svg')).toBeVisible();
       await expect(viewer.getByRole('toolbar', { name: 'Strumenti della pianta' })).toHaveCount(0);
       await expect(viewer.locator('.plan-editor__stage')).toHaveCount(0);
+      // Opened fitted to what is drawn (decision 0117); the button zooms in.
+      const percent = async () =>
+        Number((await viewer.locator('.plan-viewer__zoom').innerText()).replace('%', ''));
+      const opened = await percent();
       await viewer.getByRole('button', { name: 'Ingrandisci' }).click();
-      await expect(viewer.getByRole('button', { name: '150%' })).toBeVisible();
+      await expect.poll(percent).toBeGreaterThan(opened);
       await viewer.getByRole('button', { name: 'Riduci' }).click();
       await settle(view, viewer);
       await view.screenshot({ path: join(out, `1280-${theme}-guest.png`) });

@@ -52,7 +52,7 @@ it('upgrades v12 to-do cards as ordinary lists and keeps a list kind and scene',
     items: [{ id: 'test-item', text: 'Towel', done: false }],
   };
   addElement(doc, card);
-  expect(migrateBoardDoc(doc, boardId)).toEqual([13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]);
+  expect(migrateBoardDoc(doc, boardId)).toEqual([13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]);
   expect(TodoElement.parse(card).list).toBeUndefined();
   const live = roots(doc).elements.get(card.id);
   live?.set('list', 'wardrobe');

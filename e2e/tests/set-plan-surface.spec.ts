@@ -4,7 +4,7 @@
 // light before its modifiers, a click again or Alt the item under the picked one; Shift adds and
 // takes away; the dolly slides along its track; people stack over furniture whatever the order.
 // Desktop and phone. Runs after first-run.spec.ts in CI; alone, it signs up.
-import { attachIcon, createElement } from '@inkadra/canvas-core';
+import { attachIcon, createElement, planItemsAt } from '@inkadra/canvas-core';
 import {
   createBoardDoc,
   type Element,
@@ -132,7 +132,7 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   // The surface is the whole area between the panels, without scroll bars.
   const s = (await surface.boundingBox())!;
   expect([s.width, s.height]).toEqual([area.width, area.height]);
-  expect(await surface.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  expect(await surface.evaluate((el) => getComputedStyle(el).overflow)).toBe('hidden');
   const fitted = (await stage.boundingBox())!;
 
   // The toolbar and the zoom control do not overlap at 1280.
@@ -207,7 +207,18 @@ test('a click picks a light before its softbox, a click again what lies under, S
   };
 
   // The light, not the softbox on its front; the softbox on a second click.
-  const key = at(await find('Key'));
+  // A point where the light and the softbox on its front both lie (the model says which).
+  const plan = { icons: [await find('Key'), await find('Box')], strokes: [], shapes: [] };
+  const [kx, ky] = at(plan.icons[0] as PlanIcon) as [number, number];
+  const [bx, by] = at(plan.icons[1] as PlanIcon) as [number, number];
+  const key = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+    .map((f) => [kx + (bx - kx) * f, ky + (by - ky) * f])
+    .find(
+      ([x, y]) =>
+        planItemsAt(plan, { x: (x as number) / 1000, y: (y as number) / (1000 / 1.5) }).length ===
+        2,
+    ) as number[];
+  expect(key).toBeDefined();
   await click(key);
   await expect(name).toHaveValue('Key');
   await click(key);
