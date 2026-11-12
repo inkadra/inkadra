@@ -884,6 +884,12 @@ function BoardScreen({
       selfId,
       projectIcon,
       tabsId,
+      board,
+      counts,
+      kind,
+      toggleView,
+      outside,
+      openOutside,
     ],
   );
   useHeaderContent(header);
