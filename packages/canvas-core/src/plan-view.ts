@@ -7,8 +7,9 @@ import { backgroundBox } from './plan-start.ts';
 import { wallBounds } from './plan-walls.ts';
 
 /**
- * The view of a plan's drawing surface (decision 0117): the plan's 3:2 extent drawn inside a
- * surface that fills the area between the panels, panned and zoomed. A view is the board's
+ * The view of a plan's drawing surface (decision 0117): a surface without edges that fills the
+ * area between the panels, panned and zoomed; the plan's old 3:2 extent is the unit its
+ * coordinates count in, and 100 % fits it to the area. A view is the board's
  * `Viewport`: screen px = (view units - x, y) × zoom, zoom being px per view unit.
  */
 

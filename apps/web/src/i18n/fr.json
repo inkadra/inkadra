@@ -5094,7 +5094,7 @@
         "steps": {
           "0": {
             "title": "Dessiner le décor",
-            "text": "Lignes, formes, textes et mesures depuis la barre du bas."
+            "text": "Lignes, formes, textes et mesures depuis la barre du bas. Faites glisser sur un espace vide pour vous déplacer, la molette pour zoomer ; cliquez à nouveau pour prendre ce qui est dessous."
           },
           "1": {
             "title": "La bibliothèque",

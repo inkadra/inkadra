@@ -5094,7 +5094,7 @@
         "steps": {
           "0": {
             "title": "Dibuja el set",
-            "text": "Líneas, formas, textos y medidas desde la barra inferior."
+            "text": "Líneas, formas, textos y medidas desde la barra de abajo. Arrastra en un espacio vacío para moverte, usa la rueda para el zoom; haz clic otra vez para elegir lo que hay debajo."
           },
           "1": {
             "title": "La biblioteca",

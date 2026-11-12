@@ -5094,7 +5094,7 @@
         "steps": {
           "0": {
             "title": "Disegna il set",
-            "text": "Linee, forme, testi e misure dalla barra in basso."
+            "text": "Linee, forme, testi e misure dalla barra in basso. Trascina sul vuoto per spostarti, usa la rotella per lo zoom; clicca di nuovo per prendere ciò che sta sotto."
           },
           "1": {
             "title": "La libreria",

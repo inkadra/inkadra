@@ -5094,7 +5094,7 @@
         "steps": {
           "0": {
             "title": "Draw the set",
-            "text": "Lines, shapes, texts and measures from the bar at the bottom."
+            "text": "Lines, shapes, texts and measures from the bar at the bottom. Drag on empty space to move around, use the wheel to zoom; click again to pick what lies underneath."
           },
           "1": {
             "title": "The library",

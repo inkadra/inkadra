@@ -120,6 +120,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0113](0113-token-proof.md) | `token-proof`: a key bound to an app token lets the server prove it issued the token, over a fresh nonce, before a client on an unconfirmed network sends it |
 | [0114](0114-set-plan-item-lock-and-project-kit.md) | Set plan: `locked` on each plan item (schema 24), the project kit read across the boards the caller can read, Grip and crew as a group of Elements |
 | [0116](0116-shared-client-logic-in-mpl-packages.md) | Product logic shared by clients (call sheet, moodboard groups, comment parts, card estimates and measures) lives once in an MPL package; a client never copies it from an AGPL app |
+| [0117](0117-set-plan-drawing-surface.md) | Set plan: coordinates reach beyond the 3:2 extent (schema 25), outputs frame what is drawn, the editor and view pan and zoom a surface without edges; a click picks a light before its modifiers, a click again what lies under |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.

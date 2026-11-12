@@ -5094,7 +5094,7 @@
         "steps": {
           "0": {
             "title": "Desenhe o cenário",
-            "text": "Linhas, formas, textos e medidas a partir da barra inferior."
+            "text": "Linhas, formas, textos e medidas a partir da barra em baixo. Arraste num espaço vazio para se mover, use a roda para o zoom; clique outra vez para escolher o que está por baixo."
           },
           "1": {
             "title": "A biblioteca",
