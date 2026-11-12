@@ -252,13 +252,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     () => ({ location: overlay.location, navigationType: overlay.navigationType }),
     [overlay.location, overlay.navigationType],
   );
-  const afterSettings = useRef<string | null>(null);
-  useEffect(() => {
-    if (overlay.open || !afterSettings.current) return;
-    const destination = afterSettings.current;
-    afterSettings.current = null;
-    void navigate(destination);
-  }, [overlay.open, navigate]);
 
   // Everything in the shell follows the page under the settings window, not the settings URL.
   const { pathname, search } = overlay.location;
@@ -930,10 +923,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           <SettingsWindow
             setup={setup}
             onClose={closeSettings}
-            onDiagnostics={() => {
-              afterSettings.current = '/diagnostics';
-              closeSettings();
-            }}
             onBack={() =>
               overlay.depth > 1 ? navigate(-1) : navigate('/settings', { replace: true })
             }

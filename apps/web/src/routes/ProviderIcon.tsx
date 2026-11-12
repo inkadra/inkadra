@@ -41,7 +41,7 @@ const ICONS = { password: 'lock', oidc: 'key', link: 'link', smtp: 'mail' } as c
 export function ProviderIcon({ id, name }: { id: string; name?: string }) {
   const kind = providerKind(id, name);
   return (
-    <span className={`settings-provider settings-provider--${kind}`} aria-hidden="true">
+    <span className={`settings-tile settings-tile--${kind === 'google' ? 'google' : 'neutral'}`} aria-hidden="true">
       {kind === 'google' ? <GoogleG /> : <Icon name={ICONS[kind]} size={16} />}
     </span>
   );

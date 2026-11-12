@@ -116,7 +116,7 @@ export function notificationPath(
     serverAlert?: Pick<NonNullable<Notification['serverAlert']>, 'kind'> | null;
   },
 ): string | null {
-  if (item.type === 'feedback_received') return '/settings?section=instance';
+  if (item.type === 'feedback_received') return '/settings?section=reports';
   if (item.type === 'server_alert')
     return item.serverAlert?.kind === 'storage_limit'
       ? '/settings?section=workspace'

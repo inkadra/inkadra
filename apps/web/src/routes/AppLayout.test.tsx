@@ -417,26 +417,6 @@ it('tracks phone list and section positions through Back, Forward and replacemen
   }
 });
 
-it.each([1, 2])(
-  'leaves %s settings entries for Diagnostics so Back returns to the background',
-  async (entries) => {
-    const { router, host, unmount } = await mountData();
-    try {
-      await act(async () => router.navigate('/settings'));
-      if (entries > 1) await act(async () => router.navigate('/settings?section=account'));
-      await act(async () =>
-        host.querySelector<HTMLAnchorElement>('.settings-nav__footer a')?.click(),
-      );
-      expect(router.state.location.pathname).toBe('/diagnostics');
-      await act(async () => router.navigate(-1));
-      expect(router.state.location.pathname).toBe('/projects');
-      expect(host.querySelector('dialog.settings-window')).toBeNull();
-    } finally {
-      await unmount();
-    }
-  },
-);
-
 it.each([
   ['MacIntel', '⌘K'],
   ['Linux x86_64', 'Ctrl K'],

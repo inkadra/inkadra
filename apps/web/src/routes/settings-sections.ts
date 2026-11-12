@@ -1,4 +1,6 @@
-export type SettingsGroup = 'personal' | 'workspace' | 'instance';
+import type { IconName } from '@inkadra/ui';
+
+export type SettingsGroup = 'personal' | 'workspace' | 'server';
 
 export interface SettingsPage {
   id: string;
@@ -10,164 +12,72 @@ export interface SettingsPage {
   /** Translation key of the settings on the page, comma-separated, for the search. */
   keywords: string;
   admin: boolean;
+  /** One icon per page, in the navigation (decision 0124). */
+  icon: IconName;
 }
 
-/** Every settings page in navigation order. URLs predate the redesign and stay stable. */
+const page = (
+  id: string,
+  group: SettingsGroup,
+  icon: IconName,
+  title: string,
+  lead = `settingsUi.leads.${id}`,
+): SettingsPage => ({
+  id,
+  group,
+  icon,
+  href: id === 'members' ? '/settings/team' : `/settings?section=${id}`,
+  title,
+  lead,
+  keywords: `settingsUi.keywords.${id}`,
+  admin: group !== 'personal',
+});
+
+/**
+ * Every settings page in navigation order (decision 0124). Ids that survived the redesign keep
+ * their URL; `preferences` is "Appearance and language", `instance` "General", `workspace`
+ * "Storage" and `tutorials` "Help and tutorials".
+ */
 export const SETTINGS_PAGES: SettingsPage[] = [
-  {
-    id: 'account',
-    group: 'personal',
-    href: '/settings?section=account',
-    title: 'admin.account',
-    lead: 'settingsUi.leads.account',
-    keywords: 'settingsUi.keywords.account',
-    admin: false,
-  },
-  {
-    id: 'preferences',
-    group: 'personal',
-    href: '/settings?section=preferences',
-    title: 'admin.preferences',
-    lead: 'settingsUi.leads.preferences',
-    keywords: 'settingsUi.keywords.preferences',
-    admin: false,
-  },
-  {
-    id: 'toolbar',
-    group: 'personal',
-    href: '/settings?section=toolbar',
-    title: 'settingsUi.pages.toolbar',
-    lead: 'settingsUi.leads.toolbar',
-    keywords: 'settingsUi.keywords.toolbar',
-    admin: false,
-  },
-  {
-    id: 'modules',
-    group: 'personal',
-    href: '/settings?section=modules',
-    title: 'settingsUi.pages.modules',
-    lead: 'settingsUi.leads.modules',
-    keywords: 'settingsUi.keywords.modules',
-    admin: false,
-  },
-  {
-    id: 'notifications',
-    group: 'personal',
-    href: '/settings?section=notifications',
-    title: 'admin.notifications',
-    lead: 'settingsUi.leads.notifications',
-    keywords: 'settingsUi.keywords.notifications',
-    admin: false,
-  },
-  {
-    id: 'tutorials',
-    group: 'personal',
-    href: '/settings?section=tutorials',
-    title: 'settingsUi.pages.tutorials',
-    lead: 'settingsUi.leads.tutorials',
-    keywords: 'settingsUi.keywords.tutorials',
-    admin: false,
-  },
-  {
-    id: 'members',
-    group: 'workspace',
-    href: '/settings/team',
-    title: 'admin.members',
-    lead: 'admin.teamHelp',
-    keywords: 'settingsUi.keywords.members',
-    admin: true,
-  },
-  {
-    id: 'workspace',
-    group: 'workspace',
-    href: '/settings?section=workspace',
-    title: 'admin.storage',
-    lead: 'settingsUi.leads.storage',
-    keywords: 'settingsUi.keywords.workspace',
-    admin: true,
-  },
-  {
-    id: 'classifications',
-    group: 'workspace',
-    href: '/settings?section=classifications',
-    title: 'admin.classifications',
-    lead: 'catalogs.scope',
-    keywords: 'settingsUi.keywords.classifications',
-    admin: true,
-  },
-  {
-    id: 'providers',
-    group: 'instance',
-    href: '/settings?section=providers',
-    title: 'settingsUi.pages.access',
-    lead: 'settingsUi.leads.access',
-    keywords: 'settingsUi.keywords.providers',
-    admin: true,
-  },
-  {
-    id: 'registration',
-    group: 'instance',
-    href: '/settings?section=registration',
-    title: 'admin.registration',
-    lead: 'settingsUi.leads.registration',
-    keywords: 'settingsUi.keywords.registration',
-    admin: true,
-  },
-  {
-    id: 'backups',
-    group: 'instance',
-    href: '/settings?section=backups',
-    title: 'backups.title',
-    lead: 'settingsUi.leads.backups',
-    keywords: 'settingsUi.keywords.backups',
-    admin: true,
-  },
-  {
-    id: 'server',
-    group: 'instance',
-    href: '/settings?section=server',
-    title: 'settingsUi.pages.server',
-    lead: 'settingsUi.leads.server',
-    keywords: 'settingsUi.keywords.server',
-    admin: true,
-  },
-  {
-    id: 'updates',
-    group: 'instance',
-    href: '/settings?section=updates',
-    title: 'settingsUi.pages.updates',
-    lead: 'settingsUi.leads.updates',
-    keywords: 'settingsUi.keywords.updates',
-    admin: true,
-  },
-  {
-    id: 'instance',
-    group: 'instance',
-    href: '/settings?section=instance',
-    title: 'settingsUi.pages.about',
-    lead: 'settingsUi.leads.about',
-    keywords: 'settingsUi.keywords.instance',
-    admin: true,
-  },
+  page('account', 'personal', 'user', 'admin.account'),
+  page('preferences', 'personal', 'sun', 'settingsUi.pages.appearance'),
+  page('board', 'personal', 'board', 'settingsUi.pages.board'),
+  page('modules', 'personal', 'layers', 'settingsUi.pages.modules'),
+  page('notifications', 'personal', 'bell', 'admin.notifications'),
+  page('apps', 'personal', 'link', 'settingsUi.pages.apps'),
+  page('tutorials', 'personal', 'play', 'settingsUi.pages.help'),
+  page('members', 'workspace', 'people', 'admin.members', 'admin.teamHelp'),
+  page('access', 'workspace', 'lock', 'settingsUi.pages.access'),
+  page('classifications', 'workspace', 'tag', 'admin.classifications', 'catalogs.scope'),
+  page('reports', 'workspace', 'report', 'settingsUi.pages.reports'),
+  page('instance', 'server', 'home', 'settingsUi.pages.general'),
+  page('workspace', 'server', 'archive', 'admin.storage', 'settingsUi.leads.storage'),
+  page('backups', 'server', 'clock', 'backups.title'),
+  page('server', 'server', 'tiles', 'settingsUi.pages.server'),
+  page('updates', 'server', 'upload', 'settingsUi.pages.updates'),
 ];
 
 export const GROUP_TITLES: Record<SettingsGroup, string> = {
   personal: 'admin.personal',
-  workspace: 'admin.workspace',
-  instance: 'settingsUi.groups.instance',
+  workspace: 'settingsUi.groups.workspace',
+  server: 'settingsUi.groups.server',
+};
+
+/** Pages that left in the redesign (decision 0124) open the page that took their content. */
+export const MOVED_SECTIONS: Record<string, string> = {
+  toolbar: 'board',
+  providers: 'access',
+  registration: 'access',
 };
 
 const ACCOUNT = SETTINGS_PAGES[0] as SettingsPage;
 
 /** Shared identity for the page heading, the navigation and the global settings breadcrumb. */
 export function settingsSection(pathname: string, search: string): SettingsPage {
-  const section =
-    pathname === '/settings/team' ? 'members' : new URLSearchParams(search).get('section');
-  return (
-    SETTINGS_PAGES.find(
-      (p) => p.id === section && (p.id === 'members') === (pathname === '/settings/team'),
-    ) ?? ACCOUNT
-  );
+  const team = pathname === '/settings/team';
+  const asked = team ? 'members' : new URLSearchParams(search).get('section');
+  const section = (asked && MOVED_SECTIONS[asked]) ?? asked;
+  return SETTINGS_PAGES.find((p) => p.id === section && (p.id === 'members') === team) ?? ACCOUNT;
 }
 
 /** Settings open as a window over the page underneath; these are the URLs that open it. */
@@ -177,7 +87,7 @@ export function isSettingsPath(pathname: string): boolean {
 
 /** Pages whose changes save themselves; the window header reports their progress. */
 export function autosaves(id: string): boolean {
-  return id !== 'workspace' && id !== 'providers' && id !== 'classifications';
+  return id !== 'classifications';
 }
 
 /** Plain `/settings` is the phone settings home; every page has an explicit section. */
