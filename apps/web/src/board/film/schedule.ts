@@ -76,21 +76,22 @@ export function whileVisible(refresh: () => void): () => void {
   };
 }
 
-/** Two blocks that call the same people at the same time, for the note under "N conflicts". */
-export interface ConflictPair {
-  /** The people in both blocks, as written in the first one. */
+/** Blocks that call the same people at the same time, for the note under "N conflicts". */
+export interface ConflictGroup {
+  /** The people in all of them, as first written. */
   names: string[];
-  /** When they start to overlap, in minutes from the date of `day`. */
+  /** When they all overlap, in minutes from the date of `day`. */
   at: number;
-  a: ScheduleBlock;
-  b: ScheduleBlock;
+  /** Two or more, in time order. */
+  blocks: ScheduleBlock[];
 }
 
 /**
- * The double bookings that touch `day`, in time order: the same pairs `castConflicts` marks, on
- * every day given (a night shoot may run into the next morning).
+ * The double bookings that touch `day`, in time order: the blocks `castConflicts` marks, on every
+ * day given (a night shoot may run into the next morning). A person's blocks that all overlap make
+ * one group, and the people booked in the same blocks share it.
  */
-export function conflictPairs(days: readonly ShootingDayInput[], day: string): ConflictPair[] {
+export function conflictGroups(days: readonly ShootingDayInput[], day: string): ConflictGroup[] {
   const base = Date.parse(`${day}T00:00:00Z`) / 60000;
   const slots = days.flatMap((d) => {
     const date = Date.parse(`${d.date}T00:00:00Z`) / 60000;
@@ -101,42 +102,63 @@ export function conflictPairs(days: readonly ShootingDayInput[], day: string): C
       end: date + slot.end,
     }));
   });
+  type Slot = (typeof slots)[number];
   const key = (name: string) => name.trim().toLocaleLowerCase();
-  const pairs: ConflictPair[] = [];
-  for (const [i, a] of slots.entries()) {
-    const cast = new Set(a.block.cast.map(key));
-    for (const b of slots.slice(i + 1)) {
-      if (!(a.mine || b.mine) || !(a.start < b.end && b.start < a.end)) continue;
-      const shared = new Set(b.block.cast.map(key));
-      const names = a.block.cast.filter((name) => cast.has(key(name)) && shared.has(key(name)));
-      if (!names.length) continue;
-      const [first, second] = a.start <= b.start ? [a, b] : [b, a];
-      pairs.push({
-        names: [...new Set(names)],
-        at: second.start - base,
-        a: first.block,
-        b: second.block,
-      });
+  const people = new Map<string, { name: string; slots: Slot[] }>();
+  for (const slot of slots) {
+    for (const name of slot.block.cast) {
+      const person = people.get(key(name)) ?? { name, slots: [] };
+      people.set(key(name), person);
+      if (!person.slots.includes(slot)) person.slots.push(slot);
     }
   }
-  return pairs.sort((x, y) => x.at - y.at);
+  const groups = new Map<string, ConflictGroup>();
+  for (const { name, slots: booked } of people.values()) {
+    // At each block's start: it and the person's blocks already running that overlap it.
+    const sets = booked
+      .map((s) =>
+        booked.filter(
+          (o) => o === s || (o.start <= s.start && o.start < s.end && s.start < o.end),
+        ),
+      )
+      .filter((set) => set.length > 1 && set.some((o) => o.mine));
+    // Only the largest: three blocks at once are one line, not three pairs.
+    const largest = sets.filter(
+      (set, i) =>
+        !sets.some(
+          (other, j) =>
+            set.every((o) => other.includes(o)) && (other.length > set.length || j < i),
+        ),
+    );
+    for (const set of largest) {
+      const ordered = [...set].sort((x, y) => x.start - y.start);
+      const at = Math.max(...set.map((o) => o.start)) - base;
+      const id = `${at} ${ordered.map((o) => o.block.id).join(' ')}`;
+      const group = groups.get(id) ?? { names: [], at, blocks: ordered.map((o) => o.block) };
+      groups.set(id, group);
+      group.names.push(name);
+    }
+  }
+  return [...groups.values()].sort((x, y) => x.at - y.at);
 }
 
-/** One line per double booking: "Elena è in due blocchi alle 14:00: «A» e «B»." */
+/** One line per double booking: "Elena è in tre blocchi alle 14:00: «A», «B» e «C»." */
 export function conflictNotes(
-  pairs: readonly ConflictPair[],
+  groups: readonly ConflictGroup[],
   title: (block: ScheduleBlock) => string,
   t: (key: string, options?: Record<string, unknown>) => string,
   language: string,
 ): string[] {
   const list = new Intl.ListFormat(language, { type: 'conjunction' });
-  return pairs.map((pair) =>
-    t('schedule.conflictNote', {
-      count: pair.names.length,
-      names: list.format(pair.names),
-      time: clockLabel(pair.at),
-      a: title(pair.a),
-      b: title(pair.b),
+  return groups.map((group) =>
+    t(group.blocks.length > 2 ? 'schedule.conflictNoteMany' : 'schedule.conflictNote', {
+      count: group.names.length,
+      names: list.format(group.names),
+      time: clockLabel(group.at),
+      blocks: group.blocks.length,
+      titles: list.format(
+        group.blocks.map((block) => t('schedule.conflictTitle', { title: title(block) })),
+      ),
     }),
   );
 }

@@ -217,7 +217,9 @@ test('the schedule calendar matches its mockup on the Production board', async (
   // Every state is captured before the first check, so a failing run still shows them.
   await capture(page, 'week-1280');
   const thursday = schedule.locator('.schedule__head', { hasText: 'G3' });
-  await thursday.getByRole('button', { name: '2 conflitti', exact: true }).click();
+  await thursday
+    .getByRole('button', { name: '2 conflitti, giovedì 4 marzo · Giorno 3', exact: true })
+    .click();
   await capture(page, 'week-1280-conflicts');
   await page.keyboard.press('Escape');
   const density = schedule.getByRole('group', { name: 'Densità', exact: true });
@@ -273,7 +275,7 @@ test('the schedule calendar matches its mockup on the Production board', async (
   await capture(small.page, 'phone-390-thursday');
   await small.page
     .locator('.schedule__summary-card')
-    .getByRole('button', { name: '2 conflitti', exact: true })
+    .getByRole('button', { name: '2 conflitti, giovedì 4 marzo · Giorno 3', exact: true })
     .click();
   await capture(small.page, 'phone-390-conflicts');
 
@@ -321,7 +323,7 @@ test('the schedule calendar matches its mockup on the Production board', async (
   // "2 conflitti" names who is double-booked and marks the two blocks; Escape closes it.
   const tag = schedule
     .locator('.schedule__head', { hasText: 'G3' })
-    .getByRole('button', { name: '2 conflitti', exact: true });
+    .getByRole('button', { name: '2 conflitti, giovedì 4 marzo · Giorno 3', exact: true });
   await tag.click();
   await expect(tag).toHaveAttribute('aria-expanded', 'true');
   await expect(schedule.locator('.schedule__conflict-note')).toHaveText(

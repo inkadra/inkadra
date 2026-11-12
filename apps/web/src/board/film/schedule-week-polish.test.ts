@@ -3,7 +3,7 @@
 import type { ScheduleBlock, ShootingDayInput } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import { blockBox, DENSITY, sideOpen } from './calendar.ts';
-import { conflictNotes, conflictPairs } from './schedule.ts';
+import { castConflicts, conflictGroups, conflictNotes } from './schedule.ts';
 
 const block = (title: string, duration: number, cast: string[], start: string | null = null) =>
   ({
@@ -47,7 +47,9 @@ describe('the month and queue column', () => {
 
 describe('the conflict note', () => {
   const t = (key: string, o?: Record<string, unknown>) =>
-    `${key}:${o?.count}:${o?.names}:${o?.time}:${o?.a}:${o?.b}`;
+    key === 'schedule.conflictTitle'
+      ? `«${o?.title}»`
+      : `${key}:${o?.count}:${o?.names}:${o?.time}:${o?.blocks}:${o?.titles}`;
   const title = (b: ScheduleBlock) => b.title;
 
   it('names who is double-booked, when, and the two blocks, one line each', () => {
@@ -57,10 +59,39 @@ describe('the conflict note', () => {
       block('Elena al banco', 70, ['elena', 'Marco'], '14:00'),
       block('Esterno', 60, ['Marco'], '14:50'),
     ]);
-    const lines = conflictNotes(conflictPairs([thursday], '2027-03-04'), title, t, 'it');
+    const lines = conflictNotes(conflictGroups([thursday], '2027-03-04'), title, t, 'it');
     expect(lines).toEqual([
-      'schedule.conflictNote:2:Elena e Marco:14:00:Inserto tazzina:Elena al banco',
-      'schedule.conflictNote:1:Marco:14:50:Elena al banco:Esterno',
+      'schedule.conflictNote:2:Elena e Marco:14:00:2:«Inserto tazzina» e «Elena al banco»',
+      'schedule.conflictNote:1:Marco:14:50:2:«Elena al banco» e «Esterno»',
+    ]);
+  });
+
+  it('gives three blocks at once one line naming them all', () => {
+    const thursday = day('2027-03-04', [
+      block('Allestimento', 360, []),
+      block('A', 60, ['Elena'], '14:00'),
+      block('B', 60, ['Elena'], '14:00'),
+      block('C', 60, ['Elena'], '14:30'),
+    ]);
+    const groups = conflictGroups([thursday], '2027-03-04');
+    expect(conflictNotes(groups, title, t, 'it')).toEqual([
+      'schedule.conflictNoteMany:1:Elena:14:30:3:«A», «B» e «C»',
+    ]);
+    // The note marks the same blocks as the highlight and the count.
+    expect(new Set(groups.flatMap((g) => g.blocks.map((b) => b.id)))).toEqual(
+      castConflicts([thursday]),
+    );
+  });
+
+  it('keeps two people in different blocks on lines of their own', () => {
+    const thursday = day('2027-03-04', [
+      block('A', 60, ['Elena', 'Marco'], '14:00'),
+      block('B', 60, ['Elena'], '14:00'),
+      block('C', 60, ['Marco'], '14:30'),
+    ]);
+    expect(conflictNotes(conflictGroups([thursday], '2027-03-04'), title, t, 'it')).toEqual([
+      'schedule.conflictNote:1:Elena:14:00:2:«A» e «B»',
+      'schedule.conflictNote:1:Marco:14:30:2:«A» e «C»',
     ]);
   });
 
@@ -68,7 +99,7 @@ describe('the conflict note', () => {
     const night = day('2027-03-03', [block('Notte', 60, ['Elena'], '23:30')]);
     const morning = { ...day('2027-03-04', [block('Alba', 60, ['Elena'])]), callTime: '00:00' };
     const other = day('2027-03-05', [block('Altro', 60, ['Elena'])]);
-    const pairs = conflictPairs([night, morning, other], '2027-03-04');
-    expect(pairs.map((p) => [p.a.id, p.b.id, p.at])).toEqual([['Notte', 'Alba', 0]]);
+    const groups = conflictGroups([night, morning, other], '2027-03-04');
+    expect(groups.map((g) => [g.blocks.map((b) => b.id), g.at])).toEqual([[['Notte', 'Alba'], 0]]);
   });
 });

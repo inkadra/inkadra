@@ -1158,9 +1158,11 @@ export function ScheduleCalendar({
           <div className="schedule__gutter" aria-hidden="true">
             {hours.map((minute) => (
               <span key={minute} className="schedule__hour" style={{ top: minute * scale }}>
-                {minute > 0 && minute < rangeEnd
-                  ? `${clockLabel(minute % 1440)}${minute === 1440 ? ' (+1)' : ''}`
-                  : ''}
+                {minute > 0 && minute < rangeEnd && clockLabel(minute % 1440)}
+                {/* Under the time, so "(+1)" fits the gutter in either time format. */}
+                {minute > 0 && minute < rangeEnd && minute >= 1440 && (
+                  <span className="schedule__hour-next">(+1)</span>
+                )}
               </span>
             ))}
           </div>
@@ -1665,7 +1667,7 @@ function NowLine({ minute, scale }: { minute: number; scale: number }) {
   const { t } = useTranslation();
   return (
     <span className="schedule__now" style={{ top: minute * scale }}>
-      <span className="ink-sr-only">{t('schedule.now', { time: clockLabel(minute % 1440) })}</span>
+      <span className="ink-sr-only">{t('schedule.now', { time: clockLabel(minute) })}</span>
     </span>
   );
 }
@@ -1679,11 +1681,14 @@ export const conflictNoteId = (dayId: string) => `schedule-conflicts-${dayId}`;
  */
 export function ConflictTag({
   dayId,
+  day,
   count,
   open,
   onToggle,
 }: {
   dayId: string;
+  /** The day's name, so each day's button has its own accessible name. */
+  day: string;
   count: number;
   open: boolean;
   onToggle: (open: boolean) => void;
@@ -1705,6 +1710,7 @@ export function ConflictTag({
       ref={ref}
       type="button"
       className="schedule__tag is-danger schedule__conflict-tag"
+      aria-label={`${t('schedule.conflictTag', { count })}, ${day}`}
       aria-expanded={open}
       aria-controls={open ? conflictNoteId(dayId) : undefined}
       onClick={() => onToggle(!open)}
@@ -1799,6 +1805,7 @@ function DayHead({
       : '';
   // The week leaves sunrise and sunset to the dashed line and to this tooltip (option 4).
   const sunInHead = view === 'day' && sunText;
+  const dayLong = part({ weekday: 'long', day: 'numeric', month: 'long' });
   return (
     // The whole heading is one button underneath; "N conflicts" is a second one above it.
     <div
@@ -1809,7 +1816,7 @@ function DayHead({
         type="button"
         className="schedule__head-hit"
         aria-label={[
-          part({ weekday: 'long', day: 'numeric', month: 'long' }),
+          dayLong,
           entry ? t('schedule.dayNumber', { n: entry.index + 1 }) : t('schedule.freeDay'),
           view === 'week' && entry ? t('schedule.openDay') : '',
         ]
@@ -1841,7 +1848,13 @@ function DayHead({
           </span>
         )}
         {entry && conflicts > 0 && (
-          <ConflictTag dayId={entry.day.id} count={conflicts} open={hot} onToggle={onHot} />
+          <ConflictTag
+            dayId={entry.day.id}
+            day={`${dayLong} · ${t('schedule.dayNumber', { n: entry.index + 1 })}`}
+            count={conflicts}
+            open={hot}
+            onToggle={onHot}
+          />
         )}
         {entry?.stale && (
           <span className="schedule__tag is-danger" aria-hidden="true">
