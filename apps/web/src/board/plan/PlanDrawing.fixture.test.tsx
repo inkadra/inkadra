@@ -124,6 +124,26 @@ describe('a set plan on the board', () => {
       });
     });
   });
+
+  it('writes the watts of a label in the app language, not the browser one', async () => {
+    // The browser writes numbers in English (the spy above); the app is in Italian.
+    const italian = i18next.createInstance();
+    await italian.init({ lng: 'it', resources: { it: { translation: en } } });
+    const light = { id: 'keyAAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 2048, y: 2048 };
+    const plan = { ...PLAN, icons: [{ ...light, label: 'Key', watts: 1200 }] } as PlanElement;
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    await act(async () =>
+      root.render(
+        <I18nextProvider i18n={italian}>
+          <PlanDrawing plan={plan} extent />
+        </I18nextProvider>,
+      ),
+    );
+    const text = host.textContent;
+    await act(async () => root.unmount());
+    expect(text).toContain('Key · 1,2K');
+  });
 });
 
 const GEOMETRY = new Set(['x', 'y', 'x1', 'y1', 'x2', 'y2', 'd', 'width', 'height', 'transform']);

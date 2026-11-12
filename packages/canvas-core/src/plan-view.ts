@@ -252,7 +252,9 @@ export function itemDrawnBox(item: PlanItem, sensor?: PlanElement['sensor']): Re
   }
   const icon = item as PlanIcon;
   const boxes: Rect[] = [iconBounds(icon)];
-  const label = iconLabel(icon);
+  // Only the label's length counts here, the same in every app language ("1.2K", "1,2K"):
+  // shortcut: fixed 'en', pass the app's locale if a language writes numbers longer.
+  const label = iconLabel(icon, 'en');
   if (label) {
     const at = labelAnchor(icon);
     // Text about 0.6 of its size wide per letter; the halo adds a few units round it.
