@@ -7,6 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./constants": "./src/constants.ts",
+    "./notification-words/it": "./src/notification-words-it.ts",
+    "./notification-words/es": "./src/notification-words-es.ts",
+    "./notification-words/de": "./src/notification-words-de.ts",
+    "./notification-words/fr": "./src/notification-words-fr.ts",
+    "./notification-words/pt": "./src/notification-words-pt.ts",
     "./shot-words/it": "./src/shot-words-it.ts",
     "./shot-words/es": "./src/shot-words-es.ts",
     "./shot-words/de": "./src/shot-words-de.ts",
