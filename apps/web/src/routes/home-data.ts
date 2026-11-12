@@ -21,6 +21,8 @@ export type Loadable<T> =
 export const RECENT_BOARDS = 4;
 export const ACTIVITY_ITEMS = 5;
 export const HOME_PROJECTS = 5;
+/** Rows of the Home's task list; See all opens the rest in the Inbox. */
+export const HOME_TASKS = 6;
 const DAY_MS = 86_400_000;
 
 /** The calendar date where the person is: shooting days have no timezone (decision 0022). */

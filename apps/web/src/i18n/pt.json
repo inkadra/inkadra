@@ -140,7 +140,9 @@
       "shootingAt": "filmagem hoje em {{location}}, chamada às {{time}}",
       "shooting": "filmagem hoje, chamada às {{time}}",
       "unread_one": "{{count}} notificação não lida",
-      "unread_other": "{{count}} notificações não lidas"
+      "unread_other": "{{count}} notificações não lidas",
+      "dueWeek_one": "{{count}} tarefa que vence esta semana",
+      "dueWeek_other": "{{count}} tarefas que vencem esta semana"
     },
     "today": {
       "title": "Hoje",
@@ -152,7 +154,7 @@
       "moreDays_other": "+{{count}} diárias hoje",
       "fewerDays": "Mostrar menos"
     },
-    "recentBoards": "Recentes",
+    "recentBoards": "Retomar",
     "continue": "Continuar",
     "recentBoardsHint": "pela última edição",
     "noRecentBoards": "Nenhum quadro ainda. Crie um.",
@@ -162,7 +164,7 @@
     "activity": {
       "title": "Atividade",
       "hint": "últimas 24 horas",
-      "openInbox": "Abrir caixa de entrada →",
+      "openInbox": "Abrir caixa de entrada",
       "empty": "Nenhuma atividade nas últimas 24 horas."
     },
     "loadError": "Não foi possível carregar esta seção. Recarregue a página para tentar de novo.",
@@ -181,11 +183,12 @@
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} itens"
     },
-    "allProjects": "Todos os projetos →",
+    "allProjects": "Todos os projetos",
     "unsorted": {
       "waiting_one": "{{count}} item por organizar",
       "waiting_other": "{{count}} itens por organizar"
-    }
+    },
+    "seeAll": "Ver todas"
   },
   "project": {
     "dialogTitle": "Novo projeto",
@@ -2885,7 +2888,8 @@
       "all": "Tudo",
       "mentions": "Menções",
       "approvals": "Aprovações",
-      "assigned": "Atribuídos a mim"
+      "assigned": "Atribuídos a mim",
+      "tasks": "Tarefas"
     },
     "reviewStatus": "Revisão",
     "filter": "Filtro da caixa de entrada",
@@ -2915,7 +2919,14 @@
     "previewUnavailable": "Abra o quadro para ver este card.",
     "swipeRead": "Lida",
     "swipeResolve": "Resolver",
-    "resolvedDone": "Conversa resolvida"
+    "resolvedDone": "Conversa resolvida",
+    "reports_one": "<b>{{count}} relato pelo app</b> recebido",
+    "reports_other": "<b>{{count}} relatos pelo app</b> recebidos",
+    "showAll": "Mostrar todos",
+    "showFewer": "Mostrar menos",
+    "messages_one": "{{count}} mensagem",
+    "messages_other": "{{count}} mensagens",
+    "frameTitle": "Frame {{label}}"
   },
   "settings": {
     "sectionLead": {
@@ -3484,7 +3495,7 @@
     "breakdown": "{{changes}} com alterações · {{pending}} pendentes"
   },
   "projectsPage": {
-    "counts": "Ativos: {{active}} · Arquivados: {{archived}}",
+    "counts": "Ativos: {{active}}, arquivados: {{archived}}.",
     "search": "Buscar projetos",
     "status": "Status",
     "all": "Todos",
@@ -3510,7 +3521,6 @@
     "unpin": "Desafixar",
     "archive": "Arquivar",
     "unarchive": "Restaurar",
-    "noDates": "Datas a definir",
     "boards_one": "{{count}} quadro",
     "boards_other": "{{count}} quadros",
     "pinned": "Fixado",
@@ -3518,7 +3528,8 @@
     "details": "Tipo e fuso horário",
     "timeZone": "Fuso horário",
     "timeZoneAuto": "Automático (fuso do dispositivo: {{zone}})",
-    "timeZoneHint": "O nascer e o pôr do sol da folha de chamada usam este fuso."
+    "timeZoneHint": "O nascer e o pôr do sol da folha de chamada usam este fuso.",
+    "storageShort": "{{bytes}} de arquivos originais nesta instância."
   },
   "projectDelete": {
     "menu": "Excluir projeto…",
@@ -4644,7 +4655,14 @@
       "today": "hoje",
       "tomorrow": "amanhã"
     },
-    "hint": "Digite @ para atribuir · clique na data para alterá-la"
+    "hint": "Digite @ para atribuir · clique na data para alterá-la",
+    "open_one": "{{count}} aberta",
+    "open_other": "{{count}} abertas",
+    "due": {
+      "today": "hoje",
+      "by": "até {{date}}",
+      "late": "atrasada desde {{date}}"
+    }
   },
   "calendar": {
     "title": "Calendário",
@@ -5081,8 +5099,8 @@
             "text": "A atividade dos seus projetos, do mais recente."
           },
           "2": {
-            "title": "Novo quadro",
-            "text": "Crie um em qualquer dos seus projetos."
+            "title": "Novo projeto",
+            "text": "Os quadros nascem dentro de um projeto: crie-o aqui."
           }
         }
       },

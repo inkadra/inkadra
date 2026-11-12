@@ -140,7 +140,9 @@
       "shootingAt": "tournage aujourd’hui à {{location}}, convocation à {{time}}",
       "shooting": "tournage aujourd’hui, convocation à {{time}}",
       "unread_one": "{{count}} notification non lue",
-      "unread_other": "{{count}} notifications non lues"
+      "unread_other": "{{count}} notifications non lues",
+      "dueWeek_one": "{{count}} tâche à rendre cette semaine",
+      "dueWeek_other": "{{count}} tâches à rendre cette semaine"
     },
     "today": {
       "title": "Aujourd’hui",
@@ -152,7 +154,7 @@
       "moreDays_other": "+{{count}} autres journées aujourd’hui",
       "fewerDays": "Afficher moins"
     },
-    "recentBoards": "Récents",
+    "recentBoards": "Reprendre",
     "continue": "Continuer",
     "recentBoardsHint": "par dernière modification",
     "noRecentBoards": "Aucun tableau pour l’instant. Créez-en un.",
@@ -162,7 +164,7 @@
     "activity": {
       "title": "Activité",
       "hint": "dernières 24 heures",
-      "openInbox": "Ouvrir la réception →",
+      "openInbox": "Ouvrir la réception",
       "empty": "Aucune activité ces dernières 24 heures."
     },
     "loadError": "Impossible de charger cette section. Rechargez la page pour réessayer.",
@@ -181,11 +183,12 @@
       "cards_one": "{{count}} élément",
       "cards_other": "{{count}} éléments"
     },
-    "allProjects": "Tous les projets →",
+    "allProjects": "Tous les projets",
     "unsorted": {
       "waiting_one": "{{count}} élément à ranger",
       "waiting_other": "{{count}} éléments à ranger"
-    }
+    },
+    "seeAll": "Tout voir"
   },
   "project": {
     "dialogTitle": "Nouveau projet",
@@ -2885,7 +2888,8 @@
       "all": "Tout",
       "mentions": "Mentions",
       "approvals": "Approbations",
-      "assigned": "Attribués à moi"
+      "assigned": "Attribués à moi",
+      "tasks": "Tâches"
     },
     "reviewStatus": "Révision",
     "filter": "Filtre de la réception",
@@ -2915,7 +2919,14 @@
     "previewUnavailable": "Ouvrez le tableau pour voir cette carte.",
     "swipeRead": "Lue",
     "swipeResolve": "Résoudre",
-    "resolvedDone": "Discussion résolue"
+    "resolvedDone": "Discussion résolue",
+    "reports_one": "<b>{{count}} signalement dans l’application</b> reçu",
+    "reports_other": "<b>{{count}} signalements dans l’application</b> reçus",
+    "showAll": "Tout afficher",
+    "showFewer": "Afficher moins",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages",
+    "frameTitle": "Plan {{label}}"
   },
   "settings": {
     "sectionLead": {
@@ -3484,7 +3495,7 @@
     "breakdown": "{{changes}} avec modifications · {{pending}} en attente"
   },
   "projectsPage": {
-    "counts": "Actifs : {{active}} · Archivés : {{archived}}",
+    "counts": "Actifs : {{active}}, archivés : {{archived}}.",
     "search": "Rechercher des projets",
     "status": "État",
     "all": "Tous",
@@ -3510,7 +3521,6 @@
     "unpin": "Désépingler",
     "archive": "Archiver",
     "unarchive": "Restaurer",
-    "noDates": "Dates à définir",
     "boards_one": "{{count}} tableau",
     "boards_other": "{{count}} tableaux",
     "pinned": "Épinglé",
@@ -3518,7 +3528,8 @@
     "details": "Type et fuseau horaire",
     "timeZone": "Fuseau horaire",
     "timeZoneAuto": "Automatique (fuseau de l’appareil : {{zone}})",
-    "timeZoneHint": "Le lever et le coucher du soleil de la feuille de service utilisent ce fuseau."
+    "timeZoneHint": "Le lever et le coucher du soleil de la feuille de service utilisent ce fuseau.",
+    "storageShort": "{{bytes}} de fichiers originaux sur cette instance."
   },
   "projectDelete": {
     "menu": "Supprimer le projet…",
@@ -4644,7 +4655,14 @@
       "today": "aujourd’hui",
       "tomorrow": "demain"
     },
-    "hint": "Saisissez @ pour attribuer · cliquez sur la date pour la changer"
+    "hint": "Saisissez @ pour attribuer · cliquez sur la date pour la changer",
+    "open_one": "{{count}} ouverte",
+    "open_other": "{{count}} ouvertes",
+    "due": {
+      "today": "aujourd’hui",
+      "by": "pour {{date}}",
+      "late": "en retard depuis le {{date}}"
+    }
   },
   "calendar": {
     "title": "Calendrier",
@@ -5081,8 +5099,8 @@
             "text": "L’activité de vos projets, la plus récente d’abord."
           },
           "2": {
-            "title": "Nouveau tableau",
-            "text": "Créez-en un dans l’un de vos projets."
+            "title": "Nouveau projet",
+            "text": "Les tableaux naissent dans un projet : créez-le ici."
           }
         }
       },

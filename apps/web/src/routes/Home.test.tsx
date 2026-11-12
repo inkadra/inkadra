@@ -180,24 +180,22 @@ it('shows today’s shooting day, recent boards and the last day of activity', a
   await render();
   const text = host.textContent ?? '';
   expect(api.get).toHaveBeenCalledWith('/me/shooting-days?from=2026-10-26&to=2026-10-26');
-  expect(text).toContain('home.summary.shootingAt {"location":"Central station","time":"18:30"}');
+  // The first part of the sentence starts with a capital letter.
+  expect(text).toContain('Home.summary.shootingAt {"location":"Central station","time":"18:30"}');
   expect(text).toContain('home.summary.unread {"count":2}');
   const today = host.querySelector('[aria-labelledby="home-today"]');
   expect(today?.textContent).toContain('18:30');
   expect(today?.querySelector('a')?.getAttribute('href')).toBe('/p/p1/b/plan?view=schedule');
   const board = host.querySelector<HTMLAnchorElement>('.home__boards a');
   expect(board?.getAttribute('href')).toBe('/p/p1/b/storyboard1');
-  // Project metadata describes the destination; it must not name a different link.
-  const label = document.getElementById(board?.getAttribute('aria-labelledby') ?? '');
+  // The link is named by the board; its kind and project describe it, never name it.
   const description = (board?.getAttribute('aria-describedby') ?? '')
     .split(' ')
     .map((id) => document.getElementById(id)?.textContent)
     .join(' ');
-  expect(label?.textContent).toBe('Scene 4');
+  expect(board?.textContent).toBe('Scene 4');
   expect(description).toContain('board.types.storyboard');
   expect(description).toContain('Last run');
-  expect(board?.textContent).toContain('board.types.storyboard');
-  expect(board?.textContent).toContain('Scene 4');
   const activity = host.querySelectorAll('.home__activity li');
   expect(activity).toHaveLength(1);
   expect(activity[0]?.textContent).toContain('Andrea Fo');
@@ -264,9 +262,10 @@ it('shows root boards among the four recent boards without guessing kinds from t
     ),
   });
   await render();
-  const cards = host.querySelectorAll('.home__boards > a');
+  const cards = host.querySelectorAll('.home__boards > .ink-cover-card');
   expect(cards).toHaveLength(4);
-  expect(cards[0]?.getAttribute('href')).toBe('/p/p1');
+  expect(cards[0]?.classList).toContain('home__card--hero');
+  expect(cards[0]?.querySelector('a')?.getAttribute('href')).toBe('/p/p1');
   expect(cards[0]?.querySelector('.home__kind')?.textContent).toBe('board.types.board');
   expect(cards[1]?.querySelector('.home__kind')?.getAttribute('data-kind')).toBe('storyboard');
   expect(host.querySelector('.home__preview')?.getAttribute('data-tint')).toBe('blue');

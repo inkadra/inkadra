@@ -139,8 +139,10 @@
     "summary": {
       "shootingAt": "oggi si gira a {{location}}, convocazione alle {{time}}",
       "shooting": "oggi si gira, convocazione alle {{time}}",
-      "unread_one": "{{count}} notifica non letta",
-      "unread_other": "{{count}} notifiche non lette"
+      "unread_one": "{{count}} notifica da leggere",
+      "unread_other": "{{count}} notifiche da leggere",
+      "dueWeek_one": "{{count}} compito in scadenza questa settimana",
+      "dueWeek_other": "{{count}} compiti in scadenza questa settimana"
     },
     "today": {
       "title": "Oggi",
@@ -152,7 +154,7 @@
       "moreDays_other": "+{{count}} altre giornate oggi",
       "fewerDays": "Mostra meno"
     },
-    "recentBoards": "Recenti",
+    "recentBoards": "Riprendi",
     "continue": "Continua",
     "recentBoardsHint": "ordinate per ultima modifica",
     "noRecentBoards": "Ancora nessuna board. Creane una.",
@@ -162,7 +164,7 @@
     "activity": {
       "title": "Attività",
       "hint": "ultime 24 ore",
-      "openInbox": "Apri inbox →",
+      "openInbox": "Apri inbox",
       "empty": "Nessuna attività nelle ultime 24 ore."
     },
     "loadError": "Non riesco a caricare questa sezione. Ricarica la pagina per riprovare.",
@@ -181,11 +183,12 @@
       "cards_one": "{{count}} elemento",
       "cards_other": "{{count}} elementi"
     },
-    "allProjects": "Tutti i progetti →",
+    "allProjects": "Tutti i progetti",
     "unsorted": {
       "waiting_one": "{{count}} elemento da sistemare",
       "waiting_other": "{{count}} elementi da sistemare"
-    }
+    },
+    "seeAll": "Vedi tutti"
   },
   "project": {
     "dialogTitle": "Nuovo progetto",
@@ -2885,7 +2888,8 @@
       "all": "Tutto",
       "mentions": "Menzioni",
       "approvals": "Approvazioni",
-      "assigned": "Assegnati a me"
+      "assigned": "Assegnati a me",
+      "tasks": "Compiti"
     },
     "reviewStatus": "Revisione",
     "filter": "Filtro inbox",
@@ -2915,7 +2919,14 @@
     "previewUnavailable": "Apri la board per vedere questa card.",
     "swipeRead": "Letta",
     "swipeResolve": "Risolvi",
-    "resolvedDone": "Discussione risolta"
+    "resolvedDone": "Discussione risolta",
+    "reports_one": "<b>{{count}} segnalazione in-app</b> ricevuta",
+    "reports_other": "<b>{{count}} segnalazioni in-app</b> ricevute",
+    "showAll": "Mostra tutte",
+    "showFewer": "Mostra meno",
+    "messages_one": "{{count}} messaggio",
+    "messages_other": "{{count}} messaggi",
+    "frameTitle": "Inquadratura {{label}}"
   },
   "settings": {
     "sectionLead": {
@@ -3484,7 +3495,7 @@
     "breakdown": "{{changes}} con modifiche · {{pending}} in attesa"
   },
   "projectsPage": {
-    "counts": "{{active}} attivi · {{archived}} archiviati",
+    "counts": "{{active}} attivi, {{archived}} archiviati.",
     "search": "Cerca progetti",
     "status": "Stato",
     "all": "Tutti",
@@ -3510,7 +3521,6 @@
     "unpin": "Rimuovi dai fissati",
     "archive": "Archivia",
     "unarchive": "Ripristina",
-    "noDates": "Date da definire",
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} board",
     "pinned": "Fissato",
@@ -3518,7 +3528,8 @@
     "details": "Tipo e fuso orario",
     "timeZone": "Fuso orario",
     "timeZoneAuto": "Automatico (fuso del dispositivo: {{zone}})",
-    "timeZoneHint": "Alba e tramonto del foglio di convocazione usano questo fuso."
+    "timeZoneHint": "Alba e tramonto del foglio di convocazione usano questo fuso.",
+    "storageShort": "{{bytes}} di file originali nell’istanza."
   },
   "projectDelete": {
     "menu": "Elimina progetto…",
@@ -4644,7 +4655,14 @@
       "today": "oggi",
       "tomorrow": "domani"
     },
-    "hint": "Scrivi @ per assegnare · clic sulla data per cambiarla"
+    "hint": "Scrivi @ per assegnare · clic sulla data per cambiarla",
+    "open_one": "{{count}} aperto",
+    "open_other": "{{count}} aperti",
+    "due": {
+      "today": "oggi",
+      "by": "entro {{date}}",
+      "late": "scaduto il {{date}}"
+    }
   },
   "calendar": {
     "title": "Calendario",
@@ -5081,8 +5099,8 @@
             "text": "L’attività dei tuoi progetti, dalla più recente."
           },
           "2": {
-            "title": "Nuova board",
-            "text": "Creane una in uno dei tuoi progetti."
+            "title": "Nuovo progetto",
+            "text": "Le board nascono dentro un progetto: crealo da qui."
           }
         }
       },

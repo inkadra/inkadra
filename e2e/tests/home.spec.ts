@@ -60,11 +60,11 @@ test('home shows today’s shooting day and creates empty projects and boards', 
   const todayCard = main.getByRole('region', { name: 'Oggi' });
   await expect(todayCard).toContainText('Stazione Centrale');
   await expect(todayCard).toContainText('18:30');
-  await expect(main.getByText(/oggi si gira a Stazione Centrale/)).toBeVisible();
+  await expect(main.getByText(/Oggi si gira a Stazione Centrale/)).toBeVisible();
   await expect(main.getByRole('region', { name: 'Progetti recenti' })).toHaveCount(0);
   await expect(
     main
-      .getByRole('region', { name: 'Recenti', exact: true })
+      .getByRole('region', { name: 'Riprendi', exact: true })
       .getByRole('link', { name: projectName, exact: true }),
   ).toBeVisible();
   expect(await main.locator('.home__boards > a').count()).toBeLessThanOrEqual(4);
@@ -88,7 +88,11 @@ test('home shows today’s shooting day and creates empty projects and boards', 
   const dialog = page.getByRole('dialog', { name: 'Nuovo progetto' });
   await expect(dialog.locator('[name="projectTemplate"]')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
-  await page.getByRole('button', { name: 'Nuova board', exact: true }).first().click();
+  // Home has no New board button: boards start from a project, or from the search.
+  await expect(main.getByRole('button', { name: 'Nuova board', exact: true })).toHaveCount(0);
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.getByRole('combobox').fill('Nuova board');
+  await page.getByRole('option', { name: /^Nuova board/ }).click();
   const board = page.getByRole('dialog', { name: 'Nuova board' });
   await chooseSelect(board.getByLabel('Progetto'), { label: projectName });
   await expect(board.getByRole('radio')).toHaveCount(0);
@@ -100,7 +104,7 @@ test('home shows today’s shooting day and creates empty projects and boards', 
   await page.goto('/');
   await expect(
     main
-      .getByRole('region', { name: 'Recenti', exact: true })
+      .getByRole('region', { name: 'Riprendi', exact: true })
       .getByRole('link', { name: /Empty board/ }),
   ).toBeVisible();
   await todayCard.locator(`a[href="/p/${project.id}?view=schedule"]`).click();
