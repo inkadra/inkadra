@@ -46,21 +46,25 @@ an off module would change the result of what the person just did, say so once, 
 
 ## Changes that reach the mobile app
 
-The Android app (a separate client, MPL-2.0) uses `packages/*` through a pinned copy of this
-repository and talks to the server's `/api/v1`. It never copies code from `apps/web` or
-`apps/server`. A change inside `apps/web` alone does not reach it. These do:
+The mobile app (MPL-2.0, currently Android) uses `packages/*` through a pinned revision of
+this repository and talks to the server's `/api/v1`. It never copies code from `apps/web` or
+`apps/server` (decisions 0008, 0116). Changes confined to `apps/web` or `apps/server` alone
+do not reach it. These do:
 
-1. **`packages/*`** (`canvas-core`, `shared`, `doc-schema`, `print`): any name added, renamed or
-   removed, and any change of behaviour, including texts in the shared word catalogues.
-2. **Server API**: stays compatible with app versions already installed. Add new behaviour behind
-   a capability in `GET /api/v1/instance/version`; don't change or remove existing fields, error
-   codes or behaviour without agreeing it with the app's coordinator first.
-3. **Board document schema**: only under the existing compatibility rules (strict per-card check,
-   unknown fields kept, minimum writer version).
-4. **Logic moved from `apps/web` into a package** (decision 0116): the app will import it instead
-   of keeping its own version.
+1. **`packages/*`** (`canvas-core`, `doc-schema`, `print`, `shared`, `ui`): any exported name
+   added, renamed or removed, and any change of behaviour, types or shared word catalogues.
+2. **Server API**: stay compatible with installed app versions. Gate new behaviour behind
+   a capability in `GET /api/v1/instance/version` (decisions 0120, 0122); keep changes additive
+   within v1. Never remove or rename fields, error codes or endpoints without a new version or
+   deprecation period (see CONTRIBUTING.md).
+3. **Board document schema**: follow CONTRIBUTING.md and decision 0102. Every schema change
+   bumps `CURRENT_SCHEMA_VERSION` in `packages/doc-schema` with a migration. Lowering `min` in
+   `WRITER_SCHEMAS` requires a proof test in `canvas-core` that older writers lose nothing;
+   keep unknown fields and preserve the strict per-card check.
+4. **Logic moved from `apps/web` into a package** (decision 0116): move shared product logic
+   into an MPL package first so the mobile app imports it rather than duplicating AGPL code.
 
-When your change touches any of these, end your report with one line for the app's coordinator:
+When your change touches any of these, end your PR report with one line for the maintainers:
 `#<PR> merged: <sha>. <what changed> — for the app: <nothing | what to adapt>`, and write
 **BREAKING** when existing callers must change.
 
