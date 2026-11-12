@@ -39,6 +39,10 @@ async function shoot(page: Page, name: string) {
   }
 }
 
+/** Leaves no focus ring from the last key press in a screenshot. */
+const blur = (page: Page) =>
+  page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
 /** The view tabs of the board header, by name. */
 const viewTabs = (page: Page) =>
   page
@@ -145,6 +149,7 @@ test('the sidebar tree of a project, and Add storyboard and Add moodboard in its
   await expect(viewTabs(page)).toHaveText(['Lavagna', 'Moodboard']);
   await expect(row('Lavagna')).toBeVisible();
   await page.keyboard.press('Escape');
+  await blur(page);
   await shoot(page, 'board-with-moodboard');
   // An address that asks for a view that is off opens the board's first view.
   await page.goto(`/p/${project.id}?view=shotlist`);
@@ -170,6 +175,7 @@ test.describe('on a phone', () => {
     await expect(drawer).toBeHidden();
     // One view: no picker.
     await expect(page.getByRole('combobox', { name: 'Vista', exact: true })).toHaveCount(0);
+    await blur(page);
     await shoot(page, 'phone-board');
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     await drawer.getByRole('button', { name: `Opzioni progetto: ${project.name}` }).click();
@@ -184,6 +190,7 @@ test.describe('on a phone', () => {
     await shoot(page, 'phone-with-storyboard');
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
+    await blur(page);
     await shoot(page, 'phone-storyboard');
     expect(await switcherOptions(page, 'phone-switcher-storyboard')).toEqual([
       'Storyboard',
