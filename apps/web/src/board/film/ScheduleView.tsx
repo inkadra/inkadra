@@ -1501,16 +1501,22 @@ export function ScheduleView({
               onClick={() => setCallSheetOpen(true)}
             >
               {/* Folds to its icon first when the Day view's bar is narrow (it stays its name). */}
-              <span className="schedule__callsheet-label">{t('shells.callSheet')}</span>
+              <span className="schedule__fold-label" data-ink-tooltip-label>
+                {t('shells.callSheet')}
+              </span>
             </Button>
             {!readOnly && view === 'day' && (
               <Button
                 icon="plus"
+                className="schedule__add-block"
                 data-tour="schedule-add-block"
+                data-ink-tooltip={t('schedule.addBlockShort')}
                 disabled={!selectedEntry || disabled}
                 onClick={() => addBlock(selectedEntry)}
               >
-                {t('schedule.addBlockShort')}
+                <span className="schedule__fold-label" data-ink-tooltip-label>
+                  {t('schedule.addBlockShort')}
+                </span>
               </Button>
             )}
             {/* Hidden while the plan loads or could not load: it could not work then. */}

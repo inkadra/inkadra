@@ -31,13 +31,14 @@
 .schedule__range::first-letter {
   text-transform: uppercase;
 }
-/* The Day view's bar also holds Block: the call sheet button folds to its icon before the date
-   is cut, so "Domenica 22 novembre 2026" stays whole at 1280 px beside the sidebar. */
-.schedule--day .schedule__bar {
+/* The bar also holds the density and, in the Day view, Block: the call sheet and Block buttons
+   fold to their icons before the date is cut, so "Domenica 22 novembre 2026" stays whole at
+   1280 px beside the sidebar. */
+.schedule__bar {
   container: schedule-bar / inline-size;
 }
 @container schedule-bar (width < 1120px) {
-  .schedule__callsheet-label {
+  .schedule__fold-label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -45,7 +46,8 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .schedule__callsheet.ink-btn {
+  .schedule__callsheet.ink-btn,
+  .schedule__add-block.ink-btn {
     padding-inline: 8px;
   }
 }
