@@ -673,6 +673,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <Button
         variant="primary"
         icon="plus"
+        className="shell-new-project"
         data-tour="home-new"
         disabled={!canCreate}
         aria-describedby={canCreate ? undefined : 'new-project-off'}

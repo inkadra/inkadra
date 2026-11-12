@@ -394,3 +394,11 @@
 body:has(.viewer) .mobile-bottom-nav {
   display: none;
 }
+
+/* A phone creates from New in the bottom bar: the top bar keeps only the page's title. */
+@media (width < 768px) {
+  .shell-new-project,
+  .shell-new-project + #new-project-off {
+    display: none;
+  }
+}
