@@ -45,7 +45,10 @@ function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: n
         {sorted.map((row, i) => (
           <span
             key={row.id}
-            style={{ width: width(row.bytes), background: row.color ?? SWATCHES[i % SWATCHES.length] }}
+            style={{
+              width: width(row.bytes),
+              background: row.color ?? SWATCHES[i % SWATCHES.length],
+            }}
           />
         ))}
       </div>
