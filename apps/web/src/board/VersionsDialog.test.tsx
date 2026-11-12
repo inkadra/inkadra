@@ -35,9 +35,10 @@ const version = {
   expiresAt: null,
 } as unknown as BoardVersion;
 
+const snapshot = { byId: new Map() };
 const liveStore = {
   subscribe: () => () => {},
-  getSnapshot: () => ({ byId: new Map() }),
+  getSnapshot: () => snapshot,
 } as unknown as BoardStore;
 
 let host: HTMLDivElement;
