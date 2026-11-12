@@ -161,8 +161,9 @@ describe('set plans in exports', () => {
       const plan = card({ type: 'plan', icons: [{ ...key, label: 'Key', watts: 1200 }] })
         .el as Extract<Element, { type: 'plan' }>;
       const ops = planOps(plan, { x: 0, y: 0, w: 600, h: 400 }, { ...ctx, language: 'it' });
-      const texts = ops.flatMap((o) => (o.kind === 'text' ? [o.text] : []));
-      expect(texts).toContain('Key · 1,2K');
+      const texts = (ops: readonly Op[]): string[] =>
+        ops.flatMap((o) => (o.kind === 'text' ? [o.text] : o.kind === 'clip' ? texts(o.ops) : []));
+      expect(texts(ops)).toContain('Key · 1,2K');
     } finally {
       spy.mockRestore();
     }
