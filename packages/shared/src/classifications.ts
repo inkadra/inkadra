@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
 import { z } from './common.ts';
+import type { Words } from './shot-words.ts';
 
 export const ClassificationOption = z.object({
   id: z.string().min(1).max(40),
@@ -89,4 +90,34 @@ export function classificationOption(options: readonly ClassificationOption[], v
 }
 export function classificationLabel(options: readonly ClassificationOption[], value: string) {
   return classificationOption(options, value)?.label ?? value;
+}
+/** Where the words of a default value are, by catalog (`film.shot.ws`, see `SHOT_WORDS_EN`). */
+const SHOT_WORDS_KEY: Record<ShotCatalogKey, string> = {
+  shotSizes: 'film.shot',
+  shotAngles: 'film.angle',
+  shotMovements: 'film.movement',
+};
+export function isRenamedDefault(key: ShotCatalogKey, option: ClassificationOption) {
+  const original = DEFAULT_SHOT_CATALOGS[key].find((o) => o.id === option.id);
+  return !!original && original.label !== option.label;
+}
+/** A default value is translated until it is renamed; any other value has its one name. */
+export function shotOptionLabel(key: ShotCatalogKey, option: ClassificationOption, t: Words) {
+  const isDefault = DEFAULT_SHOT_CATALOGS[key].some((o) => o.id === option.id);
+  return isDefault && !isRenamedDefault(key, option)
+    ? t(`${SHOT_WORDS_KEY[key]}.${option.id}`)
+    : option.label;
+}
+/** What a frame field reads as: the name of its catalog value, archived too, or its free text. */
+export function shotText(
+  catalogs: ShotCatalogs,
+  key: ShotCatalogKey,
+  value: string | undefined,
+  t: Words,
+) {
+  if (!value) return '';
+  const option = catalogs[key].find((o) => o.id === value);
+  if (option) return shotOptionLabel(key, option, t);
+  // A value of a catalog not loaded yet: never show its id.
+  return CATALOG_UUID.test(value) ? '' : value;
 }

@@ -1,29 +1,46 @@
-import { DEFAULT_CLASSIFICATIONS } from '@inkadra/shared';
-import type { TFunction } from 'i18next';
+// SPDX-License-Identifier: AGPL-3.0-only
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { SHOT_WORDS_EN } from '@inkadra/shared';
+import { SHOT_WORDS_DE } from '@inkadra/shared/shot-words/de';
+import { SHOT_WORDS_ES } from '@inkadra/shared/shot-words/es';
+import { SHOT_WORDS_FR } from '@inkadra/shared/shot-words/fr';
+import { SHOT_WORDS_IT } from '@inkadra/shared/shot-words/it';
+import { SHOT_WORDS_PT } from '@inkadra/shared/shot-words/pt';
 import { expect, it } from 'vitest';
-import { shotText } from './classifications.ts';
+import { LOCALES } from '../i18n/locales.ts';
 
-const t = ((key: string) => key) as unknown as TFunction;
-const added = '0b6f4f0e-7e0c-4a7c-9a64-6f4e7c3d2a11';
-const catalogs = {
-  ...DEFAULT_CLASSIFICATIONS,
-  shotSizes: [
-    { id: 'ws', label: 'Wide', archived: false },
-    { id: 'ms', label: 'Piano americano', archived: false },
-    { id: 'cu', label: 'Primissimo', archived: true },
-    { id: added, label: 'Totale', archived: true },
-  ],
-};
+const languages = [
+  ['en', SHOT_WORDS_EN],
+  ['it', SHOT_WORDS_IT],
+  ['es', SHOT_WORDS_ES],
+  ['de', SHOT_WORDS_DE],
+  ['fr', SHOT_WORDS_FR],
+  ['pt', SHOT_WORDS_PT],
+] as const;
 
-it('reads a frame field from the catalog, whatever happened to the value', () => {
-  expect(shotText(catalogs, 'shotSizes', undefined, t)).toBe('');
-  expect(shotText(catalogs, 'shotSizes', 'ws', t)).toBe('film.shot.ws');
-  expect(shotText(catalogs, 'shotSizes', 'ms', t)).toBe('Piano americano');
-  expect(shotText(catalogs, 'shotSizes', 'cu', t)).toBe('Primissimo');
-  expect(shotText(catalogs, 'shotSizes', added, t)).toBe('Totale');
-  expect(shotText(catalogs, 'shotSizes', 'Testo libero', t)).toBe('Testo libero');
+it('has the shot words of every language the web ships', () => {
+  expect(languages.map(([locale]) => locale).sort()).toEqual([...LOCALES].sort());
 });
 
-it('never shows the id of a value it does not know', () => {
-  expect(shotText(catalogs, 'shotSizes', '11111111-2222-4333-8444-555555555555', t)).toBe('');
-});
+it.each(languages)(
+  'says the same in %s as the shot words of packages/shared (decision 0116)',
+  (locale, words) => {
+    // The package is what another client loads; the web's catalogue must not drift from it.
+    const web = JSON.parse(readFileSync(join(__dirname, `../i18n/${locale}.json`), 'utf8'));
+    const leaves = (o: object, at: string[] = []): Array<[string[], string]> =>
+      Object.entries(o).flatMap(([k, v]) =>
+        typeof v === 'object' ? leaves(v, [...at, k]) : [[[...at, k], v as string]],
+      );
+    const differ = leaves(words).filter(
+      ([path, text]) => path.reduce<any>((o, k) => o?.[k], web) !== text,
+    );
+    expect(differ).toEqual([]);
+    // A shot value the web names and the package does not would read differently elsewhere.
+    expect(
+      Object.keys(web.film.shot).length +
+        Object.keys(web.film.angle).length +
+        Object.keys(web.film.movement).length,
+    ).toBe(leaves(words).length);
+  },
+);
