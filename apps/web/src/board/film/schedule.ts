@@ -117,17 +117,14 @@ export function conflictGroups(days: readonly ShootingDayInput[], day: string): 
     // At each block's start: it and the person's blocks already running that overlap it.
     const sets = booked
       .map((s) =>
-        booked.filter(
-          (o) => o === s || (o.start <= s.start && o.start < s.end && s.start < o.end),
-        ),
+        booked.filter((o) => o === s || (o.start <= s.start && o.start < s.end && s.start < o.end)),
       )
       .filter((set) => set.length > 1 && set.some((o) => o.mine));
     // Only the largest: three blocks at once are one line, not three pairs.
     const largest = sets.filter(
       (set, i) =>
         !sets.some(
-          (other, j) =>
-            set.every((o) => other.includes(o)) && (other.length > set.length || j < i),
+          (other, j) => set.every((o) => other.includes(o)) && (other.length > set.length || j < i),
         ),
     );
     for (const set of largest) {
