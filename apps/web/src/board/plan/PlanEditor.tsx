@@ -102,8 +102,9 @@ export function PlanEditor(props: PlanEditorProps) {
   const [exporting, setExporting] = useState<{ area: ReturnType<typeof visibleArea> } | null>(null);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
-  const title = planTitle(t, plan);
-  const titleShown = (base?.title || plan.title) ?? '';
+  const title = planTitle(t, drawn);
+  // The base's title on every setup, never a setup's stale copy of it (decision 0117).
+  const titleShown = drawn.title ?? '';
   const { kitPlans, otherKits } = props;
   // This board's plans live, the other boards' from the server (decision 0114).
   const kit = useMemo(
@@ -112,9 +113,17 @@ export function PlanEditor(props: PlanEditorProps) {
   );
   const sensorName = t(`board.plan.sensors.${plan.sensor ?? 's35'}`);
   // Read with the live names of what the icons link to (decision 0111).
-  const changes = base
-    ? setupChanges(linkedPlan(base, ed.cards).icons ?? [], linkedPlan(plan, ed.cards).icons ?? [])
-    : [];
+  // Once per change of the two setups, not on every render (a drag renders at every move).
+  const changes = useMemo(
+    () =>
+      base
+        ? setupChanges(
+            linkedPlan(base, ed.cards).icons ?? [],
+            linkedPlan(plan, ed.cards).icons ?? [],
+          )
+        : [],
+    [base, plan, ed.cards],
+  );
   const scaleValue = drawn.scale
     ? t('board.plan.scaleGrid', { grid: Number(drawn.grid ?? '0.5').toLocaleString(lang) })
     : t('board.plan.scale');
@@ -166,6 +175,27 @@ export function PlanEditor(props: PlanEditorProps) {
     // Whatever the editor does not use never reaches the board behind it.
     e.stopImmediatePropagation();
     if (e.type !== 'keydown') return;
+    // The setup tabs: arrows move between setups, F2 renames the current one. Here, since this
+    // listener stops every key before the tabs' own handlers would see it.
+    const tab = target?.closest<HTMLElement>('.plan-setups [role="tab"]');
+    if (tab && (e.key === 'F2' || e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      e.preventDefault();
+      if (e.key === 'F2') setRenaming(true);
+      else {
+        const at = family.findIndex((f) => f.id === plan.id) + (e.key === 'ArrowRight' ? 1 : -1);
+        const next = family[(at + family.length) % family.length];
+        if (next && next.id !== plan.id) {
+          props.onSwitch?.(next.id);
+          // The editor of the next setup mounts anew: its selected tab takes the focus.
+          requestAnimationFrame(() =>
+            document
+              .querySelector<HTMLElement>('.plan-setups [role="tab"][aria-selected="true"]')
+              ?.focus(),
+          );
+        }
+      }
+      return;
+    }
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     const { selection, item } = ed;
@@ -283,6 +313,13 @@ export function PlanEditor(props: PlanEditorProps) {
     />
   );
   /** The name of the setup being renamed, on its tab (or the phone's header): Enter keeps it. */
+  /** The tabs by setup, and the phone's setup button: focus comes back to them after a rename. */
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const setupButton = useRef<HTMLButtonElement>(null);
+  const backToTab = () =>
+    requestAnimationFrame(() =>
+      (phone ? setupButton.current : tabRefs.current.get(plan.id))?.focus(),
+    );
   const renameField = (
     <input
       className="plan-field"
@@ -303,25 +340,23 @@ export function PlanEditor(props: PlanEditorProps) {
           e.stopPropagation();
           if (e.key === 'Escape') e.currentTarget.value = plan.variant ?? '';
           e.currentTarget.blur();
+          backToTab();
         }
       }}
     />
   );
+  // While renaming, the field lies over the tab, outside the tablist: a tablist holds tabs only.
+  const renamedTab = renaming ? tabRefs.current.get(plan.id) : undefined;
   const setupTabs = (
-    <div
-      className="plan-setups"
-      role="tablist"
-      aria-label={t('board.plan.setups')}
-      data-tour="plan-setups"
-    >
-      {family.map((p) =>
-        renaming && p.id === plan.id ? (
-          <span key={p.id} className="plan-setups__tab plan-setups__tab--rename">
-            {renameField}
-          </span>
-        ) : (
+    <div className="plan-setups" data-tour="plan-setups">
+      <div className="plan-setups__list" role="tablist" aria-label={t('board.plan.setups')}>
+        {family.map((p) => (
           <button
             key={p.id}
+            ref={(el) => {
+              if (el) tabRefs.current.set(p.id, el);
+              else tabRefs.current.delete(p.id);
+            }}
             type="button"
             role="tab"
             className="plan-setups__tab"
@@ -336,21 +371,22 @@ export function PlanEditor(props: PlanEditorProps) {
               e.preventDefault();
               setRenaming(true);
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'F2' && p.id === plan.id) {
-                e.preventDefault();
-                setRenaming(true);
-                return;
-              }
-              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-              const at = family.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
-              const next = family[(at + family.length) % family.length];
-              if (next && next.id !== plan.id) props.onSwitch?.(next.id);
-            }}
           >
             {setupName(p, family, t)}
           </button>
-        ),
+        ))}
+      </div>
+      {renaming && (
+        <span
+          className="plan-setups__rename"
+          style={
+            renamedTab
+              ? { left: renamedTab.offsetLeft, width: Math.max(140, renamedTab.offsetWidth) }
+              : undefined
+          }
+        >
+          {renameField}
+        </span>
       )}
       {props.onNewVariant && (
         <IconButton icon="plus" label={t('board.plan.newSetup')} onClick={props.onNewVariant} />
@@ -612,6 +648,7 @@ export function PlanEditor(props: PlanEditorProps) {
             <span className="plan-top__setup">{renameField}</span>
           ) : (
             <button
+              ref={setupButton}
               type="button"
               className="plan-top__setup"
               aria-haspopup="menu"

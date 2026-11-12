@@ -117,9 +117,28 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
     );
     await tabs.getByRole('tab', { name: '1 · Base' }).dblclick();
     const name = editor.getByRole('textbox', { name: 'Nome del setup' });
+    // The tablist holds its tabs only, the field lies over the tab outside it.
+    await expect(tabs.getByRole('textbox')).toHaveCount(0);
+    await expect(tabs.locator(':scope > *:not([role="tab"])')).toHaveCount(0);
     await name.fill('Master');
     await name.press('Enter');
     await expect(tabs.getByRole('tab')).toHaveText(['1 · Master', '2 · PP Anna']);
+    // The focus comes back to the renamed tab, not to the page.
+    await expect(tabs.getByRole('tab', { name: '1 · Master' })).toBeFocused();
+    // F2 renames from the keyboard; Escape keeps the name and gives the focus back too.
+    await page.keyboard.press('F2');
+    await name.fill('Altro');
+    await name.press('Escape');
+    await expect(tabs.getByRole('tab', { name: '1 · Master' })).toBeFocused();
+    // The arrows move between the setups, the focus following the tab.
+    await page.keyboard.press('ArrowRight');
+    const second = editor.getByRole('tablist', { name: 'Setup' }).getByRole('tab', { name: '2 · PP Anna' });
+    await expect(second).toHaveAttribute('aria-selected', 'true');
+    await expect(second).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(
+      editor.getByRole('tablist', { name: 'Setup' }).getByRole('tab', { name: '1 · Master' }),
+    ).toHaveAttribute('aria-selected', 'true');
     // The card keeps the plan's name: a base's setup name stays on its tab.
     await expect(page.locator(`[data-el="${plan.id}"] .plan__title`)).toHaveText('Tavola calda');
   });
@@ -132,5 +151,18 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
     await expect(row).toHaveAttribute('aria-pressed', 'true');
     await editor.getByRole('tab', { name: 'Proprietà' }).click();
     await expect(editor.getByText('3 elementi selezionati')).toBeVisible();
+  });
+
+  await test.step('a light on a circuit since removed reads "on no circuit"', async () => {
+    await editor.getByRole('tab', { name: 'Materiale' }).click();
+    const kit = editor.locator('.plan-kit');
+    await kit.getByRole('button', { name: 'Modifica Circuito A' }).click();
+    await kit.getByRole('button', { name: 'Togli Circuito A' }).click();
+    await editor.getByRole('tab', { name: 'Elementi' }).click();
+    await editor.getByRole('button', { name: /^Chiave/ }).click();
+    await editor.getByRole('tab', { name: 'Proprietà' }).click();
+    await expect(editor.getByRole('combobox', { name: 'Circuito' })).toContainText(
+      'Su nessun circuito',
+    );
   });
 });

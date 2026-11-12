@@ -25,8 +25,23 @@ change. Editing from a setup writes the base: a new circuit and the voltage go t
 circuit is edited where it is stored. Copying circuits on creation was rejected: copies drift, and
 the lights of existing setups would still point at the base's ids.
 
-**The title is the base's.** Every setup shows the base's title and writes it there; a setup's own
-`title`, copied when it was created, is shown only when the base has none.
+**The title is the base's**, its one owner. A new setup gets no title; every setup shows the
+base's title and writes it there (`variantView` carries it, so the card, the board export, the
+view and the sheet read the same), never a copy a setup kept from an earlier build, even when the
+base has none.
+
+**A setup left alone** (its base deleted, or the setup pasted on a board without it) takes what it
+read from its base: the Set, walls, openings and scale as before (decision 0062), and now the
+base's circuits first, with their ids so its lights stay on them, then any circuit it held; the
+voltage, background picture, location, north and scenes where it has none of its own; and the
+base's title, which replaces a stale copy (none if the base had none). The sun's time and date are
+each setup's own and stay. Pasted elsewhere, the location and scenes then follow the usual rules
+(kept when their cards are there or pasted along).
+
+**A circuit removed** leaves its id on the lights of the base and its setups: an undo brings the
+circuit back with its lights on it, and two people do not fight over the lights. Everything that
+shows a light's circuit reads it through `circuitOf`, which treats an id that no longer resolves
+as no circuit: the power counts the light "On no circuit" and its Circuit field says so.
 
 **The first setup is renamed like the others**, with the `variant` field every plan already has:
 its tab reads "1 · Base" until it is renamed. A tab is renamed on a double click, a right click or
@@ -37,8 +52,9 @@ title; the base's name stays on its tab.
 
 **Lists as the mockup draws them.** Elements and the read-only view fold identical icons (type,
 name, power, base, tag, links) into one row with "×n"; stands and supports with something on them
-are listed with what they carry ("A cam · 32 mm · Dolly on 4 m track"); the Set is one line of
-counts. The kit puts a light's modifiers on one line and all gels on one, and lists video and
+are listed with what they carry ("A cam · 32 mm · Dolly on 4 m track"), and also as an indented
+row under it, so a base covered on the plan can be picked, locked and deleted from the list and
+the keyboard; the Set is one line of counts. The kit puts a light's modifiers on one line and all gels on one, and lists video and
 sound under Camera and movement. A table lamp with only its watts is not a project kit entry.
 Watts of 1000 and more read "2K".
 

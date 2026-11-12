@@ -46,6 +46,11 @@ export interface ElementRow {
   item: PlanItem;
   /** Every item of the row, the first one included; a click selects them all. */
   refs: PlanItemRef[];
+  /**
+   * A stand or a support under what it carries: listed with it, indented, so a base that what it
+   * carries covers on the plan can still be picked, locked and deleted from the list.
+   */
+  sub?: boolean;
 }
 
 /** What makes two icons the same row: type, name, power, what they stand on, tag and links. */
@@ -93,16 +98,19 @@ export function elementSections(
 ): Array<{ group: PlanGroupName; items: ElementRow[] }> {
   const icons = plan.icons ?? [];
   const byId = new Map(icons.map((i) => [i.id, i]));
-  // A stand or a support with something on it is a line of what it carries.
+  // A stand or a support with something on it is listed under what it carries.
   const carriers = new Set<string>();
+  const carrierOf = new Map<string, PlanIcon>();
   for (const icon of icons) {
     const base = icon.on ? byId.get(icon.on) : undefined;
     if (
       base &&
       attachRole(icon.kind) !== 'modifier' &&
       ['camera', PLAN_GRIP].includes(planGroupOf(base))
-    )
+    ) {
       carriers.add(base.id);
+      carrierOf.set(icon.id, base);
+    }
   }
   const all = planItems(plan).filter(({ item }) => {
     if (filter.color && item.color !== filter.color) return false;
@@ -118,12 +126,31 @@ export function elementSections(
     if (same) same.refs.push(ref);
     else rows.push({ key, ref, item, refs: [ref] });
   }
+  /** The row and, under it, the bases its items stand on (a dolly, then its track). */
+  const withBases = ({ ref, item, refs }: ElementRow): ElementRow[] => {
+    const out: ElementRow[] = [{ ref, item, refs }];
+    const seen = new Set<string>();
+    let level = refs.flatMap((r) => carrierOf.get(r.id) ?? []);
+    while (level.length) {
+      const fresh = level.filter((b) => !seen.has(b.id));
+      for (const b of fresh) seen.add(b.id);
+      const sub: Array<ElementRow & { key: string }> = [];
+      for (const b of fresh) {
+        const r = { kind: 'icons' as const, id: b.id };
+        const key = foldKey(b, icons);
+        const same = sub.find((x) => x.key === key);
+        if (same) same.refs.push(r);
+        else sub.push({ key, ref: r, item: b, refs: [r], sub: true });
+      }
+      out.push(...sub.map(({ key: _key, ...row }) => row));
+      level = fresh.flatMap((b) => carrierOf.get(b.id) ?? []);
+    }
+    return out;
+  };
   return ELEMENT_GROUPS.filter((g) => filter.group === 'all' || filter.group === g).map(
     (group) => ({
       group,
-      items: rows
-        .filter(({ item }) => planGroupOf(item) === group)
-        .map(({ ref, item, refs }) => ({ ref, item, refs })),
+      items: rows.filter(({ item }) => planGroupOf(item) === group).flatMap(withBases),
     }),
   );
 }

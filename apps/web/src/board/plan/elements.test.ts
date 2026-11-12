@@ -93,8 +93,19 @@ describe('rows as the mockup lists them (decision 0117)', () => {
         .find((s) => s.group === g)
         ?.items.map((e) => [e.item.id.replace(/A+$/, ''), e.refs.length]);
     expect(of('lights')).toEqual([['p1', 3]]);
-    expect(of('camera')).toEqual([['acam', 1]]);
-    expect(of('grip')).toEqual([['neg', 1]]);
+    // The dolly and its track under the camera, the C-stand under the flag: still in the list,
+    // so a base covered on the plan is picked, locked and deleted from it.
+    expect(of('camera')).toEqual([
+      ['acam', 1],
+      ['dolly', 1],
+      ['track', 1],
+    ]);
+    expect(of('grip')).toEqual([
+      ['neg', 1],
+      ['stand', 1],
+    ]);
+    const camera = rows.find((s) => s.group === 'camera')?.items ?? [];
+    expect(camera.map((e) => !!e.sub)).toEqual([false, true, true]);
     expect(foldIcons(icons.slice(5), icons).map((f) => f.count)).toEqual([3]);
   });
 

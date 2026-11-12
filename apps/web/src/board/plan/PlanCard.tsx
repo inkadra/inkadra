@@ -46,7 +46,7 @@ export function PlanCard({ element }: { element: PlanElement }) {
   const { cameras, lights, watts } = planCounts(plan);
   const place = linkedLocation(base ?? element, byId)?.name;
   // The title is the base's, shown by every setup (decision 0117).
-  const name = base?.title || element.title || place || t('board.plan.name');
+  const name = (base ? base.title : element.title) || place || t('board.plan.name');
   const kw =
     watts >= 1000
       ? `${(watts / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} kW`

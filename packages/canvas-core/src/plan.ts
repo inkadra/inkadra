@@ -1039,6 +1039,7 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
         | 'circuits'
         | 'voltage'
         | 'background'
+        | 'title'
       >
     | undefined,
 ): P {
@@ -1066,6 +1067,8 @@ export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | '
     voltage: shared.voltage,
     // So is the picture under them (decision 0110).
     background: base.background,
+    // And the title: the base owns it, a setup's own copy is never shown (decision 0117).
+    title: base.title,
   };
 }
 
@@ -1110,7 +1113,7 @@ export function addVariant(
       createdAt: Date.now(),
       variantOf: baseId,
       variant: name,
-      ...(source.title ? { title: source.title } : {}),
+      // No title: a setup shows its base's, the one owner of it (decision 0117).
       ...(source.h ? { h: source.h } : {}),
       ...(source.sensor ? { sensor: source.sensor } : {}),
       // What the card is to guests, to editing and to search, as for any copy.

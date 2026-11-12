@@ -1368,14 +1368,24 @@ button.plan__badge:hover {
   outline-offset: 2px;
   border-radius: var(--ink-radius-xs);
 }
-.plan-setups__tab--rename {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 2px;
+.plan-setups {
+  position: relative;
 }
-.plan-setups__tab--rename .plan-field {
-  width: 140px;
-  height: 26px;
+.plan-setups__list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+/* The name being typed lies over its tab; the tablist keeps its tabs. */
+.plan-setups__rename {
+  position: absolute;
+  top: 3px;
+  display: flex;
+  align-items: center;
+}
+.plan-setups__rename .plan-field {
+  width: 100%;
+  height: 30px;
 }
 
 /* The right panel. */
@@ -1518,7 +1528,15 @@ button.plan__badge:hover {
   gap: 8px;
 }
 .plan-props__grid--three {
-  grid-template-columns: 76px 76px minmax(0, 1fr);
+  /* Room for "Circuit B · 16 A" whole beside a height and a tilt. */
+  grid-template-columns: 56px 56px minmax(0, 1fr);
+}
+.plan-props__grid--three .plan-num {
+  padding: 0 6px;
+}
+.plan-props__grid--three .plan-num input {
+  width: 100%;
+  min-width: 0;
 }
 .plan-props__grid--fixture {
   grid-template-columns: minmax(0, 1fr) 96px;
@@ -1776,6 +1794,12 @@ span.plan-pill {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+/* A base under what it carries (a C-stand under its light): indented, quieter. */
+.plan-elements__item--sub {
+  min-height: 32px;
+  padding-left: 30px;
+  color: var(--ink-text-secondary);
 }
 .plan-elements__item:disabled {
   opacity: 0.5;

@@ -4,6 +4,7 @@ import {
   attachRole,
   catalogueKind,
   categoryOf,
+  circuitOf,
   DEFAULT_LENS,
   detachIcon,
   iconCentre,
@@ -795,7 +796,8 @@ export function PlanProperties({
           <Field label={t('board.plan.circuit')}>
             <Select
               aria-label={t('board.plan.circuit')}
-              value={icon.circuit ?? ''}
+              // A circuit since removed reads "On no circuit", as the power does.
+              value={circuitOf(icon, drawn.circuits)?.id ?? ''}
               onChange={(v) =>
                 ed.write(
                   v

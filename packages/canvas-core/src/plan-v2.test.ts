@@ -91,7 +91,7 @@ import {
   setupFrames,
   unlinkCharacter,
 } from './plan-links.ts';
-import { circuitStatus, iconWatts, parseWatts, planPower } from './plan-power.ts';
+import { circuitOf, circuitStatus, iconWatts, parseWatts, planPower } from './plan-power.ts';
 import {
   addPlanCircuit,
   addPlanOpening,
@@ -1294,6 +1294,92 @@ describe('circuits of the setups (decision 0117)', () => {
   const planOf = (doc: Y.Doc, id: string) =>
     listElements(doc).find((e) => e.id === id) as PlanElement;
 
+  /** A base with what its setups read from it, and a setup whose light is on circuit A. */
+  const family = () => {
+    const doc = createBoardDoc(boardId);
+    const place = createElement(doc, 'location', { x: 0, y: 900 }, { name: 'Diner' }, {
+      userId: null,
+    });
+    const base = createElement(
+      doc,
+      'plan',
+      { x: 0, y: 0 },
+      { title: 'Diner', locationId: place.id, north: 90, voltage: 120 },
+      { userId: null },
+    );
+    const a = addPlanCircuit(doc, base.id, { name: 'A', amps: 20 }) as string;
+    const setup = addVariant(doc, planOf(doc, base.id), 'CU Anna', { userId: null });
+    addPlanIcon(doc, setup, {
+      kind: 'fresnel',
+      x: 0,
+      y: 0,
+      w: 40,
+      h: 40,
+      color: '#1C1C1E',
+      watts: 1200,
+      circuit: a,
+    });
+    return { doc, base: base.id, setup, a, place: place.id };
+  };
+  /** What the setup shows on its own: its circuits, voltage, location, north and title. */
+  const alone = (p: PlanElement) => ({
+    variantOf: p.variantOf,
+    circuits: p.circuits?.map((c) => c.id),
+    voltage: p.voltage,
+    locationId: p.locationId,
+    north: p.north,
+    title: p.title,
+  });
+
+  it('keeps the base circuits, voltage, location, north and title in a setup left alone', () => {
+    const f = family();
+    deleteElements(f.doc, [f.base]);
+    const setup = planOf(f.doc, f.setup);
+    expect(alone(setup)).toEqual({
+      variantOf: undefined,
+      circuits: [f.a],
+      voltage: 120,
+      locationId: f.place,
+      north: 90,
+      title: 'Diner',
+    });
+    // The light stays on circuit A, at 120 V.
+    expect(planPower(setup).circuits.map((c) => [c.name, c.amps])).toEqual([['A', 10]]);
+  });
+
+  it('takes the same along when the setup is pasted on a board without its base', () => {
+    const f = family();
+    const other = createBoardDoc(boardId);
+    const [pasted] = pasteElements(other, copyElements(f.doc, [f.setup]), { x: 0, y: 0 }, {
+      userId: null,
+    }).ids;
+    // The location card is not on that board: its link goes, as for any plan pasted there.
+    expect(alone(planOf(other, pasted as string))).toEqual({
+      variantOf: undefined,
+      circuits: [f.a],
+      voltage: 120,
+      locationId: undefined,
+      north: 90,
+      title: 'Diner',
+    });
+  });
+
+  it('gives a new setup no title of its own: the base owns it', () => {
+    const f = family();
+    expect(planOf(f.doc, f.setup).title).toBeUndefined();
+  });
+
+  it("shows the base's title on a setup, never the setup's stale copy", () => {
+    const f = family();
+    // A setup made by an earlier build kept a copy; the base's title was cleared since.
+    roots(f.doc).elements.get(f.setup)?.set('title', 'Old copy');
+    roots(f.doc).elements.get(f.base)?.delete('title');
+    expect(variantView(planOf(f.doc, f.setup), planOf(f.doc, f.base)).title).toBeUndefined();
+    // Left alone, it takes the base's title: none, not its stale copy.
+    deleteElements(f.doc, [f.base]);
+    expect(planOf(f.doc, f.setup).title).toBeUndefined();
+  });
+
   it('gives every setup its base circuits and voltage, and keeps a circuit a setup has', () => {
     const doc = createBoardDoc(boardId);
     const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
@@ -1320,6 +1406,23 @@ describe('circuits of the setups (decision 0117)', () => {
     expect(power.circuits.map((c) => [c.name, c.amps])).toEqual([
       ['A', 20],
       ['Old', 0],
+    ]);
+  });
+});
+
+describe('a light on a circuit since removed (decision 0117)', () => {
+  it('is on no circuit, for the power and for its field', () => {
+    const circuits = [{ id: 'circAAAAAAAAA', name: 'A', amps: 16 }];
+    expect(circuitOf({ circuit: 'circAAAAAAAAA' }, circuits)?.name).toBe('A');
+    expect(circuitOf({ circuit: 'goneAAAAAAAAA' }, circuits)).toBeNull();
+    expect(circuitOf({}, circuits)).toBeNull();
+    const p = planPower({
+      circuits,
+      icons: [at('fresnel', 0, 0, { id: 'f1AAAAAAAAAAA', watts: 230, circuit: 'goneAAAAAAAAA' })],
+    });
+    expect(p.circuits.map((c) => [c.id, c.lights])).toEqual([
+      ['circAAAAAAAAA', []],
+      [null, ['f1AAAAAAAAAAA']],
     ]);
   });
 });

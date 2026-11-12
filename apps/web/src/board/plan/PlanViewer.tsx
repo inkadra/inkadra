@@ -198,7 +198,7 @@ export function PlanViewer({
     try {
       await downloadPlanSheet(
         planSheetRequest('pdf', [plan.id], null, sheetInclude(shown), guest),
-        planSheetEnv(store, plan, t, i18n.language, cache),
+        planSheetEnv(store, shown, t, i18n.language, cache),
       );
     } finally {
       setBusy(false);
@@ -213,7 +213,7 @@ export function PlanViewer({
       data-chrome=""
       role="dialog"
       aria-modal="true"
-      aria-label={planTitle(t, plan)}
+      aria-label={planTitle(t, shown)}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
         else if (e.key === '+' || e.key === '=') zoomTo(zoom * 1.25);
@@ -230,7 +230,7 @@ export function PlanViewer({
       <header className="plan-top plan-view__top">
         <div className="plan-top__start">
           <b className="plan-top__name">{t('board.plan.name')}</b>
-          {!phone && <span className="plan-view__title">{place || plan.title || base?.title}</span>}
+          {!phone && <span className="plan-view__title">{place || shown.title}</span>}
           <span className="plan-view__only">
             <Icon name="eye" size={13} />
             {t('board.plan.view.only')}

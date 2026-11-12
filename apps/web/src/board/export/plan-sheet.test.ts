@@ -6,7 +6,14 @@ import { expect, it } from 'vitest';
 import type { CardContext } from './board-render.ts';
 import { greyPixels } from './images.ts';
 import type { Op } from './pages.ts';
-import { PLAN_SHEET_INCLUDE, planSheetPages, roomSize, sheetInclude } from './plan-sheet.ts';
+import {
+  PLAN_SHEET_FRAME,
+  PLAN_SHEET_INCLUDE,
+  planSheetPages,
+  previewCrop,
+  roomSize,
+  sheetInclude,
+} from './plan-sheet.ts';
 
 const ctx: CardContext = {
   measure: (value, size) => [...value].length * size * 0.5,
@@ -206,4 +213,25 @@ it('includes the background by default when the plan shows one, and prints it gr
     .flatMap((page) => page.ops.flatMap((op) => (op.kind === 'clip' ? op.ops : [op])))
     .filter((op) => op.kind === 'image');
   expect(image).toMatchObject({ key: 'pic', grey: true });
+});
+
+it('crops the preview to the drawing: the frame fills the preview, sharp at the pixel ratio', () => {
+  const page = { width: 842, height: 595 };
+  const frame = { x: 24, y: 76, w: 480, h: 477 };
+  // 240 css px for 480 points, at 2 device pixels per css pixel: 1 device pixel per point.
+  expect(previewCrop(page, frame, 240, 2)).toEqual({
+    scale: 1,
+    page: { w: 842, h: 595 },
+    from: { x: 24, y: 76 },
+    size: { w: 480, h: 477 },
+  });
+  const half = previewCrop(page, frame, 240, 1);
+  expect(half.size).toEqual({ w: 240, h: 239 });
+  expect(half.from).toEqual({ x: 12, y: 38 });
+  // Not laid out yet, or no ratio known: the dialog's 232 px at 1.
+  expect(previewCrop(page, frame, 0, 0).size.w).toBe(232);
+  // The crop never leaves the page: the sheet's own frame lies inside it.
+  const sheet = previewCrop(page, PLAN_SHEET_FRAME, 232, 3);
+  expect(sheet.from.x + sheet.size.w).toBeLessThanOrEqual(sheet.page.w);
+  expect(sheet.from.y + sheet.size.h).toBeLessThanOrEqual(sheet.page.h);
 });

@@ -113,13 +113,15 @@ export function PlanElements({
         if (filter.group === 'all' && !items.length && !(layer === 'set' && nonEmpty('set')))
           return null;
         const grip = layer === PLAN_GRIP;
+        // The bases listed under what they carry are counted and locked with it, not again.
+        const main = items.filter((e) => !e.sub);
         const hidden = ed.hiddenLayers.has(layer);
         // Grip and crew is no layer: its lock is the lock of each of its items (decision 0114).
         const locked = grip ? false : ed.locked.has(layer as PlanLayer);
         const allLocked = grip
-          ? items.length > 0 && items.every((e) => itemLocked(e.item))
+          ? main.length > 0 && main.every((e) => itemLocked(e.item))
           : locked;
-        const count = items.reduce((n, e) => n + e.refs.length, 0);
+        const count = main.reduce((n, e) => n + e.refs.length, 0);
         const isSet = layer === 'set';
         // The Set is one line of counts; it opens on a click, or when it is the filter.
         const open = !isSet || setOpen || filter.group === 'set';
@@ -158,7 +160,7 @@ export function PlanElements({
                 <IconButton
                   icon={allLocked ? 'lock' : 'unlock'}
                   aria-pressed={allLocked}
-                  disabled={grip && items.length === 0}
+                  disabled={grip && main.length === 0}
                   label={t(
                     grip
                       ? allLocked
@@ -171,7 +173,7 @@ export function PlanElements({
                   )}
                   onClick={() =>
                     grip
-                      ? ed.toggleItemLock(items.map((e) => e.item))
+                      ? ed.toggleItemLock(main.map((e) => e.item))
                       : ed.toggleLocked(layer as PlanLayer)
                   }
                 />
@@ -228,7 +230,7 @@ export function PlanElements({
                 </button>
               ))}
             {open &&
-              items.map(({ item, refs }) => {
+              items.map(({ item, refs, sub }) => {
                 const icon = 'x' in item ? item : null;
                 const summary = icon
                   ? itemSummary(icon, ed.icons, t, { scale: ed.drawn.scale, locale: i18n.language })
@@ -241,7 +243,7 @@ export function PlanElements({
                   <button
                     key={item.id}
                     type="button"
-                    className="plan-elements__item"
+                    className={`plan-elements__item${sub ? ' plan-elements__item--sub' : ''}`}
                     aria-pressed={refs.every((r) => picked.has(r.id))}
                     disabled={hidden || ed.hiddenLayers.has(layerOf(item))}
                     onClick={(e) => {
