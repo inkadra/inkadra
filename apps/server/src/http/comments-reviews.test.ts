@@ -360,10 +360,13 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     );
     await call('owner', 'PATCH', '/me/preferences', { timeFormat: '12h' });
     await call('owner', 'PATCH', '/me/preferences', { tutorialsSeen: ['welcome'] });
+    // The shot list's and the schedule's grouping (decision 0115).
+    await call('owner', 'PATCH', '/me/preferences', { shotGroupBy: 'setup' });
     const saved = await call('owner', 'PATCH', '/me/preferences', { toolbar: ['note', 'map'] });
     expect(saved.json()).toEqual({
       ...DEFAULT_USER_PREFERENCES,
       timeFormat: '12h',
+      shotGroupBy: 'setup',
       toolbar: ['note', 'map'],
       tutorialsSeen: ['welcome'],
     });
@@ -372,6 +375,9 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     );
     expect(
       (await call('owner', 'PATCH', '/me/preferences', { dateFormat: 'roman' })).statusCode,
+    ).toBe(400);
+    expect(
+      (await call('owner', 'PATCH', '/me/preferences', { shotGroupBy: 'lens' })).statusCode,
     ).toBe(400);
   });
 

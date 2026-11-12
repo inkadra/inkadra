@@ -2,7 +2,7 @@
 import type { PlanIcon, PlanIconKind } from '@inkadra/doc-schema';
 import type { PlanElement } from './plan.ts';
 import { modifiersOn } from './plan-attach.ts';
-import { catalogueKind, isLight } from './plan-icons.ts';
+import { catalogueKind, isKitLight } from './plan-icons.ts';
 
 /** Fields a configured light or camera of the project kit carries to a new copy. */
 const KEPT = [
@@ -55,7 +55,7 @@ export function projectKit(plans: ReadonlyArray<Pick<PlanElement, 'icons'>>): Pr
       if (
         camera
           ? !configuredCamera(icon)
-          : !isLight(kind) || !configuredLight(icon, modifiers.length)
+          : !isKitLight(kind) || !configuredLight(icon, modifiers.length)
       )
         continue;
       const kept: Record<string, unknown> = { kind };

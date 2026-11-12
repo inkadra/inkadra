@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExportCache } from '../export/cache.ts';
 import type { ExportEnv, ExportFormat, ExportRequest } from '../export/engine.ts';
-import { PLAN_SHEET_INCLUDE, type PlanSheetInclude } from '../export/plan-sheet.ts';
+import { type PlanSheetInclude, sheetInclude } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
 import { planTitle } from './PlanCard.tsx';
 import './outputs.css';
@@ -121,7 +121,10 @@ export function PlanExport({
   const [format, setFormat] = useState<ExportFormat>('pdf');
   const [setups, setSetups] = useState<'this' | 'all'>(family.length > 1 ? 'all' : 'this');
   const [where, setWhere] = useState<'whole' | 'view'>('whole');
-  const [include, setInclude] = useState<PlanSheetInclude>(PLAN_SHEET_INCLUDE);
+  // The background belongs to the base's Set: a setup prints its base's (decision 0110).
+  const [include, setInclude] = useState<PlanSheetInclude>(() =>
+    sheetInclude(family.find((p) => p.id === plan.variantOf) ?? plan),
+  );
   const [pages, setPages] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [busy, setBusy] = useState(false);

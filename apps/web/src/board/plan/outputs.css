@@ -71,6 +71,16 @@
     max-width: 320px;
   }
 }
+/* The phone editor's Export: the dialog rises as a sheet from the bottom edge. */
+@media (width < 768px) {
+  .phone-sheet .ink-dialog:has(.plan-export) {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  .phone-sheet .plan-export__preview {
+    max-width: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .plan-export__paper canvas {
     transition: none;

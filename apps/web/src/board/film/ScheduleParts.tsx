@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { moveTabFocus } from '../../lib/tabs.ts';
 import { SetupChips } from '../plan/SetupChips.tsx';
 import { ScenePlanButton } from '../plan/scenes.tsx';
-import type { ShotSetup } from '../plan/setups.ts';
+import { groupBySetup, type ShotSetup } from '../plan/setups.ts';
 import { clockString, minutesLabel, monthGrid, parseDuration, SHOT_DRAG_TYPE } from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
@@ -71,6 +71,9 @@ export function ScheduleQueue({
   slugline,
   plansOf,
   setupsOf,
+  setups,
+  bySetup,
+  onBySetup,
   readOnly,
   disabled,
   loading,
@@ -94,6 +97,11 @@ export function ScheduleQueue({
   plansOf: (sceneId: string) => readonly PlanElement[];
   /** The setups of the set plans a shot belongs to (decision 0104). */
   setupsOf?: ((frameId: string) => readonly ShotSetup[] | undefined) | undefined;
+  /** The setups of every shot; "Group by" is offered only when the board's plans have some. */
+  setups?: ReadonlyMap<string, readonly ShotSetup[]> | undefined;
+  /** The person's "Group by: Setup": a scene's shots under their setups (decision 0115). */
+  bySetup?: boolean | undefined;
+  onBySetup?: ((on: boolean) => void) | undefined;
   readOnly: boolean;
   disabled: boolean;
   loading: boolean;
@@ -148,6 +156,18 @@ export function ScheduleQueue({
       }),
     }))
     .filter((g) => g.frames.length);
+  const queueShot = (frame: FrameElement) => (
+    <QueueShot
+      key={frame.id}
+      frame={frame}
+      label={labels.get(frame.id) ?? ''}
+      boardId={boardId}
+      boardAspect={boardAspect}
+      disabled={disabled}
+      setups={setupsOf?.(frame.id)}
+      onAdd={() => onAdd(frame.id)}
+    />
+  );
   const sceneName = (g: SceneGroup) =>
     g.scene
       ? [t('schedule.sceneShort', { number: g.scene.number }), g.scene.title || slugline(g.scene)]
@@ -208,6 +228,25 @@ export function ScheduleQueue({
                 ...waiting.map((g) => ({ value: g.scene?.id ?? 'loose', label: sceneName(g) })),
               ]}
             />
+            {!!setups?.size && onBySetup && (
+              <Select
+                variant="quiet"
+                className="schedule__group-by"
+                aria-label={t('film.list.groupBy')}
+                value={bySetup ? 'setup' : 'scene'}
+                onChange={(value) => onBySetup(value === 'setup')}
+                options={[
+                  {
+                    value: 'scene',
+                    label: `${t('film.list.groupBy')}: ${t('film.list.groupScene')}`,
+                  },
+                  {
+                    value: 'setup',
+                    label: `${t('film.list.groupBy')}: ${t('film.list.groupSetup')}`,
+                  },
+                ]}
+              />
+            )}
             {castNames.length > 0 && (
               <Select
                 variant="quiet"
@@ -239,18 +278,24 @@ export function ScheduleQueue({
                 <span>{sceneName(group)}</span>
                 {group.scene && <ScenePlanButton compact plans={plansOf(group.scene.id)} />}
               </h3>
-              {group.frames.map((frame) => (
-                <QueueShot
-                  key={frame.id}
-                  frame={frame}
-                  label={labels.get(frame.id) ?? ''}
-                  boardId={boardId}
-                  boardAspect={boardAspect}
-                  disabled={disabled}
-                  setups={setupsOf?.(frame.id)}
-                  onAdd={() => onAdd(frame.id)}
-                />
-              ))}
+              {bySetup && setups?.size
+                ? groupBySetup(group.frames, setups).map(({ setup, shots }) => (
+                    <section
+                      key={setup?.planId ?? 'none'}
+                      className="schedule__setup"
+                      aria-label={setup ? setup.name : t('film.list.noSetup')}
+                    >
+                      <h4
+                        className="schedule__setup-title"
+                        title={setup ? `${setup.plan} · ${setup.name}` : undefined}
+                      >
+                        {setup && <Icon name="map" size={11} />}
+                        <span>{setup ? setup.name : t('film.list.noSetup')}</span>
+                      </h4>
+                      {shots.map(queueShot)}
+                    </section>
+                  ))
+                : group.frames.map(queueShot)}
             </section>
           ))}
         </>
@@ -692,6 +737,7 @@ export function DayPanel({
   callsCount,
   calls,
   block,
+  setups,
   onChange,
   onAddBlock,
   onReload,
@@ -713,6 +759,8 @@ export function DayPanel({
   callsCount?: number | undefined;
   calls: ReactNode;
   block: (id: string) => ReactNode;
+  /** With "Group by: Setup", the day's shots under their setups (decision 0115). */
+  setups?: ReactNode;
   onChange: (next: ShootingDayInput, key?: string) => void;
   onAddBlock: () => void;
   onReload: () => void;
@@ -769,6 +817,7 @@ export function DayPanel({
             <p className="schedule__hint">
               {t(draft.blocks.length ? 'schedule.blockHint' : 'schedule.noBlocks')}
             </p>
+            {setups}
             {!readOnly && (
               <div>
                 <Button icon="plus" disabled={disabled || stale} onClick={onAddBlock}>

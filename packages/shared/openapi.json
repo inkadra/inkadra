@@ -8530,6 +8530,17 @@
             "maxItems": 8,
             "description": "The last set plan icons this person placed, newest first."
           },
+          "shotGroupBy": {
+            "type": "string",
+            "enum": [
+              "scene",
+              "location",
+              "status",
+              "setup",
+              "none"
+            ],
+            "description": "How this person groups shots, in the shot list and in the schedule (decision 0115). The schedule groups by setup when it is `setup` and by scene otherwise."
+          },
           "toolbar": {
             "type": [
               "array",
@@ -8593,6 +8604,7 @@
           "keepAroundContent",
           "planFavorites",
           "planRecents",
+          "shotGroupBy",
           "toolbar",
           "tutorialsSeen",
           "tutorialHints",
@@ -8666,6 +8678,17 @@
             },
             "maxItems": 8,
             "description": "The last set plan icons this person placed, newest first."
+          },
+          "shotGroupBy": {
+            "type": "string",
+            "enum": [
+              "scene",
+              "location",
+              "status",
+              "setup",
+              "none"
+            ],
+            "description": "How this person groups shots, in the shot list and in the schedule (decision 0115). The schedule groups by setup when it is `setup` and by scene otherwise."
           },
           "toolbar": {
             "type": [
