@@ -35,7 +35,9 @@ it('switches categories on the rail, arms a tile and places the first search res
     await act(async () => grip?.click());
     expect(grip?.getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('board.plan.groups.modifiers');
-    // Named by the plain name; the label below it may carry soft hyphens (tileName).
+    // Six categories on the rail: arrows, texts and measures are the toolbar's.
+    expect(rail?.querySelector('[aria-label="board.plan.categories.notes"]')).toBeNull();
+    // Named by the full name; the label below it may be the shorter tile name.
     const tile = host.querySelector<HTMLButtonElement>(
       '.plan-lib__tile[aria-label="board.plan.icons.softbox"]',
     );

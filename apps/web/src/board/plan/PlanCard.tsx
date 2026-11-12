@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { linkedLocation, type PlanElement, variantFamily, variantView } from '@inkadra/canvas-core';
-import { Icon } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,11 +15,18 @@ function LinkedScenes({ scenes }: { scenes: Parameters<typeof SceneBadges>[0]['s
   return <SceneBadges scenes={scenes} onOpen={usePlanNav().openScene} />;
 }
 
-/** "Set plan · Kitchen, day 2": the header of a plan, on the board and in the editor. */
-export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title' | 'variant'>): string {
-  // A variant reads "Kitchen · Evening", as its tab does.
-  if (plan.variant) return `${plan.title || t('board.plan.name')} · ${plan.variant}`;
-  return plan.title ? `${t('board.plan.name')} · ${plan.title}` : t('board.plan.name');
+/**
+ * "Set plan · Kitchen, day 2": the name of a plan in the editor, the view and the export; a setup
+ * adds its own, "Set plan · Kitchen, day 2 · Evening" (its title is its base's, decision 0117).
+ * The base's setup name stays on its tab.
+ */
+export function planTitle(
+  t: TFunction,
+  plan: Pick<PlanElement, 'title' | 'variant' | 'variantOf'>,
+): string {
+  return [t('board.plan.name'), plan.title, plan.variantOf ? plan.variant : '']
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /**
@@ -42,7 +48,8 @@ export function PlanCard({ element }: { element: PlanElement }) {
   const family = variantFamily(byId.values(), element);
   const { cameras, lights, watts } = planCounts(plan);
   const place = linkedLocation(base ?? element, byId)?.name;
-  const name = element.title || base?.title || place || t('board.plan.name');
+  // The title is the base's, shown by every setup (decision 0117).
+  const name = (base ? base.title : element.title) || place || t('board.plan.name');
   const kw =
     watts >= 1000
       ? `${(watts / 1000).toLocaleString(i18n.language, { maximumFractionDigits: 1 })} kW`
@@ -63,9 +70,8 @@ export function PlanCard({ element }: { element: PlanElement }) {
       </div>
       <div className="plan__foot">
         <div className="plan__head">
-          <Icon name="map" size={14} />
           <span className="plan__title">
-            {element.variant ? `${name} · ${element.variant}` : name}
+            {element.variantOf && element.variant ? `${name} · ${element.variant}` : name}
           </span>
           {useInRouterContext() ? (
             <LinkedScenes scenes={scenes} />

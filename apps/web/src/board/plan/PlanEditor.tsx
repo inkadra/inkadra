@@ -30,7 +30,7 @@ import { type CanvasHandle, PlanCanvas, TOOL_KEYS } from './PlanCanvas.tsx';
 import { planTitle } from './PlanCard.tsx';
 import { PlanElements } from './PlanElements.tsx';
 import { PlanExport, visibleArea } from './PlanExport.tsx';
-import { PlanKit, powerText, setupName } from './PlanKit.tsx';
+import { copyKit, PlanKit, powerText, setupName } from './PlanKit.tsx';
 import { type Dragged, PlanLibrary } from './PlanLibrary.tsx';
 import { SceneChips } from './PlanLinks.tsx';
 import { PlanProperties } from './PlanProperties.tsx';
@@ -84,6 +84,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const [setupMenu, setSetupMenu] = useState<CSSProperties | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [fullProps, setFullProps] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [backgroundOpen, setBackgroundOpen] = useState<CSSProperties | null>(null);
   const backgroundButton = useRef<HTMLButtonElement>(null);
   const picker = useBackgroundPicker(ed);
@@ -101,7 +102,9 @@ export function PlanEditor(props: PlanEditorProps) {
   const [exporting, setExporting] = useState<{ area: ReturnType<typeof visibleArea> } | null>(null);
   const scaleButton = useRef<HTMLButtonElement>(null);
   const family = props.family?.length ? props.family : [plan];
-  const title = planTitle(t, plan);
+  const title = planTitle(t, drawn);
+  // The base's title on every setup, never a setup's stale copy of it (decision 0117).
+  const titleShown = drawn.title ?? '';
   const { kitPlans, otherKits } = props;
   // This board's plans live, the other boards' from the server (decision 0114).
   const kit = useMemo(
@@ -110,9 +113,17 @@ export function PlanEditor(props: PlanEditorProps) {
   );
   const sensorName = t(`board.plan.sensors.${plan.sensor ?? 's35'}`);
   // Read with the live names of what the icons link to (decision 0111).
-  const changes = base
-    ? setupChanges(linkedPlan(base, ed.cards).icons ?? [], linkedPlan(plan, ed.cards).icons ?? [])
-    : [];
+  // Once per change of the two setups, not on every render (a drag renders at every move).
+  const changes = useMemo(
+    () =>
+      base
+        ? setupChanges(
+            linkedPlan(base, ed.cards).icons ?? [],
+            linkedPlan(plan, ed.cards).icons ?? [],
+          )
+        : [],
+    [base, plan, ed.cards],
+  );
   const scaleValue = drawn.scale
     ? t('board.plan.scaleGrid', { grid: Number(drawn.grid ?? '0.5').toLocaleString(lang) })
     : t('board.plan.scale');
@@ -164,6 +175,27 @@ export function PlanEditor(props: PlanEditorProps) {
     // Whatever the editor does not use never reaches the board behind it.
     e.stopImmediatePropagation();
     if (e.type !== 'keydown') return;
+    // The setup tabs: arrows move between setups, F2 renames the current one. Here, since this
+    // listener stops every key before the tabs' own handlers would see it.
+    const tab = target?.closest<HTMLElement>('.plan-setups [role="tab"]');
+    if (tab && (e.key === 'F2' || e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      e.preventDefault();
+      if (e.key === 'F2') setRenaming(true);
+      else {
+        const at = family.findIndex((f) => f.id === plan.id) + (e.key === 'ArrowRight' ? 1 : -1);
+        const next = family[(at + family.length) % family.length];
+        if (next && next.id !== plan.id) {
+          props.onSwitch?.(next.id);
+          // The editor of the next setup mounts anew: its selected tab takes the focus.
+          requestAnimationFrame(() =>
+            document
+              .querySelector<HTMLElement>('.plan-setups [role="tab"][aria-selected="true"]')
+              ?.focus(),
+          );
+        }
+      }
+      return;
+    }
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     const { selection, item } = ed;
@@ -280,90 +312,113 @@ export function PlanEditor(props: PlanEditorProps) {
       onClose={() => setPicking(null)}
     />
   );
+  /** The name of the setup being renamed, on its tab (or the phone's header): Enter keeps it. */
+  /** The tabs by setup, and the phone's setup button: focus comes back to them after a rename. */
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const setupButton = useRef<HTMLButtonElement>(null);
+  const backToTab = () =>
+    requestAnimationFrame(() =>
+      (phone ? setupButton.current : tabRefs.current.get(plan.id))?.focus(),
+    );
+  const renameField = (
+    <input
+      className="plan-field"
+      aria-label={t('board.plan.setupName')}
+      maxLength={60}
+      defaultValue={plan.variant ?? ''}
+      placeholder={t(base ? 'board.plan.variant' : 'board.plan.base')}
+      // biome-ignore lint/a11y/noAutofocus: Rename asks to type the name.
+      autoFocus
+      onBlur={(e) => {
+        const variant = e.target.value.trim() || undefined;
+        if (variant !== plan.variant) ed.editPlan({ variant });
+        setRenaming(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.key === 'Escape') e.currentTarget.value = plan.variant ?? '';
+          e.currentTarget.blur();
+          backToTab();
+        }
+      }}
+    />
+  );
+  // While renaming, the field lies over the tab, outside the tablist: a tablist holds tabs only.
+  const renamedTab = renaming ? tabRefs.current.get(plan.id) : undefined;
   const setupTabs = (
-    <div
-      className="plan-setups"
-      role="tablist"
-      aria-label={t('board.plan.setups')}
-      data-tour="plan-setups"
-    >
-      {family.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          role="tab"
-          className="plan-setups__tab"
-          aria-selected={p.id === plan.id}
-          tabIndex={p.id === plan.id ? 0 : -1}
-          onClick={() => p.id !== plan.id && props.onSwitch?.(p.id)}
-          onKeyDown={(e) => {
-            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-            const at = family.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
-            const next = family[(at + family.length) % family.length];
-            if (next && next.id !== plan.id) props.onSwitch?.(next.id);
-          }}
+    <div className="plan-setups" data-tour="plan-setups">
+      <div className="plan-setups__list" role="tablist" aria-label={t('board.plan.setups')}>
+        {family.map((p) => (
+          <button
+            key={p.id}
+            ref={(el) => {
+              if (el) tabRefs.current.set(p.id, el);
+              else tabRefs.current.delete(p.id);
+            }}
+            type="button"
+            role="tab"
+            className="plan-setups__tab"
+            aria-selected={p.id === plan.id}
+            tabIndex={p.id === plan.id ? 0 : -1}
+            title={p.id === plan.id ? t('board.plan.renameHint') : undefined}
+            onClick={() => p.id !== plan.id && props.onSwitch?.(p.id)}
+            // Every setup is renamed on its tab, the base too (decision 0117).
+            onDoubleClick={() => p.id === plan.id && setRenaming(true)}
+            onContextMenu={(e) => {
+              if (p.id !== plan.id) return;
+              e.preventDefault();
+              setRenaming(true);
+            }}
+          >
+            {setupName(p, family, t)}
+          </button>
+        ))}
+      </div>
+      {renaming && (
+        <span
+          className="plan-setups__rename"
+          style={
+            renamedTab
+              ? { left: renamedTab.offsetLeft, width: Math.max(140, renamedTab.offsetWidth) }
+              : undefined
+          }
         >
-          {setupName(p, family, t)}
-        </button>
-      ))}
+          {renameField}
+        </span>
+      )}
       {props.onNewVariant && (
         <IconButton icon="plus" label={t('board.plan.newSetup')} onClick={props.onNewVariant} />
       )}
     </div>
   );
   const baseName = base ? setupName(base, family, t) : '';
+  // The bare name of the base, for "Show Master as a ghost".
+  const baseBare = base ? base.variant || t('board.plan.base') : '';
+  /** What this setup changed from its base: a strip under the setup tabs, never on the plan. */
   const setupNote = base && (
     <section
-      className="plan-float plan-setup-note"
+      className="plan-setup-note"
       aria-label={t('board.plan.changedFrom', { name: baseName })}
     >
-      <div className="plan-setup-note__head">
-        {renaming ? (
-          <input
-            className="plan-field"
-            aria-label={t('board.plan.setupName')}
-            maxLength={60}
-            defaultValue={plan.variant ?? ''}
-            // biome-ignore lint/a11y/noAutofocus: Rename asks to type the name.
-            autoFocus
-            onBlur={(e) => {
-              const variant = e.target.value.trim() || undefined;
-              if (variant !== plan.variant) ed.editPlan({ variant });
-              setRenaming(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                if (e.key === 'Escape') e.currentTarget.value = plan.variant ?? '';
-                e.currentTarget.blur();
-              }
-            }}
-          />
-        ) : (
-          <b>
-            {t('board.plan.changedFromTitle', { name: setupName(plan, family, t), base: baseName })}
-          </b>
-        )}
-        {!renaming && (
-          <Button variant="ghost" onClick={() => setRenaming(true)}>
-            {t('board.plan.rename')}
-          </Button>
-        )}
-      </div>
-      <p className="plan-setup-note__text">
+      <span className="plan-props__cap">{t('board.plan.onAnotherSetup')}</span>
+      <b>
+        {t('board.plan.changedFromTitle', { name: setupName(plan, family, t), base: baseName })}
+      </b>
+      <span className="plan-setup-note__text">
         {changes.length
           ? changes.map((c) => changeText(c, drawn.scale, t, lang)).join(' · ')
           : t('board.plan.sameAsBase')}
-      </p>
-      <Button
-        variant="ghost"
-        icon="eye"
+      </span>
+      <button
+        type="button"
+        className="plan-setup-note__ghost"
         aria-pressed={ed.ghostBase}
         onClick={() => ed.setGhostBase((v) => !v)}
       >
-        {t(ed.ghostBase ? 'board.plan.hideGhost' : 'board.plan.showGhost', { name: baseName })}
-      </Button>
+        {t(ed.ghostBase ? 'board.plan.hideGhost' : 'board.plan.showGhost', { name: baseBare })}
+      </button>
     </section>
   );
   // The start dialog again, from the plan's menu, while the plan is still empty (decision 0110).
@@ -589,21 +644,26 @@ export function PlanEditor(props: PlanEditorProps) {
       >
         <header className="plan-top plan-top--phone">
           <IconButton icon="chevronLeft" label={t('board.plan.back')} onClick={props.onClose} />
-          <button
-            type="button"
-            className="plan-top__setup"
-            aria-haspopup="menu"
-            data-tour="plan-setups"
-            onClick={(e) => {
-              const r = e.currentTarget.getBoundingClientRect();
-              setSetupMenu(
-                setupMenu ? null : { position: 'fixed', left: r.left, top: r.bottom + 6 },
-              );
-            }}
-          >
-            {setupName(plan, family, t)}
-            <Icon name="chevronDown" size={14} />
-          </button>
+          {renaming ? (
+            <span className="plan-top__setup">{renameField}</span>
+          ) : (
+            <button
+              ref={setupButton}
+              type="button"
+              className="plan-top__setup"
+              aria-haspopup="menu"
+              data-tour="plan-setups"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setSetupMenu(
+                  setupMenu ? null : { position: 'fixed', left: r.left, top: r.bottom + 6 },
+                );
+              }}
+            >
+              {setupName(plan, family, t)}
+              <Icon name="chevronDown" size={14} />
+            </button>
+          )}
           <span className="plan-top__spacer" />
           <IconButton
             icon="magnet"
@@ -668,6 +728,17 @@ export function PlanEditor(props: PlanEditorProps) {
               />
               <b className="plan-top__title">{sheetTitle}</b>
               <span className="plan-top__spacer" />
+              {ed.sheet === 'kit' && (
+                <IconButton
+                  icon={copied ? 'check' : 'copy'}
+                  label={t(copied ? 'board.plan.copied' : 'board.plan.copyList')}
+                  disabled={!kitLines.length}
+                  onClick={async () => {
+                    setCopied(await copyKit(kitLines));
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                />
+              )}
             </header>
             <div className="plan-sheet__body">
               {ed.sheet === 'elements' ? (
@@ -706,7 +777,7 @@ export function PlanEditor(props: PlanEditorProps) {
                     },
                   ]
                 : []),
-              ...(base ? [{ label: t('board.plan.rename'), action: () => setRenaming(true) }] : []),
+              { label: t('board.plan.rename'), action: () => setRenaming(true) },
               { divider: true as const },
               {
                 label: t('board.plan.background.button'),
@@ -749,11 +820,14 @@ export function PlanEditor(props: PlanEditorProps) {
             aria-label={t('board.plan.titleField')}
             placeholder={t('board.plan.titlePlaceholder')}
             maxLength={200}
-            defaultValue={plan.title ?? ''}
-            size={Math.max(8, (plan.title ?? '').length + 1)}
+            // The title is the base's: every setup shows it, and writes it there (decision 0117).
+            key={ed.scaleOwner}
+            defaultValue={titleShown}
+            size={Math.max(8, titleShown.length + 1)}
             onBlur={(e) => {
               const next = e.target.value.trim() || undefined;
-              if (next !== plan.title) ed.editPlan({ title: next });
+              if (next !== (base ? base.title : plan.title))
+                ed.editPlan({ title: next }, ed.scaleOwner);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === 'Escape') {
@@ -820,11 +894,13 @@ export function PlanEditor(props: PlanEditorProps) {
       </header>
       <div className="plan-main">
         {library}
-        <main className="plan-main__canvas">
-          <PlanCanvas ed={ed} handle={canvas} />
+        <div className="plan-main__column">
           {setupNote}
-          {startDialog}
-        </main>
+          <main className="plan-main__canvas">
+            <PlanCanvas ed={ed} handle={canvas} />
+            {startDialog}
+          </main>
+        </div>
         {panel}
       </div>
       {picker.field}

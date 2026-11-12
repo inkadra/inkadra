@@ -13,7 +13,6 @@ import {
   type LibraryItem,
   projectKitDetail,
   searchLibrary,
-  tileName,
 } from './library.ts';
 import { PlanGlyph } from './PlanDrawing.tsx';
 import type { KitScope } from './project-kit.ts';
@@ -179,13 +178,15 @@ export function PlanLibrary({
       <button
         type="button"
         className="plan-lib__tile"
-        // The plain name: the label below carries soft hyphens to fit the tile.
+        // The full name: the label below may be the catalogue's shorter one for the tile.
         aria-label={t(`board.plan.icons.${item}`)}
         aria-pressed={armed === item}
         {...handlers({ item }, tapItem(item))}
       >
         <PlanGlyph kind={item} size={phone ? 30 : 30} />
-        <span aria-hidden="true">{tileName(t(`board.plan.icons.${item}`))}</span>
+        <span aria-hidden="true">
+          {t(`board.plan.tileNames.${item}`, { defaultValue: t(`board.plan.icons.${item}`) })}
+        </span>
       </button>
       {!phone && (
         <button
@@ -254,12 +255,10 @@ export function PlanLibrary({
   );
   const category = LIBRARY_CATEGORIES.find((c) => c.id === shelf);
   const groups =
-    shelf === 'notes'
-      ? [{ id: 'notes', kinds: PLAN_NOTE_TOOLS as readonly LibraryItem[] }]
-      : (PLAN_CATEGORIES.find((c) => c.id === shelf)?.groups.map((g) => ({
-          id: g.id as string,
-          kinds: g.kinds as readonly PlanIconKind[],
-        })) ?? []);
+    PLAN_CATEGORIES.find((c) => c.id === shelf)?.groups.map((g) => ({
+      id: g.id as string,
+      kinds: g.kinds as readonly PlanIconKind[],
+    })) ?? [];
   const shelfBody =
     shelf === 'mine' ? (
       mine
@@ -275,11 +274,7 @@ export function PlanLibrary({
         )}
         {groups.map((g) => (
           <section key={g.id} className="plan-lib__group">
-            <span className="plan-lib__cap">
-              {shelf === 'notes'
-                ? t('board.plan.categories.notes')
-                : t(`board.plan.groups.${g.id}`)}
-            </span>
+            <span className="plan-lib__cap">{t(`board.plan.groups.${g.id}`)}</span>
             {grid(g.kinds, g.id)}
           </section>
         ))}
@@ -303,10 +298,13 @@ export function PlanLibrary({
             <PlanGlyph kind={h.item} size={26} />
             <span className="plan-lib__text">
               <span>
-                <Marked text={h.name} query={h.by === 'name' ? query.trim() : ''} />
+                <Marked
+                  text={h.name}
+                  query={h.by === 'name' || h.by === 'prefix' ? query.trim() : ''}
+                />
               </span>
               <small>
-                <Marked text={h.detail} query={h.by === 'name' ? '' : query.trim()} />
+                <Marked text={h.detail} query={h.by === 'synonym' ? query.trim() : ''} />
               </small>
             </span>
             {i === 0 && !phone && <kbd>Enter</kbd>}
@@ -346,7 +344,11 @@ export function PlanLibrary({
       {!phone && !query && <kbd>/</kbd>}
     </label>
   );
-  const shelves: Shelf[] = ['mine', ...LIBRARY_CATEGORIES.map((c) => c.id)];
+  // The six categories: arrows, texts and measures are the toolbar's (they stay in the search).
+  const shelves: Shelf[] = [
+    'mine',
+    ...LIBRARY_CATEGORIES.filter((c) => c.id !== 'notes').map((c) => c.id),
+  ];
   const shelfName = (s: Shelf) =>
     s === 'mine' ? t('board.plan.lib.mine') : t(`board.plan.categories.${s}`);
   const ghostView =

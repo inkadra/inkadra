@@ -1159,7 +1159,7 @@
       },
       "tabs": {
         "lights": "Lights",
-        "grip": "Grip",
+        "grip": "Modifiers",
         "camera": "Camera",
         "people": "People",
         "set": "Set",
@@ -1205,7 +1205,6 @@
       "lens": "Lens",
       "otherLens": "Other…",
       "focal": "Focal length",
-      "fromFrames": "From the frames",
       "sensor": "Sensor",
       "sensors": {
         "s35": "Super 35",
@@ -1214,7 +1213,7 @@
         "s16": "Super 16"
       },
       "angle": "Angle of view",
-      "angleValue": "{{angle}}° horiz.",
+      "angleValue": "{{angle}}° wide",
       "showLens": "Show the lens in the label",
       "power": "Power",
       "beam": "Beam",
@@ -1240,7 +1239,7 @@
       "group": "Group",
       "ungroup": "Ungroup",
       "scale": "Scale",
-      "scaleGrid": "{{grid}} m per square",
+      "scaleGrid": "1 square = {{grid}} m",
       "noScale": "None, no metres",
       "setScale": "Set the scale",
       "scaleHint": "Draw a line along something whose length you know",
@@ -1406,7 +1405,7 @@
       "unlock": "Unlock",
       "mains": "Mains",
       "make": "Make and model, optional",
-      "makePlaceholder": "As on the rental list",
+      "makePlaceholder": "e.g. the name on the rental list",
       "mixed": "Mixed",
       "modifier": "Modifier",
       "modifierCount_one": "Modifiers {{count}}",
@@ -1414,7 +1413,7 @@
       "moreProps": "All properties",
       "movement": "Movement",
       "nameField": "Name",
-      "nameFollows": "Name follows the card",
+      "nameFollows": "Name and colour follow the card",
       "newSetup": "Add a setup",
       "noCircuit": "On no circuit",
       "noGel": "No gel",
@@ -1478,8 +1477,7 @@
       "kitGroups": {
         "lights": "Lights",
         "grip": "Modifiers, grip and stands",
-        "camera": "Camera and movement",
-        "av": "Video, sound and crew"
+        "camera": "Camera and movement"
       },
       "mix": {
         "lights_one": "{{count}} light",
@@ -1564,7 +1562,8 @@
           "dawn": "Dawn",
           "dusk": "Dusk"
         },
-        "circuitLine": "{{name}} · {{amps}} A"
+        "circuitLine": "{{name}} · {{amps}} A",
+        "fromCharacters": "{{name}}, from the character cards"
       },
       "exportSheet": {
         "title": "Export the set plan",
@@ -1724,7 +1723,39 @@
         "tooBig": "Too big for this plan at its scale.",
         "empty": "Start empty",
         "again": "Ways to start…"
-      }
+      },
+      "onAnotherSetup": "On another setup",
+      "renameHint": "Double-click or F2 to rename",
+      "tagColourFollows": "The colour follows the character card",
+      "onTrack": "{{name}} on track",
+      "onTrackLength": "{{name}} on {{metres}} m track",
+      "seatsAround_one": "{{count}} seat",
+      "seatsAround_other": "{{count}} seats",
+      "allSetupsOfScene_one": "All setups of scene {{scene}}: {{count}} item",
+      "allSetupsOfScene_other": "All setups of scene {{scene}}: {{count}} items",
+      "editCircuit": "Edit {{name}}",
+      "doneCircuit": "Done editing {{name}}",
+      "setProps_one": "{{count}} prop",
+      "setProps_other": "{{count}} props",
+      "tileNames": {
+        "bounce": "Bounce",
+        "curve": "Curved track",
+        "cyc": "Cyc strip",
+        "distro": "Distro box",
+        "frame": "Diffusion",
+        "kino": "Tube bank",
+        "leko": "Profile spot",
+        "molebeam": "Beam proj.",
+        "neon": "Neon sign",
+        "plantmic": "Plant mic",
+        "polecat": "Pole cat",
+        "rack": "Costume rack",
+        "screen": "Screen glow",
+        "streetlight": "Street light",
+        "trackingcar": "Camera car"
+      },
+      "selectBase": "Select",
+      "selectNamed": "Select {{name}}"
     },
     "contextual": {
       "done": "Done",
@@ -5102,11 +5133,11 @@
           },
           "2": {
             "title": "Properties, elements, kit",
-            "text": "What you select is set up in the right panel, and Lock keeps it where it is; Elements lists the plan by group, Kit counts the kit and the power per circuit."
+            "text": "What you select is set up in the right panel, and Lock keeps it where it is; Elements lists the plan by group, Kit counts the kit and the power per circuit, the first setup’s circuits serving them all."
           },
           "3": {
             "title": "Setups",
-            "text": "One tab per setup. On a setup, the note says what changed from the base, which can show behind it."
+            "text": "One tab per setup: double-click it to rename it, the first one too. Under the tabs, a setup says what changed from the first, which can show behind it."
           },
           "4": {
             "title": "Walls and openings",

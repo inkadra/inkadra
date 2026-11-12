@@ -8,6 +8,7 @@ import { LOCALES } from '../../i18n/locales.ts';
 
 type Plan = {
   icons: Record<string, string>;
+  tileNames: Record<string, string>;
   synonyms: Record<string, string>;
   categories: Record<string, string>;
   groups: Record<string, string>;
@@ -28,6 +29,18 @@ describe.each(LOCALES)('the set plan catalogue in %s (decision 0104)', (locale) 
     ];
     expect(missing).toEqual([]);
     expect(p.categories.notes?.trim()).toBeTruthy();
+  });
+
+  it('names no two tiles alike, in a category or across them (decision 0117)', () => {
+    // Search lists the whole catalogue: "Escalera" twice is two tiles nobody tells apart.
+    const seen = new Map<string, string>();
+    const same = PLAN_CATEGORIES.flatMap((c) => c.kinds).flatMap((k) => {
+      const name = (p.tileNames[k] ?? p.icons[k] ?? '').trim().toLocaleLowerCase(locale);
+      const other = seen.get(name);
+      seen.set(name, k);
+      return other && other !== k ? [`${other} and ${k} are both "${name}"`] : [];
+    });
+    expect(same).toEqual([]);
   });
 
   it('gives every kind the library offers words to be found by', () => {

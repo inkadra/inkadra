@@ -630,9 +630,13 @@ export function body(p: Placed, ctx: CardContext): Op[] {
     case 'table':
       return tableOps(el, p, c, m);
     case 'plan': {
-      const title = el.variant
-        ? [el.title || ctx.words.plan, el.variant].filter(Boolean).join(' · ')
-        : [ctx.words.plan, el.title].filter(Boolean).join(' · ');
+      const base = el.variantOf ? ctx.element?.(el.variantOf) : undefined;
+      // A setup's Set and title are its base's (decisions 0062 and 0117).
+      const drawn = base?.type === 'plan' ? variantView(el, base) : el;
+      const title =
+        el.variantOf && el.variant
+          ? [drawn.title || ctx.words.plan, el.variant].filter(Boolean).join(' · ')
+          : [ctx.words.plan, drawn.title].filter(Boolean).join(' · ');
       const ops: Op[] = [
         {
           kind: 'text',
@@ -654,8 +658,6 @@ export function body(p: Placed, ctx: CardContext): Op[] {
         },
       ];
       const box = { x: p.x, y: p.y + PLAN_HEAD, w: p.w, h: p.w / PLAN_ASPECT };
-      const base = el.variantOf ? ctx.element?.(el.variantOf) : undefined;
-      const drawn = base?.type === 'plan' ? variantView(el, base) : el;
       return [...ops, ...planOps(drawn, box, ctx)];
     }
     case 'map': {

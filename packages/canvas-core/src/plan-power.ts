@@ -78,6 +78,18 @@ export function circuitStatus(drawn: number, breaker: number | null): CircuitSta
 }
 
 /**
+ * The circuit a light is on, or null when it is on none: no id, or the id of a circuit since
+ * removed. Removing a circuit leaves the id on its lights (an undo brings the circuit back with
+ * them on it); everything that shows a light's circuit reads it through here (decision 0117).
+ */
+export function circuitOf(
+  light: Pick<PlanIcon, 'circuit'>,
+  circuits: readonly PlanCircuit[] | undefined,
+): PlanCircuit | null {
+  return (light.circuit && circuits?.find((c) => c.id === light.circuit)) || null;
+}
+
+/**
  * The power of a plan per circuit. `hiddenLayers` left out, as the kit is, and so are the sun and
  * the other sources that are no kit (`isKitLight`). A light whose circuit is gone counts on no
  * circuit.
@@ -90,7 +102,6 @@ export function planPower(plan: {
 }): PlanPower {
   const voltage = plan.voltage ?? DEFAULT_VOLTAGE;
   const circuits = plan.circuits ?? [];
-  const ids = new Set(circuits.map((c) => c.id));
   const lights = (plan.icons ?? []).filter(
     (i) => isKitLight(i.kind) && !plan.hiddenLayers?.includes(layerOf(i)),
   );
@@ -118,10 +129,10 @@ export function planPower(plan: {
       c.id,
       c.name,
       c.amps,
-      lights.filter((i) => i.circuit === c.id),
+      lights.filter((i) => circuitOf(i, circuits)?.id === c.id),
     ),
   );
-  const loose = lights.filter((i) => !i.circuit || !ids.has(i.circuit));
+  const loose = lights.filter((i) => !circuitOf(i, circuits));
   if (loose.length) out.push(load(null, '', null, loose));
   const watts = lights.reduce((sum, i) => sum + iconWatts(i), 0);
   return { voltage, watts, amps: ampsAt(watts, voltage), circuits: out };

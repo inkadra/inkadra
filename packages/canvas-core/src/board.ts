@@ -26,7 +26,7 @@ import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
 import type { Point, Rect } from './geometry.ts';
 import { keptOnDelete, unlinkCharacter } from './plan-links.ts';
-import { adoptBase, type PlanBase, planBaseOf } from './plan-variants.ts';
+import { adoptBase, type PlanBase, planBaseOf, standAlone } from './plan-variants.ts';
 
 /**
  * Edits on a board document. Every function runs in one transaction tagged with `origin`, so
@@ -884,7 +884,19 @@ function clipboardBase(base: unknown): PlanBase | null {
     (b.openings !== undefined && !list(b.openings, MAX_PLAN_OPENINGS))
   )
     return null;
-  for (const key of ['scale', 'grid', 'rulers'] as const)
+  for (const key of [
+    'scale',
+    'grid',
+    'rulers',
+    // What a setup reads from its base, since decision 0117; a base copied earlier has none.
+    'circuits',
+    'voltage',
+    'background',
+    'locationId',
+    'north',
+    'sceneIds',
+    'title',
+  ] as const)
     if (!PlanElement.shape[key].safeParse(b[key]).success) return null;
   return b as unknown as PlanBase;
 }
@@ -983,14 +995,9 @@ function elementCopy(
   };
   if (copy.type === 'todo' && copy.sceneId) copy.sceneId = fresh.get(copy.sceneId) ?? copy.sceneId;
   if (copy.type === 'plan') {
-    // Scenes: the copies of scenes pasted with it, or those of this board; others go.
-    const scenes = (copy.sceneIds ?? [])
-      .map((s) => fresh.get(s) ?? s)
-      .filter((s) => here.has(s) || pasted.has(s));
-    if (scenes.length) copy.sceneIds = scenes;
-    else delete copy.sceneIds;
     // A variant follows the copy of its base, or its base on this board; on a board
-    // without it, it stands alone with the base's Set (decision 0062).
+    // without it, it stands alone with the base's Set (decision 0062) and what it read from
+    // its base (decision 0117), before its scenes and links are mapped below.
     if (copy.variantOf && fresh.has(copy.variantOf)) copy.variantOf = fresh.get(copy.variantOf);
     else if (copy.variantOf && !here.has(copy.variantOf)) {
       const base = baseFor(clip.id);
@@ -1003,8 +1010,19 @@ function elementCopy(
         if (base.openings?.length) copy.openings = [...base.openings, ...(copy.openings ?? [])];
         if (base.scale && !copy.scale)
           Object.assign(copy, { scale: base.scale, grid: base.grid, rulers: base.rulers });
+        const { circuits, fields } = standAlone(copy, base);
+        if (circuits.length) copy.circuits = [...circuits, ...(copy.circuits ?? [])];
+        for (const [key, value] of Object.entries(fields))
+          if (value === undefined) delete (copy as Record<string, unknown>)[key];
+          else (copy as Record<string, unknown>)[key] = value;
       }
     }
+    // Scenes: the copies of scenes pasted with it, or those of this board; others go.
+    const scenes = (copy.sceneIds ?? [])
+      .map((s) => fresh.get(s) ?? s)
+      .filter((s) => here.has(s) || pasted.has(s));
+    if (scenes.length) copy.sceneIds = scenes;
+    else delete copy.sceneIds;
     // Its location and the frames and characters of its icons: their copies, or the cards of
     // this board; a link to a card that is not here goes, the icon keeping its label.
     const link = (l: string) => fresh.get(l) ?? (here.has(l) ? l : undefined);
@@ -1081,20 +1099,21 @@ function storedCopy(
     }
   }
   if (type === 'plan') {
-    const sceneIds = source.get('sceneIds');
+    const variantOf = source.get('variantOf');
+    if (typeof variantOf === 'string' && fresh.has(variantOf))
+      copy.set('variantOf', fresh.get(variantOf));
+    else if (typeof variantOf === 'string' && !here.has(variantOf)) {
+      // Before the scenes and links are mapped: what it takes from its base is mapped too.
+      const base = baseFor(clip.id);
+      if (base) adoptBase(copy, base);
+      else copy.delete('variantOf');
+    }
+    const sceneIds = copy.get('sceneIds');
     const scenes = (Array.isArray(sceneIds) ? sceneIds : [])
       .map((s) => fresh.get(s) ?? s)
       .filter((s) => here.has(s) || pasted.has(s));
     if (scenes.length) copy.set('sceneIds', scenes);
     else copy.delete('sceneIds');
-    const variantOf = source.get('variantOf');
-    if (typeof variantOf === 'string' && fresh.has(variantOf))
-      copy.set('variantOf', fresh.get(variantOf));
-    else if (typeof variantOf === 'string' && !here.has(variantOf)) {
-      const base = baseFor(clip.id);
-      if (base) adoptBase(copy, base);
-      else copy.delete('variantOf');
-    }
     relinkStoredPlan(copy, (l) => fresh.get(l) ?? (here.has(l) ? l : undefined));
   }
   // As addElement creates them, so two people drawing on the copy add to the same lists.

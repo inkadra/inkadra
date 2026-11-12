@@ -288,6 +288,19 @@ describe('the project kit across boards (decision 0114)', () => {
     expect(here[1]?.lenses).toEqual([50]);
   });
 
+  it('leaves out a table lamp with only its watts, and keeps one set up (decision 0117)', () => {
+    const kit = projectKit([
+      {
+        icons: [
+          icon('p', 'practical', { watts: 40 }),
+          icon('q', 'fresnel', { watts: 650, role: 'practical' }),
+          icon('r', 'practical', { watts: 60, make: 'Paper lantern' }),
+        ],
+      },
+    ]);
+    expect(kit.map((k) => k.icon.make ?? k.icon.kind)).toEqual(['Paper lantern']);
+  });
+
   it('takes the same modifiers in any order for the same light', () => {
     const light = (id: string, first: PlanIcon['kind'], second: PlanIcon['kind']) => [
       icon(id, 'cob', { make: 'Aputure 600d' }),

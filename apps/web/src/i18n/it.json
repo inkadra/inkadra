@@ -1159,7 +1159,7 @@
       },
       "tabs": {
         "lights": "Luci",
-        "grip": "Grip",
+        "grip": "Modificatori",
         "camera": "Camera",
         "people": "Persone",
         "set": "Set",
@@ -1205,7 +1205,6 @@
       "lens": "Ottica",
       "otherLens": "Altro…",
       "focal": "Focale",
-      "fromFrames": "Dalle inquadrature",
       "sensor": "Sensore",
       "sensors": {
         "s35": "Super 35",
@@ -1214,7 +1213,7 @@
         "s16": "Super 16"
       },
       "angle": "Angolo di campo",
-      "angleValue": "{{angle}}° orizz.",
+      "angleValue": "{{angle}}° in larghezza",
       "showLens": "Mostra l’ottica nell’etichetta",
       "power": "Potenza",
       "beam": "Fascio",
@@ -1240,7 +1239,7 @@
       "group": "Raggruppa",
       "ungroup": "Separa",
       "scale": "Scala",
-      "scaleGrid": "{{grid}} m per quadretto",
+      "scaleGrid": "1 quadretto = {{grid}} m",
       "noScale": "Nessuna, senza metri",
       "setScale": "Imposta la scala",
       "scaleHint": "Traccia una linea su qualcosa di cui conosci la misura",
@@ -1406,7 +1405,7 @@
       "unlock": "Sblocca",
       "mains": "Rete",
       "make": "Marca e modello, facoltativo",
-      "makePlaceholder": "Come sulla lista del noleggio",
+      "makePlaceholder": "es. il nome sulla lista del noleggio",
       "mixed": "Misti",
       "modifier": "Modificatore",
       "modifierCount_one": "Modificatori {{count}}",
@@ -1414,7 +1413,7 @@
       "moreProps": "Tutte le proprietà",
       "movement": "Movimento",
       "nameField": "Nome",
-      "nameFollows": "Il nome segue la scheda",
+      "nameFollows": "Nome e colore seguono la scheda",
       "newSetup": "Aggiungi un setup",
       "noCircuit": "Su nessun circuito",
       "noGel": "Nessuna gelatina",
@@ -1478,8 +1477,7 @@
       "kitGroups": {
         "lights": "Luci",
         "grip": "Modificatori, macchinistica e stativi",
-        "camera": "Camera e movimento",
-        "av": "Video, audio e troupe"
+        "camera": "Camera e movimento"
       },
       "mix": {
         "lights_one": "{{count}} luce",
@@ -1564,7 +1562,8 @@
           "dawn": "Alba",
           "dusk": "Tramonto"
         },
-        "circuitLine": "{{name}} · {{amps}} A"
+        "circuitLine": "{{name}} · {{amps}} A",
+        "fromCharacters": "{{name}}, dalle schede personaggio"
       },
       "exportSheet": {
         "title": "Esporta la pianta del set",
@@ -1724,7 +1723,39 @@
         "tooBig": "Troppo grande per questa pianta alla sua scala.",
         "empty": "Inizia vuota",
         "again": "Modi per iniziare…"
-      }
+      },
+      "onAnotherSetup": "Su un altro setup",
+      "renameHint": "Doppio clic o F2 per rinominare",
+      "tagColourFollows": "Il colore segue la scheda del personaggio",
+      "onTrack": "{{name}} su binario",
+      "onTrackLength": "{{name}} su binario di {{metres}} m",
+      "seatsAround_one": "{{count}} posto",
+      "seatsAround_other": "{{count}} posti",
+      "allSetupsOfScene_one": "Tutti i setup della scena {{scene}}: {{count}} elemento",
+      "allSetupsOfScene_other": "Tutti i setup della scena {{scene}}: {{count}} elementi",
+      "editCircuit": "Modifica {{name}}",
+      "doneCircuit": "Fine modifica di {{name}}",
+      "setProps_one": "{{count}} oggetto",
+      "setProps_other": "{{count}} oggetti",
+      "tileNames": {
+        "bounce": "Pannello riflettente",
+        "curve": "Binario curvo",
+        "cyc": "Luce da limbo",
+        "distro": "Quadro di distribuzione",
+        "frame": "Telaio diffusore",
+        "kino": "Banco di tubi",
+        "leko": "Sagomatore",
+        "molebeam": "Proiettore a fascio",
+        "neon": "Insegna al neon",
+        "plantmic": "Microfono nascosto",
+        "polecat": "Asta telescopica",
+        "rack": "Stender costumi",
+        "screen": "Luce di schermo",
+        "streetlight": "Lampione",
+        "trackingcar": "Camera car"
+      },
+      "selectBase": "Seleziona",
+      "selectNamed": "Seleziona {{name}}"
     },
     "contextual": {
       "done": "Fatto",
@@ -5102,11 +5133,11 @@
           },
           "2": {
             "title": "Proprietà, elementi, materiale",
-            "text": "Ciò che selezioni si imposta nel pannello a destra, e Blocca lo ferma dov’è; Elementi elenca la pianta per gruppi, Materiale conta il materiale e la potenza per circuito."
+            "text": "Ciò che selezioni si imposta nel pannello a destra, e Blocca lo ferma dov’è; Elementi elenca la pianta per gruppi, Materiale conta il materiale e la potenza per circuito, con i circuiti del primo setup validi per tutti."
           },
           "3": {
             "title": "Setup",
-            "text": "Una scheda per setup. Su un setup, la nota dice cosa è cambiato dalla base, che può comparire dietro in trasparenza."
+            "text": "Una scheda per setup: doppio clic per rinominarla, anche la prima. Sotto le schede, un setup dice cosa è cambiato dal primo, che può comparire dietro in trasparenza."
           },
           "4": {
             "title": "Muri e aperture",

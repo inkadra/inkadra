@@ -146,7 +146,7 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
       .click();
     await expect(props).toContainText('32 mm nell’inquadratura');
     // The angle of view of 32 mm on Super 35.
-    await expect(props).toContainText(`${Math.round(lensAngle(32))}° orizz.`);
+    await expect(props).toContainText(`${Math.round(lensAngle(32))}° in larghezza`);
     const cam = (await saved()).find((i) => i.kind === 'camera');
     expect(cam?.frameId).toBe(frameId);
     expect(cam?.lens).toBeUndefined();
@@ -167,7 +167,7 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
     await card(planId).dblclick();
     await pick(/^A cam/);
     await expect(props).toContainText('50 mm nell’inquadratura');
-    await expect(props).toContainText(`${Math.round(lensAngle(50))}° orizz.`);
+    await expect(props).toContainText(`${Math.round(lensAngle(50))}° in larghezza`);
     await pick(/^Leonardo/);
     await expect(props.getByLabel('Nome', { exact: true })).toHaveValue('Leonardo');
   });
