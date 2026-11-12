@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { expectFixture, PLAN } from '../plan/plan-sample.fixture.ts';
 import { type CardContext, type Palette, planOps } from './board-render.ts';
 import type { Op } from './pages.ts';
-import { PLAN } from '../plan/plan-sample.fixture.ts';
 
 /**
  * The export's drawing of a sample plan, kept as a fixture (decision 0116): the operations were
  * written from `main` before the plan's geometry moved to canvas-core, and must stay the same.
  * Numbers are rounded to 1e-6 points, so a change in the order of floating-point steps passes
- * and any drawn difference fails. Rewrite with `vitest -u` only for a change meant to be seen.
+ * and any drawn difference fails. Rewrite with `WRITE_PLAN_FIXTURES=1` only for a change meant to be seen.
  */
 
 /** Every colour of the page a hex code of its own, so that the mixes show in the fixture. */
@@ -63,13 +63,14 @@ afterAll(() => {
 describe('a set plan in exports', () => {
   it('draws the sample plan as it did before the geometry moved to canvas-core', async () => {
     const ops = planOps(PLAN, { x: 20, y: 30, w: 600, h: 400 }, ctx);
-    await expect(`${lines(ops).join('\n')}\n`).toMatchFileSnapshot('./__fixtures__/plan-ops.txt');
+    expectFixture(`${lines(ops).join('\n')}\n`, `${import.meta.dirname}/__fixtures__/plan-ops.txt`);
   });
 
   it('draws a legend glyph, without beams and labels, as before', async () => {
     const ops = planOps(PLAN, { x: 0, y: 0, w: 120, h: 80 }, ctx, false, false);
-    await expect(`${lines(ops).join('\n')}\n`).toMatchFileSnapshot(
-      './__fixtures__/plan-ops-small.txt',
+    expectFixture(
+      `${lines(ops).join('\n')}\n`,
+      `${import.meta.dirname}/__fixtures__/plan-ops-small.txt`,
     );
   });
 });

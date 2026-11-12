@@ -1,4 +1,6 @@
+import { readFileSync, writeFileSync } from 'node:fs';
 import type { Element, PlanIcon, PlanShape } from '@inkadra/doc-schema';
+import { expect } from 'vitest';
 
 /**
  * A sample set plan with every kind of glyph part, beam, glow, label, blocking and shape, level
@@ -31,7 +33,10 @@ export const ICONS: PlanIcon[] = [
     lens: 50,
     showLens: true,
     dashed: true,
-    steps: [{ x: 300, y: 3600, rotation: 330 }, { x: 450, y: 3400, bend: 40 }],
+    steps: [
+      { x: 300, y: 3600, rotation: 330 },
+      { x: 450, y: 3400, bend: 40 },
+    ],
   }),
   icon('fresnel', {
     kind: 'fresnel',
@@ -80,13 +85,54 @@ export const SHAPES: PlanShape[] = [
   shape('arrow', { kind: 'arrow', x0: 1200, y0: 3000, x1: 1800, y1: 2700 }),
   shape('arrowfat', { kind: 'arrow', x0: 3900, y0: 400, x1: 3300, y1: 300, width: 10 }),
   shape('arrowturn', { kind: 'arrow', x0: 300, y0: 1000, x1: 700, y1: 1300, rotation: 60 }),
-  shape('text', { kind: 'text', x0: 1400, y0: 3700, x1: 2000, y1: 3800, width: 18, text: 'Two\nlines' }),
-  shape('textturn', { kind: 'text', x0: 2900, y0: 3600, x1: 3400, y1: 3700, width: 26, text: 'Turned', rotation: 340 }),
+  shape('text', {
+    kind: 'text',
+    x0: 1400,
+    y0: 3700,
+    x1: 2000,
+    y1: 3800,
+    width: 18,
+    text: 'Two\nlines',
+  }),
+  shape('textturn', {
+    kind: 'text',
+    x0: 2900,
+    y0: 3600,
+    x1: 3400,
+    y1: 3700,
+    width: 26,
+    text: 'Turned',
+    rotation: 340,
+  }),
   shape('zone', { kind: 'zone', x0: 400, y0: 1300, x1: 1000, y1: 1700, text: 'Video village' }),
-  shape('zonerev', { kind: 'zone', x0: 3900, y0: 3000, x1: 3300, y1: 2600, rotation: 15, text: 'Back' }),
+  shape('zonerev', {
+    kind: 'zone',
+    x0: 3900,
+    y0: 3000,
+    x1: 3300,
+    y1: 2600,
+    rotation: 15,
+    text: 'Back',
+  }),
   shape('measure', { kind: 'measure', x0: 400, y0: 3900, x1: 1600, y1: 3900 }),
-  shape('meswritten', { kind: 'measure', x0: 3800, y0: 1000, x1: 3800, y1: 1800, text: '2.7', dashed: true }),
-  shape('mesicons', { kind: 'measure', x0: 0, y0: 0, x1: 0, y1: 0, from: ICONS[3]?.id, to: ICONS[4]?.id }),
+  shape('meswritten', {
+    kind: 'measure',
+    x0: 3800,
+    y0: 1000,
+    x1: 3800,
+    y1: 1800,
+    text: '2.7',
+    dashed: true,
+  }),
+  shape('mesicons', {
+    kind: 'measure',
+    x0: 0,
+    y0: 0,
+    x1: 0,
+    y1: 0,
+    from: ICONS[3]?.id,
+    to: ICONS[4]?.id,
+  }),
   shape('mesnone', { kind: 'measure', x0: 2000, y0: 200, x1: 2600, y1: 250, text: 'x' }),
 ];
 
@@ -107,3 +153,27 @@ export const PLAN = {
   scale: 80,
 } as unknown as Extract<Element, { type: 'plan' }>;
 
+const NUMBER = /-?\d+(?:\.\d+)?(?:e-?\d+)?/g;
+
+/**
+ * Checks `text` against the fixture at `path`: the same text, its numbers within 1e-5 (a value on
+ * a rounding boundary of the written digits may round either way from floating-point noise).
+ * `WRITE_PLAN_FIXTURES=1` writes the fixture instead, for a change meant to be seen.
+ */
+export function expectFixture(text: string, path: string): void {
+  if (process.env.WRITE_PLAN_FIXTURES) {
+    writeFileSync(path, text);
+    return;
+  }
+  const fixture = readFileSync(path, 'utf8');
+  const words = (t: string) => t.split(NUMBER);
+  const numbers = (t: string) => (t.match(NUMBER) ?? []).map(Number);
+  const a = numbers(text);
+  const b = numbers(fixture);
+  const same =
+    words(text).join('#') === words(fixture).join('#') &&
+    a.length === b.length &&
+    a.every((v, i) => Math.abs(v - (b[i] as number)) <= 1e-5);
+  // On a difference, the whole texts, for the diff.
+  if (!same) expect(text).toBe(fixture);
+}

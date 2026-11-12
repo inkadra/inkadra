@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PlanDrawing } from './PlanDrawing.tsx';
-import { PLAN } from './plan-sample.fixture.ts';
+import { expectFixture, PLAN } from './plan-sample.fixture.ts';
 
 /**
  * The board's SVG of a sample plan, kept as a fixture (decision 0116): written from `main` before
@@ -49,12 +49,16 @@ afterAll(() => {
 
 describe('a set plan on the board', () => {
   it('draws the sample plan as it did before the geometry moved to canvas-core', async () => {
-    await expect(await svg({ extent: true })).toMatchFileSnapshot('./__fixtures__/plan-drawing.svg.txt');
+    expectFixture(
+      await svg({ extent: true }),
+      `${import.meta.dirname}/__fixtures__/plan-drawing.svg.txt`,
+    );
   });
 
   it('draws it as the editor does, blocking as a route', async () => {
-    await expect(await svg({ extent: true, route: true, grid: 25 })).toMatchFileSnapshot(
-      './__fixtures__/plan-drawing-editor.svg.txt',
+    expectFixture(
+      await svg({ extent: true, route: true, grid: 25 }),
+      `${import.meta.dirname}/__fixtures__/plan-drawing-editor.svg.txt`,
     );
   });
 });

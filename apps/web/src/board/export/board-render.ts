@@ -2,6 +2,7 @@
 import {
   arrowGeometry,
   arrowPolyline,
+  beamStrength,
   beamWarmth,
   blockingCurve,
   blockingPositions,
@@ -13,18 +14,21 @@ import {
   iconCone,
   iconGlow,
   iconGlyph,
-  iconPoint,
   iconTransform,
   labelAnchor,
   linkedPlan,
   measureEnds,
+  measureText,
   openingLines,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanStackEntry,
+  type Point,
   pieceOutline,
+  placedGlyph,
   planFrame,
   planRoomDims,
+  planShapeOutline,
   planStack,
   type Rect,
   roomMetres,
@@ -49,7 +53,6 @@ import {
   iconLabel,
   iconSubLabel,
   LABEL_SIZE,
-  measureText,
   PLAN_INK,
   planToken,
   SUB_LABEL_SIZE,
@@ -1228,7 +1231,7 @@ export function planOps(
     const glow = cone ? null : iconGlow(icon);
     const warmth = icon.kind === 'camera' ? null : beamWarmth(icon.kelvin);
     const color = warmth === null ? ink(icon.color) : mix(c['tag-orange'], c['tag-blue'], warmth);
-    const shade = 0.06 + 0.16 * (icon.intensity ?? 0.8);
+    const shade = beamStrength(icon);
     if (glow) {
       // A soft glow, as the screen's radial one (audit SH3): discs stacked from the rim inwards,
       // each faint, so the shade falls off towards the edge.
@@ -1268,16 +1271,15 @@ export function planOps(
     const out: Op[] = [];
     const color = veil < 1 ? mix(base, c['surface-1'], veil) : base;
     const t = iconTransform(icon);
-    const place = (x: number, y: number) => {
-      const q = iconPoint(t, x, y);
-      return at(q.x, q.y);
-    };
     const width = Math.min(1.6, 1.7 / Math.sqrt(t.sx * t.sy)) * Math.sqrt(t.sx * t.sy) * k;
     const paper = c['surface-1'];
-    for (const part of flattenGlyph(iconGlyph(icon))) {
-      const pts: Array<{ x: number; y: number }> = [];
-      for (let i = 0; i + 1 < part.points.length; i += 2)
-        pts.push(place(part.points[i] as number, part.points[i + 1] as number));
+    // The glyph's parts placed by canvas-core (decision 0116). shortcut: exports keep their own
+    // stroke widths and dashes, from the glyph's widths, thinner than the board's; drop the
+    // glyph's parts here and use the placed widths when exports are made to match the board.
+    const glyph = flattenGlyph(iconGlyph(icon));
+    for (const [n, part] of placedGlyph(icon).entries()) {
+      const { width: glyphWidth, dash } = glyph[n] as (typeof glyph)[number];
+      const pts = part.points.map((p) => at(p.x, p.y));
       const own = part.color ? ink(part.color) : color;
       // Opaque parts mix their colour into the paper; see-through ones only tint it (0104).
       const fill = part.fill?.hole
@@ -1297,17 +1299,11 @@ export function planOps(
           ...(alpha !== undefined ? { opacity: alpha * veil } : {}),
         });
       if (part.closed && pts[0]) pts.push(pts[0]);
-      const w = (width * part.width) / DEFAULT_GLYPH_STROKE;
+      const w = (width * glyphWidth) / DEFAULT_GLYPH_STROKE;
       const stroke = part.opacity !== undefined ? mix(own, paper, part.opacity) : own;
-      if (part.dash)
+      if (dash)
         out.push(
-          ...dashes(
-            pts,
-            (part.dash[0] as number) * w,
-            (part.dash[1] ?? (part.dash[0] as number)) * w,
-            stroke,
-            w,
-          ),
+          ...dashes(pts, (dash[0] as number) * w, (dash[1] ?? (dash[0] as number)) * w, stroke, w),
         );
       else
         out.push({
@@ -1368,7 +1364,11 @@ export function planOps(
   }
 }
 
-/** A plan shape: zones and measures, and frame shapes turned by their rotation. */
+/**
+ * A plan shape from its outline in canvas-core (decision 0116). Exports differ from the board in
+ * three ways, kept as they were: an arrow's head is filled and shorter; texts, a zone's name and a
+ * measure's length are printed level, in sizes of their own; a measure ignores a rotation.
+ */
 function planShapeOps(
   shape: PlanShape,
   box: Rect,
@@ -1377,25 +1377,26 @@ function planShapeOps(
   ctx: CardContext,
 ): Op[] {
   const c = ctx.colors;
-  const g = (v: number, size: number) => (v / 4096) * size;
-  const x0 = box.x + g(shape.x0, box.w);
-  const y0 = box.y + g(shape.y0, box.h);
-  const x1 = box.x + g(shape.x1, box.w);
-  const y1 = box.y + g(shape.y1, box.h);
-  const width = (shape.width / 1000) * box.w;
+  const k = box.w / PLAN_VIEW_W;
+  const at = (p: Point) => ({ x: box.x + p.x * k, y: box.y + p.y * k });
+  const flat = (pts: readonly Point[]) => pts.flatMap((p) => [box.x + p.x * k, box.y + p.y * k]);
+  const o = planShapeOutline(shape.kind === 'measure' ? { ...shape, rotation: undefined } : shape);
+  const width = o.width * k;
+  const [first = [], ...rest] = o.lines;
+  const ring = o.closed && first[0] ? [...first, first[0]] : first;
   if (shape.kind === 'measure') {
+    const [a, b] = first.map(at) as [Point, Point];
+    const mid = at(o.centre);
     const label = measureText(shape, scale);
-    const ops: Op[] = [
-      { kind: 'line', x1: x0, y1: y0, x2: x1, y2: y1, color, width: (2 / 1000) * box.w },
-    ];
+    const ops: Op[] = [{ kind: 'line', x1: a.x, y1: a.y, x2: b.x, y2: b.y, color, width }];
     if (label) {
       const size = (18 / 1000) * box.w;
       const w = ctx.measure(label, size, 600);
       ops.push(
         {
           kind: 'rect',
-          x: (x0 + x1) / 2 - w / 2 - 4,
-          y: (y0 + y1) / 2 - size,
+          x: mid.x - w / 2 - 4,
+          y: mid.y - size,
           w: w + 8,
           h: size * 1.6,
           radius: 3,
@@ -1405,8 +1406,8 @@ function planShapeOps(
         },
         {
           kind: 'text',
-          x: (x0 + x1) / 2 - w / 2,
-          y: (y0 + y1) / 2 + size * 0.35,
+          x: mid.x - w / 2,
+          y: mid.y + size * 0.35,
           text: label,
           size,
           weight: 600,
@@ -1416,50 +1417,18 @@ function planShapeOps(
     }
     return ops;
   }
-  const turned = (ops: Op[]): Op[] => {
-    if (!shape.rotation) return ops;
-    const cx = (x0 + x1) / 2;
-    const cy = (y0 + y1) / 2;
-    const t = (shape.rotation * Math.PI) / 180;
-    const pts = (p: readonly number[]) =>
-      p.map((v, i) =>
-        i % 2 === 0
-          ? cx + (v - cx) * Math.cos(t) - ((p[i + 1] as number) - cy) * Math.sin(t)
-          : cy + ((p[i - 1] as number) - cx) * Math.sin(t) + (v - cy) * Math.cos(t),
-      );
-    return ops.map((op) => {
-      if (op.kind === 'polyline' || op.kind === 'polygon') return { ...op, points: pts(op.points) };
-      if (op.kind === 'ellipse') {
-        const ring: number[] = [];
-        for (let i = 0; i <= 32; i++) {
-          const a = (i / 32) * Math.PI * 2;
-          ring.push(op.cx + op.rx * Math.cos(a), op.cy + op.ry * Math.sin(a));
-        }
-        return { kind: 'polyline', points: pts(ring), color: op.stroke, width: op.width };
-      }
-      // shortcut: exported texts stay level; turned texts print unturned until text ops can turn.
-      return op;
-    });
-  };
   if (shape.kind === 'zone') {
-    const corners = [x0, y0, x1, y0, x1, y1, x0, y1];
-    const ring = [x0, y0, x1, y0, x1, y1, x0, y1, x0, y0];
-    const edge: Array<{ x: number; y: number }> = [];
-    const turnedRing = (
-      turned([{ kind: 'polyline', points: ring, color, width }])[0] as { points: number[] }
-    ).points;
-    for (let i = 0; i + 1 < turnedRing.length; i += 2)
-      edge.push({ x: turnedRing[i] as number, y: turnedRing[i + 1] as number });
     const ops: Op[] = [
-      ...turned([{ kind: 'polygon', points: corners, fill: mix(color, c['surface-1'], 0.1) }]),
-      ...dashes(edge, width * 3, width * 2.5, color, width),
+      { kind: 'polygon', points: flat(first), fill: mix(color, c['surface-1'], o.fill ?? 0.1) },
+      ...dashes(ring.map(at), (o.dash?.[0] ?? 0) * k, (o.dash?.[1] ?? 0) * k, color, width),
     ];
-    if (shape.text) {
+    if (shape.text && o.box) {
       const size = (18 / 1000) * box.w;
+      const corner = at(o.box);
       ops.push({
         kind: 'text',
-        x: Math.min(x0, x1) + 0.01 * box.w,
-        y: Math.min(y0, y1) + size * 1.3,
+        x: corner.x + 0.01 * box.w,
+        y: corner.y + size * 1.3,
         text: shape.text,
         size,
         weight: 400,
@@ -1468,7 +1437,28 @@ function planShapeOps(
     }
     return ops;
   }
-  return turned(shapeOps({ ...shape, kind: shape.kind, color }, box));
+  if (shape.kind === 'text') return shapeOps({ ...shape, kind: shape.kind, color }, box);
+  if (shape.kind === 'ellipse' && !o.angle && o.box) {
+    const mid = at(o.centre);
+    return [
+      {
+        kind: 'ellipse',
+        cx: mid.x,
+        cy: mid.y,
+        rx: (o.box.w / 2) * k,
+        ry: (o.box.h / 2) * k,
+        stroke: color,
+        width,
+      },
+    ];
+  }
+  const ops: Op[] = [{ kind: 'polyline', points: flat(ring), color, width }];
+  // shortcut: the head is the export's filled one, not the board's open wings (`rest`).
+  if (shape.kind === 'arrow' && rest.length > 0) {
+    const [a, b] = first.map(at) as [Point, Point];
+    ops.push(head(a.x, a.y, b.x, b.y, Math.max(width * 3, 6), color));
+  }
+  return ops;
 }
 
 function head(x0: number, y0: number, x1: number, y1: number, size: number, color: string): Op {
