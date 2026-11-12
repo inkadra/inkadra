@@ -494,6 +494,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               rootBoardId={p.rootBoardId}
               board={rootBoard}
               views={rootViews}
+              counts={counts.get(rootBoard.id)}
               active={!inboxOpen && !boardId ? currentView : null}
               depth={1}
               go={go}
@@ -1151,6 +1152,7 @@ function BoardTree({
                 rootBoardId={rootBoardId}
                 board={b}
                 views={views}
+                counts={counts.get(b.id)}
                 active={open ? activeView : null}
                 depth={depth + 1}
                 go={go}
@@ -1173,12 +1175,16 @@ function BoardTree({
   );
 }
 
-/** The views of one board under its row in the sidebar. */
+/**
+ * The views of one board under its row in the sidebar; Storyboard and Shot list count the
+ * board's frames, live while they are being added.
+ */
 function BoardViewRows({
   projectId,
   rootBoardId,
   board,
   views,
+  counts,
   active,
   depth,
   go,
@@ -1187,6 +1193,7 @@ function BoardViewRows({
   rootBoardId: string;
   board: Board;
   views: BoardView[];
+  counts: BoardCount | undefined;
   /** The open view, when this board is the one open. */
   active: BoardView | null;
   depth: number;
@@ -1195,12 +1202,22 @@ function BoardViewRows({
   const { t } = useTranslation();
   return views.map((v) => {
     const href = viewHref(projectId, board, v, rootBoardId);
+    const label = t(viewLabelKey(v, board.kind));
+    const frames = v === 'storyboard' || v === 'shotlist' ? counts?.frameCount : undefined;
+    const title =
+      frames === undefined || !counts
+        ? undefined
+        : v === 'storyboard'
+          ? `${label} · ${t('nav.shots', { count: frames })}`
+          : `${label} · ${t('nav.toShoot', { count: frames, left: counts.framesToShoot })}`;
     return (
       <NavItem
         key={v}
         icon={viewIcon(v)}
         contentKind={v}
-        label={t(viewLabelKey(v, board.kind))}
+        label={label}
+        count={frames}
+        title={title}
         href={href}
         active={active === v}
         onClick={go(href)}

@@ -8,6 +8,7 @@ import { deflateSync } from 'node:zlib';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { type Browser, expect, type Page, test } from '@playwright/test';
+import { setViewsAs } from '../helpers/views.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 test.describe.configure({ mode: 'serial' });
@@ -104,6 +105,8 @@ async function seed(base: string): Promise<Seeded> {
     (hex, i) => createElement(doc, 'color', { x: 80 + i * 132, y: 360 }, { hex }, opts).id,
   );
   await pushBoardDoc(base, cookie, project.rootBoardId, doc);
+  // A new board starts with only its canvas: the moodboard test turns it on (decision 0121).
+  await setViewsAs(base, cookie, project.rootBoardId, ['moodboard']);
   const url = `/p/${project.id}/b/${project.rootBoardId}`;
   return { cookie, url, imageId, colorIds, palette: asset.palette?.length ?? 0 };
 }

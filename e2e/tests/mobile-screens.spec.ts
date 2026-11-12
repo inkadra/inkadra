@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { turnOn } from '../helpers/views.ts';
 
 // The smallest phone width the app supports. Uses the account created by first-run.spec.ts,
 // and creates it when run on its own.
@@ -107,6 +108,11 @@ test('phone screens fit 360 px with finger-sized targets', async ({ page, baseUR
   await create.click();
   await expect(page).toHaveURL(/\/p\//);
 
+  // A board with one view has no view picker (decision 0121); with Moodboard on it has one.
+  await expect(page.getByTestId('canvas')).toBeVisible();
+  await expect(page.locator('.mobile-view-switcher')).toHaveCount(0);
+  await turnOn(page, 'Moodboard');
+  await page.keyboard.press('Escape');
   // A board: the original 56 px row, with separate AA targets for name and view.
   await expect(page.locator('.mobile-view-switcher')).toBeVisible();
   const headerBox = (await header.boundingBox())!;

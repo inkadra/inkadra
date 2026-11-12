@@ -116,6 +116,10 @@
     "expand": "Espandi la navigazione",
     "boards": "Board",
     "addStoryboard": "Aggiungi storyboard",
+    "shots_one": "{{count}} inquadratura",
+    "shots_other": "{{count}} inquadrature",
+    "toShoot_one": "{{left}} di {{count}} inquadratura ancora da girare",
+    "toShoot_other": "{{left}} di {{count}} inquadrature ancora da girare",
     "items_one": "{{count}} elemento nella board",
     "items_other": "{{count}} elementi nella board",
     "addMoodboard": "Aggiungi moodboard"

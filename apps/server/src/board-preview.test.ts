@@ -89,16 +89,19 @@ describe('board counts for the navigation', () => {
       cardCount: 0,
       fileCount: 0,
       boardCount: 0,
+      referenceCount: 0,
+      looseCount: 0,
     };
     expect(boardCounts()).toEqual(zero);
     expect(boardCounts(new Uint8Array([255]))).toEqual(zero);
     const doc = new Y.Doc();
     const { elements } = roots(doc);
-    const add = (id: string, type: string, status?: string) => {
+    const add = (id: string, type: string, status?: string, sceneIds?: string[]) => {
       const map = new Y.Map<unknown>();
       elements.set(id, map);
       map.set('type', type);
       if (status) map.set('status', status);
+      if (sceneIds) map.set('sceneIds', sceneIds);
     };
     add('scene', 'scene');
     add('a', 'frame');
@@ -106,13 +109,19 @@ describe('board counts for the navigation', () => {
     add('c', 'frame', 'shot');
     add('note', 'note');
     add('pdf', 'file');
+    add('photo', 'image');
+    add('scene-plan', 'plan', undefined, ['scene']);
+    add('loose-plan', 'plan');
+    // References feed the moodboard; loose cards are what a storyboard keeps outside it (0121).
     expect(boardCounts(Y.encodeStateAsUpdate(doc))).toEqual({
-      elementCount: 6,
+      elementCount: 9,
       frameCount: 3,
       framesToShoot: 2,
-      cardCount: 4,
+      cardCount: 7,
       fileCount: 1,
       boardCount: 0,
+      referenceCount: 1,
+      looseCount: 4,
     });
     doc.destroy();
   });

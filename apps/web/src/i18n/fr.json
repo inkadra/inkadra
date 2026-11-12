@@ -116,6 +116,10 @@
     "expand": "Développer la navigation",
     "boards": "Tableaux",
     "addStoryboard": "Ajouter un storyboard",
+    "shots_one": "{{count}} plan",
+    "shots_other": "{{count}} plans",
+    "toShoot_one": "{{left}} plan sur {{count}} encore à tourner",
+    "toShoot_other": "{{left}} plans sur {{count}} encore à tourner",
     "items_one": "{{count}} élément sur le tableau",
     "items_other": "{{count}} éléments sur le tableau",
     "addMoodboard": "Ajouter un moodboard"

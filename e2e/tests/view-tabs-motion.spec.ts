@@ -129,7 +129,9 @@ test.describe('with motion', () => {
 
     // Browser back leaves the storyboard for the root board at once, with no direction left.
     await page.goBack();
-    await expect(page.getByTestId('canvas').or(page.locator('[role="tab"]').first())).toBeVisible();
+    // The root board has its Moodboard on here: it comes back on its canvas, with its tabs.
+    await expect(page.getByTestId('canvas')).toBeVisible();
+    await expect(tab(page, 'Lavagna')).toHaveAttribute('aria-selected', 'true');
     await expect
       .poll(() => page.evaluate(() => document.documentElement.dataset.viewDirection))
       .toBeUndefined();

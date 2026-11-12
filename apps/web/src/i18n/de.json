@@ -116,6 +116,10 @@
     "expand": "Navigation ausklappen",
     "boards": "Boards",
     "addStoryboard": "Storyboard hinzufügen",
+    "shots_one": "{{count}} Shot",
+    "shots_other": "{{count}} Shots",
+    "toShoot_one": "{{left}} von {{count}} Shot noch zu drehen",
+    "toShoot_other": "{{left}} von {{count}} Shots noch zu drehen",
     "items_one": "{{count}} Element im Board",
     "items_other": "{{count}} Elemente im Board",
     "addMoodboard": "Moodboard hinzufügen"

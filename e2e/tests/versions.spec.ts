@@ -369,7 +369,10 @@ test('version failures explain rate limits and let the editor recover', async ({
   await menuButton.click();
   await expect(page.getByRole('menu')).toHaveCount(0);
   await menuButton.click();
-  await expect(page.getByRole('menuitem', { name: 'Rinomina' })).toBeFocused();
+  // "Views of this board" comes first (decision 0121): its first switch takes the focus.
+  await expect(
+    page.getByRole('menuitemcheckbox', { name: 'Moodboard', exact: true }),
+  ).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
   await expect(menuButton).toBeFocused();

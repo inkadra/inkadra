@@ -116,6 +116,10 @@
     "expand": "Expandir a navegação",
     "boards": "Quadros",
     "addStoryboard": "Adicionar storyboard",
+    "shots_one": "{{count}} plano",
+    "shots_other": "{{count}} planos",
+    "toShoot_one": "{{left}} de {{count}} plano ainda por filmar",
+    "toShoot_other": "{{left}} de {{count}} planos ainda por filmar",
     "items_one": "{{count}} item no quadro",
     "items_other": "{{count}} itens no quadro",
     "addMoodboard": "Adicionar moodboard"
