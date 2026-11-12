@@ -64,3 +64,18 @@ describe('wordsFrom on Hermes, without Intl.PluralRules', () => {
     expect(t('board.plan.name')).toBe(en.board.plan.name);
   });
 });
+
+describe('wordsFrom without Intl at all', () => {
+  const intl = Intl;
+  afterEach(() => {
+    Object.assign(globalThis, { Intl: intl });
+  });
+
+  it('says one for 1 and other else', () => {
+    Reflect.deleteProperty(globalThis, 'Intl');
+    const t = wordsFrom('en', [en]);
+    const said = [1, 0, 3].map((count) => t('board.plan.positions', { count }));
+    Object.assign(globalThis, { Intl: intl });
+    expect(said).toEqual(['1 position', '0 positions', '3 positions']);
+  });
+});

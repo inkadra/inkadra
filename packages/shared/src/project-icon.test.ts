@@ -28,7 +28,7 @@ describe('a project emoji on Hermes, without Intl.Segmenter', () => {
     Object.assign(Intl, { Segmenter });
   });
   const one = ['🎬', '❤️', '👍🏽', '👨‍👩‍👧', '🇮🇹', '1️⃣', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '🏳️‍🌈'];
-  const many = ['🎬🎥', '🇮🇹🇫🇷', 'ab', '👍x', '🎬 '];
+  const many = ['🎬🎥', '🇮🇹🇫🇷', 'ab', '👍x', '🎬 ', '\u200D🎬🎥', '\uFE0F🎬', '\u{1F3FB}🎬'];
   const ok = (emoji: string) =>
     ProjectIcon.safeParse({ shape: 'star', color: 'pink', emoji }).success;
 
@@ -39,5 +39,21 @@ describe('a project emoji on Hermes, without Intl.Segmenter', () => {
     expect(one.map(ok)).toEqual(one.map(() => true));
     expect(many.map(ok)).toEqual(many.map(() => false));
     expect([...one, ...many].map(ok)).toEqual(segmented);
+  });
+});
+
+describe('a project emoji without Intl at all', () => {
+  const intl = Intl;
+  afterEach(() => {
+    Object.assign(globalThis, { Intl: intl });
+  });
+
+  it('accepts one emoji and rejects two', () => {
+    const icon = (emoji: string) =>
+      ProjectIcon.safeParse({ shape: 'star', color: 'pink', emoji }).success;
+    Reflect.deleteProperty(globalThis, 'Intl');
+    const read = ['🎬', '👨‍👩‍👧', '🇮🇹', '🎬🎥', '\u200D🎬🎥'].map(icon);
+    Object.assign(globalThis, { Intl: intl });
+    expect(read).toEqual([true, true, true, false, false]);
   });
 });

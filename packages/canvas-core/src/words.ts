@@ -21,7 +21,9 @@ export function wordsFrom(language: string, catalogues: readonly object[]): Word
       // shortcut: English's rule for every language without Intl.PluralRules (Hermes), so a
       // language with few/many forms says "other" there; upgrade with a plural rules polyfill.
       const rules =
-        typeof Intl.PluralRules === 'function' ? new Intl.PluralRules(language) : undefined;
+        typeof Intl !== 'undefined' && typeof Intl.PluralRules === 'function'
+          ? new Intl.PluralRules(language)
+          : undefined;
       plural = rules ? (n) => rules.select(n) : (n) => (n === 1 ? 'one' : 'other');
     }
     return plural(count);

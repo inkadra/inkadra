@@ -13,7 +13,7 @@ export type ProjectRole = z.infer<typeof ProjectRole>;
  * regional indicator counted with it.
  */
 function graphemeCount(value: string): number {
-  if (typeof Intl.Segmenter === 'function')
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function')
     return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value)].length;
   // shortcut: emoji sequences only, not every Unicode cluster rule (e.g. combining accents count
   // apart); upgrade with a segmenter polyfill when a client counts text that is not an emoji.
@@ -21,12 +21,16 @@ function graphemeCount(value: string): number {
   let joined = false;
   let flagHalf = false;
   for (const char of value) {
-    const regional = /\p{Regional_Indicator}/u.test(char);
+    // A range, not `\p{Regional_Indicator}`: older Hermes rejects Unicode property escapes.
+    const regional = /[\u{1F1E6}-\u{1F1FF}]/u.test(char);
+    // Nothing before the first character to attach to: a leading joiner or modifier is one of
+    // its own, as Intl.Segmenter counts it.
     if (
-      joined ||
-      (regional && flagHalf) ||
-      char === '\u200D' ||
-      /[\uFE0E\uFE0F\u20E3\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u.test(char)
+      count > 0 &&
+      (joined ||
+        (regional && flagHalf) ||
+        char === '\u200D' ||
+        /[\uFE0E\uFE0F\u20E3\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u.test(char))
     ) {
       joined = char === '\u200D';
       flagHalf = false;
