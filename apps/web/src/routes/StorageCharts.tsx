@@ -78,41 +78,46 @@ function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: n
             const color = row.color ?? SWATCHES[i % SWATCHES.length];
             const track = (
               <span className="storage-chart__track" aria-hidden="true">
-                <span style={{ width: width(row.bytes), ...(row.person !== undefined && { background: color }) }} />
+                <span
+                  style={{
+                    width: width(row.bytes),
+                    ...(row.person !== undefined && { background: color }),
+                  }}
+                />
               </span>
             );
             return (
-            <tr key={row.id}>
-              <th scope="row">
-                {row.person === undefined ? (
-                  <>
-                    <span className="storage-chart__label">
-                      <i style={{ background: color }} aria-hidden="true" />
-                      {row.label}
-                    </span>
-                    {track}
-                  </>
-                ) : (
-                  <span className="storage-chart__person">
-                    <span className="storage-chart__ring" style={{ color }} aria-hidden="true">
-                      {row.person ? (
-                        <Avatar name={row.label} image={row.person.image} size={32} />
-                      ) : (
-                        <span className="ink-avatar" style={{ width: 32, height: 32 }}>
-                          <Icon name="user" size={16} />
-                        </span>
-                      )}
-                    </span>
-                    <span>
-                      <span className="storage-chart__label">{row.label}</span>
+              <tr key={row.id}>
+                <th scope="row">
+                  {row.person === undefined ? (
+                    <>
+                      <span className="storage-chart__label">
+                        <i style={{ background: color }} aria-hidden="true" />
+                        {row.label}
+                      </span>
                       {track}
+                    </>
+                  ) : (
+                    <span className="storage-chart__person">
+                      <span className="storage-chart__ring" style={{ color }} aria-hidden="true">
+                        {row.person ? (
+                          <Avatar name={row.label} image={row.person.image} size={32} />
+                        ) : (
+                          <span className="ink-avatar" style={{ width: 32, height: 32 }}>
+                            <Icon name="user" size={16} />
+                          </span>
+                        )}
+                      </span>
+                      <span>
+                        <span className="storage-chart__label">{row.label}</span>
+                        {track}
+                      </span>
                     </span>
-                  </span>
-                )}
-              </th>
-              <td>{formatStorage(row.bytes, i18n.language)}</td>
-              <td>{storagePercent(row.bytes, total, i18n.language)}</td>
-            </tr>
+                  )}
+                </th>
+                <td>{formatStorage(row.bytes, i18n.language)}</td>
+                <td>{storagePercent(row.bytes, total, i18n.language)}</td>
+              </tr>
             );
           })}
         </tbody>

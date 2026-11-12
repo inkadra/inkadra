@@ -170,7 +170,8 @@ it('shows each person as an avatar ringed in their colour, and files with no acc
   );
   await show('user');
   const rows = [...host.querySelectorAll('tbody tr')];
-  const ring = (row: Element) => row.querySelector<HTMLElement>('.storage-chart__ring')?.style.color;
+  const ring = (row: Element) =>
+    row.querySelector<HTMLElement>('.storage-chart__ring')?.style.color;
   const track = (row: Element) =>
     row.querySelector<HTMLElement>('.storage-chart__track > span')?.style.background;
   const [paola, luca, none] = rows as [Element, Element, Element];
