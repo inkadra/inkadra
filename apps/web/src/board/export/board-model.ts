@@ -8,47 +8,14 @@ import {
   intersects,
   type Rect,
 } from '@inkadra/canvas-core';
-import { Element, hiddenFromGuests, toGuestElement } from '@inkadra/doc-schema';
+import type { Element } from '@inkadra/doc-schema';
+import { type ExportFilter, exportable } from '@inkadra/print';
 
-/**
- * Who an export is for. `client` keeps exactly what a guest of a share link sees: hidden
- * cards and their contents are left out and each element keeps only its guest fields.
- */
-export type Audience = 'team' | 'client';
-
-export interface ExportFilter {
-  audience: Audience;
-  /** Leave out cards hidden from guests even for the team. Always true for clients. */
-  hideGuestHidden: boolean;
-}
+// Who an export is for and what it may show moved to @inkadra/print (decision 0116): the
+// server's set plan sheet filters its guests with the same code.
+export { type Audience, audienceCards, type ExportFilter, exportable } from '@inkadra/print';
 
 type Lookup = (id: string) => Element | undefined;
-
-/** The element as the export may show it, or null when it must be left out. */
-export function exportable(el: Element, lookup: Lookup, filter: ExportFilter): Element | null {
-  const client = filter.audience === 'client';
-  if ((client || filter.hideGuestHidden) && hiddenFromGuests(el.id, lookup)) return null;
-  if (!client) return el;
-  const parsed = Element.safeParse(toGuestElement(el));
-  return parsed.success ? parsed.data : null;
-}
-
-/**
- * The cards an export's audience may see, by id, for the links of set plans (decision 0111): a
- * plan linked to a card hidden from guests resolves nothing from it in an export for them.
- */
-export function audienceCards(
-  all: Iterable<Element>,
-  lookup: Lookup,
-  filter: ExportFilter,
-): Map<string, Element> {
-  const out = new Map<string, Element>();
-  for (const el of all) {
-    const shown = exportable(el, lookup, filter);
-    if (shown) out.set(shown.id, shown);
-  }
-  return out;
-}
 
 export interface BoardSource {
   byId: ReadonlyMap<string, Element>;
