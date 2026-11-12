@@ -94,7 +94,13 @@ describe('the card of a sub-board (decision 0121)', () => {
     // `again` draws the same card: what this person chose is kept per card.
     if (!again) {
       doc = createBoardDoc('boardAAAAAAAA');
-      id = createElement(doc, 'board', { x: 0, y: 0 }, { boardId: FILM, ...size }, { userId: null }).id;
+      id = createElement(
+        doc,
+        'board',
+        { x: 0, y: 0 },
+        { boardId: FILM, ...size },
+        { userId: null },
+      ).id;
     }
     const context = {
       store: new BoardStore(doc),
@@ -113,10 +119,7 @@ describe('the card of a sub-board (decision 0121)', () => {
       root.render(
         <GuestModeContext.Provider value={guest}>
           <BoardContext.Provider value={context}>
-            <Card
-              element={readElement(roots(doc).elements.get(id)!) as Element}
-              selected={false}
-            />
+            <Card element={readElement(roots(doc).elements.get(id)!) as Element} selected={false} />
           </BoardContext.Provider>
         </GuestModeContext.Provider>,
       ),
@@ -175,7 +178,9 @@ describe('the card of a sub-board (decision 0121)', () => {
   it('keeps old cards and guests on the name only, without asking for a preview', async () => {
     const film = board('storyboard', ['shotlist']);
     expect((await show(film, { w: 180 })).querySelector('.card__board')).not.toBeNull();
-    expect((await show(film, { w: 320, h: 260 }, { guest: true })).querySelector('.board-card')).toBeNull();
+    expect(
+      (await show(film, { w: 320, h: 260 }, { guest: true })).querySelector('.board-card'),
+    ).toBeNull();
     expect(get).not.toHaveBeenCalledWith(`/boards/${FILM}/preview`);
   });
 });

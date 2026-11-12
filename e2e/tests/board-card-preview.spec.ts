@@ -201,9 +201,7 @@ for (const theme of ['light', 'dark'] as const) {
     // The loading state, held by a preview that never answers.
     await page.route('**/api/v1/boards/*/preview', () => {});
     await page.goto(`/p/${project.id}?view=canvas`);
-    await expect(el(ids.notes).locator('.board-card__note')).toHaveText(
-      'Caricamento anteprima…',
-    );
+    await expect(el(ids.notes).locator('.board-card__note')).toHaveText('Caricamento anteprima…');
     await capture('desktop-loading');
     await page.unroute('**/api/v1/boards/*/preview');
     await page.setViewportSize({ width: 390, height: 844 });
