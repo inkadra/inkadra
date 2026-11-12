@@ -34,6 +34,8 @@ const shape = (fields: Partial<PlanShape>): PlanShape =>
     y1: 4096,
     ...fields,
   }) as PlanShape;
+/** A shape's outline, its measure written in English unless asked. */
+const outline = (s: PlanShape, scale?: number, locale = 'en') => planShapeOutline(s, scale, locale);
 const near = (a: Point, b: Point) => {
   expect(a.x).toBeCloseTo(b.x, 9);
   expect(a.y).toBeCloseTo(b.y, 9);
@@ -83,8 +85,10 @@ describe('placedGlyph', () => {
     // The cucoloris' first part is 4 wide, butt-ended.
     expect(own?.width).toBeCloseTo(4 * scale);
     expect(own?.butt).toBe(true);
+    expect(own?.eased).toBe(false);
     const plain = placedGlyph(big).at(-1);
     expect(plain?.width).toBeCloseTo(glyphStroke(t) * scale);
+    expect(plain?.eased).toBe(true);
     expect(glyphStroke(t)).toBeLessThan(DEFAULT_GLYPH_STROKE * 1.6);
   });
 
@@ -155,7 +159,7 @@ describe('PLAN_DRAW_ORDER', () => {
 
 describe('planShapeOutline', () => {
   it('gives a rect its corners from (x0, y0), and its box level', () => {
-    const o = planShapeOutline(shape({ x0: 4096, y0: 2048, x1: 0, y1: 0 }));
+    const o = outline(shape({ x0: 4096, y0: 2048, x1: 0, y1: 0 }));
     expect(o.closed).toBe(true);
     expect(o.width).toBe(4);
     expect(o.lines[0]).toEqual([
@@ -169,7 +173,7 @@ describe('planShapeOutline', () => {
   });
 
   it('turns a rect about its middle, its box left level', () => {
-    const o = planShapeOutline(shape({ x0: 1024, y0: 1024, x1: 3072, y1: 2048, rotation: 90 }));
+    const o = outline(shape({ x0: 1024, y0: 1024, x1: 3072, y1: 2048, rotation: 90 }));
     const c = o.centre;
     expect(o.angle).toBe(90);
     // The corner left and above the middle goes right and above it.
@@ -178,7 +182,7 @@ describe('planShapeOutline', () => {
   });
 
   it('rings an ellipse in 32 points, turned', () => {
-    const o = planShapeOutline(
+    const o = outline(
       shape({ kind: 'ellipse', x0: 0, y0: 0, x1: 2048, y1: 1024, rotation: 90 }),
     );
     expect(o.lines[0]).toHaveLength(32);
@@ -192,7 +196,7 @@ describe('planShapeOutline', () => {
   });
 
   it('draws an arrow as a shaft and a head of two wings through the tip', () => {
-    const thin = planShapeOutline(
+    const thin = outline(
       shape({ kind: 'arrow', x0: 0, y0: 0, x1: 4096, y1: 0, width: 2 }),
     );
     expect(thin.closed).toBe(false);
@@ -205,14 +209,14 @@ describe('planShapeOutline', () => {
     // Heads are 4 line widths long, at least 12, at ±0.45 rad.
     near(head[0] as Point, { x: 1000 - 12 * Math.cos(0.45), y: 12 * Math.sin(0.45) });
     near(head[2] as Point, { x: 1000 - 12 * Math.cos(0.45), y: -12 * Math.sin(0.45) });
-    const fat = planShapeOutline(
+    const fat = outline(
       shape({ kind: 'arrow', x0: 0, y0: 0, x1: 4096, y1: 0, width: 10 }),
     );
     expect(1000 - (fat.lines[1]?.[0]?.x ?? 0)).toBeCloseTo(40 * Math.cos(0.45));
   });
 
   it('turns an arrow, its head too', () => {
-    const o = planShapeOutline(
+    const o = outline(
       shape({ kind: 'arrow', x0: 1024, y0: 2048, x1: 3072, y1: 2048, rotation: 90 }),
     );
     near(o.lines[0]?.[1] as Point, { x: 500, y: 1000 / 3 + 250 });
@@ -222,35 +226,56 @@ describe('planShapeOutline', () => {
   });
 
   it('draws a line, and a text as its words on one baseline', () => {
-    const line = planShapeOutline(shape({ kind: 'line', x1: 2048, y1: 0 }));
+    const line = outline(shape({ kind: 'line', x1: 2048, y1: 0 }));
     expect(line.lines).toEqual([
       [
         { x: 0, y: 0 },
         { x: 500, y: 0 },
       ],
     ]);
-    const text = planShapeOutline(
+    const text = outline(
       shape({ kind: 'text', x0: 2048, y0: 1024, width: 26, text: 'Entra', rotation: 340 }),
     );
     expect(text.lines).toEqual([]);
     expect(text.width).toBe(0);
     expect(text.angle).toBe(340);
-    expect(text.text).toEqual({ at: { x: 500, y: 500 / 3 }, text: 'Entra', size: 26 });
+    expect(text.text).toEqual({
+      lines: [{ at: { x: 500, y: 500 / 3 }, text: 'Entra' }],
+      size: 26,
+      step: 32.5,
+    });
+  });
+
+  it('gives each line of a text its own baseline, a step of 1.25 sizes apart', () => {
+    const o = outline(shape({ kind: 'text', x0: 0, y0: 0, width: 20, text: 'Porta\nentra\n' }));
+    expect(o.text?.step).toBe(25);
+    expect(o.text?.lines).toEqual([
+      { at: { x: 0, y: 0 }, text: 'Porta' },
+      { at: { x: 0, y: 25 }, text: 'entra' },
+      { at: { x: 0, y: 50 }, text: '' },
+    ]);
+    expect(outline(shape({ kind: 'text', width: 20 })).text?.lines).toEqual([
+      { at: { x: 0, y: 0 }, text: '' },
+    ]);
   });
 
   it('dashes and fills a zone, its name in the corner', () => {
-    const o = planShapeOutline(
+    const o = outline(
       shape({ kind: 'zone', x0: 2048, y0: 2048, x1: 1024, y1: 1024, width: 4, text: 'Video' }),
     );
     expect(o.dash).toEqual([12, 10]);
     expect(o.fill).toBe(0.1);
     expect(o.closed).toBe(true);
-    expect(o.text).toEqual({ at: { x: 260, y: 1000 / 6 + 18 }, text: 'Video', size: 14 });
-    expect(planShapeOutline(shape({ kind: 'zone' })).text).toBeUndefined();
+    expect(o.text).toEqual({
+      lines: [{ at: { x: 260, y: 1000 / 6 + 18 }, text: 'Video' }],
+      size: 14,
+      step: 17.5,
+    });
+    expect(outline(shape({ kind: 'zone' })).text).toBeUndefined();
   });
 
   it('draws a measure with ticks across its ends and its length on a chip', () => {
-    const o = planShapeOutline(
+    const o = outline(
       shape({ kind: 'measure', x0: 0, y0: 2048, x1: 4096, y1: 2048 }),
       100,
       'en',
@@ -266,9 +291,9 @@ describe('planShapeOutline', () => {
     near(start[1] as Point, { x: 0, y: 1000 / 3 - 9 });
     near(end[0] as Point, { x: 1000, y: 1000 / 3 + 9 });
     expect(o.text).toEqual({
-      at: { x: 500, y: 1000 / 3 + 7 },
-      text: '10.00 m',
+      lines: [{ at: { x: 500, y: 1000 / 3 + 7 }, text: '10.00 m' }],
       size: 14,
+      step: 17.5,
       weight: 600,
       middle: true,
     });
@@ -276,14 +301,14 @@ describe('planShapeOutline', () => {
   });
 
   it('writes a measure’s written length, dashes it when asked, and leaves it bare without a scale', () => {
-    const written = planShapeOutline(
+    const written = outline(
       shape({ kind: 'measure', text: '2.7', dashed: true }),
       undefined,
       'it',
     );
-    expect(written.text?.text).toBe('2,70 m');
+    expect(written.text?.lines[0]?.text).toBe('2,70 m');
     expect(written.dash).toEqual([8, 6]);
-    const bare = planShapeOutline(shape({ kind: 'measure' }));
+    const bare = outline(shape({ kind: 'measure' }));
     expect(bare.text).toBeUndefined();
     expect(bare.chip).toBeUndefined();
     expect(bare.lines).toHaveLength(3);
@@ -292,7 +317,7 @@ describe('planShapeOutline', () => {
   it('gives finite numbers for every kind, level and turned', () => {
     for (const kind of ['rect', 'ellipse', 'line', 'arrow', 'text', 'zone', 'measure'] as const)
       for (const rotation of [undefined, 45, 300]) {
-        const o = planShapeOutline(
+        const o = outline(
           shape({ kind, rotation, x0: 300, y0: 3900, x1: 3700, y1: 100, text: 'A' }),
           80,
         );
@@ -304,6 +329,7 @@ describe('planShapeOutline', () => {
 describe('measureText', () => {
   it('writes the length the scale gives, or nothing without one', () => {
     expect(measureText(shape({ kind: 'measure', x1: 4096, y1: 0 }), 50, 'en')).toBe('20.00 m');
-    expect(measureText(shape({ kind: 'measure' }), undefined)).toBe('');
+    expect(measureText(shape({ kind: 'measure' }), undefined, 'en')).toBe('');
+    expect(measureText(shape({ kind: 'measure', x1: 4096, y1: 0 }), 50, 'de')).toBe('20,00 m');
   });
 });

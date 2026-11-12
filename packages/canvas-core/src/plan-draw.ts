@@ -2,7 +2,7 @@
 import { type PlanIcon, type PlanShape, STROKE_GRID } from '@inkadra/doc-schema';
 import type { Point, Rect } from './geometry.ts';
 import { iconPoint, iconTransform, PLAN_VIEW_H, PLAN_VIEW_W } from './plan.ts';
-import { DEFAULT_GLYPH_STROKE, type FlatPart, flattenPart, iconGlyph } from './plan-icons.ts';
+import { DEFAULT_GLYPH_STROKE, type FlatPart, flattenGlyph, iconGlyph } from './plan-icons.ts';
 
 /**
  * What a client needs to draw a set plan's icons and shapes as the board draws them (decision
@@ -59,6 +59,11 @@ export interface PlacedPart extends Omit<FlatPart, 'points'> {
   width: number;
   /** Dashes and gaps in view units. */
   dash?: number[];
+  /**
+   * The part has no width of its own: its width follows glyphStrokeFactor (thinner as the icon
+   * grows). A part with its own width only scales with the icon.
+   */
+  eased: boolean;
 }
 
 /**
@@ -75,19 +80,27 @@ export function placedGlyph(icon: PlanIcon): PlacedPart[] {
   const scale = Math.sqrt(t.sx * t.sy);
   const stroke = glyphStroke(t);
   const out: PlacedPart[] = [];
-  for (const part of iconGlyph(icon)) {
+  const glyph = iconGlyph(icon);
+  // The glyph's polylines, part after part: one for a circle, ellipse or rectangle, one per
+  // subpath (each M) of a path.
+  const flat = flattenGlyph(glyph);
+  let n = 0;
+  for (const part of glyph) {
     const width = (part.w ?? stroke) * scale;
-    for (const flat of flattenPart(part)) {
+    const count = part.c || part.e || part.r ? 1 : (part.d?.match(/[Mm]/g)?.length ?? 0);
+    for (const sub of flat.slice(n, n + count)) {
       const points: Point[] = [];
-      for (let i = 0; i + 1 < flat.points.length; i += 2)
-        points.push(iconPoint(t, flat.points[i] as number, flat.points[i + 1] as number));
+      for (let i = 0; i + 1 < sub.points.length; i += 2)
+        points.push(iconPoint(t, sub.points[i] as number, sub.points[i + 1] as number));
       out.push({
-        ...flat,
+        ...sub,
         points,
         width,
-        ...(flat.dash ? { dash: flat.dash.map((d) => d * scale) } : {}),
+        ...(sub.dash ? { dash: sub.dash.map((d) => d * scale) } : {}),
+        eased: part.w === undefined,
       });
     }
+    n += count;
   }
   return out;
 }
@@ -96,7 +109,7 @@ export function placedGlyph(icon: PlanIcon): PlacedPart[] {
  * Length of a measure in metres, "2,70 m": what was written on it (in `text`, a plain number), or
  * else what the scale says; '' on a plan without a scale.
  */
-export function measureText(shape: PlanShape, scale: number | undefined, locale?: string): string {
+export function measureText(shape: PlanShape, scale: number | undefined, locale: string): string {
   const written = shape.text ? Number(shape.text) : 0;
   if (!(written > 0) && !scale) return '';
   const dx = ((shape.x1 - shape.x0) / STROKE_GRID) * PLAN_VIEW_W;
@@ -130,10 +143,17 @@ export interface PlanShapeOutline {
   /** A rect's, zone's or ellipse's box, level: x and y its smaller corner. */
   box?: Rect;
   /**
-   * Text on one line, level: a text shape's (from its baseline's start), a zone's name, a
-   * measure's length (centred on `at`). `weight` is set where the board sets one.
+   * Text, level: a text shape's lines (from each baseline's start, `step` apart), a zone's name,
+   * a measure's length (centred on its `at`). `weight` is set where the board sets one.
    */
-  text?: { at: Point; text: string; size: number; weight?: number; middle?: boolean };
+  text?: {
+    lines: Array<{ at: Point; text: string }>;
+    size: number;
+    /** From a line's baseline to the next one's: 1.25 times the size. */
+    step: number;
+    weight?: number;
+    middle?: boolean;
+  };
   /** A measure's length sits on a patch of the paper with this box and corner radius, level. */
   chip?: Rect & { radius: number };
 }
@@ -143,6 +163,8 @@ const ARROW_HEAD = 4;
 const ARROW_WING = 0.45;
 /** Half the length of the ticks at a measure's ends. */
 const MEASURE_TICK = 9;
+/** From one line's baseline to the next, in font sizes. */
+const LINE_STEP = 1.25;
 /** Where a zone writes its name, from its corner. */
 const ZONE_TEXT = { x: 10, y: PLAN_TEXT_SIZES.M };
 
@@ -151,12 +173,13 @@ const ZONE_TEXT = { x: 10, y: PLAN_TEXT_SIZES.M };
  * arrows and texts like a frame drawing's, turned by their rotation; zones (dashed, filled at
  * 10 %, their name in a corner) and measures (a line with ticks and, with a scale or a written
  * length, the length on a chip). Pass a measure through `measureEnds` first so it follows its
- * icons. `scale` and `locale` write a measure's length.
+ * icons. `scale` and `locale` (the app's language, as for the rooms' sizes) write a measure's
+ * length.
  */
 export function planShapeOutline(
   shape: PlanShape,
-  scale?: number,
-  locale?: string,
+  scale: number | undefined,
+  locale: string,
 ): PlanShapeOutline {
   const x0 = (shape.x0 / STROKE_GRID) * PLAN_VIEW_W;
   const y0 = (shape.y0 / STROKE_GRID) * PLAN_VIEW_H;
@@ -229,7 +252,14 @@ export function planShapeOutline(
         ...base,
         lines: [],
         width: 0,
-        text: { at: { x: x0, y: y0 }, text: shape.text ?? '', size: shape.width },
+        text: {
+          lines: (shape.text ?? '').split('\n').map((text, i) => ({
+            at: { x: x0, y: y0 + i * shape.width * LINE_STEP },
+            text,
+          })),
+          size: shape.width,
+          step: shape.width * LINE_STEP,
+        },
       };
     case 'zone':
       return {
@@ -242,9 +272,9 @@ export function planShapeOutline(
         ...(shape.text
           ? {
               text: {
-                at: { x: box.x + ZONE_TEXT.x, y: box.y + ZONE_TEXT.y },
-                text: shape.text,
+                lines: [{ at: { x: box.x + ZONE_TEXT.x, y: box.y + ZONE_TEXT.y }, text: shape.text }],
                 size: PLAN_TEXT_SIZES.S,
+                step: PLAN_TEXT_SIZES.S * LINE_STEP,
               },
             }
           : {}),
@@ -274,9 +304,9 @@ export function planShapeOutline(
         ...(label
           ? {
               text: {
-                at: { x: centre.x, y: centre.y + 7 },
-                text: label,
+                lines: [{ at: { x: centre.x, y: centre.y + 7 }, text: label }],
                 size: PLAN_TEXT_SIZES.S,
+                step: PLAN_TEXT_SIZES.S * LINE_STEP,
                 weight: 600,
                 middle: true,
               },

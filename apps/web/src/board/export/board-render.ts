@@ -11,16 +11,13 @@ import {
   curvePoints,
   DEFAULT_GLYPH_STROKE,
   decodeStroke,
-  flattenGlyph,
   glyphStrokeFactor,
   iconCone,
   iconGlow,
-  iconGlyph,
   iconTransform,
   labelAnchor,
   linkedPlan,
   measureEnds,
-  measureText,
   openingLines,
   PLAN_DRAW_ORDER,
   PLAN_VIEW_H,
@@ -130,6 +127,8 @@ export interface CardContext {
    * overall" for a room that is not a rectangle. The engine gives it; without it, English.
    */
   roomSize?(length: number, scale: number, overall: boolean): string;
+  /** The app's language, which writes a measure's length ("2,70 m" in Italian). */
+  language: string;
   planCard?(el: Extract<Element, { type: 'plan' }>): {
     title: string;
     scenes: string;
@@ -1295,14 +1294,17 @@ export function planOps(
     const out: Op[] = [];
     const color = veil < 1 ? mix(base, c['surface-1'], veil) : base;
     const t = iconTransform(icon);
-    const width = glyphStrokeFactor(Math.sqrt(t.sx * t.sy)) * Math.sqrt(t.sx * t.sy) * k;
+    const scale = Math.sqrt(t.sx * t.sy);
     const paper = c['surface-1'];
-    // The glyph's parts placed by canvas-core (decision 0116). shortcut: exports keep their own
-    // stroke widths and dashes, from the glyph's widths, thinner than the board's; drop the
-    // glyph's parts here and use the placed widths when exports are made to match the board.
-    const glyph = flattenGlyph(iconGlyph(icon));
-    for (const [n, part] of placedGlyph(icon).entries()) {
-      const { width: glyphWidth, dash } = glyph[n] as (typeof glyph)[number];
+    // The glyph's parts placed by canvas-core (decision 0116), at the board's widths and dashes.
+    // shortcut: exports print them thinner, as they always have: a part without a width of its
+    // own at 1 / DEFAULT_GLYPH_STROKE of the board's, one with its own at glyphStrokeFactor /
+    // DEFAULT_GLYPH_STROKE; their dashes in widths of that stroke. Print the board's widths
+    // (`part.width * k`, `part.dash`) when exports are made to match the board.
+    for (const part of placedGlyph(icon)) {
+      const w =
+        (part.width * k * (part.eased ? 1 : glyphStrokeFactor(scale))) / DEFAULT_GLYPH_STROKE;
+      const dash = part.dash?.map((d) => (d / scale) * w);
       const pts = part.points.map((p) => at(p.x, p.y));
       const own = part.color ? ink(part.color) : color;
       // Opaque parts mix their colour into the paper; see-through ones only tint it (0104).
@@ -1323,12 +1325,9 @@ export function planOps(
           ...(alpha !== undefined ? { opacity: alpha * veil } : {}),
         });
       if (part.closed && pts[0]) pts.push(pts[0]);
-      const w = (width * glyphWidth) / DEFAULT_GLYPH_STROKE;
       const stroke = part.opacity !== undefined ? mix(own, paper, part.opacity) : own;
       if (dash)
-        out.push(
-          ...dashes(pts, (dash[0] as number) * w, (dash[1] ?? (dash[0] as number)) * w, stroke, w),
-        );
+        out.push(...dashes(pts, dash[0] as number, dash[1] ?? (dash[0] as number), stroke, w));
       else
         out.push({
           kind: 'polyline',
@@ -1404,14 +1403,18 @@ function planShapeOps(
   const k = box.w / PLAN_VIEW_W;
   const at = (p: Point) => ({ x: box.x + p.x * k, y: box.y + p.y * k });
   const flat = (pts: readonly Point[]) => pts.flatMap((p) => [box.x + p.x * k, box.y + p.y * k]);
-  const o = planShapeOutline(shape.kind === 'measure' ? { ...shape, rotation: undefined } : shape);
+  const o = planShapeOutline(
+    shape.kind === 'measure' ? { ...shape, rotation: undefined } : shape,
+    scale,
+    ctx.language,
+  );
   const width = o.width * k;
   const [first = [], ...rest] = o.lines;
   const ring = o.closed && first[0] ? [...first, first[0]] : first;
   if (shape.kind === 'measure') {
     const [a, b] = first.map(at) as [Point, Point];
     const mid = at(o.centre);
-    const label = measureText(shape, scale);
+    const label = o.text?.lines[0]?.text ?? '';
     const ops: Op[] = [{ kind: 'line', x1: a.x, y1: a.y, x2: b.x, y2: b.y, color, width }];
     if (label) {
       const size = (18 / 1000) * box.w;
@@ -1461,7 +1464,21 @@ function planShapeOps(
     }
     return ops;
   }
-  if (shape.kind === 'text') return shapeOps({ ...shape, kind: shape.kind, color }, box);
+  if (shape.kind === 'text' && o.text) {
+    // Level, from the top of the first line: each baseline 0.9 of the size below its anchor.
+    const size = o.text.size * k;
+    return o.text.lines.map(
+      (line): Op => ({
+        kind: 'text',
+        x: at(line.at).x,
+        y: at(line.at).y + size * 0.9,
+        text: line.text,
+        size,
+        weight: 500,
+        color,
+      }),
+    );
+  }
   if (shape.kind === 'ellipse' && !o.angle && o.box) {
     const mid = at(o.centre);
     return [

@@ -616,7 +616,9 @@ export const PlanShapeView = memo(function PlanShapeView({
   shape: PlanShape;
   scale?: number | undefined;
 }) {
-  const o = planShapeOutline(shape, scale);
+  const { i18n } = useTranslation();
+  // A measure's length in the app's language, as the rooms' sizes (decision 0119).
+  const o = planShapeOutline(shape, scale, i18n.language);
   const turn = o.angle ? `rotate(${o.angle} ${o.centre.x} ${o.centre.y})` : undefined;
   const line = {
     fill: 'none',
@@ -643,17 +645,18 @@ export const PlanShapeView = memo(function PlanShapeView({
             strokeDasharray: o.dash?.join(' '),
           }}
         />
-        {text && (
+        {text?.lines.map((l) => (
           <text
-            x={text.at.x}
-            y={text.at.y}
+            key={l.text}
+            x={l.at.x}
+            y={l.at.y}
             fontSize={text.size}
             fill="currentColor"
             fontFamily="inherit"
           >
-            {text.text}
+            {l.text}
           </text>
-        )}
+        ))}
       </>
     );
   } else if (shape.kind === 'measure') {
@@ -672,15 +675,18 @@ export const PlanShapeView = memo(function PlanShapeView({
         {text && chip && (
           <g className="plan__chip" transform={turn}>
             <rect x={chip.x} y={chip.y} width={chip.w} height={chip.h} rx={chip.radius} />
-            <text
-              x={text.at.x}
-              y={text.at.y}
-              textAnchor="middle"
-              fontSize={text.size}
-              fontWeight={text.weight}
-            >
-              {text.text}
-            </text>
+            {text.lines.map((l) => (
+              <text
+                key={l.text}
+                x={l.at.x}
+                y={l.at.y}
+                textAnchor="middle"
+                fontSize={text.size}
+                fontWeight={text.weight}
+              >
+                {l.text}
+              </text>
+            ))}
           </g>
         )}
       </g>
@@ -689,16 +695,19 @@ export const PlanShapeView = memo(function PlanShapeView({
     body = <rect x={box.x} y={box.y} width={box.w} height={box.h} {...line} />;
   } else if (shape.kind === 'ellipse' && box) {
     body = <ellipse cx={o.centre.x} cy={o.centre.y} rx={box.w / 2} ry={box.h / 2} {...line} />;
-  } else if (shape.kind === 'text' && text) {
+  } else if (shape.kind === 'text' && text?.lines[0]) {
+    // shortcut: the board writes a text's lines as one SVG text from the first line's baseline,
+    // so SVG runs them into one line; exports and a second client step them by `text.step`. Draw
+    // each line at its own baseline when the board's texts are next changed.
     body = (
       <text
-        x={text.at.x}
-        y={text.at.y}
+        x={text.lines[0].at.x}
+        y={text.lines[0].at.y}
         fill="currentColor"
         fontSize={text.size}
         fontFamily="inherit"
       >
-        {text.text}
+        {text.lines.map((l) => l.text).join('\n')}
       </text>
     );
   } else {

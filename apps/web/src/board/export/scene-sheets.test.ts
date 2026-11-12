@@ -220,6 +220,7 @@ const ctx: CardContext = {
   characterLine: () => '',
   storyMeta: () => '',
   words: { board: 'Board', file: 'File', plan: 'Set plan' },
+  language: 'en',
 };
 
 const words: SheetWords = {

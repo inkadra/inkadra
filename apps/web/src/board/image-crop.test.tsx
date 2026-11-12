@@ -344,6 +344,7 @@ describe('CroppedImage component & BoardStore integration', () => {
       noteBlocks: () => [],
       image: () => ({ key: 'asset-exp', info: { width: 1200, height: 800 } }),
       fileName: () => 'file.png',
+      language: 'en',
       boardTitle: () => 'Board',
       frameLabel: () => '1A',
       frameAspect: () => 16 / 9,

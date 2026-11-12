@@ -1024,47 +1024,39 @@ function rectPoints(r: number[]): number[] {
 }
 
 const flatCache = new Map<GlyphPart[], FlatPart[]>();
-const partCache = new WeakMap<GlyphPart, FlatPart[]>();
 
-/** A glyph part as polylines in glyph units: a path gives one per subpath. */
-export function flattenPart(part: GlyphPart): FlatPart[] {
-  const hit = partCache.get(part);
-  if (hit) return hit;
-  const out: FlatPart[] = [];
-  const filled = part.mix !== undefined || part.alpha !== undefined || part.hole;
-  const style: Omit<FlatPart, 'points' | 'closed'> = {
-    width: part.w ?? DEFAULT_GLYPH_STROKE,
-    ...(part.dash ? { dash: part.dash } : {}),
-    ...(part.o !== undefined ? { opacity: part.o } : {}),
-    ...(part.butt ? { butt: true } : {}),
-    ...(part.color ? { color: part.color } : {}),
-    ...(filled
-      ? {
-          fill: {
-            ...(part.mix !== undefined ? { mix: part.mix } : {}),
-            ...(part.alpha !== undefined ? { alpha: part.alpha } : {}),
-            ...(part.hole ? { hole: true } : {}),
-          },
-        }
-      : {}),
-  };
-  if (part.c) {
-    const [cx, cy, r] = part.c as [number, number, number];
-    out.push({ points: ellipsePoints(cx, cy, r, r), closed: true, ...style });
-  } else if (part.e) {
-    const [cx, cy, rx, ry] = part.e as [number, number, number, number];
-    out.push({ points: ellipsePoints(cx, cy, rx, ry), closed: true, ...style });
-  } else if (part.r) out.push({ points: rectPoints(part.r), closed: true, ...style });
-  else if (part.d) for (const sub of flattenPath(part.d)) out.push({ ...sub, ...style });
-  partCache.set(part, out);
-  return out;
-}
-
-/** A glyph as polylines in its own units, part after part. */
+/** A glyph as polylines in its own units. */
 export function flattenGlyph(glyph: GlyphPart[]): FlatPart[] {
   const hit = flatCache.get(glyph);
   if (hit) return hit;
-  const out = glyph.flatMap(flattenPart);
+  const out: FlatPart[] = [];
+  for (const part of glyph) {
+    const filled = part.mix !== undefined || part.alpha !== undefined || part.hole;
+    const style: Omit<FlatPart, 'points' | 'closed'> = {
+      width: part.w ?? DEFAULT_GLYPH_STROKE,
+      ...(part.dash ? { dash: part.dash } : {}),
+      ...(part.o !== undefined ? { opacity: part.o } : {}),
+      ...(part.butt ? { butt: true } : {}),
+      ...(part.color ? { color: part.color } : {}),
+      ...(filled
+        ? {
+            fill: {
+              ...(part.mix !== undefined ? { mix: part.mix } : {}),
+              ...(part.alpha !== undefined ? { alpha: part.alpha } : {}),
+              ...(part.hole ? { hole: true } : {}),
+            },
+          }
+        : {}),
+    };
+    if (part.c) {
+      const [cx, cy, r] = part.c as [number, number, number];
+      out.push({ points: ellipsePoints(cx, cy, r, r), closed: true, ...style });
+    } else if (part.e) {
+      const [cx, cy, rx, ry] = part.e as [number, number, number, number];
+      out.push({ points: ellipsePoints(cx, cy, rx, ry), closed: true, ...style });
+    } else if (part.r) out.push({ points: rectPoints(part.r), closed: true, ...style });
+    else if (part.d) for (const sub of flattenPath(part.d)) out.push({ ...sub, ...style });
+  }
   flatCache.set(glyph, out);
   return out;
 }
