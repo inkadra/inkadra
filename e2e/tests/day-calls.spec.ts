@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { setViews } from '../helpers/views.ts';
 
 // Decision 0092: a person's own call, set in the day's Calls tab, reaches the call sheet.
 // Uses the account created by first-run.spec.ts, with a project of its own.
@@ -19,6 +20,7 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
       data: { parentBoardId: project.rootBoardId, title: 'Spot', kind: 'storyboard' },
     })
   ).json();
+  await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule']);
   const crew = await page.request.post(`/api/v1/projects/${project.id}/crew/bulk`, {
     headers,
     data: {

@@ -136,7 +136,8 @@ export function Toolbar({
   onTool: (tool: CanvasTool) => void;
   onAdd: (type: ToolType) => void;
   /** An empty board from the Canvas menu. */
-  onCanvas: () => void;
+  /** Makes a sub-board: an ordinary one, or a moodboard (decision 0121). */
+  onCanvas: (kind?: 'moodboard') => void;
   /** A storyboard made from a screenplay file. */
   onScreenplay?: () => void;
   /** Records a voice note from the microphone, saved as an audio card (#327). */
@@ -263,7 +264,7 @@ function CanvasMenuButton({
   /** The phone's "More": an icon, with the hand tool first in the menu. */
   more?: boolean;
   onTool: (tool: CanvasTool) => void;
-  onCanvas: () => void;
+  onCanvas: (kind?: 'moodboard') => void;
   onScreenplay?: (() => void) | undefined;
   /** Records a voice note (#327); absent where the browser cannot record. */
   onVoiceNote?: (() => void) | undefined;
@@ -349,7 +350,18 @@ function CanvasMenuButton({
             ].concat(
               (
                 [
-                  { label: t('board.types.board'), icon: 'page', kind: 'board', action: onCanvas },
+                  {
+                    label: t('board.types.board'),
+                    icon: 'page',
+                    kind: 'board',
+                    action: () => onCanvas(),
+                  },
+                  {
+                    label: t('board.types.moodboard'),
+                    icon: 'image',
+                    kind: 'moodboard',
+                    action: () => onCanvas('moodboard'),
+                  },
                   ...(onScreenplay
                     ? [
                         {
@@ -862,13 +874,21 @@ export type MenuItem =
       content?: ReactNode;
       /** One choice of a set, ticked when it is the current one. */
       checked?: boolean;
+      /**
+       * With `checked`: a switch of its own rather than one choice of a set, drawn as a switch
+       * that shows off as well as on (a disabled one keeps the tick).
+       */
+      toggle?: boolean;
       /** Where the phone's card sheet puts the action, out of the list of other actions. */
       sheet?: SheetSlot;
       divider?: never;
       heading?: never;
+      note?: never;
     }
-  | { divider: true; heading?: never }
-  | { heading: string; divider?: never };
+  | { divider: true; heading?: never; note?: never }
+  | { heading: string; divider?: never; note?: never }
+  /** A line that explains the items above it. */
+  | { note: string; divider?: never; heading?: never };
 
 /** One titled part of a menu; the heading is left out when the section has no action. */
 export type MenuSection = { heading?: string; items: readonly MenuItem[] };
@@ -982,12 +1002,22 @@ export function ContextMenu({
           <p key={item.heading} className="menu__heading" role="presentation">
             {item.heading}
           </p>
+        ) : item.note !== undefined ? (
+          <p key={item.note} className="menu__note" role="presentation">
+            {item.note}
+          </p>
         ) : (
-          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-checked only comes with menuitemradio.
+          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-checked only comes with menuitemradio or menuitemcheckbox.
           <button
             key={item.label}
             type="button"
-            role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+            role={
+              item.checked === undefined
+                ? 'menuitem'
+                : item.toggle
+                  ? 'menuitemcheckbox'
+                  : 'menuitemradio'
+            }
             aria-checked={item.checked}
             aria-label={item.content ? item.label : undefined}
             className={`ink-menu__item menu__item${item.danger ? ' is-danger' : ''}${item.disabled ? ' is-disabled' : ''}`}
@@ -1009,10 +1039,20 @@ export function ContextMenu({
               </span>
             )}
             {item.content ?? item.label}
-            {item.checked && (
-              <span className="menu__check" aria-hidden="true">
-                <Icon name="check" size={14} />
+            {item.toggle && !item.disabled ? (
+              // The switch is drawn, not a control: the item is the menuitemcheckbox.
+              <span
+                className={`ink-switch menu__switch${item.checked ? ' is-on' : ''}`}
+                aria-hidden="true"
+              >
+                <span className="ink-switch__track" />
               </span>
+            ) : (
+              item.checked && (
+                <span className="menu__check" aria-hidden="true">
+                  <Icon name="check" size={14} />
+                </span>
+              )
             )}
             {item.hint && (
               <span id={`${hintId}-${i}`} className="menu__hint" aria-hidden="true">

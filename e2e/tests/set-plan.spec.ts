@@ -16,6 +16,7 @@ import {
 } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
+import { addStoryboard } from '../helpers/views.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
@@ -95,7 +96,9 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
   });
   expect(created.ok()).toBe(true);
   const project = await created.json();
-  const root = project.rootBoardId as string;
+  // Scenes, frames and their plan on a storyboard; the note makes its canvas, the cards outside
+  // the storyboard, reachable (decision 0121).
+  const root = (await addStoryboard(page.request, baseURL, project, ['shotlist', 'schedule'])).id;
 
   const doc = createBoardDoc(root);
   const note = createElement(doc, 'note', { x: 60, y: 120 }, { w: 220 }, opts);
@@ -198,7 +201,7 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
     },
   });
   expect(day.status()).toBe(201);
-  return { cookie, project, planId: plan.id };
+  return { cookie, project, planId: plan.id, storyboardId: root };
 }
 
 for (const theme of ['dark', 'light'] as const) {
@@ -206,8 +209,8 @@ for (const theme of ['dark', 'light'] as const) {
     test.setTimeout(150_000);
     mkdirSync(out, { recursive: true });
     await page.setViewportSize({ width: 1440, height: 900 });
-    const { cookie, project, planId } = await seed(page, baseURL!, theme);
-    const root = project.rootBoardId as string;
+    const { cookie, project, planId, storyboardId } = await seed(page, baseURL!, theme);
+    const root = storyboardId;
     const saved = async () => {
       const doc = await readBoard(baseURL!, cookie, root);
       const plans = [...roots(doc).elements.values()]
@@ -216,7 +219,7 @@ for (const theme of ['dark', 'light'] as const) {
       const notes = [...roots(doc).elements.values()].filter((m) => m.get('type') === 'note');
       return { plan: plans.find((e) => e.id === planId), count: plans.length, notes: notes.length };
     };
-    await page.goto(`/p/${project.id}?view=canvas`);
+    await page.goto(`/p/${project.id}/b/${root}?view=canvas`);
 
     // On the board: the title and the drawing, without the grid.
     const card = page.locator(`[data-el="${planId}"]`);
@@ -571,14 +574,15 @@ for (const theme of ['dark', 'light'] as const) {
       await page.keyboard.press('Escape');
       await expect(editor).toHaveCount(0);
       await card.getByRole('button', { name: 'Scena 5' }).click();
-      await expect(page).toHaveURL(/view=storyboard/);
+      // The scene opens in the Storyboard view, the storyboard's first.
+      await expect(page).not.toHaveURL(/view=/);
       const sceneHead = page.locator('[data-story-scene]').first();
       await sceneHead.getByRole('button', { name: 'Pianta del set' }).click();
       await expect(editor).toBeVisible();
       await page.keyboard.press('Escape');
 
       // The presentation (round 6, i): a slide for scene 5 with its frames and its plan.
-      await page.goto(`/p/${project.id}?view=storyboard`);
+      await page.goto(`/p/${project.id}/b/${root}`);
       await page.getByRole('button', { name: 'Presenta', exact: true }).click();
       const present = page.getByRole('dialog', { name: 'Presenta' });
       await expect(present.locator('.present-scene__plan .plan__svg')).toBeVisible();
@@ -587,7 +591,7 @@ for (const theme of ['dark', 'light'] as const) {
       await page.keyboard.press('Escape');
 
       // The call sheet: the scene with its frames, the plan and the kit list.
-      await page.goto(`/p/${project.id}?view=schedule`);
+      await page.goto(`/p/${project.id}/b/${root}?view=schedule`);
       await page.getByRole('button', { name: 'Foglio di lavorazione', exact: true }).click();
       const sheet = page.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
       const scenes = sheet.locator('.sheet__section').filter({ hasText: 'Piante del set' });
@@ -619,7 +623,7 @@ for (const theme of ['dark', 'light'] as const) {
     try {
       const mobile = await phone.newPage();
       await mobile.addInitScript((theme) => localStorage.setItem('inkadra.theme', theme), theme);
-      await mobile.goto(`${baseURL}/p/${project.id}?view=canvas`);
+      await mobile.goto(`${baseURL}/p/${project.id}/b/${root}?view=canvas`);
       const plan = mobile.locator(`[data-el="${planId}"]`);
       await mobile.getByRole('button', { name: 'Adatta alla vista' }).click();
       await expect(plan).toBeInViewport({ ratio: 0.95 });

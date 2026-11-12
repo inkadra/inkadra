@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { addTodoItem, createElement, updateElement, updateTodoItem } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
+import { setViews } from '../helpers/views.ts';
 import { perfUser, pushBoardDoc, signIn } from './perf/seed.ts';
 
 // #323: to-do lists typed Costumi / Attrezzeria / Attrezzatura and linked to a scene roll up
@@ -58,6 +59,7 @@ for (const theme of ['dark', 'light'] as const)
           data: { parentBoardId: project.rootBoardId, title: 'Storyboard', kind: 'storyboard' },
         })
       ).json();
+      await setViews(page.request, headers.origin, board.id, ['shotlist', 'schedule']);
 
       const doc = createBoardDoc(board.id);
       const opts = { userId: me.id };

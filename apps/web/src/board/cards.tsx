@@ -60,6 +60,7 @@ import { TableCard } from './TableCard.tsx';
 import { TodoAssignment } from './TodoAssignment.tsx';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
+import { kindIcon } from './views.ts';
 import { isInstagramUrl, videoEmbedUrl } from './youtube.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
@@ -1035,11 +1036,7 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
         {icon ? (
           <ProjectGlyph {...icon} />
         ) : (
-          <Icon
-            name={board?.kind === 'storyboard' ? 'storyboard' : 'board'}
-            contentKind={board?.kind ?? 'board'}
-            size={20}
-          />
+          <Icon name={kindIcon(board?.kind)} contentKind={board?.kind ?? 'board'} size={20} />
         )}
       </span>
       <span className="card__board-text">
@@ -1066,10 +1063,10 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
           <span className="card__title">{title}</span>
         )}
         <span className="card__desc">
-          {/* A storyboard keeps its kind before the count: "Storyboard · 12 cards". */}
+          {/* A storyboard or a moodboard keeps its kind before the count: "Storyboard · 12 cards". */}
           {[
-            (board?.kind === 'storyboard' || !counts) &&
-              t(board?.kind === 'storyboard' ? 'board.types.storyboard' : 'board.types.board'),
+            ((board && board.kind !== 'board') || !counts) &&
+              t(`board.types.${board?.kind ?? 'board'}`),
             counts &&
               contentSummary(t, {
                 cardCount: counts.cardCount ?? counts.elementCount,

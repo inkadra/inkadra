@@ -11,6 +11,8 @@ import {
   ClipBoardQuery,
   CreateBoard,
   Id,
+  NEW_BOARD_VIEWS,
+  OPTIONAL_VIEWS,
   type ProjectRole,
   type RecentBoard,
   RecentBoardQuery,
@@ -64,6 +66,7 @@ export function toBoard(row: typeof board.$inferSelect, myRole: ProjectRole): Bo
     projectId: row.projectId,
     parentBoardId: row.parentBoardId,
     kind: row.kind,
+    views: row.views ?? null,
     title: row.title,
     position: row.position,
     coverAssetId: row.coverAssetId,
@@ -415,6 +418,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
             projectId,
             parentBoardId: input.parentBoardId,
             kind: input.kind,
+            views: NEW_BOARD_VIEWS[input.kind],
             title: input.title,
             position,
             createdBy: actor.id,
@@ -468,6 +472,12 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     if (patch.title !== undefined) set.title = patch.title;
     if (patch.position !== undefined) set.position = patch.position;
     if (patch.icon !== undefined) set.icon = patch.icon;
+    if (patch.views !== undefined) {
+      const allowed = OPTIONAL_VIEWS[current.kind];
+      if (patch.views.some((v) => !allowed.includes(v)))
+        throw new HttpError('bad_request', 'This kind of board cannot show that view.');
+      set.views = allowed.filter((v) => patch.views?.includes(v));
+    }
     if (patch.coverAssetId !== undefined) {
       if (patch.coverAssetId !== null) {
         const [cover] = await db

@@ -350,9 +350,14 @@ export const board = pgTable(
       .notNull()
       .references(() => project.id, { onDelete: 'cascade' }),
     parentBoardId: uuid('parent_board_id'),
-    kind: text('kind', { enum: ['board', 'storyboard'] })
+    kind: text('kind', { enum: ['board', 'moodboard', 'storyboard'] })
       .notNull()
       .default('board'),
+    /**
+     * The optional views that are on (decision 0121); null on boards from before it, whose
+     * views follow from their kind and content.
+     */
+    views: jsonb('views').$type<import('@inkadra/shared').BoardOptionalView[]>(),
     title: text('title').notNull(),
     position: text('position').notNull(),
     coverAssetId: uuid('cover_asset_id').references(() => asset.id, { onDelete: 'set null' }),

@@ -6,6 +6,7 @@ import { initBoardDoc } from '@inkadra/doc-schema';
 import { type Browser, expect, type Locator, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
 import { chooseSelect } from '../helpers/select.ts';
+import { setViewsAs } from '../helpers/views.ts';
 import { account as admin, api } from '../scripts/sample-project.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
@@ -84,6 +85,7 @@ async function seedProject(browser: Browser, base: string): Promise<Seed> {
     kind: 'storyboard',
     title: 'Storyboard',
   });
+  await setViewsAs(base, cookie, board.id, ['shotlist', 'schedule']);
   const doc = new Y.Doc();
   initBoardDoc(doc, board.id);
   const ids: string[] = [];

@@ -7,6 +7,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as Y from 'yjs';
 import { chooseSelect } from '../helpers/select.ts';
+import { setViewsAs } from '../helpers/views.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.
@@ -113,6 +114,7 @@ test.beforeAll(async ({ baseURL }) => {
     kind: 'storyboard',
     title: 'Night platform',
   });
+  await setViewsAs(base, cookie, storyboard.id, ['shotlist', 'schedule']);
 
   const longBoard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
     parentBoardId: project.rootBoardId,

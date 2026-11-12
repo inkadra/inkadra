@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page, type Route, test } from '@playwright/test';
+import { setViews } from '../helpers/views.ts';
 
 // New headless Chromium: the old headless shell has no tab capture.
 test.use({
@@ -1199,11 +1200,18 @@ test('beside the report button the view tabs stay whole and every click lands', 
       },
     })
   ).json();
+  // Every view a storyboard can turn on (decision 0121).
+  await setViews(page.request, headers.origin, board.id, [
+    'shotlist',
+    'schedule',
+    'troupe',
+    'review',
+  ]);
   await page.goto(`/p/${project.id}/b/${board.id}`);
   await ready(page);
   const strip = page.getByRole('tablist', { name: 'Vista' });
   const tabs = strip.getByRole('tab');
-  await expect(tabs).toHaveCount(6);
+  await expect(tabs).toHaveCount(5);
   // At 1440 nothing is cut off.
   const box = await strip.boundingBox();
   const last = await tabs.last().boundingBox();

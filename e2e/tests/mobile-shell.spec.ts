@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { chooseSelect } from '../helpers/select.ts';
+import { setViews } from '../helpers/views.ts';
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
@@ -32,6 +33,8 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
     data: { boardId: project.rootBoardId, text: 'To place later' },
   });
   expect(clip.ok()).toBe(true);
+  // A board shows the view picker once it has a second view: its moodboard (decision 0121).
+  await setViews(page.request, baseURL!, project.rootBoardId, ['moodboard']);
   await page.goto('/');
   const nav = page.getByRole('navigation', { name: 'Navigazione principale', exact: true });
   await expect(nav).toBeVisible();
@@ -62,7 +65,7 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   expect(bounds?.width).toBe(390);
   expect(bounds?.height).toBeGreaterThan(600);
   await expect(page.locator('.mobile-view-switcher')).toBeVisible();
-  // No storyboard in this project: the switcher offers the board's own views only.
+  // The switcher offers the board's own views only.
   await chooseSelect(page.locator('.mobile-view-switcher'), 'moodboard');
   await expect(page).toHaveURL(/view=moodboard/);
   await chooseSelect(page.locator('.mobile-view-switcher'), 'canvas');

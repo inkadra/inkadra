@@ -16,7 +16,7 @@ import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
-import { addStoryboardItem } from './add-storyboard.ts';
+import { addBoardItems } from './add-storyboard.ts';
 import { BoardPreview } from './BoardPreview.tsx';
 import { useProjectMenu } from './ProjectAppearance.tsx';
 import {
@@ -456,7 +456,7 @@ function ProjectCard({
         disabled: busy,
         action: () => void mutate(p, 'pin'),
       },
-      ...(user ? addStoryboardItem(p, t, navigate, onError) : []),
+      ...(user ? addBoardItems(p, t, navigate, onError) : []),
       ...(editor
         ? [{ label: t('projectsPage.details'), disabled: busy, action: () => setTyping(true) }]
         : []),

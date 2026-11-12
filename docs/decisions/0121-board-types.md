@@ -28,7 +28,7 @@ planned.
 
 | Type       | Always           | Can be turned on  |
 | ---------- | ---------------- | ----------------- |
-| Board      | Board (canvas)   | Moodboard         |
+| Board      | Board (canvas)   | Moodboard, Review |
 | Moodboard  | Moodboard        | none              |
 | Storyboard | Storyboard       | Shot list, Review |
 | Production | Schedule, Troupe | none              |
@@ -50,7 +50,9 @@ storyboard placed on it is a storyboard and nothing else, so it has no Board vie
   Nothing is deleted or hidden for good. A new storyboard never has it.
 
 **Several storyboards per project.** Nothing in the navigation assumes one. Review stays per
-storyboard, with its own guest link.
+storyboard, with its own guest link. A guest review link can be made on any board, so an ordinary
+board can turn Review on too, for the team to see the client's decisions (decided on 2026-11-12,
+in review of step 1).
 
 **One Production board per project.** It holds the schedule and the Troupe. Its calendar takes
 frames and scenes from every storyboard of the project, and a block shows the storyboard it comes
@@ -78,7 +80,7 @@ default; Board (notes, images, links, files, to-dos, columns, comments) is alway
 | Storyboard    | Storyboard boards, Shot list, the Frame tool, screenplay import to scenes |
 | Production    | The Production board: Schedule, Troupe, call sheets, scene sheets         |
 | Moodboard     | Moodboard boards and the Moodboard view of a board                        |
-| Client review | Guest review links, approvals and change requests                         |
+| Client review | Guest review links, the Review view, approvals and change requests        |
 | Set plan      | The set plan tool and card                                                |
 
 - **Off hides the ways to create, never the data.** Menu entries, tools, settings sections, tours
@@ -120,7 +122,7 @@ default; Board (notes, images, links, files, to-dos, columns, comments) is alway
 - A project whose storyboard has shooting days or whose crew is not empty gets a Production
   board; its days move there, still pointing at the same scenes and frames.
 - An ordinary board that holds images, links or colours keeps Moodboard on; the others start
-  with it off.
+  with it off. One with a live guest review link keeps Review on; new boards start with it off.
 - Frames on an ordinary board no longer bring the film views to the project.
 
 ## Consequences

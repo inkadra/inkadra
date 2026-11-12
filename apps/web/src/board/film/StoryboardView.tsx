@@ -13,6 +13,7 @@ import { ASPECT_RATIOS, type AspectRatio, setBoardAspect } from '@inkadra/doc-sc
 import { Button, EmptyState, Icon, IconButton, Segmented, Select } from '@inkadra/ui';
 import { type DragEvent, memo, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import { useRegisterActions } from '../../commands/actions.ts';
 import { duplicateInStore } from '../../commands/board-actions.ts';
 import { api } from '../../lib/api.ts';
@@ -21,7 +22,7 @@ import { CardReview } from '../CardReview.tsx';
 import { ContextMenu, Toast, UploadPanel } from '../chrome.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { PresentationView } from '../PresentationView.tsx';
-import { plansOfScene, ScenePlanButton, useTakeParam } from '../plan/scenes.tsx';
+import { addScenePlan, plansOfScene, ScenePlanButton, useTakeParam } from '../plan/scenes.tsx';
 import { openComments } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { startUpload } from '../uploads.ts';
@@ -109,6 +110,43 @@ export function StoryboardView({
       .querySelector(`[data-story-scene="${CSS.escape(sceneParam)}"]`)
       ?.scrollIntoView({ block: 'start' });
   }, [sceneParam, takeSceneParam, groups]);
+  // "Go to the card" of a comment, a search hit or a notification (decision 0121): a frame opens
+  // selected and a scene comes into view; any other card is outside the storyboard, on its canvas.
+  const [elParam, takeElParam] = useTakeParam('el');
+  const [params, setParams] = useSearchParams();
+  const sentToCanvas = params.get('view') === 'canvas';
+  useEffect(() => {
+    if (!elParam || !ready) return;
+    const el = store.getSnapshot().byId.get(elParam);
+    if (el && el.type !== 'frame' && el.type !== 'scene') {
+      // A scene's plan opens in its editor; the canvas keeps `el` to select the card. Either
+      // way the address changes once, so the effect does not run again on the same card.
+      const scenePlan = el.type === 'plan' && !!el.sceneIds?.length;
+      // Still here after asking for the canvas: this storyboard has none to open. Drop the card.
+      if (!scenePlan && sentToCanvas) {
+        takeElParam();
+        return;
+      }
+      setParams(
+        (p) => {
+          const next = new URLSearchParams(p);
+          if (scenePlan) {
+            next.delete('el');
+            next.set('plan', el.id);
+          } else next.set('view', 'canvas');
+          return next;
+        },
+        { replace: true },
+      );
+      return;
+    }
+    takeElParam();
+    if (!el) return;
+    if (el.type === 'frame') setSelected(el.id);
+    document
+      .querySelector(`[data-story-${el.type}="${CSS.escape(el.id)}"]`)
+      ?.scrollIntoView({ block: 'center' });
+  }, [elParam, ready, store, setParams, takeElParam, sentToCanvas]);
   const [present, setPresent] = useState(false);
   // The board menu links to ?present=1 from any view: start once, when there is something to show.
   const [presentParam, takePresentParam] = useTakeParam('present');
@@ -415,6 +453,7 @@ export function StoryboardView({
               group={g}
               store={store}
               readOnly={readOnly}
+              userId={userId}
               onAddFrame={() => newFrame(g.scene?.id ?? null)}
               onDelete={deleteScene}
             >
@@ -613,6 +652,7 @@ function SceneSection({
   group,
   store,
   readOnly,
+  userId,
   onAddFrame,
   onDelete,
   children,
@@ -620,6 +660,7 @@ function SceneSection({
   group: SceneGroup;
   store: BoardStore;
   readOnly: boolean;
+  userId: string;
   onAddFrame: () => void;
   /** Deletes an omitted scene and its frames, saving a version first. */
   onDelete: (scene: SceneElement) => void;
@@ -738,7 +779,10 @@ function SceneSection({
           {scene.omitted && `${t('film.scene.notInScript')} · `}
           {t('film.total', { count: frames.length })}
         </span>
-        <ScenePlanButton plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)} />
+        <ScenePlanButton
+          plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)}
+          onNew={readOnly ? undefined : () => addScenePlan(store, scene, userId)}
+        />
         {/* An editor's pressed toggle already says the scene is hidden. */}
         {(readOnly || !scene.guestHidden) && <GuestVisibility store={store} element={scene} />}
         {!readOnly && scene.omitted && (

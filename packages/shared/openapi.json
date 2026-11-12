@@ -6061,6 +6061,7 @@
             "type": "string",
             "enum": [
               "board",
+              "moodboard",
               "storyboard"
             ]
           },
@@ -6135,6 +6136,23 @@
             ],
             "description": "Symbol or emoji and colour of the board, picked like the project ones and shown on board cards. Null or omitted = the default board icon."
           },
+          "views": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "moodboard",
+                "shotlist",
+                "schedule",
+                "troupe",
+                "review"
+              ]
+            },
+            "description": "The optional views that are on (decision 0121). Null or omitted on boards from before it: a storyboard then has all of its views, an ordinary board its moodboard when it holds images, links or colours (`referenceCount`) and its review while a guest review link is live (`clientReview`)."
+          },
           "docSchemaVersion": {
             "type": "integer",
             "minimum": 1,
@@ -6192,6 +6210,7 @@
             "type": "string",
             "enum": [
               "board",
+              "moodboard",
               "storyboard"
             ],
             "default": "board"
@@ -6288,6 +6307,21 @@
                 ]
               }
             ]
+          },
+          "views": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "moodboard",
+                "shotlist",
+                "schedule",
+                "troupe",
+                "review"
+              ]
+            },
+            "maxItems": 5,
+            "description": "The optional views to turn on; each must be one the board kind allows."
           }
         }
       },
@@ -7279,6 +7313,7 @@
             ],
             "enum": [
               "board",
+              "moodboard",
               "storyboard",
               null
             ]
@@ -9616,6 +9651,7 @@
             "type": "string",
             "enum": [
               "board",
+              "moodboard",
               "storyboard"
             ]
           },
@@ -10859,6 +10895,16 @@
             "type": "integer",
             "minimum": 0,
             "description": "Board cards."
+          },
+          "referenceCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Images, links and colours: what a moodboard shows."
+          },
+          "looseCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cards other than scenes, frames and the set plans of a scene; arrows, columns and headings excluded. On a storyboard they are the cards outside the storyboard."
           },
           "clientReview": {
             "type": "boolean",

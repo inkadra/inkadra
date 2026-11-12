@@ -9,6 +9,7 @@ import { type Browser, expect, type Locator, type Page, test } from '@playwright
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { cardAction } from '../helpers/phone-board.ts';
+import { setViews } from '../helpers/views.ts';
 
 // #110, mockup screens 4 (full-screen note) and 9 (client review) on a phone. Runs after
 // first-run.spec.ts as the administrator, on a project of its own. NOTE_REVIEW_SHOTS=<dir>
@@ -184,6 +185,7 @@ test.beforeAll(async ({ browser, baseURL }) => {
       data: { parentBoardId: project.rootBoardId, kind: 'storyboard', title: 'Storyboard' },
     })
   ).json();
+  await setViews(page.request, headers.origin, storyboard.id, ['shotlist', 'review']);
   const pictureA = await upload(page, baseURL!, project.id, 'neon-caldo.png', png([201, 134, 58]));
   const pictureB = await upload(page, baseURL!, project.id, 'neon-freddo.png', png([53, 120, 214]));
   const frameIds: string[] = [];

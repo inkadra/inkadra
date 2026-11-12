@@ -393,6 +393,7 @@ export async function importProject(
           projectId,
           parentBoardId: b.parentId ? (boardIds.get(b.parentId) as string) : null,
           kind: b.kind,
+          views: b.views ?? null,
           // The root board carries the project name, as on creation.
           title: isRoot ? meta.name : b.title,
           position: isRoot ? 'a0' : b.position,

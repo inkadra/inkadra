@@ -2,6 +2,7 @@ import {
   type Board,
   type BoardDetail,
   type BoardKind,
+  type BoardOptionalView,
   comparePosition,
   type UpdateBoard,
 } from '@inkadra/shared';
@@ -106,6 +107,11 @@ export function setBoardIcon(projectId: string, boardId: string, icon: Board['ic
   return updateBoard(projectId, boardId, { icon: icon ?? null });
 }
 
+/** The optional views that are on (decision 0121); editors only. */
+export function setBoardViews(projectId: string, boardId: string, views: BoardOptionalView[]) {
+  return updateBoard(projectId, boardId, { views });
+}
+
 async function updateBoard(projectId: string, boardId: string, patch: UpdateBoard) {
   const board = await api.patch<Board>(`/boards/${boardId}`, patch);
   const current = cache.get(projectId)?.items ?? [];
@@ -135,22 +141,6 @@ export function fetchBoard(boardId: string): Promise<BoardDetail> {
 /** Children of a board, in their saved order. */
 export function childBoards(items: Board[] | null, parentId: string): Board[] {
   return (items ?? []).filter((b) => b.parentBoardId === parentId).sort(comparePosition);
-}
-
-/**
- * Whether the sidebar lists any board under `parentId`: the storyboard (`hiddenId`) is listed as
- * a module, so only its sub-boards count. Mirrors the sidebar tree, to the same depth.
- */
-export function hasListedBoards(
-  items: Board[] | null,
-  parentId: string,
-  hiddenId: string | null,
-  depth = 1,
-): boolean {
-  if (depth > 4) return false;
-  return childBoards(items, parentId).some((b) =>
-    b.id === hiddenId ? hasListedBoards(items, b.id, hiddenId, depth) : true,
-  );
 }
 
 /** Top boards of the subtrees shared with you in projects you are not a member of. */

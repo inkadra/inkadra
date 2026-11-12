@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { setViewsAs } from '../helpers/views.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 import { png } from './support/archive.ts';
@@ -50,6 +51,8 @@ async function seed(base: string): Promise<Seeded> {
     name: 'Ultimo treno',
     type: 'short_film',
   });
+  // Its Moodboard view is on (decision 0121).
+  await setViewsAs(base, cookie, project.rootBoardId, ['moodboard']);
   const storyboard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
     parentBoardId: project.rootBoardId,
     title: 'Storyboard',

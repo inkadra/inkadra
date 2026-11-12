@@ -1179,13 +1179,22 @@ export interface ContentCounts {
   fileCount: number;
   /** Every other card; arrows, columns, scenes and section headings only arrange cards. */
   cardCount: number;
+  /** Images, links and colours: what a moodboard shows (decision 0121). */
+  referenceCount: number;
+  /**
+   * Cards other than frames and the set plans of a scene: on a storyboard, the cards outside
+   * the storyboard, which its old canvas still shows (decision 0121).
+   */
+  looseCount: number;
 }
 
 const STRUCTURE: ReadonlySet<unknown> = new Set(['arrow', 'column', 'scene', 'section']);
 
+const REFERENCES: ReadonlySet<unknown> = new Set(['image', 'link', 'color']);
+
 /** Counts elements by what they are; takes plain elements or the fields read from Y.Maps. */
 export function contentCounts(
-  items: Iterable<{ type?: unknown; status?: unknown }>,
+  items: Iterable<{ type?: unknown; status?: unknown; sceneIds?: unknown }>,
 ): ContentCounts {
   const counts: ContentCounts = {
     elementCount: 0,
@@ -1194,12 +1203,17 @@ export function contentCounts(
     boardCount: 0,
     fileCount: 0,
     cardCount: 0,
+    referenceCount: 0,
+    looseCount: 0,
   };
-  for (const { type, status } of items) {
+  for (const { type, status, sceneIds } of items) {
     counts.elementCount++;
     if (type === 'board') counts.boardCount++;
     else if (type === 'file') counts.fileCount++;
     else if (!STRUCTURE.has(type)) counts.cardCount++;
+    if (REFERENCES.has(type)) counts.referenceCount++;
+    const scenePlan = type === 'plan' && Array.isArray(sceneIds) && sceneIds.length > 0;
+    if (!STRUCTURE.has(type) && type !== 'frame' && !scenePlan) counts.looseCount++;
     if (type !== 'frame') continue;
     counts.frameCount++;
     if (status !== 'shot') counts.framesToShoot++;

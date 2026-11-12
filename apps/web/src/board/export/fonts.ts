@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import regular from '@fontsource/inter/files/inter-latin-400-normal.woff?url';
-// Inter, the interface font (OFL-1.1). WOFF rather than WOFF2: fontkit reads it without Brotli.
-import medium from '@fontsource/inter/files/inter-latin-500-normal.woff?url';
-import semibold from '@fontsource/inter/files/inter-latin-600-normal.woff?url';
-import bold from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
+// Inter, the interface font (OFL-1.1), as Google Fonts' whole static files: Latin, Latin
+// Extended, Cyrillic, Greek and Vietnamese in one TrueType file per weight (decision 0038).
+// Not WOFF2: fontkit reads it but cannot subset it.
+import regular from '@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf?url';
+import medium from '@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf?url';
+import semibold from '@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf?url';
+import bold from '@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf?url';
 import { fontCoverage, measureFrom } from '@inkadra/print/measure';
 import type { ThemeFont } from '@inkadra/shared';
 import { headingFamily, headingPdfUrl, loadHeadingFont } from '../theme.ts';

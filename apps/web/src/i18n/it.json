@@ -93,10 +93,8 @@
     "navigation": "Navigazione",
     "home": "Home",
     "board": "Board",
-    "storyboard": "Storyboard",
     "shotlist": "Shot list",
     "schedule": "Piano riprese",
-    "clients": "Revisione",
     "inbox": "Inbox",
     "search": "Cerca",
     "settings": "Impostazioni",
@@ -117,14 +115,14 @@
     "collapse": "Riduci la navigazione",
     "expand": "Espandi la navigazione",
     "boards": "Board",
-    "addStoryboard": "Aggiungi storyboard…",
+    "addStoryboard": "Aggiungi storyboard",
     "shots_one": "{{count}} inquadratura",
     "shots_other": "{{count}} inquadrature",
     "toShoot_one": "{{left}} di {{count}} inquadratura ancora da girare",
     "toShoot_other": "{{left}} di {{count}} inquadrature ancora da girare",
     "items_one": "{{count}} elemento nella board",
     "items_other": "{{count}} elementi nella board",
-    "troupe": "Troupe"
+    "addMoodboard": "Aggiungi moodboard"
   },
   "home": {
     "greeting": {
@@ -373,7 +371,8 @@
       "section": "Titolo di sezione",
       "table": "Tabella",
       "map": "Mappa",
-      "plan": "Pianta del set"
+      "plan": "Pianta del set",
+      "moodboard": "Moodboard"
     },
     "tools": {
       "select": "Seleziona",
@@ -1276,6 +1275,7 @@
       "variants": "Varianti",
       "variant": "Variante",
       "base": "Base",
+      "newForScene": "Nuova pianta del set",
       "newVariant": "Nuova variante",
       "variantMenu": "Duplica come variante",
       "variantName": "Variante {{n}}",
@@ -1851,6 +1851,17 @@
       "showGuests": "Mostra al cliente",
       "toStoryboard": "Aggiungi a Storyboard",
       "replyTo": "Rispondi a {{name}}…"
+    },
+    "outside": {
+      "title": "Card fuori dallo storyboard",
+      "menu_one": "Card fuori dallo storyboard ({{count}})",
+      "menu_other": "Card fuori dallo storyboard ({{count}})"
+    },
+    "views": {
+      "title": "Viste di questa board",
+      "always": "sempre",
+      "none": "Questo tipo non ha altre viste",
+      "note": "Una vista spenta sparisce dalla barra e dall’albero. I dati restano."
     }
   },
   "tags": {
@@ -3280,7 +3291,8 @@
     "sent_other": "{{count}} inquadrature aggiunte allo storyboard",
     "sendFailed": "Non è stato possibile aggiungerle allo storyboard. Controlla la connessione e i permessi, poi riprova.",
     "lockedSkipped_one": "{{count}} riferimento è bloccato e non è cambiato.",
-    "lockedSkipped_other": "{{count}} riferimenti sono bloccati e non sono cambiati."
+    "lockedSkipped_other": "{{count}} riferimenti sono bloccati e non sono cambiati.",
+    "whichStoryboard": "In quale storyboard?"
   },
   "callSheet": {
     "day": "Giorno",
@@ -4954,8 +4966,8 @@
             "text": "Gli strumenti della card compaiono sopra di lei."
           },
           "4": {
-            "title": "Una storia, più viste",
-            "text": "Storyboard, shot list e piano riprese usano gli stessi dati."
+            "title": "Ogni board, le sue viste",
+            "text": "Uno storyboard ha anche shot list e revisione: le accendi dal menu ⋯."
           },
           "5": {
             "title": "Lavora in squadra",
@@ -5022,11 +5034,15 @@
           },
           "1": {
             "title": "Tutto il resto",
-            "text": "Il + aggiunge storyboard e shot list; la barra si cambia nelle Impostazioni."
+            "text": "Il + aggiunge board e moodboard; la barra si cambia nelle Impostazioni."
           },
           "2": {
             "title": "Seleziona una card",
             "text": "I suoi strumenti compaiono sopra di lei."
+          },
+          "3": {
+            "title": "Le viste della board",
+            "text": "Dal menu ⋯ accendi la moodboard di questa board. Una vista spenta tiene i suoi dati."
           }
         }
       },
@@ -5035,7 +5051,7 @@
         "steps": {
           "0": {
             "title": "Riferimenti in griglia",
-            "text": "Immagini, link e colori del progetto, insieme."
+            "text": "Immagini, link e colori della board, insieme."
           },
           "1": {
             "title": "Filtra",

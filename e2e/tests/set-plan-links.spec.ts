@@ -15,6 +15,7 @@ import {
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { addStoryboard } from '../helpers/views.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
@@ -50,7 +51,8 @@ async function seed(page: Page, baseURL: string) {
   });
   expect(created.ok()).toBe(true);
   const project = await created.json();
-  const root = project.rootBoardId as string;
+  // On a storyboard: the characters are cards outside it, on its canvas (decision 0121).
+  const root = (await addStoryboard(page.request, baseURL, project, ['shotlist'])).id;
   const doc = createBoardDoc(root);
   const scene = createElement(
     doc,
@@ -174,7 +176,9 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
 
   await test.step('the scene chip opens the scene', async () => {
     await editor.getByRole('button', { name: 'Scena 2 · INT · Notte' }).click();
-    await expect(page).toHaveURL(/view=storyboard/);
+    // In the Storyboard view, the storyboard's first.
+    await expect(page).not.toHaveURL(/view=/);
+    await expect(page.locator('[data-story-scene]').first()).toBeVisible();
   });
 
   await test.step('the shot list shows the setup of the shot and groups by setup', async () => {

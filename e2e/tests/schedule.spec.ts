@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { setViews } from '../helpers/views.ts';
 
 // Uses the account created by first-run.spec.ts, with its own project and storyboard.
 test('a shooting day saves itself, takes a dropped shot at a time and undoes', async ({ page }) => {
@@ -20,6 +21,7 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   });
   expect(boardResponse.status()).toBe(201);
   const board = await boardResponse.json();
+  await setViews(page.request, new URL(page.url()).origin, board.id, ['shotlist', 'schedule']);
   await page.goto(`/p/${project.id}/b/${board.id}`);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
