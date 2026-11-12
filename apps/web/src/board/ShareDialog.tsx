@@ -55,7 +55,8 @@ export function ShareDialog({
   const canManage = access?.canManage ?? false;
   const choices = roleChoices(myRole);
   // Editors and owners also share with people without an account (decision 0013).
-  const canShareGuests = myRole === 'owner' || myRole === 'editor';
+  // The Production board holds nothing a guest may read: no share link on it (decision 0123).
+  const canShareGuests = (myRole === 'owner' || myRole === 'editor') && board.kind !== 'production';
   const [tab, setTab] = useState<ShareTab>('people');
   const tabsId = useId();
   // An invitation being typed is lost when the dialog closes.

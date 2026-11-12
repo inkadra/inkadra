@@ -93,6 +93,14 @@ test('plans frames of two storyboards and a scene without frames on the Producti
     { type: 'scene', sceneBoardId: film, sceneLabel: '2' },
   ]);
 
+  // Its Export makes the call sheets, each frame read from its own storyboard.
+  await page.getByRole('button', { name: 'Menu della board', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Fogli di convocazione', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.locator('.export__paper')).toHaveAttribute('data-status', 'ready');
+  await expect(dialog.locator('.export__preview figcaption')).toHaveText(/1/);
+  await page.keyboard.press('Escape');
+
   // A storyboard of the project lost Schedule and Crew, and leads to the Production board.
   await page.goto(`/p/${project.id}/b/${film}`);
   await expect(page.getByRole('tab', { name: 'Storyboard', exact: true })).toBeVisible();

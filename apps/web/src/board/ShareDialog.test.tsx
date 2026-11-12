@@ -126,3 +126,19 @@ it('describes the role chosen for an invitation under the invite field', async (
     'roles.viewer: share.roleHint.viewer',
   );
 });
+
+it('offers no share link on the Production board (decision 0123)', async () => {
+  // An editor of an ordinary board has the guests tab.
+  expect(host.querySelector('[data-tour="share-tabs"]')).not.toBeNull();
+  await act(async () =>
+    root.render(
+      <ShareDialog
+        open
+        board={{ ...board, kind: 'production' }}
+        subBoards={0}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  expect(host.querySelector('[data-tour="share-tabs"]')).toBeNull();
+});
