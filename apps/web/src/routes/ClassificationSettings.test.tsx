@@ -69,7 +69,9 @@ it('lists a catalog when opened and saves only after a change', async () => {
   const cards = host.querySelectorAll('.catalogs__card');
   expect(cards[1]?.textContent).toContain('catalogs.empty');
   expect(host.querySelectorAll('.catalogs__name')).toHaveLength(2);
-  expect(button('settings.save')?.disabled).toBe(true);
+  // Manual save (0124): the bar appears only when there is something to save.
+  expect(button('settings.save')).toBeUndefined();
+  expect(host.querySelector('.catalogs__bar')).toBeNull();
 
   await act(async () => button('catalogs.archive')?.click());
   expect(host.querySelector('.catalogs__row.is-archived')).not.toBeNull();
@@ -78,7 +80,7 @@ it('lists a catalog when opened and saves only after a change', async () => {
 
   await act(async () => button('catalogs.discard')?.click());
   expect(host.querySelector('.catalogs__row.is-archived')).toBeNull();
-  expect(button('settings.save')?.disabled).toBe(true);
+  expect(button('settings.save')).toBeUndefined();
   act(() => root.unmount());
 });
 

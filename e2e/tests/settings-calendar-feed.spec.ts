@@ -33,7 +33,8 @@ test('copy a private feed and revoke the previous link', async ({ page, context 
     if (route.request().method() === 'GET') await metadata;
     await route.continue();
   });
-  await page.goto('/settings?section=notifications');
+  // The calendar link moved from Notifications to Connected apps (0124).
+  await page.goto('/settings?section=apps');
   const section = page.getByRole('region', { name: 'Calendario', exact: true });
   await expect(section.getByRole('button', { name: 'Rigenera…', exact: true })).toBeDisabled();
   releaseMetadata?.();

@@ -57,17 +57,19 @@ it('frames a page with the navigation, its title and the save status', async () 
   const dialog = await render('/settings?section=preferences');
   expect(dialog.open).toBe(true);
   expect(dialog.getAttribute('aria-labelledby')).toBe(dialog.querySelector('h2')?.id);
-  expect(dialog.querySelector('h2')?.textContent).toBe('admin.preferences');
+  expect(dialog.querySelector('h2')?.textContent).toBe('settingsUi.pages.appearance');
   // Focus starts on the heading, leaving the selected navigation item neutral.
-  expect(document.activeElement?.textContent).toBe('admin.preferences');
+  expect(document.activeElement?.textContent).toBe('settingsUi.pages.appearance');
   expect(document.activeElement).toBe(dialog.querySelector('h2'));
   expect(document.body.style.overflow).toBe('hidden');
   expect(dialog.querySelector('.settings-nav')).not.toBeNull();
   expect(dialog.querySelector('.settings-save')).not.toBeNull();
   expect(dialog.querySelector('[data-content]')).not.toBeNull();
-  // Read-only pages have nothing to save.
+  // Every page that saves itself says so (0124); only Classifications saves by hand.
   const storage = await render('/settings?section=workspace');
-  expect(storage.querySelector('.settings-save')).toBeNull();
+  expect(storage.querySelector('.settings-save')).not.toBeNull();
+  const classifications = await render('/settings?section=classifications');
+  expect(classifications.querySelector('.settings-save')).toBeNull();
 });
 
 it('keeps one size on Members and counts the active ones', async () => {

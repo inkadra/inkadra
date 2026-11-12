@@ -94,11 +94,11 @@ it('renders actual members, direct project counts and pending empty state', asyn
   expect(
     host.querySelector<HTMLButtonElement>('.ink-select[aria-label="admin.roleFor"]')?.disabled,
   ).toBe(true);
-  expect(host.querySelectorAll('tbody tr')).toHaveLength(2);
+  expect(host.querySelectorAll('.team-member')).toHaveLength(2);
 });
 it('changes global roles through the instance endpoint', async () => {
   await render();
-  const select = host.querySelectorAll('tbody .ink-select')[1] as HTMLButtonElement;
+  const select = host.querySelectorAll('.team-member .ink-select')[1] as HTMLButtonElement;
   await act(async () => {
     chooseSelect(select, 'admin');
   });
@@ -203,7 +203,7 @@ it('unwraps the existing invitation result and shows a private link without SMTP
     ),
   ).toBe(true);
 });
-it('lists pending instance invitations as table rows next to the members', async () => {
+it('lists pending instance invitations in their own card under the members', async () => {
   vi.mocked(api.get).mockImplementation(async (path) =>
     path === '/instance/members'
       ? { items: people }
@@ -225,9 +225,12 @@ it('lists pending instance invitations as table rows next to the members', async
           : { originalBytes: 0, byType: [], byProject: [] },
   );
   await render();
-  const pending = host.querySelector('.team-pending tr');
+  const pending = host.querySelector('.team-pending');
   expect(pending?.textContent).toContain('new@example.com');
-  expect(pending?.textContent).toContain('settingsUi.members.pending');
+  expect(pending?.closest('.settings-block')?.querySelector('h3')?.textContent).toBe(
+    'settingsUi.members.invitations',
+  );
+  expect(pending?.closest('table')).toBeNull();
   expect(host.textContent).not.toContain('admin.noInvitations');
   const invite = [...host.querySelectorAll('button')].find(
     (b) => b.textContent === 'settingsUi.members.invite',
@@ -238,15 +241,12 @@ it('lists pending instance invitations as table rows next to the members', async
   expect(host.querySelector('aside')).toBeNull();
 });
 
-it('turns project creation off for members and sets a per-person exception', async () => {
+it('sets a per-person exception to project creation; the instance rule is on Access', async () => {
   vi.mocked(api.patch).mockResolvedValue({});
   await render();
-  const option = host.querySelector<HTMLInputElement>('#members-create-projects');
-  expect(option?.checked).toBe(true);
-  await act(async () => option?.click());
-  expect(api.patch).toHaveBeenCalledWith('/instance/settings', {
-    membersCanCreateProjects: false,
-  });
+  // The instance-wide switches moved to Access and permissions (0124).
+  expect(host.querySelector('#members-create-projects')).toBeNull();
+  expect(host.querySelector('[role="switch"]')).toBeNull();
   // Administrators always can: no control on their row.
   expect(host.querySelector('.ink-select[aria-label="projectCreation.for"]')).not.toBeNull();
   const select = host.querySelector<HTMLButtonElement>(

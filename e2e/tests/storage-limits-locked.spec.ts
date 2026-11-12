@@ -28,7 +28,7 @@ test('limits of the server environment are read-only in Settings', async ({ page
     }),
   );
   await page.goto('/settings?section=workspace');
-  const card = page.locator('.settings-card', { hasText: 'Limiti di spazio' });
+  const card = page.locator('.settings-block', { hasText: 'Limiti di spazio' });
   await expect(card.getByText('Decisi dal gestore del server')).toBeVisible();
   await expect(card.getByRole('textbox', { name: 'Spazio totale dell’istanza' })).toHaveAttribute(
     'readonly',

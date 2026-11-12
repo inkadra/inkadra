@@ -620,11 +620,17 @@
 }
 
 /* Settings */
+/* Inside a settings card: banners keep the card's padding, rows bring their own. */
 .feedback-settings {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   min-width: 0;
+}
+.feedback-settings > .feedback-banner {
+  margin: 12px 14px 0;
+}
+.feedback-settings > .feedback-banner + .settings-row {
+  margin-top: 12px;
 }
 .feedback-reports > details > summary {
   cursor: pointer;
@@ -638,12 +644,12 @@
 }
 /* The button sits on the row, not in it: nothing interactive inside a summary. */
 .feedback-reports__item > details > summary {
-  padding-right: 38px;
+  padding-right: 48px;
 }
 .feedback-reports__delete {
   position: absolute;
   top: 13px;
-  right: 0;
+  right: 10px;
 }
 .feedback-reports__title {
   display: block;
@@ -655,7 +661,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 0 12px;
+  padding: 0 14px 12px;
   font-size: 12px;
   overflow-wrap: anywhere;
 }

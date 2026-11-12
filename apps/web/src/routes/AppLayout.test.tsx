@@ -236,7 +236,7 @@ it('shows Home under a settings URL loaded directly and closes with Escape', asy
     expect(dialog?.querySelector('[data-settings]')?.textContent).toBe(
       '/settings?section=preferences',
     );
-    expect(dialog?.querySelector('h2')?.textContent).toBe('admin.preferences');
+    expect(dialog?.querySelector('h2')?.textContent).toBe('settingsUi.pages.appearance');
     await act(async () => {
       dialog?.dispatchEvent(new Event('cancel', { cancelable: true }));
     });
@@ -416,26 +416,6 @@ it('tracks phone list and section positions through Back, Forward and replacemen
     await unmount();
   }
 });
-
-it.each([1, 2])(
-  'leaves %s settings entries for Diagnostics so Back returns to the background',
-  async (entries) => {
-    const { router, host, unmount } = await mountData();
-    try {
-      await act(async () => router.navigate('/settings'));
-      if (entries > 1) await act(async () => router.navigate('/settings?section=account'));
-      await act(async () =>
-        host.querySelector<HTMLAnchorElement>('.settings-nav__footer a')?.click(),
-      );
-      expect(router.state.location.pathname).toBe('/diagnostics');
-      await act(async () => router.navigate(-1));
-      expect(router.state.location.pathname).toBe('/projects');
-      expect(host.querySelector('dialog.settings-window')).toBeNull();
-    } finally {
-      await unmount();
-    }
-  },
-);
 
 it.each([
   ['MacIntel', '⌘K'],

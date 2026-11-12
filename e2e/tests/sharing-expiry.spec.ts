@@ -86,7 +86,8 @@ test('the owner sees the end date, moves it closer and removes it', async ({ pag
 
 test('only allowed people create projects; exceptions per person', async ({ page }) => {
   await signIn(page, admin);
-  await page.goto('/settings/team');
+  // The instance rule is on Access and permissions, the exceptions on Members (0124).
+  await page.goto('/settings?section=access');
   const option = page.getByLabel('I membri possono creare progetti');
   await expect(option).toBeChecked();
   await option.uncheck();
@@ -104,6 +105,7 @@ test('only allowed people create projects; exceptions per person', async ({ page
   await expect(martaPage.getByRole('button', { name: 'Importa progetto…' })).toHaveCount(0);
   // She still works in the project she was invited to.
   await expect(martaPage.getByRole('heading', { name: projectName })).toBeVisible();
+  await page.goto('/settings/team');
   const refused = await martaPage.request.post('/api/v1/projects', {
     headers: { origin: origin(martaPage) },
     data: { name: 'Prova' },
@@ -123,6 +125,7 @@ test('only allowed people create projects; exceptions per person', async ({ page
     page.getByRole('combobox', { name: `Può creare progetti: ${marta.name}` }),
     'default',
   );
+  await page.goto('/settings?section=access');
   await option.check();
   await expect(option).toBeChecked();
   await martaPage.context().close();

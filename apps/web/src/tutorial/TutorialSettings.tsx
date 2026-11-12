@@ -1,10 +1,10 @@
-import { Button, Icon, kindStyle, Switch, toolStyle } from '@inkadra/ui';
+import { Button, Icon, IconButton, kindStyle, Switch, toolStyle } from '@inkadra/ui';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { trackSave } from '../routes/settings-save.ts';
-import { Badge, Card, Row } from '../routes/settings-ui.tsx';
+import { Badge, Card, Row, Summary } from '../routes/settings-ui.tsx';
 import { requestTour, resetSeen } from './state.ts';
 import { GROUPS, type Tour, toursFor, WELCOME } from './tours.ts';
 import './tutorial.css';
@@ -20,20 +20,24 @@ export function TutorialSettings() {
   const seen = new Set(prefs.tutorialsSeen);
   const total = tours.length + 1;
   const count = [WELCOME, ...tours].filter((tour) => seen.has(tour.id)).length;
-  const tile = (tour: Tour) => {
+  const row = (tour: Tour) => {
     const name = t(`tutorial.tours.${tour.id}.name`);
     const done = seen.has(tour.id);
     return (
-      <li key={tour.id} className="tour-tile">
-        <span
-          className="tour-tile__icon"
-          style={tour.kind ? kindStyle(tour.kind) : tour.tool ? toolStyle(tour.tool) : undefined}
-        >
-          <Icon name={tour.icon} size={16} />
-        </span>
-        <span className="tour-tile__text">
-          <span className="tour-tile__name">{name}</span>
-          <span className={`tour-tile__state${done ? ' is-seen' : ''}`}>
+      <Row
+        key={tour.id}
+        leading={
+          <span
+            className="settings-tile"
+            style={tour.kind ? kindStyle(tour.kind) : tour.tool ? toolStyle(tour.tool) : undefined}
+            aria-hidden="true"
+          >
+            <Icon name={tour.icon} size={16} />
+          </span>
+        }
+        label={name}
+        help={
+          <span className={`tour-state${done ? ' is-seen' : ''}`}>
             {done ? (
               <>
                 <Icon name="check" size={11} />
@@ -41,82 +45,74 @@ export function TutorialSettings() {
               </>
             ) : (
               <>
-                <span className="tour-tile__dot" aria-hidden="true" />
+                <span className="tour-state__dot" aria-hidden="true" />
                 {t('tutorial.settings.unseen')}
               </>
             )}
-            <span className="tour-tile__time"> · {t('tutorial.settings.duration')}</span>
+            {' · '}
+            {t('tutorial.settings.duration')}
           </span>
-        </span>
-        <button
-          type="button"
-          className="ink-iconbtn tour-tile__play"
-          aria-label={t('tutorial.settings.playNamed', { name })}
-          data-ink-tooltip={t('tutorial.settings.playNamed', { name })}
+        }
+      >
+        <IconButton
+          icon="play"
+          label={t('tutorial.settings.playNamed', { name })}
           onClick={() => requestTour(tour.id)}
-        >
-          <Icon name="play" size={12} />
-        </button>
-      </li>
+        />
+      </Row>
     );
   };
   return (
-    <div className="tour-settings">
-      <p className="tour-settings__count" role="status">
-        {count < total && <Badge tone="accent">{t('tutorial.settings.new')}</Badge>}
-        {t('tutorial.settings.count', { seen: count, total })}
-      </p>
-      <Card>
-        <div className="tour-settings__welcome">
-          <span className="tour-settings__welcome-icon" aria-hidden="true">
-            <Icon name="star" size={16} />
-          </span>
-          <span className="tour-tile__text">
-            <span className="tour-tile__name">{t('tutorial.settings.welcomeTitle')}</span>
-            <span className="settings-row__help">{t('tutorial.settings.welcomeSub')}</span>
-          </span>
+    <>
+      <Summary
+        tone="accent"
+        icon="play"
+        live
+        title={
+          <>
+            {t('tutorial.settings.count', { seen: count, total })}
+            {count < total && <Badge tone="accent">{t('tutorial.settings.new')}</Badge>}
+          </>
+        }
+        text={`${t('tutorial.settings.welcomeTitle')} · ${t('tutorial.settings.welcomeSub')}`}
+        action={
           <Button variant="primary" icon="play" onClick={() => requestTour(WELCOME.id)}>
             {t('tutorial.settings.play')}
           </Button>
-        </div>
-      </Card>
+        }
+        meter={
+          <span className="settings-meter" aria-hidden="true">
+            <i style={{ width: `${(count / total) * 100}%` }} />
+          </span>
+        }
+      />
       {GROUPS.filter((group) => tours.some((tour) => tour.group === group)).map((group) => (
-        <section
+        <Card
           key={group}
-          className="tour-settings__group"
-          aria-labelledby={`tour-group-${group}`}
+          title={t(`tutorial.groups.${group}`)}
+          action={group === 'admin' && <Badge>{t('tutorial.settings.adminOnly')}</Badge>}
         >
-          <h3 id={`tour-group-${group}`}>
-            {t(`tutorial.groups.${group}`)}
-            {group === 'admin' && <Badge>{t('tutorial.settings.adminOnly')}</Badge>}
-          </h3>
-          <ul className="tour-settings__grid">
-            {tours.filter((tour) => tour.group === group).map(tile)}
-          </ul>
-        </section>
+          {tours.filter((tour) => tour.group === group).map(row)}
+        </Card>
       ))}
-      <Card>
-        <div className="settings-rows">
-          <Row
-            label={t('tutorial.settings.hints')}
-            help={t('tutorial.settings.hintsHelp')}
-            htmlFor={hintsId}
-          >
-            <Switch
-              id={hintsId}
-              checked={prefs.tutorialHints}
-              onChange={(e) =>
-                void trackSave(updatePreferences({ tutorialHints: e.target.checked })).catch(
-                  () => {},
-                )
-              }
-            />
-          </Row>
-          <Row label={t('tutorial.settings.reset')} help={t('tutorial.settings.resetHelp')}>
-            <Button onClick={resetSeen}>{t('tutorial.settings.resetAction')}</Button>
-          </Row>
-        </div>
+      <Card title={t('tutorial.settings.prefs')}>
+        <Row
+          label={t('tutorial.settings.hints')}
+          help={t('tutorial.settings.hintsHelp')}
+          htmlFor={hintsId}
+        >
+          <Switch
+            id={hintsId}
+            checked={prefs.tutorialHints}
+            onChange={(e) =>
+              void trackSave(updatePreferences({ tutorialHints: e.target.checked })).catch(() => {})
+            }
+          />
+        </Row>
+        <Row label={t('tutorial.settings.reset')} help={t('tutorial.settings.resetHelp')}>
+          <Button onClick={resetSeen}>{t('tutorial.settings.resetAction')}</Button>
+        </Row>
       </Card>
-    </div>
+    </>
   );
 }

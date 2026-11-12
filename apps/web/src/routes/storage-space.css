@@ -1,4 +1,4 @@
-/* Storage limits (decision 0081): the space bar, the personal card and the largest files. */
+/* Storage limits (decision 0081): the space bar, banners and the largest files. */
 .space-meter {
   display: flex;
   height: 6px;
@@ -31,37 +31,17 @@
   background: color-mix(in srgb, var(--ink-status-danger) 45%, transparent);
 }
 
-.space-card__big {
-  margin: 2px 0 8px;
-  font-size: 24px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-.space-card__big small {
-  color: var(--ink-text-secondary);
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 0;
-}
-.space-card__meta {
-  margin: 8px 0 0;
-  color: var(--ink-text-secondary);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.space-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+/* The meter under the help of "Your space" and in the summary strip of Storage. */
+.space-row .space-meter,
+.settings-summary .space-meter {
+  margin-top: 8px;
 }
 
 .space-banner {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 10px 0 0;
+  margin: 10px 14px 12px;
   padding: 8px 10px;
   border: 1px solid transparent;
   border-radius: var(--ink-radius-sm);
@@ -78,7 +58,7 @@
   color: var(--ink-danger-fg);
 }
 .space-banner--info {
-  margin: 0 0 10px;
+  margin: 12px 14px;
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
 }

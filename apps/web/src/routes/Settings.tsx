@@ -58,7 +58,7 @@ import { SettingsShell } from './SettingsShell.tsx';
 import { MySpaceCard } from './StorageSpace.tsx';
 import { trackSave } from './settings-save.ts';
 import { isSettingsHome, settingsSection } from './settings-sections.ts';
-import { AutosaveText, Badge, Card, Row, Segmented, useIsPhone } from './settings-ui.tsx';
+import { AutosaveText, Badge, Card, Row, Segmented, Tile, useIsPhone } from './settings-ui.tsx';
 import './projects.css';
 import { ProviderIcon } from './ProviderIcon.tsx';
 import './settings.css';
@@ -79,53 +79,45 @@ export function Settings() {
         <p role="alert">{t('admin.forbidden')}</p>
       </SettingsShell>
     );
-  switch (page.id) {
-    case 'account':
-      return <Account />;
-    case 'preferences':
-      return (
-        <SettingsShell page={page}>
-          <Preferences />
-        </SettingsShell>
-      );
-    case 'toolbar':
-      return (
-        <SettingsShell page={page}>
-          <ToolbarSettings />
-        </SettingsShell>
-      );
-    case 'modules':
-      return (
-        <SettingsShell page={page}>
-          <ModuleSettings />
-        </SettingsShell>
-      );
-    case 'notifications':
-      return (
-        <SettingsShell page={page}>
-          <EmailNotifications releaseNewsAvailable={instance?.releaseNews === true} />
-          <CalendarSettings />
-        </SettingsShell>
-      );
-    case 'tutorials':
-      return (
-        <SettingsShell page={page}>
-          <TutorialSettings />
-        </SettingsShell>
-      );
-    case 'classifications':
-      return (
-        <SettingsShell page={page}>
-          <ClassificationSettings />
-        </SettingsShell>
-      );
-    default:
-      return (
-        <SettingsShell page={page}>
-          <InstanceSettings section={page.id} setup={setup} />
-        </SettingsShell>
-      );
-  }
+  const content = (() => {
+    switch (page.id) {
+      case 'preferences':
+        return <Preferences />;
+      case 'board':
+        return (
+          <>
+            <CanvasSettings />
+            <ToolbarSettings />
+          </>
+        );
+      case 'modules':
+        return <ModuleSettings />;
+      case 'notifications':
+        return <EmailNotifications releaseNewsAvailable={instance?.releaseNews === true} />;
+      case 'apps':
+        return (
+          <>
+            <CalendarSettings />
+            <Tokens />
+          </>
+        );
+      case 'tutorials':
+        return (
+          <>
+            <TutorialSettings />
+            <Card title={t('settingsUi.help.support')}>
+              <FeedbackRow />
+            </Card>
+          </>
+        );
+      case 'classifications':
+        return <ClassificationSettings />;
+      default:
+        return <InstanceSettings section={page.id} setup={setup} />;
+    }
+  })();
+  if (page.id === 'account') return <Account />;
+  return <SettingsShell page={page}>{content}</SettingsShell>;
 }
 
 function useStatus() {
@@ -160,7 +152,7 @@ function useStatus() {
   return { show, showKey, fail, node, clear: () => setStatus(null) };
 }
 
-/** Choices that follow the person across devices (#302); video playback stays per device. */
+/** Appearance and language (#302): theme, language, date and time, on every device. */
 export function Preferences() {
   const { t, i18n } = useTranslation();
   const { user, refresh } = useSession();
@@ -168,8 +160,6 @@ export function Preferences() {
   const prefs = usePreferences();
   const languageId = useId();
   const dateId = useId();
-  const keepPlayingId = useId();
-  const keepPlaying = useKeepsPlayingOffscreen();
   const [locale, setLocale] = useState(user?.locale ?? i18n.language);
   async function changeLocale(next: string) {
     const previous = locale;
@@ -192,19 +182,6 @@ export function Preferences() {
   );
   const timeFormat =
     prefs.timeFormat === 'auto' ? (browserClock ? '12h' : '24h') : prefs.timeFormat;
-  const toggle = (
-    key: 'dotGrid' | 'snapToGrid' | 'doubleClickNote' | 'keepAroundContent' | 'undoButtons',
-    label: string,
-    help: string,
-  ) => (
-    <Row label={label} help={help}>
-      <Switch
-        aria-label={label}
-        checked={prefs[key]}
-        onChange={(event) => save({ [key]: event.target.checked })}
-      />
-    </Row>
-  );
   return (
     <>
       <Card title={t('settingsUi.preferences.appearance')}>
@@ -280,47 +257,77 @@ export function Preferences() {
           </Row>
         </div>
       </Card>
-      <Card title={t('settingsUi.preferences.canvas')}>
-        <div className="settings-rows">
-          {toggle(
-            'dotGrid',
-            t('settingsUi.preferences.dotGrid'),
-            t('settingsUi.preferences.dotGridHelp'),
-          )}
-          {toggle(
-            'snapToGrid',
-            t('settingsUi.preferences.snap'),
-            t('settingsUi.preferences.snapHelp'),
-          )}
-          {toggle(
-            'doubleClickNote',
-            t('settingsUi.preferences.doubleClick'),
-            t('settingsUi.preferences.doubleClickHelp'),
-          )}
-          {toggle(
-            'keepAroundContent',
-            t('settingsUi.preferences.keepAround'),
-            t('settingsUi.preferences.keepAroundHelp'),
-          )}
-          {toggle(
-            'undoButtons',
-            t('settingsUi.preferences.undoButtons'),
-            t('settingsUi.preferences.undoButtonsHelp'),
-          )}
-          <Row
-            label={t('settingsUi.preferences.keepPlaying')}
-            help={t('settingsUi.preferences.keepPlayingHelp')}
-            htmlFor={keepPlayingId}
-          >
-            <Switch
-              id={keepPlayingId}
-              checked={keepPlaying}
-              onChange={(event) => setKeepsPlayingOffscreen(event.target.checked)}
-            />
-          </Row>
-        </div>
-      </Card>
     </>
+  );
+}
+
+/** Settings → Board: how boards behave, for this person; video playback stays per device. */
+export function CanvasSettings() {
+  const { t } = useTranslation();
+  const prefs = usePreferences();
+  const keepPlayingId = useId();
+  const keepPlaying = useKeepsPlayingOffscreen();
+  const save = (patch: UpdateUserPreferences) =>
+    void trackSave(updatePreferences(patch)).catch(() => {});
+  const toggle = (
+    key: 'dotGrid' | 'snapToGrid' | 'doubleClickNote' | 'keepAroundContent' | 'undoButtons',
+    label: string,
+    help: string,
+  ) => (
+    <Row label={label} help={help}>
+      <Switch
+        aria-label={label}
+        checked={prefs[key]}
+        onChange={(event) => save({ [key]: event.target.checked })}
+      />
+    </Row>
+  );
+  return (
+    <Card title={t('settingsUi.preferences.canvas')}>
+      <div className="settings-rows">
+        {toggle(
+          'dotGrid',
+          t('settingsUi.preferences.dotGrid'),
+          t('settingsUi.preferences.dotGridHelp'),
+        )}
+        {toggle(
+          'snapToGrid',
+          t('settingsUi.preferences.snap'),
+          t('settingsUi.preferences.snapHelp'),
+        )}
+        {toggle(
+          'doubleClickNote',
+          t('settingsUi.preferences.doubleClick'),
+          t('settingsUi.preferences.doubleClickHelp'),
+        )}
+        {toggle(
+          'keepAroundContent',
+          t('settingsUi.preferences.keepAround'),
+          t('settingsUi.preferences.keepAroundHelp'),
+        )}
+        {toggle(
+          'undoButtons',
+          t('settingsUi.preferences.undoButtons'),
+          t('settingsUi.preferences.undoButtonsHelp'),
+        )}
+        <Row
+          label={
+            <>
+              {t('settingsUi.preferences.keepPlaying')}
+              <Badge>{t('settingsUi.board.thisDevice')}</Badge>
+            </>
+          }
+          help={t('settingsUi.preferences.keepPlayingHelp')}
+          htmlFor={keepPlayingId}
+        >
+          <Switch
+            id={keepPlayingId}
+            checked={keepPlaying}
+            onChange={(event) => setKeepsPlayingOffscreen(event.target.checked)}
+          />
+        </Row>
+      </div>
+    </Card>
   );
 }
 
@@ -350,37 +357,40 @@ export function ToolbarSettings() {
   const save = (toolbar: string[] | null) =>
     void trackSave(updatePreferences({ toolbar })).catch(() => {});
   return (
-    <Card>
+    <Card title={t('settingsUi.pages.toolbar')} body={t('settingsUi.leads.toolbar')}>
       <div className="settings-card__pad toolbar-settings">
         <span className="toolbar-settings__label">{t('settingsUi.toolbar.always')}</span>
         <div className="toolbar-settings__tiles">
           {ALWAYS.map((tool) => (
             <label key={tool.id} className="toolbar-settings__tile" style={toolStyle(tool.kind)}>
-              <Checkbox className="toolbar-settings__check" checked disabled />
               <span className="toolbar-settings__icon" aria-hidden="true">
-                <Icon name={tool.icon} size={18} />
+                <Icon name={tool.icon} size={16} />
               </span>
               {t(tool.label)}
+              <Checkbox className="toolbar-settings__check" checked disabled />
             </label>
           ))}
         </div>
+      </div>
+      <div className="settings-card__pad toolbar-settings">
         <span className="toolbar-settings__label">{t('settingsUi.toolbar.more')}</span>
         <div className="toolbar-settings__tiles">
           {more.map((tool) => (
             <label key={tool} className="toolbar-settings__tile" style={toolStyle(barKind(tool))}>
+              <span className="toolbar-settings__icon" aria-hidden="true">
+                <Icon name={BAR_ICONS[tool]} size={16} />
+              </span>
+              {t(barLabelKey(tool))}
               <Checkbox
                 className="toolbar-settings__check"
                 checked={pinned.includes(tool)}
                 onChange={() => save(togglePinned(prefs.toolbar, tool))}
               />
-              <span className="toolbar-settings__icon" aria-hidden="true">
-                <Icon name={BAR_ICONS[tool]} size={18} />
-              </span>
-              {t(barLabelKey(tool))}
             </label>
           ))}
         </div>
-        <span className="toolbar-settings__label">{t('settingsUi.toolbar.preview')}</span>
+      </div>
+      <Row label={t('settingsUi.toolbar.preview')} help={t('settingsUi.toolbar.synced')}>
         <div className="toolbar-settings__preview" aria-hidden="true">
           {ALWAYS.map((tool) => (
             <span key={tool.id} style={toolStyle(tool.kind)}>
@@ -395,25 +405,18 @@ export function ToolbarSettings() {
           <span>
             <Icon name="more" size={16} />
           </span>
-          <span className="toolbar-settings__plus">
-            <Icon name="plus" size={14} />
-            <Icon name="caretDown" size={10} />
-          </span>
         </div>
-        <div className="toolbar-settings__foot">
-          <Button variant="ghost" disabled={prefs.toolbar === null} onClick={() => save(null)}>
-            {t('settingsUi.toolbar.reset')}
-          </Button>
-          <span className="settings-muted">{t('settingsUi.toolbar.synced')}</span>
-        </div>
-      </div>
+      </Row>
+      <Row label={t('settingsUi.toolbar.reset')}>
+        <Button disabled={prefs.toolbar === null} onClick={() => save(null)}>
+          {t('settingsUi.toolbar.resetAction')}
+        </Button>
+      </Row>
     </Card>
   );
 }
 
 function Account() {
-  const { t } = useTranslation();
-  const { user } = useSession();
   const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
   const loadAccounts = useCallback(async () => setAccounts(await authApi.listAccounts()), []);
   useEffect(() => {
@@ -422,18 +425,10 @@ function Account() {
   const hasPassword = accounts?.some((a) => a.providerId === 'credential') ?? false;
   return (
     <SettingsShell>
-      <MySpaceCard />
       <Profile />
       <SignInMethods accounts={accounts} hasPassword={hasPassword} onChange={loadAccounts} />
       <Sessions />
-      {user?.role !== 'admin' && (
-        <Card title={t('settingsUi.pages.about')}>
-          <div className="settings-rows">
-            <FeedbackRow />
-          </div>
-        </Card>
-      )}
-      <Tokens />
+      <MySpaceCard />
       <DeleteAccount hasPassword={hasPassword} />
     </SettingsShell>
   );
@@ -481,7 +476,7 @@ function Profile() {
     <Card title={t('settings.profile.title')}>
       <div className="settings-rows">
         <Row
-          leading={<Avatar name={user?.name ?? ''} image={user?.image} size={48} />}
+          leading={<Avatar name={user?.name ?? ''} image={user?.image} size={32} />}
           label={t('settingsUi.account.photo')}
           help={t('settings.profile.avatarHelp')}
         >
@@ -603,7 +598,7 @@ function SignInMethods({
           </Row>
         ))}
         <Row
-          leading={<span className="settings-provider">2FA</span>}
+          icon="lock"
           label={t('settings.twoFactor.title')}
           help={
             !hasPassword
@@ -999,92 +994,97 @@ function Tokens() {
   }
 
   return (
-    <Card
-      title={t('settings.tokens.title')}
-      body={t('settings.tokens.body')}
-      action={
-        <Button variant="ghost" icon="plus" onClick={() => setOpen(true)}>
-          {t('settingsUi.account.newToken')}
-        </Button>
-      }
-    >
-      <ul className="settings-list">
+    <>
+      <Card title={t('settingsUi.apps.clipper')}>
         <ClipperRow connected={items?.some((tk) => tk.client === 'clipper') ?? false} />
-        {items?.length === 0 && <li className="settings-muted">{t('settings.tokens.none')}</li>}
-        {items?.map((tk) => (
-          <li key={tk.id}>
-            <span className="settings-list__text">
-              <span className="settings-row__label">{tk.name}</span>
-              <span className="settings-row__help">
-                <code>{tk.prefix}…</code> ·{' '}
-                {tk.client
-                  ? t(`settings.tokens.clients.${tk.client}`)
-                  : t('settings.tokens.manual')}{' '}
-                ·{' '}
-                {tk.lastUsedAt
-                  ? t('settings.tokens.used', { when: date(tk.lastUsedAt) })
-                  : t('settings.tokens.unused')}
+      </Card>
+      <Card
+        title={t('settings.tokens.title')}
+        body={t('settings.tokens.body')}
+        action={
+          <Button variant="ghost" icon="plus" onClick={() => setOpen(true)}>
+            {t('settingsUi.account.newToken')}
+          </Button>
+        }
+      >
+        <ul className="settings-list">
+          {items?.length === 0 && <li className="settings-muted">{t('settings.tokens.none')}</li>}
+          {items?.map((tk) => (
+            <li key={tk.id}>
+              <Tile icon="key" />
+              <span className="settings-list__text">
+                <span className="settings-row__label">{tk.name}</span>
+                <span className="settings-row__help">
+                  <code>{tk.prefix}…</code> ·{' '}
+                  {tk.client
+                    ? t(`settings.tokens.clients.${tk.client}`)
+                    : t('settings.tokens.manual')}{' '}
+                  ·{' '}
+                  {tk.lastUsedAt
+                    ? t('settings.tokens.used', { when: date(tk.lastUsedAt) })
+                    : t('settings.tokens.unused')}
+                </span>
               </span>
-            </span>
-            <Button
-              variant="ghost"
-              onClick={async () => {
-                try {
-                  await trackSave(api.delete(`/me/tokens/${tk.id}`));
-                  await load();
-                } catch (err) {
-                  status.fail(err);
-                }
-              }}
-            >
-              {t('settings.tokens.revoke')}
-            </Button>
-          </li>
-        ))}
-      </ul>
-      {!open && status.node && <div className="settings-card__pad">{status.node}</div>}
-      <Dialog open={open} title={t('settings.tokens.create')} onClose={close}>
-        {created ? (
-          <div className="settings-form" role="status">
-            <p>{t('settings.tokens.copyNow', { name: created.name })}</p>
-            <code className="settings__token" data-feedback-secret>
-              {created.token}
-            </code>
-            <DialogActions>
               <Button
-                onClick={() => navigator.clipboard?.writeText(created.token).catch(() => {})}
-                icon="copy"
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    await trackSave(api.delete(`/me/tokens/${tk.id}`));
+                    await load();
+                  } catch (err) {
+                    status.fail(err);
+                  }
+                }}
               >
-                {t('share.copy')}
+                {t('settings.tokens.revoke')}
               </Button>
-              <Button variant="primary" onClick={close}>
-                {t('settings.tokens.done')}
-              </Button>
-            </DialogActions>
-          </div>
-        ) : (
-          <form className="settings-form" onSubmit={create}>
-            <p className="settings-muted">{t('settings.tokens.body')}</p>
-            <TextField
-              label={t('settings.tokens.name')}
-              placeholder={t('settings.tokens.namePlaceholder')}
-              maxLength={80}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            {status.node}
-            <DialogActions>
-              <Button variant="ghost" onClick={close}>
-                {t('project.cancel')}
-              </Button>
-              <Button type="submit" variant="primary" disabled={!name.trim()}>
-                {t('settings.tokens.create')}
-              </Button>
-            </DialogActions>
-          </form>
-        )}
-      </Dialog>
-    </Card>
+            </li>
+          ))}
+        </ul>
+        {!open && status.node && <div className="settings-card__pad">{status.node}</div>}
+        <Dialog open={open} title={t('settings.tokens.create')} onClose={close}>
+          {created ? (
+            <div className="settings-form" role="status">
+              <p>{t('settings.tokens.copyNow', { name: created.name })}</p>
+              <code className="settings__token" data-feedback-secret>
+                {created.token}
+              </code>
+              <DialogActions>
+                <Button
+                  onClick={() => navigator.clipboard?.writeText(created.token).catch(() => {})}
+                  icon="copy"
+                >
+                  {t('share.copy')}
+                </Button>
+                <Button variant="primary" onClick={close}>
+                  {t('settings.tokens.done')}
+                </Button>
+              </DialogActions>
+            </div>
+          ) : (
+            <form className="settings-form" onSubmit={create}>
+              <p className="settings-muted">{t('settings.tokens.body')}</p>
+              <TextField
+                label={t('settings.tokens.name')}
+                placeholder={t('settings.tokens.namePlaceholder')}
+                maxLength={80}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              {status.node}
+              <DialogActions>
+                <Button variant="ghost" onClick={close}>
+                  {t('project.cancel')}
+                </Button>
+                <Button type="submit" variant="primary" disabled={!name.trim()}>
+                  {t('settings.tokens.create')}
+                </Button>
+              </DialogActions>
+            </form>
+          )}
+        </Dialog>
+      </Card>
+    </>
   );
 }
 
@@ -1096,30 +1096,18 @@ function ClipperRow({ connected }: { connected: boolean }) {
   // The clipper takes the web address, sub-path included; publicUrl is that address.
   const address = instance?.publicUrl.replace(/\/+$/, '') ?? window.location.origin;
   return (
-    <li className="settings-clipper">
-      <span className="settings-provider" aria-hidden="true">
-        <Icon name="unsorted" size={16} />
-      </span>
-      <span className="settings-list__text">
-        <span className="settings-row__label">{t('settings.tokens.clipper.title')}</span>
-        <span className="settings-row__help">{t('settings.tokens.clipper.body')}</span>
-        <span className="settings-row__help settings-clipper__address">
-          {t('settings.tokens.clipper.address')} <code>{address}</code>
-          <Button
-            variant="ghost"
-            icon="copy"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(address);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              } catch {}
-            }}
-          >
-            {copied ? t('share.copied') : t('settings.tokens.clipper.copy')}
-          </Button>
-        </span>
-      </span>
+    <Row
+      className="settings-clipper"
+      icon="unsorted"
+      tone="accent"
+      label={t('settings.tokens.clipper.title')}
+      help={
+        <>
+          {t('settings.tokens.clipper.body')} {t('settings.tokens.clipper.address')}{' '}
+          <code>{address}</code>
+        </>
+      }
+    >
       {connected ? (
         <Badge tone="ok">{t('settings.tokens.clipper.connected')}</Badge>
       ) : (
@@ -1146,7 +1134,20 @@ function ClipperRow({ connected }: { connected: boolean }) {
           />
         </a>
       )}
-    </li>
+      <Button
+        variant="ghost"
+        icon="copy"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          } catch {}
+        }}
+      >
+        {copied ? t('share.copied') : t('settings.tokens.clipper.copy')}
+      </Button>
+    </Row>
   );
 }
 

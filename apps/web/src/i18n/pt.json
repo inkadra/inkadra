@@ -2875,7 +2875,6 @@
       "server_alert_storage_limit": "Espaço da instância: {{percent}}% usado ({{used}} de {{limit}})",
       "server_alert_storage_request": "pede mais espaço"
     },
-    "emailTitle": "Notificações por e-mail",
     "emailHint": "Menções, respostas e revisões também por e-mail, quando o servidor puder enviar.",
     "emailLabel": "Enviar e-mail",
     "frequency": {
@@ -3626,35 +3625,41 @@
   },
   "settingsUi": {
     "profile": "Perfil",
-    "diagnostics": "Diagnóstico",
     "on": "Ativado",
     "off": "Desativado",
     "groups": {
-      "instance": "Instância · admin"
+      "workspace": "Espaço de trabalho · admin",
+      "server": "Servidor · admin"
     },
     "pages": {
-      "access": "Acesso",
-      "about": "Sobre",
+      "access": "Acesso e permissões",
       "toolbar": "Barra de ferramentas",
-      "tutorials": "Tutoriais",
-      "server": "Servidor",
+      "server": "Estado do servidor",
       "updates": "Atualizações",
-      "modules": "Módulos"
+      "modules": "Módulos",
+      "appearance": "Aparência e idioma",
+      "board": "Board",
+      "apps": "Apps conectados",
+      "help": "Ajuda e tutoriais",
+      "reports": "Relatos",
+      "general": "Geral"
     },
     "leads": {
       "account": "Seu perfil e como você entra.",
       "preferences": "Valem só para você e acompanham você em todos os dispositivos.",
       "notifications": "Algumas notificações sempre chegam à caixa de entrada. Escolha quais receber também por e-mail.",
       "storage": "Espaço ocupado pelos arquivos da instância.",
-      "access": "Os métodos de acesso vêm da configuração do servidor; aqui você vê o que está ativo.",
-      "registration": "Quem pode criar uma nova conta.",
-      "about": "Nome, endereço, versão e estado da configuração da instância.",
+      "access": "Quem pode entrar, o que os membros podem fazer e como se faz login.",
       "backups": "Cópias noturnas do banco de dados, para restaurar o servidor após uma falha.",
       "toolbar": "Escolha que ferramentas de «Mais ferramentas» vê na barra inferior. As outras ficam em ⋯ e na paleta de comandos.",
-      "tutorials": "Reveja os tours guiados e escolha se são propostos.",
+      "tutorials": "Reveja os tours guiados, escolha se quer recebê-los e peça ajuda.",
       "server": "Como está o servidor: recursos, serviços, trabalhos, problemas e alertas.",
       "updates": "A versão em uso, as novidades e um aviso quando sai uma nova. O Inkadra não se atualiza sozinho: quem atualiza é você, no servidor.",
-      "modules": "Escolha as partes do Inkadra que usa. Um módulo desligado sai dos seus menus, da barra, das notificações e dos tutoriais. Vale só para si e não apaga nada: o que existe continua visível e, ao voltar a ligá-lo, encontra tudo."
+      "modules": "Escolha as partes do Inkadra que usa. Um módulo desligado sai dos seus menus, da barra, das notificações e dos tutoriais. Vale só para si e não apaga nada: o que existe continua visível e, ao voltar a ligá-lo, encontra tudo.",
+      "board": "Como seus boards se comportam e quais ferramentas você tem na barra inferior. Vale só para você, em todos os dispositivos.",
+      "apps": "O que se conecta à sua conta de fora: calendário, extensão do navegador, tokens.",
+      "instance": "O nome da instância e o que falta para terminar a configuração.",
+      "reports": "Para onde vão os relatos enviados em «Relatar um problema», e os recebidos."
     },
     "autosave": {
       "idle": "Salvamento automático ativado",
@@ -3677,7 +3682,7 @@
       "themeHelp": "Sistema segue a configuração do dispositivo",
       "languageHelp": "Idioma da interface e dos e-mails",
       "keepPlaying": "Continuar reproduzindo vídeos fora da tela",
-      "keepPlayingHelp": "O vídeo continua tocando quando você move a visualização. Vale só neste dispositivo.",
+      "keepPlayingHelp": "O vídeo continua tocando quando você move a vista.",
       "appearance": "Aparência",
       "dateTime": "Data e hora",
       "canvas": "Canvas",
@@ -3725,23 +3730,30 @@
       "reviewHelp": "Aprovado ou alterações solicitadas",
       "always": "Sempre",
       "alwaysNote": "Cinza = sempre ativo na caixa de entrada.",
-      "sendMe": "Enviar para mim",
       "releaseNews": "Novidades do Inkadra",
       "releaseNewsHelp": "Só quando a instância as envia",
-      "releaseNewsAdminHelp": "Permite que as pessoas recebam as novidades após uma atualização. Requer SMTP e o consentimento de cada pessoa."
+      "releaseNewsAdminHelp": "Permite que as pessoas recebam as novidades após uma atualização. Requer SMTP e o consentimento de cada pessoa.",
+      "what": "O que receber",
+      "frequency": "Quando enviar",
+      "frequencyHelp": "Na hora: as notificações próximas num só e-mail. Resumo: um e-mail por dia."
     },
     "members": {
       "invite": "Convidar membros",
       "you": "você",
-      "pending": "Pendente",
-      "allStatuses": "Todos os status"
-    },
-    "status": {
-      "title": "Estado da instância"
+      "allStatuses": "Todos os status",
+      "invitations": "Convites pendentes",
+      "projects_one": "{{count}} projeto",
+      "projects_other": "{{count}} projetos"
     },
     "storage": {
       "used": "Espaço usado",
-      "top": "Tipo de arquivo mais pesado"
+      "top": "Tipo de arquivo mais pesado",
+      "usage": "Utilização",
+      "by": {
+        "project": "Por projeto",
+        "user": "Por pessoa",
+        "type": "Por tipo"
+      }
     },
     "access": {
       "always": "Sempre disponível",
@@ -3750,7 +3762,8 @@
       "needsSmtp": "Requer SMTP",
       "missingSmtp": "Falta SMTP",
       "email": "Envio de e-mail",
-      "smtpOn": "Convites, redefinições de senha e notificações por e-mail podem ser enviados."
+      "smtpOn": "Convites, redefinições de senha e notificações por e-mail podem ser enviados.",
+      "smtpOff": "necessário para convites, redefinição de senha e notificações"
     },
     "registration": {
       "label": "Novas contas",
@@ -3762,28 +3775,26 @@
       "nameHelp": "Aparece na barra lateral, nos e-mails e na página de acesso",
       "url": "Endereço público",
       "version": "Versão",
-      "identity": "Instância",
-      "diagnosticsHelp": "Verificações de rede, proxy e serviços, úteis quando algo não funciona",
-      "openDiagnostics": "Abrir",
-      "serverHelp": "Saúde do servidor, verificações de rede e proxy, problemas recentes"
+      "identity": "Instância"
     },
     "search": "Buscar configurações",
     "noResults": "Nenhuma configuração encontrada",
     "keywords": {
-      "account": "Nome, E-mail, Foto do perfil, Senha, Verificação em duas etapas (2FA), Códigos de recuperação, Métodos de acesso, Sessões, Dispositivos, Apps e tokens, Excluir conta, O seu espaço, Ficheiros maiores",
-      "preferences": "Tema, Tema escuro, Tema claro, Idioma, Continuar reproduzindo vídeos fora da tela, Formato de data, Formato de hora, Grade de pontos, Alinhar à grade, Clique duplo cria uma nota, Manter o quadro em volta do conteúdo, Botões Desfazer e Refazer",
+      "account": "Nome, E-mail, Foto do perfil, Senha, Verificação em duas etapas (2FA), Códigos de recuperação, Métodos de acesso, Sessões, Dispositivos, Excluir conta, O seu espaço, Ficheiros maiores",
+      "preferences": "Tema, Tema escuro, Tema claro, Idioma, Formato de data, Formato de hora",
+      "board": "Grade de pontos, Alinhar à grade, Clique duplo cria uma nota, Manter o quadro em volta do conteúdo, Botões Desfazer e Refazer, Continuar reproduzindo vídeos fora da tela, Barra de ferramentas, Ferramentas, Mais ferramentas, Coluna, Título de secção, Cor, Tabela, Nota de voz, Mapa, Frame, Planta do set, Restaurar a barra padrão",
       "notifications": "Notificações por e-mail, Menções, Respostas, Revisões, Resumo diário, Caixa de entrada, Comentários nos seus cards",
+      "apps": "Link do seu calendário, Extensão do navegador, Inkadra Clipper para Chrome, Apps e tokens",
+      "tutorials": "Tour de boas-vindas, Sugestões na primeira vez, Recomeçar, Relatar um problema",
       "members": "Convidar membros, Convites, Link de convite, Função, Administradores, Desativar conta, Reativar conta, Pessoas, Espaço, Limite de espaço",
-      "workspace": "Espaço usado, Arquivos enviados, Armazenamento, Limites de espaço, Espaço por pessoa, Avisar aos",
+      "access": "Novas contas, Cadastro aberto, Somente por convite, Cadastro fechado, Exigir verificação em duas etapas dos administradores, Membros podem criar projetos, Feeds de calendário, Google, OIDC, Single sign-on (SSO), Link de acesso por e-mail, E-mail e senha, SMTP, Envio de e-mail",
       "classifications": "Tipos de projeto, Tags, Catálogos, Tipo de plano, Ângulo, Movimento",
-      "providers": "Google, OIDC, Single sign-on (SSO), Link de acesso por e-mail, E-mail e senha, SMTP, Envio de e-mail",
-      "registration": "Novas contas, Cadastro aberto, Somente por convite, Cadastro fechado, Exigir verificação em duas etapas dos administradores",
-      "instance": "Nome da instância, Endereço público, Versão, Diagnóstico, Estado da instância, Novidades do Inkadra, Relatos, Enviar aos desenvolvedores do Inkadra, Destino, Repositório, Token do GitHub, Convidados podem relatar, Retenção de anexos, Relatos recebidos",
+      "reports": "Relatos, Enviar aos desenvolvedores do Inkadra, Destino, Repositório, Token do GitHub, Convidados podem relatar, Retenção de anexos, Relatos recebidos",
+      "instance": "Nome da instância, Endereço público, Versão, Configuração",
+      "workspace": "Espaço usado, Arquivos enviados, Armazenamento, Limites de espaço, Espaço por pessoa, Avisar aos",
       "backups": "Backups, Fazer backup agora, Restauração, Retenção, Backup noturno",
-      "toolbar": "Barra de ferramentas, Ferramentas, Mais ferramentas, Coluna, Título de secção, Cor, Tabela, Nota de voz, Mapa, Frame, Planta do set, Restaurar a barra padrão",
-      "tutorials": "Tour de boas-vindas, Sugestões na primeira vez, Recomeçar",
       "server": "Processador, Memória, Espaço, Serviços, Problemas, Alertas, Diagnóstico, Vídeo",
-      "updates": "Versão, Verificar agora, Avisar quando sair uma nova versão, Quais versões, Prévias, Versões anteriores",
+      "updates": "Versão, Verificar agora, Avisar quando sair uma nova versão, Quais versões, Prévias, Versões anteriores, Novidades do Inkadra",
       "modules": "Módulos, Storyboard, Produção, Moodboard, Revisão do cliente, Planta do set, Desligar, Ligar"
     },
     "close": "Fechar configurações",
@@ -3793,7 +3804,47 @@
       "reset": "Restaurar a barra padrão",
       "synced": "Sincronizada com sua conta",
       "always": "Sempre na barra",
-      "more": "De «Mais ferramentas»: pôr na barra"
+      "more": "De «Mais ferramentas»: pôr na barra",
+      "resetAction": "Restaurar"
+    },
+    "board": {
+      "thisDevice": "Só este dispositivo"
+    },
+    "help": {
+      "support": "Assistência"
+    },
+    "apps": {
+      "clipper": "Extensão do navegador"
+    },
+    "general": {
+      "setup": "Configuração",
+      "configure": "Configurar",
+      "fix": {
+        "providers": "Verifique os métodos de login configurados no servidor",
+        "storage": "Verifique onde o servidor guarda os arquivos",
+        "smtp": "Sem SMTP, os convites e as notificações por e-mail não são enviados",
+        "domain": "Verifique o endereço público, HTTPS e WebSocket"
+      }
+    },
+    "accessPage": {
+      "members": "Permissões dos membros",
+      "security": "Segurança",
+      "readOnly": "Só leitura · configuram-se no servidor",
+      "createHelp": "Caso contrário, só administradores criam e importam projetos. Para uma pessoa, altere em Membros."
+    },
+    "reports": {
+      "copyHere": "Uma cópia sempre fica abaixo, em «Relatos recebidos».",
+      "rules": "Regras"
+    },
+    "backups": {
+      "ok": "Último backup concluído",
+      "failed": "O último backup falhou",
+      "none": "Nenhum backup ainda",
+      "running": "Backup em andamento",
+      "schedule": "Agendamento"
+    },
+    "updates": {
+      "how": "Como atualizar"
     }
   },
   "admin": {
@@ -3802,9 +3853,7 @@
     "requireAdminTwoFactorEnrollFirst": "Primeiro configure e confirme sua verificação em duas etapas em Conta. Só um administrador já protegido pode ativar este requisito.",
     "personal": "Pessoal",
     "account": "Conta",
-    "preferences": "Preferências",
     "notifications": "Notificações",
-    "workspace": "Espaço de trabalho",
     "instance": "Instância",
     "members": "Membros",
     "storage": "Armazenamento",
@@ -3817,7 +3866,6 @@
       "invite": "Só por convite",
       "closed": "Fechados"
     },
-    "registrationHelp": "Fechados impede qualquer conta nova, inclusive por convite. As contas existentes e os links para convidados continuam funcionando.",
     "enabled": "Ativado",
     "disabled": "Desativado",
     "loading": "Carregando…",
@@ -3836,11 +3884,8 @@
       "admin": "Admin",
       "member": "Membro"
     },
-    "person": "Pessoa",
     "projects": "Projetos",
-    "lastActive": "Última atividade",
     "status": "Status",
-    "actions": "Ações",
     "roleFor": "Função de {{name}}",
     "lastAdmin": "Mantenha pelo menos um administrador ativo.",
     "never": "Nenhuma atividade registrada",
@@ -4863,7 +4908,6 @@
     "offAdmin": "Escolha para onde eles devem ir: um repositório do GitHub ou só a sua caixa de entrada.",
     "configure": "Configurar",
     "settingsTitle": "Relatos",
-    "settingsLead": "Aqui você decide para onde vão os relatos feitos pelo app.",
     "destination": "Destino",
     "destinations": {
       "github": "GitHub, em um repositório privado",
@@ -4931,7 +4975,6 @@
     "deleteConfirm": "Excluir",
     "deleteFailed": "Não foi possível excluir o relato. Tente de novo em instantes.",
     "shotPrivacy": "Da captura de tela automática removemos a barra lateral, a conta, as tarefas e os nomes de projetos e pessoas na atividade. O resto da página é enviado como está: cubra manualmente se necessário.",
-    "developers": "Enviar aos desenvolvedores do Inkadra",
     "privacyRelay": "Este relato vai para os desenvolvedores do Inkadra no repositório privado do GitHub inkadra/inkadra-feedback por meio do relay na Cloudflare, que vê o endereço IP deste servidor. O texto, as capturas de tela, os vídeos, os arquivos e os logs selecionados saem deste servidor e são lidos pela equipe do Inkadra. Não adicionamos nome, e-mail nem URL da instância. Removemos GPS e outros metadados de fotos e vídeos do dispositivo; os PDFs são enviados inteiros, com seus metadados. Confira a prévia. Os anexos no GitHub ficam lá até serem removidos pela equipe; a retenção local não os apaga.",
     "relayNote": "Vai para os desenvolvedores do Inkadra: o texto, as capturas de tela e os logs selecionados saem deste servidor. Todos os detalhes na prévia.",
     "relayLimits": "Relay: 10 MB por imagem ou arquivo, 25 MB por vídeo, 32 MB no total.",
@@ -4963,7 +5006,7 @@
       "lead": "Uma tela infinita para cinema e foto, no seu servidor.",
       "go": "Fazer o tour · 1 min",
       "skip": "Vou explorar sozinho",
-      "foot": "Pode revê-lo quando quiser em Configurações → Tutoriais.",
+      "foot": "Pode revê-lo quando quiser em Configurações → Ajuda e tutoriais.",
       "heroNote": "O último comboio",
       "heroTodoDone": "Visita ao local",
       "heroTodo": "Teste de chuva"
@@ -4996,9 +5039,9 @@
     },
     "toast": {
       "open": "Abrir",
-      "welcomeSkipped": "Ok! O tour espera por si em Configurações → Tutoriais.",
-      "tourSkipped": "Tour saltado. Encontra-o em Configurações → Tutoriais.",
-      "pillDismissed": "Ok, não voltamos a propô-lo. Está em Configurações → Tutoriais.",
+      "welcomeSkipped": "Ok! O tour espera por si em Configurações → Ajuda e tutoriais.",
+      "tourSkipped": "Tour saltado. Encontra-o em Configurações → Ajuda e tutoriais.",
+      "pillDismissed": "Ok, não voltamos a propô-lo. Está em Configurações → Ajuda e tutoriais.",
       "done": "{{name}}: tour concluído.",
       "guestDismissed": "Ok. O tour fica no botão ? em cima.",
       "guestDone": "É tudo. Boa revisão!"
@@ -5018,7 +5061,8 @@
       "reset": "Recomeçar",
       "resetHelp": "Marcar todos os tours como por ver.",
       "resetAction": "Repor",
-      "adminOnly": "só administradores"
+      "adminOnly": "só administradores",
+      "prefs": "Preferências dos tutoriais"
     },
     "groups": {
       "start": "Para começar",
@@ -5071,7 +5115,7 @@
           },
           "6": {
             "title": "Reveja quando quiser",
-            "text": "Está em Configurações → Tutoriais."
+            "text": "Está em Configurações → Ajuda e tutoriais."
           }
         }
       },
@@ -5517,7 +5561,7 @@
           },
           "2": {
             "title": "Como se entra",
-            "text": "Os métodos de acesso estão em Início de sessão."
+            "text": "Os métodos de acesso estão em Acesso e permissões."
           }
         }
       },
@@ -6103,7 +6147,6 @@
     "hidden_one": "1 ficheiro num projeto que não pode abrir: {{size}}.",
     "hidden_other": "{{count}} ficheiros em projetos que não pode abrir: {{size}}.",
     "filesHelp": "Os ficheiros retirados das boards também contam: ficam no projeto, porque uma versão pode recuperá-los. O espaço volta quando o projeto é eliminado.",
-    "column": "Espaço",
     "own": "{{size}} · próprio",
     "actionsFor": "Ações para {{name}}",
     "changeLimit": "Alterar o limite de espaço…",
@@ -6137,7 +6180,7 @@
     "usedTitle": "Espaço usado",
     "ofLimit": "de um limite de {{limit}}",
     "disk": "disco {{size}}",
-    "usedDetail": "Originais {{originals}} · cópias e pré-visualizações {{derived}}. O limite não pode exceder o espaço livre no disco: se o disco encher, o Servidor avisa.",
+    "usedDetail": "Originais {{originals}} · cópias e pré-visualizações {{derived}}. O limite não pode exceder o espaço livre no disco: se o disco encher, o Estado do servidor avisa.",
     "lastsMonths_one": "Chega para cerca de 1 mês",
     "lastsMonths_other": "Chega para cerca de {{count}} meses",
     "lastsWeeks_one": "Chega para cerca de 1 semana",
@@ -6331,7 +6374,6 @@
       "review": "As ligações já enviadas continuam a funcionar.",
       "plan": "As plantas já desenhadas continuam visíveis."
     },
-    "offKeep": "Desligado · {{text}}",
     "always": "Sempre ligado",
     "turnOn": "Ligar",
     "turnedOn": "{{name}} está ligado: encontra-o em Canvas e na barra.",

@@ -322,8 +322,8 @@ async function main() {
         ['21', 'team'],
         ['22', 'workspace'],
         ['23', 'classifications'],
-        ['24', 'providers'],
-        ['25', 'registration'],
+        ['24', 'access'],
+        ['25', 'reports'],
         ['26', 'backups'],
         ['27', 'instance'],
       ] as const) {

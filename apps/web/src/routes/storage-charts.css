@@ -1,14 +1,3 @@
-.storage-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0 0 14px;
-}
-.storage-tiles > div {
-  padding: 12px 14px;
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-2);
-}
 .storage-tiles dt {
   color: var(--ink-text-secondary);
   font-size: 12px;
@@ -30,7 +19,7 @@
 .storage-chart__stack {
   display: flex;
   height: 8px;
-  margin: 12px 0 4px;
+  margin: 0 0 4px;
   overflow: hidden;
   border-radius: var(--ink-radius-full);
   background: var(--ink-surface-2);
@@ -88,5 +77,8 @@
 @media (width < 768px) {
   .storage-tiles {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .storage-chart .settings-block__head {
+    flex-wrap: wrap;
   }
 }

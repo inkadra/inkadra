@@ -153,95 +153,97 @@ function Tiles({ status }: { status: ServerStatus }) {
   );
   const inMax = niceMax(Math.max(1, ...h.map((s) => mbit(s.in) ?? 0)));
   return (
-    <section className="server-tiles" aria-label={t('server.advanced.summary')}>
-      <Tile
-        label={t('server.advanced.cpu')}
-        meta={t('server.advanced.cores', { count: Math.round(cpu.cores * 10) / 10 })}
-        value={
-          <>
-            {cpu.cores ? number((cpu.used / cpu.cores) * 100, lang, 0) : '—'}
-            <small> %</small>
-          </>
-        }
-      >
-        {spark(
-          t('server.advanced.cpu'),
-          'cpu',
-          h.map((s) => s.cpu),
-          100,
-        )}
-      </Tile>
-      <Tile
-        label={t('server.advanced.memory')}
-        meta={
-          memory.limit
-            ? t('server.advanced.limit', { size: formatStorage(memory.limit, lang) })
-            : ''
-        }
-        value={formatStorage(memory.used, lang)}
-      >
-        {spark(
-          t('server.advanced.memory'),
-          'memory',
-          h.map((s) => s.memory),
-          memoryMax(status),
-        )}
-      </Tile>
-      <Tile
-        label={t('server.advanced.network')}
-        meta={t('server.advanced.container')}
-        value={network ? <>↓ {bits(network.in, lang)}</> : '—'}
-        sub={
-          network
-            ? `↑ ${bits(network.out, lang)} · ${t('server.advanced.today', {
-                in: formatStorage(network.todayIn, lang),
-                out: formatStorage(network.todayOut, lang),
-              })}`
-            : undefined
-        }
-      >
-        {spark(
-          t('server.advanced.network'),
-          'in',
-          h.map((s) => mbit(s.in)),
-          inMax,
-        )}
-      </Tile>
-      <Tile
-        label={t('server.advanced.storage')}
-        meta={`${store.driver} · ${store.location}`}
-        value={
-          <>
-            {formatStorage(store.used, lang)}
-            {store.total !== null && <small> / {formatStorage(store.total, lang)}</small>}
-          </>
-        }
-        sub={
-          <>
-            {t('server.advanced.storageSplit', {
-              originals: formatStorage(store.originals, lang),
-              copies: formatStorage(store.copies, lang),
-              previews: formatStorage(store.previews, lang),
-            })}
-            {diskCompresses(store) && (
-              <>
-                <br />
-                {t('server.meters.storage.compressed')}
-              </>
-            )}
-          </>
-        }
-      >
-        {store.total !== null && (
-          <span className="server-bar" aria-hidden="true">
-            <span
-              className="server-bar__fill server-bar__fill--cpu"
-              style={{ width: `${(store.used / store.total) * 100}%` }}
-            />
-          </span>
-        )}
-      </Tile>
-    </section>
+    <Card title={t('server.advanced.summary')}>
+      <div className="server-tiles">
+        <Tile
+          label={t('server.advanced.cpu')}
+          meta={t('server.advanced.cores', { count: Math.round(cpu.cores * 10) / 10 })}
+          value={
+            <>
+              {cpu.cores ? number((cpu.used / cpu.cores) * 100, lang, 0) : '—'}
+              <small> %</small>
+            </>
+          }
+        >
+          {spark(
+            t('server.advanced.cpu'),
+            'cpu',
+            h.map((s) => s.cpu),
+            100,
+          )}
+        </Tile>
+        <Tile
+          label={t('server.advanced.memory')}
+          meta={
+            memory.limit
+              ? t('server.advanced.limit', { size: formatStorage(memory.limit, lang) })
+              : ''
+          }
+          value={formatStorage(memory.used, lang)}
+        >
+          {spark(
+            t('server.advanced.memory'),
+            'memory',
+            h.map((s) => s.memory),
+            memoryMax(status),
+          )}
+        </Tile>
+        <Tile
+          label={t('server.advanced.network')}
+          meta={t('server.advanced.container')}
+          value={network ? <>↓ {bits(network.in, lang)}</> : '—'}
+          sub={
+            network
+              ? `↑ ${bits(network.out, lang)} · ${t('server.advanced.today', {
+                  in: formatStorage(network.todayIn, lang),
+                  out: formatStorage(network.todayOut, lang),
+                })}`
+              : undefined
+          }
+        >
+          {spark(
+            t('server.advanced.network'),
+            'in',
+            h.map((s) => mbit(s.in)),
+            inMax,
+          )}
+        </Tile>
+        <Tile
+          label={t('server.advanced.storage')}
+          meta={`${store.driver} · ${store.location}`}
+          value={
+            <>
+              {formatStorage(store.used, lang)}
+              {store.total !== null && <small> / {formatStorage(store.total, lang)}</small>}
+            </>
+          }
+          sub={
+            <>
+              {t('server.advanced.storageSplit', {
+                originals: formatStorage(store.originals, lang),
+                copies: formatStorage(store.copies, lang),
+                previews: formatStorage(store.previews, lang),
+              })}
+              {diskCompresses(store) && (
+                <>
+                  <br />
+                  {t('server.meters.storage.compressed')}
+                </>
+              )}
+            </>
+          }
+        >
+          {store.total !== null && (
+            <span className="server-bar" aria-hidden="true">
+              <span
+                className="server-bar__fill server-bar__fill--cpu"
+                style={{ width: `${(store.used / store.total) * 100}%` }}
+              />
+            </span>
+          )}
+        </Tile>
+      </div>
+    </Card>
   );
 }
 
