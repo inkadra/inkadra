@@ -26,6 +26,7 @@ import { usePresetText } from '../board/film/fields.tsx';
 import { plainText, useFragment } from '../board/note.tsx';
 import {
   authorName,
+  editableText,
   findThread,
   mergeReplies,
   type Page,
@@ -635,7 +636,7 @@ function InboxDetailContent({
                           )}
                         </div>
                         <p className="inbox-detail__other-excerpt">
-                          {other.body || t('comments.deleted')}
+                          {editableText(other) || t('comments.deleted')}
                         </p>
                       </div>
                       <span
@@ -735,7 +736,7 @@ function InboxDetailContent({
                         </span>
                       )}
                     </div>
-                    <p className="inbox-detail__message-body">{activeThread.body}</p>
+                    <p className="inbox-detail__message-body">{editableText(activeThread)}</p>
                   </div>
                 </div>
                 {hiddenReplies > 0 && (!repliesPaged || nextRepliesCursor) && (
@@ -772,7 +773,7 @@ function InboxDetailContent({
                             </span>
                           )}
                         </div>
-                        <p className="inbox-detail__message-body">{reply.body}</p>
+                        <p className="inbox-detail__message-body">{editableText(reply)}</p>
                       </div>
                     </div>
                   );
