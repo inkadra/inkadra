@@ -47,9 +47,14 @@ Functions that write words take `t` as a `Words` function, i18next's shape, and 
 web's keys. The English words they ask for, with the names, search words, tiles, groups and
 categories of the icons, are `PLAN_WORDS_EN` in canvas-core, keyed as the web catalogues
 (`board.plan.*`); a web test fails when `en.json` says otherwise, and the package's tests read
-their words from it, so a missing or misspelt key fails there. The other five languages stay in
-the web catalogues for now: a second client translates the same keys (shortcut: their
-`board.plan.*` words move next to `PLAN_WORDS_EN` when a second client ships another language).
+their words from it, so a missing or misspelt key fails there. The same keys in the other five
+languages are `PLAN_WORDS_IT`, `PLAN_WORDS_ES`, `PLAN_WORDS_DE`, `PLAN_WORDS_FR` and
+`PLAN_WORDS_PT`, one file each, imported by path (`@inkadra/canvas-core/plan-words/it`) and not
+through the package's index, so a client bundles only the languages it ships and the server none.
+The web catalogues stay the source the web shows: a web test fails when one of them and the
+package disagree, and a package test fails when a language lacks a key English has or fills in
+other placeholders. All of these words were written by the project; before a word moves into the
+package, its author must be one who can license it under the MPL.
 
 One behaviour changed with the move, on purpose: the kit, the names on a circuit and the count
 across setups went by the translated name, so two kinds a language writes alike (or two specs
