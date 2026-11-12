@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { PlanWords } from './plan-words.ts';
+import type { PlanWords, SheetWords } from './plan-words.ts';
 
 /**
  * The words of a set plan in Spanish: the keys of `PLAN_WORDS_EN` (decision 0116), as the web's
@@ -19,6 +19,7 @@ export const PLAN_WORDS_ES: PlanWords = {
       positions_one: '{{count}} posición',
       positions_other: '{{count}} posiciones',
       roomOverall: '{{size}} en total',
+      scaleGrid: '1 cuadro = {{grid}} m',
       walls: {
         summaryWalls_one: '{{count}} pared',
         summaryWalls_other: '{{count}} paredes',
@@ -492,9 +493,18 @@ export const PLAN_WORDS_ES: PlanWords = {
         grip: 'Grip',
         cast: 'Reparto',
         setup: 'Setup',
+        shots: 'Planos',
+        scale: 'Escala',
+        room: 'Sala',
+        more_one: '+{{count}} más',
+        more_other: '+{{count}} más',
+        notes: 'Notas',
+        foot: 'Hecho con Inkadra · página {{n}} de {{total}}',
+        day: 'Día {{n}}',
       },
       links: {
         circuitLine: '{{name}} · {{amps}} A',
+        scene: 'Escena {{number}}',
         from: {
           north: 'Desde el norte',
           northEast: 'Desde el noreste',
@@ -513,5 +523,27 @@ export const PLAN_WORDS_ES: PlanWords = {
         },
       },
     },
+  },
+};
+
+/** The sheet's words outside `board.plan` in Spanish: the keys of `SHEET_WORDS_EN`. */
+export const SHEET_WORDS_ES: SheetWords = {
+  film: {
+    scene: {
+      settings: {
+        int: 'INT.',
+        ext: 'EXT.',
+        'int-ext': 'INT./EXT.',
+      },
+      times: {
+        day: 'DÍA',
+        night: 'NOCHE',
+        dawn: 'AMANECER',
+        dusk: 'ATARDECER',
+      },
+    },
+  },
+  export: {
+    kindBoard: 'Tablero',
   },
 };
