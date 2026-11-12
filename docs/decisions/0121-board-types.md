@@ -87,7 +87,7 @@ default; Board (notes, images, links, files, to-dos, columns, comments) is alway
   dimmed, with Turn on; choosing it turns the module on. No message appears elsewhere.
 - **One short notice.** After a screenplay import with Storyboard off, the scenes arrive on the
   board as cards and one line above the toolbar says what Storyboard would do, with Turn on. It
-  shows once per module and leaves by itself, like the undo notices (0052). "Import a
+  shows once per module and leaves by itself, like the undo notices. "Import a
   screenplay" stays in the Canvas menu, dimmed like the types.
 - No cards that wait for an answer, and no hint for a module that is on.
 
