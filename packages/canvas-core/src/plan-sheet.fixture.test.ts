@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { expect, it } from 'vitest';
 import { listElements } from './board.ts';
-import { bigPlanFixture, planSheetFixture } from './plan-sheet.fixture.ts';
+import { bigPlanFixture, planSheetFixture, planSheetFixtureFull } from './plan-sheet.fixture.ts';
 
 it('builds the sheet fixture as valid cards: three setups, attachments and links', () => {
   const { doc, planIds } = planSheetFixture();
@@ -32,4 +32,20 @@ it('fills the big fixture to the icon limit, its setups copying cameras, lights 
   expect(counts[0]).toBe(300);
   expect(counts[1]).toBeGreaterThan(150);
   expect(counts[2]).toBe(counts[1]);
+});
+
+it('adds to the full fixture a placed grey background, locks, a long text and turned furniture', () => {
+  const { doc, planIds } = planSheetFixtureFull();
+  const base = listElements(doc).find((el) => el.id === planIds[0]);
+  if (base?.type !== 'plan') throw new Error('No base');
+  expect(base.background).toMatchObject({ opacity: 0.6, grey: true, w: 720, h: 400 });
+  expect(base.icons?.filter((i) => i.locked).map((i) => i.label)).toEqual(['Bancone', 'Booth']);
+  expect(base.walls?.every((w) => w.locked)).toBe(true);
+  const text = base.shapes?.find((s) => s.kind === 'text');
+  expect(text?.text?.split('\n')).toHaveLength(3);
+  expect(base.icons?.find((i) => i.label === 'Carrello')).toMatchObject({
+    w: 140,
+    h: 60,
+    rotation: 30,
+  });
 });

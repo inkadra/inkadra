@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // SPDX-License-Identifier: AGPL-3.0-only
-import { planSheetFixture } from '@inkadra/canvas-core/fixtures/plan-sheet';
+import { planSheetFixture, planSheetFixtureFull } from '@inkadra/canvas-core/fixtures/plan-sheet';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { expectFixture } from '../plan/plan-sample.fixture.ts';
 import { fileFetch, type SheetAudience, sheetOf, sheetText } from './plan-sheet-node.fixture.ts';
 
 /**
@@ -27,4 +28,12 @@ describe.each([
       `./golden/plan-sheet-${audience}-${lng}.txt`,
     );
   });
+});
+
+it('makes the fuller fixture’s sheet as the same golden as in Node', async () => {
+  const { built } = await sheetOf(planSheetFixtureFull(), 'team', 'en');
+  expectFixture(
+    sheetText(built.pages, built.missing),
+    `${import.meta.dirname}/golden/plan-sheet-team-en-full.txt`,
+  );
 });
