@@ -7,6 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./constants": "./src/constants.ts",
+    "./shot-words/it": "./src/shot-words-it.ts",
+    "./shot-words/es": "./src/shot-words-es.ts",
+    "./shot-words/de": "./src/shot-words-de.ts",
+    "./shot-words/fr": "./src/shot-words-fr.ts",
+    "./shot-words/pt": "./src/shot-words-pt.ts",
     "./openapi": "./src/openapi.ts",
     "./openapi.json": "./openapi.json"
   },
