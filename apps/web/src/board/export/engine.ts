@@ -406,6 +406,16 @@ export async function buildPages(
   if (req.what === 'setplan' && req.setPlan) {
     // A sheet of its own per setup, with its own title block and foot (decision 0111).
     bare = true;
+    // The shooting days, for the "Day N" of the plan's scene: the team's only (decision 0111),
+    // and a sheet without them when the schedule cannot be read.
+    let days: Planning['days'] = [];
+    if (team && req.setPlan.include.dateScene) {
+      try {
+        ({ days } = await planningOnce());
+      } catch (err) {
+        if (signal?.aborted) throw err;
+      }
+    }
     const sheet = planSheetInput({
       elements: all,
       filter,
@@ -414,6 +424,7 @@ export async function buildPages(
       include: req.setPlan.include,
       t,
       locale: env.language,
+      days,
     });
     content = planSheetPages(sheet.input, { ...ctx, cards: sheet.cards });
     summary = t('board.plan.name');

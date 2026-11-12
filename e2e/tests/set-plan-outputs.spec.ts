@@ -2,6 +2,7 @@
 // Outputs of the set plan (decision 0111): the card on the board, the export dialog and its PDF
 // sheet with the legend and the power, and the read-only view of a guest.
 // Runs after first-run.spec.ts in CI; alone, it signs up.
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -124,6 +125,30 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
     opts,
   );
   await pushBoardDoc(baseURL!, cookie, root, doc);
+  // The scene's shot on the schedule: the team's sheet prints its shooting day (decision 0111).
+  const day = await page.request.post(`/api/v1/boards/${root}/schedule`, {
+    headers: { origin: baseURL! },
+    data: {
+      date: '2026-03-05',
+      callTime: '07:00',
+      wrap: null,
+      location: '',
+      notes: '',
+      blocks: [
+        {
+          id: randomUUID(),
+          type: 'shot',
+          title: '',
+          start: null,
+          duration: 30,
+          shotId: frame.id,
+          cast: [],
+          departments: [],
+        },
+      ],
+    },
+  });
+  expect(day.status()).toBe(201);
   await page.goto(`/p/${project.id}/b/${root}?view=canvas`);
 
   await test.step('the card shows the counts of the mockup', async () => {
@@ -168,6 +193,8 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       '2 kW · 8,7 A',
       'Circuito A · 16 A: Chiave',
       'Lontano dal muro di fondo',
+      // The place and the shooting day of the scene at the foot.
+      'Tavola calda · Giorno 1',
       'pagina 1 di 2',
     ])
       expect(text).toContain(expected);
@@ -235,6 +262,9 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
         expect(guestText).toContain(expected);
       expect(guestText).not.toContain('Segreto');
       expect(guestText).not.toContain('85 mm');
+      // Guests cannot read the schedule: their sheet prints no shooting day.
+      expect(guestText).toContain('Tavola calda');
+      expect(guestText).not.toContain('Giorno');
       await viewer.getByRole('button', { name: 'Chiudi' }).click();
       await expect(viewer).toHaveCount(0);
     } finally {

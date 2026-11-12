@@ -65,6 +65,7 @@ it('gives a guest the same sheet from audienceCards as from the server’s guest
     include: sheetInclude(base),
     t,
     locale: 'en',
+    days: fixture.days,
   };
 
   const team = planSheetInput({
@@ -77,7 +78,8 @@ it('gives a guest the same sheet from audienceCards as from the server’s guest
     elements: all,
     filter: { audience: 'client', hideGuestHidden: true },
   });
-  const server = planSheetInputOf({ ...request, ...serverGuestCards(all) });
+  // The server reads no schedule for a guest, as the web gives a guest's sheet no day.
+  const server = planSheetInputOf({ ...request, days: [], ...serverGuestCards(all) });
 
   expect(guest.input.setups).toHaveLength(3);
   // The one difference: the web's guest cards keep an icon's link to a card guests don't get
@@ -119,6 +121,9 @@ it('gives a guest the same sheet from audienceCards as from the server’s guest
   expect(pages(guest.input, guest.cards)).toEqual(pages(server, serverGuestCards(all).cards));
   // The team's sheet prints the character hidden from guests; neither guest sheet does.
   expect(JSON.stringify(team.input)).toContain(fixture.hiddenName);
+  // Only the team's sheet prints the scene's shooting day.
+  expect(team.input.place).toMatch(/ · board\.plan\.sheet\.day\(2\)$/);
+  expect(guest.input.place).not.toMatch(/sheet\.day/);
   expect(JSON.stringify(guest.input)).not.toContain(fixture.hiddenName);
   expect(JSON.stringify(server)).not.toContain(fixture.hiddenName);
   expect(

@@ -225,10 +225,20 @@ out, and a client's card keeps only its guest fields, failing closed when it no 
 resolves against from all the board's elements, an `ExportFilter`, the setups, the area, the
 boxes, the words and the locale. Shot labels are counted on the whole board before anything is
 left out, as the server's guest view does; `planSheetInputOf` takes cards and labels already
-made, for a caller that has them (the server's guest cards). The sheet still prints no "Day N":
-its environment has no shooting schedule (a later change). The web's `board-model.ts` re-exports
+made, for a caller that has them (the server's guest cards). The web's `board-model.ts` re-exports
 the filter; a web test proves a guest's input from `audienceCards` equals one from the server's
 guest cards, without the hidden character's name.
+
+Then the sheet's "Day N" (Matteo, 2026-11-12): it never printed, as the sheet's environment set no
+board to read the schedule of. The rule is `sceneDay` in `packages/canvas-core`, beside
+`dayBySetup`: the number, by date from 1 as the schedule numbers its days, of the first day whose
+blocks shoot one of the scene's frames (the scene sheets' rule; a scene shot over several days
+gives its first, one shot on none gives no day), on `ScheduledDay`, a day's date and its blocks'
+shots. `planSheetInput` and `planSheetInputOf` take the board's days as data (`days`, the web's
+from `loadPlanning`, the server's its own) and print "Rosa's diner · Day 3" at the foot when
+"Date and scene" is on. A guest's sheet prints no day: guests cannot read the schedule, and
+`planSheetInput` drops the days for clients (the server passes none to `planSheetInputOf` for a
+guest).
 
 Then the text measure (`measure.ts`, from the web's `export/fonts.ts`): `measureFrom`, the width
 of a text from each glyph's advance without kerning, as the PDF places it, with a heading the

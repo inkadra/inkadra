@@ -35,6 +35,7 @@ function sheets(fixture: PlanSheetFixture, words: object, locale: string): strin
       include: { ...PLAN_SHEET_INCLUDE, background: true, grid: true },
       t: wordsOf(words),
       locale,
+      days: fixture.days,
     });
     const colors = new Proxy({}, { get: () => '#808080' }) as Palette;
     const measure = (text: string, size: number) => [...text].length * size * 0.5;
