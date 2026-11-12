@@ -68,7 +68,7 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   const queue = schedule.locator('.schedule__queue');
   // The queue groups the frames by storyboard, each with its dot.
   await expect(queue.locator('.schedule__source-title')).toHaveText(['Teaser', 'Film']);
-  const filter = queue.getByRole('button', { name: 'Filtra per storyboard' });
+  const filter = queue.getByRole('combobox', { name: 'Filtra per storyboard' });
   await chooseSelect(filter, { label: 'Teaser' });
   await expect(queue.locator('.schedule__source-title')).toHaveText(['Teaser']);
   await queue.locator('.schedule__shot:not(.schedule__shot--scene)', { hasText: '1A' }).click();
