@@ -189,7 +189,9 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
     await page.getByRole('combobox', { name: 'Raggruppa per' }).click();
     await page.getByRole('option', { name: 'Raggruppa per: Scena' }).click();
     await expect
-      .poll(async () => (await (await page.request.get('/api/v1/me/preferences')).json()).shotGroupBy)
+      .poll(
+        async () => (await (await page.request.get('/api/v1/me/preferences')).json()).shotGroupBy,
+      )
       .toBe('scene');
   });
 });

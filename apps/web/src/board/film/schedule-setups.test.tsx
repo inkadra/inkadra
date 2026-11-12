@@ -68,7 +68,13 @@ const camera = (id: string, frameId: string): PlanIcon => ({
 async function mount() {
   const doc = new Y.Doc();
   const store = new BoardStore(doc);
-  const s1 = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '1', title: 'Bar', location: '', setting: 'int', time: 'day' }, opts);
+  const s1 = createElement(
+    doc,
+    'scene',
+    { x: 0, y: 0 },
+    { number: '1', title: 'Bar', location: '', setting: 'int', time: 'day' },
+    opts,
+  );
   const s2 = createElement(
     doc,
     'scene',
@@ -76,7 +82,13 @@ async function mount() {
     { number: '2', title: 'Cut', location: '', setting: 'int', time: 'day', omitted: true },
     opts,
   );
-  const s3 = createElement(doc, 'scene', { x: 0, y: 800 }, { number: '3', title: 'Car', location: '', setting: 'ext', time: 'day' }, opts);
+  const s3 = createElement(
+    doc,
+    'scene',
+    { x: 0, y: 800 },
+    { number: '3', title: 'Car', location: '', setting: 'ext', time: 'day' },
+    opts,
+  );
   const wide = addFrame(doc, s1.id, null, { action: 'Wide' }, opts);
   const pour = addFrame(doc, s1.id, null, { action: 'Pour' }, opts);
   const both = addFrame(doc, s1.id, null, { action: 'Both' }, opts);
@@ -117,11 +129,13 @@ async function mount() {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(
-        <MemoryRouter>
-          <ScheduleView store={store} boardId="board" />
-        </MemoryRouter>,
-      ));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <ScheduleView store={store} boardId="board" />
+      </MemoryRouter>,
+    ),
+  );
   disposals.push(() => {
     act(() => root.unmount());
     host.remove();
@@ -192,17 +206,25 @@ it('offers no grouping on a board without set plans', async () => {
   prefs.value = { shotGroupBy: 'setup' };
   const doc = new Y.Doc();
   const store = new BoardStore(doc);
-  const scene = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '1', title: '', location: '', setting: 'int', time: 'day' }, opts);
+  const scene = createElement(
+    doc,
+    'scene',
+    { x: 0, y: 0 },
+    { number: '1', title: '', location: '', setting: 'int', time: 'day' },
+    opts,
+  );
   addFrame(doc, scene.id, null, { action: 'Wide' }, opts);
   vi.spyOn(api, 'get').mockResolvedValue({ items: [], nextCursor: null });
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(
-        <MemoryRouter>
-          <ScheduleView store={store} boardId="board" />
-        </MemoryRouter>,
-      ));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <ScheduleView store={store} boardId="board" />
+      </MemoryRouter>,
+    ),
+  );
   disposals.push(() => {
     act(() => root.unmount());
     host.remove();
