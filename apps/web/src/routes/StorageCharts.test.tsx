@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
-import { formatStorage, StorageCharts, storagePercent } from './StorageCharts.tsx';
+import { formatStorage, projectSwatch, StorageCharts, storagePercent } from './StorageCharts.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -135,4 +135,17 @@ it('counts previews in the space used and in the usage of each user', async () =
   const paola = [...host.querySelectorAll('tr')].find((row) => row.textContent?.includes('Paola'));
   expect(paola?.textContent).toContain('4 KB');
   expect(paola?.textContent).toContain('100%');
+});
+
+it('colours each project with its icon colour, and the rest neutral', () => {
+  const row = { projectId: 'p', name: 'Shoot', bytes: 1 } as const;
+  expect(projectSwatch({ ...row, scope: 'project', color: 'teal' })).toBe('var(--ink-tag-teal)');
+  // Older servers send no colour.
+  expect(projectSwatch({ ...row, scope: 'project' })).toBe('var(--ink-text-muted)');
+  expect(
+    projectSwatch({ projectId: null, name: null, scope: 'restricted', bytes: 1, color: 'red' }),
+  ).toBe('var(--ink-text-muted)');
+  expect(projectSwatch({ projectId: null, name: null, scope: 'unassigned', bytes: 1 })).toBe(
+    'var(--ink-text-muted)',
+  );
 });

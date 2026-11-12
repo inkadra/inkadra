@@ -22,6 +22,7 @@ describe('original storage usage', () => {
         bytes: 300,
         projectId: 'visible',
         projectName: 'Shoot',
+        projectColor: 'teal',
         visible: true,
         userId: null,
         userName: null,
@@ -32,6 +33,7 @@ describe('original storage usage', () => {
         bytes: 500,
         projectId: 'secret-one',
         projectName: 'Secret one',
+        projectColor: 'red',
         visible: false,
         userId: null,
         userName: null,
@@ -42,6 +44,7 @@ describe('original storage usage', () => {
         bytes: 200,
         projectId: 'secret-two',
         projectName: 'Secret two',
+        projectColor: 'pink',
         visible: false,
         userId: null,
         userName: null,
@@ -52,6 +55,7 @@ describe('original storage usage', () => {
         bytes: 100,
         projectId: 'visible',
         projectName: 'Shoot',
+        projectColor: 'teal',
         visible: true,
         userId: null,
         userName: null,
@@ -62,6 +66,7 @@ describe('original storage usage', () => {
         bytes: 50,
         projectId: null,
         projectName: null,
+        projectColor: null,
         visible: false,
         userId: null,
         userName: null,
@@ -73,10 +78,10 @@ describe('original storage usage', () => {
     expect(result.byProject.reduce((n, row) => n + row.bytes, 0)).toBe(1150);
     expect(result.byProject).toEqual([
       { projectId: null, name: null, scope: 'restricted', bytes: 700 },
-      { projectId: 'visible', name: 'Shoot', scope: 'project', bytes: 400 },
+      { projectId: 'visible', name: 'Shoot', scope: 'project', bytes: 400, color: 'teal' },
       { projectId: null, name: null, scope: 'unassigned', bytes: 50 },
     ]);
-    expect(JSON.stringify(result)).not.toMatch(/secret/i);
+    expect(JSON.stringify(result)).not.toMatch(/secret|"red"|"pink"/i);
   });
   it('handles empty storage and deterministic ties', () => {
     const empty = storageUsage([]);
@@ -86,6 +91,7 @@ describe('original storage usage', () => {
     const groups = ['b', 'a'].map((projectId) => ({
       projectId,
       projectName: projectId,
+      projectColor: null,
       visible: true,
       userId: null,
       userName: null,
@@ -101,6 +107,7 @@ describe('original storage usage', () => {
       bytes,
       projectId: visible ? 'open' : 'secret',
       projectName: visible ? 'Open' : 'Secret',
+      projectColor: null,
       visible,
       userId,
       userName: userId && `Name of ${userId}`,

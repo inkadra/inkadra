@@ -224,6 +224,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         bytes: sum(asset.size),
         projectId: project.id,
         projectName: project.name,
+        projectColor: project.iconColor,
         visible,
         userId: user.id,
         userName: user.name,
@@ -236,7 +237,15 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       .leftJoin(project, eq(project.id, asset.projectId))
       .leftJoin(user, eq(user.id, asset.createdBy))
       .where(inArray(asset.status, ['processing', 'ready', 'failed']))
-      .groupBy(asset.mime, asset.projectId, project.id, project.name, user.id, user.name);
+      .groupBy(
+        asset.mime,
+        asset.projectId,
+        project.id,
+        project.name,
+        project.iconColor,
+        user.id,
+        user.name,
+      );
     const people = await db
       .select({ id: user.id, name: user.name })
       .from(user)

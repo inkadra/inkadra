@@ -3291,6 +3291,21 @@
                 "bytes": {
                   "type": "number",
                   "minimum": 0
+                },
+                "color": {
+                  "type": "string",
+                  "enum": [
+                    "blue",
+                    "orange",
+                    "purple",
+                    "green",
+                    "neutral",
+                    "teal",
+                    "yellow",
+                    "red",
+                    "pink"
+                  ],
+                  "description": "The project's icon colour, on scope project rows only. Older servers omit it."
                 }
               },
               "required": [
