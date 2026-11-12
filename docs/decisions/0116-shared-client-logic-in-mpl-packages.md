@@ -43,6 +43,17 @@ were written inline in the read-only view and the PDF sheet); the card and the s
 `sunDays`, `northWay`, `sunRotation`, and `sunFrom`, `sunHeight`, `sunDate`, taken out of the
 web's sun section).
 
+For the mobile app to draw walls, place openings and start a plan as the web does, these moved
+too, into `packages/canvas-core`: the rules of the Walls and Openings tools (`plan-wall-tools.ts`:
+`CLOSE_SLOP`, `WALL_SLOP`, `canCloseWall`, `closesWall`, `wallSideEnd`, `typedTowards`,
+`wallStep` with `WallDraft` and `WallStep`, `draftCorners`, `wallThickness`, `wallCentimetres`,
+`viewToMetres`, `wallSideCount`, `openingAt`, `newOpeningWidth`, `dragOpening`,
+`openingMetres`, `openingMaxMetres`, `resizeOpening`, `flipOpening`, `swingOpening`,
+`changeOpeningKind`, `outside`, `setSummary`), and starting a plan (`plan-start.ts`: `startPlan`,
+`PlanStartChoice`, `defaultStartChoice`, `startTitle`, `setSourceName`). The tools take the
+length typed as a number of metres: the parser of a typed length, `measureValue`, stays in the
+web for now and moves with the Properties constants.
+
 Functions that write words take `t` as a `Words` function, i18next's shape, and ask for the
 web's keys. The English words they ask for, with the names, search words, tiles, groups and
 categories of the icons, are `PLAN_WORDS_EN` in canvas-core, keyed as the web catalogues
@@ -63,8 +74,9 @@ is (`KitLine.key`: the kind and its power or length; a named light by its name),
 only written from it: the same plan gives the same lines and totals in every language and on
 every client, even when two lines read the same.
 
-Stays in the web: the Kit tab, the view and the card as React; the PDF sheet's layout and
-drawing; the clipboard copy of the kit; `measureValue`, `selectionMix` and the seats of the
+Stays in the web: the Kit tab, the view and the card as React; the pointer and keyboard
+gestures, the state and the bars of the Walls and Openings tools, the start dialog and its
+pictures; the PDF sheet's layout and drawing; the clipboard copy of the kit; `measureValue`, `selectionMix` and the seats of the
 Properties (editing); the library's search (`library.ts`, editing); reading the schedule and the
 project kit from the server (`useScheduleDays`, `useOtherKits`: the derivation of the project kit
 was already in canvas-core).

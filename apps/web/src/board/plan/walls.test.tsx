@@ -7,6 +7,7 @@ import {
   PLAN_VIEW_W,
   type PlanElement,
   toWallPoints,
+  wallPoints,
 } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { act, useSyncExternalStore } from 'react';
@@ -18,7 +19,7 @@ import { type Ed, usePlanEditing } from './editing.ts';
 import type { useBackgroundPicker } from './PlanBackground.tsx';
 import { PlanStart } from './PlanStart.tsx';
 import { PlanWallProperties } from './PlanWallProperties.tsx';
-import { outside, useWallTools, type WallTools } from './PlanWalls.tsx';
+import { useWallTools, type WallTools } from './PlanWalls.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -232,11 +233,19 @@ it('leaves a locked wall and a locked opening as they are, until unlocked', asyn
   expect(planOf(doc, plan.id).walls).toHaveLength(1);
 });
 
-it('writes the sizes of a closed room outside it, whichever way its corners were drawn', () => {
-  const square = [0, 0, 1000, 0, 1000, 1000, 0, 1000];
-  const back = [0, 0, 0, 1000, 1000, 1000, 1000, 0];
-  // The top side runs to the right: its normal points up, out of a room drawn clockwise.
-  expect(outside({ points: square, closed: true })).toBe(1);
-  expect(outside({ points: back, closed: true })).toBe(-1);
-  expect(outside({ points: square, closed: false })).toBe(-1);
+it('draws a side as long as typed, with a comma or a dot', async () => {
+  for (const typed of ['2,5', '2.5']) {
+    const doc = createBoardDoc(boardId);
+    const plan = createElement(doc, 'plan', { x: 0, y: 0 }, { scale: 100 }, { userId: null });
+    const m = await mount(doc, plan.id);
+    const to01 = (x: number, y: number) => ({ x: x / PLAN_VIEW_W, y: y / PLAN_VIEW_H });
+    await act(async () => m.ed.setTool('walls'));
+    await act(async () => void m.tools.down(to01(125, 125)));
+    for (const key of typed) await act(async () => void m.tools.key({ key } as KeyboardEvent));
+    // The pointer only gives the way: the side is 2.5 m at 100 units per metre.
+    await act(async () => void m.tools.down(to01(600, 140)));
+    const [a, b] = wallPoints(planOf(doc, plan.id).walls?.[0] ?? { points: [] });
+    expect(b && a && b.x - a.x).toBeCloseTo(250, 0);
+    expect(b && a && b.y - a.y).toBeCloseTo(0, 6);
+  }
 });

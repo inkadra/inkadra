@@ -19,6 +19,22 @@ export const PLAN_WORDS_IT: PlanWords = {
       positions_one: '{{count}} posizione',
       positions_other: '{{count}} posizioni',
       roomOverall: '{{size}} in tutto',
+      walls: {
+        summaryWalls_one: '{{count}} muro',
+        summaryWalls_other: '{{count}} muri',
+        summary: {
+          door_one: '{{count}} porta',
+          door_other: '{{count}} porte',
+          doubledoor_one: '{{count}} porta doppia',
+          doubledoor_other: '{{count}} porte doppie',
+          sliding_one: '{{count}} porta scorrevole',
+          sliding_other: '{{count}} porte scorrevoli',
+          window_one: '{{count}} finestra',
+          window_other: '{{count}} finestre',
+          opening_one: '{{count}} varco',
+          opening_other: '{{count}} varchi',
+        },
+      },
       icons: {
         fresnel: 'Fresnel',
         openface: 'Open face',

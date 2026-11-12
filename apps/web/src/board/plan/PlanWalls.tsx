@@ -2,17 +2,18 @@
 import {
   addPlanOpening,
   addPlanWall,
-  atLength,
-  DEFAULT_OPENING_METRES,
+  CLOSE_SLOP,
+  canCloseWall,
   DEFAULT_WALL_METRES,
+  draftCorners,
+  dragOpening,
   itemLocked,
-  metresToView,
   moveWallCorner,
-  nearestOnWall,
+  openingAt,
   openingCorners,
   openingLines,
-  openingPlace,
   openingSpan,
+  outside,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type Point,
@@ -21,24 +22,25 @@ import {
   pointAlongWall,
   roomDims,
   sideAngle,
-  snapWallEnd,
-  toWallPoints,
+  typedTowards,
   updatePlanWalls,
+  viewToMetres,
   WALL_THICKNESSES,
   type WallAngles,
+  type WallDraft,
   wallPoints,
+  wallSideEnd,
+  wallStep,
+  wallThickness,
 } from '@inkadra/canvas-core';
 import {
   MAX_PLAN_OPENINGS,
-  MAX_PLAN_WALLS,
-  MAX_WALL_POINTS,
   PLAN_OPENING_KINDS,
   type PlanOpening,
   type PlanOpeningKind,
   type PlanWall,
 } from '@inkadra/doc-schema';
 import { Button, Icon, type IconName } from '@inkadra/ui';
-import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LOCAL } from '../store.ts';
@@ -54,13 +56,7 @@ export const OPENING_ICONS: Record<PlanOpeningKind, IconName> = {
   window: 'windowPane',
   opening: 'opening',
 };
-/** A pointer this close to the first corner (view units) closes the room. */
-const CLOSE_SLOP = 14;
-/** How far from a wall (view units, past its thickness) the Openings tool still finds it. */
-const WALL_SLOP = 14;
-
 const view = (p: Point): Point => ({ x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H });
-const round2 = (v: number) => Math.round(v * 100) / 100;
 
 type WallGesture =
   | { kind: 'corner'; wall: PlanWall; index: number; openings: PlanOpening[] }
@@ -70,7 +66,7 @@ type WallGesture =
 export function useMetres(ed: Ed, digits = 2) {
   const { i18n } = useTranslation();
   return (units: number) =>
-    `${(units / ed.wallScale).toLocaleString(i18n.language, {
+    `${viewToMetres(units, ed.wallScale).toLocaleString(i18n.language, {
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
     })} m`;
@@ -122,23 +118,6 @@ function Dim({
       )}
     </g>
   );
-}
-
-/**
- * Which side of a wall its dimensions go, as the sign of a `Dim` offset: outside a closed room,
- * as the mockup draws them (decision 0119), whichever way its corners were drawn; an open wall
- * keeps the side it had.
- */
-export function outside(wall: Pick<PlanWall, 'points' | 'closed'>): 1 | -1 {
-  if (!wall.closed) return -1;
-  const pts = wallPoints(wall);
-  let area = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i] as Point;
-    const b = pts[(i + 1) % pts.length] as Point;
-    area += a.x * b.y - b.x * a.y;
-  }
-  return area > 0 ? 1 : -1;
 }
 
 /** The dimensions of an opening: its width, strong, and its distances to the corners of its side. */
@@ -194,25 +173,18 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
   const drafted =
     draft && 'wallId' in draft ? (walls.find((w) => w.id === draft.wallId) ?? null) : null;
   // Undone, or removed by someone else: the drawing starts over.
-  const corners: Point[] = drafted
-    ? wallPoints(drafted)
+  const drawing: WallDraft = drafted
+    ? { wall: drafted }
     : draft && 'start' in draft
-      ? [draft.start]
-      : [];
+      ? { start: draft.start }
+      : null;
+  const corners = draftCorners(drawing);
   const last = corners.at(-1) ?? null;
   const typedMetres = Number(measureValue(typed) ?? Number.NaN);
   /** Where the side being drawn ends: the pointer along an allowed angle, or the typed length. */
-  const sideEnd = (towards: Point): Point | null => {
-    if (!last) return null;
-    const end = snapWallEnd(last, towards, angles);
-    return typedMetres > 0 ? atLength(last, end, typedMetres * ed.wallScale) : end;
-  };
-  const closes = (p: Point) =>
-    !!drafted &&
-    !drafted.closed &&
-    corners.length >= 3 &&
-    Math.hypot(p.x - (corners[0] as Point).x, p.y - (corners[0] as Point).y) <= CLOSE_SLOP / k;
-  const thicknessUnits = round2(metresToView(thickness, ed.wallScale));
+  const sideEnd = (towards: Point): Point | null =>
+    last ? wallSideEnd(last, towards, angles, typedMetres, ed.wallScale) : null;
+  const thicknessUnits = wallThickness(thickness, ed.wallScale);
 
   // Drawing -------------------------------------------------------------------------------
   const finish = () => {
@@ -229,78 +201,49 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
   }, [active]);
   /** Puts the next corner at `at` (view units); the second corner makes the wall. */
   const corner = (at: Point) => {
-    if (closes(at) && drafted) {
-      ed.writeWalls('walls', [{ ...drafted, closed: true }]);
+    const step = wallStep(drawing, at, {
+      angles,
+      typedMetres,
+      thickness,
+      scale: ed.wallScale,
+      zoom: opts.zoom,
+      walls: ed.drawn.walls?.length ?? 0,
+    });
+    if (!step) return;
+    if (step.kind === 'close') {
+      ed.writeWalls('walls', [step.wall]);
       finish();
       return;
     }
-    if (!last) {
-      if ((ed.drawn.walls?.length ?? 0) >= MAX_PLAN_WALLS) return;
-      setDraft({ start: at });
+    if (step.kind === 'start') {
+      setDraft({ start: step.at });
       return;
     }
-    const end = sideEnd(at) ?? at;
-    if (Math.hypot(end.x - last.x, end.y - last.y) < 2) return;
     setTyped('');
-    if (!drafted) {
+    if (step.kind === 'add') {
       let id: string | null = null;
       ed.change(() => {
         ed.ensureScale();
-        id = addPlanWall(
-          ed.doc,
-          ed.setOwner,
-          { points: toWallPoints([last, end]), thickness: thicknessUnits },
-          LOCAL,
-        );
+        id = addPlanWall(ed.doc, ed.setOwner, step.wall, LOCAL);
       });
       setDraft(id ? { wallId: id } : null);
       return;
     }
-    const points = [...drafted.points, ...toWallPoints([end])];
-    ed.writeWalls('walls', [{ ...drafted, points }]);
-    if (points.length / 2 >= MAX_WALL_POINTS) finish();
+    ed.writeWalls('walls', [step.wall]);
+    if (step.full) finish();
   };
   /** The typed length gives the next side, the way the pointer last pointed. */
   const commitTyped = () => {
-    if (tool === 'walls' && last && typedMetres > 0) {
-      const towards =
-        hover ??
-        (corners.length > 1
-          ? atLength(corners.at(-2) as Point, last, 1e6)
-          : { x: last.x + 1, y: last.y });
-      corner(sideEnd(towards) ?? towards);
-    }
+    const towards = typedTowards(corners, hover);
+    if (tool === 'walls' && towards && typedMetres > 0) corner(sideEnd(towards) ?? towards);
   };
 
   // Openings ------------------------------------------------------------------------------
   /** The wall under the pointer for the Openings tool, and where the opening would go on it. */
-  const openingAt = (p: Point): PlanOpening | null => {
-    let best: { wall: PlanWall; distance: number } | null = null;
-    for (const wall of walls) {
-      // A locked wall takes no new opening (decision 0114).
-      if (itemLocked(wall)) continue;
-      const near = nearestOnWall(wall, p);
-      if (
-        near.distance <= wall.thickness / 2 + WALL_SLOP / k &&
-        (!best || near.distance < best.distance)
-      )
-        best = { wall, distance: near.distance };
-    }
-    if (!best) return null;
-    const kind = ed.openingKind;
-    const width =
-      typedMetres > 0
-        ? typedMetres * ed.wallScale
-        : metresToView(DEFAULT_OPENING_METRES[kind], ed.wallScale);
-    return {
-      id: 'ghostAAAAAAAA',
-      wall: best.wall.id,
-      kind,
-      at: round2(openingPlace(best.wall, p, width)),
-      width: round2(width),
-    };
-  };
-  const ghost = tool === 'openings' && hover && !setHidden ? openingAt(hover) : null;
+  const placing = (p: Point) =>
+    openingAt(walls, p, ed.openingKind, { typedMetres, scale: ed.wallScale, zoom: opts.zoom });
+  const ghostAt = tool === 'openings' && hover && !setHidden ? placing(hover) : null;
+  const ghost: PlanOpening | null = ghostAt && { id: 'ghostAAAAAAAA', ...ghostAt };
 
   // Pointer events from the canvas ---------------------------------------------------------
   /** A press with the Walls or Openings tool; true when it was theirs. */
@@ -310,10 +253,9 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     const p = view(p01);
     if (tool === 'walls') corner(last ? p : view(opts.snapped(p01)));
     else {
-      const placed = openingAt(p);
+      const placed = placing(p);
       if (!placed || (ed.drawn.openings?.length ?? 0) >= MAX_PLAN_OPENINGS) return true;
-      const { id: _ghost, ...fresh } = placed;
-      ed.change(() => addPlanOpening(ed.doc, ed.setOwner, fresh, LOCAL));
+      ed.change(() => addPlanOpening(ed.doc, ed.setOwner, placed, LOCAL));
       setTyped('');
     }
     return true;
@@ -366,8 +308,7 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
       return true;
     }
     if (g?.kind === 'opening') {
-      const at = round2(openingPlace(g.wall, p, g.opening.width));
-      ed.setWallPreview({ openings: [{ ...g.opening, at }] });
+      ed.setWallPreview({ openings: [dragOpening(g.wall, g.opening, p)] });
       return true;
     }
     if (active) setHover(p);
@@ -438,18 +379,14 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
     </g>
   );
   const firstCorner = corners[0];
-  const closer = tool === 'walls' &&
-    drafted &&
-    !drafted.closed &&
-    corners.length >= 3 &&
-    firstCorner && (
-      <g className="plan-walls__close">
-        <circle cx={firstCorner.x} cy={firstCorner.y} r={CLOSE_SLOP / k} />
-        <text x={firstCorner.x} y={firstCorner.y + CLOSE_SLOP / k + 16} textAnchor="middle">
-          {t(ed.phone ? 'board.plan.walls.closeTap' : 'board.plan.walls.closeClick')}
-        </text>
-      </g>
-    );
+  const closer = tool === 'walls' && canCloseWall(drafted) && firstCorner && (
+    <g className="plan-walls__close">
+      <circle cx={firstCorner.x} cy={firstCorner.y} r={CLOSE_SLOP / k} />
+      <text x={firstCorner.x} y={firstCorner.y + CLOSE_SLOP / k + 16} textAnchor="middle">
+        {t(ed.phone ? 'board.plan.walls.closeTap' : 'board.plan.walls.closeClick')}
+      </text>
+    </g>
+  );
   const dot = last && tool === 'walls' && (
     <circle className="plan-walls__dot" cx={last.x} cy={last.y} r={5 / k} />
   );
@@ -657,24 +594,3 @@ export function useWallTools(ed: Ed, opts: { snapped: (p: Point) => Point; zoom:
 }
 
 export type WallTools = ReturnType<typeof useWallTools>;
-
-/** What the plan holds on its Set layer besides items: "Walls, 2 windows, a door". */
-export function setSummary(
-  plan: { walls?: PlanWall[] | undefined; openings?: PlanOpening[] | undefined },
-  t: TFunction,
-): string {
-  const parts: string[] = [];
-  const walls = plan.walls?.length ?? 0;
-  if (walls) parts.push(t('board.plan.walls.summaryWalls', { count: walls }));
-  const counts = new Map<PlanOpeningKind, number>();
-  for (const o of plan.openings ?? []) counts.set(o.kind, (counts.get(o.kind) ?? 0) + 1);
-  for (const kind of PLAN_OPENING_KINDS) {
-    const n = counts.get(kind);
-    if (n) parts.push(t(`board.plan.walls.summary.${kind}`, { count: n }));
-  }
-  return parts.join(', ');
-}
-
-/** The thickness of a wall in centimetres at the plan's scale. */
-export const wallCentimetres = (wall: Pick<PlanWall, 'thickness'>, scale: number) =>
-  Math.round((wall.thickness / scale) * 100);

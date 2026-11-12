@@ -3,9 +3,9 @@
 /**
  * The words of a set plan that every client writes the same (decision 0116): the names of the
  * icons with their search words, the library's tiles, groups and categories, and the words the
- * shared reading functions (kit, power, legend, card, setups, sun) ask for. English, the source;
- * the keys are those of the web catalogues (`board.plan.*`), so a client loads this object as its
- * English catalogue. The other languages have the same keys, one file each
+ * shared functions (kit, power, legend, card, setups, sun, the summary of a plan's walls) ask
+ * for. English, the source; the keys are those of the web catalogues (`board.plan.*`), so a
+ * client loads this object as its English catalogue. The other languages have the same keys, one file each
  * (`@inkadra/canvas-core/plan-words/it`, `es`, `de`, `fr`, `pt`), so a client imports only those
  * it ships. The web's catalogues must say the same (a web test compares them).
  */
@@ -29,6 +29,22 @@ export const PLAN_WORDS_EN = {
       positions_one: '{{count}} position',
       positions_other: '{{count}} positions',
       roomOverall: '{{size}} overall',
+      walls: {
+        summaryWalls_one: '{{count}} wall',
+        summaryWalls_other: '{{count}} walls',
+        summary: {
+          door_one: '{{count}} door',
+          door_other: '{{count}} doors',
+          doubledoor_one: '{{count}} double door',
+          doubledoor_other: '{{count}} double doors',
+          sliding_one: '{{count}} sliding door',
+          sliding_other: '{{count}} sliding doors',
+          window_one: '{{count}} window',
+          window_other: '{{count}} windows',
+          opening_one: '{{count}} opening',
+          opening_other: '{{count}} openings',
+        },
+      },
       icons: {
         fresnel: 'Fresnel',
         openface: 'Open face',
