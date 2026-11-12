@@ -17,7 +17,7 @@ it('upgrades v11 without assigning or dating existing items, preserves optional 
   roots(doc).meta.set('schemaVersion', 11);
   const item = { id: 'test-item', text: 'Collect permits', done: false };
   expect(migrateBoardDoc(doc, '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10')).toEqual([
-    12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+    12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
   ]);
   expect(TodoItem.parse(item)).toEqual(item);
   const assigned = {

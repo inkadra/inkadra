@@ -323,11 +323,13 @@ for (const theme of ['dark', 'light'] as const) {
     await expect(kit).toContainText('Potenza a 120 V');
     await shot('kit');
 
-    // Zoom in and back to fit.
+    // Zoom in and back to fit: the plan opens fitted to what is drawn (decision 0117).
+    const percent = editor.locator('.plan-canvas__percent');
+    const fitted = await percent.innerText();
     await editor.getByRole('button', { name: 'Ingrandisci' }).click();
-    await expect(editor.locator('.plan-canvas__percent')).toHaveText('150%');
+    await expect(percent).not.toHaveText(fitted);
     await editor.getByRole('button', { name: 'Adatta la pianta' }).click();
-    await expect(editor.locator('.plan-canvas__percent')).toHaveText('100%');
+    await expect(percent).toHaveText(fitted);
 
     // A setup from the current one: tabs, and the note of what changed from the base.
     await editor.getByRole('button', { name: 'Aggiungi un setup' }).click();

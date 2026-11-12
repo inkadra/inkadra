@@ -30,7 +30,7 @@ const P = {
   stool: [650, 220],
   table: [480, 420],
   track: [300, 500],
-  empty: [880, 600],
+  empty: [820, 120],
 } as const;
 const icon = (
   id: string,

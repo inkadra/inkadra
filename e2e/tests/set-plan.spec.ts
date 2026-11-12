@@ -481,10 +481,10 @@ for (const theme of ['dark', 'light'] as const) {
     const spot2 = at(60, 120);
     await page.mouse.click(spot2.x, spot2.y);
     await page.keyboard.up('Shift');
-    await expect(stage).toHaveClass(/--icons/);
+    await expect(editor.locator('.plan-canvas__surface')).toHaveClass(/--icons/);
     const spot3 = at(60, 170);
     await page.mouse.click(spot3.x, spot3.y);
-    await expect(stage).toHaveClass(/--select/);
+    await expect(editor.locator('.plan-canvas__surface')).toHaveClass(/--select/);
     await expect
       .poll(async () => (await saved()).plan?.icons?.filter((i) => i.kind === 'fresnel').length)
       .toBe(4);

@@ -134,7 +134,7 @@ describe('board document', () => {
     addElement(doc, file);
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
@@ -196,7 +196,7 @@ describe('board document', () => {
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
@@ -390,7 +390,7 @@ describe('board document', () => {
     const doc = createBoardDoc(boardId);
     roots(doc).meta.set('schemaVersion', 8);
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getAnimaticAudio(doc)).toBeNull();
   });
@@ -403,7 +403,7 @@ describe('board document', () => {
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
@@ -521,7 +521,7 @@ describe('video still provenance', () => {
     addElement(doc, frame);
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
@@ -566,7 +566,7 @@ describe('arrow path', () => {
     addElement(doc, element);
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
@@ -631,7 +631,7 @@ describe('story bible cards', () => {
     addElement(doc, { ...base(), type: 'note' });
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
@@ -682,7 +682,7 @@ describe('image crop and rotation', () => {
     addElement(doc, image);
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
@@ -732,7 +732,7 @@ describe('column colours and section headings', () => {
     addElement(doc, column);
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(column.id)!)).not.toHaveProperty('color');
@@ -807,7 +807,7 @@ describe('table cards', () => {
     addElement(doc, { ...base(), type: 'section' as const, title: 'Sequenza 1' });
     const before = roots(doc).elements.toJSON();
     expect(migrateBoardDoc(doc, boardId)).toEqual([
-      11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     ]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
@@ -1395,7 +1395,7 @@ describe('items locked on their own (version 24, decision 0114)', () => {
   });
 
   it('keeps clients of schema 23 read-only on a version 24 document', () => {
-    expect(WRITER_SCHEMAS[24, 25]).toEqual({ min: 24 });
+    expect(WRITER_SCHEMAS[24]).toEqual({ min: 24 });
   });
 });
 
