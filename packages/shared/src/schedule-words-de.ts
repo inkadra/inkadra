@@ -11,10 +11,10 @@ export const SCHEDULE_WORDS_DE: ScheduleWords = {
   schedule: {
     empty: 'Noch keine Drehtage.',
     emptyTitle: 'Noch keine Drehtage',
-    emptyBody: 'Add the first day, then drag shots onto it from the queue.',
+    emptyBody: 'Füge den ersten Drehtag hinzu und zieh dann ungeplante Shots darauf.',
     emptyReadOnly: 'Drehtage erscheinen hier, sobald das Team sie plant.',
     noBlocks: 'Noch keine Blöcke. Füge einen hinzu oder zieh einen Shot auf den Tag.',
-    noMatches: 'No shots match these filters.',
+    noMatches: 'Kein Shot passt zu diesen Filtern.',
     allScheduled: 'Jeder Shot ist einem Drehtag zugeordnet.',
   },
   callSheet: {

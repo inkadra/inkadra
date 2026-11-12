@@ -11,10 +11,10 @@ export const SCHEDULE_WORDS_PT: ScheduleWords = {
   schedule: {
     empty: 'Nenhuma diária ainda.',
     emptyTitle: 'Nenhuma diária ainda',
-    emptyBody: 'Add the first day, then drag shots onto it from the queue.',
+    emptyBody: 'Adicione a primeira diária e arraste para ela os planos não agendados.',
     emptyReadOnly: 'As diárias aparecem aqui quando a equipe as planejar.',
     noBlocks: 'Nenhum bloco ainda. Adicione um ou solte um plano na diária.',
-    noMatches: 'No shots match these filters.',
+    noMatches: 'Nenhum plano corresponde a estes filtros.',
     allScheduled: 'Todos os planos estão em uma diária.',
   },
   callSheet: {
