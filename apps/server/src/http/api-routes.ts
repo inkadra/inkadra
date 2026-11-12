@@ -6,6 +6,7 @@ import {
   type Health,
   type Instance,
   type InstanceVersion,
+  PLAN_SHEET_PDF_CAPABILITY,
   UpdateMe,
   type User,
 } from '@inkadra/shared';
@@ -142,6 +143,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'board-restore-history',
         'token-proof',
         BOARD_WRITERS_CAPABILITY,
+        PLAN_SHEET_PDF_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });

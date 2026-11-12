@@ -113,6 +113,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'board-restore-history',
         'token-proof',
         'board-writers',
+        'plan-sheet-pdf',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();

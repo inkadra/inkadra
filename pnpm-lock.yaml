@@ -216,6 +216,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1161.0
         version: 3.1161.0
+      '@expo-google-fonts/inter':
+        specifier: 0.4.2
+        version: 0.4.2
       '@fastify/multipart':
         specifier: ^10.1.7
         version: 10.1.7
@@ -228,6 +231,9 @@ importers:
       '@hocuspocus/server':
         specifier: ^4.8.0
         version: 4.8.0(srvx@0.11.22)(y-protocols@1.0.7(yjs@13.6.33))(yjs@13.6.33)
+      '@pdf-lib/fontkit':
+        specifier: 1.1.1
+        version: 1.1.1(patch_hash=353b45e1679dd7426fedf1399e561ca957a05fbcb84abc540ea91eafeadb9908)
       '@tus/file-store':
         specifier: ^2.1.2
         version: 2.1.2(supports-color@7.2.0)
@@ -270,6 +276,9 @@ importers:
       nodemailer:
         specifier: ^10.3.1
         version: 10.3.1
+      pdf-lib:
+        specifier: 1.17.1
+        version: 1.17.1
       pino:
         specifier: ^10.4.0
         version: 10.4.0
@@ -304,6 +313,9 @@ importers:
       '@inkadra/doc-schema':
         specifier: workspace:*
         version: link:../../packages/doc-schema
+      '@inkadra/print':
+        specifier: workspace:*
+        version: link:../../packages/print
       '@inkadra/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -328,6 +340,9 @@ importers:
       esbuild:
         specifier: ^0.28.0
         version: 0.28.2
+      pdfjs-dist:
+        specifier: ^6.5.438
+        version: 6.5.438
       tsx:
         specifier: ^4.23.0
         version: 4.23.15
