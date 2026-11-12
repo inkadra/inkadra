@@ -166,6 +166,7 @@ import {
   SearchResult,
   TagCount,
 } from './search.ts';
+import { GuestPlanSheetQuery, PlanSheetQuery } from './plan-sheet.ts';
 import {
   RetriedProblems,
   ServerAlerts,
@@ -2145,6 +2146,63 @@ registry.registerPath({
   },
 });
 
+// Set plan sheet (decision 0122) ---------------------------------------------
+
+const planSheetParams = z.object({ boardId: Id, planId: Id });
+const planSheetHeaders = z.object({
+  ETag: z.string().openapi({ description: 'Send it back as `If-None-Match` to get 304.' }),
+  'Content-Disposition': z
+    .string()
+    .openapi({ description: 'Always `attachment`, with the file name the web export uses.' }),
+  'Cache-Control': z.string().openapi({ example: 'private, no-cache' }),
+});
+const planSheetIfNoneMatch = z.object({
+  'If-None-Match': z.string().optional().openapi({ description: 'The last ETag received.' }),
+});
+const planSheetOk = {
+  200: {
+    description: 'The sheet, one A4 landscape page per setup',
+    headers: planSheetHeaders,
+    content: { 'application/pdf': { schema: z.string().openapi({ format: 'binary' }) } },
+  },
+  304: { description: 'Not changed since If-None-Match' },
+};
+const planSheetTooMany = {
+  429: {
+    description:
+      'More than 10 sheets a minute by this person or guest, or the server is busy with other ' +
+      'sheets (`rate_limited` with `details.reason: "busy"`). Wait `Retry-After` seconds.',
+    headers: z.object({ 'Retry-After': z.string().openapi({ example: '5' }) }),
+    ...json(ApiError),
+  },
+};
+const planSheetAbout =
+  ' Rendered from the stored board, which may be up to 10 s behind the live one. Only on ' +
+  'servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.';
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/plans/{planId}/sheet'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'The set plan sheet as a PDF, as the web exports it.',
+  description:
+    'For the viewer role or above. `audience=team` (the default) prints every card and ' +
+    '"Day N" from the schedule; `client` prints the client copy.' +
+    planSheetAbout,
+  request: { params: planSheetParams, query: PlanSheetQuery, headers: planSheetIfNoneMatch },
+  responses: {
+    ...planSheetOk,
+    400: { description: 'Invalid query (unknown part, language or parameter), or more than 20 setups', ...json(ApiError) },
+    401: errors[401],
+    404: {
+      description: 'No role on the board, no such plan, or not a set plan',
+      ...json(ApiError),
+    },
+    ...planSheetTooMany,
+  },
+});
+
 // Comments -------------------------------------------------------------------
 
 const commentParams = z.object({ commentId: Id });
@@ -2729,6 +2787,37 @@ registry.registerPath({
     'the 600 tiles a minute are counted per guest.',
   request: { params: z.object({ linkId: Id, ...tilePath }), query: MapTileQuery },
   responses: { ...tile, ...guestErrors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/plans/{planId}/sheet'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'The set plan sheet of a board of the link as a PDF: always the client copy.',
+  description:
+    'Only cards visible to guests of the link, never "Day N"; no `audience` parameter.' +
+    planSheetAbout,
+  request: {
+    params: z.object({ linkId: Id, boardId: Id, planId: Id }),
+    query: GuestPlanSheetQuery,
+    headers: planSheetIfNoneMatch,
+  },
+  responses: {
+    ...planSheetOk,
+    400: { description: 'Invalid query (unknown part, language or parameter), or more than 20 setups', ...json(ApiError) },
+    401: guestErrors[401],
+    403: {
+      description:
+        'A password is needed again, or the link expired, was revoked or is suspended ' +
+        '(GuestDenied)',
+      ...json(ApiError),
+    },
+    404: {
+      description: 'No such board or plan on the link, or the plan is hidden from guests',
+      ...json(ApiError),
+    },
+    ...planSheetTooMany,
+  },
 });
 registry.registerPath({
   method: 'get',
