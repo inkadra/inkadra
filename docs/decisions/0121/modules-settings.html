@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moduli e barra</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 13px; }
+  button { font: inherit; cursor: pointer; }
+  .ctl { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 10px; }
+  .seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .seg button { font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border, #ddd); background: var(--card, #fff); color: var(--foreground, #222); }
+  .seg button.on { background: var(--primary, #2563eb); color: var(--primary-foreground, #fff); border-color: transparent; }
+  .seg.big button { font-weight: 600; padding: 7px 14px; }
+  .lead { color: var(--muted-foreground, #777); font-size: 12px; line-height: 1.45; margin: 0 0 10px; }
+
+  .app { --app: #141416; --canvas: #161616; --s1: #1C1C1F; --s2: #26262A; --float: #1F1F23; --bd: #2A2A2E; --bd2: #232327; --tx: #EDEDED; --tx2: #A8A8AE; --tx3: #929298; --acc: #3B7CF6; --acc-bg: #1E2A44; --acc-fg: #9DB8F2; --dots: #26262A;
+    --purple: #B897F0; --purple-bg: #2E253F; --green: #7AD689; --green-bg: #243526; --orange: #F79B54; --orange-bg: #35271E; --teal: #60D8EB; --teal-bg: #20383D; --pink: #FF91CC; --pink-bg: #422533; --yellow: #E8C45A;
+    border: 1px solid var(--bd); border-radius: 16px; overflow: hidden; background: var(--canvas); color: var(--tx); font-size: 12px; position: relative; }
+  .app.light { --app: #EFEFEC; --canvas: #FAFAF8; --s1: #FFFFFF; --s2: #F6F6F4; --float: #FFFFFF; --bd: #E4E4E0; --bd2: #E8E8E4; --tx: #161616; --tx2: #4A4A47; --tx3: #6C6C68; --acc: #2464D5; --acc-bg: #E6EDFB; --acc-fg: #2F5AAE; --dots: #DCDCD7;
+    --purple: #6A40B0; --purple-bg: #EEEAFA; --green: #1E7729; --green-bg: #E9F3E9; --orange: #AB4800; --orange-bg: #FBECE6; --teal: #1E809C; --teal-bg: #E4F1F6; --pink: #A82965; --pink-bg: #FAE7ED; --yellow: #8A6A00; }
+  .ic { width: 15px; height: 15px; flex: none; }
+  .m-storyboard { color: var(--purple); } .m-production { color: var(--green); } .m-moodboard { color: var(--orange); } .m-review { color: var(--pink); } .m-plan { color: var(--teal); } .m-base { color: var(--tx3); }
+  .b-storyboard { background: var(--purple-bg); } .b-production { background: var(--green-bg); } .b-moodboard { background: var(--orange-bg); } .b-review { background: var(--pink-bg); } .b-plan { background: var(--teal-bg); } .b-base { background: var(--s2); }
+
+  /* board + bar */
+  .stage { min-height: 520px; position: relative; padding: 14px 14px 96px; background-image: radial-gradient(var(--dots) 1px, transparent 1.3px); background-size: 22px 22px; }
+  .ghost { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; opacity: .55; }
+  .ghost div { background: var(--s1); border: 1px solid var(--bd); border-radius: 12px; height: 74px; }
+  .dock { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: var(--float); border: 1px solid var(--bd); border-radius: 16px; padding: 5px; box-shadow: 0 10px 28px rgba(0,0,0,.28); max-width: calc(100% - 20px); }
+  .grp { display: flex; gap: 1px; padding: 0 3px; border-right: 1px solid var(--bd); }
+  .grp:last-of-type { border-right: 0; }
+  .tool { border: 0; background: none; color: var(--tx2); width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; position: relative; }
+  .tool:hover { background: var(--s2); color: var(--tx); }
+  .tool.on { background: var(--acc-bg); color: var(--acc-fg); }
+  .tool[data-tip]:hover::after { content: attr(data-tip); position: absolute; bottom: 38px; left: 50%; transform: translateX(-50%); background: var(--tx); color: var(--canvas); font-size: 10.5px; padding: 3px 7px; border-radius: 6px; white-space: nowrap; z-index: 30; }
+  .cbtn { border: 0; background: var(--acc); color: #fff; font-weight: 600; border-radius: 10px; padding: 0 12px; height: 32px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .pop { position: absolute; bottom: 62px; background: var(--float); border: 1px solid var(--bd); border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,.35); padding: 10px; z-index: 20; }
+  .pop.canvas { right: 14px; width: min(430px, calc(100% - 28px)); }
+  .pop.more { left: 50%; transform: translateX(-50%); width: min(300px, calc(100% - 28px)); }
+  .ph { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--tx3); margin: 2px 4px 8px; }
+  .types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ty { border: 1px solid var(--bd); background: var(--s1); border-radius: 12px; padding: 8px; text-align: left; color: var(--tx); display: block; }
+  .ty:hover { border-color: var(--tx3); }
+  .ty .pv { height: 62px; border-radius: 8px; margin-bottom: 7px; padding: 7px; display: grid; gap: 4px; overflow: hidden; }
+  .ty .nm { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .ty .ds { color: var(--tx3); font-size: 10.5px; margin-top: 2px; line-height: 1.3; }
+  .pv i { display: block; border-radius: 4px; background: currentColor; opacity: .55; }
+  .pv.sb { grid-template-columns: repeat(3, 1fr); } .pv.mb { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; } .pv.mb i:first-child { grid-row: span 2; }
+  .pv.pr { grid-template-rows: repeat(4, 1fr); } .pv.pr i:nth-child(2) { width: 70%; } .pv.pr i:nth-child(4) { width: 55%; }
+  .pv.lv { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; } .pv.lv i:nth-child(2) { grid-row: span 2; }
+  .li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .li:hover { background: var(--s2); }
+  .li small { margin-left: auto; color: var(--tx3); font-size: 10.5px; }
+  .pin { margin-left: auto; border: 1px solid var(--bd); background: none; color: var(--tx3); border-radius: 999px; font-size: 10.5px; padding: 2px 8px; }
+  .pin.on { background: var(--acc-bg); color: var(--acc-fg); border-color: transparent; }
+  .offline { margin-top: 8px; padding: 8px 4px 2px; border-top: 1px solid var(--bd2); color: var(--tx3); font-size: 11px; line-height: 1.4; }
+  a.lk { color: var(--acc-fg); cursor: pointer; text-decoration: underline; }
+  .legend { font-size: 12px; line-height: 1.55; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--border, #ddd); border-radius: var(--radius, 10px); }
+
+  /* settings */
+  .set { display: grid; grid-template-columns: 170px minmax(0, 1fr); min-height: 560px; }
+  .snav { background: var(--app); padding: 12px 8px; border-right: 1px solid var(--bd2); }
+  .snav div { padding: 6px 8px; border-radius: 8px; color: var(--tx2); }
+  .snav div.on { background: var(--s2); color: var(--tx); font-weight: 600; }
+  .snav .cap { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--tx3); padding: 2px 8px 6px; }
+  .spage { padding: 16px 18px; min-width: 0; }
+  .spage h2 { margin: 0 0 4px; font-size: 16px; } .spage p { margin: 0 0 14px; color: var(--tx2); line-height: 1.45; }
+  .mod { display: flex; gap: 12px; align-items: flex-start; background: var(--s1); border: 1px solid var(--bd); border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+  .mod.off { opacity: .78; }
+  .mod .gl { width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+  .mod .tt { font-weight: 600; font-size: 13px; } .mod .dd { color: var(--tx2); margin-top: 2px; line-height: 1.4; } .mod .kk { color: var(--tx3); font-size: 11px; margin-top: 4px; }
+  .mod .mx { min-width: 0; flex: 1; }
+  .swt { width: 36px; height: 20px; border-radius: 999px; border: 0; background: var(--s2); position: relative; flex: none; margin-top: 2px; outline: 1px solid var(--bd); }
+  .swt::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--tx3); transition: transform .15s; }
+  .swt.on { background: var(--acc); outline-color: transparent; } .swt.on::after { transform: translateX(16px); background: #fff; }
+  @media (prefers-reduced-motion: reduce) { .swt::after { transition: none; } }
+  .fix { color: var(--tx3); font-size: 11px; margin-top: 4px; flex: none; }
+
+  /* hints */
+  .hints { padding: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .sc { background: var(--s1); border: 1px solid var(--bd); border-radius: 12px; padding: 12px; min-width: 0; }
+  .sc .when { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--tx3); }
+  .sc .ctx { margin: 6px 0 10px; color: var(--tx2); line-height: 1.4; }
+  .hint { border: 1px solid var(--bd); border-left: 3px solid currentColor; border-radius: 10px; padding: 10px; background: var(--float); }
+  .hint .ht { color: var(--tx); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .hint .hb { color: var(--tx2); margin: 4px 0 8px; line-height: 1.4; }
+  .hint .ha { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--bd); background: var(--s2); color: var(--tx); border-radius: 8px; padding: 5px 10px; font-size: 11.5px; }
+  .btn.pri { background: var(--acc); border-color: var(--acc); color: #fff; font-weight: 600; }
+  .btn.txt { border-color: transparent; background: none; color: var(--tx3); }
+  .none { border: 1px dashed var(--tx3); border-radius: 10px; padding: 10px; color: var(--tx3); line-height: 1.4; }
+  .rule { grid-column: 1 / -1; color: var(--tx2); line-height: 1.55; padding: 2px 4px; }
+  .rule b { color: var(--tx); }
+  .toast { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); background: var(--tx); color: var(--canvas); padding: 7px 12px; border-radius: 999px; font-size: 11.5px; z-index: 50; max-width: 92%; text-align: center; }
+  @media (max-width: 600px) { .set { grid-template-columns: 1fr; } .snav { display: none; } .hints { grid-template-columns: 1fr; } .types { grid-template-columns: 1fr; } .grp { padding: 0 1px; } .tool { width: 28px; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const svg = (p, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const IC = {
+  select: '<path d="M3 2l9 5-4 1.2L6.5 12z"/>', hand: '<path d="M5 8V4.2a1 1 0 012 0V7m0-3.5a1 1 0 012 0V7m0-2.5a1 1 0 012 0V10c0 2.2-1.6 4-4 4S4 12.6 3.4 11L2.5 8.6a1 1 0 011.8-.8z"/>',
+  arrow: '<path d="M3 13L13 3M7 3h6v6"/>', note: '<path d="M3 3h10v7l-3 3H3z"/><path d="M13 10h-3v3"/>', image: '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3"/>',
+  link: '<path d="M7 9a3 3 0 004.2 0l1.6-1.6a3 3 0 00-4.2-4.2L8 3.8M9 7a3 3 0 00-4.2 0L3.2 8.6a3 3 0 004.2 4.2l.6-.6"/>', todo: '<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 8l2 2 3.5-4"/>',
+  color: '<circle cx="8" cy="8" r="5.5"/><circle cx="6" cy="6.5" r=".8"/><circle cx="10" cy="6.5" r=".8"/><circle cx="8" cy="10.5" r=".8"/>', table: '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 7h12M6.5 3v10"/>',
+  column: '<rect x="2" y="2.5" width="5" height="11" rx="1.2"/><rect x="9" y="2.5" width="5" height="11" rx="1.2"/>', section: '<path d="M3 4v8M9 4v8M3 8h6M12 6v6"/>',
+  voice: '<rect x="6" y="2" width="4" height="7.5" rx="2"/><path d="M3.5 8a4.5 4.5 0 009 0M8 12.5V14"/>', map: '<path d="M2 4l4-1.5 4 1.5 4-1.5v9.5L10 13.5 6 12l-4 1.5zM6 2.5V12M10 4v9.5"/>',
+  frame: '<rect x="2" y="3.5" width="12" height="9" rx="1.5"/><path d="M2 6h12"/>', plan: '<rect x="2" y="2" width="12" height="12" rx="1"/><path d="M2 9h5V5M10 14v-4h4"/>',
+  storyboard: '<rect x="1.5" y="4" width="6" height="8" rx="1"/><rect x="8.5" y="4" width="6" height="8" rx="1"/>', moodboard: '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/><circle cx="6" cy="6.5" r="1.3"/><path d="M2.5 12.5l4-4 2.5 2.5 2-2 2.5 2.5"/>',
+  production: '<rect x="2" y="6" width="12" height="8" rx="1.5"/><path d="M2 6l11.5-3.3.5 2M5 5.2l1.3 1M9 4l1.3 1"/>', review: '<path d="M2.5 3h11v8H7.5L4.5 13.5V11h-2z"/>',
+  board: '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M6.5 2.5v11"/>', script: '<path d="M4 2h6l3 3v9H4z"/><path d="M10 2v3h3M6 8h5M6 10.5h5"/>',
+  more: '<circle cx="3.5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="12.5" cy="8" r="1"/>', plus: '<path d="M8 3v10M3 8h10"/>', bulb: '<path d="M5.5 10a4 4 0 115 0c-.6.6-.8 1.2-.8 2h-3.400c0-.8-.2-1.400-.8-2zM6.500 14h3"/>',
+};
+const MODS = [
+  { id: 'storyboard', name: 'Storyboard', desc: 'Board Storyboard, Shot list, strumento Inquadratura, importazione del copione in scene.', keep: 'Le inquadrature che esistono restano dove sono.' },
+  { id: 'production', name: 'Produzione', desc: 'Board Produzione: Piano riprese, Troupe, ordini del giorno e fogli per scena.', keep: 'Giornate e persone restano salvate.' },
+  { id: 'moodboard', name: 'Moodboard', desc: 'Board Moodboard e la vista Moodboard delle lavagne: gruppi, note, palette.', keep: 'Immagini, link e colori restano sulle lavagne.' },
+  { id: 'review', name: 'Revisione clienti', desc: 'Link per i clienti senza account, approvazioni e richieste di modifica.', keep: 'I link già inviati continuano a funzionare.' },
+  { id: 'plan', name: 'Pianta del set', desc: 'Piante con luci, camere, attori e muri, collegate a scene e inquadrature.', keep: 'Le piante già disegnate restano visibili.' },
+];
+const MOD = Object.fromEntries(MODS.map((m) => [m.id, m]));
+const FIXED = [['select', 'Seleziona'], ['hand', 'Mano'], ['arrow', 'Freccia']], CORE = [['note', 'Nota'], ['image', 'Immagine'], ['link', 'Link'], ['todo', 'To-do']];
+const EXTRA = [['column', 'Colonna'], ['section', 'Titolo di sezione'], ['color', 'Colore'], ['table', 'Tabella'], ['voice', 'Nota vocale'], ['map', 'Mappa'], ['frame', 'Inquadratura', 'storyboard'], ['plan', 'Pianta del set', 'plan']];
+const TYPES = [
+  { id: 'board', name: 'Lavagna', mod: null, pv: 'lv', n: 5, desc: 'Spazio libero per note, immagini e file.' },
+  { id: 'moodboard', name: 'Moodboard', mod: 'moodboard', pv: 'mb', n: 3, desc: 'Riferimenti in gruppi, con palette.' },
+  { id: 'storyboard', name: 'Storyboard', mod: 'storyboard', pv: 'sb', n: 3, desc: 'Scene e inquadrature, con Shot list.' },
+  { id: 'production', name: 'Produzione', mod: 'production', pv: 'pr', n: 4, desc: 'Piano riprese e Troupe. Una per progetto.' },
+];
+const HINTS = [
+  { mod: 'storyboard', when: 'Dopo aver importato un copione', ctx: 'Hai importato «Ultimo treno – v3.pdf»: 12 scene sono arrivate sulla lavagna come card.', title: 'Dalle scene alle inquadrature', body: 'Con il modulo Storyboard ogni scena diventa una riga di inquadrature da disegnare, con lo Shot list già compilato.' },
+  { mod: 'moodboard', when: 'Dopo aver aggiunto molte immagini', ctx: 'Hai trascinato 14 immagini su «Appunti».', title: 'Ordinale in una moodboard', body: 'Con il modulo Moodboard le immagini si raccolgono in gruppi con un nome, una nota e la palette dei colori.' },
+  { mod: 'production', when: 'Aprendo la board di un collega', ctx: 'Sara ha aggiunto la board «Produzione» al progetto. La vedi e la puoi leggere.', title: 'Questa board usa il modulo Produzione', body: 'Lo hai spento, quindi non compare nei tuoi menu. Accendilo per pianificare giornate e troupe anche tu.' },
+  { mod: 'review', when: 'Nel riquadro Condividi', ctx: 'Stai condividendo lo storyboard «Film» con una persona esterna.', title: 'Fallo approvare dal cliente', body: 'Con il modulo Revisione clienti il cliente approva o chiede modifiche inquadratura per inquadratura, senza account.' },
+];
+const S = { tab: 'bar', theme: 'dark', on: { storyboard: true, production: false, moodboard: true, review: true, plan: false }, bar: ['column', 'section'], pop: 'canvas', tool: 'select', hidden: {}, toast: '' };
+const extras = () => EXTRA.filter((t) => !t[2] || S.on[t[2]]);
+const offNames = () => MODS.filter((m) => !S.on[m.id]).map((m) => m.name);
+
+function legend() {
+  const pinned = extras().filter((t) => S.bar.includes(t[0]));
+  return `<div class="legend"><b>Sempre nella barra:</b> Seleziona, Mano, Freccia · Nota, Immagine, Link, To-do · Altro · Canvas.<br>
+      <b>A scelta</b> (da «Altro», con «Metti nella barra»): Colonna, Titolo di sezione, Colore, Tabella, Nota vocale, Mappa, più gli strumenti dei moduli accesi.<br>
+      <b>Canvas</b> contiene solo le board da creare, con anteprima; i tipi dei moduli spenti non compaiono.<br>
+      Oggi la barra parte con 16 pulsanti; così parte con ${7 + pinned.length + 2}.</div>`;
+}
+function barTab() {
+  const tool = ([id, name]) => `<button class="tool${S.tool === id ? ' on' : ''}" data-tool="${id}" data-tip="${name}" aria-label="${name}">${svg(IC[id])}</button>`;
+  const pinned = extras().filter((t) => S.bar.includes(t[0]));
+  const types = TYPES.filter((t) => !t.mod || S.on[t.mod]);
+  const off = offNames();
+  const canvas = `<div class="pop canvas"><div class="ph">Nuova board</div><div class="types">${types.map((t) => `<button class="ty" data-make="${t.name}"><div class="pv ${t.pv} b-${t.mod || 'base'} m-${t.mod || 'base'}">${'<i></i>'.repeat(t.n)}</div><div class="nm">${svg(IC[t.id], 'm-' + (t.mod || 'base'))}${t.name}</div><div class="ds">${t.desc}</div></button>`).join('')}</div>
+    ${S.on.storyboard ? `<div class="li" style="margin-top:8px" data-make="Importazione del copione">${svg(IC.script, 'm-storyboard')}Importa un copione…<small>PDF, Fountain, FDX</small></div>` : ''}
+    ${off.length ? `<div class="offline">${svg(IC.bulb)} Moduli spenti: ${off.join(', ')}. <a class="lk" data-goto="mods">Gestisci moduli</a></div>` : ''}</div>`;
+  const more = `<div class="pop more"><div class="ph">Altri strumenti</div>${extras().map((t) => `<div class="li" data-tool="${t[0]}">${svg(IC[t[0]], t[2] ? 'm-' + t[2] : '')}${t[1]}<button class="pin${S.bar.includes(t[0]) ? ' on' : ''}" data-pin="${t[0]}">${S.bar.includes(t[0]) ? 'Nella barra' : 'Metti nella barra'}</button></div>`).join('')}</div>`;
+  return `<div class="stage"><div class="ghost"><div></div><div></div><div></div><div></div><div></div></div>
+    ${S.pop === 'canvas' ? canvas : ''}${S.pop === 'more' ? more : ''}
+    <div class="dock" role="toolbar" aria-label="Aggiungi"><div class="grp">${FIXED.map(tool).join('')}</div><div class="grp">${CORE.map(tool).join('')}</div>${pinned.length ? `<div class="grp">${pinned.map(tool).join('')}</div>` : ''}
+      <div class="grp"><button class="tool${S.pop === 'more' ? ' on' : ''}" data-pop="more" data-tip="Altri strumenti" aria-label="Altri strumenti">${svg(IC.more)}</button></div>
+      <button class="cbtn" data-pop="canvas">${svg(IC.plus)}Canvas</button></div></div>`;
+}
+function modsTab() {
+  const nav = ['Account', 'Preferenze', 'Notifiche', 'Barra degli strumenti', 'Moduli', 'Tutorial'];
+  return `<div class="set"><div class="snav"><div class="cap">Personale</div>${nav.map((n) => `<div class="${n === 'Moduli' ? 'on' : ''}">${n}</div>`).join('')}</div>
+    <div class="spage"><h2>Moduli</h2><p>Scegli le parti di Inkadra che usi. Un modulo spento sparisce dai tuoi menu, dalla barra, dalle notifiche e dai tutorial. Vale solo per te e non cancella niente: quello che esiste resta visibile, e se lo riaccendi ritrovi tutto.</p>
+      <div class="mod"><span class="gl b-base m-base">${svg(IC.board)}</span><div class="mx"><div class="tt">Lavagna</div><div class="dd">Note, immagini, link, file, to-do, colonne e commenti.</div></div><span class="fix">Sempre acceso</span></div>
+      ${MODS.map((m) => `<div class="mod${S.on[m.id] ? '' : ' off'}"><span class="gl b-${m.id} m-${m.id}">${svg(IC[m.id])}</span><div class="mx"><div class="tt">${m.name}</div><div class="dd">${m.desc}</div><div class="kk">${S.on[m.id] ? '' : 'Spento · '}${m.keep}</div></div>
+        <button class="swt${S.on[m.id] ? ' on' : ''}" role="switch" aria-checked="${S.on[m.id]}" aria-label="${m.name}" data-mod="${m.id}"></button></div>`).join('')}</div></div>`;
+}
+function hintsTab() {
+  const cards = HINTS.map((h, i) => {
+    const m = MOD[h.mod];
+    const body = S.on[h.mod] ? `<div class="none">${m.name} è acceso: qui non compare nessun suggerimento.</div>`
+      : S.hidden[i] ? `<div class="none">Suggerimento chiuso. Non torna più in questo punto.</div>`
+      : `<div class="hint m-${h.mod}"><div class="ht">${svg(IC[h.mod])}${h.title}</div><div class="hb">${h.body}</div><div class="ha"><button class="btn pri" data-enable="${h.mod}">Accendi ${m.name}</button><button class="btn" data-hide="${i}">Non ora</button><button class="btn txt" data-hide="${i}">Non mostrare più</button></div></div>`;
+    return `<div class="sc"><div class="when">${h.when}</div><div class="ctx">${h.ctx}</div>${body}</div>`;
+  }).join('');
+  return `<div class="hints"><div class="rule"><b>Regole dei suggerimenti.</b> Compaiono solo nel momento in cui il modulo servirebbe, uno alla volta, dentro la pagina e mai come finestra che blocca. «Accendi» attiva il modulo subito, senza passare dalle impostazioni. «Non mostrare più» vale per quel punto dell'app.</div>${cards}</div>`;
+}
+function render() {
+  const seg = (k, opts, cls = '') => `<span class="seg ${cls}">${opts.map(([v, t]) => `<button class="${S[k] === v ? 'on' : ''}" data-set="${k}:${v}">${t}</button>`).join('')}</span>`;
+  const lead = { bar: 'Clicca «Canvas» e i tre puntini. Spegni un modulo nella scheda Moduli e torna qui: barra e menu cambiano.', mods: 'La pagina nuova nelle impostazioni personali. Gli interruttori funzionano e cambiano le altre due schede.', hints: 'Quattro punti dell\'app in cui un modulo spento sarebbe utile. Il suggerimento c\'è solo se il modulo è spento.' }[S.tab];
+  document.getElementById('root').innerHTML = `<div class="ctl">${seg('tab', [['bar', 'Barra in basso e Canvas'], ['mods', 'Impostazioni · Moduli'], ['hints', 'Suggerimenti']], 'big')}${seg('theme', [['dark', 'Scuro'], ['light', 'Chiaro']])}</div><p class="lead">${lead}</p>${S.tab === 'bar' ? legend() : ''}
+    <div class="app ${S.theme}">${{ bar: barTab, mods: modsTab, hints: hintsTab }[S.tab]()}${S.toast ? `<div class="toast">${S.toast}</div>` : ''}</div>`;
+}
+let timer;
+function toast(t) { S.toast = t; clearTimeout(timer); timer = setTimeout(() => { S.toast = ''; render(); }, 2800); }
+function setMod(id, v) { S.on[id] = v; toast(v ? `${MOD[id].name} acceso: lo trovi in Canvas e nella barra.` : `${MOD[id].name} spento. Quello che esiste resta visibile.`); }
+document.addEventListener('click', (e) => {
+  const q = (s) => e.target.closest(s); let el;
+  if ((el = q('[data-set]'))) { const [k, v] = el.dataset.set.split(':'); S[k] = v; S.pop = null; }
+  else if ((el = q('[data-pin]'))) { const t = el.dataset.pin; S.bar = S.bar.includes(t) ? S.bar.filter((x) => x !== t) : [...S.bar, t]; }
+  else if ((el = q('[data-mod]'))) setMod(el.dataset.mod, !S.on[el.dataset.mod]);
+  else if ((el = q('[data-enable]'))) setMod(el.dataset.enable, true);
+  else if ((el = q('[data-hide]'))) S.hidden[el.dataset.hide] = true;
+  else if ((el = q('[data-goto]'))) { S.tab = el.dataset.goto; S.pop = null; }
+  else if ((el = q('[data-make]'))) { S.pop = null; toast(`${el.dataset.make}: qui si crea e si apre.`); }
+  else if ((el = q('[data-pop]'))) S.pop = S.pop === el.dataset.pop ? null : el.dataset.pop;
+  else if ((el = q('[data-tool]'))) { S.tool = el.dataset.tool; S.pop = null; }
+  else if (q('.pop')) return;
+  else if (S.pop) S.pop = null;
+  else return;
+  render();
+});
+render();
+</script>
+</body>
+</html>

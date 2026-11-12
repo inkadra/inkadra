@@ -35,6 +35,15 @@ Take the first option that fully works:
   can't be built, ask; don't swap in a simpler widget or drop it on your own.
 - Wait for builds, tests and CI without ending your turn: nothing wakes you up afterwards.
 
+## Every feature belongs to a module
+
+Inkadra is modular (decision 0121): a person can turn off Storyboard, Production, Moodboard,
+Client review and Set plan in Settings → Modules. A new feature that fits a module is added to
+the module registry, so its menu entries, tools, settings sections, tours, notifications and
+export contents follow the switch; a feature that fits none either belongs to Board (always on)
+or needs a decision for a new module. Off hides the ways to create, never existing data. Where
+an off module would change the result of what the person just did, say so once, with Turn on.
+
 ## Keep the tutorials up to date
 
 Any change that adds, moves, renames or removes interface must update the tour of that feature in

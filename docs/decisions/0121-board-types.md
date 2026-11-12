@@ -1,7 +1,9 @@
-# 0121 · Board types: a board shows the views of its type, a project has one Production board
+# 0121 · Board types, personal modules and a shorter toolbar
 
-Proposed, 2026-11. The direction was chosen on 2026-11-12 from two interactive mockups; the final
-mockup (light and dark, desktop and phone) is the reference once approved. Builds on 0012
+Accepted, 2026-11-12. The maintainer approved the interactive mockups kept in
+[0121/](0121/): `board-types.html` (types, header, tree, cards, Production),
+`modules-settings.html` (the Modules page) and `toolbar-and-hints.html` (the toolbar, the Canvas
+menu and hints, direction B with one short notice). They are the reference for layout and copy. Builds on 0012
 (storyboards), 0022 and 0089 (shooting schedule), 0067 (no templates) and 0091 (Troupe).
 
 ## Context
@@ -53,6 +55,53 @@ one view lists them under it.
 views and small tabs to look at the others. Opening the card opens that view. Several cards of
 one board, one per view, can come later on the same card.
 
+## Modules
+
+**A module is a part of Inkadra a person can turn off for themselves.** Settings → Modules, in
+the personal settings, saved with the account's preferences (0055). Five modules, all on by
+default; Board (notes, images, links, files, to-dos, columns, comments) is always on.
+
+| Module         | What it owns                                                              |
+| -------------- | ------------------------------------------------------------------------- |
+| Storyboard     | Storyboard boards, Shot list, the Frame tool, screenplay import to scenes |
+| Production     | The Production board: Schedule, Troupe, call sheets, scene sheets         |
+| Moodboard      | Moodboard boards and the Moodboard view of a board                        |
+| Client review  | Guest review links, approvals and change requests                         |
+| Set plan       | The set plan tool and card                                                |
+
+- **Off hides the ways to create, never the data.** Menu entries, tools, settings sections, tours
+  and notifications of the module disappear for that person. Content that exists stays visible
+  and opens: a colleague's Production board shows a thin line under its title, "Production module
+  off: you can read this board", with Turn on. Nothing is deleted, and turning the module on
+  again brings everything back.
+- **Personal only.** The server does not refuse anything because of a module; an instance-wide
+  switch is a later decision.
+- **One registry.** A module lists its board types, views, tools, menu entries, settings
+  sections, tours, notification kinds and export contents, and every surface reads that list.
+  A new feature that belongs to a module is added to the registry, not to each surface.
+- **Few and coarse.** No switch inside a module (call sheets apart from the schedule).
+
+## Hints for modules that are off
+
+- **In the menus (the rule).** In the Canvas menu a board type of a module that is off stays,
+  dimmed, with Turn on; choosing it turns the module on. No message appears elsewhere.
+- **One short notice.** After a screenplay import with Storyboard off, the scenes arrive on the
+  board as cards and one line above the toolbar says what Storyboard would do, with Turn on. It
+  shows once per module and leaves by itself, like the undo notices (0052). "Import a
+  screenplay" stays in the Canvas menu, dimmed like the types.
+- No cards that wait for an answer, and no hint for a module that is on.
+
+## The toolbar
+
+- **Always in the bar:** Select, Hand, Arrow; Note, Image, Link, To-do; More; Canvas. They cannot
+  be removed.
+- **More (⋯)** lists the other tools (Column, Section title, Colour, Table, Voice note, Map, and
+  the tools of the modules that are on: Frame, Set plan), each with "Put in the bar". Column and
+  Section title start in the bar. The saved bar of 0055 is kept: a tool a person had shown stays.
+- **Canvas** holds only boards to create, one card per type with a small preview, and the
+  screenplay import. Hidden tools no longer live there.
+- Tools keep their colours (`tool-color.ts`); the bar starts with 11 buttons instead of 16.
+
 ## Existing projects
 
 - A storyboard keeps Shot list and Review on.
@@ -72,5 +121,6 @@ one board, one per view, can come later on the same card.
 - `views.ts` loses the project-wide film links; the sidebar, the header and the phone picker read
   one rule: the views of the open board.
 - The tours of the storyboard, the schedule, the Troupe and the moodboard change (0078).
-- Delivered in three steps: types, views, header, tree and several storyboards; the card with a
-  preview; the Production board.
+- Delivered in four steps: types, views, header, tree and several storyboards; modules, the
+  Modules page, the toolbar, the Canvas menu and hints; the card with a preview; the Production
+  board.
