@@ -77,8 +77,8 @@ const SCENE_KEYS = ['sceneId', 'sceneBoardId', 'sceneLabel'] as const;
  * A client from before block notes, or from before the Production board (decision 0123), sends
  * blocks without some keys: a block it kept keeps them, by block id. A newer client sends
  * `notes` (empty to clear it), so only a missing key is filled in. The board and label of a
- * frame are kept while the block still names that frame, those of a scene while it names that
- * scene or none.
+ * frame are kept while the block still names that frame, those of a scene while it is a scene
+ * block that names that scene or none.
  */
 export function keepBlockKeys(
   before: ShootingDayInput['blocks'],
@@ -97,7 +97,8 @@ export function keepBlockKeys(
         if (!(key in block) && was[key] !== undefined) Object.assign(kept, { [key]: was[key] });
     };
     if (block.shotId === was.shotId) fill(SHOT_KEYS);
-    if ((block.sceneId ?? was.sceneId) === was.sceneId) fill(SCENE_KEYS);
+    // Only while it is still a scene block: a block turned into another type lets its scene go.
+    if (block.type === 'scene' && (block.sceneId ?? was.sceneId) === was.sceneId) fill(SCENE_KEYS);
     return kept;
   });
 }

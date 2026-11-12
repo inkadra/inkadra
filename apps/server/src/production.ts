@@ -171,7 +171,9 @@ export async function daysOfBoard(
   const days = await db
     .select({ date: shootingDay.date, blocks: shootingDay.blocks })
     .from(shootingDay)
-    .where(eq(shootingDay.boardId, from));
+    .where(eq(shootingDay.boardId, from))
+    // Two days can share a date (decision 0089): "Day N" must not depend on the row order.
+    .orderBy(asc(shootingDay.date), asc(shootingDay.id));
   return days.map((day) => ({
     date: day.date,
     blocks: day.blocks.flatMap((b) => {

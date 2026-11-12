@@ -74,6 +74,9 @@ describe('the cross-board keys of a block (decision 0123)', () => {
     });
     const { sceneId: _s, sceneBoardId: _sb, sceneLabel: _sl, ...bare } = scene;
     expect(keepBlockKeys([scene], [bare])).toEqual([scene]);
+    // Turned into another type, the block lets its scene go instead of getting it back.
+    const note = { ...bare, type: 'note' as const };
+    expect(keepBlockKeys([scene], [note])).toEqual([note]);
   });
 
   it('maps them through an import, dropping a board the archive does not hold', () => {
@@ -655,10 +658,27 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
   });
 
   it('can be put back by hand with the rollback statement of the record', async () => {
+    // A scene planned after the move: an older server knows neither the type nor its keys.
+    const moved = await dayRow(days.b1?.id as string);
+    await db
+      .update(shootingDay)
+      .set({
+        blocks: [
+          ...(moved?.blocks ?? []),
+          block({ type: 'scene', sceneId: 'scene-9', sceneBoardId: ids.sb, sceneLabel: '9' }),
+        ],
+      })
+      .where(eq(shootingDay.id, days.b1?.id as string));
     await db.execute(sql`
       update shooting_day
       set board_id = moved_from, moved_from = null,
-          blocks = (select coalesce(jsonb_agg(b.v - 'shotBoardId' - 'shotLabel' order by b.i), '[]')
+          blocks = (select coalesce(jsonb_agg(
+                      (case when b.v ->> 'type' = 'scene'
+                         then b.v || jsonb_build_object('type', 'note', 'title',
+                           coalesce(nullif(b.v ->> 'title', ''), 'Scene ' || coalesce(b.v ->> 'sceneLabel', '')))
+                         else b.v end)
+                      - 'shotBoardId' - 'shotLabel' - 'sceneId' - 'sceneBoardId' - 'sceneLabel'
+                      order by b.i), '[]')
                     from jsonb_array_elements(blocks) with ordinality as b(v, i))
       where project_id = ${ids.project} and moved_from is not null`);
     for (const [key, from] of [
@@ -670,13 +690,17 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     ] as const) {
       const row = await dayRow(days[key]?.id as string);
       expect(row).toMatchObject({ boardId: from, movedFrom: null });
+      // Every block reads as one of the server before 0123: its five types and its keys only.
       for (const b of row?.blocks ?? []) {
-        expect(b).not.toHaveProperty('shotBoardId');
-        expect(b).not.toHaveProperty('shotLabel');
+        expect(['setup', 'shot', 'break', 'move', 'note']).toContain(b.type);
+        for (const key of ['shotBoardId', 'shotLabel', 'sceneId', 'sceneBoardId', 'sceneLabel'])
+          expect(b).not.toHaveProperty(key);
       }
     }
     const a1 = await dayRow(days.a1?.id as string);
     expect(a1?.blocks.map((b) => b.type)).toEqual(['shot', 'note']);
     expect(a1?.blocks[0]?.notes).toBe('Rain machine');
+    const b1 = await dayRow(days.b1?.id as string);
+    expect(b1?.blocks.at(-1)).toMatchObject({ type: 'note', title: 'Scene 9' });
   });
 });

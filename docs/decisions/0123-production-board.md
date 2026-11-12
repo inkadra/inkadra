@@ -118,13 +118,20 @@ and adds keys, so a project can be put back by hand:
 ```sql
 update shooting_day
 set board_id = moved_from, moved_from = null,
-    blocks = (select coalesce(jsonb_agg(b.v - 'shotBoardId' - 'shotLabel' order by b.i), '[]')
+    blocks = (select coalesce(jsonb_agg(
+                (case when b.v ->> 'type' = 'scene'
+                   then b.v || jsonb_build_object('type', 'note', 'title',
+                     coalesce(nullif(b.v ->> 'title', ''), 'Scene ' || coalesce(b.v ->> 'sceneLabel', '')))
+                   else b.v end)
+                - 'shotBoardId' - 'shotLabel' - 'sceneId' - 'sceneBoardId' - 'sceneLabel'
+                order by b.i), '[]')
               from jsonb_array_elements(blocks) with ordinality as b(v, i))
 where project_id = $1 and moved_from is not null;
 ```
 
-then the Production board is trashed. The keys go because an older server refuses unknown block
-keys (`ScheduleBlock` is strict). Days created on the Production board after the move stay on it.
+then the Production board is trashed. The keys go, and a scene block becomes a note that keeps
+its title or the scene's label, because an older server refuses unknown block keys and types
+(`ScheduleBlock` is strict). Days created on the Production board after the move stay on it.
 This statement is tested in the pull request of step 6 against the migration's fixture; no
 command is shipped for it.
 
