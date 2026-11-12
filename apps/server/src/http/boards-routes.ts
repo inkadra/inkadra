@@ -6,6 +6,7 @@ import {
   type Board,
   type BoardColumns,
   type BoardDetail,
+  type BoardPreview,
   CAPABILITY_ROLE,
   type ClipBoard,
   ClipBoardQuery,
@@ -34,10 +35,20 @@ import {
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
-import { boardCounts, projectPreview, unsortedOf } from '../board-preview.ts';
+import { boardCounts, projectBoard, unsortedOf } from '../board-preview.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { asset, board, boardDoc, clipBoardUse, project, shareLink } from '../db/schema.ts';
+import {
+  asset,
+  board,
+  boardDoc,
+  clipBoardUse,
+  crewMember,
+  project,
+  shareLink,
+  shootingDay,
+} from '../db/schema.ts';
+import { teamReviews } from './reviews-routes.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -151,14 +162,48 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
     // Reauthorize every request. Browser revalidation avoids stale previews after edits or revocation.
     reply.header('cache-control', 'private, no-cache');
-    const preview = projectPreview(row?.state);
+    const { preview, reviewable } = projectBoard(row?.state);
     const [metadata] = await db.select().from(board).where(eq(board.id, boardId));
     const candidates = [...new Set([metadata?.coverAssetId, ...preview.assetIds])].filter(
       (id): id is string => AssetId.safeParse(id).success,
     );
+    const frameAssets = (preview.frames ?? []).flatMap((f) => (f.assetId ? [f.assetId] : []));
     // Cover references and imported documents cannot expose files from another project.
-    const allowed = await projectMedia(db, access.board.projectId, candidates);
-    const body = { ...preview, assetIds: candidates.filter((id) => allowed.has(id)).slice(0, 4) };
+    const allowed = await projectMedia(db, access.board.projectId, [
+      ...candidates,
+      ...frameAssets.filter((id) => AssetId.safeParse(id).success),
+    ]);
+    const body: BoardPreview = {
+      ...preview,
+      assetIds: candidates.filter((id) => allowed.has(id)).slice(0, 4),
+    };
+    if (body.frames)
+      body.frames = body.frames.map(({ assetId, ...f }) =>
+        assetId && allowed.has(assetId) ? { ...f, assetId } : f,
+      );
+    // The card of a sub-board shows what the views would show its viewer (decision 0121).
+    const ids = new Set(reviewable);
+    const reviews = (await teamReviews(db, boardId)).filter((r) => ids.has(r.elementId));
+    body.review = {
+      approved: reviews.filter((r) => r.status === 'approved').length,
+      changes: reviews.filter((r) => r.status === 'changes_requested').length,
+      total: reviewable.length,
+    };
+    if (metadata?.kind === 'storyboard') {
+      const [days] = await db
+        .select({ n: count() })
+        .from(shootingDay)
+        .where(eq(shootingDay.boardId, boardId));
+      body.dayCount = days?.n ?? 0;
+      // The troupe is the project's contacts: a grant on one board does not show it (crew routes).
+      if (await projectRole(db, actor, access.board.projectId)) {
+        const [crew] = await db
+          .select({ n: count() })
+          .from(crewMember)
+          .where(eq(crewMember.projectId, access.board.projectId));
+        body.crewCount = crew?.n ?? 0;
+      }
+    }
     const etag = `"${createHash('sha256').update(JSON.stringify(body)).digest('hex')}"`;
     reply.header('etag', etag);
     if (req.headers['if-none-match'] === etag) return reply.code(304).send();

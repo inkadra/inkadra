@@ -1,7 +1,8 @@
+import { addFrame, addScene, createElement } from '@inkadra/canvas-core';
 import { roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { boardCounts, projectPreview, unsortedOf } from './board-preview.ts';
+import { boardCounts, projectBoard, projectPreview, unsortedOf } from './board-preview.ts';
 
 describe('persisted board preview', () => {
   it('handles empty boards and rejects corrupt persisted state', () => {
@@ -76,6 +77,58 @@ describe('persisted board preview', () => {
     expect(preview.drawing).toHaveLength(2);
     expect(preview.drawing[0]?.path).toMatch(/^M0 0 L4096 4096/);
     expect(preview.drawing[1]?.path).toBe('M0 0 H4096 V4096 H0 Z');
+    doc.destroy();
+  });
+});
+
+describe('the preview of a board card (decision 0121)', () => {
+  it('projects the first frames in shooting order and what the Review view lists', () => {
+    const doc = new Y.Doc();
+    const opts = { userId: null };
+    roots(doc).meta.set('aspect', '2.39');
+    const s2 = addScene(doc, { number: '2' }, opts, { x: 0, y: 0 });
+    const s1 = addScene(doc, { number: '1' }, opts, { x: 900, y: 0 });
+    const ids: string[] = [];
+    for (let i = 0; i < 4; i++)
+      ids.push(addFrame(doc, s1.id, null, { lens: `${24 + i}mm`, shot: 'MS' }, opts).id);
+    addFrame(doc, s2.id, null, { label: '2-X', assetId: 'asset-late' }, opts);
+    addFrame(doc, s2.id, null, { aspect: '4:3' }, opts);
+    const first = roots(doc).elements.get(ids[0] ?? '');
+    first?.set(
+      'strokes',
+      Y.Array.from([
+        { id: 'stroke01', tool: 'pencil', color: '#112233', width: 2, points: [0, 0, 4096, 4096] },
+      ]),
+    );
+    roots(doc).elements.get(ids[1] ?? '')?.set('assetId', 'asset-1b');
+    const { preview, reviewable } = projectBoard(Y.encodeStateAsUpdate(doc));
+    // Scenes follow their order on the storyboard, not their numbers or places.
+    expect(preview.frames?.map((f) => f.label)).toEqual(['2-X', '2B', '1A', '1B', '1C']);
+    expect(preview.frames?.[0]).toMatchObject({ assetId: 'asset-late', ratio: 2.39 });
+    expect(preview.frames?.[1]?.ratio).toBeCloseTo(4 / 3);
+    expect(preview.frames?.[2]).toMatchObject({ shot: 'MS', lens: '24mm' });
+    expect(preview.frames?.[2]?.drawing).toEqual([
+      { path: 'M0 0 L4096 4096 L4096 4096', color: '#112233', width: 2 * 4.096 },
+    ]);
+    // Only the first three frames carry a picture.
+    expect(preview.frames?.[3]?.assetId).toBeUndefined();
+    expect(preview.frames?.[3]?.drawing).toEqual([]);
+    expect(reviewable).toHaveLength(6);
+    doc.destroy();
+  });
+  it('lists the cards for review when a board has no frames, and no frames field', () => {
+    const doc = new Y.Doc();
+    const opts = { userId: null };
+    const note = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+    createElement(doc, 'column', { x: 300, y: 0 }, { title: 'Col' }, opts);
+    const colors = ['#AA0000', '#00BB00', '#AA0000', '#0000CC'].map(
+      (hex, i) => createElement(doc, 'color', { x: i * 130, y: 400 }, { hex }, opts).id,
+    );
+    const { preview, reviewable } = projectBoard(Y.encodeStateAsUpdate(doc));
+    expect(preview.frames).toBeUndefined();
+    // The palette of a moodboard: its colour cards in reading order, each hex once.
+    expect(preview.colors).toEqual(['#AA0000', '#00BB00', '#0000CC']);
+    expect([...reviewable].sort()).toEqual([note.id, ...colors].sort());
     doc.destroy();
   });
 });

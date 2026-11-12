@@ -1221,6 +1221,295 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   color: var(--ink-text-muted);
 }
 
+/* A tall board card previews the board (decision 0121): its name in a pill of its kind, a count,
+   small tabs for its views and the chosen view, cut to the card's height. */
+.board-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  padding: 10px;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.board-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.board-card__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 9px;
+  border-radius: var(--ink-radius-full);
+  background: var(--kind-bg);
+  color: var(--kind-fg);
+  font-weight: 600;
+}
+.board-card__pill svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.board-card__pill .card__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+.board-card__pill .card__inline-input {
+  min-width: 80px;
+  color: var(--ink-text-primary);
+}
+.board-card__meta {
+  margin-left: auto;
+  flex: none;
+  color: var(--ink-text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.board-card__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.board-card__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-full);
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.board-card__tab:hover {
+  border-color: var(--ink-border-strong);
+}
+.board-card__tab[aria-selected="true"] {
+  background: var(--ink-surface-2);
+  border-color: var(--ink-border-strong);
+  color: var(--ink-text-primary);
+  font-weight: 600;
+}
+.board-card__tab:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+.board-card__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+.board-card__note,
+.board-card__empty,
+.board-card__more {
+  margin: 0;
+  color: var(--ink-text-muted);
+}
+.board-card__empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border: 1px dashed var(--ink-border-strong);
+  border-radius: var(--ink-radius-sm);
+  text-align: center;
+}
+.board-card__blank {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--ink-surface-2);
+}
+.board-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.board-card__canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
+}
+.board-card__pictures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  height: 90px;
+  flex: none;
+}
+.board-card__pictures > *,
+.board-card__mosaic > * {
+  border-radius: var(--ink-radius-xs);
+  overflow: hidden;
+  min-height: 0;
+}
+.board-card__excerpt {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.board-card__mood {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.board-card__mosaic {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.board-card__mosaic > :first-child {
+  grid-row: span 2;
+}
+.board-card__mosaic.is-single {
+  grid-template-columns: 1fr;
+}
+.board-card__palette {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  flex: none;
+}
+.board-card__swatch {
+  overflow: hidden;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  color: var(--ink-text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  padding-bottom: 2px;
+  text-indent: 4px;
+}
+.board-card__swatch i {
+  display: block;
+  height: 18px;
+}
+.board-card__frames {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.board-card__frame {
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+}
+.board-card__shot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-muted);
+}
+.board-card__shot > img,
+.board-card__shot > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.board-card__label {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-text-secondary);
+  font-size: 10px;
+}
+.board-card__label b,
+.board-card__id {
+  color: var(--ink-text-primary);
+  font-weight: 700;
+}
+.board-card__lens {
+  color: var(--ink-text-muted);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+.board-card__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.board-card__table th {
+  padding: 2px 4px;
+  color: var(--ink-text-muted);
+  font-size: 9.5px;
+  font-weight: 400;
+  text-align: left;
+}
+.board-card__table td {
+  padding: 4px;
+  border-top: 1px solid var(--ink-border-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
+}
+.board-card__table td:first-child {
+  width: 3.5em;
+}
+.board-card__table td:last-child {
+  width: 4.5em;
+}
+.board-card__review {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.board-card__progress {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-2);
+}
+.board-card__progress i {
+  display: block;
+  height: 100%;
+  background: var(--ink-status-ok);
+}
+.board-card__review-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--ink-text-muted);
+  font-size: 10px;
+}
+.board-card__changes {
+  color: var(--ink-tag-orange);
+}
+
 /* Section heading (#318): large quiet text, no card chrome, with an optional tint behind it. */
 .card--section {
   background: transparent;

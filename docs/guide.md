@@ -52,6 +52,15 @@ sidebar every board is a row with the icon of its kind, with its views under it 
 than one. A storyboard has no canvas: one made before it had other cards keeps them, and
 **Cards outside the storyboard** in its ⋯ menu opens them.
 
+A board placed on another board is a card that previews it: its name in a pill of its kind, a
+count, and the view you look at, such as the first frames of a storyboard, the first rows of its
+shot list, how far the client's review has got, or the pictures and colours of a moodboard. When the
+board has more than one view, small tabs on the card switch between them; the card remembers your
+choice on this device, and opening it opens that view. The card shows only what you could see by
+opening the board. Cards made before the preview stay small: **Show preview** in the card's bar
+makes one larger, and **Compact** puts it back to its name only. Guests of a share link and exports
+show the board's name, as before.
+
 ## Videos in their card
 
 An uploaded video plays inside its card: press play and it runs there, with its controls, without

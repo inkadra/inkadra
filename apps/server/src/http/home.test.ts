@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { addFrame, addScene } from '@inkadra/canvas-core';
 import { roots } from '@inkadra/doc-schema';
 import { MySchedule, RecentBoard, type ShootingDayInput, z } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
@@ -8,7 +9,7 @@ import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, board, boardDoc } from '../db/schema.ts';
+import { asset, board, boardDoc, crewMember } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -152,7 +153,13 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     expect((await request('granted', 'GET', `/boards/${ids.root}/preview`)).statusCode).toBe(404);
     const response = await request('owner', 'GET', `/boards/${ids.root}/preview`);
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ assetIds: [], excerpts: [], elementCount: 0, drawing: [] });
+    expect(response.json()).toEqual({
+      assetIds: [],
+      excerpts: [],
+      elementCount: 0,
+      drawing: [],
+      review: { approved: 0, changes: 0, total: 0 },
+    });
     expect(response.headers['cache-control']).toBe('private, no-cache');
     expect(response.headers.etag).toBeTruthy();
     const cached = await app.inject({
@@ -319,6 +326,87 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     const after = await request('owner', 'GET', `/boards/${own.rootBoardId}/preview`);
     expect(after.json().excerpts).toEqual(['Changed saved caption']);
     expect(after.headers.etag).not.toBe(before.headers.etag);
+    doc.destroy();
+  });
+  it('previews a storyboard card: frames, review progress, days, and the troupe for members only', async () => {
+    const film = await request('owner', 'POST', `/projects/${ids.project}/boards`, {
+      parentBoardId: ids.root,
+      title: 'Film',
+      kind: 'storyboard',
+    });
+    expect(film.statusCode).toBe(201);
+    const filmId: string = film.json().id;
+    const other = (await request('stranger', 'POST', '/projects', { name: 'Elsewhere' })).json();
+    const [own, foreign] = await db
+      .insert(asset)
+      .values(
+        [ids.project, other.id].map((projectId, i) => ({
+          projectId,
+          kind: 'image' as const,
+          mime: 'image/jpeg',
+          filename: `frame-${i}.jpg`,
+          size: 10,
+          storageKey: `frame-preview-${i}`,
+          status: 'ready' as const,
+        })),
+      )
+      .returning();
+    const doc = new Y.Doc();
+    const opts = { userId: null };
+    const scene = addScene(doc, { number: '1' }, opts);
+    const a = addFrame(doc, scene.id, null, { assetId: own!.id, shot: 'CU', lens: '85mm' }, opts);
+    const b = addFrame(doc, scene.id, null, { assetId: foreign!.id }, opts);
+    addFrame(doc, scene.id, null, {}, opts);
+    const state = Y.encodeStateAsUpdate(doc);
+    await db.insert(boardDoc).values({
+      boardId: filmId,
+      state: Buffer.from(state),
+      schemaVersion: 4,
+      size: state.byteLength,
+    });
+    for (const [el, status] of [
+      [a.id, 'approved'],
+      [b.id, 'changes_requested'],
+    ] as const)
+      expect(
+        (await request('owner', 'PUT', `/boards/${filmId}/elements/${el}/review`, { status }))
+          .statusCode,
+      ).toBe(200);
+    expect(
+      (await request('owner', 'POST', `/boards/${filmId}/schedule`, day('2026-11-05', 'Depot')))
+        .statusCode,
+    ).toBe(201);
+    await db.insert(crewMember).values({
+      projectId: ids.project,
+      name: 'Sara',
+      role: 'DoP',
+      department: '',
+      phone: '',
+      email: '',
+      pickup: '',
+      notes: '',
+    });
+    expect(
+      (
+        await request('owner', 'PUT', `/boards/${filmId}/grants/${people.granted?.id}`, {
+          role: 'viewer',
+        })
+      ).statusCode,
+    ).toBe(200);
+    const owner = (await request('owner', 'GET', `/boards/${filmId}/preview`)).json();
+    expect(owner.frames.map((f: { label: string }) => f.label)).toEqual(['1A', '1B', '1C']);
+    expect(owner.frames[0]).toMatchObject({ assetId: own!.id, shot: 'CU', lens: '85mm' });
+    // A picture of another project never reaches the card.
+    expect(owner.frames[1].assetId).toBeUndefined();
+    expect(owner.review).toEqual({ approved: 1, changes: 1, total: 3 });
+    expect(owner.dayCount).toBe(1);
+    expect(owner.crewCount).toBe(1);
+    // A grant on the board shows what the board shows, not the project's contacts.
+    const granted = await request('granted', 'GET', `/boards/${filmId}/preview`);
+    expect(granted.statusCode).toBe(200);
+    expect(granted.json().review).toEqual(owner.review);
+    expect(granted.json().crewCount).toBeUndefined();
+    expect((await request('stranger', 'GET', `/boards/${filmId}/preview`)).statusCode).toBe(404);
     doc.destroy();
   });
   it('counts unsorted cards of boards the caller can edit, with media of the same project only', async () => {
