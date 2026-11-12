@@ -43,6 +43,8 @@ services:
       RAW_PREVIEWS: ${RAW_PREVIEWS:-true}
       PDF_PREVIEWS: ${PDF_PREVIEWS:-true}
       VIDEO_PROXIES: ${VIDEO_PROXIES:-true}
+      # Shooting days move to each project's Production board at start (decision 0123)
+      PRODUCTION_BOARD_MOVE: ${PRODUCTION_BOARD_MOVE:-true}
       # Map pictures of map cards and GPX files (decision 0053)
       MAPS: ${MAPS:-true}
       MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}

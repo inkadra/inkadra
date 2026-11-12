@@ -42,6 +42,7 @@ import {
   shootingDayAttendance,
   user,
 } from '../db/schema.ts';
+import { requireProductionBoardDays } from '../production.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { idempotentCreation } from './idempotency.ts';
@@ -258,6 +259,7 @@ export function registerScheduleRoutes(
       `shooting-days:${boardId}`,
       parsed,
       async (tx) => {
+        await requireProductionBoardDays(tx, access.board);
         const [input] = await cleanInputs(tx, [parsed], team, access.board.projectId);
         await checkBlockBoards(tx, access.board.projectId, [], parsed.blocks);
         const [created] = await tx
@@ -473,6 +475,8 @@ export function registerScheduleRoutes(
       const deleted = [];
       // Lock in a stable order so simultaneous cross-day moves cannot deadlock.
       const sorted = [...changes].sort((a, b) => a.id.localeCompare(b.id));
+      if (sorted.some((change) => change.revision === 0 && change.input))
+        await requireProductionBoardDays(tx, access.board);
       const inputs = sorted.flatMap((change) => (change.input ? [change.input] : []));
       const cleaned = new Map(
         (await cleanInputs(tx, inputs, team, access.board.projectId)).map((clean, i) => [

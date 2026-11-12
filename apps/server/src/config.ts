@@ -187,6 +187,12 @@ const Env = z.object({
   CLIPPER_EXTENSION_IDS: list,
 
   /**
+   * At start, gives every project with shooting days or a crew its Production board and moves
+   * its days there (decision 0123). `false` skips it; it runs at the next start set to `true`.
+   */
+  PRODUCTION_BOARD_MOVE: bool('true'),
+
+  /**
    * The public demo (decision 0084): "Try the demo" makes a sandbox without an account, which
    * goes after DEMO_TTL with its files. Off by default; on, everything that could be abused is
    * closed (see `demoConfig`).
