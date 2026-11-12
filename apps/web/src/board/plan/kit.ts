@@ -13,6 +13,7 @@ import {
   modifiersOn,
   type PlanElement,
   planPower,
+  wattsText,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
 import type { TFunction } from 'i18next';
@@ -40,12 +41,8 @@ const STAND_KIT = new Set([
 export type KitGroup = 'lights' | 'grip' | 'camera';
 export const KIT_GROUPS: readonly KitGroup[] = ['lights', 'grip', 'camera'];
 
-/** "300 W", "2K", "1.2K": a light's watts as the mockup writes them, in the reader's language. */
-export function wattsText(watts: number, locale?: string): string {
-  return watts >= 1000
-    ? `${(watts / 1000).toLocaleString(locale, { maximumFractionDigits: 1 })}K`
-    : `${watts.toLocaleString(locale, { maximumFractionDigits: 0 })} W`;
-}
+/** "300 W", "2K": a light's watts (canvas-core, decision 0118). */
+export { wattsText };
 /** A line of the kit: a type with its spec, how many, its section and a light's watts each. */
 export interface KitLine {
   name: string;

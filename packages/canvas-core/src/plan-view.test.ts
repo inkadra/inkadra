@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { PlanIcon } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import { PLAN_VIEW_H, PLAN_VIEW_W } from './plan.ts';
+import { iconCone, labelAnchor, PLAN_VIEW_H, PLAN_VIEW_W } from './plan.ts';
+import { PLAN_LABEL_SIZE } from './plan-labels.ts';
 import {
   boundPlanView,
   fitPlanView,
@@ -161,5 +162,72 @@ describe('the view of the plan surface', () => {
     const v = fitPlanView(room, phone, { top: 48, right: 0, bottom: 0, left: 0 }, true);
     expect(v.zoom).toBeCloseTo((390 - 48) / 600);
     expect(toScreen(v, { x: room.x, y: room.y }).y).toBeCloseTo(48 + 24);
+  });
+
+  it('lets everything within the plan\'s reach be seen: Fit and panning are not held to the extent', () => {
+    // An item far out, as the reach allows (review of #615, 1).
+    const far = { x: 2500, y: 1500, w: 40, h: 40 };
+    const v = fitPlanView(far, area);
+    const c = toScreen(v, { x: far.x + far.w / 2, y: far.y + far.h / 2 });
+    expect(c.x).toBeCloseTo(area.w / 2);
+    expect(c.y).toBeCloseTo(area.h / 2);
+    // And a pan from the plan reaches it at 100 %.
+    const start = fitPlanView(null, area);
+    const there = panPlanBy(start, area, -(2500 * start.zoom), -(1500 * start.zoom));
+    expect(toScreen(there, { x: 2500, y: 1500 }).x).toBeLessThan(area.w);
+    expect(toScreen(there, { x: 2500, y: 1500 }).y).toBeLessThan(area.h);
+  });
+
+  it('frames only what is drawn: hidden layers and a caller\'s hidden list are left out', () => {
+    // Review of #615, 2: a hidden item far away must not shrink the rest into a corner.
+    const seen = { id: 'aAAAAAAAAAAAA', kind: 'table', color: '#1C1C1E', x: 2048, y: 2048 };
+    const away = { id: 'bAAAAAAAAAAAA', kind: 'cob', color: '#EDD963', x: 20000, y: 20000 };
+    const icons = [seen, away] as PlanIcon[];
+    const alone = planFrame({ icons: [seen] as PlanIcon[] });
+    expect(planFrame({ icons, hiddenLayers: ['lights'] })).toEqual(alone);
+    expect(planFrame({ icons }, true, ['lights'])).toEqual(alone);
+    // Nothing drawn: the standard extent.
+    expect(planFrame({ icons, hiddenLayers: ['lights', 'set'] })).toEqual({
+      x: 0,
+      y: 0,
+      w: PLAN_VIEW_W,
+      h: PLAN_VIEW_H,
+    });
+  });
+
+  it('frames what is drawn for an item: labels, a light\'s second line, beams, blocking', () => {
+    // Review of #615, 3: nothing drawn may be cut at the edge of the card or the sheet.
+    const key = {
+      id: 'aAAAAAAAAAAAA',
+      kind: 'cob',
+      color: '#EDD963',
+      x: 2048,
+      y: 2048,
+      label: 'Key light with a long name',
+      kelvin: 3200,
+      intensity: 0.8,
+      rotation: 90,
+    } as PlanIcon;
+    const box = planContentBox({ icons: [key] }) as { x: number; y: number; w: number; h: number };
+    const anchor = labelAnchor(key);
+    // The second line, 12 + 2 + 11 units under the label's baseline.
+    expect(box.y + box.h).toBeGreaterThanOrEqual(anchor.y + PLAN_LABEL_SIZE + 2);
+    // The beam, pointing down, reaches its default length.
+    const cone = iconCone(key);
+    for (const p of cone?.points ?? []) expect(box.y + box.h).toBeGreaterThanOrEqual(p.y - 0.5);
+    // A label wider than the icon.
+    expect(box.w).toBeGreaterThan(PLAN_LABEL_SIZE * 0.5 * 'Key light with a long name'.length);
+    // Earlier positions of a person and the way between them.
+    const walker = {
+      id: 'cAAAAAAAAAAAA',
+      kind: 'actor',
+      color: '#7AD689',
+      x: 2048,
+      y: 2048,
+      steps: [{ x: 0, y: 0 }],
+    } as PlanIcon;
+    const moved = planContentBox({ icons: [walker] }) as { x: number; y: number };
+    expect(moved.x).toBeLessThan(0);
+    expect(moved.y).toBeLessThan(0);
   });
 });

@@ -11,8 +11,11 @@ import {
   iconCone,
   iconGlow,
   iconGlyph,
+  iconLabel,
+  iconSubLabel,
   iconTransform,
-  isLight,
+  PLAN_LABEL_SIZE,
+  PLAN_SUB_LABEL_SIZE,
   labelAnchor,
   linkedPlan,
   measureEnds,
@@ -134,9 +137,11 @@ export const PLAN_PEN = 4;
 /** Font sizes of texts, S, M and L, in thousandths of the width. */
 export const TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;
 /** Font size of icon labels, in thousandths of the width. */
-/** Sizes of an icon's label and of a light's second line, view units, as the mockup's plan. */
-export const LABEL_SIZE = 12;
-export const SUB_LABEL_SIZE = 11;
+/** Sizes of an icon's label and of a light's second line (canvas-core, decision 0118). */
+export const LABEL_SIZE = PLAN_LABEL_SIZE;
+export const SUB_LABEL_SIZE = PLAN_SUB_LABEL_SIZE;
+// The words of the plan live in canvas-core (decision 0116); the web's callers import them here.
+export { iconLabel, iconSubLabel };
 export const PLAN_TEXT = TEXT_SIZES.M;
 
 /** The paper of a plan: what opaque fills mix into and holes show (decision 0104). */
@@ -204,36 +209,8 @@ export function PlanGlyph({
   );
 }
 
-/** "A cam · 35 mm": the label of an icon on the plan. */
-export function iconLabel(icon: PlanIcon): string {
-  const mm = icon.lens ?? 35;
-  // "A cam 35mm" already says it: no "· 35 mm" again.
-  const said = new RegExp(`\\b${mm}\\s?mm\\b`, 'i').test(icon.label ?? '');
-  const lens = icon.kind === 'camera' && icon.showLens && !said ? `${mm} mm` : '';
-  // The power as written, or the watts (decision 0104); a kilowatt and more as "2K".
-  const written = icon.power || (icon.watts ? wattsShort(icon.watts) : '');
-  const power = written && !icon.label?.includes(written) ? written : '';
-  return [icon.label, lens, power].filter(Boolean).join(' · ');
-}
 
-/** Watts as the plan writes them: "300 W", "2K", "1.2K". */
-export function wattsShort(watts: number): string {
-  return watts >= 1000 ? `${Math.round(watts / 100) / 10}K` : `${watts} W`;
-}
 
-/**
- * The second, dim line under a named light (the mockup's "5600 K · 60%"): its colour
- * temperature and level; '' for other icons and for lights without either.
- */
-export function iconSubLabel(icon: PlanIcon): string {
-  if (!icon.label || !isLight(icon.kind)) return '';
-  return [
-    icon.kelvin ? `${icon.kelvin} K` : '',
-    icon.intensity !== undefined ? `${Math.round(icon.intensity * 100)}%` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-}
 
 /**
  * The label of an icon, over everything else of the plan, with a halo of the card's colour so
