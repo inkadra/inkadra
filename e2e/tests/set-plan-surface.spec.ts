@@ -136,7 +136,9 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   const fitted = (await stage.boundingBox())!;
 
   // The toolbar and the zoom control do not overlap at 1280.
-  const tools = (await editor.getByRole('toolbar', { name: 'Strumenti della pianta' }).boundingBox())!;
+  const tools = (await editor
+    .getByRole('toolbar', { name: 'Strumenti della pianta' })
+    .boundingBox())!;
   const zoom = (await editor.getByRole('group', { name: 'Zoom' }).boundingBox())!;
   expect(tools.x + tools.width).toBeLessThanOrEqual(zoom.x);
 
@@ -146,7 +148,9 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
   const percent = editor.locator('.plan-canvas__percent');
   const before = Number((await percent.innerText()).replace('%', ''));
   await page.mouse.wheel(0, -300);
-  await expect.poll(async () => Number((await percent.innerText()).replace('%', ''))).toBeGreaterThan(before);
+  await expect
+    .poll(async () => Number((await percent.innerText()).replace('%', '')))
+    .toBeGreaterThan(before);
   const after = await pointOf(stage, P.empty);
   expect(Math.abs(after.x - pointer.x)).toBeLessThan(2);
   expect(Math.abs(after.y - pointer.y)).toBeLessThan(2);
@@ -165,7 +169,9 @@ test('the surface fills the editor, pans, zooms round the pointer and fits the p
 
   // Fit frames the plan again.
   await editor.getByRole('button', { name: 'Adatta la pianta' }).click();
-  await expect.poll(async () => Math.round((await stage.boundingBox())!.x)).toBe(Math.round(fitted.x));
+  await expect
+    .poll(async () => Math.round((await stage.boundingBox())!.x))
+    .toBe(Math.round(fitted.x));
   expect(Math.round((await stage.boundingBox())!.width)).toBe(Math.round(fitted.width));
 
   // An item dragged beyond the old extent stays there (decision 0117).
@@ -280,7 +286,9 @@ test('on a phone the plan fills the screen, a tap picks the light and two finger
     // Between the header and the bar of tools, edge to edge.
     expect(surface.width).toBe(390);
     expect(surface.height).toBeGreaterThan(600);
-    const tools = (await full.getByRole('navigation', { name: 'Strumenti della pianta' }).boundingBox())!;
+    const tools = (await full
+      .getByRole('navigation', { name: 'Strumenti della pianta' })
+      .boundingBox())!;
     expect(Math.round(tools.y + tools.height)).toBe(844);
 
     // A tap on the light opens the light, not its softbox.
@@ -290,7 +298,9 @@ test('on a phone the plan fills the screen, a tap picks the light and two finger
     await expect(sheet).toContainText('Key');
     // The tools stay under the sheet.
     const s = (await sheet.boundingBox())!;
-    const bar = (await full.getByRole('navigation', { name: 'Strumenti della pianta' }).boundingBox())!;
+    const bar = (await full
+      .getByRole('navigation', { name: 'Strumenti della pianta' })
+      .boundingBox())!;
     expect(s.y + s.height).toBeLessThanOrEqual(bar.y + 1);
 
     // Two fingers spread apart zoom in.
