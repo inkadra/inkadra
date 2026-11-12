@@ -43,16 +43,17 @@ describe('sunDays', () => {
   });
 });
 
+function Probe({ boardId, edit }: { boardId: string; edit: number }) {
+  useScheduleDays(boardId);
+  return createElement('span', null, edit);
+}
+
 describe('useScheduleDays', () => {
   it('reads the schedule once per board, not on every render (an edit of the board)', async () => {
     get.mockReset();
     get.mockResolvedValue({ items: [], nextCursor: null });
     const host = document.createElement('div');
     const root = createRoot(host);
-    const Probe = ({ boardId, edit }: { boardId: string; edit: number }) => {
-      useScheduleDays(boardId);
-      return createElement('span', null, edit);
-    };
     for (let edit = 0; edit < 5; edit++)
       await act(async () => root.render(createElement(Probe, { boardId: 'boardA', edit })));
     expect(get).toHaveBeenCalledTimes(1);
