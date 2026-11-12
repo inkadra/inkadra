@@ -2165,7 +2165,10 @@ const planSheetOk = {
     headers: planSheetHeaders,
     content: { 'application/pdf': { schema: z.string().openapi({ format: 'binary' }) } },
   },
-  304: { description: 'Not changed since If-None-Match' },
+  304: {
+    description: 'Not changed since If-None-Match',
+    headers: planSheetHeaders.pick({ ETag: true, 'Cache-Control': true }),
+  },
 };
 const planSheetTooMany = {
   429: {
@@ -2177,8 +2180,9 @@ const planSheetTooMany = {
   },
 };
 const planSheetAbout =
-  ' Rendered from the stored board, which may be up to 10 s behind the live one. Only on ' +
-  'servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.';
+  ' Unknown query parameters are ignored. Rendered from the stored board, which may be up to ' +
+  '10 s behind the live one. Only on servers that advertise the capability `plan-sheet-pdf`; ' +
+  'older ones answer 404.';
 
 registry.registerPath({
   method: 'get',
@@ -2194,7 +2198,9 @@ registry.registerPath({
   responses: {
     ...planSheetOk,
     400: {
-      description: 'Invalid query (unknown part, language or parameter), or more than 20 setups',
+      description:
+        'Invalid query (unknown part or language), or more than 20 setups with `setups=all` ' +
+        '(checked after reading the board; the message says to export with `setups=this`)',
       ...json(ApiError),
     },
     401: errors[401],
@@ -2808,7 +2814,9 @@ registry.registerPath({
   responses: {
     ...planSheetOk,
     400: {
-      description: 'Invalid query (unknown part, language or parameter), or more than 20 setups',
+      description:
+        'Invalid query (unknown part or language), or more than 20 setups with `setups=all` ' +
+        '(checked after reading the board; the message says to export with `setups=this`)',
       ...json(ApiError),
     },
     401: guestErrors[401],

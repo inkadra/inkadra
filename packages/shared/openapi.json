@@ -22555,7 +22555,7 @@
           }
         ],
         "summary": "The set plan sheet as a PDF, as the web exports it.",
-        "description": "For the viewer role or above. `audience=team` (the default) prints every card and \"Day N\" from the schedule; `client` prints the client copy. Rendered from the stored board, which may be up to 10 s behind the live one. Only on servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.",
+        "description": "For the viewer role or above. `audience=team` (the default) prints every card and \"Day N\" from the schedule; `client` prints the client copy. Unknown query parameters are ignored. Rendered from the stored board, which may be up to 10 s behind the live one. Only on servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.",
         "parameters": [
           {
             "schema": {
@@ -22585,21 +22585,21 @@
                 "all"
               ],
               "default": "all",
-              "description": "`this`: only this plan. `all`: its family of setups, base first (at most 20)."
+              "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`."
             },
             "required": false,
-            "description": "`this`: only this plan. `all`: its family of setups, base first (at most 20).",
+            "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`.",
             "name": "setups",
             "in": "query"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Comma-separated parts to print: legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+              "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
               "example": "legend,kit,power,scale"
             },
             "required": false,
-            "description": "Comma-separated parts to print: legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+            "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
             "name": "include",
             "in": "query"
           },
@@ -22685,10 +22685,27 @@
             }
           },
           "304": {
-            "description": "Not changed since If-None-Match"
+            "description": "Not changed since If-None-Match",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "Send it back as `If-None-Match` to get 304."
+                },
+                "required": true,
+                "description": "Send it back as `If-None-Match` to get 304."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-cache"
+                },
+                "required": true
+              }
+            }
           },
           "400": {
-            "description": "Invalid query (unknown part, language or parameter), or more than 20 setups",
+            "description": "Invalid query (unknown part or language), or more than 20 setups with `setups=all` (checked after reading the board; the message says to export with `setups=this`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26533,7 +26550,7 @@
           }
         ],
         "summary": "The set plan sheet of a board of the link as a PDF: always the client copy.",
-        "description": "Only cards visible to guests of the link, never \"Day N\"; no `audience` parameter. Rendered from the stored board, which may be up to 10 s behind the live one. Only on servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.",
+        "description": "Only cards visible to guests of the link, never \"Day N\"; no `audience` parameter. Unknown query parameters are ignored. Rendered from the stored board, which may be up to 10 s behind the live one. Only on servers that advertise the capability `plan-sheet-pdf`; older ones answer 404.",
         "parameters": [
           {
             "schema": {
@@ -26573,21 +26590,21 @@
                 "all"
               ],
               "default": "all",
-              "description": "`this`: only this plan. `all`: its family of setups, base first (at most 20)."
+              "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`."
             },
             "required": false,
-            "description": "`this`: only this plan. `all`: its family of setups, base first (at most 20).",
+            "description": "`this`: only this plan. `all`: its family of setups, base first. A family of more than 20 setups answers 400 with `all`; export it with `this`.",
             "name": "setups",
             "in": "query"
           },
           {
             "schema": {
               "type": "string",
-              "description": "Comma-separated parts to print: legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+              "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
               "example": "legend,kit,power,scale"
             },
             "required": false,
-            "description": "Comma-separated parts to print: legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
+            "description": "Comma-separated parts to print (spaces around names are ignored): legend, kit, power, notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as the web dialog opens with.",
             "name": "include",
             "in": "query"
           },
@@ -26658,10 +26675,27 @@
             }
           },
           "304": {
-            "description": "Not changed since If-None-Match"
+            "description": "Not changed since If-None-Match",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "description": "Send it back as `If-None-Match` to get 304."
+                },
+                "required": true,
+                "description": "Send it back as `If-None-Match` to get 304."
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-cache"
+                },
+                "required": true
+              }
+            }
           },
           "400": {
-            "description": "Invalid query (unknown part, language or parameter), or more than 20 setups",
+            "description": "Invalid query (unknown part or language), or more than 20 setups with `setups=all` (checked after reading the board; the message says to export with `setups=this`)",
             "content": {
               "application/json": {
                 "schema": {

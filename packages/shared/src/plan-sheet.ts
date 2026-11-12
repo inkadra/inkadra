@@ -31,7 +31,8 @@ const include = z
   .max(200)
   .transform((value, ctx) => {
     const parts = new Set<PlanSheetPart>();
-    for (const name of value.split(',')) {
+    for (const item of value.split(',')) {
+      const name = item.trim();
       if (name === '') continue;
       const part = PlanSheetPart.safeParse(name);
       if (part.success) parts.add(part.data);
@@ -42,16 +43,21 @@ const include = z
   .openapi({
     type: 'string',
     description:
-      'Comma-separated parts to print: legend, kit, power, notes, scale, background, ' +
-      'dateScene, grid. Empty prints none of them. Absent: the parts saved on the plan, as ' +
-      'the web dialog opens with.',
+      'Comma-separated parts to print (spaces around names are ignored): legend, kit, power, ' +
+      'notes, scale, background, dateScene, grid. Empty prints none of them. Absent: the parts ' +
+      'saved on the plan, as the web dialog opens with.',
     example: 'legend,kit,power,scale',
   });
 
 const guestFields = {
-  setups: z.enum(['this', 'all']).default('all').openapi({
-    description: '`this`: only this plan. `all`: its family of setups, base first (at most 20).',
-  }),
+  setups: z
+    .enum(['this', 'all'])
+    .default('all')
+    .openapi({
+      description:
+        '`this`: only this plan. `all`: its family of setups, base first. A family of more than ' +
+        '20 setups answers 400 with `all`; export it with `this`.',
+    }),
   include: include.optional(),
   lang: PlanSheetLanguage.optional().openapi({
     description:
@@ -60,22 +66,23 @@ const guestFields = {
   }),
 };
 
-/** Query of `GET /boards/{boardId}/plans/{planId}/sheet`. Unknown parameters are refused. */
-export const PlanSheetQuery = z
-  .object({
-    ...guestFields,
-    audience: z
-      .enum(['team', 'client'])
-      .default('team')
-      .openapi({
-        description:
-          '`team`: every card, and "Day N" from the schedule. `client`: the client copy, ' +
-          'without cards hidden from guests and without "Day N".',
-      }),
-  })
-  .strict();
+/**
+ * Query of `GET /boards/{boardId}/plans/{planId}/sheet`. Unknown parameters are ignored, as on
+ * every route: clients find newer options through capabilities.
+ */
+export const PlanSheetQuery = z.object({
+  ...guestFields,
+  audience: z
+    .enum(['team', 'client'])
+    .default('team')
+    .openapi({
+      description:
+        '`team`: every card, and "Day N" from the schedule. `client`: the client copy, ' +
+        'without cards hidden from guests and without "Day N".',
+    }),
+});
 export type PlanSheetQuery = z.infer<typeof PlanSheetQuery>;
 
-/** Query of the guest route: no audience, guests always get the client copy. */
-export const GuestPlanSheetQuery = z.object(guestFields).strict();
+/** Query of the guest route: no audience, the guest route always renders the client copy. */
+export const GuestPlanSheetQuery = z.object(guestFields);
 export type GuestPlanSheetQuery = z.infer<typeof GuestPlanSheetQuery>;

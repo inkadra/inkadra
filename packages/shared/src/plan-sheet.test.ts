@@ -10,6 +10,9 @@ it('defaults to all setups, the team copy and the plan’s own parts', () => {
 it('reads include as a set of known parts', () => {
   const query = PlanSheetQuery.parse({ include: 'legend,grid,legend', setups: 'this' });
   expect(query.include).toEqual(new Set(['legend', 'grid']));
+  expect(PlanSheetQuery.parse({ include: ' legend, grid ,' }).include).toEqual(
+    new Set(['legend', 'grid']),
+  );
   expect(PlanSheetQuery.parse({ include: '' }).include).toEqual(new Set());
   expect(PlanSheetQuery.safeParse({ include: 'legend,map' }).success).toBe(false);
 });
@@ -23,6 +26,9 @@ it('takes only the app languages', () => {
 it('lets members choose the audience, never guests', () => {
   expect(PlanSheetQuery.parse({ audience: 'client' }).audience).toBe('client');
   expect(PlanSheetQuery.safeParse({ audience: 'crew' }).success).toBe(false);
-  expect(GuestPlanSheetQuery.safeParse({ audience: 'team' }).success).toBe(false);
-  expect(GuestPlanSheetQuery.safeParse({ audience: 'client' }).success).toBe(false);
+  expect(GuestPlanSheetQuery.parse({ audience: 'team' })).toEqual({ setups: 'all' });
+});
+
+it('ignores unknown parameters, as an older server must', () => {
+  expect(PlanSheetQuery.parse({ area: '0,0,10,10' })).toEqual({ setups: 'all', audience: 'team' });
 });

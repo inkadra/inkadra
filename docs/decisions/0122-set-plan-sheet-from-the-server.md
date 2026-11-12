@@ -22,23 +22,28 @@ implementation to keep equal. The server can run the same MPL code on the stored
 - guests: `GET /api/v1/guest/links/{linkId}/boards/{boardId}/plans/{planId}/sheet`, query
   `GuestPlanSheetQuery`, with the guest cookie as the other guest reads.
 
-**Query** (`packages/shared/src/plan-sheet.ts`). Unknown parameters are refused with 400, so an
-option added later is never silently ignored by an older server.
+**Query** (`packages/shared/src/plan-sheet.ts`). Unknown parameters are ignored, as on every
+route: installed apps talk to servers of different ages, so an option added later must not make
+an older server answer 400. Clients find newer options through capabilities, never by trying.
 
 - `setups`: `this` (only this plan) or `all` (default: its family, base first, as the web
-  dialog). At most 20 setups per sheet; a larger family answers 400.
-- `include`: comma list of `legend`, `kit`, `power`, `notes`, `scale`, `background`,
+  dialog). More than 20 setups with `setups=all` answers 400 `invalid_request`, with a message
+  that says to export with `setups=this`. The handler checks it after reading the document; the
+  schema cannot.
+- `include`: comma list (spaces around names ignored, empty items skipped) of `legend`, `kit`, `power`, `notes`, `scale`, `background`,
   `dateScene`, `grid`, read as a set; an unknown name is 400, an empty value prints none of
   them. Absent: the parts saved on the plan (`sheetInclude` of the base plan), as the dialog
   opens with.
 - `lang`: one of the six app languages, `en`, `it`, `es`, `de`, `fr`, `pt`. Absent: the
   account's language (`users.locale`) when it is one of them, then the first of them in
   `Accept-Language`, then `en`. Guests have no account and start from `Accept-Language`.
-- `audience`, members only: `team` (default) or `client`. The guest schema has no such field
-  and refuses it: guests always get the client copy.
+- `audience`, members only: `team` (default) or `client`. The guest schema has no such field,
+  so a guest's `audience` is ignored like any unknown parameter: the guest route always
+  renders the client copy.
 
 Not in v1, each additive later: an area of the plan (`area=x,y,w,h`, the dialog's "what is on
-screen"), paper size and orientation (the sheet is A4 landscape) and PNG or JPEG.
+screen"), paper size and orientation (the sheet is A4 landscape) and PNG or JPEG. Each comes
+with its own capability, since an older server ignores a parameter it does not know.
 
 **What is printed.** The same pages as the web export, from the same functions of
 `@inkadra/canvas-core` and `@inkadra/print` (`planSheetInput`, `planSheetPages`, `renderPdf`).
@@ -64,7 +69,8 @@ name; `Cache-Control: private, no-cache`; `X-Content-Type-Options: nosniff` and 
 of other served files. `ETag`: a hash of the stored document's version (`board_doc.updatedAt`),
 the plan id, the normalised query, the resolved language and audience, the background
 variants used (storage key and row version) and the server version; guests add the link's
-`updatedAt`. `If-None-Match` with the same tag answers 304. Access is checked on every request,
+`updatedAt`. `If-None-Match` with the same tag answers 304, with the same `ETag` and
+`Cache-Control`. Access is checked on every request,
 304 included.
 
 The sheet is drawn from the stored document, which the collaboration server writes at most 10 s
@@ -77,7 +83,8 @@ after an edit: a sheet asked right after an edit may not have it yet. Accepted.
 - Guests: the guest session of the link. No session: 401; a password needed again or a link
   expired, revoked or suspended: 403 with `GuestDenied`; board not on the link, no such plan or
   a plan hidden from guests: 404.
-- 400 `invalid_request` for a bad query.
+- 400 `invalid_request` for an unknown part or language, or more than 20 setups with
+  `setups=all`.
 - 429 `rate_limited` with `Retry-After`: more than 10 sheets a minute by one account or guest,
   or, with `details: { reason: "busy" }`, the server is already rendering its 2 sheets. Busy
   reuses 429 rather than adding a 503 code, which would be a change to `ErrorCode`. Clients
