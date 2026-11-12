@@ -360,6 +360,7 @@ export async function buildPages(
     },
     words: { board: t('export.board'), file: t('export.file'), plan: t('board.plan.name') },
     roomSize: (length, scale, overall) => roomSizeText(length, scale, overall, t, env.language),
+    language: env.language,
     // A plan's card in a board export writes what the board's card writes (decision 0119).
     planCard: (el) => {
       const w = planCardWords(el, snapshot.byId, t, env.language);

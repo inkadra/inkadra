@@ -1,0 +1,1952 @@
+<svg class="plan__svg" viewBox="0 0 1000 666.666667" style="aspect-ratio: 1.5 / 1;" aria-hidden="true">
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk119AAAAA">
+<g transform="translate(463.867188 400.390625) rotate(83) scale(2 2) translate(0 -0.5)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<path d="M-16 0h32" style="stroke-width: 6; stroke-linecap: butt;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk120AAAAA">
+<g transform="translate(524.902344 400.390625) rotate(120) scale(1.882353 1.882353) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17 10h7M10 10h7" style="stroke-width: 5; stroke-linecap: butt;">
+</path>
+<path d="M-10 10V-10">
+</path>
+<path d="M-10-10A20 20 0 0 1 10 10" style="stroke-dasharray: 3 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk121AAAAA">
+<g transform="translate(585.9375 400.390625) rotate(157) scale(1.882353 1.882353) translate(0 -2)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17 8h5M12 8h5" style="stroke-width: 5; stroke-linecap: butt;">
+</path>
+<path d="M-12 8V-4M12 8V-4">
+</path>
+<path d="M-12-4A12 12 0 0 1 0 8M12-4A12 12 0 0 0 0 8" style="stroke-dasharray: 3 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk122AAAAA">
+<g transform="translate(646.972656 400.390625) rotate(194) scale(1.882353 1.882353) translate(0 4.5)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17 0h6M11 0h6" style="stroke-width: 5; stroke-linecap: butt;">
+</path>
+<path d="M-11-2.5h12M-1 2.5h12M-2-9h8m-3-2.5l3 2.5l-3 2.5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk123AAAAA">
+<g transform="translate(708.007813 400.390625) rotate(231) scale(1.882353 1.882353) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17 0h6M11 0h6" style="stroke-width: 5; stroke-linecap: butt;">
+</path>
+<path d="M-11-3h22v6h-22zM-11 0h22">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk124AAAAA">
+<g transform="translate(769.042969 400.390625) rotate(268) scale(1.882353 1.882353) translate(0 -0.5)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17 0h6M11 0h6" style="stroke-width: 5; stroke-linecap: butt;">
+</path>
+<path d="M-11 0h22" style="stroke-dasharray: 3 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk125AAAAA">
+<g transform="translate(830.078125 400.390625) rotate(305) scale(4.571429 4.571429) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 0.632188;">
+<rect x="-7" y="-7" width="14" height="14" rx="1" style="fill: color-mix(in srgb, currentColor 60%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk126AAAAA">
+<g transform="translate(891.113281 400.390625) rotate(342) scale(2.133333 2.133333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<rect x="-15" y="-9" width="30" height="18" rx="1">
+</rect>
+<path d="M-9-9v18M-3-9v18M3-9v18M9-9v18">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk127AAAAA">
+<g transform="translate(952.148438 400.390625) rotate(19) scale(2.133333 2.133333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<rect x="-15" y="-10" width="30" height="20" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-15-10L15 10M-15 10L15-10" style="stroke-opacity: 0.45;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk128AAAAA">
+<g transform="translate(36.621094 454.101563) rotate(56) scale(2.133333 2.133333) translate(-3.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<path d="M8-15C-12-11-12 11 8 15" style="stroke-width: 3.2;">
+</path>
+<path d="M8-15h6M8 15h6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk129AAAAA">
+<g transform="translate(97.65625 454.101563) rotate(93) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<path d="M0-16q5 4 0 8t0 8t0 8t0 8" style="stroke-width: 2.8;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk130AAAAA">
+<g transform="translate(158.691406 454.101563) rotate(130) scale(2.133333 2.133333) translate(2.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<path d="M4-15v30" style="stroke-width: 3.2;">
+</path>
+<path d="M4-9L-9 0L4 9M-9-4v8">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk150AAAAA">
+<g transform="translate(402.832031 507.8125) rotate(150) scale(2.133333 2.133333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<rect x="-15" y="-10" width="30" height="20" rx="2" style="stroke-dasharray: 4 3;">
+</rect>
+<rect x="-10" y="-5" width="20" height="10" rx="1" style="stroke-opacity: 0.5;">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk156AAAAA">
+<g transform="translate(769.042969 507.8125) rotate(12) scale(1.882353 1.882353) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17-10h34M-17 10h34">
+</path>
+<path d="M-14 0h6M-3 0h6M8 0h6" style="stroke-opacity: 0.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk160AAAAA">
+<g transform="translate(36.621094 561.523438) rotate(160) scale(2.133333 2.133333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<path d="M-15-7q3.75-4 7.5 0t7.5 0t7.5 0t7.5 0M-15 0q3.75-4 7.5 0t7.5 0t7.5 0t7.5 0M-15 7q3.75-4 7.5 0t7.5 0t7.5 0t7.5 0">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk95AAAAAA">
+<g transform="translate(952.148438 292.96875) rotate(275) scale(0.942857 0.942857) translate(-1 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="5" y="-14" width="4" height="12" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="5" y="2" width="4" height="12" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-7" cy="-8" r="4">
+</circle>
+<circle cx="-7" cy="8" r="4">
+</circle>
+<path d="M9-8h4M9 8h4">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk97AAAAAA">
+<g transform="translate(97.65625 346.679688) rotate(349) scale(1.833333 1.833333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<rect x="-9" y="-12" width="18" height="24" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-6" y="-9" width="7" height="9" rx="1">
+</rect>
+<path d="M-6 4h12M-6 8h12M4-8v7">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk99AAAAAA">
+<g transform="translate(219.726563 346.679688) rotate(63) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-11" y="-11" width="22" height="22" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-4" cy="-4" r="3.5">
+</circle>
+<circle cx="4" cy="4" r="3.5">
+</circle>
+<path d="M3-6h5M-8 5h5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk104AAAAA">
+<g transform="translate(524.902344 346.679688) rotate(248) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-7" y="-8" width="14" height="16" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-10-11L10 11M-10 11L10-11">
+</path>
+<path d="M-8-9v18" style="stroke-width: 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk105AAAAA">
+<g transform="translate(585.9375 346.679688) rotate(285) scale(1.015385 1.015385) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="4" y="-13" width="6" height="26" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M13-10v20" style="stroke-width: 2.6; stroke-dasharray: 0.1 5;">
+</path>
+<circle cx="-6" cy="0" r="5">
+</circle>
+<path d="M-12-5v10" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk106AAAAA">
+<g transform="translate(646.972656 346.679688) rotate(322) scale(1.222222 1.222222) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.364545;">
+<path d="M-14 0h28" style="stroke-width: 2.4;">
+</path>
+<path d="M-9-6v12M-4.5-6v12M0-6v12M4.5-6v12M9-6v12">
+</path>
+<circle cx="-16" cy="0" r="2">
+</circle>
+<circle cx="16" cy="0" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk107AAAAA">
+<g transform="translate(708.007813 346.679688) rotate(359) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-15" y="-8" width="30" height="16" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-8" cy="0" r="3.5">
+</circle>
+<circle cx="1" cy="-2" r="2">
+</circle>
+<rect x="6" y="-4" width="6" height="8" rx="1">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk108AAAAA">
+<g transform="translate(769.042969 346.679688) rotate(36) scale(2.461538 2.461538) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.174062;">
+<rect x="-13" y="-13" width="26" height="26" rx="1" style="fill: currentColor; fill-opacity: 0.12;">
+</rect>
+<path d="M-13-13l26 26M-13 13l26-26">
+</path>
+<circle cx="0" cy="0" r="2" style="fill: color-mix(in srgb, currentColor 60%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk131AAAAA">
+<g transform="translate(219.726563 454.101563) rotate(167) scale(2.285714 2.285714) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.264375;">
+<rect x="-14" y="-9" width="28" height="18" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk132AAAAA">
+<g transform="translate(280.761719 454.101563) rotate(204) scale(2.666667 2.666667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.08375;">
+<circle cx="0" cy="0" r="12" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk133AAAAA">
+<g transform="translate(341.796875 454.101563) rotate(241) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-7" y="-16" width="14" height="32" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M3-16v32" style="stroke-opacity: 0.45;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk134AAAAA">
+<g transform="translate(402.832031 454.101563) rotate(278) scale(2.909091 2.909091) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 0.993438;">
+<rect x="-8" y="-10" width="19" height="20" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-10-11v22" style="stroke-width: 3.4;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk135AAAAA">
+<g transform="translate(463.867188 454.101563) rotate(315) scale(3.2 3.2) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 0.903125;">
+<rect x="-7" y="-7" width="15" height="14" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-10-10v20M-10-10h16M-10 10h16" style="stroke-width: 3.2;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk136AAAAA">
+<g transform="translate(524.902344 454.101563) rotate(352) scale(2 2) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-6" y="-15" width="13" height="30" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-9-16v32M-9-16h14M-9 16h14" style="stroke-width: 3.2;">
+</path>
+<path d="M-6 0h13">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk137AAAAA">
+<g transform="translate(585.9375 454.101563) rotate(29) scale(4.266667 4.266667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 0.677344;">
+<circle cx="0" cy="0" r="7.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk138AAAAA">
+<g transform="translate(646.972656 454.101563) rotate(66) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-4" y="-16" width="8" height="32" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-4-6h8M-4 6h8">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk139AAAAA">
+<g transform="translate(708.007813 454.101563) rotate(103) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-16" y="-11" width="32" height="22" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-14" y="-9" width="8" height="8" rx="2">
+</rect>
+<rect x="-14" y="1" width="8" height="8" rx="2">
+</rect>
+<path d="M-3-11v22">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk140AAAAA">
+<g transform="translate(769.042969 454.101563) rotate(140) scale(2.133333 2.133333) translate(-3 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<rect x="-7" y="-15" width="12" height="30" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-7 0h12M5-13l8 5M5 13l8-5">
+</path>
+<path d="M13-8v16" style="stroke-dasharray: 2 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk141AAAAA">
+<g transform="translate(830.078125 454.101563) rotate(177) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-5" y="-16" width="10" height="32" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-5-8h10M-5 0h10M-5 8h10">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk142AAAAA">
+<g transform="translate(891.113281 454.101563) rotate(214) scale(2 2) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-5" y="-16" width="11" height="32" rx="5.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M0-10v20" style="stroke-opacity: 0.5;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk143AAAAA">
+<g transform="translate(952.148438 454.101563) rotate(251) scale(2.909091 2.909091) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 0.993438;">
+<rect x="-11" y="-11" width="22" height="22" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-4.5" cy="-4.5" r="3">
+</circle>
+<circle cx="4.5" cy="-4.5" r="3">
+</circle>
+<circle cx="-4.5" cy="4.5" r="3">
+</circle>
+<circle cx="4.5" cy="4.5" r="3">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk144AAAAA">
+<g transform="translate(36.621094 507.8125) rotate(288) scale(2.666667 2.666667) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.08375;">
+<rect x="-10" y="-10" width="18" height="20" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M8-10l6 4M12-3v8">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk145AAAAA">
+<g transform="translate(97.65625 507.8125) rotate(325) scale(2.909091 2.909091) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 0.993438;">
+<rect x="-11" y="-9" width="22" height="18" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-6" y="-6" width="13" height="12" rx="3">
+</rect>
+<path d="M-11 0h5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk146AAAAA">
+<g transform="translate(158.691406 507.8125) rotate(2) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-16" y="-9" width="32" height="18" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-13" y="-6" width="26" height="12" rx="6">
+</rect>
+<circle cx="9" cy="0" r="1.2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk147AAAAA">
+<g transform="translate(219.726563 507.8125) rotate(39) scale(2.56 2.56) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.128906;">
+<rect x="-13" y="-8" width="7" height="16" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<ellipse cx="3" cy="0" rx="9" ry="6.5">
+</ellipse>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk148AAAAA">
+<g transform="translate(280.761719 507.8125) rotate(76) scale(2.133333 2.133333) translate(2.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.354688;">
+<rect x="-8" y="-15" width="7" height="30" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M3-11v22" style="stroke-width: 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk149AAAAA">
+<g transform="translate(341.796875 507.8125) rotate(113) scale(2.461538 2.461538) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.174062;">
+<path d="M-13-13h13c8 0 13 5 13 12c-6 1-8 4-8 9v5h-18z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8-13v26">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk151AAAAA">
+<g transform="translate(463.867188 507.8125) rotate(187) scale(2.636783 2.636783) translate(-0.608 1.42)" style="fill: none; stroke: currentColor; stroke-width: 1.096033;">
+<path d="M0-13c4 0 5 4 9 5s5 6 2 9s0 8-5 9s-7-3-11-2s-8-4-6-8s-2-8 2-10s5-3 9-3z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<circle cx="0" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk152AAAAA">
+<g transform="translate(524.902344 507.8125) rotate(224) scale(1.882353 1.882353) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<rect x="-17" y="-8" width="34" height="16" rx="6" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-7" y="-6" width="12" height="12" rx="2">
+</rect>
+<path d="M5-5l5 1v8l-5 1">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk153AAAAA">
+<g transform="translate(585.9375 507.8125) rotate(261) scale(1.882353 1.882353) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<rect x="-17" y="-8" width="23" height="16" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="8" y="-7" width="9" height="14" rx="3" style="fill: color-mix(in srgb, currentColor 50%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk154AAAAA">
+<g transform="translate(646.972656 507.8125) rotate(298) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<ellipse cx="-2" cy="0" rx="8" ry="3.5" style="fill: color-mix(in srgb, currentColor 40%, var(--plan-paper, var(--ink-surface-1)));">
+</ellipse>
+<path d="M-16 0h6M6 0h10M8-6v12" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk155AAAAA">
+<g transform="translate(708.007813 507.8125) rotate(335) scale(1.882353 1.882353) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17 0h9M8 0h9" style="stroke-width: 3.6;">
+</path>
+<path d="M-8 0h16M7-7v14">
+</path>
+<ellipse cx="-4" cy="0" rx="3.5" ry="2.2" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</ellipse>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk157AAAAA">
+<g transform="translate(830.078125 507.8125) rotate(49) scale(2.466091 2.466091) translate(0.384 1.25)" style="fill: none; stroke: currentColor; stroke-width: 1.171895;">
+<path d="M0-14c3 0 4 2 6 3s5 1 6 4s-1 5 0 7s1 6-2 8s-6 0-8 2s-6 2-8 0s-6-1-7-4s1-5 0-8s0-6 3-7s3-5 10-5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<circle cx="0" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk158AAAAA">
+<g transform="translate(891.113281 507.8125) rotate(86) scale(2.514932 2.514932) translate(0.708 -0.361)" style="fill: none; stroke: currentColor; stroke-width: 1.149136;">
+<path d="M-13 2c-2-5 3-8 6-6c1-4 8-5 10-1c4-2 9 1 8 5c3 3-1 8-5 6c-2 3-8 3-10 0c-4 2-9 0-9-4z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk159AAAAA">
+<g transform="translate(952.148438 507.8125) rotate(123) scale(1.882353 1.882353) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.535312;">
+<path d="M-17 0h34">
+</path>
+<rect x="-16" y="-3" width="6" height="6" style="fill: color-mix(in srgb, currentColor 60%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-3" y="-3" width="6" height="6" style="fill: color-mix(in srgb, currentColor 60%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="10" y="-3" width="6" height="6" style="fill: color-mix(in srgb, currentColor 60%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk161AAAAA">
+<g transform="translate(97.65625 561.523438) rotate(197) scale(3.2 3.2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 0.903125;">
+<rect x="-10" y="-10" width="20" height="20" rx="2">
+</rect>
+<circle cx="0" cy="0" r="6" style="fill: color-mix(in srgb, currentColor 30%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="1.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk162AAAAA">
+<g transform="translate(158.691406 561.523438) rotate(234) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-16" y="-3" width="32" height="6" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-12-8v16M12-8v16M-6-3l-3 6M2-3l-3 6M10-3l-3 6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk164AAAAA">
+<g transform="translate(280.761719 561.523438) rotate(308) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-11" y="-11" width="22" height="22" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-4" cy="-4" r="3.5">
+</circle>
+<circle cx="4" cy="4" r="3.5">
+</circle>
+<path d="M3-6h5M-8 5h5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r4o" gradientUnits="userSpaceOnUse" cx="49.821094" cy="24.414063" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="49.821094,24.414063 290.852771,-43.70711 290.852771,92.535235" style="fill: url(#plan-beam-r4o); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r4p" gradientUnits="userSpaceOnUse" cx="115.226231" cy="37.653993" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="115.226231,37.653993 349.850258,126.307056 265.116171,238.752987" style="fill: url(#plan-beam-r4p); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-teal);">
+<defs>
+<radialGradient id="plan-beam-r4q" gradientUnits="userSpaceOnUse" cx="163.744758" cy="42.037194" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="163.744758,42.037194 296.89329,254.420622 163.374469,292.706527" style="fill: url(#plan-beam-r4q); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<defs>
+<radialGradient id="plan-beam-r4r" gradientUnits="userSpaceOnUse" cx="211.842468" cy="44.952832" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="211.842468,44.952832 191.29482,294.924018 59.848974,244.466685" style="fill: url(#plan-beam-r4r); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<defs>
+<radialGradient id="plan-beam-r4s" gradientUnits="userSpaceOnUse" cx="262.104661" cy="36.072286" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="262.104661,36.072286 95.258165,223.342269 20.646825,103.939166" style="fill: url(#plan-beam-r4s); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r4t" gradientUnits="userSpaceOnUse" cx="328.647105" cy="23.263607" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="328.647105,23.263607 82.595474,70.118263 94.469777,-65.605639" style="fill: url(#plan-beam-r4t); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r4u" gradientUnits="userSpaceOnUse" cx="386.482845" cy="9.693189" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="386.482845,9.693189 160.478257,-99.071353 254.690214,-203.704332" style="fill: url(#plan-beam-r4u); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r4v" gradientUnits="userSpaceOnUse" cx="459.66939" cy="2.818264" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="459.66939,2.818264 344.630236,-220.057918 482.840948,-246.923359" style="fill: url(#plan-beam-r4v); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-teal);">
+<defs>
+<radialGradient id="plan-beam-r50" gradientUnits="userSpaceOnUse" cx="531.274381" cy="11.349449" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="531.274381,11.349449 575.378138,-235.261386 698.453388,-175.233575" style="fill: url(#plan-beam-r50); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<defs>
+<radialGradient id="plan-beam-r51" gradientUnits="userSpaceOnUse" cx="605.539644" cy="14.426272" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="605.539644,14.426272 788.072893,-157.589462 851.993647,-32.137917" style="fill: url(#plan-beam-r51); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<defs>
+<radialGradient id="plan-beam-r52" gradientUnits="userSpaceOnUse" cx="654.633054" cy="25.764797" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="654.633054,25.764797 903.770302,1.94718 880.599383,133.355994" style="fill: url(#plan-beam-r52); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r53">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="708.007813" cy="24.414063" r="66" fill="url(#plan-beam-r53)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r54">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="769.042969" cy="24.414063" r="66" fill="url(#plan-beam-r54)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r55">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="830.078125" cy="24.414063" r="66" fill="url(#plan-beam-r55)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-teal);">
+<defs>
+<radialGradient id="plan-beam-r56">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="891.113281" cy="24.414063" r="66" fill="url(#plan-beam-r56)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<defs>
+<radialGradient id="plan-beam-r57" gradientUnits="userSpaceOnUse" cx="942.054513" cy="21.709403" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="942.054513,21.709403 691.698438,24.414063 726.592121,-105.810938" style="fill: url(#plan-beam-r57); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<defs>
+<radialGradient id="plan-beam-r58" gradientUnits="userSpaceOnUse" cx="23.076541" cy="60.788763" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="23.076541,60.788763 -180.607765,-85.568686 -69.657773,-172.25232" style="fill: url(#plan-beam-r58); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r59">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="97.65625" cy="78.125" r="66" fill="url(#plan-beam-r59)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r5a" gradientUnits="userSpaceOnUse" cx="171.622682" cy="60.326626" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="171.622682,60.326626 256.167489,-175.808876 370.075108,-93.050146" style="fill: url(#plan-beam-r5a); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r5b" gradientUnits="userSpaceOnUse" cx="226.038174" cy="76.195347" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="226.038174,76.195347 437.335704,-57.852283 476.170249,69.169789" style="fill: url(#plan-beam-r5b); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-teal);">
+<defs>
+<radialGradient id="plan-beam-r5c" gradientUnits="userSpaceOnUse" cx="285.025574" cy="79.676916" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="285.025574,79.676916 534.330627,100.309405 489.266632,224.121712" style="fill: url(#plan-beam-r5c); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<defs>
+<radialGradient id="plan-beam-r5d">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="341.796875" cy="78.125" r="66" fill="url(#plan-beam-r5d)">
+</circle>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<defs>
+<radialGradient id="plan-beam-r5e">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="402.832031" cy="78.125" r="66" fill="url(#plan-beam-r5e)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r5f" gradientUnits="userSpaceOnUse" cx="449.433889" cy="94.728611" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="449.433889,94.728611 344.630236,322.596981 238.368968,230.22547" style="fill: url(#plan-beam-r5f); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r5g" gradientUnits="userSpaceOnUse" cx="503.383097" cy="82.699057" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="503.383097,82.699057 282.548569,201.610416 253.27511,63.88962" style="fill: url(#plan-beam-r5g); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r5h" gradientUnits="userSpaceOnUse" cx="574.71191" cy="72.890421" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="574.71191,72.890421 327.537666,32.562137 384.93811,-90.533514" style="fill: url(#plan-beam-r5h); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-teal);">
+<defs>
+<radialGradient id="plan-beam-r5i">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="646.972656" cy="78.125" r="66" fill="url(#plan-beam-r5i)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<defs>
+<radialGradient id="plan-beam-r5j">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="708.007813" cy="78.125" r="66" fill="url(#plan-beam-r5j)">
+</circle>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<defs>
+<radialGradient id="plan-beam-r5k">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="769.042969" cy="78.125" r="66" fill="url(#plan-beam-r5k)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r5l">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="830.078125" cy="78.125" r="66" fill="url(#plan-beam-r5l)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-yellow);">
+<defs>
+<radialGradient id="plan-beam-r5m">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="891.113281" cy="78.125" r="60" fill="url(#plan-beam-r5m)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r5n" gradientUnits="userSpaceOnUse" cx="958.430192" cy="92.923886" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="958.430192,92.923886 1115.961749,287.796477 989.179188,341.612481" style="fill: url(#plan-beam-r5n); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-teal);">
+<defs>
+<radialGradient id="plan-beam-r5o">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="36.621094" cy="131.835938" r="66" fill="url(#plan-beam-r5o)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-purple);">
+<defs>
+<radialGradient id="plan-beam-r5p" gradientUnits="userSpaceOnUse" cx="80.559039" cy="145.680986" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="80.559039,145.680986 -62.221339,351.88856 -150.828114,242.468304" style="fill: url(#plan-beam-r5p); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-text-secondary);">
+<defs>
+<radialGradient id="plan-beam-r5q">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0">
+</stop>
+</radialGradient>
+</defs>
+<circle cx="158.691406" cy="131.835938" r="66" fill="url(#plan-beam-r5q)">
+</circle>
+</g>
+<g style="color: var(--ink-tag-red);">
+<defs>
+<radialGradient id="plan-beam-r5r" gradientUnits="userSpaceOnUse" cx="214.320159" cy="128.050333" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="214.320159,128.050333 -21.398564,44.073569 54.787262,-64.731067" style="fill: url(#plan-beam-r5r); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r5t" gradientUnits="userSpaceOnUse" cx="345.378125" cy="121.435233" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="345.378125,121.435233 360.003315,-128.52828 487.746223,-84.542869" style="fill: url(#plan-beam-r5t); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-teal);">
+<polygon points="38.91325,305.968212 197.12233,575.801551 -17.466219,613.639302" style="fill: currentColor; fill-opacity: 0.14; stroke: currentColor; stroke-opacity: 0.5; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-tag-blue);">
+<defs>
+<radialGradient id="plan-beam-r6v" gradientUnits="userSpaceOnUse" cx="220.110515" cy="539.526788" r="250">
+<stop offset="0" stop-color="currentColor" stop-opacity="0.376">
+</stop>
+<stop offset="1" stop-color="currentColor" stop-opacity="0.062667">
+</stop>
+</radialGradient>
+</defs>
+<polygon points="220.110515,539.526788 153.923807,297.603 294.699923,300.060256" style="fill: url(#plan-beam-r6v); stroke: currentColor; stroke-opacity: 0.35; stroke-width: 1.5;">
+</polygon>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk58AAAAAA">
+<g transform="translate(646.972656 185.546875) rotate(346) scale(1.594203 1.594203) translate(-2 2.5)" style="fill: none; stroke: currentColor; stroke-width: 1.812818;">
+<circle cx="0" cy="0" r="2.5">
+</circle>
+<path d="M2.5 0H13M-1.2 2.2L-6.5 11.3M-1.2-2.2L-9-9M1.5-2L9-13">
+</path>
+<circle cx="10" cy="-14.5" r="1.8">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk59AAAAAA">
+<g transform="translate(708.007813 185.546875) rotate(23) scale(1.582734 1.582734) translate(-4 0)" style="fill: none; stroke: currentColor; stroke-width: 1.825955;">
+<circle cx="0" cy="0" r="4">
+</circle>
+<path d="M4 0H16M-2 3.5L-8 13.9M-2-3.5L-8-13.9" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk60AAAAAA">
+<g transform="translate(769.042969 185.546875) rotate(60) scale(1.269231 1.269231) translate(-3 0)" style="fill: none; stroke: currentColor; stroke-width: 2.27697;">
+<circle cx="0" cy="0" r="2.5">
+</circle>
+<path d="M2.5 0H12M-1.2 2.2L-6 10.4M-1.2-2.2L-6-10.4">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk61AAAAAA">
+<g transform="translate(830.078125 185.546875) rotate(97) scale(1.549296 1.549296) translate(-3.35 0)" style="fill: none; stroke: currentColor; stroke-width: 1.865364;">
+<circle cx="0" cy="0" r="3.5">
+</circle>
+<path d="M3.5 0H11M-1.7 3L-5.5 9.5M-1.7-3L-5.5-9.5">
+</path>
+<circle cx="13.5" cy="0" r="2.5">
+</circle>
+<circle cx="-6.8" cy="11.7" r="2.5">
+</circle>
+<circle cx="-6.8" cy="-11.7" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk62AAAAAA">
+<g transform="translate(891.113281 185.546875) rotate(134) scale(1.396825 1.396825) translate(-0.25 0)" style="fill: none; stroke: currentColor; stroke-width: 2.068977;">
+<circle cx="-13" cy="0" r="2.5">
+</circle>
+<path d="M-10.5 0H10">
+</path>
+<rect x="10" y="-3.5" width="6" height="7" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk63AAAAAA">
+<g transform="translate(952.148438 185.546875) rotate(171) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<path d="M-14 0h28">
+</path>
+<path d="M-15-6v12M15-6v12" style="stroke-width: 3;">
+</path>
+<circle cx="0" cy="0" r="2.5" style="fill: color-mix(in srgb, currentColor 50%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk64AAAAAA">
+<g transform="translate(36.621094 239.257813) rotate(208) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<path d="M-16-4h32M-16 4h32M-16-4l8 8l8-8l8 8l8-8">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk65AAAAAA">
+<g transform="translate(97.65625 239.257813) rotate(245) scale(0.776471 0.776471) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M-13 0h26" style="stroke-width: 2.8;">
+</path>
+<path d="M-13 0l-4-7M-13 0l-4 7M-13 0h5M13 0l4-7M13 0l4 7M13 0h-5" style="stroke-opacity: 0.7;">
+</path>
+<circle cx="-13" cy="0" r="2.5" style="fill: currentColor; fill-opacity: 1;">
+</circle>
+<circle cx="13" cy="0" r="2.5" style="fill: currentColor; fill-opacity: 1;">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk66AAAAAA">
+<g transform="translate(158.691406 239.257813) rotate(282) scale(1.913043 1.913043) translate(-1.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.510682;">
+<path d="M-10-9h12v5h-6v8h6v5h-12z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-4 0h17M13-3v6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk67AAAAAA">
+<g transform="translate(219.726563 239.257813) rotate(319) scale(1.571429 1.571429) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<path d="M-14-6q7-3 14 0t14 0v12q-7 3-14 0t-14 0z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M0-6v12">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk68AAAAAA">
+<g transform="translate(280.761719 239.257813) rotate(356) scale(1.571429 1.571429) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<rect x="-14" y="-9" width="28" height="18" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-5 0h10" style="stroke-width: 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk69AAAAAA">
+<g transform="translate(341.796875 239.257813) rotate(33) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<path d="M-6-15v30M6-15v30M-6-9h12M-6-3h12M-6 3h12M-6 9h12">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk70AAAAAA">
+<g transform="translate(402.832031 239.257813) rotate(70) scale(0.910345 0.910345) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-14" y="-8" width="22" height="16" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M8-5h7v10h-7">
+</path>
+<circle cx="-9" cy="-11" r="2">
+</circle>
+<circle cx="4" cy="-11" r="2">
+</circle>
+<circle cx="-9" cy="11" r="2">
+</circle>
+<circle cx="4" cy="11" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk71AAAAAA">
+<g transform="translate(463.867188 239.257813) rotate(107) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-15" y="-10" width="30" height="20" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M2-7l-6 7h7l-6 7">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk72AAAAAA">
+<g transform="translate(524.902344 239.257813) rotate(144) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-11" y="-11" width="22" height="22" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-4.5" cy="-4.5" r="2.5">
+</circle>
+<circle cx="4.5" cy="-4.5" r="2.5">
+</circle>
+<circle cx="-4.5" cy="4.5" r="2.5">
+</circle>
+<circle cx="4.5" cy="4.5" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk73AAAAAA">
+<g transform="translate(585.9375 239.257813) rotate(181) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-15" y="-9" width="30" height="18" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-9-5v10M-3-5v10M3-5v10M9-5v10">
+</path>
+<path d="M-11-2h4M-5 3h4M1-3h4M7 1h4" style="stroke-width: 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk74AAAAAA">
+<g transform="translate(646.972656 239.257813) rotate(218) scale(2 2) translate(0 -0.5)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<path d="M-16 6c5 0 5-11 10.5-11s5 11 10.5 11s5-11 11-11" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk75AAAAAA">
+<g transform="translate(708.007813 239.257813) rotate(255) scale(0.977778 0.977778) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-13" y="-7" width="23" height="14" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M10-3h4v6h-4M-7-3v6M-2-3v6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk81AAAAAA">
+<g transform="translate(97.65625 292.96875) rotate(117) scale(1.818182 1.818182) translate(-3.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.5895;">
+<path d="M14 0L-7 12.1V-12.1z" style="fill: currentColor; fill-opacity: 0.12;">
+</path>
+<path d="M0 0L14 0M0 0L-7 12.1M0 0L-7-12.1">
+</path>
+<circle cx="0" cy="0" r="3.5" style="fill: color-mix(in srgb, currentColor 50%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk82AAAAAA">
+<g transform="translate(158.691406 292.96875) rotate(154) scale(1.692308 1.692308) translate(-2.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="10">
+</circle>
+<circle cx="0" cy="0" r="4.5" style="fill: color-mix(in srgb, currentColor 40%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M10 0h5M-5-8.7l-2.5-4.3M-5 8.7l-2.5 4.3">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk86AAAAAA">
+<g transform="translate(402.832031 292.96875) rotate(302) scale(1.375 1.375) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M-16-4h32M-16 4h32M-16-7v14M16-7v14">
+</path>
+<rect x="-6" y="-7" width="10" height="14" rx="2" style="fill: color-mix(in srgb, currentColor 40%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk87AAAAAA">
+<g transform="translate(463.867188 292.96875) rotate(339) scale(1.571429 1.571429) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<rect x="-14" y="-10" width="28" height="20" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-10-13h6M4-13h6M-10 13h6M4 13h6" style="stroke-width: 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk88AAAAAA">
+<g transform="translate(524.902344 292.96875) rotate(16) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<path d="M-16-5h32M-16 5h32M-11-8v16M0-8v16M11-8v16">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk89AAAAAA">
+<g transform="translate(585.9375 292.96875) rotate(53) scale(2.064516 2.064516) translate(1.5 1.5)" style="fill: none; stroke: currentColor; stroke-width: 1.399844;">
+<path d="M-15 14A29 29 0 0 1 14-15M-5 14A19 19 0 0 1 14-5M-17 14h14M-8.5-8.5l7.8 7.8M14-17v14">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk90AAAAAA">
+<g transform="translate(646.972656 292.96875) rotate(90) scale(0.713514 0.713514) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M-6 0l-5 7M-6 0l-5-7M-6 0h7" style="stroke-opacity: 0.6;">
+</path>
+<path d="M-17 0H8" style="stroke-width: 2.8;">
+</path>
+<rect x="-19" y="-4" width="5" height="8" rx="1" style="fill: color-mix(in srgb, currentColor 80%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="8" y="-4" width="6" height="8" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M14-3l4-2v10l-4-2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk91AAAAAA">
+<g transform="translate(708.007813 292.96875) rotate(127) scale(1.222222 1.222222) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.364545;">
+<rect x="-18" y="-7" width="12" height="14" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-6-3h11v6h-11zM5-1.5h7v3h-7z">
+</path>
+<rect x="12" y="-4" width="6" height="8" rx="1.5" style="fill: color-mix(in srgb, currentColor 40%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk93AAAAAA">
+<g transform="translate(830.078125 292.96875) rotate(201) scale(1.257143 1.257143) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.298864;">
+<rect x="-17" y="-8" width="24" height="16" rx="5">
+</rect>
+<path d="M-9-8v16M0-8v16">
+</path>
+<rect x="7" y="-4" width="7" height="8" rx="1.5" style="fill: color-mix(in srgb, currentColor 40%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M14-2.5l4-2v9l-4-2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk94AAAAAA">
+<g transform="translate(891.113281 292.96875) rotate(238) scale(1.333333 1.333333) translate(0.5 2)" style="fill: none; stroke: currentColor; stroke-width: 2.1675;">
+<rect x="-17" y="-4" width="20" height="14" rx="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-5 3L9-9" style="stroke-width: 2.6;">
+</path>
+<rect x="8" y="-14" width="8" height="7" rx="1.5" style="fill: color-mix(in srgb, currentColor 50%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk0AAAAAAA">
+<g transform="translate(36.621094 24.414063) rotate(0) scale(0.776471 0.776471) translate(2 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-13" y="-8" width="18" height="16" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M5-8q7 8 0 16M7-9l8-6M7 9l8 6">
+</path>
+<circle cx="-17" cy="0" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk1AAAAAAA">
+<g transform="translate(97.65625 24.414063) rotate(37) scale(1.692308 1.692308) translate(6 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<path d="M-13-6h11l9-7v26l-9-7h-11z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<circle cx="-17" cy="0" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk2AAAAAAA">
+<g transform="translate(158.691406 24.414063) rotate(74) scale(1.833333 1.833333) translate(4 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<path d="M-14-4a5 5 0 0 1 5-5h15v18h-15a5 5 0 0 1-5-5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-2-9v18M6-12v24">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk3AAAAAAA">
+<g transform="translate(219.726563 24.414063) rotate(111) scale(2.378378 2.378378) translate(-0.25 0)" style="fill: none; stroke: currentColor; stroke-width: 1.215114;">
+<rect x="-9" y="-4" width="11" height="8" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M2-4l5-2v12l-5-2M7-6q5 6 0 12">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk4AAAAAAA">
+<g transform="translate(280.761719 24.414063) rotate(148) scale(1.517241 1.517241) translate(1.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.904773;">
+<rect x="-16" y="-5" width="20" height="10" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M4-7h9v14h-9zM-9-8v16M-4-8v16">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk5AAAAAAA">
+<g transform="translate(341.796875 24.414063) rotate(185) scale(0.942857 0.942857) translate(3 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-8" y="-10" width="15" height="20" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M7-10q8 10 0 20M-11 0h3">
+</path>
+<rect x="-17" y="-5" width="6" height="10" rx="1">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk6AAAAAAA">
+<g transform="translate(402.832031 24.414063) rotate(222) scale(1.466667 1.466667) translate(-1 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<circle cx="-3" cy="0" r="11" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M8-11v22M11-7h5M11 0h5M11 7h5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk7AAAAAAA">
+<g transform="translate(463.867188 24.414063) rotate(259) scale(1.294118 1.294118) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 2.233182;">
+<circle cx="-14" cy="0" r="4" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<rect x="-8" y="-4.5" width="18" height="9" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M10-6l6-3v18l-6-3M-10 0h2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk8AAAAAAA">
+<g transform="translate(524.902344 24.414063) rotate(296) scale(1.571429 1.571429) translate(1.25 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<rect x="3" y="-14" width="5" height="28" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M3-7h-7v14h7">
+</path>
+<circle cx="-8" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk9AAAAAAA">
+<g transform="translate(585.9375 24.414063) rotate(333) scale(1.833333 1.833333) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<rect x="-13" y="-6" width="15" height="12" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M2-6l9-5v22l-9-5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk10AAAAAA">
+<g transform="translate(646.972656 24.414063) rotate(10) scale(0.942857 0.942857) translate(3.25 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M5-14q-6 14 0 28" style="stroke-width: 3.5;">
+</path>
+<path d="M1 0h-7">
+</path>
+<circle cx="-9" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk11AAAAAA">
+<g transform="translate(708.007813 24.414063) rotate(47) scale(1.375 1.375) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<rect x="-3" y="-16" width="6" height="32" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk12AAAAAA">
+<g transform="translate(769.042969 24.414063) rotate(84) scale(1.466667 1.466667) translate(-1.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="0" y="-15" width="6" height="30" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M0-9h-6v18h6">
+</path>
+<path d="M9-13v5M9-5.5v4.5M9 1v4.5M9 8v5" style="stroke-width: 2.4;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk13AAAAAA">
+<g transform="translate(830.078125 24.414063) rotate(121) scale(1.833333 1.833333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<circle cx="0" cy="0" r="12" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M-12 0h24M0-12v24" style="stroke-opacity: 0.5;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk14AAAAAA">
+<g transform="translate(891.113281 24.414063) rotate(158) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="13" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="7">
+</circle>
+<circle cx="0" cy="0" r="1.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk15AAAAAA">
+<g transform="translate(952.148438 24.414063) rotate(195) scale(1.1 1.1) translate(1.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.627273;">
+<path d="M-11-12h12l7 5v14l-7 5h-12z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-5-12v24">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk16AAAAAA">
+<g transform="translate(36.621094 78.125) rotate(232) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="13" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="7" style="fill: var(--plan-paper, var(--ink-surface-1));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk17AAAAAA">
+<g transform="translate(97.65625 78.125) rotate(269) scale(1.833333 1.833333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<circle cx="0" cy="0" r="7" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="2.5" style="fill: color-mix(in srgb, currentColor 80%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M0-12v2M0 10v2M-12 0h2M10 0h2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk18AAAAAA">
+<g transform="translate(158.691406 78.125) rotate(306) scale(1.466667 1.466667) translate(2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<circle cx="0" cy="0" r="13">
+</circle>
+<circle cx="0" cy="0" r="3.5" style="fill: color-mix(in srgb, currentColor 50%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M-13 0h-4">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk19AAAAAA">
+<g transform="translate(219.726563 78.125) rotate(343) scale(1.466667 1.466667) translate(-1.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-3" y="-15" width="9" height="30" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="1.5" cy="-9" r="2.5">
+</circle>
+<circle cx="1.5" cy="0" r="2.5">
+</circle>
+<circle cx="1.5" cy="9" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk20AAAAAA">
+<g transform="translate(280.761719 78.125) rotate(20) scale(0.825 0.825) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M-5-16h6l5 4v24l-5 4h-6z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-5-8h11M-5 0h11M-5 8h11">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk21AAAAAA">
+<g transform="translate(341.796875 78.125) rotate(57) scale(1.375 1.375) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<ellipse cx="0" cy="0" rx="16" ry="10" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</ellipse>
+<path d="M-16 0h32M0-10v20" style="stroke-opacity: 0.45;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk22AAAAAA">
+<g transform="translate(402.832031 78.125) rotate(94) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-15" y="-9" width="30" height="18" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-8" cy="0" r="2.5">
+</circle>
+<circle cx="0" cy="0" r="2.5">
+</circle>
+<circle cx="8" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk23AAAAAA">
+<g transform="translate(463.867188 78.125) rotate(131) scale(1.571429 1.571429) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<rect x="-14" y="-14" width="28" height="28" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-7-7h14M-7 0h14M-7 7h14" style="stroke-width: 3; stroke-dasharray: 0.1 7;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk24AAAAAA">
+<g transform="translate(524.902344 78.125) rotate(168) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<circle cx="0" cy="0" r="7" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M0-15v4M0 11v4M-15 0h4M11 0h4M-10.6-10.6l2.8 2.8M7.8 7.8l2.8 2.8M-10.6 10.6l2.8-2.8M7.8-7.8l2.8-2.8">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk25AAAAAA">
+<g transform="translate(585.9375 78.125) rotate(205) scale(1.019606 1.019606) translate(-0.852098 0.395012)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M5-13a13 13 0 1 0 8 19a11 11 0 0 1-8-19z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk26AAAAAA">
+<g transform="translate(646.972656 78.125) rotate(242) scale(2.2 2.2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.313636;">
+<circle cx="0" cy="0" r="4.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M0-10v2M0 8v2M-10 0h2M8 0h2M-7-7l1.5 1.5M5.5 5.5L7 7M-7 7l1.5-1.5M5.5-5.5L7-7">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk27AAAAAA">
+<g transform="translate(708.007813 78.125) rotate(279) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<circle cx="0" cy="0" r="10" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="3">
+</circle>
+<path d="M0-15v2M0 13v2M-15 0h2M13 0h2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk28AAAAAA">
+<g transform="translate(769.042969 78.125) rotate(316) scale(1.692308 1.692308) translate(-3 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="10" style="stroke-dasharray: 3 3;">
+</circle>
+<circle cx="0" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M10 0h6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk29AAAAAA">
+<g transform="translate(830.078125 78.125) rotate(353) scale(2 2) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<circle cx="0" cy="0" r="5.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="1.8" style="fill: currentColor; fill-opacity: 1;">
+</circle>
+<path d="M0-11v2M0 9v2M-11 0h2M9 0h2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk30AAAAAA">
+<g transform="translate(891.113281 78.125) rotate(30) scale(1.015385 1.015385) translate(0 1.5)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M0-14c9 8 8 17 0 20c-8-3-9-12 0-20z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M0-3c3 3 3 6 0 7c-3-1-3-4 0-7zM-13 11h26">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk31AAAAAA">
+<g transform="translate(952.148438 78.125) rotate(67) scale(1.692308 1.692308) translate(-3.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<rect x="-6" y="-13" width="5" height="26" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M3-10l9-3M3 0h10M3 10l9 3" style="stroke-opacity: 0.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk32AAAAAA">
+<g transform="translate(36.621094 131.835938) rotate(104) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-15" y="-8" width="30" height="16" rx="8">
+</rect>
+<path d="M-9 3l4-6 4 6 4-6 4 6" style="stroke-width: 2.4;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk33AAAAAA">
+<g transform="translate(97.65625 131.835938) rotate(141) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<path d="M-15-10h7a7 7 0 0 1 7 7v6a7 7 0 0 1-7 7h-7z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M3-7l12-4M3 7l12 4M4 0h11" style="stroke-opacity: 0.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk34AAAAAA">
+<g transform="translate(158.691406 131.835938) rotate(178) scale(1.517241 1.517241) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.904773;">
+<circle cx="-12" cy="0" r="3">
+</circle>
+<path d="M-9 0h13">
+</path>
+<ellipse cx="9" cy="0" rx="5" ry="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</ellipse>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk35AAAAAA">
+<g transform="translate(219.726563 131.835938) rotate(215) scale(0.825 0.825) translate(-4 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M-4-5l13-11v32l-13-11z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M12-16v32" style="stroke-dasharray: 2 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk36AAAAAA">
+<g transform="translate(280.761719 131.835938) rotate(252) scale(1.466667 1.466667) translate(-3 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<path d="M-4-5l9-10l5 5v20l-5 5l-9-10z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk37AAAAAA">
+<g transform="translate(341.796875 131.835938) rotate(289) scale(1.375 1.375) translate(-4 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M-4-4q10-3 16-12v32q-6-9-16-12z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk38AAAAAA">
+<g transform="translate(402.832031 131.835938) rotate(326) scale(1.466667 1.466667) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-4" y="-15" width="8" height="30" rx="1">
+</rect>
+<path d="M-4-9h8M-4-3h8M-4 3h8M-4 9h8M0-15v30">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk39AAAAAA">
+<g transform="translate(463.867188 131.835938) rotate(3) scale(1.375 1.375) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M-4-8v16">
+</path>
+<path d="M-4-8l12-8M-4 8l12 8" style="stroke-width: 3;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk40AAAAAA">
+<g transform="translate(524.902344 131.835938) rotate(40) scale(1.2 1.2) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 2.408333;">
+<path d="M-12-8h8l14 5v6l-14 5h-8z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk41AAAAAA">
+<g transform="translate(585.9375 131.835938) rotate(77) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<rect x="-2.5" y="-13" width="5" height="26" rx="1" style="stroke: var(--ink-tag-orange); fill: var(--ink-tag-orange); fill-opacity: 0.7;">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk42AAAAAA">
+<g transform="translate(646.972656 131.835938) rotate(114) scale(1.833333 1.833333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<circle cx="0" cy="0" r="12">
+</circle>
+<path d="M-8.5-8.5l17 17M-12 0l12 12M0-12l12 12M-8.5 8.5l17-17" style="stroke-width: 1.2; stroke-opacity: 0.55;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk43AAAAAA">
+<g transform="translate(708.007813 131.835938) rotate(151) scale(1.833333 1.833333) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<circle cx="0" cy="0" r="12">
+</circle>
+<path d="M-6-6h5v5h-5zM1 1h5v5h-5zM2-7l4 4-4 0z" style="fill: color-mix(in srgb, currentColor 50%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk44AAAAAA">
+<g transform="translate(769.042969 131.835938) rotate(188) scale(1.375 1.375) translate(5.75 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M0-16v32" style="stroke-width: 4;">
+</path>
+<circle cx="-9" cy="10" r="2.5">
+</circle>
+<path d="M-6.5 10H0">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk45AAAAAA">
+<g transform="translate(830.078125 131.835938) rotate(225) scale(0.825 0.825) translate(0.75 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M0-6v22M0-6l10-10" style="stroke-width: 4;">
+</path>
+<circle cx="-9" cy="10" r="2.5">
+</circle>
+<path d="M-6.5 10H0">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk46AAAAAA">
+<g transform="translate(891.113281 131.835938) rotate(262) scale(1.222222 1.222222) translate(4.25 0)" style="fill: none; stroke: currentColor; stroke-width: 2.364545;">
+<path d="M2-18v36" style="stroke-width: 2.6;">
+</path>
+<circle cx="-8" cy="12" r="2.5">
+</circle>
+<path d="M-5.5 12H2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk47AAAAAA">
+<g transform="translate(952.148438 131.835938) rotate(299) scale(1.375 1.375) translate(5.75 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M0-16v32" style="stroke-width: 4; stroke-dasharray: 1.5 2.5; stroke-linecap: butt;">
+</path>
+<circle cx="-9" cy="10" r="2.5">
+</circle>
+<path d="M-6.5 10H-2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk48AAAAAA">
+<g transform="translate(36.621094 185.546875) rotate(336) scale(1.6 1.6) translate(0.25 -1.75)" style="fill: none; stroke: currentColor; stroke-width: 1.80625;">
+<circle cx="5" cy="-7" r="5" style="fill: color-mix(in srgb, currentColor 80%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M5-2v8l-11 6">
+</path>
+<circle cx="-8" cy="13" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk49AAAAAA">
+<g transform="translate(97.65625 185.546875) rotate(13) scale(1.375 1.375) translate(5.75 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<path d="M0-16v7M0-5v4M0 3v6M0 13v3" style="stroke-width: 4; stroke-linecap: butt;">
+</path>
+<circle cx="-9" cy="10" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk50AAAAAA">
+<g transform="translate(158.691406 185.546875) rotate(50) scale(0.910345 0.910345) translate(0 -0.5)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M0 15V-9M0 4l-8-8M0 0l8-7M-8-4l-5-2M-8-4l1-7M8-7l5-1M8-7l-1-7M0-9l-3-5M0-9l3-5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk51AAAAAA">
+<g transform="translate(219.726563 185.546875) rotate(87) scale(1.466667 1.466667) translate(0 3)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<path d="M-15-3q3.75 8 7.5 0t7.5 0t7.5 0t7.5 0" style="stroke-width: 3.2;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk52AAAAAA">
+<g transform="translate(280.761719 185.546875) rotate(124) scale(1.777778 1.777778) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.625625;">
+<path d="M0-14v28" style="stroke-dasharray: 3 3;">
+</path>
+<circle cx="0" cy="-16" r="2">
+</circle>
+<circle cx="0" cy="16" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk53AAAAAA">
+<g transform="translate(341.796875 185.546875) rotate(161) scale(2.206897 2.206897) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.309531;">
+<rect x="-12" y="-12" width="24" height="24" style="stroke-dasharray: 3 3; fill: currentColor; fill-opacity: 0.1;">
+</rect>
+<circle cx="-12" cy="-12" r="2.5">
+</circle>
+<circle cx="12" cy="-12" r="2.5">
+</circle>
+<circle cx="-12" cy="12" r="2.5">
+</circle>
+<circle cx="12" cy="12" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk54AAAAAA">
+<g transform="translate(402.832031 185.546875) rotate(198) scale(1.375 1.375) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<rect x="-2.5" y="-16" width="5" height="32" rx="1" style="fill: color-mix(in srgb, currentColor 85%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk55AAAAAA">
+<g transform="translate(463.867188 185.546875) rotate(235) scale(1.015385 1.015385) translate(2 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<path d="M-9-13L5 0L-9 13" style="stroke-width: 3.2;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk56AAAAAA">
+<g transform="translate(524.902344 185.546875) rotate(272) scale(1.571429 1.571429) translate(-4.25 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<path d="M4-14q-9 14 0 28" style="stroke-width: 3;">
+</path>
+<path d="M8-8l-5 3M9 0H3M8 8l-5-3" style="stroke-opacity: 0.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk57AAAAAA">
+<g transform="translate(585.9375 185.546875) rotate(309) scale(1.466667 1.466667) translate(-2.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<path d="M-2-15v30" style="stroke-width: 2.4;">
+</path>
+<path d="M2-10l5-4M2-2l5-4M2 6l5-4M2 14l5-4" style="stroke-opacity: 0.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk76AAAAAA">
+<g transform="translate(769.042969 239.257813) rotate(292) scale(1.660377 1.660377) translate(-0.25 0)" style="fill: none; stroke: currentColor; stroke-width: 1.740568;">
+<rect x="-13" y="-7" width="16" height="14" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M7-6q4 3 0 6t0 6M12-4q3 2 0 4t0 4">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk77AAAAAA">
+<g transform="translate(830.078125 239.257813) rotate(329) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="13">
+</circle>
+<path d="M0 0c-1-8 5-12 8-8s-3 7-8 8zM0 0c7 4 7 11 2 12s-5-6-2-12zM0 0c-6 4-13 1-11-4s7 0 11 4z" style="fill: color-mix(in srgb, currentColor 35%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk78AAAAAA">
+<g transform="translate(891.113281 239.257813) rotate(6) scale(1.571429 1.571429) translate(0 -0.5)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<path d="M-14-10h28" style="stroke-width: 3;">
+</path>
+<path d="M-9-5l-2 6M-2-5l-2 6M5-5l-2 6M12-5l-2 6M-6 5l-2 6M1 5l-2 6M8 5l-2 6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk79AAAAAA">
+<g transform="translate(952.148438 239.257813) rotate(43) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<path d="M0-13v26M-11.3-6.5l22.6 13M-11.3 6.5l22.6-13M-3-10l3 3l3-3M-3 10l3-3l3 3">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk80AAAAAA">
+<g transform="translate(36.621094 292.96875) rotate(80) scale(0.8 0.8) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-13" y="-7.5" width="17" height="15" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="-17" y="-5" width="4" height="10" rx="1">
+</rect>
+<rect x="4" y="-4.5" width="6" height="9">
+</rect>
+<path d="M10-5.5l6-3.5v18l-6-3.5z" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</path>
+<path d="M-8 0h8" style="stroke-width: 2.6;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk83AAAAAA">
+<g transform="translate(219.726563 292.96875) rotate(191) scale(1.517241 1.517241) translate(-2 -0.5)" style="fill: none; stroke: currentColor; stroke-width: 1.904773;">
+<rect x="-10" y="-9" width="9" height="24" rx="4.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-3" cy="4" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<rect x="-2" y="-13" width="11" height="8" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M9-11.5l5-2.5v11l-5-2.5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk84AAAAAA">
+<g transform="translate(280.761719 292.96875) rotate(228) scale(1.692308 1.692308) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<circle cx="0" cy="0" r="13" style="stroke-dasharray: 14 6;">
+</circle>
+<rect x="-7" y="-5" width="11" height="10" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M4-3l5-2v10l-5-2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk85AAAAAA">
+<g transform="translate(341.796875 292.96875) rotate(265) scale(0.851613 0.851613) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-15" y="-12" width="8" height="24" rx="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-9" cy="0" r="4.5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M-5 5q4 5 8 1">
+</path>
+<rect x="3" y="0" width="9" height="8" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M12 1l4-2v10l-4-2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk92AAAAAA">
+<g transform="translate(769.042969 292.96875) rotate(164) scale(1.571429 1.571429) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.839091;">
+<circle cx="-9" cy="-9" r="5">
+</circle>
+<circle cx="9" cy="-9" r="5">
+</circle>
+<circle cx="-9" cy="9" r="5">
+</circle>
+<circle cx="9" cy="9" r="5">
+</circle>
+<path d="M-9-9L9 9M-9 9L9-9">
+</path>
+<rect x="-3.5" y="-3.5" width="7" height="7" rx="1.5" style="fill: color-mix(in srgb, currentColor 80%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk96AAAAAA">
+<g transform="translate(36.621094 346.679688) rotate(312) scale(2 2) translate(-4.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.445;">
+<rect x="-4" y="-11" width="5" height="22" rx="1" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M1 0h7">
+</path>
+<circle cx="10.5" cy="0" r="2.5">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk100AAAAA">
+<g transform="translate(280.761719 346.679688) rotate(100) scale(0.942857 0.942857) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<circle cx="0" cy="0" r="4" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="0" r="9" style="stroke-dasharray: 2 3;">
+</circle>
+<circle cx="0" cy="0" r="14" style="stroke-dasharray: 2 4; stroke-opacity: 0.5;">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk101AAAAA">
+<g transform="translate(341.796875 346.679688) rotate(137) scale(1.6 1.6) translate(-1.75 0)" style="fill: none; stroke: currentColor; stroke-width: 1.80625;">
+<rect x="-12" y="-7" width="9" height="14" rx="1.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M-3-7l8-5v24l-8-5M9-5q4 5 0 10M12.5-8q6 8 0 16">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk102AAAAA">
+<g transform="translate(402.832031 346.679688) rotate(174) scale(1.692308 1.692308) translate(1 0)" style="fill: none; stroke: currentColor; stroke-width: 1.707727;">
+<rect x="-14" y="-7" width="14" height="14" rx="2" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M0-10L12 0L0 10z" style="fill: currentColor; fill-opacity: 0.1;">
+</path>
+<path d="M-10-3h6M-10 0h6M-10 3h6">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk163AAAAA">
+<g transform="translate(219.726563 561.523438) rotate(271) scale(1.294118 1.294118) translate(2 0)" style="fill: none; stroke: currentColor; stroke-width: 2.233182;">
+<rect x="-13" y="-8" width="18" height="16" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<path d="M5-8q7 8 0 16M7-9l8-6M7 9l8 6">
+</path>
+<circle cx="-17" cy="0" r="2">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk98AAAAAA">
+<g transform="translate(158.691406 346.679688) rotate(26) scale(1.257143 1.257143) translate(-0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.298864;">
+<circle cx="-12" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 40%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M-7 0H9">
+</path>
+<rect x="9" y="-2.5" width="9" height="5" rx="2.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk103AAAAA">
+<g transform="translate(463.867188 346.679688) rotate(211) scale(1.62963 1.62963) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.773409;">
+<rect x="-6.5" y="-13.5" width="9" height="27" rx="4.5" style="stroke-dasharray: 3 2.5;">
+</rect>
+<circle cx="1" cy="0" r="5.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk109AAAAA">
+<g transform="translate(830.078125 346.679688) rotate(73) scale(1.62963 1.62963) translate(-2.25 0)" style="fill: none; stroke: currentColor; stroke-width: 1.773409;">
+<rect x="-6.5" y="-13.5" width="9" height="27" rx="4.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="1" cy="0" r="5.5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M6.5-2.5L11 0L6.5 2.5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk110AAAAA">
+<g transform="translate(891.113281 346.679688) rotate(110) scale(0.977778 0.977778) translate(-2.25 0)" style="fill: none; stroke: currentColor; stroke-width: 2.72;">
+<rect x="-6.5" y="-13.5" width="9" height="27" rx="4.5">
+</rect>
+<circle cx="1" cy="0" r="5.5" style="fill: color-mix(in srgb, currentColor 30%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M6.5-2.5L11 0L6.5 2.5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk111AAAAA">
+<g transform="translate(952.148438 346.679688) rotate(147) scale(2.514286 2.514286) translate(-1.25 0)" style="fill: none; stroke: currentColor; stroke-width: 1.149432;">
+<circle cx="-1" cy="0" r="6.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M5.5-2.5L10 0L5.5 2.5">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk112AAAAA">
+<g transform="translate(36.621094 400.390625) rotate(184) scale(1.833333 1.833333) translate(0.5 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<circle cx="-7" cy="-6" r="5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="6" cy="-7" r="5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<circle cx="0" cy="7" r="5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-red);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk113AAAAA">
+<g transform="translate(97.65625 400.390625) rotate(221) scale(1.833333 1.833333) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.576364;">
+<rect x="-8" y="-12" width="8" height="24" rx="4" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="-10" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<rect x="0" y="4" width="12" height="6" rx="3" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="-2" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-yellow);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk114AAAAA">
+<g transform="translate(158.691406 400.390625) rotate(258) scale(1.375 1.375) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<rect x="-16" y="-6" width="22" height="12" rx="6" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="11" cy="0" r="5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+</g>
+</g>
+<g style="color: var(--ink-tag-blue);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk115AAAAA">
+<g transform="translate(219.726563 400.390625) rotate(295) scale(1.466667 1.466667) translate(-2 0)" style="fill: none; stroke: currentColor; stroke-width: 1.970455;">
+<rect x="-4.5" y="-9" width="6.5" height="18" rx="3.25" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="1" cy="0" r="4" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M5-2L8.5 0L5 2">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-teal);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk116AAAAA">
+<g transform="translate(280.761719 400.390625) rotate(332) scale(1.419355 1.419355) translate(1.5 0)" style="fill: none; stroke: currentColor; stroke-width: 2.036136;">
+<rect x="-3.5" y="-13.5" width="9" height="27" rx="4.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</rect>
+<circle cx="4" cy="0" r="5.5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M9.5-2.5L14 0L9.5 2.5">
+</path>
+<path d="M-7-8h-8M-7 0h-10M-7 8h-8">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-tag-purple);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk117AAAAA">
+<g transform="translate(341.796875 400.390625) rotate(9) scale(2.444444 2.444444) translate(0 0)" style="fill: none; stroke: currentColor; stroke-width: 1.182273;">
+<path d="M-8-9h16M0-9v18" style="stroke-width: 3.5;">
+</path>
+</g>
+</g>
+<g style="color: var(--ink-text-secondary);" stroke-linecap="round" stroke-linejoin="round" data-icon="iconk118AAAAA">
+<g transform="translate(402.832031 400.390625) rotate(46) scale(1.375 1.375) translate(2 0)" style="fill: none; stroke: currentColor; stroke-width: 2.101818;">
+<ellipse cx="-3" cy="0" rx="10" ry="5.5" style="fill: color-mix(in srgb, currentColor 22%, var(--plan-paper, var(--ink-surface-1)));">
+</ellipse>
+<circle cx="9" cy="0" r="4.5" style="fill: color-mix(in srgb, currentColor 55%, var(--plan-paper, var(--ink-surface-1)));">
+</circle>
+<path d="M-13 0q-4-1-5-6M11-4l3-4M11 4l3 4">
+</path>
+</g>
+</g>
+</svg>

@@ -306,6 +306,25 @@ export function beamWarmth(kelvin: number | undefined): number | null {
   return Math.min(1, Math.max(0, (6500 - kelvin) / 4500));
 }
 
+/** How dense a light's beam or glow is drawn: its intensity, 0.8 when not set. */
+export function beamStrength(icon: Pick<PlanIcon, 'intensity'>): number {
+  return 0.06 + 0.16 * (icon.intensity ?? 0.8);
+}
+
+/**
+ * The opacities of a light's beam (`beam`: true) or a camera's view cone, as iconCone tells them
+ * apart: the fill and the edge's stroke, in the beam's colour over the paper. Exports fill a beam
+ * flat at `fill`; the board shades it from twice `fill` at the light to a third of it at the end.
+ * A glow is not a cone: the board fades it from twice beamStrength to nothing, exports stack four
+ * discs at beamStrength / 2.5 each.
+ */
+export function beamOpacity(
+  icon: Pick<PlanIcon, 'intensity'>,
+  beam: boolean,
+): { fill: number; stroke: number } {
+  return beam ? { fill: beamStrength(icon), stroke: 0.35 } : { fill: 0.14, stroke: 0.5 };
+}
+
 /** The icon with the end of its cone dragged to `p` (view units): only its length changes. */
 export function withReachAt(icon: PlanIcon, p: Point, sensor?: PlanSensor): PlanIcon {
   const cone = iconCone(icon, sensor);
