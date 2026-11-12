@@ -302,6 +302,13 @@
       "when": 1794481638972,
       "tag": "0042_board_writer",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794486795479,
+      "tag": "0043_board_views",
+      "breakpoints": true
     }
   ]
 }
