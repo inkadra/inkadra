@@ -32,12 +32,14 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api.ts';
 import { refreshClassifications } from '../../lib/classifications.ts';
+import { useModules } from '../../lib/modules.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { ColorPicker } from '../ColorPicker.tsx';
 import { swatchColors } from '../colors.ts';
@@ -145,8 +147,18 @@ export function ExportDialog(props: ExportDialogProps) {
   const film = source !== 'canvas';
   const [pageCount, setPageCount] = useState(0);
   const [sheetCount, setSheetCount] = useState(0);
-  const [req, setReq] = useState<ExportRequest>(() =>
+  const [picked, setReq] = useState<ExportRequest>(() =>
     initialExportState(null, source, props.initialWhat, i18n.language),
+  );
+  // The contents of a module that is off are not offered (decision 0121); the saved choice stays.
+  const { offers } = useModules();
+  const req = useMemo(
+    () => ({
+      ...picked,
+      callSheet: picked.callSheet && offers('exports', 'callSheet'),
+      approvedOnly: picked.approvedOnly && offers('exports', 'approvedOnly'),
+    }),
+    [picked, offers],
   );
   const [image, setImage] = useState<ImageOptions>(() => initialImage(null, imageEntry));
   const [imageIndex, setImageIndex] = useState(0);
@@ -351,7 +363,7 @@ export function ExportDialog(props: ExportDialogProps) {
       downloadBlob(blob, name);
       // Editors keep their last choices for the whole project; a failure costs only that.
       if (settings?.canEdit) {
-        const { what: _what, logo: _logo, theme: _theme, ...chosen } = req;
+        const { what: _what, logo: _logo, theme: _theme, ...chosen } = picked;
         // From a card's menu, a picture leaves the dialog's first format alone.
         const picture = asImage
           ? {
@@ -429,7 +441,7 @@ export function ExportDialog(props: ExportDialogProps) {
     }
   }
 
-  const whatOptions: ExportWhat[] = film
+  const allWhat: ExportWhat[] = film
     ? [
         'storyboard',
         'shotlist',
@@ -437,6 +449,7 @@ export function ExportDialog(props: ExportDialogProps) {
         ...(asImage && props.selection.size ? ['selection' as const] : []),
       ]
     : ['board', 'selection', 'visible'];
+  const whatOptions = allWhat.filter((w) => w === req.what || offers('exports', w));
   const whatLabel = (w: ExportWhat) => {
     if (w !== 'selection') return t(`export.what${w[0]?.toUpperCase()}${w.slice(1)}`);
     const name = props.selection.size === 1 ? singleName(store, props.selection, t) : null;
@@ -631,7 +644,7 @@ export function ExportDialog(props: ExportDialogProps) {
       }
     />
   );
-  const approvedField = framesOf(req.what) && (
+  const approvedField = framesOf(req.what) && offers('exports', 'approvedOnly') && (
     <Check checked={req.approvedOnly} onChange={(v) => set('approvedOnly', v)}>
       {t('export.approvedOnly')}
     </Check>
@@ -836,14 +849,16 @@ export function ExportDialog(props: ExportDialogProps) {
                       >
                         {t('export.comments')}
                       </Check>
-                      <Check
-                        checked={req.callSheet && teamPdf(req)}
-                        disabled={client}
-                        onChange={(v) => set('callSheet', v)}
-                        hint={client ? t('export.teamOnlyHint') : undefined}
-                      >
-                        {t('export.callSheet')}
-                      </Check>
+                      {offers('exports', 'callSheet') && (
+                        <Check
+                          checked={req.callSheet && teamPdf(req)}
+                          disabled={client}
+                          onChange={(v) => set('callSheet', v)}
+                          hint={client ? t('export.teamOnlyHint') : undefined}
+                        >
+                          {t('export.callSheet')}
+                        </Check>
+                      )}
                       <div className="export__logo">
                         <span className="export__logo-label">{t('export.logo')}</span>
                         {req.logo && (

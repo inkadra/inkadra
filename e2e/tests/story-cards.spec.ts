@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { addFromBar } from '../helpers/phone-board.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -201,8 +202,7 @@ for (const [device, width, height] of [
 
       if (device === 'desktop' && theme === 'dark') {
         // A new character from the Canvas menu opens its sheet with the name to type.
-        await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-        await page.getByRole('menuitem', { name: 'Personaggio' }).click();
+        await addFromBar(page, 'Personaggio');
         const fresh = page.getByRole('complementary', { name: 'Scheda personaggio' });
         await expect(fresh.getByLabel('Nome', { exact: true })).toBeFocused();
         await page.keyboard.type('Bigliettaia');

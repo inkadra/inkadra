@@ -1,4 +1,4 @@
-import type { BoardKind, Project } from '@inkadra/shared';
+import { type BoardKind, offered, type Project } from '@inkadra/shared';
 import { boardPath, createBoard, loadBoards } from '../board/boards.ts';
 import type { ProjectMenuItem } from './ProjectAppearance.tsx';
 
@@ -27,15 +27,20 @@ export async function addBoard(
   return boardPath(project.id, board.id, project.rootBoardId);
 }
 
-/** "Add storyboard" and "Add moodboard" for the project ⋯ menu; editors only. */
+/**
+ * "Add storyboard" and "Add moodboard" for the project ⋯ menu; editors only, and only the kinds
+ * of modules that are on for this person (`off`, decision 0121).
+ */
 export function addBoardItems(
   project: Project,
   t: (key: string) => string,
   go: (to: string) => void,
+  off: readonly string[],
   onError?: () => void,
 ): ProjectMenuItem[] {
   if (project.myRole !== 'owner' && project.myRole !== 'editor') return [];
-  return (['storyboard', 'moodboard'] as const).map((kind) => ({
+  const kinds = (['storyboard', 'moodboard'] as const).filter((k) => offered(off, 'kinds', k));
+  return kinds.map((kind) => ({
     label: t(kind === 'storyboard' ? 'nav.addStoryboard' : 'nav.addMoodboard'),
     action: () => void addBoard(project, kind, t).then(go, onError),
   }));

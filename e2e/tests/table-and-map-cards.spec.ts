@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { createElement, newTable, tableGrid } from '@inkadra/canvas-core';
 import { createBoardDoc, type Element, readElement, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { addFromBar } from '../helpers/phone-board.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -209,7 +210,7 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(table.locator('tr')).toHaveCount(5);
 
       // A map card from the dock: the link is placed and its map made by the server.
-      await page.getByRole('button', { name: 'Mappa', exact: true }).click();
+      await addFromBar(page, 'Mappa');
       await page
         .getByLabel('Indirizzo o link di una mappa')
         .fill('https://www.google.com/maps/place/Soglio/@46.3407,9.5383,15z');

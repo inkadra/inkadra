@@ -20,6 +20,7 @@ export * from './guests.ts';
 export * from './instance.ts';
 export * from './instance-admin.ts';
 export * from './maps.ts';
+export * from './modules.ts';
 export * from './notification-words.ts';
 export * from './notifications.ts';
 export * from './permissions.ts';

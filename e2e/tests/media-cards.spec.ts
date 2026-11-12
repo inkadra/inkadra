@@ -8,6 +8,7 @@ import { createElement } from '@inkadra/canvas-core';
 import { initBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
+import { addFromBar } from '../helpers/phone-board.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.
@@ -395,7 +396,7 @@ test('audio cards show their waveform, play one at a time, and voice notes recor
   }
 
   // A voice note from the dock becomes an audio card.
-  await page.getByRole('button', { name: 'Nota vocale', exact: true }).click();
+  await addFromBar(page, 'Nota vocale');
   const pill = page.locator('.voicenote');
   await expect(pill).toContainText('Registrazione');
   await expect(pill.locator('.voicenote__time')).toHaveText('0:01', { timeout: 5000 });

@@ -66,6 +66,7 @@ import { canCreateProjects } from '../lib/access.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
+import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import {
@@ -240,6 +241,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const setup = useInstanceSetup();
   const { t } = useTranslation();
   const { user, instance, refresh } = useSession();
+  const { modulesOff } = usePreferences();
   const canCreate = canCreateProjects(user);
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
@@ -481,10 +483,15 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <ProjectNavItem
         project={p}
         onDropProject={onDropProject}
-        extra={addBoardItems(p, t, (to) => {
-          setDrawerOpen(false);
-          navigate(to);
-        })}
+        extra={addBoardItems(
+          p,
+          t,
+          (to) => {
+            setDrawerOpen(false);
+            navigate(to);
+          },
+          modulesOff,
+        )}
         active={!inboxOpen && p.id === projectId && !boardId && rootViews.length < 2}
         onClick={go(`/p/${p.id}`)}
       />

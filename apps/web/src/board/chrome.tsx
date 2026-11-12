@@ -1,5 +1,6 @@
 import type { Alignment, Point, Rect, TidyGap, Viewport } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
+import { type ModuleId, moduleOf } from '@inkadra/shared';
 import {
   type ContentKind,
   Icon,
@@ -17,6 +18,7 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -30,15 +32,27 @@ import type * as Y from 'yjs';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
-import { usePreferences } from '../lib/preferences.ts';
+import { setModule, useModules } from '../lib/modules.ts';
+import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { StorageNotice } from './StorageNotice.tsx';
 import { isMac } from './shortcuts.ts';
-import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
+import {
+  BAR_ICONS,
+  type BarTool,
+  barKind,
+  barLabelKey,
+  CORE_TOOLS,
+  MORE_TOOLS,
+  type MoreTool,
+  pinnedTools,
+  togglePinned,
+} from './toolbar-prefs.ts';
 import { cancelUpload, localPreview, retryUpload, useUploads } from './uploads.ts';
+import { kindIcon } from './views.ts';
 
 export type ToolType =
   | 'note'
@@ -81,20 +95,14 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
   { type: 'plan', icon: 'planCamera', menuOnly: true },
 ];
 
-/** Cards of the Canvas menu listed after the canvas types, with their icons. */
-const MENU_CARDS = [
-  ['character', 'user'],
-  ['location', 'pin'],
-  ['section', 'heading'],
-  ['table', 'table'],
-  ['map', 'map'],
-  ['plan', 'planCamera'],
-] as const satisfies ReadonlyArray<readonly [ToolType, IconName]>;
-
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 
 /** The phone bar of the mockup (#110): note, photo and to-do beside Select and More. */
-const PHONE_BAR: readonly BarTool[] = ['note', 'image', 'todo'];
+const PHONE_BAR = ['note', 'image', 'todo'] as const;
+
+/** The kinds of board the Canvas menu creates, with the module each belongs to (0121). */
+const NEW_BOARDS = ['board', 'moodboard', 'storyboard'] as const;
+type NewBoardKind = (typeof NEW_BOARDS)[number];
 
 /**
  * Marks a sideways-scrolling row with `data-more-start` and `data-more-end` while there is more
@@ -122,7 +130,46 @@ function useScrollEdges<T extends HTMLElement>() {
   return ref;
 }
 
-/** Bottom tool bar: click adds in the middle of the view, drag drops where you let go. */
+/** Above a toolbar button, its right edge on the button's. */
+function placeAbove(button: HTMLElement | null) {
+  const rect = button?.getBoundingClientRect();
+  if (!rect) return null;
+  return {
+    right: Math.max(8, document.documentElement.clientWidth - rect.right),
+    bottom: window.innerHeight - rect.top + 8,
+    // Below the header: a long menu scrolls instead of running under it.
+    maxHeight: Math.max(160, rect.top - 72),
+  };
+}
+
+/**
+ * A popup closes on a press outside it; its own button is left to toggle it. Only while it is
+ * `open`: a closed one must leave every press to the page.
+ */
+function useOutsidePress(
+  ref: RefObject<HTMLElement | null>,
+  anchor: RefObject<HTMLElement | null> | undefined,
+  onClose: (reason: 'outside') => void,
+  open = true,
+) {
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || anchor?.current?.contains(target)) return;
+      swallowOutsidePress(e);
+      onClose('outside');
+    };
+    document.addEventListener('pointerdown', away, true);
+    return () => document.removeEventListener('pointerdown', away, true);
+  }, [ref, anchor, onClose, open]);
+}
+
+/**
+ * Bottom tool bar (decision 0121): Select, Hand, Arrow; Note, Image, Link, To-do; the tools a
+ * person put in the bar; More; Canvas. Click adds in the middle of the view, drag drops where
+ * you let go. The tools of a module that is off are not offered.
+ */
 export function Toolbar({
   tool,
   onTool,
@@ -130,25 +177,46 @@ export function Toolbar({
   onCanvas,
   onScreenplay,
   onVoiceNote,
+  onModuleOn,
   phone = false,
 }: {
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
   onAdd: (type: ToolType) => void;
-  /** An empty board from the Canvas menu. */
-  /** Makes a sub-board: an ordinary one, or a moodboard (decision 0121). */
-  onCanvas: (kind?: 'moodboard') => void;
-  /** A storyboard made from a screenplay file. */
+  /** Makes a sub-board of a kind (decision 0121). */
+  onCanvas: (kind?: Exclude<NewBoardKind, 'board'>) => void;
+  /** Imports a screenplay. */
   onScreenplay?: () => void;
   /** Records a voice note from the microphone, saved as an audio card (#327). */
   onVoiceNote?: (() => void) | undefined;
+  /** Turns on a module that is off, from a dimmed entry of the Canvas menu. */
+  onModuleOn?: (id: ModuleId) => void;
   /** Select, note, photo and to-do on the bar; every other tool waits in the "More" menu. */
   phone?: boolean;
 }) {
   const { t } = useTranslation();
   const tools = useScrollEdges<HTMLDivElement>();
-  const saved = barTools(usePreferences().toolbar);
-  const shown = phone ? PHONE_BAR : saved;
+  const saved = usePreferences().toolbar;
+  const { offers } = useModules();
+  const more = MORE_TOOLS.filter((tl) => offers('tools', tl) && (tl !== 'voice' || onVoiceNote));
+  const pinned = pinnedTools(saved).filter((tl) => more.includes(tl));
+  const addTool = (tl: BarTool) => (tl === 'voice' ? onVoiceNote?.() : onAdd(tl));
+  const turnOn = (id: ModuleId) => (onModuleOn ? onModuleOn(id) : void setModule(id, true));
+  const button = (tl: BarTool) => {
+    const meta = TOOLS.find((x) => x.type === tl);
+    return (
+      <ToolButton
+        key={tl}
+        kind={barKind(tl)}
+        icon={BAR_ICONS[tl]}
+        label={t(barLabelKey(tl))}
+        keyHint={meta?.key ?? ''}
+        onClick={() => addTool(tl)}
+        dragType={meta ? meta.type : undefined}
+        className={tl === 'voice' ? 'toolbar__btn--mic' : undefined}
+      />
+    );
+  };
   return (
     <div
       className="toolbar"
@@ -182,7 +250,7 @@ export function Toolbar({
               onClick={() => onTool(phone ? 'select' : 'hand')}
             />
           )}
-          {(shown.includes('arrow') || (phone && tool === 'arrow')) && (
+          {(!phone || tool === 'arrow') && (
             <ToolButton
               icon="arrow"
               kind="arrow"
@@ -193,108 +261,304 @@ export function Toolbar({
             />
           )}
         </fieldset>
-        {(phone ? (['create'] as const) : (['create', 'organize'] as const)).map((group) => (
+        <fieldset
+          className="toolbar__group toolbar__group--create"
+          aria-label={t('board.toolGroups.create')}
+        >
+          {(phone ? PHONE_BAR : CORE_TOOLS).map(button)}
+        </fieldset>
+        {!phone && pinned.length > 0 && (
           <fieldset
-            key={group}
-            className={`toolbar__group toolbar__group--${group}`}
-            aria-label={t(`board.toolGroups.${group}`)}
+            className="toolbar__group toolbar__group--organize"
+            aria-label={t('board.toolGroups.organize')}
           >
-            {TOOLS.filter(
-              (tl) =>
-                shown.includes(tl.type as BarTool) &&
-                (group === 'create'
-                  ? ['note', 'image', 'link', 'todo', 'color', 'table'].includes(tl.type)
-                  : ['column', 'frame', 'storyboard', 'section', 'map', 'plan'].includes(tl.type)),
-            ).map((tl) => (
-              <ToolButton
-                key={tl.type}
-                kind={tl.type as ToolKind}
-                icon={tl.icon}
-                label={t(`board.types.${tl.type}`)}
-                keyHint={tl.key ?? ''}
-                onClick={() => onAdd(tl.type)}
-                dragType={tl.type === 'storyboard' ? undefined : tl.type}
-              />
-            ))}
-            {group === 'create' && shown.includes('voice') && onVoiceNote && (
-              <ToolButton
-                keyHint=""
-                icon="mic"
-                kind="voice"
-                label={t('board.voiceNote.label')}
-                onClick={onVoiceNote}
-              />
-            )}
+            {pinned.map(button)}
           </fieldset>
-        ))}
+        )}
+        {!phone && (
+          <fieldset
+            className="toolbar__group toolbar__group--more"
+            aria-label={t('board.more.title')}
+          >
+            <MoreButton
+              tools={more}
+              pinned={pinned}
+              onAdd={addTool}
+              onPin={(tl) =>
+                void updatePreferences({ toolbar: togglePinned(saved, tl) }).catch(() => {})
+              }
+            />
+          </fieldset>
+        )}
       </div>
       <fieldset
         className="toolbar__group toolbar__group--canvas"
         aria-label={t('board.canvasMenu.hint')}
       >
         <CanvasMenuButton
-          hidden={DEFAULT_BAR.filter((tl) => !shown.includes(tl))}
-          more={phone}
+          phone={phone}
+          more={more}
           onTool={onTool}
+          onAdd={addTool}
           onCanvas={onCanvas}
           onScreenplay={onScreenplay}
-          onVoiceNote={onVoiceNote}
-          onCard={(type) => onAdd(type)}
+          onModuleOn={turnOn}
         />
       </fieldset>
     </div>
   );
 }
 
-/**
- * The primary action at the end of the bar: a menu of the canvas types to insert, each in its
- * content-kind colour. The menu sits outside the bar, whose tools scroll sideways on phones.
- */
-function CanvasMenuButton({
-  hidden,
-  more = false,
-  onTool,
-  onCanvas,
-  onScreenplay,
-  onVoiceNote,
-  onCard,
+/** More (⋯): the other tools, each one added with a click or put in the bar (decision 0121). */
+function MoreButton({
+  tools,
+  pinned,
+  onAdd,
+  onPin,
 }: {
-  /** Tools of the default bar this person hid (#302): they open the menu. */
-  hidden: readonly BarTool[];
-  /** The phone's "More": an icon, with the hand tool first in the menu. */
-  more?: boolean;
-  onTool: (tool: CanvasTool) => void;
-  onCanvas: (kind?: 'moodboard') => void;
-  onScreenplay?: (() => void) | undefined;
-  /** Records a voice note (#327); absent where the browser cannot record. */
-  onVoiceNote?: (() => void) | undefined;
-  /** Story bible cards, section headings and tables, listed after the canvas types. */
-  onCard: (type: ToolType) => void;
+  tools: readonly MoreTool[];
+  pinned: readonly MoreTool[];
+  onAdd: (tool: MoreTool) => void;
+  onPin: (tool: MoreTool) => void;
 }) {
   const { t } = useTranslation();
   const button = useRef<HTMLButtonElement>(null);
-  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
-  const label = t(more ? 'board.canvasMenu.more' : 'board.canvasMenu.label');
-  // Above the button, its right edge on the button's.
-  const open = () => {
-    const rect = button.current?.getBoundingClientRect();
-    if (!rect) return;
-    setAt({
-      right: Math.max(8, document.documentElement.clientWidth - rect.right),
-      bottom: window.innerHeight - rect.top + 8,
-    });
-  };
+  const panel = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState<ReturnType<typeof placeAbove>>(null);
+  const close = useCallback(() => setAt(null), []);
+  useOutsidePress(panel, button, close, !!at);
+  useEffect(() => {
+    if (at) panel.current?.querySelector<HTMLElement>('.more-tools__add')?.focus();
+  }, [at]);
+  const label = t('board.more.title');
   return (
     <>
       <button
         ref={button}
         type="button"
-        className={`toolbar__btn toolbar__btn--canvas${more ? ' toolbar__btn--more' : ''}`}
+        className="toolbar__btn toolbar__btn--more"
+        data-tour="dock-tools"
+        aria-haspopup="dialog"
+        aria-expanded={!!at}
+        aria-label={label}
+        data-ink-tooltip={label}
+        onClick={() => setAt(at ? null : placeAbove(button.current))}
+      >
+        <Icon name="more" size={20} />
+      </button>
+      {at &&
+        createPortal(
+          <div
+            ref={panel}
+            className="ink-menu menu menu--canvas more-tools"
+            role="dialog"
+            aria-label={label}
+            style={{ right: at.right, bottom: at.bottom, maxHeight: at.maxHeight }}
+            data-chrome
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setAt(null);
+                button.current?.focus();
+              }
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                const all = [
+                  ...(panel.current?.querySelectorAll<HTMLElement>('.more-tools__add') ?? []),
+                ];
+                const i = all.indexOf(document.activeElement as HTMLElement);
+                const step = e.key === 'ArrowDown' ? 1 : -1;
+                all[(i + step + all.length) % all.length]?.focus();
+              }
+            }}
+          >
+            <p className="menu__heading">{label}</p>
+            <ul className="more-tools__list">
+              {tools.map((tl) => {
+                const inBar = pinned.includes(tl);
+                const name = t(barLabelKey(tl));
+                return (
+                  <li key={tl} className="more-tools__row">
+                    <button
+                      type="button"
+                      className="ink-menu__item menu__item more-tools__add"
+                      onClick={() => {
+                        setAt(null);
+                        onAdd(tl);
+                      }}
+                    >
+                      <span
+                        className="menu__tile"
+                        style={toolStyle(barKind(tl))}
+                        aria-hidden="true"
+                      >
+                        <Icon name={BAR_ICONS[tl]} size={14} />
+                      </span>
+                      {name}
+                    </button>
+                    <button
+                      type="button"
+                      className={`more-tools__pin${inBar ? ' is-on' : ''}`}
+                      aria-pressed={inBar}
+                      aria-label={t('board.more.pinFor', { name })}
+                      onClick={() => onPin(tl)}
+                    >
+                      {t(inBar ? 'board.more.pinned' : 'board.more.pin')}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+/** The small picture of a kind in the Canvas menu, as in the mockup of 0121. */
+function KindCard({ kind, off }: { kind: NewBoardKind; off: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <span className={`new-board${off ? ' is-off' : ''}`} style={kindStyle(kind)}>
+      <span className={`new-board__preview new-board__preview--${kind}`} aria-hidden="true">
+        {Array.from({ length: kind === 'board' ? 5 : 3 }, (_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: shapes of a drawing, without identity
+          <i key={i} />
+        ))}
+      </span>
+      <span className="new-board__name">
+        <Icon name={kindIcon(kind)} size={14} />
+        {t(kind === 'board' ? 'board.types.board' : `film.views.${kind}`)}
+      </span>
+      <span className="new-board__desc">
+        {t(off ? 'modules.off' : `board.canvasMenu.desc.${kind}`)}
+      </span>
+      {off && <span className="new-board__tag">{t('modules.turnOn')}</span>}
+    </span>
+  );
+}
+
+/**
+ * The primary action at the end of the bar (decision 0121): the boards to create, one card per
+ * kind, and the screenplay import. A kind of a module that is off stays, dimmed, with Turn on.
+ * On a phone it is "More", with the tools the bar has no room for first.
+ */
+function CanvasMenuButton({
+  phone,
+  more,
+  onTool,
+  onAdd,
+  onCanvas,
+  onScreenplay,
+  onModuleOn,
+}: {
+  phone: boolean;
+  /** The tools of More, for the phone. */
+  more: readonly MoreTool[];
+  onTool: (tool: CanvasTool) => void;
+  onAdd: (tool: BarTool) => void;
+  onCanvas: (kind?: Exclude<NewBoardKind, 'board'>) => void;
+  onScreenplay?: (() => void) | undefined;
+  onModuleOn: (id: ModuleId) => void;
+}) {
+  const { t } = useTranslation();
+  const { offers } = useModules();
+  const button = useRef<HTMLButtonElement>(null);
+  const [at, setAt] = useState<ReturnType<typeof placeAbove>>(null);
+  const label = t(phone ? 'board.canvasMenu.more' : 'board.canvasMenu.label');
+  const open = () => setAt(placeAbove(button.current));
+  const storyboardOn = offers('menus', 'screenplayImport');
+  const kinds = NEW_BOARDS.map((kind) => {
+    const owner = moduleOf('kinds', kind);
+    const off = !offers('kinds', kind);
+    const name = t(kind === 'board' ? 'board.types.board' : `film.views.${kind}`);
+    return {
+      label: off ? t('modules.kindOff', { name }) : name,
+      kind,
+      off,
+      action: () =>
+        off && owner ? onModuleOn(owner) : onCanvas(kind === 'board' ? undefined : kind),
+    };
+  });
+  const script: MenuItem | null = onScreenplay
+    ? {
+        label: storyboardOn
+          ? t('board.canvasMenu.screenplay')
+          : t('modules.kindOff', { name: t('board.canvasMenu.screenplay') }),
+        icon: 'upload',
+        kind: 'storyboard',
+        content: (
+          <span className={`new-board__script${storyboardOn ? '' : ' is-off'}`}>
+            {t('board.canvasMenu.screenplay')}
+            {!storyboardOn && <span className="new-board__tag">{t('modules.turnOn')}</span>}
+          </span>
+        ),
+        action: storyboardOn ? onScreenplay : () => onModuleOn('storyboard'),
+      }
+    : null;
+  const items: MenuItem[] = phone
+    ? [
+        {
+          label: t('board.tools.hand'),
+          icon: 'hand',
+          kind: 'canvas',
+          action: () => onTool('hand'),
+        },
+        {
+          label: t('board.tools.arrow'),
+          icon: 'arrow',
+          kind: 'canvas',
+          action: () => onTool('arrow'),
+        },
+        ...(['link', ...more] as const).map(
+          (tl): MenuItem => ({
+            label: t(barLabelKey(tl)),
+            icon: BAR_ICONS[tl],
+            kind: 'canvas',
+            action: () => onAdd(tl),
+          }),
+        ),
+        { divider: true },
+        { heading: t('board.canvasMenu.newBoard') },
+        ...kinds.map(
+          (k): MenuItem => ({
+            label: k.label,
+            icon: kindIcon(k.kind),
+            kind: k.kind,
+            content: (
+              <span className={`new-board__script${k.off ? ' is-off' : ''}`}>
+                {t(k.kind === 'board' ? 'board.types.board' : `film.views.${k.kind}`)}
+                {k.off && <span className="new-board__tag">{t('modules.turnOn')}</span>}
+              </span>
+            ),
+            action: k.action,
+          }),
+        ),
+        ...(script ? [script] : []),
+      ]
+    : [
+        { heading: t('board.canvasMenu.newBoard') },
+        ...kinds.map(
+          (k): MenuItem => ({
+            label: k.label,
+            content: <KindCard kind={k.kind} off={k.off} />,
+            action: k.action,
+          }),
+        ),
+        ...(script ? [{ divider: true } as MenuItem, script] : []),
+      ];
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className={`toolbar__btn toolbar__btn--canvas${phone ? ' toolbar__btn--more' : ''}`}
         data-tour="dock-more"
         aria-haspopup="menu"
         aria-expanded={!!at}
         aria-label={label}
-        data-ink-tooltip={t('board.canvasMenu.hint')}
+        data-ink-tooltip={t(phone ? 'board.canvasMenu.more' : 'board.canvasMenu.hint')}
         onClick={() => (at ? setAt(null) : open())}
         onKeyDown={(e) => {
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -303,90 +567,18 @@ function CanvasMenuButton({
           }
         }}
       >
-        <Icon name={more ? 'more' : 'plus'} size={18} />
+        <Icon name={phone ? 'more' : 'plus'} size={18} />
         <span className="toolbar__label">{label}</span>
-        {!more && <Icon name="caretDown" size={10} />}
+        {!phone && <Icon name="caretDown" size={10} />}
       </button>
       {at &&
         createPortal(
           <ContextMenu
             label={label}
-            className="menu--canvas"
-            style={{ right: at.right, bottom: at.bottom }}
+            className={phone ? 'menu--canvas' : 'menu--canvas menu--new-board'}
+            style={{ right: at.right, bottom: at.bottom, maxHeight: at.maxHeight }}
             anchor={button}
-            items={[
-              ...(more
-                ? [
-                    {
-                      label: t('board.tools.hand'),
-                      icon: 'hand',
-                      kind: 'canvas',
-                      action: () => onTool('hand'),
-                    } as MenuItem,
-                  ]
-                : []),
-              ...hidden
-                .filter((tool) => tool !== 'voice' || onVoiceNote)
-                .map(
-                  (tool): MenuItem => ({
-                    label: t(
-                      tool === 'arrow'
-                        ? 'board.tools.arrow'
-                        : tool === 'voice'
-                          ? 'board.voiceNote.label'
-                          : `board.types.${tool}`,
-                    ),
-                    icon: BAR_ICONS[tool],
-                    kind: 'canvas',
-                    action: () =>
-                      tool === 'arrow'
-                        ? onTool('arrow')
-                        : tool === 'voice'
-                          ? onVoiceNote?.()
-                          : onCard(tool as ToolType),
-                  }),
-                ),
-              ...(hidden.length > 0 ? [{ divider: true } as MenuItem] : []),
-            ].concat(
-              (
-                [
-                  {
-                    label: t('board.types.board'),
-                    icon: 'page',
-                    kind: 'board',
-                    action: () => onCanvas(),
-                  },
-                  {
-                    label: t('board.types.moodboard'),
-                    icon: 'image',
-                    kind: 'moodboard',
-                    action: () => onCanvas('moodboard'),
-                  },
-                  ...(onScreenplay
-                    ? [
-                        {
-                          label: t('screenplay.fromScreenplay'),
-                          icon: 'upload',
-                          kind: 'storyboard',
-                          action: onScreenplay,
-                        } as MenuItem,
-                      ]
-                    : []),
-                ] as MenuItem[]
-              ).concat([
-                { divider: true },
-                ...MENU_CARDS.filter(
-                  ([type]) => !['section', 'table', 'map', 'plan'].includes(type),
-                ).map(
-                  ([type, icon]): MenuItem => ({
-                    label: t(`board.types.${type}`),
-                    icon,
-                    kind: 'canvas',
-                    action: () => onCard(type),
-                  }),
-                ),
-              ]),
-            )}
+            items={items}
             onClose={(reason) => {
               setAt(null);
               if (reason === 'escape') button.current?.focus();
@@ -406,6 +598,7 @@ function ToolButton({
   pressed,
   onClick,
   dragType,
+  className,
 }: {
   kind: ToolKind;
   icon: IconName;
@@ -413,12 +606,13 @@ function ToolButton({
   keyHint: string;
   pressed?: boolean;
   onClick: () => void;
-  dragType?: ToolType;
+  dragType?: ToolType | undefined;
+  className?: string | undefined;
 }) {
   return (
     <button
       type="button"
-      className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
+      className={`toolbar__btn ${className ?? `toolbar__btn--${dragType ?? icon}`}`}
       style={toolStyle(kind)}
       aria-keyshortcuts={keyHint || undefined}
       aria-label={label}
@@ -955,15 +1149,8 @@ export function ContextMenu({
       ?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not([aria-disabled="true"])')
       // The menu is already placed in view; scrolling to it would shift a clipped list beside it.
       ?.focus({ preventScroll: true });
-    const away = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (ref.current?.contains(target) || anchor?.current?.contains(target)) return;
-      swallowOutsidePress(e);
-      onClose('outside');
-    };
-    document.addEventListener('pointerdown', away, true);
-    return () => document.removeEventListener('pointerdown', away, true);
-  }, [onClose, anchor]);
+  }, []);
+  useOutsidePress(ref, anchor, onClose);
   return (
     <div
       ref={ref}
@@ -1477,6 +1664,7 @@ export function CommandPalette({
   onToggleUnsorted: () => void;
 }) {
   const { t } = useTranslation();
+  const { offers } = useModules();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const m = mod();
@@ -1484,7 +1672,7 @@ export function CommandPalette({
     ...(readOnly
       ? []
       : addActions(
-          TOOLS,
+          TOOLS.filter((tl) => offers('tools', tl.type)),
           (type) => t('board.palette.add', { type: t(`board.types.${type}`) }),
           onAdd,
         )),

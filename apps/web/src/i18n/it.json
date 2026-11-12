@@ -290,8 +290,15 @@
     "typedValue": "{{label}}: valore",
     "canvasMenu": {
       "label": "Canvas",
-      "hint": "Inserisci un canvas",
-      "more": "Altro"
+      "hint": "Crea una board",
+      "more": "Altro",
+      "newBoard": "Nuova board",
+      "screenplay": "Importa un copione…",
+      "desc": {
+        "board": "Spazio libero per note, immagini e file.",
+        "moodboard": "Riferimenti in gruppi, con palette.",
+        "storyboard": "Scene e inquadrature, con Shot list."
+      }
     },
     "toolGroups": {
       "navigate": "Naviga e collega",
@@ -1895,6 +1902,12 @@
       "always": "sempre",
       "none": "Questo tipo non ha altre viste",
       "note": "Una vista spenta sparisce dalla barra e dall’albero. I dati restano."
+    },
+    "more": {
+      "title": "Altri strumenti",
+      "pin": "Metti nella barra",
+      "pinned": "Nella barra",
+      "pinFor": "Metti {{name}} nella barra"
     }
   },
   "tags": {
@@ -3590,7 +3603,8 @@
       "toolbar": "Barra degli strumenti",
       "tutorials": "Tutorial",
       "server": "Server",
-      "updates": "Aggiornamenti"
+      "updates": "Aggiornamenti",
+      "modules": "Moduli"
     },
     "leads": {
       "account": "Il tuo profilo e come accedi.",
@@ -3601,10 +3615,11 @@
       "registration": "Chi può creare un nuovo account.",
       "about": "Nome, indirizzo, versione e stato della configurazione dell’istanza.",
       "backups": "Copie notturne del database, per ripristinare il server dopo un guasto.",
-      "toolbar": "Scegli cosa vedi nella barra in basso. Gli strumenti nascosti restano in \"+ ▾\" e nella palette dei comandi.",
+      "toolbar": "Scegli quali strumenti di «Altro» vedi nella barra in basso. Gli altri restano in «Altro» (⋯) e nella palette dei comandi.",
       "tutorials": "Rivedi i giri guidati e scegli se proporli.",
       "server": "Come sta il server: risorse, servizi, lavori, problemi e avvisi.",
-      "updates": "La versione in uso, le novità e un avviso quando ne esce una nuova. Inkadra non si aggiorna da solo: l’aggiornamento lo fai tu, sul server."
+      "updates": "La versione in uso, le novità e un avviso quando ne esce una nuova. Inkadra non si aggiorna da solo: l’aggiornamento lo fai tu, sul server.",
+      "modules": "Scegli le parti di Inkadra che usi. Un modulo spento sparisce dai tuoi menu, dalla barra, dalle notifiche e dai tutorial. Vale solo per te e non cancella niente: quello che esiste resta visibile, e se lo riaccendi ritrovi tutto."
     },
     "autosave": {
       "idle": "Salvataggio automatico",
@@ -3730,17 +3745,20 @@
       "registration": "Nuovi account, Registrazione aperta, Solo su invito, Registrazione chiusa, Richiedi la verifica in due passaggi agli amministratori",
       "instance": "Nome dell’istanza, Indirizzo pubblico, Versione, Diagnostica, Stato dell’istanza, Novità di Inkadra, Segnalazioni, Invia agli sviluppatori di Inkadra, Destinazione, Repository, Token GitHub, Gli ospiti possono segnalare, Conservazione degli allegati, Segnalazioni ricevute",
       "backups": "Backup, Esegui backup ora, Ripristino, Conservazione, Backup notturno",
-      "toolbar": "Barra degli strumenti, Strumenti, Nota, Immagine, Link, To-do, Colore, Freccia, Frame, Storyboard, Ripristina la barra predefinita",
+      "toolbar": "Barra degli strumenti, Strumenti, Altro, Colonna, Titolo di sezione, Colore, Tabella, Nota vocale, Mappa, Inquadratura, Pianta del set, Ripristina la barra predefinita",
       "tutorials": "Giro di benvenuto, Suggerimenti alla prima apertura, Ricomincia da capo",
       "server": "Processore, Memoria, Spazio, Servizi, Problemi, Avvisi, Diagnostica, Video",
-      "updates": "Versione, Controlla ora, Avvisami quando esce una nuova versione, Quali versioni, Anteprime, Versioni precedenti"
+      "updates": "Versione, Controlla ora, Avvisami quando esce una nuova versione, Quali versioni, Anteprime, Versioni precedenti",
+      "modules": "Moduli, Storyboard, Produzione, Moodboard, Revisione clienti, Pianta del set, Spegni, Accendi"
     },
     "close": "Chiudi impostazioni",
     "dangerZone": "Zona sensibile",
     "toolbar": {
       "preview": "Anteprima",
       "reset": "Ripristina la barra predefinita",
-      "synced": "Sincronizzata con il tuo account"
+      "synced": "Sincronizzata con il tuo account",
+      "always": "Sempre nella barra",
+      "more": "Da «Altro»: metti nella barra"
     }
   },
   "admin": {
@@ -4294,7 +4312,6 @@
   "screenplay": {
     "open": "Importa sceneggiatura…",
     "openShort": "Importa sceneggiatura",
-    "fromScreenplay": "Storyboard da sceneggiatura…",
     "title": "Importa una sceneggiatura",
     "drop": "Trascina qui una sceneggiatura o scegli un file",
     "choose": "Scegli un file",
@@ -4412,7 +4429,10 @@
       "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Prima si salva una versione.",
       "submit": "Aggiorna lo storyboard",
       "done": "Storyboard aggiornato: {{updated}}, {{added}}, {{omitted}}."
-    }
+    },
+    "scenesFromFile": "Importa le scene di questa sceneggiatura…",
+    "buildScenes": "Importa le scene…",
+    "importedScenes": "Importate {{scenes}}."
   },
   "frameGrab": {
     "grab": "Cattura fotogramma",
@@ -5066,14 +5086,18 @@
             "text": "Note, foto, link, liste: scegli e clicca sul canvas."
           },
           "1": {
-            "title": "Tutto il resto",
-            "text": "Il + aggiunge board e moodboard; la barra si cambia nelle Impostazioni."
+            "title": "Altri strumenti",
+            "text": "Colonne, tabelle, mappe e il resto sono in ⋯: «Metti nella barra» tiene a portata quelli che usi."
           },
           "2": {
+            "title": "Nuove board",
+            "text": "Canvas crea board, moodboard e storyboard, e importa un copione."
+          },
+          "3": {
             "title": "Seleziona una card",
             "text": "I suoi strumenti compaiono sopra di lei."
           },
-          "3": {
+          "4": {
             "title": "Le viste della board",
             "text": "Dal menu ⋯ accendi la moodboard di questa board. Una vista spenta tiene i suoi dati."
           }
@@ -5582,6 +5606,19 @@
           "2": {
             "title": "Chi non può modificare",
             "text": "Ospiti e lettori aprono la pianta in una vista con spostamento e zoom, i setup, la legenda e il PDF."
+          }
+        }
+      },
+      "modules": {
+        "name": "Moduli",
+        "steps": {
+          "0": {
+            "title": "Solo quello che usi",
+            "text": "Spegni Storyboard, Produzione, Moodboard, Revisione clienti o Pianta del set: spariscono dai tuoi menu e dalla barra."
+          },
+          "1": {
+            "title": "Non si perde niente",
+            "text": "Quello che esiste resta visibile e si apre. Riaccendi il modulo e ritrovi tutto."
           }
         }
       }
@@ -6226,5 +6263,41 @@
     "castOnlyScheduled": "solo chi è nella scaletta",
     "notCalled_one": "Non convocato oggi · {{names}}",
     "notCalled_other": "Non convocati oggi · {{names}}"
+  },
+  "modules": {
+    "names": {
+      "board": "Board",
+      "storyboard": "Storyboard",
+      "production": "Produzione",
+      "moodboard": "Moodboard",
+      "review": "Revisione clienti",
+      "plan": "Pianta del set"
+    },
+    "desc": {
+      "board": "Note, immagini, link, file, to-do, colonne e commenti.",
+      "storyboard": "Board Storyboard, Shot list, strumento Inquadratura, importazione del copione in scene.",
+      "production": "Piano riprese, Troupe, ordini del giorno e fogli per scena.",
+      "moodboard": "Board Moodboard e la vista Moodboard delle board: gruppi, note, palette.",
+      "review": "Link per i clienti senza account, approvazioni e richieste di modifica.",
+      "plan": "Piante con luci, camere, attori e muri, collegate a scene e inquadrature."
+    },
+    "keep": {
+      "storyboard": "Le inquadrature che esistono restano dove sono.",
+      "production": "Giornate e persone restano salvate.",
+      "moodboard": "Immagini, link e colori restano sulle board.",
+      "review": "I link già inviati continuano a funzionare.",
+      "plan": "Le piante già disegnate restano visibili."
+    },
+    "offKeep": "Spento · {{text}}",
+    "always": "Sempre acceso",
+    "turnOn": "Accendi",
+    "turnedOn": "{{name}} acceso: lo trovi in Canvas e nella barra.",
+    "failed": "Il modulo non è cambiato. Riprova.",
+    "off": "Modulo spento.",
+    "kindOff": "{{name}}: modulo spento, accendi",
+    "notice": {
+      "storyboard": "{{scenes}} sulla board. Con Storyboard diventano inquadrature."
+    },
+    "offLine": "Modulo {{name}} spento: puoi leggere questa board."
   }
 }

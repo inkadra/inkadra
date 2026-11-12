@@ -1,3 +1,4 @@
+import { offered } from '@inkadra/shared';
 import type { ContentKind, IconName, ToolKind } from '@inkadra/ui';
 import { isMac } from '../board/shortcuts.ts';
 
@@ -131,6 +132,8 @@ export const TOURS: Tour[] = [
     offer: 'dock',
     steps: [
       { anchor: 'dock', media: 'drag', side: 'top' },
+      // More holds the other tools; Canvas only the boards to create (decision 0121).
+      { anchor: 'dock-tools', media: 'toolbar', side: 'top' },
       { anchor: 'dock-more', media: 'types', side: 'top' },
       { anchor: 'card', media: 'toolbar', side: 'right' },
       // The views of a board are turned on from its ⋯ menu (decision 0121).
@@ -392,6 +395,18 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    // Settings → Modules (decision 0121).
+    id: 'modules',
+    group: 'tools',
+    icon: 'layers',
+    offer: 'modules',
+    href: '/settings?section=modules',
+    steps: [
+      { anchor: 'modules', media: 'gear', side: 'top' },
+      { anchor: null, media: 'types' },
+    ],
+  },
+  {
     id: 'classifications',
     group: 'admin',
     icon: 'tag',
@@ -493,9 +508,14 @@ export const GROUPS: TourGroup[] = [
   'admin',
 ];
 
-/** The tours a person can see: administration ones for administrators, the demo's in the demo. */
-export function toursFor(admin: boolean, demo = false): Tour[] {
-  return TOURS.filter((tour) => (admin || !tour.admin) && (demo || !tour.demo));
+/**
+ * The tours a person can see: administration ones for administrators, the demo's in the demo,
+ * and not those of a module they turned off (`off`, decision 0121).
+ */
+export function toursFor(admin: boolean, demo = false, off: readonly string[] = []): Tour[] {
+  return TOURS.filter(
+    (tour) => (admin || !tour.admin) && (demo || !tour.demo) && offered(off, 'tours', tour.id),
+  );
 }
 
 /** The translation keys of a tour's step. */

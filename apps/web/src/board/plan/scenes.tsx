@@ -10,6 +10,7 @@ import { Button, Checkbox, Icon } from '@inkadra/ui';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
+import { useModules } from '../../lib/modules.ts';
 import { ContextMenu } from '../chrome.tsx';
 import { sceneLabel } from '../film/NeededItems.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -229,10 +230,12 @@ export function ScenePlanButton({
 }) {
   const { t } = useTranslation();
   const { openPlan } = usePlanNav();
+  // Set plan off (decision 0121): the scene's plans still open; no new one is offered.
+  const create = useModules().offers('menus', 'newScenePlan') ? onNew : undefined;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   if (plans.length === 0)
-    return onNew ? (
-      <Button icon="map" onClick={() => openPlan(onNew())}>
+    return create ? (
+      <Button icon="map" onClick={() => openPlan(create())}>
         {t('board.plan.newForScene')}
       </Button>
     ) : null;

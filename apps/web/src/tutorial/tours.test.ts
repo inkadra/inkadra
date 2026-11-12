@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import it_ from '../i18n/it.json';
 import { playable } from './TourPlayer.tsx';
-import { GUEST, stepKeys, TOURS, WELCOME } from './tours.ts';
+import { GUEST, stepKeys, TOURS, toursFor, WELCOME } from './tours.ts';
 
 const src = join(__dirname, '..');
 
@@ -50,6 +50,18 @@ describe('the tours (#502), kept up to date with the interface', () => {
       expect(tour.id.length).toBeLessThanOrEqual(40);
     }
     expect(new Set(all.map((t) => t.id)).size).toBe(all.length);
+  });
+});
+
+describe('the tours of modules (decision 0121)', () => {
+  it('leave out the tours of a module that is off, and keep the others', () => {
+    const ids = (off: string[]) => toursFor(false, false, off).map((tour) => tour.id);
+    expect(ids([])).toEqual(expect.arrayContaining(['storyboard', 'setplan', 'modules']));
+    const off = ids(['storyboard', 'plan']);
+    expect(off).not.toContain('storyboard');
+    expect(off).not.toContain('shotlist');
+    expect(off).not.toContain('setplan');
+    expect(off).toEqual(expect.arrayContaining(['board', 'moodboard', 'modules']));
   });
 });
 

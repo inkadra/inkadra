@@ -2,6 +2,7 @@
 import { addTodoItem, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { addFromBar } from '../helpers/phone-board.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 const LONG =
@@ -192,10 +193,7 @@ test('a failed address search is readable over the empty board', async ({ page, 
     route.fulfill({ status: 400, json: { error: { code: 'bad_request', message: 'x' } } }),
   );
   await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
-  await page
-    .getByRole('button', { name: /^Mappa/ })
-    .first()
-    .click();
+  await addFromBar(page, 'Mappa');
   await page.locator('.canvas').click({ position: { x: 280, y: 280 } });
   const input = page.getByRole('combobox');
   await input.fill('Piazza del Duomo, Milano');

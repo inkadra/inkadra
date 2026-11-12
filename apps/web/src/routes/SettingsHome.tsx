@@ -172,6 +172,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
           value={t(`settings.profile.languages.${user?.locale ?? i18n.language}`)}
         />
         <Item to={href('toolbar')} label={t('settingsUi.pages.toolbar')} />
+        <Item to={href('modules')} label={t('settingsUi.pages.modules')} />
         <Item to={href('tutorials')} label={t('settingsUi.pages.tutorials')} />
       </Group>
       {admin && <AdminGroups setup={setup} />}

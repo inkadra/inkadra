@@ -95,7 +95,7 @@ for (const width of [1280, 390]) {
                     .state,
               ),
             ).toBe('prompt');
-            await page.getByRole('button', { name: 'Nota vocale', exact: true }).click();
+            await addFromBar(page, 'Nota vocale');
             await expect
               .poll(() =>
                 page.evaluate(() => (window as unknown as Record<string, unknown>).micRequested),
@@ -112,7 +112,7 @@ for (const width of [1280, 390]) {
               });
               const recording = await context.newPage();
               await recording.goto(`${baseURL}/p/${project.id}?view=canvas`);
-              await recording.getByRole('button', { name: 'Nota vocale', exact: true }).click();
+              await addFromBar(recording, 'Nota vocale');
               await expect(recording.locator('.voicenote__time')).not.toHaveText('0:00');
               if (out) await recording.screenshot({ path: join(out, 'microphone-recording.png') });
               await recording.getByRole('button', { name: 'Salva', exact: true }).click();

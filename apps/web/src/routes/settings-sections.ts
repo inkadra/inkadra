@@ -42,6 +42,15 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     admin: false,
   },
   {
+    id: 'modules',
+    group: 'personal',
+    href: '/settings?section=modules',
+    title: 'settingsUi.pages.modules',
+    lead: 'settingsUi.leads.modules',
+    keywords: 'settingsUi.keywords.modules',
+    admin: false,
+  },
+  {
     id: 'notifications',
     group: 'personal',
     href: '/settings?section=notifications',

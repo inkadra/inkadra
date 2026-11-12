@@ -168,7 +168,7 @@ test('the import dialog opened from the Canvas toolbar is modal and the board st
 
   const open = async () => {
     await page.locator('.toolbar__btn--canvas').click();
-    await page.getByRole('menuitem', { name: 'Storyboard da sceneggiatura…' }).click();
+    await page.getByRole('menuitem', { name: 'Importa un copione…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
     await expect(dialog).toBeVisible();
     return dialog;
@@ -214,7 +214,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.addInitScript((value) => localStorage.setItem('inkadra.theme', value), theme);
     await openBoard(page, seeded.canvasId);
     await page.locator('.toolbar__btn--canvas').click();
-    await page.getByRole('menuitem', { name: 'Storyboard da sceneggiatura…' }).click();
+    await page.getByRole('menuitem', { name: 'Importa un copione…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
     await dialog.getByLabel('Scegli un file').setInputFiles({
       name: 'una-festa-di-prova.pdf',
@@ -358,7 +358,7 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(page.locator('.card--file').last()).toBeVisible();
       // Use the existing entry point to verify all PDF errors in the actual worker.
       await page.locator('.toolbar__btn--canvas').click();
-      await page.getByRole('menuitem', { name: 'Storyboard da sceneggiatura…' }).click();
+      await page.getByRole('menuitem', { name: 'Importa un copione…' }).click();
       for (const [buffer, error] of [
         [scriptPdf(false), 'Questo PDF non ha un livello di testo'],
         [scriptPdf(true, 301), 'Il PDF supera il limite di 300 pagine.'],

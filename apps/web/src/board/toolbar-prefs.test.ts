@@ -1,30 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { BAR_TOOLS, barTools, DEFAULT_BAR, toggleBarTool } from './toolbar-prefs.ts';
+import { DEFAULT_PINNED, MORE_TOOLS, pinnedTools, togglePinned } from './toolbar-prefs.ts';
 
-describe('toolbar preferences', () => {
-  it('shows the default bar until something is chosen', () => {
-    expect(barTools(null)).toEqual(DEFAULT_BAR);
-    expect(DEFAULT_BAR).not.toContain('storyboard');
+describe('toolbar preferences (decision 0121)', () => {
+  it('puts Column and Section title in the bar until something is chosen', () => {
+    expect(pinnedTools(null)).toEqual(['column', 'section']);
+    expect(DEFAULT_PINNED).toEqual(['column', 'section']);
   });
 
-  it('keeps bar order and skips names it does not know', () => {
-    expect(barTools(['frame', 'later-tool', 'note'])).toEqual(['note', 'frame']);
+  it('keeps a bar saved before 0121: a tool shown then stays in the bar', () => {
+    // The old list named every tool shown, the ones now always there included.
+    const saved = ['note', 'image', 'link', 'todo', 'arrow', 'frame', 'storyboard', 'map'];
+    expect(pinnedTools(saved)).toEqual(['map', 'frame']);
   });
 
-  it('toggles one tool, keeping unknown names saved by a newer app', () => {
-    const hidden = toggleBarTool(null, 'color');
-    expect(hidden).toEqual(DEFAULT_BAR.filter((t) => t !== 'color'));
-    expect(toggleBarTool(['later-tool', 'note'], 'storyboard')).toEqual([
+  it('keeps More order and skips names it does not know', () => {
+    expect(pinnedTools(['plan', 'later-tool', 'color'])).toEqual(['color', 'plan']);
+  });
+
+  it('puts one tool in the bar or takes it out, keeping the other names saved', () => {
+    expect(togglePinned(null, 'table')).toEqual(['column', 'section', 'table']);
+    expect(togglePinned(null, 'column')).toEqual(['section']);
+    expect(togglePinned(['note', 'later-tool', 'map'], 'color')).toEqual([
+      'color',
+      'map',
       'note',
-      'storyboard',
       'later-tool',
     ]);
-    expect(barTools(toggleBarTool(hidden, 'color'))).toEqual(DEFAULT_BAR);
-    expect(BAR_TOOLS).toHaveLength(14);
+    expect(pinnedTools(togglePinned(togglePinned(null, 'voice'), 'voice'))).toEqual(
+      pinnedTools(null),
+    );
+    expect(MORE_TOOLS).toHaveLength(10);
   });
-});
-
-it('includes every approved dock addition in the configurable defaults', () => {
-  for (const tool of ['section', 'table', 'voice', 'map', 'plan'])
-    expect(DEFAULT_BAR).toContain(tool);
 });

@@ -5,6 +5,7 @@ import {
   type BoardKind,
   type BoardOptionalView,
   OPTIONAL_VIEWS,
+  offered,
 } from '@inkadra/shared';
 import type { IconName } from '@inkadra/ui';
 import { boardPath } from './boards.ts';
@@ -82,6 +83,19 @@ export function viewsOn(board: ViewsOf, counts: CountsOf): BoardOptionalView[] {
       v === 'moodboard' ? (counts?.referenceCount ?? 0) > 0 : !!counts?.clientReview,
     );
   return [...allowed];
+}
+
+/**
+ * The optional views "Views of this board" offers to turn on or off: those of the modules that
+ * are on (`off`, decision 0121), and any that is on already, so it can be turned off.
+ */
+export function offeredViews(
+  board: ViewsOf,
+  counts: CountsOf,
+  off: readonly string[],
+): BoardOptionalView[] {
+  const on = viewsOn(board, counts);
+  return OPTIONAL_VIEWS[board.kind].filter((v) => on.includes(v) || offered(off, 'views', v));
 }
 
 /** The views of a board, in reading order: the one of its kind, then those turned on. */

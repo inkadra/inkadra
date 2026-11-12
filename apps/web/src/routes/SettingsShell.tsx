@@ -21,6 +21,7 @@ const SECTION_ICONS: Record<string, IconName> = {
   account: 'user',
   preferences: 'settings',
   toolbar: 'stickyNote',
+  modules: 'layers',
   notifications: 'bell',
   tutorials: 'play',
   members: 'people',

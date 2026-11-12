@@ -14,9 +14,11 @@ import {
   Dialog,
   DialogActions,
   Icon,
+  type IconName,
   Select,
   Switch,
   TextField,
+  type ToolKind,
   toolStyle,
 } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
@@ -28,17 +30,19 @@ import chromeWebStoreBorder from '../assets/chrome-web-store-border.png';
 import { setKeepsPlayingOffscreen, useKeepsPlayingOffscreen } from '../board/inline-player.ts';
 import {
   BAR_ICONS,
-  BAR_TOOLS,
-  type BarTool,
   barKind,
-  barTools,
-  toggleBarTool,
+  barLabelKey,
+  CORE_TOOLS,
+  MORE_TOOLS,
+  pinnedTools,
+  togglePinned,
 } from '../board/toolbar-prefs.ts';
 import { FeedbackRow } from '../feedback/FeedbackSettings.tsx';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
 import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { formatClock } from '../lib/datetime.ts';
+import { useModules } from '../lib/modules.ts';
 import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
@@ -48,6 +52,7 @@ import { TutorialSettings } from '../tutorial/TutorialSettings.tsx';
 import { useInstanceSetupState } from './AppLayout.tsx';
 import { ClassificationSettings } from './ClassificationSettings.tsx';
 import { InstanceSettings } from './InstanceSettings.tsx';
+import { ModuleSettings } from './ModuleSettings.tsx';
 import { SettingsHome } from './SettingsHome.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
 import { MySpaceCard } from './StorageSpace.tsx';
@@ -87,6 +92,12 @@ export function Settings() {
       return (
         <SettingsShell page={page}>
           <ToolbarSettings />
+        </SettingsShell>
+      );
+    case 'modules':
+      return (
+        <SettingsShell page={page}>
+          <ModuleSettings />
         </SettingsShell>
       );
     case 'notifications':
@@ -313,46 +324,77 @@ export function Preferences() {
   );
 }
 
-/** The tools of the board's bottom bar (#302): hidden ones stay in "+" and the palette. */
+/** Tools that are always in the bar (decision 0121), as the bar draws them. */
+const ALWAYS: ReadonlyArray<{ id: string; icon: IconName; kind: ToolKind; label: string }> = [
+  { id: 'select', icon: 'pointer', kind: 'select', label: 'board.tools.select' },
+  { id: 'hand', icon: 'hand', kind: 'hand', label: 'board.tools.hand' },
+  { id: 'arrow', icon: 'arrow', kind: 'arrow', label: 'board.tools.arrow' },
+  ...CORE_TOOLS.map((tool) => ({
+    id: tool,
+    icon: BAR_ICONS[tool],
+    kind: barKind(tool),
+    label: barLabelKey(tool),
+  })),
+];
+
+/**
+ * The board's bottom bar (#302, decision 0121): the tools that are always there, then the tools
+ * of More a person puts in the bar. Those of a module that is off are not offered.
+ */
 export function ToolbarSettings() {
   const { t } = useTranslation();
   const prefs = usePreferences();
-  const shown = barTools(prefs.toolbar);
-  const label = (tool: BarTool) =>
-    t(
-      tool === 'arrow'
-        ? 'board.tools.arrow'
-        : tool === 'voice'
-          ? 'board.voiceNote.label'
-          : `board.types.${tool}`,
-    );
+  const { offers } = useModules();
+  const more = MORE_TOOLS.filter((tool) => offers('tools', tool));
+  const pinned = pinnedTools(prefs.toolbar).filter((tool) => more.includes(tool));
   const save = (toolbar: string[] | null) =>
     void trackSave(updatePreferences({ toolbar })).catch(() => {});
   return (
     <Card>
       <div className="settings-card__pad toolbar-settings">
+        <span className="toolbar-settings__label">{t('settingsUi.toolbar.always')}</span>
         <div className="toolbar-settings__tiles">
-          {BAR_TOOLS.map((tool) => (
+          {ALWAYS.map((tool) => (
+            <label key={tool.id} className="toolbar-settings__tile" style={toolStyle(tool.kind)}>
+              <Checkbox className="toolbar-settings__check" checked disabled />
+              <span className="toolbar-settings__icon" aria-hidden="true">
+                <Icon name={tool.icon} size={18} />
+              </span>
+              {t(tool.label)}
+            </label>
+          ))}
+        </div>
+        <span className="toolbar-settings__label">{t('settingsUi.toolbar.more')}</span>
+        <div className="toolbar-settings__tiles">
+          {more.map((tool) => (
             <label key={tool} className="toolbar-settings__tile" style={toolStyle(barKind(tool))}>
               <Checkbox
                 className="toolbar-settings__check"
-                checked={shown.includes(tool)}
-                onChange={() => save(toggleBarTool(prefs.toolbar, tool))}
+                checked={pinned.includes(tool)}
+                onChange={() => save(togglePinned(prefs.toolbar, tool))}
               />
               <span className="toolbar-settings__icon" aria-hidden="true">
                 <Icon name={BAR_ICONS[tool]} size={18} />
               </span>
-              {label(tool)}
+              {t(barLabelKey(tool))}
             </label>
           ))}
         </div>
         <span className="toolbar-settings__label">{t('settingsUi.toolbar.preview')}</span>
         <div className="toolbar-settings__preview" aria-hidden="true">
-          {shown.map((tool) => (
+          {ALWAYS.map((tool) => (
+            <span key={tool.id} style={toolStyle(tool.kind)}>
+              <Icon name={tool.icon} size={16} />
+            </span>
+          ))}
+          {pinned.map((tool) => (
             <span key={tool} style={toolStyle(barKind(tool))}>
               <Icon name={BAR_ICONS[tool]} size={16} />
             </span>
           ))}
+          <span>
+            <Icon name="more" size={16} />
+          </span>
           <span className="toolbar-settings__plus">
             <Icon name="plus" size={14} />
             <Icon name="caretDown" size={10} />

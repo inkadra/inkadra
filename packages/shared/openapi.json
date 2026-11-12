@@ -8615,7 +8615,27 @@
               "maxLength": 40
             },
             "maxItems": 40,
-            "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and hidden tools stay in the + menu."
+            "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and the others stay in the More menu (decision 0121). Select, Hand, Arrow, Note, Image, Link and To-do are always shown."
+          },
+          "modulesOff": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 20,
+            "description": "Modules this person turned off for themselves (decision 0121): `storyboard`, `production`, `moodboard`, `review`, `plan`. Empty: all on. Open list: clients keep names they do not know."
+          },
+          "moduleNotices": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 20,
+            "description": "Modules whose one short notice this person already saw (decision 0121), so it shows once per module."
           },
           "tutorialsSeen": {
             "type": "array",
@@ -8674,6 +8694,8 @@
           "planShelf",
           "shotGroupBy",
           "toolbar",
+          "modulesOff",
+          "moduleNotices",
           "tutorialsSeen",
           "tutorialHints",
           "serverView",
@@ -8797,7 +8819,27 @@
               "maxLength": 40
             },
             "maxItems": 40,
-            "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and hidden tools stay in the + menu."
+            "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and the others stay in the More menu (decision 0121). Select, Hand, Arrow, Note, Image, Link and To-do are always shown."
+          },
+          "modulesOff": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 20,
+            "description": "Modules this person turned off for themselves (decision 0121): `storyboard`, `production`, `moodboard`, `review`, `plan`. Empty: all on. Open list: clients keep names they do not know."
+          },
+          "moduleNotices": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 20,
+            "description": "Modules whose one short notice this person already saw (decision 0121), so it shows once per module."
           },
           "tutorialsSeen": {
             "type": "array",

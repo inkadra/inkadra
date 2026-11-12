@@ -6,7 +6,7 @@ import {
   type BoardDetail,
   type BoardOptionalView,
   defaultProjectIcon,
-  OPTIONAL_VIEWS,
+  moduleOf,
   type Project,
   type ProjectRole,
 } from '@inkadra/shared';
@@ -29,6 +29,7 @@ import { setFeedbackConnection } from '../feedback/diagnostics.ts';
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { api } from '../lib/api.ts';
 import { useHeaderContent } from '../lib/header.tsx';
+import { MODULE_GLYPHS, setModule, useModules } from '../lib/modules.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import { moveTabFocus } from '../lib/tabs.ts';
@@ -84,6 +85,7 @@ import {
   headerViews,
   isBoardView,
   kindIcon,
+  offeredViews,
   openView,
   viewHref,
   viewIcon,
@@ -239,16 +241,18 @@ function CurrentCrumb({
 
 /**
  * "Views of this board" in the ⋯ menu (decision 0121): the view of its kind, ticked and fixed,
- * then the views it may turn on, ticked when on.
+ * then the views it may turn on, ticked when on. A view of a module that is off is offered only
+ * while it is on, so it can be turned off.
  */
 function viewItems(
   board: Pick<Board, 'kind' | 'views'>,
   counts: BoardCount | undefined,
   toggle: (view: BoardOptionalView) => void,
   t: (key: string) => string,
+  off: readonly string[],
 ): MenuItem[] {
   const on = viewsOn(board, counts);
-  const optional = OPTIONAL_VIEWS[board.kind];
+  const optional = offeredViews(board, counts, off);
   return [
     { heading: t('board.views.title') },
     ...boardViews({ kind: board.kind, views: [] }, counts).map(
@@ -377,6 +381,10 @@ function BoardScreen({
   // The list follows a change of views at once; the detail stands in for a board not in it.
   const board = boards?.find((b) => b.id === boardId) ?? detail ?? undefined;
   const kind = board?.kind;
+  const { off: modulesOff, isOn } = useModules();
+  /** The module of this board's kind, when this person turned it off (decision 0121). */
+  const offModule = kind ? moduleOf('kinds', kind) : null;
+  const moduleOff = offModule && !isOn(offModule) ? offModule : null;
   const counts = boardCounts.get(boardId);
   const [view, setView] = useBoardView(board, counts);
   const [openedFilmViews, setOpenedFilmViews] = useState({ schedule: false, troupe: false });
@@ -735,7 +743,9 @@ function BoardScreen({
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
                   items={[
-                    ...(editable && board ? viewItems(board, counts, toggleView, t) : []),
+                    ...(editable && board
+                      ? viewItems(board, counts, toggleView, t, modulesOff)
+                      : []),
                     ...(outside > 0
                       ? [
                           {
@@ -898,6 +908,7 @@ function BoardScreen({
       counts,
       kind,
       toggleView,
+      modulesOff,
       outside,
       openOutside,
     ],
@@ -1022,6 +1033,20 @@ function BoardScreen({
           {t('board.contextual.updateApp')}
         </div>
       )}
+      {moduleOff && !preview && (
+        <p className="board-module-off" role="note">
+          <span style={MODULE_GLYPHS[moduleOff].style} aria-hidden="true">
+            <Icon name={MODULE_GLYPHS[moduleOff].icon} size={14} />
+          </span>
+          {t('modules.offLine', { name: t(`modules.names.${moduleOff}`) })}
+          <Button
+            variant="secondary"
+            onClick={() => void setModule(moduleOff, true).catch(() => {})}
+          >
+            {t('modules.turnOn')}
+          </Button>
+        </p>
+      )}
       {versions}
       {/* Keep drafts and their saves alive while another view is selected. */}
       {(openedFilmViews.schedule || view === 'schedule') && (
@@ -1088,11 +1113,12 @@ function BoardScreen({
       )}
       {importingScript && editable && !preview && (
         <ScreenplayImportDialog
-          targets={
-            scriptStoryboard.groups.some((g) => g.scene)
-              ? ['append', 'revise', 'new']
-              : ['append', 'new']
-          }
+          // Storyboard off: this storyboard still takes the script, a new one is not offered.
+          targets={[
+            'append',
+            ...(scriptStoryboard.groups.some((g) => g.scene) ? (['revise'] as const) : []),
+            ...(isOn('storyboard') ? (['new'] as const) : []),
+          ]}
           storyboard={scriptStoryboard}
           onImport={importScript}
           onClose={() => setImportingScript(false)}
