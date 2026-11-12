@@ -3,15 +3,17 @@ import { Switch } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { FeedbackRow, FeedbackSettings } from '../feedback/FeedbackSettings.tsx';
+import { FeedbackSettings } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { usePendingUpdate } from '../lib/updates.ts';
 import { BackupSettings } from './BackupSettings.tsx';
 import { ProviderIcon } from './ProviderIcon.tsx';
-import { formatStorage, StorageCharts } from './StorageCharts.tsx';
+import { StorageCharts } from './StorageCharts.tsx';
 import { StorageLimitsCards } from './StorageLimitsSettings.tsx';
 import { ServerSettings } from './server/ServerSettings.tsx';
 import { trackSave } from './settings-save.ts';
+import { CHECK_PAGES } from './settings-sections.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
 import { UpdateSettings } from './UpdateSettings.tsx';
 
@@ -80,14 +82,13 @@ function LoadError() {
   return <p role="alert">{t('auth.errors.generic')}</p>;
 }
 
-/** The setup checklist as rows of the Informazioni page, with storage use and diagnostics. */
-function InstanceStatus({ setup }: { setup: Setup }) {
-  const { t, i18n } = useTranslation();
-  const { usage } = useStorageUsage();
+/** The setup checklist of General: a failing check opens the page that fixes it. */
+function SetupChecklist({ setup }: { setup: Setup }) {
+  const { t } = useTranslation();
   const done = setup.checks?.filter((c) => c.ok).length ?? 0;
   return (
     <Card
-      title={t('settingsUi.status.title')}
+      title={t('settingsUi.general.setup')}
       action={
         setup.checks && (
           <span className="settings-card__meta">
@@ -96,38 +97,38 @@ function InstanceStatus({ setup }: { setup: Setup }) {
         )
       }
     >
-      <div className="settings-rows">
-        {setup.error ? (
-          <p role="alert" className="settings-card__empty">
-            {t('home.loadError')}
-          </p>
-        ) : !setup.checks ? (
-          <p role="status" className="settings-card__empty settings-muted">
-            {t('admin.loading')}
-          </p>
-        ) : (
-          setup.checks.map((c) => (
-            <Row key={c.id} label={t(`onboarding.checks.${c.id}`)}>
-              <Badge tone={c.ok ? 'ok' : 'warn'}>
-                {t(c.ok ? 'onboarding.ready' : 'onboarding.needsSetup')}
-              </Badge>
-            </Row>
-          ))
-        )}
-        {usage && (
-          <Row label={t('admin.storage')}>
-            <span className="settings-value">
-              {formatStorage(usage.originalBytes, i18n.language)}
-            </span>
+      {setup.error ? (
+        <p role="alert" className="settings-card__empty">
+          {t('home.loadError')}
+        </p>
+      ) : !setup.checks ? (
+        <p role="status" className="settings-card__empty settings-muted">
+          {t('admin.loading')}
+        </p>
+      ) : (
+        setup.checks.map((c) => (
+          <Row
+            key={c.id}
+            icon={c.ok ? 'check' : 'warning'}
+            tone={c.ok ? 'ok' : 'warn'}
+            label={t(`onboarding.checks.${c.id}`)}
+            help={c.ok ? undefined : t(`settingsUi.general.fix.${c.id}`)}
+          >
+            {c.ok ? (
+              <Badge tone="ok">{t('onboarding.ready')}</Badge>
+            ) : (
+              <Link
+                className="ink-btn ink-btn--secondary"
+                to={`/settings?section=${CHECK_PAGES[c.id] ?? 'server'}`}
+                replace
+                aria-label={`${t('settingsUi.general.configure')}: ${t(`onboarding.checks.${c.id}`)}`}
+              >
+                {t('settingsUi.general.configure')}
+              </Link>
+            )}
           </Row>
-        )}
-        <Row label={t('settingsUi.pages.server')} help={t('settingsUi.about.serverHelp')}>
-          <Link className="ink-btn ink-btn--secondary" to="/settings?section=server" replace>
-            {t('settingsUi.about.openDiagnostics')}
-          </Link>
-        </Row>
-        <FeedbackRow />
-      </div>
+        ))
+      )}
     </Card>
   );
 }
@@ -202,11 +203,12 @@ function RegistrationControl({
 
 export function InstanceSettings({ section, setup }: { section: string; setup: Setup }) {
   if (section === 'workspace') return <StoragePage />;
-  if (section === 'providers') return <AccessPage />;
+  if (section === 'access') return <AccessPage />;
+  if (section === 'reports') return <FeedbackSettings />;
   if (section === 'backups') return <BackupSettings />;
   if (section === 'server') return <ServerSettings />;
   if (section === 'updates') return <UpdateSettings />;
-  return <InstancePage section={section} setup={setup} />;
+  return <GeneralPage setup={setup} />;
 }
 
 function StoragePage() {
@@ -226,141 +228,152 @@ function StoragePage() {
   );
 }
 
+/**
+ * Who may come in and what members may do (decision 0124): registration, the two rights that
+ * were above the list of members, two-step sign-in for administrators, then the sign-in methods
+ * and the email sending, read-only because the server configures them.
+ */
 function AccessPage() {
   const { t } = useTranslation();
-  const { instance } = useSession();
+  const { instance, user } = useSession();
+  const { settings, error, save } = useInstanceSettings();
+  if (error) return <LoadError />;
+  if (!settings) return <p role="status">{t('admin.loading')}</p>;
+  const toggle = (patch: Partial<Settings>) => void save(patch).catch(() => {});
   return (
     <>
-      <Card title={t('settings.methods.title')}>
-        <div className="settings-rows">
-          {providerRows(instance, t).map((p) => (
-            <Row
-              key={p.id + p.name}
-              leading={<ProviderIcon id={p.id} name={p.name} />}
-              label={p.name}
-              help={p.help}
-            >
-              <Badge tone={p.on ? 'ok' : p.warn ? 'warn' : 'neutral'}>
-                {t(
-                  p.on
-                    ? 'settingsUi.on'
-                    : p.warn
-                      ? 'settingsUi.access.missingSmtp'
-                      : 'settingsUi.off',
-                )}
-              </Badge>
-            </Row>
-          ))}
-        </div>
+      <Card title={t('settingsUi.registration.label')}>
+        <Row
+          label={t('admin.registration')}
+          help={t(`settingsUi.registration.${settings.registration}`)}
+        >
+          <RegistrationControl
+            value={settings.registration}
+            onChange={(registration) => toggle({ registration })}
+          />
+        </Row>
       </Card>
-      <Card title={t('settingsUi.access.email')}>
-        <div className="settings-rows">
+      <Card title={t('settingsUi.accessPage.members')}>
+        <Row
+          label={t('projectCreation.settings.label')}
+          help={t('settingsUi.accessPage.createHelp')}
+          htmlFor="members-create-projects"
+        >
+          <Switch
+            id="members-create-projects"
+            checked={settings.membersCanCreateProjects ?? true}
+            onChange={(e) => toggle({ membersCanCreateProjects: e.target.checked })}
+          />
+        </Row>
+        <Row label={t('calendar.admin')} help={t('calendar.adminHelp')}>
+          <Switch
+            aria-label={t('calendar.admin')}
+            checked={settings.calendarFeedEnabled ?? true}
+            onChange={(e) => toggle({ calendarFeedEnabled: e.target.checked })}
+          />
+        </Row>
+      </Card>
+      <Card title={t('settingsUi.accessPage.security')}>
+        <Row
+          icon="lock"
+          label={t('admin.requireAdminTwoFactor')}
+          help={t(
+            user?.twoFactorEnabled
+              ? 'admin.requireAdminTwoFactorHelp'
+              : 'admin.requireAdminTwoFactorEnrollFirst',
+          )}
+        >
+          <Switch
+            aria-label={t('admin.requireAdminTwoFactor')}
+            checked={settings.requireAdminTwoFactor ?? false}
+            disabled={!user?.twoFactorEnabled}
+            onChange={(e) => toggle({ requireAdminTwoFactor: e.target.checked })}
+          />
+        </Row>
+      </Card>
+      <Card
+        title={t('settings.methods.title')}
+        action={<Badge>{t('settingsUi.accessPage.readOnly')}</Badge>}
+      >
+        {providerRows(instance, t).map((p) => (
           <Row
-            leading={<ProviderIcon id="smtp" />}
-            label="SMTP"
-            help={
-              instance?.auth.email ? (
-                t('settingsUi.access.smtpOn')
-              ) : (
-                <code className="settings-env">SMTP_URL</code>
-              )
-            }
+            key={p.id + p.name}
+            leading={<ProviderIcon id={p.id} name={p.name} />}
+            label={p.name}
+            help={p.help}
           >
-            <Badge tone={instance?.auth.email ? 'ok' : 'warn'}>
-              {t(instance?.auth.email ? 'settingsUi.on' : 'onboarding.needsSetup')}
+            <Badge tone={p.on ? 'ok' : p.warn ? 'warn' : 'neutral'}>
+              {t(
+                p.on
+                  ? 'settingsUi.on'
+                  : p.warn
+                    ? 'settingsUi.access.missingSmtp'
+                    : 'settingsUi.off',
+              )}
             </Badge>
           </Row>
-        </div>
+        ))}
+        <Row
+          leading={<ProviderIcon id="smtp" />}
+          label={t('settingsUi.access.email')}
+          help={
+            instance?.auth.email ? (
+              t('settingsUi.access.smtpOn')
+            ) : (
+              <>
+                <code className="settings-env">SMTP_URL</code> · {t('settingsUi.access.smtpOff')}
+              </>
+            )
+          }
+        >
+          <Badge tone={instance?.auth.email ? 'ok' : 'warn'}>
+            {t(instance?.auth.email ? 'settingsUi.on' : 'onboarding.needsSetup')}
+          </Badge>
+        </Row>
       </Card>
       <p className="settings-footnote">{t('admin.providersHelp')}</p>
     </>
   );
 }
 
-function InstancePage({ section, setup }: { section: string; setup: Setup }) {
+/** Settings → General (formerly Informazioni): name, address, version, setup checklist. */
+function GeneralPage({ setup }: { setup: Setup }) {
   const { t } = useTranslation();
-  const { instance, version, user } = useSession();
+  const { instance, version } = useSession();
+  const update = usePendingUpdate();
   const { settings, error, save } = useInstanceSettings();
   if (error) return <LoadError />;
   if (!settings) return <p role="status">{t('admin.loading')}</p>;
-
-  if (section === 'registration')
-    return (
-      <Card title={t('admin.registration')}>
-        <div className="settings-rows">
-          <Row
-            label={t('admin.requireAdminTwoFactor')}
-            help={t(
-              user?.twoFactorEnabled
-                ? 'admin.requireAdminTwoFactorHelp'
-                : 'admin.requireAdminTwoFactorEnrollFirst',
-            )}
-          >
-            <Switch
-              aria-label={t('admin.requireAdminTwoFactor')}
-              checked={settings.requireAdminTwoFactor ?? false}
-              disabled={!user?.twoFactorEnabled}
-              onChange={(event) =>
-                void save({ requireAdminTwoFactor: event.target.checked }).catch(() => {})
-              }
-            />
-          </Row>
-          <Row label={t('settingsUi.registration.label')} help={t('admin.registrationHelp')}>
-            <RegistrationControl
-              value={settings.registration}
-              onChange={(registration) => void save({ registration }).catch(() => {})}
-            />
-          </Row>
-          <Row
-            label={t(`admin.registrationModes.${settings.registration}`)}
-            help={t(`settingsUi.registration.${settings.registration}`)}
-          />
-        </div>
-      </Card>
-    );
-
   return (
     <>
       <Card title={t('settingsUi.about.identity')}>
-        <div className="settings-rows">
-          <Row
+        <Row
+          label={t('admin.instanceName')}
+          help={t('settingsUi.about.nameHelp')}
+          htmlFor="instance-name"
+        >
+          <AutosaveText
+            id="instance-name"
             label={t('admin.instanceName')}
-            help={t('settingsUi.about.nameHelp')}
-            htmlFor="instance-name"
-          >
-            <AutosaveText
-              id="instance-name"
-              label={t('admin.instanceName')}
-              value={settings.name}
-              maxLength={120}
-              save={(name) => save({ name })}
-            />
-          </Row>
-          <Row label={t('settingsUi.about.url')}>
-            <code className="settings-env">{instance?.publicUrl}</code>
-          </Row>
-          <Row label={t('settingsUi.about.version')}>
-            <span>Inkadra {version}</span>
-          </Row>
-        </div>
+            value={settings.name}
+            maxLength={120}
+            save={(name) => save({ name })}
+          />
+        </Row>
+        <Row label={t('settingsUi.about.url')}>
+          <code className="settings-env">{instance?.publicUrl}</code>
+        </Row>
+        <Row
+          label={t('settingsUi.about.version')}
+          help={update ? t('updates.navAvailable', { version: update.version }) : undefined}
+        >
+          <span className="settings-value">Inkadra {version}</span>
+          <Link className="ink-btn ink-btn--ghost" to="/settings?section=updates" replace>
+            {t('settingsUi.pages.updates')}
+          </Link>
+        </Row>
       </Card>
-      <Card title={t('settingsUi.access.email')}>
-        <div className="settings-rows">
-          <Row
-            label={t('settingsUi.notifications.releaseNews')}
-            help={t('settingsUi.notifications.releaseNewsAdminHelp')}
-          >
-            <Switch
-              aria-label={t('settingsUi.notifications.releaseNews')}
-              checked={settings.releaseNews ?? true}
-              disabled={!instance?.auth.email}
-              onChange={(e) => void save({ releaseNews: e.target.checked }).catch(() => {})}
-            />
-          </Row>
-        </div>
-      </Card>
-      <InstanceStatus setup={setup} />
-      <FeedbackSettings />
+      <SetupChecklist setup={setup} />
     </>
   );
 }

@@ -98,7 +98,7 @@ test('a board kept around its content stops panning there; off, it pans away', a
   expect(await cardsInView(page)).toBe(3);
 
   // The preference follows the account: off, the board is endless again.
-  await page.goto('/settings?section=preferences');
+  await page.goto('/settings?section=board');
   const keep = page.getByRole('switch', { name: 'Mantieni la board attorno al contenuto' });
   await expect(keep).toBeChecked();
   const saved = page.waitForResponse(
@@ -159,7 +159,7 @@ test.describe('pictures for the pull request', () => {
           await page.getByRole('button', { name: 'Riduci', exact: true }).click({ force: true });
         await page.waitForTimeout(400);
         await page.screenshot({ path: `${shots}/canvas-zoomed-out-${name}.png` });
-        for (const section of ['preferences', 'toolbar', 'notifications']) {
+        for (const section of ['preferences', 'board', 'notifications']) {
           await page.goto(`/settings?section=${section}`);
           await page.waitForTimeout(500);
           await page.screenshot({ path: `${shots}/settings-${section}-${name}.png` });

@@ -4,22 +4,13 @@ import {
   type FeedbackSettingsInput,
   type FeedbackSettings as Settings,
 } from '@inkadra/shared';
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  Icon,
-  IconButton,
-  RadioGroup,
-  Select,
-  Switch,
-} from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, IconButton, Select, Switch } from '@inkadra/ui';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { useIsPhone } from '../lib/phone.ts';
-import { AutosaveText, Badge, Card, Row } from '../routes/settings-ui.tsx';
+import { AutosaveText, Badge, Card, Row, Tile } from '../routes/settings-ui.tsx';
 import { openFeedback, STATUS_CHANGED, useFeedbackStatus } from './state.ts';
 
 const WHEN = { dateStyle: 'medium', timeStyle: 'short' } as const;
@@ -38,33 +29,16 @@ export function FeedbackRow() {
   const status = useFeedbackStatus();
   const on = !!status?.enabled;
   return (
-    <Row label={t('feedback.title')} help={t(on ? 'feedback.rowHelp' : 'feedback.rowOff')}>
+    <Row
+      icon="report"
+      tone="warn"
+      label={t('feedback.title')}
+      help={t(on ? 'feedback.rowHelp' : 'feedback.rowOff')}
+    >
       <Button disabled={!on} onClick={() => openFeedback()}>
         {t('feedback.open')}
       </Button>
     </Row>
-  );
-}
-
-/** The same, as a row of the phone's Profile. */
-export function FeedbackProfileRow() {
-  const { t } = useTranslation();
-  const status = useFeedbackStatus();
-  return status?.enabled ? (
-    <li>
-      <button type="button" className="settings-home__item" onClick={() => openFeedback()}>
-        <Icon name="report" />
-        <span className="settings-home__label">{t('feedback.title')}</span>
-        <Icon name="chevronRight" size={14} />
-      </button>
-    </li>
-  ) : (
-    <li className="settings-home__inline">
-      <span className="settings-home__label">
-        {t('feedback.title')}
-        <span className="settings-home__sub">{t('feedback.rowOff')}</span>
-      </span>
-    </li>
   );
 }
 
@@ -111,6 +85,7 @@ function ReportList({
         <div key={r.id} className="feedback-reports__item">
           <details>
             <summary className="settings-row">
+              <Tile icon="report" tone={r.delivery === 'inbox' ? 'accent' : 'warn'} />
               <span className="settings-row__text">
                 <span className="settings-row__label feedback-reports__title">
                   {r.reference} · {r.report.title}
@@ -218,7 +193,7 @@ function ReportList({
   );
 }
 
-/** Settings › About: where reports go. Administrators only. */
+/** Settings › Reports (decision 0124): where reports go, and those received. Administrators only. */
 export function FeedbackSettings() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -298,7 +273,7 @@ export function FeedbackSettings() {
   const relayWaiting = reports.filter((r) => r.delivery === 'pending' && r.failure);
   return (
     <>
-      <Card title={t('feedback.settingsTitle')} body={t('feedback.settingsLead')}>
+      <Card title={t('feedback.destination')}>
         <div className="feedback-settings">
           {error && (
             <div className="feedback-banner feedback-banner--danger" role="alert">
@@ -345,24 +320,22 @@ export function FeedbackSettings() {
               <div>{t('feedback.tokenMissingBanner')}</div>
             </div>
           )}
-          <Row label={t('feedback.developers')} help={t('feedback.privacyRelay')}>
-            <Switch
-              aria-label={t('feedback.developers')}
-              checked={settings.destination === 'relay'}
-              onChange={(e) =>
-                void save({ ...input, destination: e.target.checked ? 'relay' : 'inbox' })
+          <Row
+            label={t('feedback.destination')}
+            help={t(relay ? 'feedback.privacyRelay' : 'settingsUi.reports.copyHere')}
+          >
+            <Select
+              aria-label={t('feedback.destination')}
+              value={settings.destination}
+              onChange={(destination) =>
+                void save({ ...input, destination: destination as Settings['destination'] })
               }
+              options={(['relay', 'github', 'inbox', 'off'] as const).map((value) => ({
+                value,
+                label: t(`feedback.destinations.${value}`),
+              }))}
             />
           </Row>
-          <RadioGroup
-            label={t('feedback.destination')}
-            value={settings.destination}
-            onChange={(destination) => void save({ ...input, destination })}
-            options={(['relay', 'github', 'inbox', 'off'] as const).map((value) => ({
-              value,
-              label: t(`feedback.destinations.${value}`),
-            }))}
-          />
           <div className="settings-rows">
             {github && (
               <Row
@@ -411,34 +384,36 @@ export function FeedbackSettings() {
                 {latest && !uncertain && <Badge tone="ok">{t('feedback.delivered')}</Badge>}
               </Row>
             )}
-            <Row label={t('feedback.allowGuests')} help={t('feedback.allowGuestsHelp')}>
-              <Switch
-                aria-label={t('feedback.allowGuests')}
-                checked={settings.guests}
-                onChange={(e) => void save({ ...input, guests: e.target.checked })}
-              />
-            </Row>
-            <Row
-              label={t('feedback.retention')}
-              help={t(relay ? 'feedback.relayRetentionHelp' : 'feedback.retentionHelp')}
-            >
-              <Select
-                aria-label={t('feedback.retention')}
-                value={String(settings.retentionDays)}
-                onChange={(value) =>
-                  void save({
-                    ...input,
-                    retentionDays: Number(value) as FeedbackSettingsInput['retentionDays'],
-                  })
-                }
-                options={FEEDBACK_RETENTION_OPTIONS.map((days) => ({
-                  value: String(days),
-                  label: t(`feedback.retentionDays.${days}`),
-                }))}
-              />
-            </Row>
           </div>
         </div>
+      </Card>
+      <Card title={t('settingsUi.reports.rules')}>
+        <Row label={t('feedback.allowGuests')} help={t('feedback.allowGuestsHelp')}>
+          <Switch
+            aria-label={t('feedback.allowGuests')}
+            checked={settings.guests}
+            onChange={(e) => void save({ ...input, guests: e.target.checked })}
+          />
+        </Row>
+        <Row
+          label={t('feedback.retention')}
+          help={t(relay ? 'feedback.relayRetentionHelp' : 'feedback.retentionHelp')}
+        >
+          <Select
+            aria-label={t('feedback.retention')}
+            value={String(settings.retentionDays)}
+            onChange={(value) =>
+              void save({
+                ...input,
+                retentionDays: Number(value) as FeedbackSettingsInput['retentionDays'],
+              })
+            }
+            options={FEEDBACK_RETENTION_OPTIONS.map((days) => ({
+              value: String(days),
+              label: t(`feedback.retentionDays.${days}`),
+            }))}
+          />
+        </Row>
       </Card>
       <Card
         title={t('feedback.received')}

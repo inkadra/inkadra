@@ -76,18 +76,24 @@ it('opens Account on desktop and the settings home on phones', async () => {
 it('lays Account out as one column of groups, ending with the danger zone', async () => {
   await render('/settings?section=account');
   expect(host.querySelector('aside')).toBeNull();
-  const groups = [...host.querySelectorAll('.settings-card h3')].map((h) => h.textContent);
-  expect(groups).toEqual([
-    'storageSpace.title',
+  const groups = () => [...host.querySelectorAll('.settings-block h3')].map((h) => h.textContent);
+  // Your space follows Sessions; tokens and the clipper moved to Connected apps (0124).
+  expect(groups()).toEqual([
     'settings.profile.title',
     'settings.methods.title',
     'settings.sessions.title',
-    'settings.tokens.title',
+    'storageSpace.title',
     'settingsUi.dangerZone',
   ]);
-  expect(host.querySelector('.settings-card--danger h3')?.textContent).toBe(
-    'settingsUi.dangerZone',
-  );
+  expect(
+    host.querySelector('.settings-card--danger')?.closest('.settings-block')?.querySelector('h3')
+      ?.textContent,
+  ).toBe('settingsUi.dangerZone');
+  // Every block is one bordered card.
+  for (const block of host.querySelectorAll('.settings-block'))
+    expect(block.querySelectorAll(':scope > .settings-card')).toHaveLength(1);
+  await render('/settings?section=apps');
+  expect(groups()).toEqual(['calendar.title', 'settingsUi.apps.clipper', 'settings.tokens.title']);
 });
 
 it('keeps email controls only in Notifications and gates admin pages', async () => {
@@ -99,7 +105,7 @@ it('keeps email controls only in Notifications and gates admin pages', async () 
   expect(lead()).toBe('catalogs.scope');
   expect(host.querySelector('[data-classifications]')).not.toBeNull();
   session.user.role = 'member';
-  for (const section of ['classifications', 'registration', 'providers', 'workspace']) {
+  for (const section of ['classifications', 'registration', 'providers', 'workspace', 'reports']) {
     await render(`/settings?section=${section}`);
     expect(host.querySelector('[data-classifications]')).toBeNull();
     expect(host.querySelector('[role="alert"]')?.textContent).toBe('admin.forbidden');
@@ -149,7 +155,7 @@ it('autosaves the profile name after typing stops, never an empty one', async ()
 });
 
 it('points to the clipper in the store until a clipper token exists, then shows it connected', async () => {
-  await render('/settings?section=account');
+  await render('/settings?section=apps');
   const row = () => host.querySelector('.settings-clipper');
   expect(row()?.querySelector('code')?.textContent).toBe('http://localhost:3000');
   const store = row()?.querySelector('a');
@@ -166,7 +172,7 @@ it('points to the clipper in the store until a clipper token exists, then shows 
         ? [{ id: 't1', name: 'Chrome', prefix: 'ink_', client: 'clipper' }]
         : [],
   }));
-  await render('/settings?section=account&again');
+  await render('/settings?section=apps&again');
   expect(row()?.querySelector('a')).toBeNull();
   expect(row()?.textContent).toContain('settings.tokens.clipper.connected');
   expect(row()?.querySelector('code')).not.toBeNull();

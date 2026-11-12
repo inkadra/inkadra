@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { formatStorage } from './StorageCharts.tsx';
 import { trackSave } from './settings-save.ts';
-import { Badge, Card, Row } from './settings-ui.tsx';
+import { Badge, Card, Row, Summary } from './settings-ui.tsx';
 import './backup-settings.css';
 import { formatDateTime } from '../lib/datetime.ts';
 
@@ -93,10 +93,37 @@ export function BackupSettings() {
 
   return (
     <>
-      <Card
+      <Summary
         tour="backups"
-        title={t('backups.title')}
-        body={t('backups.cardLead')}
+        live
+        tone={!last ? 'accent' : last.status === 'failed' ? 'warn' : 'ok'}
+        icon={!last ? 'clock' : last.status === 'failed' ? 'warning' : 'check'}
+        title={t(
+          running
+            ? 'settingsUi.backups.running'
+            : !last
+              ? 'settingsUi.backups.none'
+              : last.status === 'failed'
+                ? 'settingsUi.backups.failed'
+                : 'settingsUi.backups.ok',
+        )}
+        text={
+          last
+            ? [
+                time(last.startedAt),
+                size(last.size),
+                last.files
+                  ? t('backups.filesListed', {
+                      count: last.files.count,
+                      size: size(last.files.bytes),
+                    })
+                  : null,
+                last.status === 'failed' ? failureText(t, last.failure) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : t('backups.cardLead')
+        }
         action={
           <Button
             data-tour="backups-now"
@@ -106,30 +133,9 @@ export function BackupSettings() {
             {t(running ? 'backups.running' : 'backups.now')}
           </Button>
         }
-      >
+      />
+      <Card title={t('settingsUi.backups.schedule')}>
         <div className="settings-rows">
-          <Row
-            label={t('backups.last')}
-            help={
-              last
-                ? [
-                    time(last.startedAt),
-                    size(last.size),
-                    last.files
-                      ? t('backups.filesListed', {
-                          count: last.files.count,
-                          size: size(last.files.bytes),
-                        })
-                      : null,
-                    last.status === 'failed' ? failureText(t, last.failure) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
-                : t('backups.none')
-            }
-          >
-            {last && <StatusBadge backup={last} />}
-          </Row>
           <Row
             label={t('backups.nightly')}
             help={
@@ -178,7 +184,7 @@ export function BackupSettings() {
           </Row>
         </div>
         {startError && (
-          <p role="alert" className="backup-settings__error">
+          <p role="alert" className="settings-card__pad backup-settings__error">
             {startError}
           </p>
         )}

@@ -150,8 +150,8 @@ async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
 
   // Administrators: classifications and reports. The dialog stops at its preview, nothing is sent.
   await settle(page, '/settings?section=classifications', file('classifications'));
-  await page.goto('/settings?section=instance');
-  await page.getByRole('heading', { name: 'Reports', exact: true }).scrollIntoViewIfNeeded();
+  await page.goto('/settings?section=reports');
+  await page.getByRole('heading', { name: 'Destination', exact: true }).scrollIntoViewIfNeeded();
   await save(page, file('reports-settings'));
 
   await fit(page, canvas(project.rootBoardId));

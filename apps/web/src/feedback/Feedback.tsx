@@ -1389,7 +1389,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
                   <Button
                     variant="primary"
                     onClick={() => {
-                      navigate('/settings?section=instance');
+                      navigate('/settings?section=reports');
                       dialog.current?.requestClose();
                     }}
                   >

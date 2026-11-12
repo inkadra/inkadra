@@ -85,7 +85,8 @@ for (const width of [1280, 390]) {
       await modulesSwitch(page, 'Pianta del set').click();
       await expect(modulesSwitch(page, 'Storyboard')).not.toBeChecked();
       await expect(
-        page.getByText('Spento · Le inquadrature che esistono restano dove sono.'),
+        // Off says what stays, after the module's line (0124).
+        page.getByText('Le inquadrature che esistono restano dove sono.', { exact: false }),
       ).toBeVisible();
       await shoot(page, 'modules-page');
 

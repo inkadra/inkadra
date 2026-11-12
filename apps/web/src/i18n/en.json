@@ -2879,7 +2879,6 @@
       "server_alert_storage_limit": "Instance space: {{percent}}% used ({{used}} of {{limit}})",
       "server_alert_storage_request": "asks for more space"
     },
-    "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
     "emailLabel": "Send email",
     "frequency": {
@@ -3632,35 +3631,41 @@
   },
   "settingsUi": {
     "profile": "Profile",
-    "diagnostics": "Diagnostics",
     "on": "On",
     "off": "Off",
     "groups": {
-      "instance": "Instance · admin"
+      "workspace": "Workspace · admin",
+      "server": "Server · admin"
     },
     "pages": {
-      "access": "Sign-in",
-      "about": "About",
+      "access": "Access and permissions",
       "toolbar": "Toolbar",
-      "tutorials": "Tutorials",
-      "server": "Server",
+      "server": "Server status",
       "updates": "Updates",
-      "modules": "Modules"
+      "modules": "Modules",
+      "appearance": "Appearance and language",
+      "board": "Board",
+      "apps": "Connected apps",
+      "help": "Help and tutorials",
+      "reports": "Reports",
+      "general": "General"
     },
     "leads": {
       "account": "Your profile and how you sign in.",
       "preferences": "They apply only to you and follow you on every device.",
       "notifications": "Some notifications always reach your Inbox. Choose which ones you also get by email.",
       "storage": "Space taken by the instance’s files.",
-      "access": "Sign-in methods come from the server configuration; here you see what is active.",
-      "registration": "Who can create a new account.",
-      "about": "Instance name, address, version and setup status.",
+      "access": "Who can come in, what members can do and how people sign in.",
       "backups": "Nightly copies of the database, to restore the server after a failure.",
       "toolbar": "Choose which tools of More you see in the bottom bar. The others stay in More (⋯) and in the command palette.",
-      "tutorials": "Watch the guided tours again and choose whether to offer them.",
+      "tutorials": "Watch the guided tours again, choose whether to offer them and ask for help.",
       "server": "How the server is doing: resources, services, jobs, problems and alerts.",
       "updates": "The version in use, what’s new and a notice when a new one is out. Inkadra doesn’t update itself: you update it, on the server.",
-      "modules": "Choose the parts of Inkadra you use. A module that is off leaves your menus, the bar, notifications and tutorials. It applies to you only and deletes nothing: what exists stays visible, and turning it back on brings everything back."
+      "modules": "Choose the parts of Inkadra you use. A module that is off leaves your menus, the bar, notifications and tutorials. It applies to you only and deletes nothing: what exists stays visible, and turning it back on brings everything back.",
+      "board": "How your boards behave and which tools you have in the bottom bar. It applies to you only, on every device.",
+      "apps": "What connects to your account from outside: calendar, browser extension, tokens.",
+      "instance": "The instance name and what is left to finish the setup.",
+      "reports": "Where the reports people send from “Report a problem” go, and the ones received."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -3683,7 +3688,7 @@
       "themeHelp": "System follows your device setting",
       "languageHelp": "Interface and email language",
       "keepPlaying": "Continue playing videos off-screen",
-      "keepPlayingHelp": "The video keeps playing when you move the view. Applies to this device only.",
+      "keepPlayingHelp": "The video keeps playing when you move the view.",
       "appearance": "Appearance",
       "dateTime": "Date and time",
       "canvas": "Canvas",
@@ -3731,23 +3736,30 @@
       "reviewHelp": "Approved or changes requested",
       "always": "Always",
       "alwaysNote": "Grey = always on in the Inbox.",
-      "sendMe": "Send me",
       "releaseNews": "Inkadra news",
       "releaseNewsHelp": "Only when the instance sends it",
-      "releaseNewsAdminHelp": "Let people receive release news after an update. Requires SMTP and personal opt-in."
+      "releaseNewsAdminHelp": "Let people receive release news after an update. Requires SMTP and personal opt-in.",
+      "what": "What to receive",
+      "frequency": "When to send them",
+      "frequencyHelp": "At once: notifications close together in a single email. Digest: one email a day."
     },
     "members": {
       "invite": "Invite members",
       "you": "you",
-      "pending": "Pending",
-      "allStatuses": "All statuses"
-    },
-    "status": {
-      "title": "Instance status"
+      "allStatuses": "All statuses",
+      "invitations": "Pending invitations",
+      "projects_one": "{{count}} project",
+      "projects_other": "{{count}} projects"
     },
     "storage": {
       "used": "Space used",
-      "top": "Largest file type"
+      "top": "Largest file type",
+      "usage": "Usage",
+      "by": {
+        "project": "By project",
+        "user": "By person",
+        "type": "By type"
+      }
     },
     "access": {
       "always": "Always available",
@@ -3756,7 +3768,8 @@
       "needsSmtp": "Needs SMTP",
       "missingSmtp": "SMTP missing",
       "email": "Outgoing email",
-      "smtpOn": "Invitations, password resets and email notifications can be sent."
+      "smtpOn": "Invitations, password resets and email notifications can be sent.",
+      "smtpOff": "needed for invitations, password resets and notifications"
     },
     "registration": {
       "label": "New accounts",
@@ -3768,28 +3781,26 @@
       "nameHelp": "Shown in the sidebar, in emails and on the sign-in page",
       "url": "Public address",
       "version": "Version",
-      "identity": "Instance",
-      "diagnosticsHelp": "Network, proxy and service checks, useful when something does not work",
-      "openDiagnostics": "Open",
-      "serverHelp": "Server health, network and proxy checks, recent problems"
+      "identity": "Instance"
     },
     "search": "Search settings",
     "noResults": "No settings found",
     "keywords": {
-      "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account, Your space, Largest files",
-      "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen, Date format, Time format, Dot grid, Snap to grid, Double-click creates a note, Keep the board around its content, Undo and redo buttons",
+      "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Delete account, Your space, Largest files",
+      "preferences": "Theme, Dark theme, Light theme, Language, Date format, Time format",
+      "board": "Dot grid, Snap to grid, Double-click creates a note, Keep the board around its content, Undo and redo buttons, Continue playing videos off-screen, Toolbar, Tools, More, Column, Section heading, Colour, Table, Voice note, Map, Frame, Set plan, Reset to default toolbar",
       "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox, Comments on your cards",
+      "apps": "Your calendar link, Browser extension, Inkadra Clipper for Chrome, Apps and tokens",
+      "tutorials": "Welcome tour, Hints the first time, Start over, Report a problem",
       "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People, Space, Space limit",
-      "workspace": "Space used, Uploaded files, Storage, Space limits, Space per person, Warn at",
+      "access": "New accounts, Open registration, Invitation only, Closed registration, Require two-step verification for administrators, Members can create projects, Calendar feeds, Google, OIDC, Single sign-on (SSO), Email sign-in link, Email and password, SMTP, Outgoing email",
       "classifications": "Project types, Tags, Catalogs, Shot size, Angle, Movement",
-      "providers": "Google, OIDC, Single sign-on (SSO), Email sign-in link, Email and password, SMTP, Outgoing email",
-      "registration": "New accounts, Open registration, Invitation only, Closed registration, Require two-step verification for administrators",
-      "instance": "Instance name, Public address, Version, Diagnostics, Instance status, Inkadra news, Reports, Send to the Inkadra developers, Destination, Repository, GitHub token, Guests can report, Attachment retention, Reports received",
+      "reports": "Reports, Send to the Inkadra developers, Destination, Repository, GitHub token, Guests can report, Attachment retention, Reports received",
+      "instance": "Instance name, Public address, Version, Setup",
+      "workspace": "Space used, Uploaded files, Storage, Space limits, Space per person, Warn at",
       "backups": "Backups, Back up now, Restore, Retention, Nightly backup",
-      "toolbar": "Toolbar, Tools, More, Column, Section heading, Colour, Table, Voice note, Map, Frame, Set plan, Reset to default toolbar",
-      "tutorials": "Welcome tour, Hints the first time, Start over",
       "server": "Processor, Memory, Space, Services, Problems, Alerts, Diagnostics, Video",
-      "updates": "Version, Check now, Tell me when a new version is out, Which versions, Previews, Earlier versions",
+      "updates": "Version, Check now, Tell me when a new version is out, Which versions, Previews, Earlier versions, Inkadra news",
       "modules": "Modules, Storyboard, Production, Moodboard, Client review, Set plan, Turn off, Turn on"
     },
     "close": "Close settings",
@@ -3799,7 +3810,47 @@
       "reset": "Reset to default toolbar",
       "synced": "Synced with your account",
       "always": "Always in the bar",
-      "more": "From More: put in the bar"
+      "more": "From More: put in the bar",
+      "resetAction": "Reset"
+    },
+    "board": {
+      "thisDevice": "This device only"
+    },
+    "help": {
+      "support": "Support"
+    },
+    "apps": {
+      "clipper": "Browser extension"
+    },
+    "general": {
+      "setup": "Setup",
+      "configure": "Set up",
+      "fix": {
+        "providers": "Check the sign-in methods configured on the server",
+        "storage": "Check where the server keeps files",
+        "smtp": "Without SMTP, invitations and email notifications are not sent",
+        "domain": "Check the public address, HTTPS and WebSocket"
+      }
+    },
+    "accessPage": {
+      "members": "Member permissions",
+      "security": "Security",
+      "readOnly": "Read-only · set up on the server",
+      "createHelp": "Otherwise only administrators create and import projects. Change it for one person in Members."
+    },
+    "reports": {
+      "copyHere": "A copy always stays below, in “Reports received”.",
+      "rules": "Rules"
+    },
+    "backups": {
+      "ok": "Last backup succeeded",
+      "failed": "Last backup failed",
+      "none": "No backup yet",
+      "running": "Backup running",
+      "schedule": "Schedule"
+    },
+    "updates": {
+      "how": "How to update"
     }
   },
   "admin": {
@@ -3808,9 +3859,7 @@
     "requireAdminTwoFactorEnrollFirst": "First set up and verify your two-step authentication in Account. Only an already enrolled administrator can enable this requirement.",
     "personal": "Personal",
     "account": "Account",
-    "preferences": "Preferences",
     "notifications": "Notifications",
-    "workspace": "Workspace",
     "instance": "Instance",
     "members": "Members",
     "storage": "Storage",
@@ -3823,7 +3872,6 @@
       "invite": "Invitation only",
       "closed": "Closed"
     },
-    "registrationHelp": "Closed blocks every new account, including invitations. Existing accounts and guest links keep working.",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "loading": "Loading…",
@@ -3842,11 +3890,8 @@
       "admin": "Admin",
       "member": "Member"
     },
-    "person": "Person",
     "projects": "Projects",
-    "lastActive": "Last active",
     "status": "Status",
-    "actions": "Actions",
     "roleFor": "Role for {{name}}",
     "lastAdmin": "Keep at least one active administrator.",
     "never": "No activity recorded",
@@ -4869,7 +4914,6 @@
     "offAdmin": "Choose where they should go: a GitHub repository or only your Inbox.",
     "configure": "Configure",
     "settingsTitle": "Reports",
-    "settingsLead": "Here you decide where reports made from the app go.",
     "destination": "Destination",
     "destinations": {
       "github": "GitHub, in a private repository",
@@ -4937,7 +4981,6 @@
     "deleteConfirm": "Delete",
     "deleteFailed": "I could not delete the report. Try again shortly.",
     "shotPrivacy": "The automatic screenshot leaves out the sidebar, the account, tasks, and project and people names in activity. The rest of the page leaves as it is: cover it by hand if needed.",
-    "developers": "Send to the Inkadra developers",
     "privacyRelay": "This report goes to the Inkadra developers in the private GitHub repository inkadra/inkadra-feedback through the relay on Cloudflare, which sees this server’s IP address. Selected text, screenshots, videos, files and logs leave this server and are read by the Inkadra team. We add no name, email or instance URL. We remove GPS and other metadata from photos and videos from the device; PDFs leave whole, with their metadata. Check the preview. GitHub attachments remain until removed by the team; local retention does not delete them.",
     "relayNote": "This goes to the Inkadra developers: selected text, screenshots and logs leave this server. Full details in the preview.",
     "relayLimits": "Relay: 10 MB per image or file, 25 MB per video, 32 MB total.",
@@ -4969,7 +5012,7 @@
       "lead": "An infinite canvas for film and photo, on your own server.",
       "go": "Take the tour · 1 min",
       "skip": "I’ll explore on my own",
-      "foot": "You can watch it again any time from Settings → Tutorials.",
+      "foot": "You can watch it again any time from Settings → Help and tutorials.",
       "heroNote": "The last train",
       "heroTodoDone": "Location scout",
       "heroTodo": "Rain test"
@@ -5002,9 +5045,9 @@
     },
     "toast": {
       "open": "Open",
-      "welcomeSkipped": "OK! The tour waits for you in Settings → Tutorials.",
-      "tourSkipped": "Tour skipped. You’ll find it in Settings → Tutorials.",
-      "pillDismissed": "OK, we won’t offer it again. It’s in Settings → Tutorials.",
+      "welcomeSkipped": "OK! The tour waits for you in Settings → Help and tutorials.",
+      "tourSkipped": "Tour skipped. You’ll find it in Settings → Help and tutorials.",
+      "pillDismissed": "OK, we won’t offer it again. It’s in Settings → Help and tutorials.",
       "done": "{{name}}: tour complete.",
       "guestDismissed": "OK. The tour stays under the ? button at the top.",
       "guestDone": "That’s all. Enjoy the review!"
@@ -5024,7 +5067,8 @@
       "reset": "Start over",
       "resetHelp": "Mark every tour as not seen.",
       "resetAction": "Reset",
-      "adminOnly": "admins only"
+      "adminOnly": "admins only",
+      "prefs": "Tutorial preferences"
     },
     "groups": {
       "start": "Getting started",
@@ -5077,7 +5121,7 @@
           },
           "6": {
             "title": "Watch it again",
-            "text": "It’s in Settings → Tutorials."
+            "text": "It’s in Settings → Help and tutorials."
           }
         }
       },
@@ -5523,12 +5567,12 @@
           },
           "2": {
             "title": "How people sign in",
-            "text": "Sign-in methods are in Sign-in."
+            "text": "Sign-in methods are in Access and permissions."
           }
         }
       },
       "server": {
-        "name": "Server",
+        "name": "Server status",
         "steps": {
           "0": {
             "title": "At a glance",
@@ -6109,7 +6153,6 @@
     "hidden_one": "1 file in a project you cannot open: {{size}}.",
     "hidden_other": "{{count}} files in projects you cannot open: {{size}}.",
     "filesHelp": "Files removed from boards count too: they stay in the project, because a version can bring them back. The space comes back when the project is deleted.",
-    "column": "Space",
     "own": "{{size}} · own",
     "actionsFor": "Actions for {{name}}",
     "changeLimit": "Change the space limit…",
@@ -6143,7 +6186,7 @@
     "usedTitle": "Space used",
     "ofLimit": "of a {{limit}} limit",
     "disk": "disk {{size}}",
-    "usedDetail": "Originals {{originals}} · copies and previews {{derived}}. The limit cannot go beyond the free disk space: if the disk fills up, Server says so.",
+    "usedDetail": "Originals {{originals}} · copies and previews {{derived}}. The limit cannot go beyond the free disk space: if the disk fills up, Server status says so.",
     "lastsMonths_one": "Lasts about 1 month",
     "lastsMonths_other": "Lasts about {{count}} months",
     "lastsWeeks_one": "Lasts about 1 week",
@@ -6337,7 +6380,6 @@
       "review": "Links already sent keep working.",
       "plan": "Plans already drawn stay visible."
     },
-    "offKeep": "Off · {{text}}",
     "always": "Always on",
     "turnOn": "Turn on",
     "turnedOn": "{{name}} is on: find it in Canvas and in the bar.",

@@ -3,8 +3,9 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
-import { SaveStatus, SettingsNav, SettingsShell } from './SettingsShell.tsx';
+import { SaveStatus, SettingsNav, SettingsShell, setupAttention } from './SettingsShell.tsx';
 import { trackSave } from './settings-save.ts';
+import { CHECK_PAGES } from './settings-sections.ts';
 
 const session = vi.hoisted(() => ({
   user: { role: 'admin' },
@@ -41,18 +42,21 @@ it('groups permitted pages, marks the current one and flags incomplete setup', a
   );
   expect([...host.querySelectorAll('.settings-nav__group h3')].map((h) => h.textContent)).toEqual([
     'admin.personal',
-    'admin.workspace',
-    'settingsUi.groups.instance',
+    'settingsUi.groups.workspace',
+    'settingsUi.groups.server',
   ]);
-  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(15);
+  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(16);
   const iconOf = (section: string) =>
     host.querySelector(`a[href="/settings?section=${section}"] svg`)?.innerHTML;
   expect(new Set([iconOf('preferences'), iconOf('tutorials'), iconOf('instance')]).size).toBe(3);
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('admin.members6');
+  // A failing check flags the page that fixes it: SMTP is on Access and permissions.
   expect(host.querySelector('[data-attention]')?.getAttribute('href')).toBe(
-    '/settings?section=providers',
+    '/settings?section=access',
   );
   expect(host.textContent).toContain('Inkadra 1.2.3 · Studio');
+  // Diagnostics left the footer (0124): Server status shows the same checks.
+  expect(host.querySelector('a[href="/diagnostics"]')).toBeNull();
   await act(async () =>
     host.querySelector<HTMLAnchorElement>('a[href="/settings?section=classifications"]')?.click(),
   );
@@ -69,7 +73,7 @@ it('hides admin pages from members', async () => {
       </MemoryRouter>,
     ),
   );
-  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(6);
+  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(7);
   expect(host.querySelector('a[href="/settings?section=classifications"]')).toBeNull();
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('admin.account');
 });
@@ -89,16 +93,16 @@ it('narrows the pages to those matching the search', async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
-  // The keys stand in for translations here: "registration" matches one title.
-  await type('REGISTRATION');
+  // The keys stand in for translations here: "pages.reports" matches one title.
+  await type('PAGES.REPORTS');
   expect([...host.querySelectorAll('.settings-nav__item')].map((a) => a.textContent)).toEqual([
-    'admin.registration',
+    'settingsUi.pages.reports',
   ]);
   expect(host.querySelectorAll('.settings-nav__group h3')).toHaveLength(1);
   // A setting on a page finds the page and is named next to it (keys stand in here too).
   await type('keywords.preferences');
   expect([...host.querySelectorAll('.settings-nav__item')].map((a) => a.textContent)).toEqual([
-    'admin.preferencessettingsUi.keywords.preferences',
+    'settingsUi.pages.appearancesettingsUi.keywords.preferences',
   ]);
   expect(host.querySelector('.settings-nav__match')?.textContent).toBe(
     'settingsUi.keywords.preferences',
@@ -138,4 +142,19 @@ it('reports autosave progress and failures in the header, and resets per page', 
   });
   expect(status()?.getAttribute('role')).toBe('alert');
   expect(status()?.textContent).toBe('settingsUi.autosave.error');
+});
+
+it('flags the page that fixes each failing check, the one Configure in General opens', () => {
+  const failing = (id: string) => ({ checks: [{ id, ok: false }], error: false });
+  const flagged = (setup: Parameters<typeof setupAttention>[0]) =>
+    ['access', 'workspace', 'server', 'instance'].filter((page) => setupAttention(setup, page));
+  expect(flagged(failing('smtp'))).toEqual(['access']);
+  expect(flagged(failing('providers'))).toEqual(['access']);
+  expect(flagged(failing('storage'))).toEqual(['workspace']);
+  expect(flagged(failing('domain'))).toEqual(['server']);
+  for (const id of ['smtp', 'providers', 'storage', 'domain'])
+    expect(flagged(failing(id))).toEqual([CHECK_PAGES[id]]);
+  // Checks that could not be read: General, which shows that error, is flagged instead.
+  expect(flagged({ checks: null, error: true })).toEqual(['instance']);
+  expect(flagged({ checks: [{ id: 'smtp', ok: true }], error: false })).toEqual([]);
 });

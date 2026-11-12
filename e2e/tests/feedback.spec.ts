@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page, type Route, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 import { setViews } from '../helpers/views.ts';
 
 // New headless Chromium: the old headless shell has no tab capture.
@@ -69,10 +70,12 @@ test('respects an explicit off choice, and the shortcut says so', async ({ page 
     ),
   ).toBe(true);
   await dialog.getByRole('button', { name: 'Configura', exact: true }).click();
-  await expect(page).toHaveURL(/section=instance/);
-  await expect(
-    page.getByText('Non attive su questa istanza. Chiedi a chi la gestisce.'),
-  ).toBeVisible();
+  // Reports have a page of their own (0124).
+  await expect(page).toHaveURL(/section=reports/);
+  await expect(page.getByRole('combobox', { name: 'Destinazione', exact: true })).toHaveAttribute(
+    'data-value',
+    'off',
+  );
 });
 
 test('has no entry on the sign-in page', async ({ page }) => {
@@ -320,7 +323,7 @@ test('leaves the secrets on screen out of the screenshot', async ({ page }) => {
   expect(text).not.toContain('BACKUPCODEVALUE');
   expect(text).not.toContain('TOTP');
 
-  await page.goto('/settings?section=notifications');
+  await page.goto('/settings?section=apps');
   const calendar = page.getByRole('textbox', { name: 'Link del tuo calendario' });
   await expect(calendar).not.toHaveValue('');
   const feed = await calendar.inputValue();
@@ -776,8 +779,8 @@ test.describe('every state, for review', () => {
 
   test('settings, off states, board menu, error page and guest', async ({ page }) => {
     await login(page);
-    // Off, as a person who does not run the instance would see it.
-    await page.goto('/settings?section=instance');
+    // Off, as a person who does not run the instance would see it (Help and tutorials).
+    await page.goto('/settings?section=tutorials');
     await page
       .getByText('Non attive su questa istanza. Chiedi a chi la gestisce.')
       .scrollIntoViewIfNeeded();
@@ -803,8 +806,8 @@ test.describe('every state, for review', () => {
       headers: ORIGIN_HEADERS(page),
       data: { destination: 'github', repository: 'inkadra/inkadra-feedback', guests: false },
     });
-    await page.goto('/settings?section=instance');
-    const panel = page.getByRole('region', { name: 'Segnalazioni', exact: true });
+    await page.goto('/settings?section=reports');
+    const panel = page.getByRole('region', { name: 'Destinazione', exact: true });
     await panel.scrollIntoViewIfNeeded();
     await expect(panel).toContainText('finché il token non è impostato');
     await snap(page, 'admin-no-token');
@@ -1012,12 +1015,10 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
     }
   }
   await page.keyboard.press('Escape');
-  await page.goto('/settings?section=instance');
-  const toggle = page.getByRole('switch', {
-    name: 'Invia agli sviluppatori di Inkadra',
-    exact: true,
-  });
-  await expect(toggle).toBeChecked();
+  await page.goto('/settings?section=reports');
+  // One menu of the four destinations replaced the relay switch (0124).
+  const toggle = page.getByRole('combobox', { name: 'Destinazione', exact: true });
+  await expect(toggle).toHaveAttribute('data-value', 'relay');
   if (process.env.FEEDBACK_SHOTS_DIR) {
     await toggle.scrollIntoViewIfNeeded();
     for (const theme of ['light', 'dark']) {
@@ -1036,8 +1037,8 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
       }
     }
   }
-  await toggle.click();
-  await expect(toggle).not.toBeChecked();
+  await chooseSelect(toggle, 'inbox');
+  await expect(toggle).toHaveAttribute('data-value', 'inbox');
   // The switch moves before the save reaches the server.
   await expect
     .poll(
@@ -1101,7 +1102,7 @@ test('with the relay down the report stays queued and everyone is told', async (
   await expect(page.getByRole('dialog')).toContainText('Non è ancora partita');
   await page.keyboard.press('Escape');
 
-  await page.goto('/settings?section=instance');
+  await page.goto('/settings?section=reports');
   const banner = page.getByText(/\d+ segnalazion\S+ non (è|sono) ancora partit/);
   await expect(banner).toBeVisible();
   await relayShots(page, 'settings-relay-down', () => banner.scrollIntoViewIfNeeded());

@@ -655,112 +655,21 @@
   font-weight: 600;
 }
 
-/* ---------- Settings → Tutorial ---------- */
-.tour-settings {
-  display: grid;
-  gap: 14px;
-}
-.tour-settings__count {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-  margin: 0;
-  color: var(--ink-text-secondary);
-  font-size: 12.5px;
-}
-.tour-settings__welcome {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: linear-gradient(90deg, var(--ink-accent-soft-bg), transparent 70%);
-}
-.tour-settings__welcome-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-accent-button);
-  color: var(--ink-on-accent);
-}
-.tour-settings__welcome .ink-btn {
-  margin-left: auto;
-  flex: none;
-}
-.tour-settings__group h3 {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin: 4px 0 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-text-secondary);
-}
-.tour-settings__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.tour-tile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 8px 8px 8px 10px;
-  border: 1px solid var(--ink-border-muted);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-1);
-}
-.tour-tile__icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--kind-bg, var(--ink-surface-2));
-  color: var(--kind-fg, var(--ink-text-icon));
-}
-.tour-tile__text {
-  display: grid;
-  min-width: 0;
-}
-.tour-tile__name {
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.tour-tile__state {
-  display: flex;
+/* ---------- Settings → Help and tutorials: the seen state under each tour ---------- */
+.tour-state {
+  display: inline-flex;
   gap: 4px;
   align-items: center;
-  font-size: 11.5px;
   color: var(--ink-accent-soft-fg);
 }
-.tour-tile__state.is-seen {
-  color: var(--ink-status-ok);
+.tour-state.is-seen {
+  color: var(--ink-text-secondary);
 }
-.tour-tile__dot {
+.tour-state__dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-}
-.tour-tile__time {
-  color: var(--ink-text-muted);
-}
-.tour-tile__play {
-  flex: none;
-  margin-left: auto;
-  border: 1px solid var(--ink-border-strong);
 }
 
 /* ---------- mini scenes ---------- */

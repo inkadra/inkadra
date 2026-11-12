@@ -32,6 +32,8 @@ test('an administrator sees the storage of each user', async ({ page, baseURL })
   await page.getByRole('button', { name: 'Accedi' }).click();
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
   await page.goto('/settings?section=workspace');
+  // One usage card with a choice of breakdown (0124).
+  await page.locator('.storage-chart').getByRole('radio', { name: 'Per persona' }).click();
   const card = page.locator('.storage-chart', { hasText: 'Utilizzo per utente' });
   await expect(card).toBeVisible();
   await expect(card.getByRole('rowheader', { name: /Giulia/ })).toBeVisible();

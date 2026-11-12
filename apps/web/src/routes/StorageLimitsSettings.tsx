@@ -7,7 +7,7 @@ import { api } from '../lib/api.ts';
 import { formatStorage } from './StorageCharts.tsx';
 import { SpaceMeter, spaceTone } from './StorageSpace.tsx';
 import { trackSave } from './settings-save.ts';
-import { Badge, Card, Row } from './settings-ui.tsx';
+import { Badge, Card, Row, Summary } from './settings-ui.tsx';
 
 /** Sizes are powers of 1000, as formatStorage shows them. */
 const UNITS = [
@@ -188,10 +188,22 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
   };
   return (
     <>
-      <Card
-        title={t('storageLimits.usedTitle')}
+      <Summary
         tour="storage-used"
-        className="space-card"
+        tone={tone === 'danger' ? 'danger' : tone === 'warn' ? 'warn' : 'ok'}
+        icon="archive"
+        title={[
+          size(used),
+          limits.total !== null && t('storageLimits.ofLimit', { limit: size(limits.total) }),
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        text={[
+          t('storageLimits.usedDetail', { originals: size(originals), derived: size(derived) }),
+          limits.disk && t('storageLimits.disk', { size: size(limits.disk.total) }),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         action={
           tone === 'danger' ? (
             <Badge tone="danger">{t('storageSpace.full')}</Badge>
@@ -201,31 +213,18 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
             </Badge>
           )
         }
-      >
-        <p className="space-card__big">
-          {size(used)}{' '}
-          <small>
-            {[
-              limits.total !== null && t('storageLimits.ofLimit', { limit: size(limits.total) }),
-              limits.disk && t('storageLimits.disk', { size: size(limits.disk.total) }),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </small>
-        </p>
-        {limits.total !== null && (
-          <SpaceMeter
-            originals={originals}
-            derived={derived}
-            limit={limits.total}
-            tone={tone}
-            label={t('storageLimits.usedTitle')}
-          />
-        )}
-        <p className="space-card__meta">
-          {t('storageLimits.usedDetail', { originals: size(originals), derived: size(derived) })}
-        </p>
-      </Card>
+        meter={
+          limits.total !== null && (
+            <SpaceMeter
+              originals={originals}
+              derived={derived}
+              limit={limits.total}
+              tone={tone}
+              label={t('storageLimits.usedTitle')}
+            />
+          )
+        }
+      />
       <Card
         title={t('storageLimits.title')}
         tour="storage-limits"

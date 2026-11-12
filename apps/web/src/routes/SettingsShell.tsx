@@ -1,11 +1,12 @@
-import { Icon, type IconName } from '@inkadra/ui';
-import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import { Icon } from '@inkadra/ui';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { useSession } from '../lib/session.tsx';
 import { usePendingUpdate } from '../lib/updates.ts';
 import { resetSaveState, type SaveState, useSaveState } from './settings-save.ts';
 import {
+  CHECK_PAGES,
   GROUP_TITLES,
   matchSettings,
   SETTINGS_PAGES,
@@ -17,30 +18,10 @@ import './settings.css';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
 
-const SECTION_ICONS: Record<string, IconName> = {
-  account: 'user',
-  preferences: 'settings',
-  toolbar: 'stickyNote',
-  modules: 'layers',
-  notifications: 'bell',
-  tutorials: 'play',
-  members: 'people',
-  workspace: 'archive',
-  classifications: 'tag',
-  providers: 'lock',
-  registration: 'mail',
-  backups: 'clock',
-  server: 'tiles',
-  updates: 'upload',
-  instance: 'page',
-};
-
-/** Which page the instance checklist sends an admin to when a check fails. */
+/** Whether a page has a failing check of the instance checklist to fix. */
 export function setupAttention(setup: Setup, page: string): boolean {
-  const failing = (ids: string[]) => setup.checks?.some((c) => ids.includes(c.id) && !c.ok);
-  if (page === 'providers') return !!failing(['providers', 'smtp']);
-  if (page === 'instance') return setup.error || !!failing(['storage', 'domain']);
-  return false;
+  if (page === 'instance') return setup.error;
+  return !!setup.checks?.some((c) => !c.ok && CHECK_PAGES[c.id] === page);
 }
 
 /**
@@ -115,7 +96,7 @@ export function SettingsNav({
                           title: t('updates.navAvailable', { version: update.version }),
                         })}
                     >
-                      <Icon name={SECTION_ICONS[p.id] ?? 'settings'} size={16} />
+                      <Icon name={p.icon} size={16} />
                       <span className="settings-nav__label">{t(p.title)}</span>
                       {setting && <span className="settings-nav__match">{setting}</span>}
                       {p.id === 'members' && members != null && (
@@ -143,7 +124,6 @@ export function SettingsNav({
             {t('updates.navAvailable', { version: update.version })}
           </Link>
         )}
-        <DiagnosticsLink>{t('settingsUi.diagnostics')}</DiagnosticsLink>
       </footer>
     </nav>
   );
@@ -196,41 +176,5 @@ export function SettingsShell({
       </div>
       {children}
     </div>
-  );
-}
-
-/** How the settings window opens Diagnostics, so it can keep its place in the history. */
-export const DiagnosticsContext = createContext<(() => void) | undefined>(undefined);
-
-/** A link to Diagnostics that goes through the settings window when there is one. */
-export function DiagnosticsLink({
-  className,
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
-  const onDiagnostics = useContext(DiagnosticsContext);
-  return (
-    <Link
-      className={className}
-      to="/diagnostics"
-      replace={!!onDiagnostics}
-      onClick={(event) => {
-        if (
-          onDiagnostics &&
-          !event.metaKey &&
-          !event.ctrlKey &&
-          !event.shiftKey &&
-          !event.altKey &&
-          event.button === 0
-        ) {
-          event.preventDefault();
-          onDiagnostics();
-        }
-      }}
-    >
-      {children}
-    </Link>
   );
 }

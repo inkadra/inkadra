@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Runs after first-run.spec.ts in CI (the administrator exists); alone, it creates one.
-// Members settings on a phone: one tidy card per person. Set E2E_SHOTS to a folder to also
+// Members settings: one row per person, tidy on a phone. Set E2E_SHOTS to a folder to also
 // capture the page on a phone and on a desktop, light and dark.
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './perf/seed.ts';
@@ -32,7 +32,7 @@ async function shoot(page: Page, name: string) {
   }
 }
 
-test('each member is a tidy card on a phone: the columns line up and the ⋯ menu ends the first line', async ({
+test('each member is one row: on a phone the controls line up under the name, ⋯ ends the first line', async ({
   page,
   baseURL,
 }) => {
@@ -54,34 +54,35 @@ test('each member is a tidy card on a phone: the columns line up and the ⋯ men
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/settings/team');
-  const rows = page.locator('.team-table tbody:first-of-type tr');
+  // One row of the card per person (decision 0124).
+  const rows = page.locator('.team-member');
   await expect(rows.first()).toBeVisible();
   expect(await rows.count()).toBeGreaterThanOrEqual(3);
 
-  const cards = await rows.evaluateAll((trs) =>
-    trs.map((tr) => {
-      const box = (el: Element | null) => el?.getBoundingClientRect();
-      const person = box(tr.querySelector('th'));
-      const create = box(tr.querySelector('.team-col--create'));
-      const role = box(tr.querySelector('.team-col--role'));
-      const action = box(tr.querySelector('.team-col--actions button'));
-      return { tr: box(tr), person, role, create, action };
-    }),
-  );
+  const measure = () =>
+    rows.evaluateAll((els) =>
+      els.map((el) => {
+        const box = (node: Element | null) => node?.getBoundingClientRect();
+        return {
+          row: box(el),
+          text: box(el.querySelector('.settings-row__text')),
+          role: box(el.querySelector('.team-role')),
+          action: box(el.querySelector('.team-col--actions button')),
+        };
+      }),
+    );
+  const cards = await measure();
   const first = cards[0];
-  if (!first?.role || !first.create || !first.action) throw new Error('missing cell');
+  if (!first?.role || !first.action) throw new Error('missing control');
   for (const c of cards) {
-    if (!c.tr || !c.person || !c.role || !c.create || !c.action) throw new Error('missing cell');
-    // Role, then project creation, each on its own full-width line, the same on every row.
+    if (!c.row || !c.text || !c.role || !c.action) throw new Error('missing control');
+    // Role and right to create go under who the person is, lined up on every row.
+    expect(c.role.top).toBeGreaterThanOrEqual(c.text.bottom - 1);
     expect(Math.abs(c.role.left - first.role.left)).toBeLessThan(1);
-    expect(Math.abs(c.create.left - first.create.left)).toBeLessThan(1);
-    expect(Math.abs(c.role.width - first.role.width)).toBeLessThan(1);
-    expect(c.create.top).toBeGreaterThanOrEqual(c.role.bottom - 1);
-    // The ⋯ menu at the end of the first line, the same place on every row, inside the card.
+    // The ⋯ menu ends the first line, the same place on every row, inside the card.
     expect(Math.abs(c.action.right - first.action.right)).toBeLessThan(1);
-    expect(c.action.right).toBeLessThanOrEqual(c.tr.right);
-    expect(c.action.bottom).toBeLessThanOrEqual(c.person.bottom);
-    expect(c.action.left).toBeGreaterThanOrEqual(c.person.left);
+    expect(c.action.right).toBeLessThanOrEqual(c.row.right);
+    expect(c.action.top).toBeLessThan(c.text.top + 12);
   }
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -90,7 +91,16 @@ test('each member is a tidy card on a phone: the columns line up and the ⋯ men
   await page.locator('.team-tools').evaluate((el) => el.scrollIntoView({ block: 'start' }));
   await shoot(page, 'members-phone');
 
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(page.locator('.team-table thead')).toBeVisible();
+  // On a desktop who the person is keeps a readable width; the controls end the row, or drop
+  // right-aligned to a line of their own when both do not fit.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const desktop = await measure();
+  for (const c of desktop) {
+    if (!c.row || !c.text || !c.role || !c.action) throw new Error('missing control');
+    expect(c.text.width).toBeGreaterThanOrEqual(230);
+    expect(c.action.right).toBeLessThanOrEqual(c.row.right);
+    expect(Math.abs(c.action.right - (desktop[0]?.action?.right ?? 0))).toBeLessThan(1);
+    if (c.role.top < c.text.bottom) expect(c.role.left).toBeGreaterThanOrEqual(c.text.right - 1);
+  }
   await shoot(page, 'members-desktop');
 });

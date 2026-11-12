@@ -69,9 +69,17 @@ it('shows grouped rows with current values, inline theme and sign out', async ()
   expect(row('/settings?section=notifications')).toContain('settingsUi.notifications.short.daily');
   expect(row('/settings/team')).toContain('2');
   expect(row('/settings?section=workspace')).toContain('2.5 GB');
-  expect(row('/settings?section=registration')).toContain('admin.registrationModes.closed');
-  expect(row('/settings?section=providers')).toContain('onboarding.needsSetup');
+  expect(row('/settings?section=access')).toContain('admin.registrationModes.closed');
+  expect(row('/settings?section=access')).toContain('onboarding.needsSetup');
   expect(row('/settings?section=instance')).not.toContain('onboarding.needsSetup');
+  expect(row('/settings?section=preferences')).toContain('settings.profile.languages.it');
+  // The rows follow the three groups of the window (decision 0124).
+  expect([...host.querySelectorAll('.settings-home__group h2')].map((h) => h.textContent)).toEqual([
+    'admin.personal',
+    'settingsUi.groups.workspace',
+    'settingsUi.groups.server',
+  ]);
+  expect(host.querySelectorAll('.settings-home__item')).toHaveLength(15);
   await act(async () => {
     host.querySelector<HTMLInputElement>('.ink-segmented input[value="light"]')?.click();
   });
@@ -86,6 +94,7 @@ it('shows only personal rows to members', async () => {
   session.user.role = 'member';
   await render();
   expect(host.querySelector('a[href="/settings/team"]')).toBeNull();
-  expect(host.querySelector('a[href="/settings?section=providers"]')).toBeNull();
+  expect(host.querySelector('a[href="/settings?section=access"]')).toBeNull();
   expect(host.querySelector('a[href="/settings?section=preferences"]')).not.toBeNull();
+  expect(host.querySelectorAll('.settings-home__item')).toHaveLength(6);
 });

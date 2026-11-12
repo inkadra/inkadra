@@ -1,50 +1,13 @@
 /* Settings → Server (#514). Built on the settings groups and rows; tiles as the storage page,
    colours from tokens only: status tokens for verdicts, the storage chart swatches for series. */
 
-.server-health {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--ink-border-muted);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-2);
-}
-.server-health__icon {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--ink-status-ok);
-  color: var(--ink-on-accent);
-}
-.server-health__text h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-.server-health__text p {
-  margin: 2px 0 0;
-  color: var(--ink-text-secondary);
-  font-size: 13px;
-  line-height: 1.45;
-}
-.server-health--bad {
-  border-color: var(--ink-danger-border);
-  background: var(--ink-danger-bg);
-}
-.server-health--bad .server-health__icon {
-  background: var(--ink-status-danger);
-}
-
-/* Meters and tiles: the storage page's tiles, with a verdict and a bar. */
+/* Meters and tiles: hairline cells inside one card (decision 0124), with a verdict and a bar. */
 .server-meters,
 .server-tiles {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 1px;
+  background: var(--ink-border-muted);
 }
 .server-tiles {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -56,8 +19,7 @@
   gap: 4px;
   min-width: 0;
   padding: 12px 14px;
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-2);
+  background: var(--ink-surface-1);
 }
 .server-meter__top,
 .server-tile__head {
@@ -146,20 +108,6 @@
 }
 
 /* Services and the lists of the page are settings lists with a state on the right. */
-.server-service__icon {
-  display: grid;
-  flex: none;
-  width: 18px;
-  place-items: center;
-  color: var(--ink-status-ok);
-}
-.server-service__icon--warning,
-.server-service__icon--down {
-  color: var(--ink-status-warn);
-}
-.server-service__icon--off {
-  color: var(--ink-text-secondary);
-}
 .server-service__state {
   flex: none;
   color: var(--ink-status-ok);
@@ -177,13 +125,11 @@
 .server-tech {
   margin-top: 4px;
 }
-.server-tech > summary,
-.server-more > summary {
+.server-tech > summary {
   list-style: none;
   cursor: pointer;
 }
-.server-tech > summary::-webkit-details-marker,
-.server-more > summary::-webkit-details-marker {
+.server-tech > summary::-webkit-details-marker {
   display: none;
 }
 .server-tech > summary {
@@ -201,8 +147,7 @@
 .server-tech[open] > summary::before {
   transform: rotate(90deg);
 }
-.server-tech > summary:focus-visible,
-.server-more > summary:focus-visible {
+.server-tech > summary:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
@@ -437,31 +382,18 @@
   background: var(--ink-tag-orange);
 }
 
-/* Technical details: closed by default, as one settings group. */
-.server-more {
-  border-top: 1px solid var(--ink-border-muted);
-  border-bottom: 1px solid var(--ink-border-muted);
-}
-.server-more > summary {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  border-radius: var(--ink-radius-xs);
-}
-.server-more > summary svg {
-  flex: none;
-  color: var(--ink-text-secondary);
-  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
-}
-.server-more[open] > summary svg {
-  transform: rotate(90deg);
-}
+/* Technical details: a fold of the settings grammar (0124), closed by default. */
 .server-more__body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 0 0 16px;
+  padding: 0 14px 16px;
+}
+/* The checks under the Services card: a fold of their own, inside the card's inset. */
+.settings-card > .server-tech {
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--ink-border-muted);
 }
 .server-kv {
   display: grid;
@@ -625,13 +557,6 @@
 }
 
 @media (width < 768px) {
-  .server-health {
-    grid-template-columns: 40px minmax(0, 1fr);
-  }
-  .server-health > .ink-btn {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
   .server-meters,
   .server-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -676,7 +601,12 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .server-tech > summary::before,
-  .server-more > summary svg {
+  .settings-fold__chevron {
     transition: none;
   }
+}
+
+/* The trend sits inside its settings card: keep the card's inset (decision 0124). */
+.settings-card > .server-trend {
+  padding: 12px 14px;
 }

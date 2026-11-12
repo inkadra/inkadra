@@ -287,7 +287,8 @@ test('the notification matrix and the daily digest are saved', async ({ page }) 
     const replyEmail = page.getByRole('checkbox', {
       name: 'Rispondono a una tua discussione: Email',
     });
-    const digest = page.getByRole('switch', { name: 'Riepilogo giornaliero' });
+    // Two choices (0124): at once or a daily digest, the same stored values as the old switch.
+    const digest = page.getByRole('radio', { name: 'Riepilogo giornaliero' });
     // Mentions always reach the Inbox: shown, never changeable.
     await expect(mentionInbox).toBeChecked();
     await expect(mentionInbox).toBeDisabled();
@@ -309,8 +310,9 @@ test('the notification matrix and the daily digest are saved', async ({ page }) 
     await replyEmail.uncheck();
     expect((await response).ok()).toBe(true);
     response = saved();
-    await digest.check();
+    await digest.click();
     expect((await response).ok()).toBe(true);
+    await expect(page.getByRole('radio', { name: 'Subito' })).not.toBeChecked();
     await expect(page.getByRole('status').filter({ hasText: 'Salvato' })).toBeVisible();
     await page.reload();
     await expect(replyEmail).not.toBeChecked();

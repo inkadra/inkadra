@@ -9,12 +9,6 @@ import { Card, Row, useIsPhone } from '../routes/settings-ui.tsx';
 const failure = (err: unknown) =>
   err instanceof RequestError && err.status === 409 ? 'rotated' : 'failed';
 
-const CalendarIcon = ({ name }: { name: 'scene' | 'todo' }) => (
-  <span className="calendar-icon">
-    <Icon name={name} size={14} />
-  </span>
-);
-
 export function CalendarSettings() {
   const { t } = useTranslation();
   const phone = useIsPhone();
@@ -62,69 +56,90 @@ export function CalendarSettings() {
       setError('failed');
     }
   }
+  const input = (
+    <input
+      className="ink-input"
+      aria-label={t('calendar.link')}
+      readOnly
+      data-feedback-secret
+      value={feed?.url ?? ''}
+    />
+  );
+  const copyButton = (
+    <Button
+      variant={phone ? 'primary' : 'secondary'}
+      block={phone}
+      icon="copy"
+      disabled={!feed?.url || busy}
+      onClick={() => void copy()}
+    >
+      {t(phone ? 'calendar.copyLink' : 'calendar.copy')}
+    </Button>
+  );
   return (
     <Card title={t('calendar.title')}>
       {error && (
-        <p role="alert">{t(error === 'rotated' ? 'calendar.rotated' : 'calendar.error')}</p>
+        <p role="alert" className="settings-card__pad">
+          {t(error === 'rotated' ? 'calendar.rotated' : 'calendar.error')}
+        </p>
       )}
       {feed?.enabled === false ? (
-        <p className="settings-card__pad settings-muted">{t('calendar.disabled')}</p>
+        <Row icon="calendar" label={t('calendar.link')} help={t('calendar.disabled')} />
       ) : (
         <div className="settings-rows">
           {phone ? (
-            <p className="calendar-intro">{t('calendar.helpPhone')}</p>
+            <>
+              <p className="settings-card__pad calendar-intro">{t('calendar.helpPhone')}</p>
+              <div className="settings-card__pad calendar-link">
+                {input}
+                {copyButton}
+                {feed?.url && (
+                  <a
+                    className="ink-btn ink-btn--secondary ink-btn--block"
+                    href={feed.url.replace(/^https?:/, 'webcal:')}
+                  >
+                    {t('calendar.open')}
+                  </a>
+                )}
+              </div>
+            </>
           ) : (
-            <Row label={t('calendar.link')} help={t('calendar.help')} />
-          )}
-          <div className="calendar-link">
-            <input
-              className="ink-input"
-              aria-label={t('calendar.link')}
-              readOnly
-              data-feedback-secret
-              value={feed?.url ?? ''}
-            />
-            <Button
-              variant={phone ? 'primary' : 'secondary'}
-              block={phone}
-              icon="copy"
-              disabled={!feed?.url || busy}
-              onClick={() => void copy()}
+            <Row
+              className="calendar-link"
+              icon="calendar"
+              tone="ok"
+              label={t('calendar.link')}
+              help={t('calendar.help')}
             >
-              {t(phone ? 'calendar.copyLink' : 'calendar.copy')}
-            </Button>
-            {phone && feed?.url && (
-              <a
-                className="ink-btn ink-btn--secondary ink-btn--block"
-                href={feed.url.replace(/^https?:/, 'webcal:')}
-              >
-                {t('calendar.open')}
-              </a>
-            )}
-          </div>
+              {input}
+              {copyButton}
+            </Row>
+          )}
           <Row
-            leading={<CalendarIcon name="scene" />}
+            icon="scene"
             label={t('calendar.shooting')}
             help={t(phone ? 'calendar.shootingHelpPhone' : 'calendar.shootingHelp')}
           />
           <Row
-            leading={<CalendarIcon name="todo" />}
+            icon="todo"
             label={t(phone ? 'calendar.tasksPhone' : 'calendar.tasks')}
             help={t(phone ? 'calendar.tasksHelpPhone' : 'calendar.tasksHelp')}
           />
-          <p className="calendar-note">
+          <p className="settings-card__pad calendar-note">
             <Icon name="lock" size={14} />
             {t(phone ? 'calendar.privacyPhone' : 'calendar.privacy')}
           </p>
           {phone ? (
-            <Button
-              block
-              variant="danger"
-              disabled={busy || (!feed && !error)}
-              onClick={() => setConfirm(true)}
-            >
-              {t('calendar.regenerateActionPhone')}
-            </Button>
+            <div className="settings-card__pad">
+              <Button
+                block
+                variant="danger"
+                disabled={busy || (!feed && !error)}
+                onClick={() => setConfirm(true)}
+              >
+                {t('calendar.regenerateActionPhone')}
+              </Button>
+            </div>
           ) : (
             <Row label={t('calendar.regenerate')} help={t('calendar.revokeHelp')}>
               <Button

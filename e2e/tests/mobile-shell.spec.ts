@@ -131,7 +131,7 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await settings.getByRole('button', { name: 'Indietro', exact: true }).click();
   await expect(page).toHaveURL('/settings');
   await expect(settings.getByRole('heading', { name: 'Profilo', exact: true })).toBeVisible();
-  await settings.getByRole('link', { name: /^Notifiche email/ }).click();
+  await settings.getByRole('link', { name: /^Notifiche/ }).click();
   await expect(page).toHaveURL('/settings?section=notifications');
   await expect(settings.getByRole('heading', { name: 'Notifiche', exact: true })).toBeVisible();
   await settings.getByRole('button', { name: 'Indietro', exact: true }).click();

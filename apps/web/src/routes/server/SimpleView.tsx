@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useSession } from '../../lib/session.tsx';
 import { formatStorage } from '../StorageCharts.tsx';
-import { Card, Row } from '../settings-ui.tsx';
+import { Badge, Card, Row, Summary, Tile } from '../settings-ui.tsx';
 import { HistoryChart } from './charts.tsx';
 import { type ServerActions, technicalSummary, useWhen } from './common.ts';
 import {
@@ -61,24 +61,21 @@ function Health({ status }: { status: ServerStatus }) {
       ? duration(now - new Date(first.since).getTime(), i18n.language)
       : null;
     section = (
-      <section className="server-health server-health--bad" data-tour="server">
-        <span className="server-health__icon" aria-hidden="true">
-          <Icon name="warning" size={20} />
-        </span>
-        <div className="server-health__text">
-          <h3>{t('server.health.bad')}</h3>
-          <p>
-            {since
-              ? t('server.health.downSince', {
-                  service: t(`server.services.long.${first.id}`),
-                  time: since,
-                })
-              : t('server.health.down', { service: t(`server.services.long.${first.id}`) })}{' '}
-            {t(`server.health.effects.${first.id}`)}
-          </p>
-        </div>
-        <Button onClick={scrollToProblems}>{t('server.health.whatToDo')}</Button>
-      </section>
+      <Summary
+        tour="server"
+        tone="danger"
+        icon="warning"
+        title={t('server.health.bad')}
+        text={`${
+          since
+            ? t('server.health.downSince', {
+                service: t(`server.services.long.${first.id}`),
+                time: since,
+              })
+            : t('server.health.down', { service: t(`server.services.long.${first.id}`) })
+        } ${t(`server.health.effects.${first.id}`)}`}
+        action={<Button onClick={scrollToProblems}>{t('server.health.whatToDo')}</Button>}
+      />
     );
   } else {
     const backup = status.backup.lastAt
@@ -87,31 +84,29 @@ function Health({ status }: { status: ServerStatus }) {
         })
       : t('server.health.backup.none');
     section = (
-      <section className="server-health" data-tour="server">
-        <span className="server-health__icon" aria-hidden="true">
-          <Icon name="check" size={20} />
-        </span>
-        <div className="server-health__text">
-          <h3>{t('server.health.ok')}</h3>
-          <p>
-            {[
-              status.startedAt &&
-                t('server.health.uptime', {
-                  time: duration(now - new Date(status.startedAt).getTime(), i18n.language),
-                }),
-              backup,
-              open ? t('server.health.problems', { count: open }) : t('server.health.noProblems'),
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </div>
-        {open > 0 && (
-          <Button onClick={scrollToProblems}>
-            {t('server.health.seeProblem', { count: open })}
-          </Button>
-        )}
-      </section>
+      <Summary
+        tour="server"
+        tone="ok"
+        icon="check"
+        title={t('server.health.ok')}
+        text={[
+          status.startedAt &&
+            t('server.health.uptime', {
+              time: duration(now - new Date(status.startedAt).getTime(), i18n.language),
+            }),
+          backup,
+          open ? t('server.health.problems', { count: open }) : t('server.health.noProblems'),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        action={
+          open > 0 && (
+            <Button onClick={scrollToProblems}>
+              {t('server.health.seeProblem', { count: open })}
+            </Button>
+          )
+        }
+      />
     );
   }
   return (
@@ -182,158 +177,176 @@ function Meters({ status }: { status: ServerStatus }) {
   const b = status.backup;
   const backupKey = !b.lastStatus ? (b.enabled ? 'none' : 'off') : b.lastStatus;
   return (
-    <section className="server-meters" aria-label={t('server.meters.label')}>
-      <Meter
-        name={t('server.meters.cpu.name')}
-        verdict={t(`server.meters.cpu.${loadVerdict(cpuShare)}`)}
-        warn={loadVerdict(cpuShare) === 'high'}
-        value={
-          <>
-            {number(cpuShare * 100, lang, 0)}
-            <small> %</small>
-          </>
-        }
-        bar={cpuShare}
-        hint={t('server.meters.cpu.hint')}
-      />
-      <Meter
-        name={t('server.meters.memory.name')}
-        verdict={t(`server.meters.memory.${loadVerdict(memShare)}`)}
-        warn={loadVerdict(memShare) === 'high'}
-        value={
-          <>
-            {formatStorage(memory.used, lang)}
-            {memory.limit && (
-              <small> {t('server.meters.of', { total: formatStorage(memory.limit, lang) })}</small>
-            )}
-          </>
-        }
-        bar={memory.limit ? memShare : null}
-        tone="memory"
-        hint={t('server.meters.memory.hint')}
-      />
-      {store.total !== null ? (
+    <Card title={t('server.meters.label')}>
+      <div className="server-meters">
         <Meter
-          name={t('server.meters.storage.name')}
-          verdict={
-            space.key === 'unknown'
-              ? null
-              : t(`server.meters.storage.${space.key}`, { count: space.months ?? 0 })
-          }
-          warn={space.key === 'almostFull'}
+          name={t('server.meters.cpu.name')}
+          verdict={t(`server.meters.cpu.${loadVerdict(cpuShare)}`)}
+          warn={loadVerdict(cpuShare) === 'high'}
           value={
             <>
-              {formatStorage(store.used, lang)}
-              <small> {t('server.meters.of', { total: formatStorage(store.total, lang) })}</small>
+              {number(cpuShare * 100, lang, 0)}
+              <small> %</small>
             </>
           }
-          bar={store.used / store.total}
-          hint={
+          bar={cpuShare}
+          hint={t('server.meters.cpu.hint')}
+        />
+        <Meter
+          name={t('server.meters.memory.name')}
+          verdict={t(`server.meters.memory.${loadVerdict(memShare)}`)}
+          warn={loadVerdict(memShare) === 'high'}
+          value={
             <>
-              {t('server.meters.storage.split', {
-                originals: formatStorage(store.originals, lang),
-                derived: formatStorage(store.copies + store.previews, lang),
-              })}
-              {diskCompresses(store) && (
-                <>
-                  <br />
-                  {t('server.meters.storage.compressed')}
-                </>
+              {formatStorage(memory.used, lang)}
+              {memory.limit && (
+                <small>
+                  {' '}
+                  {t('server.meters.of', { total: formatStorage(memory.limit, lang) })}
+                </small>
               )}
             </>
           }
+          bar={memory.limit ? memShare : null}
+          tone="memory"
+          hint={t('server.meters.memory.hint')}
         />
-      ) : (
-        <Meter
-          name={t('server.meters.storage.name')}
-          verdict={t('server.meters.storage.bucket')}
-          value={
-            <>
-              {formatStorage(store.used, lang)}
-              <small> {t('server.meters.storage.used')}</small>
-            </>
-          }
-          hint={[
-            t('server.meters.storage.s3Hint'),
-            store.growthPerMonth
-              ? t('server.meters.storage.growth', {
-                  size: formatStorage(store.growthPerMonth, lang),
-                })
-              : null,
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        />
-      )}
-      <Meter
-        name={t('server.meters.network.name')}
-        verdict={network ? t('server.meters.network.normal') : t('server.meters.network.unknown')}
-        value={
-          network ? (
-            <>
-              <span aria-hidden="true">↓</span>
-              <span className="ink-sr-only">{t('server.meters.network.in')}</span>{' '}
-              {bits(network.in, lang)} <span aria-hidden="true">↑</span>
-              <span className="ink-sr-only">{t('server.meters.network.out')}</span>{' '}
-              {bits(network.out, lang)}
-            </>
-          ) : (
-            '—'
-          )
-        }
-        hint={t('server.meters.network.hint')}
-      />
-      <Meter
-        name={t('server.meters.speed.name')}
-        verdict={t(`server.meters.speed.${speed}`)}
-        warn={speed === 'verySlow'}
-        value={
-          responses.p95 === null ? (
-            '—'
-          ) : (
-            <>
-              {number(responses.p95 / 1000, lang, 2)}
-              <small> {t('server.meters.speed.unit')}</small>
-            </>
-          )
-        }
-        bar={responses.p95 === null ? null : Math.min(1, responses.p95 / 1000)}
-        tone="ok"
-        hint={t('server.meters.speed.hint')}
-      />
-      <Meter
-        name={t('server.meters.backup.name')}
-        verdict={t(`server.meters.backup.${backupKey}`)}
-        warn={backupKey === 'failed' || backupKey === 'none'}
-        value={
-          <span className="server-meter__value--text">{b.lastAt ? when(b.lastAt, now) : '—'}</span>
-        }
-        hint={
-          <>
-            {[
-              b.size !== null ? formatStorage(b.size, lang) : null,
-              b.nextAt ? t('server.meters.backup.next', { when: when(b.nextAt, now) }) : null,
+        {store.total !== null ? (
+          <Meter
+            name={t('server.meters.storage.name')}
+            verdict={
+              space.key === 'unknown'
+                ? null
+                : t(`server.meters.storage.${space.key}`, { count: space.months ?? 0 })
+            }
+            warn={space.key === 'almostFull'}
+            value={
+              <>
+                {formatStorage(store.used, lang)}
+                <small> {t('server.meters.of', { total: formatStorage(store.total, lang) })}</small>
+              </>
+            }
+            bar={store.used / store.total}
+            hint={
+              <>
+                {t('server.meters.storage.split', {
+                  originals: formatStorage(store.originals, lang),
+                  derived: formatStorage(store.copies + store.previews, lang),
+                })}
+                {diskCompresses(store) && (
+                  <>
+                    <br />
+                    {t('server.meters.storage.compressed')}
+                  </>
+                )}
+              </>
+            }
+          />
+        ) : (
+          <Meter
+            name={t('server.meters.storage.name')}
+            verdict={t('server.meters.storage.bucket')}
+            value={
+              <>
+                {formatStorage(store.used, lang)}
+                <small> {t('server.meters.storage.used')}</small>
+              </>
+            }
+            hint={[
+              t('server.meters.storage.s3Hint'),
+              store.growthPerMonth
+                ? t('server.meters.storage.growth', {
+                    size: formatStorage(store.growthPerMonth, lang),
+                  })
+                : null,
             ]
               .filter(Boolean)
-              .join(' · ')}
-            {(b.size !== null || b.nextAt) && ' · '}
-            <Link to="/settings?section=backups" replace>
-              {t('backups.title')}
-            </Link>
-          </>
-        }
-      />
-    </section>
+              .join(' ')}
+          />
+        )}
+        <Meter
+          name={t('server.meters.network.name')}
+          verdict={network ? t('server.meters.network.normal') : t('server.meters.network.unknown')}
+          value={
+            network ? (
+              <>
+                <span aria-hidden="true">↓</span>
+                <span className="ink-sr-only">{t('server.meters.network.in')}</span>{' '}
+                {bits(network.in, lang)} <span aria-hidden="true">↑</span>
+                <span className="ink-sr-only">{t('server.meters.network.out')}</span>{' '}
+                {bits(network.out, lang)}
+              </>
+            ) : (
+              '—'
+            )
+          }
+          hint={t('server.meters.network.hint')}
+        />
+        <Meter
+          name={t('server.meters.speed.name')}
+          verdict={t(`server.meters.speed.${speed}`)}
+          warn={speed === 'verySlow'}
+          value={
+            responses.p95 === null ? (
+              '—'
+            ) : (
+              <>
+                {number(responses.p95 / 1000, lang, 2)}
+                <small> {t('server.meters.speed.unit')}</small>
+              </>
+            )
+          }
+          bar={responses.p95 === null ? null : Math.min(1, responses.p95 / 1000)}
+          tone="ok"
+          hint={t('server.meters.speed.hint')}
+        />
+        <Meter
+          name={t('server.meters.backup.name')}
+          verdict={t(`server.meters.backup.${backupKey}`)}
+          warn={backupKey === 'failed' || backupKey === 'none'}
+          value={
+            <span className="server-meter__value--text">
+              {b.lastAt ? when(b.lastAt, now) : '—'}
+            </span>
+          }
+          hint={
+            <>
+              {[
+                b.size !== null ? formatStorage(b.size, lang) : null,
+                b.nextAt ? t('server.meters.backup.next', { when: when(b.nextAt, now) }) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              {(b.size !== null || b.nextAt) && ' · '}
+              <Link to="/settings?section=backups" replace>
+                {t('backups.title')}
+              </Link>
+            </>
+          }
+        />
+      </div>
+    </Card>
   );
 }
 
-/** One line of a list: the state, what it is, and its detail. */
+const SERVICE_ICONS = {
+  web: 'page',
+  collab: 'people',
+  worker: 'film',
+  database: 'archive',
+  configuration: 'todo',
+} as const;
+const SERVICE_TONES = { ok: 'ok', warning: 'warn', down: 'danger', off: 'neutral' } as const;
+
+/** One service: what it is, its detail, and its state as a badge. */
 function ServiceRow({
+  id,
   ok,
   name,
   detail,
   state,
 }: {
+  id: keyof typeof SERVICE_ICONS;
   ok: 'ok' | 'warning' | 'down' | 'off';
   name: string;
   detail: ReactNode;
@@ -341,14 +354,15 @@ function ServiceRow({
 }) {
   return (
     <li className="server-service">
-      <span className={`server-service__icon server-service__icon--${ok}`} aria-hidden="true">
-        <Icon name={ok === 'ok' ? 'check' : ok === 'off' ? 'minus' : 'warning'} size={14} />
-      </span>
+      <Tile
+        icon={SERVICE_ICONS[id]}
+        tone={ok === 'ok' || ok === 'off' ? 'neutral' : SERVICE_TONES[ok]}
+      />
       <div className="settings-list__text">
         <span className="settings-row__label">{name}</span>
         <span className="settings-row__help">{detail}</span>
       </div>
-      <span className={`server-service__state server-service__state--${ok}`}>{state}</span>
+      <Badge tone={SERVICE_TONES[ok]}>{state}</Badge>
     </li>
   );
 }
@@ -361,9 +375,11 @@ function Services({ status, checks }: { status: ServerStatus; checks: Diagnostic
   const queue = service('queue');
   const config = configStatus(checks);
   const failing = checks.filter((c) => c.status !== 'ok').length;
-  const rows: Array<{ id: string; ok: ServerService['status']; detail: ReactNode }> = (
-    ['web', 'collab', 'worker'] as const
-  ).map((id) => {
+  const rows: Array<{
+    id: 'web' | 'collab' | 'worker';
+    ok: ServerService['status'];
+    detail: ReactNode;
+  }> = (['web', 'collab', 'worker'] as const).map((id) => {
     const s = service(id);
     const signal = s?.since
       ? t('server.services.lastSignal', {
@@ -395,6 +411,7 @@ function Services({ status, checks }: { status: ServerStatus; checks: Diagnostic
         {rows.map((r) => (
           <ServiceRow
             key={r.id}
+            id={r.id}
             ok={r.ok}
             name={t(`server.services.names.${r.id}`)}
             detail={r.detail}
@@ -402,12 +419,14 @@ function Services({ status, checks }: { status: ServerStatus; checks: Diagnostic
           />
         ))}
         <ServiceRow
+          id="database"
           ok={dbOk}
           name={t('server.services.names.database')}
           detail={[db?.detail, queue?.detail].filter(Boolean).join(' · ') || '—'}
           state={t(`server.services.status.${dbOk}`)}
         />
         <ServiceRow
+          id="configuration"
           ok={config}
           name={t('server.services.names.configuration')}
           detail={t('server.services.configuration')}
@@ -743,73 +762,76 @@ function TechnicalDetails({ status, checks }: { status: ServerStatus; checks: Di
   const errors = status.now.responses.errors;
   const encoder = status.encoder;
   return (
-    <details className="server-more">
-      <summary>
-        <span className="settings-list__text">
-          <span className="settings-row__label">{t('server.details.title')}</span>
-          <span className="settings-row__help">{t('server.details.lead')}</span>
-        </span>
-        <Icon name="chevronRight" size={14} />
-      </summary>
-      <div className="server-more__body">
-        <dl className="server-kv">
-          <dt>{t('server.details.version')}</dt>
-          <dd>
-            {status.version}
-            {status.image && (
-              <>
-                {' · '}
-                <code className="settings-env">{`ghcr.io/inkadra/inkadra:${status.version}${status.image === 'standard' ? '' : `-${status.image}`}`}</code>
-              </>
-            )}
-          </dd>
-          <dt>{t('server.details.encoding')}</dt>
-          <dd>
-            {!encoder
-              ? t('server.details.encoder.none')
-              : encoder.backend === 'software'
-                ? t('server.details.encoder.software')
-                : t('server.details.encoder.hardware', { label: encoder.label })}
-          </dd>
-          <dt>{t('server.details.database')}</dt>
-          <dd>
-            {[
-              status.database.version,
-              status.database.size !== null ? formatStorage(status.database.size, lang) : null,
-              status.database.connections !== null
-                ? t('server.details.connections', { count: status.database.connections })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(' · ') || '—'}
-          </dd>
-          <dt>{t('server.details.responses')}</dt>
-          <dd>
-            {p95 === null
-              ? '—'
-              : t('server.details.responsesValue', {
-                  p95: `${number(p95, lang, 0)} ms`,
-                  errors: percent(errors ?? 0, lang, 1),
-                })}
-          </dd>
-          <dt>{t('server.details.files')}</dt>
-          <dd>
-            {t(`server.details.driver.${status.storage.driver}`)} ·{' '}
-            <code className="settings-env">{status.storage.location}</code>
-          </dd>
-        </dl>
-        <ProcessTable status={status} />
-        <QueueTable status={status} />
-        <div>
-          <Button
-            icon="copy"
-            onClick={() => void navigator.clipboard?.writeText(technicalSummary(status, checks))}
-          >
-            {t('server.details.copy')}
-          </Button>
+    <Card>
+      <details className="settings-fold server-more">
+        <summary className="settings-row">
+          <Tile icon="key" />
+          <span className="settings-row__text">
+            <span className="settings-row__label">{t('server.details.title')}</span>
+            <span className="settings-row__help">{t('server.details.lead')}</span>
+          </span>
+          <Icon name="chevronRight" size={14} className="settings-fold__chevron" />
+        </summary>
+        <div className="server-more__body">
+          <dl className="server-kv">
+            <dt>{t('server.details.version')}</dt>
+            <dd>
+              {status.version}
+              {status.image && (
+                <>
+                  {' · '}
+                  <code className="settings-env">{`ghcr.io/inkadra/inkadra:${status.version}${status.image === 'standard' ? '' : `-${status.image}`}`}</code>
+                </>
+              )}
+            </dd>
+            <dt>{t('server.details.encoding')}</dt>
+            <dd>
+              {!encoder
+                ? t('server.details.encoder.none')
+                : encoder.backend === 'software'
+                  ? t('server.details.encoder.software')
+                  : t('server.details.encoder.hardware', { label: encoder.label })}
+            </dd>
+            <dt>{t('server.details.database')}</dt>
+            <dd>
+              {[
+                status.database.version,
+                status.database.size !== null ? formatStorage(status.database.size, lang) : null,
+                status.database.connections !== null
+                  ? t('server.details.connections', { count: status.database.connections })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || '—'}
+            </dd>
+            <dt>{t('server.details.responses')}</dt>
+            <dd>
+              {p95 === null
+                ? '—'
+                : t('server.details.responsesValue', {
+                    p95: `${number(p95, lang, 0)} ms`,
+                    errors: percent(errors ?? 0, lang, 1),
+                  })}
+            </dd>
+            <dt>{t('server.details.files')}</dt>
+            <dd>
+              {t(`server.details.driver.${status.storage.driver}`)} ·{' '}
+              <code className="settings-env">{status.storage.location}</code>
+            </dd>
+          </dl>
+          <ProcessTable status={status} />
+          <QueueTable status={status} />
+          <div>
+            <Button
+              icon="copy"
+              onClick={() => void navigator.clipboard?.writeText(technicalSummary(status, checks))}
+            >
+              {t('server.details.copy')}
+            </Button>
+          </div>
         </div>
-      </div>
-    </details>
+      </details>
+    </Card>
   );
 }
 

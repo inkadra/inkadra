@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
 import { formatStorage } from './StorageCharts.tsx';
-import { Badge, Card } from './settings-ui.tsx';
+import { Badge, Card, Row } from './settings-ui.tsx';
 import './storage-space.css';
 
 export type SpaceTone = 'ok' | 'warn' | 'danger';
@@ -93,34 +93,35 @@ export function MySpaceCard() {
           ? ['warn', t('storageSpace.left', { size: size(Math.max(0, limit - used)) })]
           : ['ok', t('storageSpace.room')];
   return (
-    <Card
-      title={t('storageSpace.title')}
-      className="space-card"
-      action={<Badge tone={badge[0]}>{badge[1]}</Badge>}
-    >
-      <p className="space-card__big">
-        {size(used)}{' '}
-        <small>
-          {limit === null
+    <Card title={t('storageSpace.title')}>
+      <Row
+        className="space-row"
+        label={`${size(used)} ${
+          limit === null
             ? t('storageSpace.used')
-            : t('storageSpace.ofLimit', { limit: size(limit) })}
-        </small>
-      </p>
-      {limit !== null && (
-        <SpaceMeter
-          originals={storage.originalBytes}
-          derived={storage.derivedBytes}
-          limit={limit}
-          tone={tone}
-          label={t('storageSpace.title')}
-        />
-      )}
-      <p className="space-card__meta">
-        {t('storageSpace.detail', {
-          originals: size(storage.originalBytes),
-          derived: size(storage.derivedBytes),
-        })}
-      </p>
+            : t('storageSpace.ofLimit', { limit: size(limit) })
+        }`}
+        help={
+          <>
+            {t('storageSpace.detail', {
+              originals: size(storage.originalBytes),
+              derived: size(storage.derivedBytes),
+            })}
+            {limit !== null && (
+              <SpaceMeter
+                originals={storage.originalBytes}
+                derived={storage.derivedBytes}
+                limit={limit}
+                tone={tone}
+                label={t('storageSpace.title')}
+              />
+            )}
+          </>
+        }
+      >
+        <Badge tone={badge[0]}>{badge[1]}</Badge>
+        <Button onClick={() => setFiles(true)}>{t('storageSpace.largest')}</Button>
+      </Row>
       {(tone === 'danger' || storage.instanceFull) && (
         <p className="space-banner space-banner--danger" role="status">
           <Icon name="warning" size={14} />
@@ -129,9 +130,6 @@ export function MySpaceCard() {
           </span>
         </p>
       )}
-      <div className="space-card__actions">
-        <Button onClick={() => setFiles(true)}>{t('storageSpace.largest')}</Button>
-      </div>
       <LargestFilesDialog
         open={files}
         path="/me/storage/files"

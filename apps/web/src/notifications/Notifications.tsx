@@ -19,6 +19,7 @@ import {
   IconButton,
   ListRow,
   ProjectGlyph,
+  Segmented,
   Switch,
   swallowOutsidePress,
 } from '@inkadra/ui';
@@ -947,6 +948,27 @@ function ReportsRow({
 
 /** Settings → Account: how often notifications arrive by email. */
 /** The notification matrix (#302): Inbox and email per event, then what else to send. */
+export type EmailFrequency = 'immediate' | 'daily';
+
+/** The two choices of Settings → Notifications; the older "never" shows as "at once". */
+export function emailFrequency(
+  email: NotificationPreferences['email'] | undefined,
+): EmailFrequency {
+  return email === 'daily' ? 'daily' : 'immediate';
+}
+
+/**
+ * What choosing a frequency saves. Leaving "never" (an older choice) keeps every email of the
+ * matrix off, as it showed them, instead of turning them all on.
+ */
+export function emailFrequencyPatch(
+  email: NotificationPreferences['email'] | undefined,
+  next: EmailFrequency,
+  types: readonly NotificationChannelType[],
+): Partial<NotificationPreferences> {
+  return { email: next, ...(email === 'off' ? { emailOff: [...types] } : {}) };
+}
+
 export function EmailNotifications({
   releaseNewsAvailable = false,
 }: {
@@ -995,7 +1017,7 @@ export function EmailNotifications({
   const fromOff = prefs?.email === 'off' ? { email: 'immediate' as const } : {};
   return (
     <>
-      <Card>
+      <Card title={t('settingsUi.notifications.what')}>
         <table className="notification-matrix" aria-busy={prefs === null}>
           <thead>
             <tr>
@@ -1053,22 +1075,23 @@ export function EmailNotifications({
           {t('settingsUi.notifications.alwaysNote')}
         </p>
       </Card>
-      <Card title={t('settingsUi.notifications.sendMe')}>
+      <Card title={t('settingsUi.notifications.email')}>
         <div className="settings-rows">
           <Row
-            label={t('settingsUi.notifications.short.daily')}
-            help={t('settingsUi.notifications.help.daily')}
+            label={t('settingsUi.notifications.frequency')}
+            help={t('settingsUi.notifications.frequencyHelp')}
           >
-            <Switch
-              aria-label={t('settingsUi.notifications.short.daily')}
-              checked={prefs?.email === 'daily'}
+            <Segmented
+              label={t('settingsUi.notifications.frequency')}
+              value={emailFrequency(prefs?.email)}
               disabled={prefs === null}
-              onChange={(e) =>
-                void change({
-                  email: e.target.checked ? 'daily' : 'immediate',
-                  ...(prefs?.email === 'off' ? { emailOff: [...types] } : {}),
-                })
+              onChange={(next: EmailFrequency) =>
+                void change(emailFrequencyPatch(prefs?.email, next, types))
               }
+              options={(['immediate', 'daily'] as const).map((value) => ({
+                value,
+                label: t(`settingsUi.notifications.short.${value}`),
+              }))}
             />
           </Row>
           {releaseNewsAvailable && (

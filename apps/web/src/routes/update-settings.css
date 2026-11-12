@@ -1,69 +1,14 @@
-/* Settings → Updates (#515). Neutral rows; blue only for the primary action and the new
-   version's mark, status colours for the states. */
+/* Settings → Updates (#515): the summary strip and folds come from settings.css (0124). */
 .updates-link {
   color: var(--ink-text-secondary);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.settings-card__title .updates-link {
+.settings-block__action .updates-link {
   font-size: 12px;
 }
 .updates-link:hover {
   color: var(--ink-text-primary);
-}
-
-.updates-state {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-}
-.updates-state--ok {
-  background: var(--ink-tag-green-bg);
-  color: var(--ink-status-ok);
-}
-.updates-state--warn {
-  background: var(--ink-tag-orange-bg);
-  color: var(--ink-status-warn);
-}
-
-.updates-new {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 0 0;
-}
-.updates-new__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.updates-new__icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--ink-accent-soft-bg);
-  color: var(--ink-accent-soft-fg);
-}
-.updates-new__text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.updates-new__title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.updates-new__text .settings-row__help {
-  margin: 0;
 }
 
 .updates-news,
@@ -77,50 +22,6 @@
   line-height: 1.5;
 }
 
-/* Folded sections, as the report rows of Settings → About. */
-.updates-steps {
-  border-top: 1px solid var(--ink-border-muted);
-}
-.updates-steps > details > summary {
-  list-style: none;
-  cursor: pointer;
-}
-.updates-steps > details > summary::-webkit-details-marker {
-  display: none;
-}
-.updates-steps > details + details > summary {
-  border-top: 1px solid var(--ink-border-muted);
-}
-.updates-steps > details:first-child > summary {
-  border-top: 0;
-}
-.updates-steps summary:focus-visible {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: 2px;
-  border-radius: var(--ink-radius-xs);
-}
-.updates-steps summary > .ink-icon {
-  flex: none;
-  color: var(--ink-text-secondary);
-  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
-}
-.updates-steps details[open] > summary > .ink-icon {
-  transform: rotate(90deg);
-}
-@media (prefers-reduced-motion: reduce) {
-  .updates-steps summary > .ink-icon {
-    transition: none;
-  }
-}
-.updates-steps__warn {
-  color: var(--ink-status-warn);
-}
-.updates-steps__body {
-  padding-bottom: 12px;
-}
-.updates-steps__foot {
-  padding-bottom: 12px;
-}
 .updates-how code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
@@ -166,4 +67,11 @@
   flex: none;
   color: var(--ink-text-muted);
   font-size: 12px;
+}
+/* Lists inside the card keep its inset and room for their markers. */
+.settings-card__pad.updates-news {
+  padding: 12px 14px 12px 34px;
+}
+.settings-fold__body.updates-news {
+  padding: 0 14px 14px 34px;
 }

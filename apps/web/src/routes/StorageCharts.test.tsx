@@ -15,6 +15,11 @@ afterEach(() => {
   act(() => root.unmount());
   root = createRoot(host);
 });
+/** The one usage card switches between breakdowns (decision 0124). */
+const show = (view: 'project' | 'user' | 'type') =>
+  act(async () =>
+    host.querySelector<HTMLInputElement>(`.ink-segmented input[value="${view}"]`)?.click(),
+  );
 
 it('formats human units and meaningful shares, including very small nonzero usage', () => {
   expect(formatStorage(0, 'en')).toBe('0 B');
@@ -45,17 +50,24 @@ it('renders consistent chart bars with accessible labeled tables and anonymized 
     ),
   );
   expect(host.textContent).toContain('4 KB');
-  expect(host.querySelectorAll('table')).toHaveLength(2);
-  expect(host.querySelectorAll('caption')).toHaveLength(2);
-  expect(host.querySelectorAll('th[scope="row"]')).toHaveLength(4);
-  const widths = [...host.querySelectorAll('.storage-chart__track > span')].map((bar) =>
-    bar.getAttribute('style'),
-  );
-  // Largest first in each breakdown: projects, then file types.
-  expect(widths).toEqual(['width: 75%;', 'width: 25%;', 'width: 75%;', 'width: 25%;']);
+  // One breakdown at a time, per project first; no per-person choice without that data.
+  expect(host.querySelectorAll('table')).toHaveLength(1);
+  expect(host.querySelectorAll('caption')).toHaveLength(1);
+  expect(host.querySelector('.ink-segmented input[value="user"]')).toBeNull();
+  expect(host.querySelectorAll('th[scope="row"]')).toHaveLength(2);
+  const widths = () =>
+    [...host.querySelectorAll('.storage-chart__track > span')].map((bar) =>
+      bar.getAttribute('style'),
+    );
+  // Largest first.
+  expect(widths()).toEqual(['width: 75%;', 'width: 25%;']);
   expect(host.textContent).toContain('Shoot');
   expect(host.textContent).toContain('admin.storageCharts.restricted');
-  expect(host.textContent?.match(/75%/g)).toHaveLength(2);
+  expect(host.textContent?.match(/75%/g)).toHaveLength(1);
+  await show('type');
+  expect(host.querySelector('caption')?.textContent).toContain('admin.storageCharts.byType');
+  expect(widths()).toEqual(['width: 75%;', 'width: 25%;']);
+  expect(host.textContent).toContain('admin.storageCharts.types.videos');
 });
 it('shows an explicit empty state without NaN shares or misleading capacity bars', async () => {
   await act(async () =>
@@ -88,8 +100,12 @@ it('lists the storage of each user, and files with no account under one label', 
       </MemoryRouter>,
     ),
   );
-  expect(host.querySelectorAll('table')).toHaveLength(3);
+  await show('user');
+  expect(host.querySelectorAll('table')).toHaveLength(1);
   expect(host.textContent).toContain('admin.storageCharts.byUser');
+  expect(host.querySelector('a[href="/settings/team"]')?.textContent).toBe(
+    'storageLimits.openMembers',
+  );
   expect(host.textContent).toContain('Paola Rossi');
   expect(host.textContent).toContain('admin.storageCharts.noUser');
 });
@@ -114,6 +130,7 @@ it('counts previews in the space used and in the usage of each user', async () =
   );
   expect(host.querySelector('.storage-tiles dd')?.textContent).toBe('4 KB');
   expect(host.textContent).toContain('admin.storageCharts.usedDetail');
+  await show('user');
   expect(host.textContent).toContain('Luca Neri');
   const paola = [...host.querySelectorAll('tr')].find((row) => row.textContent?.includes('Paola'));
   expect(paola?.textContent).toContain('4 KB');

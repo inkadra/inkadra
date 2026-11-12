@@ -125,7 +125,9 @@ test('frames keep their values while admins change the storyboard lists', async 
     await page.getByRole('button', { name: 'Aggiungi valore' }).click();
     await page.locator('.catalogs__name').last().fill(added);
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
-    await expect(page.locator('.catalogs__bar [role=status]')).toHaveText('Salvato.');
+    // The bar leaves once saved (0124); the confirmation stays under the catalogs.
+    await expect(page.locator('.catalogs__saved')).toHaveText('Salvato.');
+    await expect(page.locator('.catalogs__bar')).toHaveCount(0);
     if (shots) await page.screenshot({ path: `${shots}/04-saved-1280.png` });
 
     const saved = (await (

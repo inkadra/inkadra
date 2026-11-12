@@ -438,8 +438,8 @@ test('settings search finds settings by their English names with the interface i
   const dialog = await openSettings(page, 1280, 800, false, 'it');
   const search = dialog.getByRole('searchbox', { name: 'Cerca nelle impostazioni' });
   for (const [word, title, setting] of [
-    ['theme', 'Preferenze', 'Tema'],
-    ['language', 'Preferenze', 'Lingua'],
+    ['theme', 'Aspetto e lingua', 'Tema'],
+    ['date format', 'Aspetto e lingua', 'Formato data'],
     ['password', 'Account', 'Password'],
   ] as const) {
     await search.fill(word);

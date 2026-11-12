@@ -14,7 +14,6 @@ import {
   IconButton,
   Radio,
   Select,
-  Switch,
   TextField,
 } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
@@ -137,49 +136,6 @@ export function Team() {
           {error}
         </p>
       )}
-      {settings && (
-        <Card title={t('projectCreation.settings.title')}>
-          <div className="settings-rows">
-            <Row label={t('calendar.admin')} help={t('calendar.adminHelp')}>
-              <Switch
-                aria-label={t('calendar.admin')}
-                checked={settings.calendarFeedEnabled ?? true}
-                disabled={busy}
-                onChange={(e) => {
-                  const calendarFeedEnabled = e.target.checked;
-                  setSettings({ ...settings, calendarFeedEnabled });
-                  void run(() => api.patch('/instance/settings', { calendarFeedEnabled })).then(
-                    (saved) => {
-                      if (!saved) void load().catch(() => {});
-                    },
-                  );
-                }}
-              />
-            </Row>
-            <Row
-              label={t('projectCreation.settings.label')}
-              help={t('projectCreation.settings.help')}
-              htmlFor="members-create-projects"
-            >
-              <Switch
-                id="members-create-projects"
-                checked={settings.membersCanCreateProjects ?? true}
-                disabled={busy}
-                onChange={(e) => {
-                  const membersCanCreateProjects = e.target.checked;
-                  // At once; a failed save reloads the stored value.
-                  setSettings({ ...settings, membersCanCreateProjects });
-                  void run(() =>
-                    api.patch('/instance/settings', { membersCanCreateProjects }),
-                  ).then((saved) => {
-                    if (!saved) void load().catch(() => {});
-                  });
-                }}
-              />
-            </Row>
-          </div>
-        </Card>
-      )}
       <div className="team-tools">
         <label className="team-search">
           <Icon name="search" size={14} />
@@ -216,107 +172,34 @@ export function Team() {
       {members === null ? (
         !error && <p role="status">{t('admin.loading')}</p>
       ) : (
-        <Card className="team-card" tour="users">
-          <table className="team-table">
-            <caption className="ink-sr-only">
-              {t('admin.membersCount', { count: members.length })}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('admin.person')}</th>
-                <th scope="col">{t('admin.role')}</th>
-                <th scope="col" className="team-col--create">
-                  {t('projectCreation.column')}
-                </th>
-                <th scope="col" className="team-col--space">
-                  {t('storageSpace.column')}
-                </th>
-                <th scope="col" className="team-col--projects">
-                  {t('admin.projects')}
-                </th>
-                <th scope="col" className="team-col--last">
-                  {t('admin.lastActive')}
-                </th>
-                <th scope="col">
-                  <span className="ink-sr-only">{t('admin.actions')}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered?.map((m) => {
-                const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
-                return (
-                  <tr key={m.id} className={m.deactivatedAt ? 'is-inactive' : undefined}>
-                    <th scope="row">
-                      <span className="team-person">
-                        <Avatar name={m.name} image={m.image} size={28} />
-                        <span>
-                          <span className="team-person__name">
-                            {m.name}
-                            {m.id === user?.id && (
-                              <span className="settings-muted">
-                                {' '}
-                                · {t('settingsUi.members.you')}
-                              </span>
-                            )}
-                            {m.deactivatedAt && <Badge>{t('admin.inactive')}</Badge>}
-                          </span>
-                          <span className="settings__sub">{m.email}</span>
-                        </span>
-                      </span>
-                    </th>
-                    <td className="team-col--role" data-label={t('admin.role')}>
-                      <Select
-                        className="ink-input team-role"
-                        aria-label={t('admin.roleFor', { name: m.name })}
-                        value={m.role}
-                        disabled={busy || last}
-                        data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
-                        onChange={(e) => void update(m.id, { role: e })}
-                      >
-                        <option value="admin">{t('admin.roles.admin')}</option>
-                        <option value="member">{t('admin.roles.member')}</option>
-                      </Select>
-                    </td>
-                    {/* The column title, shown on phones where the table head is hidden. */}
-                    <td className="team-col--create" data-label={t('projectCreation.column')}>
-                      {m.role === 'admin' ? (
-                        <span className="settings-muted">{t('projectCreation.always')}</span>
-                      ) : (
-                        <Select
-                          className="ink-input team-role"
-                          aria-label={t('projectCreation.for', { name: m.name })}
-                          value={
-                            m.canCreateProjectsOverride === true
-                              ? 'yes'
-                              : m.canCreateProjectsOverride === false
-                                ? 'no'
-                                : 'default'
-                          }
-                          disabled={busy}
-                          onChange={(e) =>
-                            void update(m.id, {
-                              canCreateProjects: e === 'default' ? null : e === 'yes',
-                            })
-                          }
-                        >
-                          <option value="default">
-                            {t(
-                              settings?.membersCanCreateProjects === false
-                                ? 'projectCreation.defaultNo'
-                                : 'projectCreation.defaultYes',
-                            )}
-                          </option>
-                          <option value="yes">{t('projectCreation.yes')}</option>
-                          <option value="no">{t('projectCreation.no')}</option>
-                        </Select>
+        <Card
+          className="team-card"
+          tour="users"
+          title={t('admin.membersCount', { count: members.length })}
+        >
+          {filtered?.map((m) => {
+            const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
+            return (
+              <Row
+                key={m.id}
+                className={m.deactivatedAt ? 'team-member is-inactive' : 'team-member'}
+                leading={<Avatar name={m.name} image={m.image} size={32} />}
+                label={
+                  <>
+                    <span className="team-member__name">{m.name}</span>
+                    {m.id === user?.id && (
+                      <span className="settings-muted">· {t('settingsUi.members.you')}</span>
+                    )}
+                    {m.deactivatedAt && <Badge>{t('admin.inactive')}</Badge>}
+                  </>
+                }
+                help={
+                  <>
+                    <span className="team-member__meta">
+                      {[m.email, t('settingsUi.members.projects', { count: m.projectsCount })].join(
+                        ' · ',
                       )}
-                    </td>
-                    <td className="team-col--space" data-label={t('storageSpace.column')}>
-                      <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
-                    </td>
-                    <td className="team-col--projects">{m.projectsCount}</td>
-                    <td className="team-col--last settings-muted">
+                      {' · '}
                       {m.lastActiveAt ? (
                         <time dateTime={m.lastActiveAt} title={date(m.lastActiveAt)}>
                           {relative(m.lastActiveAt, i18n.language)}
@@ -324,76 +207,116 @@ export function Team() {
                       ) : (
                         t('admin.never')
                       )}
-                    </td>
-                    <td className="team-col--actions">
-                      <MemberMenu
-                        member={m}
-                        disabled={busy}
-                        last={last}
-                        onSpace={() => setSpaceOf(m)}
-                        onFiles={() => setFilesOf(m)}
-                        onActive={() =>
-                          m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
-                        }
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            {invitations.length > 0 && (
-              <tbody className="team-pending">
-                {invitations.map((i) => (
-                  <tr key={i.id}>
-                    <th scope="row" colSpan={4}>
-                      <span className="team-person">
-                        <Badge>{t('settingsUi.members.pending')}</Badge>
-                        <span>
-                          <span className="team-person__name">
-                            {i.email ?? t('admin.linkInvite')}
-                          </span>
-                          <span className="settings__sub">
-                            {t('admin.expires', { when: date(i.expiresAt) })}
-                          </span>
-                        </span>
-                      </span>
-                    </th>
-                    {/* Resend and Revoke need more than the ⋯ column of the members above. */}
-                    <td className="team-col--actions" colSpan={3}>
-                      {i.kind === 'email' && (
-                        <Button
-                          variant="ghost"
-                          disabled={busy || !instance?.auth.email}
-                          data-ink-tooltip={
-                            !instance?.auth.email ? t('admin.smtpRequired') : undefined
-                          }
-                          onClick={() =>
-                            void run(async () =>
-                              setCreated(
-                                await api.post<Invitation>(`/invitations/${i.id}/resend`, {}),
-                              ),
-                            )
-                          }
-                        >
-                          {t('admin.resend')}
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => void run(() => api.delete(`/invitations/${i.id}`))}
-                      >
-                        {t('admin.revoke')}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            )}
-          </table>
+                    </span>
+                    <span className="team-col--space">
+                      <MemberSpace member={m} warnPercent={limits?.warnPercent ?? 80} />
+                    </span>
+                  </>
+                }
+              >
+                <Select
+                  className="ink-input team-role"
+                  aria-label={t('admin.roleFor', { name: m.name })}
+                  value={m.role}
+                  disabled={busy || last}
+                  data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
+                  onChange={(e) => void update(m.id, { role: e })}
+                >
+                  <option value="admin">{t('admin.roles.admin')}</option>
+                  <option value="member">{t('admin.roles.member')}</option>
+                </Select>
+                {m.role === 'admin' ? (
+                  <span className="settings-muted team-create">
+                    {t('projectCreation.column')}: {t('projectCreation.always')}
+                  </span>
+                ) : (
+                  <Select
+                    className="ink-input team-role team-create"
+                    aria-label={t('projectCreation.for', { name: m.name })}
+                    value={
+                      m.canCreateProjectsOverride === true
+                        ? 'yes'
+                        : m.canCreateProjectsOverride === false
+                          ? 'no'
+                          : 'default'
+                    }
+                    disabled={busy}
+                    onChange={(e) =>
+                      void update(m.id, {
+                        canCreateProjects: e === 'default' ? null : e === 'yes',
+                      })
+                    }
+                  >
+                    {(['default', 'yes', 'no'] as const).map((value) => (
+                      <option key={value} value={value}>
+                        {t('projectCreation.column')}:{' '}
+                        {t(
+                          value === 'yes'
+                            ? 'projectCreation.yes'
+                            : value === 'no'
+                              ? 'projectCreation.no'
+                              : settings?.membersCanCreateProjects === false
+                                ? 'projectCreation.defaultNo'
+                                : 'projectCreation.defaultYes',
+                        )}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+                <span className="team-col--actions">
+                  <MemberMenu
+                    member={m}
+                    disabled={busy}
+                    last={last}
+                    onSpace={() => setSpaceOf(m)}
+                    onFiles={() => setFilesOf(m)}
+                    onActive={() =>
+                      m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
+                    }
+                  />
+                </span>
+              </Row>
+            );
+          })}
           {filtered?.length === 0 && <p className="settings-card__empty">{t('admin.noMembers')}</p>}
-          {invitations.length === 0 && (
+        </Card>
+      )}
+      {members !== null && (
+        <Card title={t('settingsUi.members.invitations')}>
+          {invitations.length === 0 ? (
             <p className="settings-card__empty settings-muted">{t('admin.noInvitations')}</p>
+          ) : (
+            invitations.map((i) => (
+              <Row
+                key={i.id}
+                className="team-pending"
+                icon={i.kind === 'email' ? 'mail' : 'link'}
+                label={i.email ?? t('admin.linkInvite')}
+                help={t('admin.expires', { when: date(i.expiresAt) })}
+              >
+                {i.kind === 'email' && (
+                  <Button
+                    variant="ghost"
+                    disabled={busy || !instance?.auth.email}
+                    data-ink-tooltip={!instance?.auth.email ? t('admin.smtpRequired') : undefined}
+                    onClick={() =>
+                      void run(async () =>
+                        setCreated(await api.post<Invitation>(`/invitations/${i.id}/resend`, {})),
+                      )
+                    }
+                  >
+                    {t('admin.resend')}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => void run(() => api.delete(`/invitations/${i.id}`))}
+                >
+                  {t('admin.revoke')}
+                </Button>
+              </Row>
+            ))
           )}
         </Card>
       )}

@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impostazioni · redesign</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 13px; }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  .ctl { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 0 auto 12px; max-width: 1100px; }
+  .ctl b { font-size: 14px; margin-right: auto; }
+  .pills { display: inline-flex; gap: 4px; }
+  .pills button { font-size: 12px; padding: 5px 11px; border-radius: 999px; border: 1px solid #8884; background: none; }
+  .pills button.on { background: #3B7CF6; color: #fff; border-color: transparent; }
+
+  .app { --canvas: #161616; --side: #1F1F23; --s1: #1C1C1F; --s2: #26262A; --bd: #2A2A2E; --bd2: #232327; --tx: #EDEDED; --tx2: #A8A8AE; --tx3: #929298; --acc: #3B7CF6; --acc-bg: #1E2A44; --acc-fg: #9DB8F2;
+    --purple: #B897F0; --purple-bg: #2E253F; --green: #7AD689; --green-bg: #243526; --orange: #F79B54; --orange-bg: #35271E; --teal: #60D8EB; --teal-bg: #20383D; --pink: #FF91CC; --pink-bg: #422533; --red: #FF8A8A; --red-bg: #3D2222;
+    margin: 0 auto; max-width: 1100px; height: 760px; display: flex; border: 1px solid var(--bd); border-radius: 20px; overflow: hidden; background: var(--canvas); color: var(--tx); box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+  .app.light { --canvas: #FAFAF8; --side: #F1F1EE; --s1: #FFFFFF; --s2: #F1F1EE; --bd: #E4E4E0; --bd2: #ECECE8; --tx: #161616; --tx2: #4A4A47; --tx3: #6C6C68; --acc: #2464D5; --acc-bg: #E6EDFB; --acc-fg: #2F5AAE;
+    --purple: #6A40B0; --purple-bg: #EEEAFA; --green: #1E7729; --green-bg: #E9F3E9; --orange: #AB4800; --orange-bg: #FBECE6; --teal: #1E809C; --teal-bg: #E4F1F6; --pink: #A82965; --pink-bg: #FAE7ED; --red: #B3261E; --red-bg: #FBE9E7; }
+  .app.phone { max-width: 390px; height: 780px; }
+  svg.ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* nav */
+  .nav { width: 208px; flex: none; background: var(--side); border-right: 1px solid var(--bd); display: flex; flex-direction: column; }
+  .search { margin: 12px; display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--canvas); border: 1px solid var(--bd); color: var(--tx3); }
+  .groups { flex: 1; overflow: auto; padding: 0 8px 8px; }
+  .gh { font: 600 10px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--tx3); margin: 14px 8px 6px; }
+  .ni { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 8px; border-radius: 8px; color: var(--tx2); }
+  .ni:hover { background: var(--s2); color: var(--tx); }
+  .ni.on { background: var(--canvas); color: var(--tx); font-weight: 600; box-shadow: inset 0 0 0 1px var(--bd); }
+  .ni .n { margin-left: auto; font-size: 11px; color: var(--tx3); font-weight: 400; }
+  .ni .dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+  .ni .new { margin-left: auto; font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: var(--acc-bg); color: var(--acc-fg); }
+  .ni .chev { display: none; }
+  .nf { padding: 10px 16px 14px; border-top: 1px solid var(--bd); color: var(--tx3); font-size: 11px; display: flex; justify-content: space-between; }
+  .nf a { color: var(--red); cursor: pointer; }
+
+  /* main */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .head { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--bd); min-height: 57px; }
+  .head h1 { font-size: 17px; margin: 0; margin-right: auto; }
+  .back { display: none; border: 0; background: none; padding: 4px; }
+  .save { font-size: 11.5px; color: var(--tx3); display: flex; align-items: center; gap: 6px; }
+  .save i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .x { border: 0; background: none; color: var(--tx2); padding: 4px; display: grid; }
+  .body { flex: 1; overflow: auto; padding: 20px 24px 40px; }
+  .col { max-width: 680px; margin: 0 auto; }
+  .lead { color: var(--tx2); line-height: 1.5; margin: 0 0 18px; }
+
+  /* the one section pattern */
+  .sh { display: flex; align-items: center; gap: 8px; margin: 22px 4px 8px; }
+  .sh span { font: 600 10px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--tx3); margin-right: auto; }
+  .card { background: var(--s1); border: 1px solid var(--bd); border-radius: 12px; overflow: hidden; }
+  .card.danger { border-color: color-mix(in srgb, var(--red) 40%, var(--bd)); }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 52px; }
+  .row + .row, .row + .pad, .pad + .row { border-top: 1px solid var(--bd2); }
+  .tile { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; flex: none; background: var(--s2); color: var(--tx2); font: 600 10px Inter, sans-serif; }
+  .tile.round { border-radius: 50%; font-size: 12px; }
+  .t-purple { background: var(--purple-bg); color: var(--purple); } .t-green { background: var(--green-bg); color: var(--green); } .t-orange { background: var(--orange-bg); color: var(--orange); } .t-pink { background: var(--pink-bg); color: var(--pink); } .t-teal { background: var(--teal-bg); color: var(--teal); } .t-acc { background: var(--acc-bg); color: var(--acc-fg); } .t-red { background: var(--red-bg); color: var(--red); }
+  .txt { flex: 1; min-width: 0; }
+  .lb { font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .hp { color: var(--tx3); font-size: 12px; line-height: 1.45; margin-top: 2px; }
+  .c { display: flex; gap: 8px; align-items: center; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+  .pad { padding: 12px 14px; }
+  .note { color: var(--tx3); font-size: 11.5px; line-height: 1.5; margin: 8px 4px 0; }
+  code { font: 11px ui-monospace, monospace; background: var(--s2); padding: 2px 6px; border-radius: 4px; color: var(--tx2); }
+
+  /* controls: the only six */
+  .sw { width: 32px; height: 18px; border-radius: 999px; background: var(--s2); border: 1px solid var(--bd); position: relative; flex: none; cursor: pointer; }
+  .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--tx3); transition: transform .15s; }
+  .sw.on { background: var(--acc); border-color: transparent; } .sw.on::after { transform: translateX(14px); background: #fff; }
+  .seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 10px; background: var(--s2); border: 1px solid var(--bd); }
+  .seg span { padding: 4px 10px; border-radius: 8px; color: var(--tx2); font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .seg span.on { background: var(--canvas); color: var(--tx); font-weight: 600; box-shadow: 0 0 0 1px var(--bd); }
+  .sel, .inp { border: 1px solid var(--bd); background: var(--canvas); border-radius: 8px; padding: 6px 10px; color: var(--tx); display: inline-flex; gap: 8px; align-items: center; min-width: 90px; justify-content: space-between; font-size: 12.5px; }
+  .inp { min-width: 200px; }
+  .btn { border: 1px solid var(--bd); background: var(--s2); border-radius: 8px; padding: 6px 12px; font-weight: 600; font-size: 12.5px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+  .btn.ghost { background: none; border-color: transparent; color: var(--tx2); }
+  .btn.pri { background: var(--acc); border-color: transparent; color: #fff; }
+  .btn.dng { background: none; color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, var(--bd)); }
+  .bdg { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--s2); color: var(--tx2); white-space: nowrap; font-weight: 500; }
+  .bdg.ok { background: var(--green-bg); color: var(--green); } .bdg.warn { background: var(--orange-bg); color: var(--orange); } .bdg.acc { background: var(--acc-bg); color: var(--acc-fg); }
+  .val { color: var(--tx2); }
+  .mv { font-size: 10px; font-weight: 500; padding: 1px 7px; border-radius: 999px; border: 1px dashed var(--acc); color: var(--acc-fg); white-space: nowrap; }
+  .nomoves .mv { display: none; }
+
+  /* summary strip: same on every page that has a state */
+  .hero { display: flex; align-items: center; gap: 14px; padding: 16px; }
+  .hero .big { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .hero h2 { margin: 0; font-size: 15px; }
+  .meter { height: 6px; border-radius: 999px; background: var(--s2); overflow: hidden; margin-top: 8px; display: flex; }
+  .meter i { display: block; background: var(--acc); } .meter i + i { background: var(--purple); }
+
+  /* page specifics, built from the same tokens */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .tool { border: 1px solid var(--bd); border-radius: 10px; padding: 8px 10px; display: flex; gap: 8px; align-items: center; background: var(--canvas); font-size: 12px; }
+  .tool .ck { margin-left: auto; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--tx3); display: grid; place-items: center; }
+  .tool .ck.on { background: var(--acc); border-color: transparent; color: #fff; } .tool .ck.lock { background: var(--s2); border-color: transparent; color: var(--tx3); }
+  .tool .ck svg { width: 10px; height: 10px; stroke-width: 2.5; }
+  .dock { display: inline-flex; gap: 2px; padding: 5px; border-radius: 14px; background: var(--side); border: 1px solid var(--bd); }
+  .dock span { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--tx2); }
+  table.mx { width: 100%; border-collapse: collapse; }
+  .mx th, .mx td { padding: 11px 14px; text-align: left; border-top: 1px solid var(--bd2); }
+  .mx thead th { border: 0; font: 600 10px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--tx3); }
+  .mx td, .mx thead th + th { text-align: center; width: 76px; }
+  .mx tbody th { font-weight: 600; }
+  .ckb { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--tx3); vertical-align: middle; }
+  .ckb.on { background: var(--acc); border-color: transparent; color: #fff; } .ckb.lock { background: var(--s2); border-color: transparent; color: var(--tx3); }
+  .ckb svg { width: 11px; height: 11px; stroke-width: 2.5; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--bd2); }
+  .tiles > div { background: var(--s1); padding: 12px 14px; }
+  .tiles .k { display: flex; justify-content: space-between; gap: 6px; font-weight: 600; }
+  .tiles .k small { color: var(--green); font-weight: 500; }
+  .tiles .v { font-size: 20px; font-weight: 650; margin-top: 6px; } .tiles .v small { font-size: 12px; color: var(--tx3); font-weight: 400; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .chips span { font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--s2); color: var(--tx2); }
+  .bar { flex: 1; height: 6px; border-radius: 999px; background: var(--s2); overflow: hidden; max-width: 180px; } .bar i { display: block; height: 100%; background: var(--acc); }
+  .savebar { position: sticky; bottom: -40px; margin-top: 16px; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: var(--side); border: 1px solid var(--bd); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+  .savebar span { margin-right: auto; font-weight: 600; }
+
+  /* changes table */
+  .chg { width: 100%; border-collapse: collapse; }
+  .chg td { padding: 10px 14px; border-top: 1px solid var(--bd2); vertical-align: top; line-height: 1.45; }
+  .chg tr:first-child td { border: 0; }
+  .chg td:first-child { font-weight: 600; width: 34%; } .chg small { color: var(--tx3); display: block; font-weight: 400; }
+
+  .ph { display: none; } .app.phone .ph { display: block; }
+  .groups #groups { padding: 0; }
+  /* phone */
+  .app.phone .nav { width: 100%; border: 0; }
+  .app.phone .main { display: none; }
+  .app.phone.open .nav { display: none; } .app.phone.open .main { display: flex; }
+  .app.phone .back { display: grid; }
+  .app.phone .ni { padding: 12px 10px; font-size: 14px; } .app.phone .ni .chev { display: block; color: var(--tx3); margin-left: 6px; } .app.phone .ni .n, .app.phone .ni .dot, .app.phone .ni .new { margin-left: auto; }
+  .app.phone .ni .chev:only-of-type { margin-left: auto; }
+  .app.phone .head { padding: 12px 14px; } .app.phone .body { padding: 14px 12px 40px; }
+  .app.phone .row { flex-wrap: wrap; } .app.phone .row .c { width: 100%; justify-content: flex-start; padding-left: 0; }
+  .app.phone .row.inline .c { width: auto; }
+  .app.phone .tiles { grid-template-columns: 1fr 1fr; } .app.phone .inp { min-width: 0; width: 100%; }
+  .app.phone .save span { display: none; }
+</style>
+</head>
+<body>
+<div class="ctl">
+  <b>Impostazioni · proposta di redesign</b>
+  <span class="pills" id="pTheme"><button class="on" data-v="dark">Scuro</button><button data-v="light">Chiaro</button></span>
+  <span class="pills" id="pDev"><button class="on" data-v="desk">Desktop</button><button data-v="phone">Telefono</button></span>
+  <span class="pills" id="pMv"><button class="on" data-v="1">Evidenzia le voci spostate</button><button data-v="0">Nascondi</button></span>
+</div>
+<div class="app" id="app">
+  <nav class="nav">
+    <div class="search" id="srch"></div>
+    <div class="groups"><div class="ph card" style="margin:4px 4px 0"><div class="row inline"><span class="tile round">MM</span><div class="txt"><div class="lb">Matteo Maraffio</div><div class="hp">Admin · matteo@example.com</div></div></div><div class="row inline"><div class="txt"><div class="lb">Tema</div></div><div class="c"><span class="seg"><span class="on">Scuro</span><span>Chiaro</span><span>Sistema</span></span></div></div></div><div id="groups"></div></div>
+    <div class="nf"><span>Inkadra 0.10.2 · Recore Studio</span><a>Esci</a></div>
+  </nav>
+  <section class="main">
+    <header class="head">
+      <button class="back" id="back"></button>
+      <h1 id="title"></h1>
+      <span id="hx"></span>
+      <span class="save"><i></i><span>Salvato</span></span>
+      <button class="x" id="close"></button>
+    </header>
+    <div class="body"><div class="col" id="page"></div></div>
+  </section>
+</div>
+<script>
+const P = {
+  user: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5', sun: 'M12 16a4 4 0 100-8 4 4 0 000 8zM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5',
+  board: 'M4 5h16v14H4zM9 5v14', layers: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5', bell: 'M6 16V11a6 6 0 0112 0v5l2 2H4l2-2zM10 21h4',
+  plug: 'M9 3v5M15 3v5M6 8h12v3a6 6 0 01-12 0V8zM12 17v4', help: 'M12 21a9 9 0 100-18 9 9 0 000 18zM9.5 9.5a2.5 2.5 0 114 2c-1 .7-1.5 1.2-1.5 2.5M12 17h.01',
+  people: 'M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2 20c1-3.5 3.5-5 7-5s6 1.5 7 5M16 4.5a3.5 3.5 0 010 6.5M19 15c1.6.8 2.6 2.5 3 5', lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 017 0v3',
+  tag: 'M3 12V4h8l10 10-8 8L3 12zM7.5 8h.01', flag: 'M5 21V4M5 4h13l-2.5 4.5L18 13H5', home: 'M4 11l8-7 8 7v9H4zM10 20v-6h4v6',
+  disk: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3v12c0 1.7-3.6 3-8 3s-8-1.3-8-3V6zM4 6c0 1.7 3.6 3 8 3s8-1.3 8-3M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3', clock: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2',
+  pulse: 'M3 12h4l2-6 4 12 2-6h6', up: 'M12 16V4M7 9l5-5 5 5M5 20h14', search: 'M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4', x: 'M6 6l12 12M18 6L6 18',
+  chev: 'M9 6l6 6-6 6', left: 'M15 6l-6 6 6 6', check: 'M5 12l5 5 9-10', play: 'M8 5l11 7-11 7V5z', cal: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', key: 'M14 10a4 4 0 10-3.5 3.9L12 15h2v2h2v2h3v-3l-5.2-5.2c.1-.3.2-.5.2-.8zM8.5 9h.01',
+  puzzle: 'M9 4h4v3a2 2 0 104 0h3v5h-2a2 2 0 100 4h2v4H4V8h5V4z', star: 'M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8L12 3z', warn: 'M12 3l10 18H2L12 3zM12 10v5M12 18h.01',
+  note: 'M5 4h14v11l-5 5H5zM14 20v-5h5', img: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M9 9h.01', link: 'M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1', todo: 'M4 6l2 2 3-3M4 14l2 2 3-3M12 7h8M12 15h8',
+  ptr: 'M5 3l14 8-6 2-2 6L5 3z', hand: 'M8 11V5a1.5 1.5 0 013 0v5V4a1.5 1.5 0 013 0v6-4a1.5 1.5 0 013 0v8c0 4-2 7-6 7s-5-2-7-7l-1-3a1.5 1.5 0 012.6-1.4L8 13', arrow: 'M5 19L19 5M10 5h9v9', frame: 'M4 6h16v12H4zM8 6v12M16 6v12', more: 'M5 12h.01M12 12h.01M19 12h.01', plus: 'M12 5v14M5 12h14', film: 'M4 5h16v14H4zM4 9h16M4 15h16M9 5v14M15 5v14', chat: 'M4 5h16v11H9l-5 4V5z', cam: 'M3 8h12v9H3zM15 11l6-3v9l-6-3', mail: 'M3 6h18v12H3zM3 7l9 6 9-6', copy: 'M9 9h11v11H9zM5 15H4V4h11v1', trash: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13', globe: 'M12 21a9 9 0 100-18 9 9 0 000 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18'
+};
+const ic = (n) => `<svg class="ic" viewBox="0 0 24 24"><path d="${P[n] || P.help}"/></svg>`;
+const sw = (on) => `<span class="sw${on ? ' on' : ''}" onclick="this.classList.toggle('on')"></span>`;
+const seg = (o, i = 0) => `<span class="seg">${o.map((x, j) => `<span class="${j === i ? 'on' : ''}" onclick="[...this.parentNode.children].forEach(e=>e.classList.remove('on'));this.classList.add('on')">${x}</span>`).join('')}</span>`;
+const sel = (t) => `<span class="sel">${t}<svg class="ic" style="width:12px;height:12px" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>`;
+const inp = (t) => `<span class="inp">${t}</span>`;
+const btn = (t, v = '', i) => `<button class="btn ${v}">${i ? ic(i) : ''}${t}</button>`;
+const bdg = (t, v = '') => `<span class="bdg ${v}">${t}</span>`;
+const val = (t) => `<span class="val">${t}</span>`;
+const mv = (t) => `<span class="mv">↪ da ${t}</span>`;
+const tile = (i, k = '', txt) => `<span class="tile ${k}">${txt || ic(i)}</span>`;
+const row = (l, h, c, lead = '', cls = '') => `<div class="row ${cls}">${lead}<div class="txt"><div class="lb">${l}</div>${h ? `<div class="hp">${h}</div>` : ''}</div>${c ? `<div class="c">${c}</div>` : ''}</div>`;
+const sec = (label, inner, action = '', cls = '') => `${label ? `<div class="sh"><span>${label}</span>${action}</div>` : ''}<div class="card ${cls}">${inner}</div>`;
+const hero = (tone, i, t, s, a = '', extra = '') => `<div class="card"><div class="hero"><span class="big t-${tone}">${ic(i)}</span><div class="txt"><h2>${t}</h2><div class="hp">${s}</div>${extra}</div><div class="c">${a}</div></div></div>`;
+const lead = (t) => `<p class="lead">${t}</p>`;
+const note = (t) => `<p class="note">${t}</p>`;
+const ck = (s) => `<span class="ckb ${s}">${s ? ic('check') : ''}</span>`;
+const tool = (i, n, s) => `<span class="tool">${ic(i)}${n}<span class="ck ${s}">${s ? ic(s === 'lock' ? 'lock' : 'check') : ''}</span></span>`;
+
+const NAV = [
+  ['Personale', [['account', 'Account', 'user'], ['look', 'Aspetto e lingua', 'sun'], ['board', 'Board', 'board'], ['modules', 'Moduli', 'layers'], ['notif', 'Notifiche', 'bell'], ['apps', 'App collegate', 'plug', 'new'], ['help', 'Aiuto e tutorial', 'help']]],
+  ['Workspace · admin', [['members', 'Membri', 'people', 'n:5'], ['access', 'Accesso e permessi', 'lock', 'dot'], ['class', 'Classificazioni', 'tag'], ['reports', 'Segnalazioni', 'flag', 'new']]],
+  ['Server · admin', [['general', 'Generale', 'home'], ['storage', 'Archiviazione', 'disk'], ['backup', 'Backup', 'clock'], ['server', 'Stato del server', 'pulse'], ['updates', 'Aggiornamenti', 'up', 'n:0.11']]],
+  ['Proposta', [['changes', 'Cosa cambia', 'star']]],
+];
+
+const PAGES = {
+  account: () => lead('Il tuo profilo e come accedi.') +
+    sec('Profilo', row('Foto profilo', 'JPEG, PNG o WebP, massimo 1 MB', btn('Carica') + btn('Rimuovi', 'ghost'), tile('', 'round', 'MM')) + row('Nome', 'Come ti vedono gli altri nei progetti e nei commenti', inp('Matteo Maraffio')) + row('Email', 'Per accedere e ricevere le notifiche', val('matteo@example.com'))) +
+    sec('Metodi di accesso', row('Email e password', 'Cambiandola, le altre sessioni vengono chiuse', btn('Cambia password'), tile('mail')) + row('Google', 'Collegato', btn('Scollega', 'ghost'), tile('', '', 'G')) + row('Verifica in due passaggi', 'Un codice dall’app di autenticazione a ogni accesso', bdg('Attiva', 'ok') + btn('Disattiva', 'ghost'), tile('lock'))) +
+    sec('Sessioni', row('Chrome · Windows', '192.168.1.20', bdg('Questo dispositivo', 'acc')) + row('Safari · iOS', 'Dal 10 nov 2026, 21:14 · 10.0.0.8', btn('Esci', 'ghost')) + row('Firefox · Linux', 'Dal 2 nov 2026, 09:02 · 10.0.0.31', btn('Esci', 'ghost')), btn('Esci dagli altri', 'ghost')) +
+    sec('Il tuo spazio', row('12,4 GB su 50 GB', 'Originali 9,8 GB · copie e anteprime 2,6 GB. Conta quello che hai caricato tu, in tutti i progetti.<div class="meter"><i style="width:20%"></i><i style="width:5%"></i></div>', bdg('C’è spazio', 'ok') + btn('File più grandi'))) +
+    note('Prima «Il tuo spazio» era la prima scheda della pagina, sopra il profilo. «App e token» e «Segnala un problema» escono da qui.') +
+    sec('Zona pericolosa', row('Elimina account', 'Rimuove il tuo account da questa istanza. I contenuti dei progetti restano.', btn('Elimina account…', 'dng')), '', 'danger'),
+
+  look: () => lead('Valgono solo per te e ti seguono su ogni dispositivo.') +
+    sec('Aspetto', row('Tema', 'Sistema segue l’impostazione del dispositivo', seg(['Scuro', 'Chiaro', 'Sistema'])) + row('Lingua', 'Dell’interfaccia e delle email', sel('Italiano'))) +
+    sec('Data e ora', row('Formato data', 'Piano riprese, fogli di lavorazione, PDF, commenti', sel('Dal browser · 14/11/2026')) + row('Formato ora', 'Orari di convocazione e piano riprese', seg(['24 h · 07:30', '12 h · 7:30 AM']))),
+
+  board: () => lead('Come si comportano le tue board e quali strumenti hai nella barra in basso. Vale solo per te, su ogni dispositivo.') +
+    sec('Canvas', row('Mostra la griglia a punti', 'Predefinito; ogni board può cambiarlo dal menu del canvas', sw(1), '', 'inline') + row('Aggancia alla griglia', 'Predefinito all’apertura di una board · G per cambiarlo al volo', sw(1), '', 'inline') + row('Doppio clic sul vuoto crea una nota', 'Anche doppio tocco su telefono e tablet', sw(1), '', 'inline') + row('Mantieni la board attorno al contenuto', 'L’area cresce quando aggiungi o sposti card', sw(1), '', 'inline') + row('Pulsanti Annulla e Ripeti', 'Ctrl/⌘ Z funziona comunque', sw(0), '', 'inline') + row('Continua a riprodurre i video fuori schermo ' + bdg('Solo questo dispositivo'), 'Il video resta in riproduzione quando sposti la vista', sw(0), '', 'inline')) +
+    sec('Barra degli strumenti ' + mv('pagina Barra degli strumenti'), `<div class="pad"><div class="hp" style="margin:0 0 8px">Sempre nella barra</div><div class="grid">${tool('ptr', 'Seleziona', 'lock')}${tool('hand', 'Mano', 'lock')}${tool('arrow', 'Freccia', 'lock')}${tool('note', 'Nota', 'lock')}${tool('img', 'Immagine', 'lock')}</div></div><div class="pad"><div class="hp" style="margin:0 0 8px">Da «Altro»: scegli quali tenere nella barra</div><div class="grid">${tool('link', 'Link', 'on')}${tool('todo', 'To-do', 'on')}${tool('frame', 'Inquadratura', 'on')}${tool('board', 'Colonna', '')}${tool('chat', 'Commento', '')}${tool('film', 'Scena', '')}</div></div>` + row('Anteprima', '', `<span class="dock">${['ptr', 'hand', 'arrow', 'note', 'img', 'link', 'todo', 'frame', 'more'].map((i) => `<span>${ic(i)}</span>`).join('')}</span>`) + row('Ripristina la barra predefinita', '', btn('Ripristina'))),
+
+  modules: () => lead('Scegli le parti di Inkadra che usi. Un modulo spento sparisce da menu, barra, notifiche e tutorial. Vale solo per te e non cancella niente.') +
+    sec('', row('Board', 'Note, immagini, link, file, to-do, colonne e commenti', bdg('Sempre acceso'), tile('board'), 'inline') + row('Storyboard', 'Board Storyboard, Shot list, strumento Inquadratura, copione in scene', sw(1), tile('frame', 't-purple'), 'inline') + row('Produzione', 'Piano riprese, Troupe, ordini del giorno e fogli per scena', sw(1), tile('film', 't-green'), 'inline') + row('Moodboard', 'Board Moodboard e vista Moodboard: gruppi, note, palette', sw(1), tile('img', 't-orange'), 'inline') + row('Revisione clienti', 'Link per i clienti senza account, approvazioni e richieste di modifica', sw(1), tile('chat', 't-pink'), 'inline') + row('Pianta del set ' + bdg('Spento'), 'Piante con luci, camere, attori e muri · le piante già disegnate restano visibili', sw(0), tile('cam', 't-teal'), 'inline')),
+
+  notif: () => lead('Cosa ti avvisa e dove. Le menzioni arrivano sempre nella Inbox.') +
+    sec('Cosa ricevere', `<table class="mx"><thead><tr><th>Quando</th><th>Inbox</th><th>Email</th></tr></thead><tbody>${[['Qualcuno ti menziona', 'lock', 'on'], ['Rispondono a una tua discussione', 'on', 'on'], ['Commentano una tua card', 'on', ''], ['Decisione su una revisione', 'on', 'on'], ['Ti assegnano un compito', 'on', 'on']].map((r) => `<tr><th>${r[0]}</th><td>${ck(r[1])}</td><td>${ck(r[2])}</td></tr>`).join('')}</tbody></table>`) +
+    sec('Email', row('Quando inviarle', 'Subito: le notifiche ravvicinate in un’unica email. Riepilogo: una email al giorno.', seg(['Subito', 'Riepilogo giornaliero'])) + row('Novità di Inkadra', 'Una email dopo un aggiornamento importante', sw(1), '', 'inline')) +
+    note('Semplificato: la frequenza era un interruttore «Riepilogo giornaliero» sotto il titolo «Inviami»; ora è una scelta esplicita fra due opzioni. Il Calendario passa in «App collegate».'),
+
+  apps: () => lead('Quello che si collega al tuo account da fuori: calendario, estensione del browser, token.') +
+    sec('Calendario ' + mv('Notifiche'), row('Link del tuo calendario', 'In Google Calendar, Apple o Outlook: «Aggiungi calendario da URL». Contiene i giorni di riprese dei tuoi progetti e le scadenze dei to-do assegnati a te.', inp('https://inkadra…/cal/••••••') + btn('Copia', '', 'copy'), tile('cal', 't-green')) + row('Rigenera il link', 'Quello attuale smette subito di funzionare. Chi ha il link vede gli eventi: non condividerlo.', btn('Rigenera…', 'dng'))) +
+    sec('Estensione per il browser ' + mv('Account'), row('Inkadra Clipper', 'Salva immagini e pagine sulle board da Chrome. Al primo avvio chiede questo indirizzo: <code>https://inkadra.example.com</code>', bdg('Collegata', 'ok') + btn('Copia indirizzo', 'ghost', 'copy'), tile('puzzle', 't-acc'))) +
+    sec('Token personali ' + mv('Account'), row('Script di backup', '<code>ink_4f2a…</code> · creato a mano · usato il 9 nov 2026', btn('Revoca', 'ghost'), tile('key')) + row('Inkadra Clipper', '<code>ink_91bc…</code> · estensione · usato oggi', btn('Revoca', 'ghost'), tile('key')), btn('Nuovo token', 'ghost', 'plus')),
+
+  help: () => hero('acc', 'play', '9 di 14 giri visti', 'Giro di benvenuto: cos’è Inkadra e dove trovi le cose · 7 passi · 1 min', btn('Riproduci', 'pri', 'play'), '<div class="meter"><i style="width:64%"></i></div>') +
+    [['Per iniziare', [['Home e progetti', 1, 'home'], ['La board', 1, 'board'], ['Moduli', 0, 'layers']]], ['Canvas', [['Storyboard', 1, 'frame', 't-purple'], ['Moodboard', 1, 'img', 't-orange'], ['Pianta del set', 0, 'cam', 't-teal']]], ['Amministrazione', [['Backup', 1, 'clock'], ['Stato del server', 0, 'pulse'], ['Aggiornamenti', 0, 'up']]]].map(([g, ts]) => sec(g, ts.map((t) => row(t[0], (t[1] ? 'Visto' : '<span style="color:var(--acc-fg)">● Da vedere</span>') + ' · 30 s', btn('', 'ghost', 'play'), tile(t[2], t[3] || ''), 'inline')).join(''))).join('') +
+    sec('Preferenze dei tutorial', row('Suggerimenti alla prima apertura', 'Una pillola propone il giro quando apri una funzione nuova', sw(1), '', 'inline') + row('Ricomincia da capo', 'Segna tutti i giri come da vedere', btn('Ripristina'))) +
+    sec('Assistenza', row('Segnala un problema ' + mv('Account / Informazioni'), 'Invia un bug, un’idea o una domanda a chi gestisce Inkadra', btn('Apri'), tile('flag', 't-orange'))),
+
+  members: () => lead('Chi ha un account su questa istanza. I permessi su progetti e board restano nei progetti.') +
+    `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${inp(ic('search') + '<span style="margin-right:auto;color:var(--tx3)">Cerca per nome o email</span>')}${sel('Tutti i ruoli')}${sel('Tutti gli stati')}<span style="margin-left:auto">${btn('Invita membri', 'pri', 'plus')}</span></div>` +
+    sec('5 account', [['MM', 'Matteo Maraffio · tu', 'matteo@example.com · 6 progetti · attivo oggi', 'Admin', 'Sempre', '12,4 GB / senza limite'], ['GB', 'Giulia Bianchi', 'giulia@example.com · 4 progetti · ieri', 'Membro', 'Come l’istanza (sì)', '6,1 GB / 50 GB'], ['LR', 'Luca Rossi', 'luca@example.com · 2 progetti · 9 giorni fa', 'Membro', 'No', '820 MB / 10 GB · suo'], ['SV', 'Sara Verdi ' + bdg('Disattivata'), 'sara@example.com · 1 progetto · 3 mesi fa', 'Membro', 'Come l’istanza (sì)', '2,2 GB / 50 GB']].map((m) => row(m[1], m[2] + '<br>Spazio ' + m[5], sel(m[3]) + sel('Crea progetti: ' + m[4]) + btn('', 'ghost', 'more'), tile('', 'round', m[0]))).join('')) +
+    note('Il menu ⋯ di ogni persona resta com’è: Cambia il limite di spazio…, Vedi i suoi file, Disattiva.') +
+    sec('Inviti in attesa', row('paolo@example.com', 'Scade il 19 nov 2026', btn('Reinvia', 'ghost') + btn('Revoca', 'ghost'), tile('mail'))) +
+    note('La scheda «Creazione progetti» (che conteneva anche il feed del calendario) passa in «Accesso e permessi»: qui restano solo le persone.'),
+
+  access: () => lead('Chi può entrare, cosa possono fare i membri e con quali metodi si accede.') +
+    sec('Nuovi account ' + mv('Registrazioni'), row('Registrazioni', 'Solo chi riceve un invito può creare un account', seg(['Aperte', 'Solo invito', 'Chiuse'], 1))) +
+    sec('Permessi dei membri ' + mv('Membri'), row('I membri possono creare progetti', 'Altrimenti solo gli admin; si può cambiare per una persona da Membri', sw(1), '', 'inline') + row('Feed del calendario', 'Consenti i link privati al calendario per riprese e scadenze', sw(1), '', 'inline')) +
+    sec('Sicurezza ' + mv('Registrazioni'), row('Verifica in due passaggi per gli amministratori', 'Gli admin devono configurarla per usare l’istanza', sw(0), tile('lock'), 'inline')) +
+    sec('Metodi di accesso', row('Email e password', 'Sempre disponibile', bdg('Attivo', 'ok'), tile('mail')) + row('Google', 'Configurato', bdg('Attivo', 'ok'), tile('', '', 'G')) + row('OIDC', '<code>OIDC_DISCOVERY_URL</code> <code>OIDC_CLIENT_ID</code> <code>OIDC_CLIENT_SECRET</code>', bdg('Spento'), tile('key')) + row('Link di accesso via email', 'Richiede l’invio email', bdg('Manca SMTP', 'warn'), tile('link')) + row('Invio email (SMTP)', '<code>SMTP_URL</code> · serve per inviti, reset della password e notifiche', bdg('Da configurare', 'warn'), tile('mail')), bdg('Sola lettura · si configurano sul server')),
+
+  class: () => lead('Valori condivisi in tutta l’istanza. Quelli archiviati restano sui dati esistenti.') +
+    sec('Progetti', row('Tipi di progetto', '<div class="chips"><span>Spot</span><span>Videoclip</span><span>Corto</span><span>Documentario</span><span>+2</span></div>', val('6 attivi') + ic('chev')) + row('Tag', '', val('3 attivi · 1 archiviato') + '<span style="transform:rotate(90deg);display:grid">' + ic('chev') + '</span>') + ['Cliente', 'Interno', 'Pitch'].map((n) => row('', '', inp(n) + btn('Archivia', 'ghost'), '<span class="val">↑↓</span>')).join('') + row('', '', inp('Vecchio') + bdg('Archiviato') + btn('Ripristina', 'ghost'), '<span class="val">↑↓</span>') + row('', '', btn('Aggiungi valore', 'ghost', 'plus'))) +
+    sec('Storyboard', row('Campo', '<div class="chips"><span>CL</span><span>CM</span><span>PA</span><span>MF</span><span>PP</span><span>+3</span></div>', val('8 attivi') + ic('chev')) + row('Angolazione', '<div class="chips"><span>Frontale</span><span>Dall’alto</span><span>Dal basso</span></div>', val('5 attivi') + ic('chev')) + row('Movimento', '<div class="chips"><span>Fisso</span><span>Carrello</span><span>Panoramica</span></div>', val('7 attivi') + ic('chev'))) +
+    `<div class="savebar"><span>Modifiche non salvate</span>${btn('Annulla', 'ghost')}${btn('Salva', 'pri')}</div>` +
+    note('Unica pagina con salvataggio manuale: la barra in basso compare solo quando c’è qualcosa da salvare, e l’intestazione non dice «Salvato».'),
+
+  reports: () => lead('Dove vanno le segnalazioni che le persone inviano da «Segnala un problema», e quelle ricevute.') +
+    sec('Destinazione ' + mv('Informazioni'), row('Dove arrivano', 'Sempre una copia qui sotto. Agli sviluppatori vanno in un repository privato, mai pubblico.', sel('Sviluppatori di Inkadra')) + `<div class="pad hp">Le quattro scelte di oggi (interruttore + elenco a pallini, che dicevano la stessa cosa) diventano un solo menu: Sviluppatori di Inkadra · GitHub, in un repository privato · Solo Inbox degli amministratori · Spente. Con GitHub compaiono qui le righe Repository e Token GitHub.</div>` + row('Ultima consegna', '11 nov 2026, 18:02 · nessuna in attesa', bdg('Consegnata', 'ok'))) +
+    sec('Regole', row('Gli ospiti possono segnalare', 'Chi apre una board da un link condiviso', sw(0), '', 'inline') + row('Conservazione degli allegati', 'Poi screenshot e video si cancellano', sel('30 giorni'))) +
+    sec('Segnalazioni ricevute', row('INK-0042 · La pagina ha smesso di funzionare', 'Giulia Bianchi · 11 nov 2026, 17:58', bdg('Su GitHub', 'ok') + btn('', 'ghost', 'trash') + ic('chev'), tile('flag', 't-orange')) + row('INK-0041 · Esportare la shot list in CSV', 'Luca Rossi · 8 nov 2026, 10:12', bdg('Solo Inbox') + btn('', 'ghost', 'trash') + ic('chev'), tile('flag', 't-acc')), btn('Aggiorna', 'ghost')) +
+    note('Ogni riga si apre come oggi: descrizione, allegati, dati tecnici, «Riprova» se è in attesa.'),
+
+  general: () => lead('Il nome dell’istanza e quanto manca per finire la configurazione.') +
+    sec('Istanza', row('Nome', 'Compare nella barra laterale, nelle email e nella pagina di accesso', inp('Recore Studio')) + row('Indirizzo pubblico', '', '<code>https://inkadra.example.com</code>') + row('Versione', 'È disponibile la 0.11.0', val('Inkadra 0.10.2') + btn('Aggiornamenti', 'ghost'))) +
+    sec('Configurazione', row('Indirizzo pubblico e HTTPS', '', bdg('Pronto', 'ok'), tile('check', 't-green'), 'inline') + row('Archiviazione dei file', '', bdg('Pronto', 'ok'), tile('check', 't-green'), 'inline') + row('Metodi di accesso', '', bdg('Pronto', 'ok'), tile('check', 't-green'), 'inline') + row('Invio email', 'Senza SMTP non partono inviti e notifiche email', btn('Configura'), tile('warn', 't-orange')), val('3 di 4')) +
+    note('Era «Informazioni». Escono da qui: l’interruttore «Novità di Inkadra» (va in Aggiornamenti), le Segnalazioni (pagina propria), lo spazio usato e il link al server (già nelle loro pagine).'),
+
+  storage: () => hero('green', 'disk', '412 GB su 500 GB di limite', 'Originali 318 GB · copie e anteprime 94 GB · disco 931 GB', bdg('Basta per circa 8 mesi', 'ok'), '<div class="meter"><i style="width:64%"></i><i style="width:19%"></i></div>') +
+    sec('Limiti', row('Spazio totale dell’istanza', 'Oltre questo nessuno carica più file. Non cancella niente.', seg(['Senza limite', 'Limite'], 1) + inp('500') + sel('GB')) + row('Spazio per persona', 'Per chi non ne ha uno suo; lo cambi per una persona da Membri', seg(['Senza limite', 'Limite'], 1) + inp('50') + sel('GB')) + row('Avvisa a', 'Le persone vedono un avviso, gli admin lo ricevono in Inbox', sel('80%')) + row('File più grande', 'Dal server: <code>UPLOAD_MAX_SIZE</code>', val('20 GB'))) +
+    sec('', `<div class="tiles"><div><div class="k">Spazio usato</div><div class="v">412 GB</div></div><div><div class="k">Progetti</div><div class="v">9</div></div><div><div class="k">Tipo più pesante</div><div class="v">Video</div></div></div>`) +
+    sec('Utilizzo', [['Spot Aurora', 46, '146 GB'], ['Videoclip Notte', 28, '89 GB'], ['Corto «Mare»', 17, '54 GB'], ['Altri 6 progetti', 9, '29 GB']].map((r) => row(r[0], '', `<span class="bar"><i style="width:${r[1]}%"></i></span>` + val(r[2] + ' · ' + r[1] + '%'), '', 'inline')).join(''), seg(['Per progetto', 'Per persona', 'Per tipo'])) +
+    note('I tre grafici separati diventano un solo elenco con un selettore: stessa informazione, un terzo dello spazio.'),
+
+  backup: () => hero('green', 'check', 'Ultimo backup riuscito', 'Stanotte alle 03:00 · 2,4 GB · il prossimo domani alle 03:00', btn('Esegui ora')) +
+    sec('Pianificazione', row('Backup notturno', 'Copia del database per ripristinare il server dopo un guasto', sw(1), '', 'inline') + row('Ora', 'Fuso del server: Europe/Rome', inp('03:00')) + row('Conserva', 'I più vecchi vengono rimossi', sel('Ultimi 7'))) +
+    sec('Cronologia', row('12 nov 2026, 03:00', 'Notturno · 2,4 GB · <code>inkadra-2026-11-12.tar.zst</code>', bdg('Pronto', 'ok')) + row('11 nov 2026, 03:00', 'Notturno · 2,4 GB · <code>inkadra-2026-11-11.tar.zst</code>', bdg('Pronto', 'ok')) + row('10 nov 2026, 16:42', 'Manuale · spazio insufficiente', bdg('Non riuscito', 'warn'))) +
+    note('Per ripristinare: <code>node /app/dist/main.js backup restore &lt;file&gt;</code>'),
+
+  server: () => hero('green', 'check', 'Tutto funziona', 'Acceso da 6 giorni · 2 problemi da guardare', btn('Vedi i problemi')) +
+    sec('Risorse', `<div class="tiles">${[['Processore', 'Tranquillo', '34 <small>%</small>'], ['Memoria', 'Tranquilla', '1,9 GB <small>su 4</small>'], ['Spazio', '8 mesi', '412 GB <small>su 931</small>'], ['Internet', 'Normale', '↓18 ↑4 <small>Mb/s</small>'], ['Velocità', 'Veloce', '0,12 <small>s</small>'], ['Backup', 'Riuscito', '03:00 <small>stanotte</small>']].map((t) => `<div><div class="k">${t[0]}<small>● ${t[1]}</small></div><div class="v">${t[2]}</div></div>`).join('')}</div>`, ) +
+    sec('Servizi', row('Sito e accesso', 'web', bdg('Funziona', 'ok'), tile('globe'), 'inline') + row('Lavoro insieme dal vivo', 'collab · ultimo segnale 2 s fa', bdg('Funziona', 'ok'), tile('people'), 'inline') + row('Preparazione di video e anteprime', 'worker · ultimo segnale 3 s fa', bdg('Funziona', 'ok'), tile('film'), 'inline') + row('Database e coda dei lavori', 'PostgreSQL 17 · 3 lavori in coda', bdg('Funziona', 'ok'), tile('disk'), 'inline') + row('Configurazione ' + mv('pagina Diagnostica'), 'Indirizzo, proxy, WebSocket: i controlli della Diagnostica, qui', bdg('9 controlli superati', 'ok') + ic('chev'), tile('todo'), 'inline'), val('tutti rispondono')) +
+    sec('Andamento', `<div class="pad"><svg viewBox="0 0 600 90" style="width:100%;height:90px;display:block"><path d="M0 70 L60 62 L120 66 L180 40 L240 48 L300 30 L360 52 L420 44 L480 58 L540 36 L600 50" fill="none" stroke="var(--acc)" stroke-width="2"/><path d="M0 80 L600 80" stroke="var(--bd)"/></svg></div>`, sel('Processore') + sel('Ultima ora')) +
+    sec('Video in preparazione', row('take-07.mov', '62% · ancora circa 2 min<div class="meter"><i style="width:62%"></i></div>', ''), val('1 in attesa · 14 pronti oggi')) +
+    sec('Chi è collegato adesso', row('Storyboard · Spot Aurora', 'Spot Aurora · da 25 min', tile('', 'round', 'GB') + tile('', 'round', 'LR')), val('2 persone su 1 board')) +
+    sec('Problemi', row('Un video non è stato preparato ' + bdg('2 volte'), '«take-04.mov» sulla board Girato. Dettagli tecnici ▸', btn('Riprova') + btn('Visto', 'ghost'), tile('warn', 't-orange')), val('ultimi 7 giorni') + btn('Invia agli sviluppatori', 'ghost')) +
+    sec('Avvisi', row('Avvisa gli amministratori', 'Quando un servizio si ferma, un backup non riesce o lo spazio sta finendo', sw(1), '', 'inline') + row('Come', 'Per l’email serve SMTP', sel('Inbox'))) +
+    sec('', row('Dettagli tecnici', 'Per chi gestisce il server: processi, code dei lavori, database, versione', ic('chev'), tile('key'), 'inline')) +
+    note('Stessi nove blocchi di oggi, nello stesso ordine, con la grafica comune. La vista Avanzata (grafici, registro errori, code e processi) usa le stesse schede.'),
+
+  updates: () => hero('acc', 'up', 'È disponibile Inkadra 0.11.0', 'In uso la 0.10.2 · uscita il 9 novembre · Stabile', btn('Leggi le novità', 'pri')) +
+    sec('Come aggiornare', row('Prima di aggiornare', '1 cosa da sapere', ic('chev'), tile('warn', 't-orange'), 'inline') + row('Passaggi sul server', 'Backup, <code>INKADRA_TAG=0.11.0</code>, <code>docker compose pull && up -d</code>', ic('chev'), tile('todo'), 'inline')) +
+    sec('Avvisi', row('Avvisami delle nuove versioni', 'Controlla una volta al giorno; Inkadra non si aggiorna da solo', sw(1), '', 'inline') + row('Canale', 'Anteprima include le versioni di prova', sel('Stabile')) + row('Novità via email alle persone ' + mv('Informazioni'), 'Dopo un aggiornamento; ognuno può disattivarle in Notifiche. Richiede SMTP.', sw(1), '', 'inline'), btn('Controlla ora', 'ghost')) +
+    sec('Versioni precedenti', row('0.10.2 ' + bdg('In uso', 'ok'), 'Moduli: scegli le parti di Inkadra che usi', val('2 nov')) + row('0.10.1', 'Correzioni alla pagina Aggiornamenti', val('28 ott')) + row('0.10.0', 'Pagina Aggiornamenti e avvisi di nuova versione', val('24 ott')), btn('Tutte su GitHub', 'ghost')),
+
+  changes: () => lead('Tre gruppi nominati per chi li usa (tu, il tuo workspace, il server), 16 pagine ognuna con un solo argomento, e una sola grammatica visiva.') +
+    sec('Una sola grammatica', `<table class="chg">${[['Sezione = etichetta + scheda', 'Oggi: righe senza bordo (Account), riquadri pieni (Server), griglie proprie (Tutorial, Barra), tabella (Notifiche). Ora ogni blocco è una scheda con righe, su desktop e telefono.'], ['Riga = icona · testo · controllo', 'Solo sei controlli a destra: interruttore, scelta a segmenti, menu, campo, pulsante, etichetta di stato. Niente caselle o tessere speciali, tranne dove servono (matrice notifiche, barra).'], ['Striscia di stato in cima', 'Le pagine che hanno uno stato (Server, Backup, Archiviazione, Aggiornamenti, Tutorial) aprono con la stessa striscia: icona, frase, azione principale.'], ['Icone e colori', 'Un’icona diversa per ogni pagina (oggi tre condividono l’ingranaggio); i colori sono solo quelli dei moduli e degli stati.'], ['Salvataggio', '«Salvato» in alto ovunque; la sola pagina manuale (Classificazioni) mostra una barra in basso.']].map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`) +
+    sec('Voci che cambiano posto', `<table class="chg">${[['Calendario', 'Notifiche → App collegate', 'È un collegamento esterno, non una notifica.'], ['App, token, estensione', 'Account → App collegate', 'Account resta su profilo, accesso e sessioni.'], ['Il tuo spazio', 'In cima ad Account → dopo Sessioni', 'Il profilo torna la prima cosa.'], ['Barra degli strumenti', 'Pagina propria → Board', 'Insieme alle opzioni del canvas: tutto ciò che riguarda la board.'], ['Canvas', 'Preferenze → Board', 'Preferenze diventa «Aspetto e lingua».'], ['Segnala un problema', 'Account e Informazioni → Aiuto e tutorial', 'Un solo posto per chiedere aiuto, uguale per membri e admin.'], ['Diagnostica', 'Link in fondo alla barra laterale → Stato del server', 'È solo per gli admin e i suoi controlli sono già la riga «Configurazione». La pagina /diagnostics resta per quando non si riesce ad accedere.'], ['Creare progetti, feed calendario', 'Membri → Accesso e permessi', 'Membri resta l’elenco delle persone.'], ['Registrazioni, 2FA degli admin', 'Registrazioni → Accesso e permessi', 'Due pagine brevi diventano una.'], ['Impostazioni delle segnalazioni', 'Informazioni → Segnalazioni', 'Era in fondo a una pagina che parlava d’altro.'], ['Novità via email', 'Informazioni → Aggiornamenti', 'Riguarda cosa succede dopo un aggiornamento.'], ['Archiviazione', 'Workspace → Server', 'Sono limiti e disco del server.']].map((r) => `<tr><td>${r[0]}<small>${r[1]}</small></td><td>${r[2]}</td></tr>`).join('')}</table>`) +
+    sec('Semplificazioni', `<table class="chg">${[['Email: Subito o Riepilogo', 'Una scelta a due voci al posto di un interruttore sotto «Inviami».'], ['Utilizzo dello spazio', 'Tre grafici diventano un elenco con selettore (progetto, persona, tipo).'], ['Moduli', 'Una riga di descrizione per modulo; la frase «cosa resta» compare solo da spento.'], ['Informazioni → Generale', 'Solo nome, indirizzo, versione e la lista di configurazione, con un pulsante «Configura» sulle voci mancanti.'], ['Indirizzi invariati', 'I link esistenti (<code>?section=…</code>) continuano ad aprire la pagina giusta.']].map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`),
+};
+
+const $ = (id) => document.getElementById(id);
+const app = $('app');
+let cur = 'account';
+const titleOf = (id) => NAV.flatMap((g) => g[1]).find((p) => p[0] === id)[1];
+function draw() {
+  $('groups').innerHTML = NAV.map(([g, ps]) => `<div class="gh">${g}</div>` + ps.map(([id, t, i, x]) => `<button class="ni${id === cur ? ' on' : ''}" data-id="${id}">${ic(i)}<span>${t}</span>${x === 'new' ? '<span class="new">nuova</span>' : x === 'dot' ? '<span class="dot"></span>' : x ? `<span class="n">${x.slice(2)}</span>` : ''}<span class="chev">${ic('chev')}</span></button>`).join('')).join('');
+  $('title').textContent = titleOf(cur);
+  $('hx').innerHTML = cur === 'server' ? seg(['Semplice', 'Avanzata']) : '';
+  document.querySelector('.save').style.visibility = cur === 'class' || cur === 'changes' ? 'hidden' : '';
+  $('page').innerHTML = PAGES[cur]();
+  document.querySelector('.body').scrollTop = 0;
+}
+$('groups').onclick = (e) => { const b = e.target.closest('.ni'); if (!b) return; cur = b.dataset.id; app.classList.add('open'); draw(); };
+$('back').innerHTML = ic('left'); $('close').innerHTML = ic('x'); $('srch').innerHTML = ic('search') + 'Cerca impostazioni';
+$('back').onclick = () => app.classList.remove('open');
+const pills = (id, fn) => { $(id).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; [...$(id).children].forEach((x) => x.classList.toggle('on', x === b)); fn(b.dataset.v); }; };
+pills('pTheme', (v) => { app.classList.toggle('light', v === 'light'); document.body.classList.toggle('lightpage', v === 'light'); });
+pills('pDev', (v) => { app.classList.toggle('phone', v === 'phone'); app.classList.remove('open'); });
+pills('pMv', (v) => app.classList.toggle('nomoves', v === '0'));
+draw();
+</script>
+</body>
+</html>

@@ -4,9 +4,10 @@ import { useId } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { formatDateTime } from '../lib/datetime.ts';
+import { useSession } from '../lib/session.tsx';
 import { checkUpdatesNow, loadUpdates, releaseNews, useUpdates } from '../lib/updates.ts';
 import { useInstanceSettings } from './InstanceSettings.tsx';
-import { Badge, Card, Row } from './settings-ui.tsx';
+import { Badge, Card, Row, Summary, Tile } from './settings-ui.tsx';
 import './update-settings.css';
 
 const RELEASES = 'https://github.com/inkadra/inkadra/releases';
@@ -20,6 +21,7 @@ export function UpdateSettings() {
   const { t, i18n } = useTranslation();
   const { data, error, checking } = useUpdates();
   const { settings, error: settingsError, save } = useInstanceSettings();
+  const { instance } = useSession();
   const channelId = useId();
   if ((error && !data) || settingsError)
     return (
@@ -40,58 +42,80 @@ export function UpdateSettings() {
   // Edge builds are never compared with releases (decision 0080): no "up to date" for them.
   const warn = data.checkEnabled && (data.failed || data.edge);
 
+  const news = available ? releaseNews(available, i18n.language) : null;
+  const date = available ? day(available.publishedAt) : null;
   return (
     <>
+      {available && news ? (
+        <Summary
+          tour="updates"
+          tone="accent"
+          icon="upload"
+          title={t('updates.available', { version: available.version })}
+          text={
+            <>
+              {[
+                t('updates.running', { version: data.current }),
+                date && t('updates.released', { date }),
+              ]
+                .filter(Boolean)
+                .join(' · ')}{' '}
+              <Badge tone={available.prerelease ? 'accent' : 'neutral'}>
+                {t(available.prerelease ? 'updates.preview' : 'updates.stable')}
+              </Badge>
+            </>
+          }
+          action={
+            <a
+              className="ink-btn ink-btn--primary"
+              href={available.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('updates.readAll')}
+            </a>
+          }
+        />
+      ) : (
+        <Summary
+          tour="updates"
+          tone={warn ? 'warn' : 'ok'}
+          icon={warn ? 'warning' : 'check'}
+          title={t(
+            !data.checkEnabled
+              ? 'updates.offTitle'
+              : data.edge
+                ? 'updates.edgeTitle'
+                : data.failed
+                  ? 'updates.failedTitle'
+                  : data.checkedAt
+                    ? 'updates.upToDate'
+                    : 'updates.notChecked',
+          )}
+          text={[
+            t('updates.running', { version: data.current }),
+            data.checkEnabled && data.edge ? t('updates.edgeHelp') : null,
+            data.checkEnabled && checked && !data.edge
+              ? t('updates.checkedAt', { time: checked })
+              : null,
+            !data.checkEnabled ? t('updates.offHelp') : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        />
+      )}
+      {available && news && <NewVersion release={available} news={news} />}
       <Card
-        tour="updates"
-        title={t(available ? 'updates.newTitle' : 'updates.versionTitle')}
+        tour="updates-alerts"
+        title={t('updates.alerts')}
         action={
           data.checkEnabled && (
-            <Button disabled={checking} onClick={() => void checkUpdatesNow()}>
+            <Button variant="ghost" disabled={checking} onClick={() => void checkUpdatesNow()}>
               {t(checking ? 'updates.checking' : 'updates.checkNow')}
             </Button>
           )
         }
       >
-        {available ? (
-          <NewVersion release={available} current={data.current} />
-        ) : (
-          <div className="settings-rows">
-            <Row
-              leading={
-                <span
-                  className={`updates-state updates-state--${warn ? 'warn' : 'ok'}`}
-                  aria-hidden="true"
-                >
-                  <Icon name={warn ? 'warning' : 'check'} size={14} />
-                </span>
-              }
-              label={t(
-                !data.checkEnabled
-                  ? 'updates.offTitle'
-                  : data.edge
-                    ? 'updates.edgeTitle'
-                    : data.failed
-                      ? 'updates.failedTitle'
-                      : data.checkedAt
-                        ? 'updates.upToDate'
-                        : 'updates.notChecked',
-              )}
-              help={[
-                t('updates.running', { version: data.current }),
-                data.checkEnabled && data.edge ? t('updates.edgeHelp') : null,
-                data.checkEnabled && checked && !data.edge
-                  ? t('updates.checkedAt', { time: checked })
-                  : null,
-                !data.checkEnabled ? t('updates.offHelp') : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            />
-          </div>
-        )}
-      </Card>
-      <Card tour="updates-alerts" title={t('updates.alerts')}>
         <div className="settings-rows">
           <Row label={t('updates.notify')} help={t('updates.notifyHelp')}>
             <Switch
@@ -110,6 +134,17 @@ export function UpdateSettings() {
               <option value="stable">{t('updates.channels.stable')}</option>
               <option value="preview">{t('updates.channels.preview')}</option>
             </Select>
+          </Row>
+          <Row
+            label={t('settingsUi.notifications.releaseNews')}
+            help={t('settingsUi.notifications.releaseNewsAdminHelp')}
+          >
+            <Switch
+              aria-label={t('settingsUi.notifications.releaseNews')}
+              checked={settings.releaseNews ?? true}
+              disabled={!instance?.auth.email}
+              onChange={(e) => void save({ releaseNews: e.target.checked }).catch(() => {})}
+            />
           </Row>
         </div>
       </Card>
@@ -152,74 +187,52 @@ export function UpdateSettings() {
   );
 }
 
-/** The release to update to: its news in plain words, the technical part folded away. */
-function NewVersion({ release, current }: { release: InstanceRelease; current: string }) {
-  const { t, i18n } = useTranslation();
-  const date = day(release.publishedAt);
-  const news = releaseNews(release, i18n.language);
+/** How to update to the new release: its news, then the technical part folded away. */
+function NewVersion({
+  release,
+  news,
+}: {
+  release: InstanceRelease;
+  news: ReturnType<typeof releaseNews>;
+}) {
+  const { t } = useTranslation();
   return (
-    <div className="updates-new">
-      <div className="updates-new__head">
-        <span className="updates-new__icon" aria-hidden="true">
-          <Icon name="upload" size={16} />
-        </span>
-        <div className="updates-new__text">
-          <h4 className="updates-new__title">
-            {t('updates.available', { version: release.version })}
-          </h4>
-          <p className="settings-row__help">
-            {[t('updates.running', { version: current }), date && t('updates.released', { date })]
-              .filter(Boolean)
-              .join(' · ')}{' '}
-            <Badge tone={release.prerelease ? 'accent' : 'neutral'}>
-              {t(release.prerelease ? 'updates.preview' : 'updates.stable')}
-            </Badge>
-          </p>
-        </div>
-      </div>
+    <Card title={t('settingsUi.updates.how')}>
       {news.highlights.length > 0 && (
-        <ul className="updates-news">
+        <ul className="settings-card__pad updates-news">
           {news.highlights.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
       )}
-      <div>
-        <a
-          className="ink-btn ink-btn--primary"
-          href={release.url}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {t('updates.readAll')}
-        </a>
-      </div>
-      <div className="settings-rows updates-steps">
-        {news.beforeUpdating.length > 0 && (
-          <details>
-            <summary className="settings-row">
-              <span className="settings-row__text">
-                <span className="settings-row__label updates-steps__warn">
-                  {t('updates.beforeUpdating', { count: news.beforeUpdating.length })}
-                </span>
-              </span>
-              <Icon name="chevronRight" size={14} />
-            </summary>
-            <ul className="updates-news updates-steps__body">
-              {news.beforeUpdating.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </details>
-        )}
-        <details>
+      {news.beforeUpdating.length > 0 && (
+        <details className="settings-fold">
           <summary className="settings-row">
+            <Tile icon="warning" tone="warn" />
             <span className="settings-row__text">
-              <span className="settings-row__label">{t('updates.how')}</span>
+              <span className="settings-row__label">
+                {t('updates.beforeUpdating', { count: news.beforeUpdating.length })}
+              </span>
             </span>
-            <Icon name="chevronRight" size={14} />
+            <Icon name="chevronRight" size={14} className="settings-fold__chevron" />
           </summary>
-          <ol className="updates-how updates-steps__body">
+          <ul className="settings-fold__body updates-news">
+            {news.beforeUpdating.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <details className="settings-fold">
+        <summary className="settings-row">
+          <Tile icon="todo" />
+          <span className="settings-row__text">
+            <span className="settings-row__label">{t('updates.how')}</span>
+          </span>
+          <Icon name="chevronRight" size={14} className="settings-fold__chevron" />
+        </summary>
+        <div className="settings-fold__body">
+          <ol className="updates-how">
             <li>
               <Trans
                 i18nKey="updates.howBackup"
@@ -241,14 +254,14 @@ function NewVersion({ release, current }: { release: InstanceRelease; current: s
               </pre>
             </li>
           </ol>
-          <p className="settings-footnote updates-steps__foot">
+          <p className="settings-footnote">
             {t('updates.howRest')}{' '}
             <a className="updates-link" href={GUIDE} target="_blank" rel="noopener noreferrer">
               {t('updates.guide')}
             </a>
           </p>
-        </details>
-      </div>
-    </div>
+        </div>
+      </details>
+    </Card>
   );
 }

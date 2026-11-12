@@ -130,8 +130,8 @@ test.describe('whoever is not an administrator', () => {
   test('has no Backups section and cannot reach the page', async ({ page }) => {
     await login(page, member);
     await page.goto('/settings');
-    const nav = page.getByRole('navigation').filter({ hasText: 'Preferenze' });
-    await expect(nav.getByRole('link', { name: 'Preferenze' })).toBeVisible();
+    const nav = page.getByRole('navigation').filter({ hasText: 'Aspetto e lingua' });
+    await expect(nav.getByRole('link', { name: 'Aspetto e lingua' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Backup', exact: true })).toHaveCount(0);
     await page.goto('/settings?section=backups');
     await expect(page.getByRole('button', { name: 'Esegui backup ora' })).toHaveCount(0);

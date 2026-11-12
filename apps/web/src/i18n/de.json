@@ -2879,7 +2879,6 @@
       "server_alert_storage_limit": "Speicher der Instanz: {{percent}} % belegt ({{used}} von {{limit}})",
       "server_alert_storage_request": "bittet um mehr Speicher"
     },
-    "emailTitle": "E-Mail-Benachrichtigungen",
     "emailHint": "Erwähnungen, Antworten und Reviews auch per E-Mail, wenn der Server sie senden kann.",
     "emailLabel": "E-Mail senden",
     "frequency": {
@@ -3632,35 +3631,41 @@
   },
   "settingsUi": {
     "profile": "Profil",
-    "diagnostics": "Diagnose",
     "on": "An",
     "off": "Aus",
     "groups": {
-      "instance": "Instanz · Admin"
+      "workspace": "Workspace · Admin",
+      "server": "Server · Admin"
     },
     "pages": {
-      "access": "Anmeldung",
-      "about": "Über",
+      "access": "Zugang und Rechte",
       "toolbar": "Werkzeugleiste",
-      "tutorials": "Tutorials",
-      "server": "Server",
+      "server": "Serverstatus",
       "updates": "Updates",
-      "modules": "Module"
+      "modules": "Module",
+      "appearance": "Darstellung und Sprache",
+      "board": "Board",
+      "apps": "Verbundene Apps",
+      "help": "Hilfe und Tutorials",
+      "reports": "Meldungen",
+      "general": "Allgemein"
     },
     "leads": {
       "account": "Dein Profil und deine Anmeldung.",
       "preferences": "Sie gelten nur für dich und begleiten dich auf jedes Gerät.",
       "notifications": "Manche Benachrichtigungen landen immer in deiner Inbox. Wähle, welche du auch per E-Mail bekommst.",
       "storage": "Durch die Dateien der Instanz belegter Speicherplatz.",
-      "access": "Anmeldemethoden kommen aus der Server-Konfiguration; hier siehst du, was aktiv ist.",
-      "registration": "Wer ein neues Konto erstellen darf.",
-      "about": "Name, Adresse, Version und Einrichtungsstatus der Instanz.",
+      "access": "Wer hereinkommt, was Mitglieder dürfen und wie man sich anmeldet.",
       "backups": "Nächtliche Kopien der Datenbank, um den Server nach einem Ausfall wiederherzustellen.",
       "toolbar": "Wähle, welche Werkzeuge aus „Weitere“ du in der unteren Leiste siehst. Die anderen bleiben in ⋯ und in der Befehlspalette.",
-      "tutorials": "Sieh dir die geführten Touren erneut an und wähle, ob sie angeboten werden.",
+      "tutorials": "Sieh dir die geführten Touren erneut an, wähle, ob sie angeboten werden, und bitte um Hilfe.",
       "server": "Wie es dem Server geht: Ressourcen, Dienste, Aufträge, Probleme und Warnungen.",
       "updates": "Die laufende Version, die Neuerungen und ein Hinweis, wenn eine neue erscheint. Inkadra aktualisiert sich nicht selbst: Das Update machst du, auf dem Server.",
-      "modules": "Wähle die Teile von Inkadra, die du nutzt. Ein ausgeschaltetes Modul verschwindet aus deinen Menüs, der Leiste, den Benachrichtigungen und den Tutorials. Es gilt nur für dich und löscht nichts: Was existiert, bleibt sichtbar, und wenn du es wieder einschaltest, ist alles wieder da."
+      "modules": "Wähle die Teile von Inkadra, die du nutzt. Ein ausgeschaltetes Modul verschwindet aus deinen Menüs, der Leiste, den Benachrichtigungen und den Tutorials. Es gilt nur für dich und löscht nichts: Was existiert, bleibt sichtbar, und wenn du es wieder einschaltest, ist alles wieder da.",
+      "board": "Wie sich deine Boards verhalten und welche Werkzeuge du in der unteren Leiste hast. Gilt nur für dich, auf jedem Gerät.",
+      "apps": "Was sich von außen mit deinem Konto verbindet: Kalender, Browsererweiterung, Tokens.",
+      "instance": "Der Name der Instanz und was für die Einrichtung noch fehlt.",
+      "reports": "Wohin die Meldungen gehen, die über „Problem melden“ gesendet werden, und die eingegangenen."
     },
     "autosave": {
       "idle": "Automatisches Speichern",
@@ -3683,7 +3688,7 @@
       "themeHelp": "System folgt der Einstellung deines Geräts",
       "languageHelp": "Sprache der Oberfläche und der E-Mails",
       "keepPlaying": "Videos außerhalb des Bildschirms weiterspielen",
-      "keepPlayingHelp": "Das Video läuft weiter, wenn du die Ansicht verschiebst. Gilt nur auf diesem Gerät.",
+      "keepPlayingHelp": "Das Video läuft weiter, wenn du die Ansicht verschiebst.",
       "appearance": "Darstellung",
       "dateTime": "Datum und Uhrzeit",
       "canvas": "Canvas",
@@ -3731,23 +3736,30 @@
       "reviewHelp": "Freigegeben oder Änderungen angefragt",
       "always": "Immer",
       "alwaysNote": "Grau = in der Inbox immer aktiv.",
-      "sendMe": "Schick mir",
       "releaseNews": "Inkadra-Neuigkeiten",
       "releaseNewsHelp": "Nur wenn die Instanz sie sendet",
-      "releaseNewsAdminHelp": "Erlaube Personen, nach einem Update Neuigkeiten zu erhalten. Erfordert SMTP und persönliche Zustimmung."
+      "releaseNewsAdminHelp": "Erlaube Personen, nach einem Update Neuigkeiten zu erhalten. Erfordert SMTP und persönliche Zustimmung.",
+      "what": "Was du erhältst",
+      "frequency": "Wann senden",
+      "frequencyHelp": "Sofort: dicht aufeinanderfolgende Benachrichtigungen in einer E-Mail. Zusammenfassung: eine E-Mail pro Tag."
     },
     "members": {
       "invite": "Mitglieder einladen",
       "you": "du",
-      "pending": "Ausstehend",
-      "allStatuses": "Alle Status"
-    },
-    "status": {
-      "title": "Instanz-Status"
+      "allStatuses": "Alle Status",
+      "invitations": "Offene Einladungen",
+      "projects_one": "{{count}} Projekt",
+      "projects_other": "{{count}} Projekte"
     },
     "storage": {
       "used": "Belegter Speicher",
-      "top": "Größter Dateityp"
+      "top": "Größter Dateityp",
+      "usage": "Nutzung",
+      "by": {
+        "project": "Nach Projekt",
+        "user": "Nach Person",
+        "type": "Nach Typ"
+      }
     },
     "access": {
       "always": "Immer verfügbar",
@@ -3756,7 +3768,8 @@
       "needsSmtp": "Erfordert SMTP",
       "missingSmtp": "SMTP fehlt",
       "email": "Ausgehende E-Mails",
-      "smtpOn": "Einladungen, Passwort-Resets und E-Mail-Benachrichtigungen können gesendet werden."
+      "smtpOn": "Einladungen, Passwort-Resets und E-Mail-Benachrichtigungen können gesendet werden.",
+      "smtpOff": "nötig für Einladungen, Passwort-Zurücksetzen und Benachrichtigungen"
     },
     "registration": {
       "label": "Neue Konten",
@@ -3768,28 +3781,26 @@
       "nameHelp": "Erscheint in der Seitenleiste, in E-Mails und auf der Anmeldeseite",
       "url": "Öffentliche Adresse",
       "version": "Version",
-      "identity": "Instanz",
-      "diagnosticsHelp": "Prüft Netzwerk, Proxy und Dienste, nützlich wenn etwas nicht funktioniert",
-      "openDiagnostics": "Öffnen",
-      "serverHelp": "Serverzustand, Netzwerk- und Proxy-Prüfungen, letzte Probleme"
+      "identity": "Instanz"
     },
     "search": "Einstellungen suchen",
     "noResults": "Keine Einstellungen gefunden",
     "keywords": {
-      "account": "Name, E-Mail, Profilfoto, Passwort, Zwei-Faktor-Anmeldung (2FA), Backup-Codes, Anmeldemethoden, Sitzungen, Geräte, Apps und Tokens, Konto löschen, Dein Speicher, Größte Dateien",
-      "preferences": "Design, Dunkles Design, Helles Design, Sprache, Videos außerhalb des Bildschirms weiterspielen, Datumsformat, Uhrzeitformat, Punktraster, Am Raster ausrichten, Doppelklick erstellt eine Notiz, Board um den Inhalt halten, Rückgängig und Wiederholen",
+      "account": "Name, E-Mail, Profilfoto, Passwort, Zwei-Faktor-Anmeldung (2FA), Backup-Codes, Anmeldemethoden, Sitzungen, Geräte, Konto löschen, Dein Speicher, Größte Dateien",
+      "preferences": "Design, Dunkles Design, Helles Design, Sprache, Datumsformat, Uhrzeitformat",
+      "board": "Punktraster, Am Raster ausrichten, Doppelklick erstellt eine Notiz, Board um den Inhalt halten, Rückgängig und Wiederholen, Videos außerhalb des Bildschirms weiterspielen, Werkzeugleiste, Werkzeuge, Weitere, Spalte, Abschnittstitel, Farbe, Tabelle, Sprachnotiz, Karte, Frame, Setplan, Standardleiste wiederherstellen",
       "notifications": "E-Mail-Benachrichtigungen, Erwähnungen, Antworten, Reviews, Tägliche Zusammenfassung, Inbox, Kommentare zu deinen Karten",
+      "apps": "Dein Kalender-Link, Browsererweiterung, Inkadra Clipper für Chrome, Apps und Tokens",
+      "tutorials": "Willkommenstour, Hinweise beim ersten Öffnen, Von vorn beginnen, Problem melden",
       "members": "Mitglieder einladen, Einladungen, Einladungslink, Rolle, Admins, Konto deaktivieren, Konto reaktivieren, Personen, Speicher, Speicherlimit",
-      "workspace": "Belegter Speicher, Hochgeladene Dateien, Speicher, Speicherlimits, Speicher pro Person, Warnen bei",
+      "access": "Neue Konten, Offene Registrierung, Nur auf Einladung, Geschlossene Registrierung, Zwei-Faktor-Anmeldung für Admins verlangen, Mitglieder können Projekte erstellen, Kalender-Feeds, Google, OIDC, Single Sign-on (SSO), Anmeldelink per E-Mail, E-Mail und Passwort, SMTP, Ausgehende E-Mails",
       "classifications": "Projekttypen, Tags, Kataloge, Einstellungsgröße, Perspektive, Bewegung",
-      "providers": "Google, OIDC, Single Sign-on (SSO), Anmeldelink per E-Mail, E-Mail und Passwort, SMTP, Ausgehende E-Mails",
-      "registration": "Neue Konten, Offene Registrierung, Nur auf Einladung, Geschlossene Registrierung, Zwei-Faktor-Anmeldung für Admins verlangen",
-      "instance": "Name der Instanz, Öffentliche Adresse, Version, Diagnose, Instanz-Status, Inkadra-Neuigkeiten, Meldungen, An die Inkadra-Entwickler senden, Ziel, Repository, GitHub-Token, Gäste dürfen melden, Aufbewahrung der Anhänge, Eingegangene Meldungen",
+      "reports": "Meldungen, An die Inkadra-Entwickler senden, Ziel, Repository, GitHub-Token, Gäste dürfen melden, Aufbewahrung der Anhänge, Eingegangene Meldungen",
+      "instance": "Name der Instanz, Öffentliche Adresse, Version, Einrichtung",
+      "workspace": "Belegter Speicher, Hochgeladene Dateien, Speicher, Speicherlimits, Speicher pro Person, Warnen bei",
       "backups": "Backups, Jetzt sichern, Wiederherstellung, Aufbewahrung, Nächtliches Backup",
-      "toolbar": "Werkzeugleiste, Werkzeuge, Weitere, Spalte, Abschnittstitel, Farbe, Tabelle, Sprachnotiz, Karte, Frame, Setplan, Standardleiste wiederherstellen",
-      "tutorials": "Willkommenstour, Hinweise beim ersten Öffnen, Von vorn beginnen",
       "server": "Prozessor, Arbeitsspeicher, Speicherplatz, Dienste, Probleme, Warnungen, Diagnose, Video",
-      "updates": "Version, Jetzt prüfen, Bei neuer Version benachrichtigen, Welche Versionen, Vorabversionen, Frühere Versionen",
+      "updates": "Version, Jetzt prüfen, Bei neuer Version benachrichtigen, Welche Versionen, Vorabversionen, Frühere Versionen, Inkadra-Neuigkeiten",
       "modules": "Module, Storyboard, Produktion, Moodboard, Kundenfreigabe, Setplan, Ausschalten, Einschalten"
     },
     "close": "Einstellungen schließen",
@@ -3799,7 +3810,47 @@
       "reset": "Standardleiste wiederherstellen",
       "synced": "Mit deinem Konto synchronisiert",
       "always": "Immer in der Leiste",
-      "more": "Aus „Weitere“: in die Leiste"
+      "more": "Aus „Weitere“: in die Leiste",
+      "resetAction": "Zurücksetzen"
+    },
+    "board": {
+      "thisDevice": "Nur dieses Gerät"
+    },
+    "help": {
+      "support": "Hilfe"
+    },
+    "apps": {
+      "clipper": "Browsererweiterung"
+    },
+    "general": {
+      "setup": "Einrichtung",
+      "configure": "Einrichten",
+      "fix": {
+        "providers": "Prüfe die auf dem Server eingerichteten Anmeldemethoden",
+        "storage": "Prüfe, wo der Server die Dateien speichert",
+        "smtp": "Ohne SMTP werden Einladungen und E-Mail-Benachrichtigungen nicht gesendet",
+        "domain": "Prüfe öffentliche Adresse, HTTPS und WebSocket"
+      }
+    },
+    "accessPage": {
+      "members": "Rechte der Mitglieder",
+      "security": "Sicherheit",
+      "readOnly": "Nur lesen · auf dem Server eingerichtet",
+      "createHelp": "Sonst erstellen und importieren nur Administratoren Projekte. Für eine Person änderst du es unter Mitglieder."
+    },
+    "reports": {
+      "copyHere": "Eine Kopie bleibt immer unten unter „Eingegangene Meldungen“.",
+      "rules": "Regeln"
+    },
+    "backups": {
+      "ok": "Letzte Sicherung erfolgreich",
+      "failed": "Letzte Sicherung fehlgeschlagen",
+      "none": "Noch keine Sicherung",
+      "running": "Sicherung läuft",
+      "schedule": "Zeitplan"
+    },
+    "updates": {
+      "how": "So aktualisierst du"
     }
   },
   "admin": {
@@ -3808,9 +3859,7 @@
     "requireAdminTwoFactorEnrollFirst": "Richte zuerst deine eigene Zwei-Faktor-Anmeldung unter Konto ein und bestätige sie. Nur ein bereits geschützter Admin kann das aktivieren.",
     "personal": "Persönlich",
     "account": "Konto",
-    "preferences": "Präferenzen",
     "notifications": "Benachrichtigungen",
-    "workspace": "Workspace",
     "instance": "Instanz",
     "members": "Mitglieder",
     "storage": "Speicher",
@@ -3823,7 +3872,6 @@
       "invite": "Nur Einladung",
       "closed": "Geschlossen"
     },
-    "registrationHelp": "Geschlossen blockiert jedes neue Konto, auch per Einladung. Bestehende Konten und Gastlinks funktionieren weiter.",
     "enabled": "Aktiviert",
     "disabled": "Deaktiviert",
     "loading": "Wird geladen…",
@@ -3842,11 +3890,8 @@
       "admin": "Admin",
       "member": "Mitglied"
     },
-    "person": "Person",
     "projects": "Projekte",
-    "lastActive": "Zuletzt aktiv",
     "status": "Status",
-    "actions": "Aktionen",
     "roleFor": "Rolle von {{name}}",
     "lastAdmin": "Lass mindestens einen Admin aktiv.",
     "never": "Keine Aktivität erfasst",
@@ -4869,7 +4914,6 @@
     "offAdmin": "Wähle, wohin sie gehen sollen: in ein GitHub-Repository oder nur in deine Inbox.",
     "configure": "Einrichten",
     "settingsTitle": "Meldungen",
-    "settingsLead": "Hier legst du fest, wohin Meldungen aus der App gehen.",
     "destination": "Ziel",
     "destinations": {
       "github": "GitHub, in einem privaten Repository",
@@ -4937,7 +4981,6 @@
     "deleteConfirm": "Löschen",
     "deleteFailed": "Die Meldung konnte nicht gelöscht werden. Versuch es gleich noch mal.",
     "shotPrivacy": "Beim automatischen Screenshot lassen wir Seitenleiste, Konto, Aufgaben sowie Projekt- und Personennamen in der Aktivität weg. Der Rest der Seite wird unverändert gesendet: Deck ihn bei Bedarf von Hand ab.",
-    "developers": "An die Inkadra-Entwickler senden",
     "privacyRelay": "Diese Meldung geht über das Relay auf Cloudflare, das die IP-Adresse dieses Servers sieht, an die Inkadra-Entwickler in das private GitHub-Repository inkadra/inkadra-feedback. Ausgewählter Text, Screenshots, Videos, Dateien und Logs verlassen diesen Server und werden vom Inkadra-Team gelesen. Wir fügen weder Name noch E-Mail oder URL der Instanz hinzu. Aus Fotos und Videos vom Gerät entfernen wir GPS und andere Metadaten; PDFs werden vollständig mit ihren Metadaten gesendet. Prüfe die Vorschau. Anhänge auf GitHub bleiben, bis das Team sie entfernt; die lokale Aufbewahrung löscht sie nicht.",
     "relayNote": "Das geht an die Inkadra-Entwickler: Ausgewählter Text, Screenshots und Logs verlassen diesen Server. Alle Details in der Vorschau.",
     "relayLimits": "Relay: 10 MB pro Bild oder Datei, 25 MB pro Video, 32 MB insgesamt.",
@@ -4969,7 +5012,7 @@
       "lead": "Eine unendliche Leinwand für Film und Foto, auf deinem Server.",
       "go": "Tour starten · 1 Min.",
       "skip": "Ich schaue mich selbst um",
-      "foot": "Du kannst sie jederzeit unter Einstellungen → Tutorials ansehen.",
+      "foot": "Du kannst sie jederzeit unter Einstellungen → Hilfe und Tutorials ansehen.",
       "heroNote": "Der letzte Zug",
       "heroTodoDone": "Motivsuche",
       "heroTodo": "Regenprobe"
@@ -5002,9 +5045,9 @@
     },
     "toast": {
       "open": "Öffnen",
-      "welcomeSkipped": "Okay! Die Tour wartet unter Einstellungen → Tutorials.",
-      "tourSkipped": "Tour übersprungen. Du findest sie unter Einstellungen → Tutorials.",
-      "pillDismissed": "Okay, wir bieten sie nicht mehr an. Sie ist unter Einstellungen → Tutorials.",
+      "welcomeSkipped": "Okay! Die Tour wartet unter Einstellungen → Hilfe und Tutorials.",
+      "tourSkipped": "Tour übersprungen. Du findest sie unter Einstellungen → Hilfe und Tutorials.",
+      "pillDismissed": "Okay, wir bieten sie nicht mehr an. Sie ist unter Einstellungen → Hilfe und Tutorials.",
       "done": "{{name}}: Tour abgeschlossen.",
       "guestDismissed": "Okay. Die Tour bleibt oben unter der Schaltfläche ?.",
       "guestDone": "Das war’s. Viel Erfolg bei der Abnahme!"
@@ -5024,7 +5067,8 @@
       "reset": "Von vorn beginnen",
       "resetHelp": "Alle Touren als nicht gesehen markieren.",
       "resetAction": "Zurücksetzen",
-      "adminOnly": "nur Admins"
+      "adminOnly": "nur Admins",
+      "prefs": "Tutorial-Einstellungen"
     },
     "groups": {
       "start": "Erste Schritte",
@@ -5077,7 +5121,7 @@
           },
           "6": {
             "title": "Jederzeit wieder",
-            "text": "Du findest sie unter Einstellungen → Tutorials."
+            "text": "Du findest sie unter Einstellungen → Hilfe und Tutorials."
           }
         }
       },
@@ -5523,12 +5567,12 @@
           },
           "2": {
             "title": "Wie man sich anmeldet",
-            "text": "Die Anmeldemethoden stehen unter Anmeldung."
+            "text": "Die Anmeldemethoden stehen unter Zugang und Rechte."
           }
         }
       },
       "server": {
-        "name": "Server",
+        "name": "Serverstatus",
         "steps": {
           "0": {
             "title": "Auf einen Blick",
@@ -6109,7 +6153,6 @@
     "hidden_one": "1 Datei in einem Projekt, das du nicht öffnen kannst: {{size}}.",
     "hidden_other": "{{count}} Dateien in Projekten, die du nicht öffnen kannst: {{size}}.",
     "filesHelp": "Auch von Boards entfernte Dateien zählen: Sie bleiben im Projekt, weil eine Version sie zurückholen kann. Der Platz wird frei, wenn das Projekt gelöscht wird.",
-    "column": "Speicher",
     "own": "{{size}} · eigenes",
     "actionsFor": "Aktionen für {{name}}",
     "changeLimit": "Speicherlimit ändern…",
@@ -6143,7 +6186,7 @@
     "usedTitle": "Belegter Speicher",
     "ofLimit": "von {{limit}} Limit",
     "disk": "Festplatte {{size}}",
-    "usedDetail": "Originale {{originals}} · Kopien und Vorschauen {{derived}}. Das Limit kann den freien Platz auf der Festplatte nicht überschreiten: Wird sie voll, meldet es Server.",
+    "usedDetail": "Originale {{originals}} · Kopien und Vorschauen {{derived}}. Das Limit kann den freien Platz auf der Festplatte nicht überschreiten: Wird sie voll, meldet es Serverstatus.",
     "lastsMonths_one": "Reicht etwa 1 Monat",
     "lastsMonths_other": "Reicht etwa {{count}} Monate",
     "lastsWeeks_one": "Reicht etwa 1 Woche",
@@ -6337,7 +6380,6 @@
       "review": "Bereits verschickte Links funktionieren weiter.",
       "plan": "Bereits gezeichnete Pläne bleiben sichtbar."
     },
-    "offKeep": "Aus · {{text}}",
     "always": "Immer an",
     "turnOn": "Einschalten",
     "turnedOn": "{{name}} ist an: du findest es in Canvas und in der Leiste.",

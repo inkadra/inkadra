@@ -31,28 +31,28 @@
 .catalogs__grid {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
 }
 .catalogs__group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .catalogs__group-title {
-  margin: 0;
+  margin: 0 4px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-text-muted);
 }
-/* One catalog is one group of rows, like every other settings section. */
+/* One catalog is one row of the group's card, like every other settings section (0124). */
 .catalogs__card {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--ink-border-muted);
+  padding: 12px 14px;
+  border-top: 1px solid var(--ink-border-muted);
 }
 .catalogs__head {
   margin: 0;
@@ -177,26 +177,31 @@
 .catalogs__add {
   align-self: flex-start;
 }
+/* Only while there are changes: a floating bar at the bottom of the page. */
 .catalogs__bar {
   position: sticky;
-  bottom: 0;
+  bottom: 12px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
-  padding: 12px 0;
-  border-top: 1px solid var(--ink-border-muted);
-  background: var(--ink-surface-1);
+  padding: 10px 14px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
 }
 .catalogs__bar [role="status"] {
   margin-right: auto;
+  font-weight: 600;
+}
+.catalogs__saved {
+  min-height: 1lh;
+  margin: 8px 4px 0;
   font-size: 12px;
 }
 @media (width < 768px) {
-  .catalogs__bar {
-    background: var(--ink-bg-app);
-  }
   /* Up and down stay side by side but grow to finger size. */
   .catalogs__move .ink-iconbtn {
     width: 36px;

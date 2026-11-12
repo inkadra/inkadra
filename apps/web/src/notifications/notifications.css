@@ -272,13 +272,13 @@
 }
 .notification-matrix th,
 .notification-matrix td {
-  padding: 10px 0;
+  padding: 12px 0;
   border-top: 1px solid var(--ink-border-muted);
   text-align: center;
   width: 72px;
 }
 .notification-matrix thead th {
-  padding: 0 0 8px;
+  padding: 12px 0 8px;
   border-top: 0;
   border-bottom: 1px solid var(--ink-border-muted);
   font-size: 11px;
@@ -289,7 +289,13 @@
 }
 .notification-matrix th:first-child {
   width: auto;
+  padding-left: 14px;
   text-align: left;
+}
+/* Inside its settings card (0124): the last column keeps the card's inset too. */
+.notification-matrix th:last-child,
+.notification-matrix td:last-child {
+  padding-right: 14px;
 }
 .notification-matrix tbody th {
   font-weight: 500;

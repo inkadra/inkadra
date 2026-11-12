@@ -151,216 +151,222 @@ export function ClassificationSettings() {
             {GROUPS.map((group) => (
               <div key={group.title} className="catalogs__group">
                 <h2 className="catalogs__group-title">{t(`catalogs.groups.${group.title}`)}</h2>
-                {group.keys.map((key) => {
-                  const options = draft[key];
-                  const archived = options.filter((o) => o.archived).length;
-                  const active = options.filter((o) => !o.archived);
-                  const expanded = open.has(key);
-                  const bodyId = `catalog-${key}`;
-                  const restored = isShot(key) ? restoredDefaults(key, options) : null;
-                  const emptyText = isShot(key) ? t('catalogs.emptyShots') : t('catalogs.empty');
-                  return (
-                    <section key={key} className="catalogs__card">
-                      <h3 className="catalogs__head">
-                        <button
-                          type="button"
-                          aria-expanded={expanded}
-                          aria-controls={expanded ? bodyId : undefined}
-                          onClick={() => {
-                            const next = new Set(open);
-                            if (expanded) next.delete(key);
-                            else next.add(key);
-                            setOpen(next);
-                          }}
-                        >
-                          <span className="catalogs__name-head">{t(`catalogs.${key}`)}</span>
-                          <span className="ink-muted catalogs__count">
-                            {t('catalogs.active', { count: active.length })}
-                            {archived > 0 &&
-                              ` · ${t('catalogs.archivedCount', { count: archived })}`}
-                          </span>
-                          <Icon
-                            name="chevronDown"
-                            size={14}
-                            className={`ink-icon catalogs__chevron${expanded ? ' is-open' : ''}`}
-                          />
-                        </button>
-                      </h3>
-                      {!expanded &&
-                        (active.length === 0 ? (
-                          <p className="ink-muted catalogs__empty">{emptyText}</p>
-                        ) : (
-                          <div className="catalogs__chips">
-                            {active.slice(0, SUMMARY_CHIPS).map((o) => (
-                              <span key={o.id} className="catalogs__chip">
-                                {nameOf(key, o)}
-                              </span>
-                            ))}
-                            {active.length > SUMMARY_CHIPS && (
-                              <span className="catalogs__chip">
-                                +{active.length - SUMMARY_CHIPS}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      {expanded && (
-                        <div id={bodyId} className="catalogs__body">
-                          {active.length === 0 && (
+                <div className="settings-card">
+                  {group.keys.map((key) => {
+                    const options = draft[key];
+                    const archived = options.filter((o) => o.archived).length;
+                    const active = options.filter((o) => !o.archived);
+                    const expanded = open.has(key);
+                    const bodyId = `catalog-${key}`;
+                    const restored = isShot(key) ? restoredDefaults(key, options) : null;
+                    const emptyText = isShot(key) ? t('catalogs.emptyShots') : t('catalogs.empty');
+                    return (
+                      <section key={key} className="catalogs__card">
+                        <h3 className="catalogs__head">
+                          <button
+                            type="button"
+                            aria-expanded={expanded}
+                            aria-controls={expanded ? bodyId : undefined}
+                            onClick={() => {
+                              const next = new Set(open);
+                              if (expanded) next.delete(key);
+                              else next.add(key);
+                              setOpen(next);
+                            }}
+                          >
+                            <span className="catalogs__name-head">{t(`catalogs.${key}`)}</span>
+                            <span className="ink-muted catalogs__count">
+                              {t('catalogs.active', { count: active.length })}
+                              {archived > 0 &&
+                                ` · ${t('catalogs.archivedCount', { count: archived })}`}
+                            </span>
+                            <Icon
+                              name="chevronDown"
+                              size={14}
+                              className={`ink-icon catalogs__chevron${expanded ? ' is-open' : ''}`}
+                            />
+                          </button>
+                        </h3>
+                        {!expanded &&
+                          (active.length === 0 ? (
                             <p className="ink-muted catalogs__empty">{emptyText}</p>
-                          )}
-                          {options.length > 0 && (
-                            <ol className="catalogs__list">
-                              {options.map((option, index) => {
-                                const name = nameOf(key, option);
-                                const problem = problemOf(key, option, options);
-                                const hintId = `catalog-hint-${option.id}`;
-                                return (
-                                  <li key={option.id}>
-                                    <div
-                                      className={`catalogs__row${option.archived ? ' is-archived' : ''}`}
-                                    >
-                                      <span className="catalogs__move">
-                                        {([-1, 1] as const).map((delta) => (
-                                          <IconButton
-                                            key={delta}
-                                            icon="chevronDown"
-                                            className={delta < 0 ? 'catalogs__up' : undefined}
-                                            label={t(delta < 0 ? 'catalogs.up' : 'catalogs.down', {
-                                              name,
-                                            })}
-                                            disabled={
-                                              busy ||
-                                              index + delta < 0 ||
-                                              index + delta >= options.length
-                                            }
-                                            onClick={() => {
-                                              const next = [...options];
-                                              const other = next[index + delta];
-                                              if (!other) return;
-                                              next[index] = other;
-                                              next[index + delta] = option;
-                                              update(key, next);
-                                            }}
-                                          />
-                                        ))}
-                                      </span>
-                                      <input
-                                        className={`ink-input catalogs__name${problem ? ' is-invalid' : ''}`}
-                                        aria-label={t('catalogs.name')}
-                                        aria-invalid={!!problem}
-                                        aria-describedby={problem ? hintId : undefined}
-                                        placeholder={t('catalogs.name')}
-                                        value={name}
-                                        maxLength={40}
-                                        disabled={busy}
-                                        ref={(el) => {
-                                          if (el && focusId.current === option.id) {
-                                            focusId.current = null;
-                                            el.focus();
-                                          }
-                                        }}
-                                        onChange={(e) => {
-                                          const original =
-                                            isShot(key) &&
-                                            DEFAULT_SHOT_CATALOGS[key].find(
-                                              (d) => d.id === option.id,
-                                            );
-                                          // Typing the translation again undoes the rename.
-                                          // shortcut: typing a default's English name on an
-                                          // Italian page does the same; nobody needs it so far.
-                                          const label =
-                                            original &&
-                                            e.target.value ===
-                                              shotOptionLabel(key as ShotCatalogKey, original, t)
-                                              ? original.label
-                                              : e.target.value;
-                                          update(
-                                            key,
-                                            options.map((o) =>
-                                              o.id === option.id ? { ...o, label } : o,
-                                            ),
-                                          );
-                                        }}
-                                      />
-                                      {isShot(key) && isRenamedDefault(key, option) && (
-                                        <span className="catalogs__badge is-renamed">
-                                          {t('catalogs.renamed')}
-                                        </span>
-                                      )}
-                                      {option.archived && (
-                                        <span className="catalogs__badge">
-                                          {t('catalogs.archived')}
-                                        </span>
-                                      )}
-                                      <Button
-                                        variant="ghost"
-                                        aria-pressed={option.archived}
-                                        disabled={busy}
-                                        onClick={() =>
-                                          update(
-                                            key,
-                                            options.map((o) =>
-                                              o.id === option.id
-                                                ? { ...o, archived: !o.archived }
-                                                : o,
-                                            ),
-                                          )
-                                        }
+                          ) : (
+                            <div className="catalogs__chips">
+                              {active.slice(0, SUMMARY_CHIPS).map((o) => (
+                                <span key={o.id} className="catalogs__chip">
+                                  {nameOf(key, o)}
+                                </span>
+                              ))}
+                              {active.length > SUMMARY_CHIPS && (
+                                <span className="catalogs__chip">
+                                  +{active.length - SUMMARY_CHIPS}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        {expanded && (
+                          <div id={bodyId} className="catalogs__body">
+                            {active.length === 0 && (
+                              <p className="ink-muted catalogs__empty">{emptyText}</p>
+                            )}
+                            {options.length > 0 && (
+                              <ol className="catalogs__list">
+                                {options.map((option, index) => {
+                                  const name = nameOf(key, option);
+                                  const problem = problemOf(key, option, options);
+                                  const hintId = `catalog-hint-${option.id}`;
+                                  return (
+                                    <li key={option.id}>
+                                      <div
+                                        className={`catalogs__row${option.archived ? ' is-archived' : ''}`}
                                       >
-                                        {t(
-                                          option.archived ? 'catalogs.restore' : 'catalogs.archive',
+                                        <span className="catalogs__move">
+                                          {([-1, 1] as const).map((delta) => (
+                                            <IconButton
+                                              key={delta}
+                                              icon="chevronDown"
+                                              className={delta < 0 ? 'catalogs__up' : undefined}
+                                              label={t(
+                                                delta < 0 ? 'catalogs.up' : 'catalogs.down',
+                                                {
+                                                  name,
+                                                },
+                                              )}
+                                              disabled={
+                                                busy ||
+                                                index + delta < 0 ||
+                                                index + delta >= options.length
+                                              }
+                                              onClick={() => {
+                                                const next = [...options];
+                                                const other = next[index + delta];
+                                                if (!other) return;
+                                                next[index] = other;
+                                                next[index + delta] = option;
+                                                update(key, next);
+                                              }}
+                                            />
+                                          ))}
+                                        </span>
+                                        <input
+                                          className={`ink-input catalogs__name${problem ? ' is-invalid' : ''}`}
+                                          aria-label={t('catalogs.name')}
+                                          aria-invalid={!!problem}
+                                          aria-describedby={problem ? hintId : undefined}
+                                          placeholder={t('catalogs.name')}
+                                          value={name}
+                                          maxLength={40}
+                                          disabled={busy}
+                                          ref={(el) => {
+                                            if (el && focusId.current === option.id) {
+                                              focusId.current = null;
+                                              el.focus();
+                                            }
+                                          }}
+                                          onChange={(e) => {
+                                            const original =
+                                              isShot(key) &&
+                                              DEFAULT_SHOT_CATALOGS[key].find(
+                                                (d) => d.id === option.id,
+                                              );
+                                            // Typing the translation again undoes the rename.
+                                            // shortcut: typing a default's English name on an
+                                            // Italian page does the same; nobody needs it so far.
+                                            const label =
+                                              original &&
+                                              e.target.value ===
+                                                shotOptionLabel(key as ShotCatalogKey, original, t)
+                                                ? original.label
+                                                : e.target.value;
+                                            update(
+                                              key,
+                                              options.map((o) =>
+                                                o.id === option.id ? { ...o, label } : o,
+                                              ),
+                                            );
+                                          }}
+                                        />
+                                        {isShot(key) && isRenamedDefault(key, option) && (
+                                          <span className="catalogs__badge is-renamed">
+                                            {t('catalogs.renamed')}
+                                          </span>
                                         )}
-                                      </Button>
-                                    </div>
-                                    {problem && (
-                                      <p id={hintId} className="catalogs__hint">
-                                        {t(`catalogs.${problem}`)}
-                                      </p>
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ol>
-                          )}
-                          <div className="catalogs__actions">
-                            <Button
-                              variant="ghost"
-                              icon="plus"
-                              className="catalogs__add"
-                              disabled={busy}
-                              onClick={() => {
-                                const id = crypto.randomUUID();
-                                focusId.current = id;
-                                update(key, [...options, { id, label: '', archived: false }]);
-                              }}
-                            >
-                              {t('catalogs.add')}
-                            </Button>
-                            {restored && (
+                                        {option.archived && (
+                                          <span className="catalogs__badge">
+                                            {t('catalogs.archived')}
+                                          </span>
+                                        )}
+                                        <Button
+                                          variant="ghost"
+                                          aria-pressed={option.archived}
+                                          disabled={busy}
+                                          onClick={() =>
+                                            update(
+                                              key,
+                                              options.map((o) =>
+                                                o.id === option.id
+                                                  ? { ...o, archived: !o.archived }
+                                                  : o,
+                                              ),
+                                            )
+                                          }
+                                        >
+                                          {t(
+                                            option.archived
+                                              ? 'catalogs.restore'
+                                              : 'catalogs.archive',
+                                          )}
+                                        </Button>
+                                      </div>
+                                      {problem && (
+                                        <p id={hintId} className="catalogs__hint">
+                                          {t(`catalogs.${problem}`)}
+                                        </p>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ol>
+                            )}
+                            <div className="catalogs__actions">
                               <Button
                                 variant="ghost"
-                                disabled={
-                                  busy || JSON.stringify(restored) === JSON.stringify(options)
-                                }
-                                onClick={() => update(key, restored)}
+                                icon="plus"
+                                className="catalogs__add"
+                                disabled={busy}
+                                onClick={() => {
+                                  const id = crypto.randomUUID();
+                                  focusId.current = id;
+                                  update(key, [...options, { id, label: '', archived: false }]);
+                                }}
                               >
-                                {t('catalogs.restoreDefaults')}
+                                {t('catalogs.add')}
                               </Button>
-                            )}
+                              {restored && (
+                                <Button
+                                  variant="ghost"
+                                  disabled={
+                                    busy || JSON.stringify(restored) === JSON.stringify(options)
+                                  }
+                                  onClick={() => update(key, restored)}
+                                >
+                                  {t('catalogs.restoreDefaults')}
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </section>
-                  );
-                })}
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>
-          <div className="catalogs__bar">
-            <span className="ink-muted" role="status">
-              {dirty ? t('catalogs.unsaved') : justSaved ? t('settings.saved') : ''}
-            </span>
-            {dirty && (
+          {/* Manual save (decision 0124): the bar shows only when there is something to save. */}
+          {dirty ? (
+            <div className="catalogs__bar">
+              <span role="status">{t('catalogs.unsaved')}</span>
               <Button
                 variant="ghost"
                 disabled={busy}
@@ -372,11 +378,15 @@ export function ClassificationSettings() {
               >
                 {t('catalogs.discard')}
               </Button>
-            )}
-            <Button type="submit" variant="primary" disabled={busy || !dirty}>
-              {t(busy ? 'settingsUi.autosave.saving' : 'settings.save')}
-            </Button>
-          </div>
+              <Button type="submit" variant="primary" disabled={busy}>
+                {t(busy ? 'settingsUi.autosave.saving' : 'settings.save')}
+              </Button>
+            </div>
+          ) : (
+            <p className="catalogs__saved ink-muted" role="status">
+              {justSaved ? t('settings.saved') : ''}
+            </p>
+          )}
         </form>
       )}
     </div>

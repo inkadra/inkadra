@@ -247,7 +247,7 @@ test('a playing card is dragged by its frame, or by anywhere while Alt is held',
 
 test('Continue playing videos off-screen is a setting, off by default', async ({ page }) => {
   await signInPage(page);
-  await page.goto('/settings?section=preferences');
+  await page.goto('/settings?section=board');
   const keep = page.getByRole('switch', { name: 'Continua a riprodurre i video fuori schermo' });
   await expect(keep).not.toBeChecked();
   await keep.check();
@@ -323,7 +323,7 @@ test('demo: screenshots and a video of the cards', async ({ browser, baseURL }) 
       await page.keyboard.press('Escape');
 
       // The setting: off by default, switched on.
-      await page.goto('/settings?section=preferences');
+      await page.goto('/settings?section=board');
       const keep = page.getByRole('switch', {
         name: 'Continua a riprodurre i video fuori schermo',
       });

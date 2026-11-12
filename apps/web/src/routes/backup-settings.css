@@ -1,16 +1,17 @@
-/* Settings → Backups (decision 0037). Neutral rows; status badges carry the only colour. */
+/* Settings → Backups (decision 0037): history rows follow the settings card grammar (0124). */
 .backup-settings__time {
   /* Sized by its content: a 12-hour locale adds AM/PM, which a fixed width cut off. */
   width: auto;
   min-width: 7.5em;
 }
 .backup-settings__error {
-  margin: 12px 0 0;
+  margin: 0;
   color: var(--ink-danger-fg);
   font-size: 13px;
 }
 .backup-settings__empty {
   margin: 0;
+  padding: 14px;
   color: var(--ink-text-muted);
   font-size: 13px;
 }
@@ -26,11 +27,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 0;
-  border-top: 1px solid var(--ink-border-subtle);
-}
-.backup-list__item:first-child {
-  border-top: 0;
+  min-height: 52px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--ink-border-muted);
 }
 .backup-list__text {
   display: flex;
@@ -41,7 +40,7 @@
 .backup-list__when {
   color: var(--ink-text-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .backup-list__meta {
   color: var(--ink-text-muted);

@@ -1,18 +1,17 @@
 import type { InstanceMember, NotificationPreferences } from '@inkadra/shared';
-import { Avatar, Icon } from '@inkadra/ui';
+import { Avatar, Icon, type IconName } from '@inkadra/ui';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { FeedbackProfileRow } from '../feedback/FeedbackSettings.tsx';
 import { api, authApi } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { usePendingUpdate } from '../lib/updates.ts';
 import { useInstanceSettings, useStorageUsage } from './InstanceSettings.tsx';
 import { setCachedProjects } from './projects.ts';
-import { DiagnosticsLink, setupAttention } from './SettingsShell.tsx';
+import { setupAttention } from './SettingsShell.tsx';
 import { formatStorage } from './StorageCharts.tsx';
-import { GROUP_TITLES, SETTINGS_PAGES } from './settings-sections.ts';
+import { GROUP_TITLES, SETTINGS_PAGES, type SettingsGroup } from './settings-sections.ts';
 import { Segmented } from './settings-ui.tsx';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
@@ -21,11 +20,13 @@ const href = (id: string) => SETTINGS_PAGES.find((p) => p.id === id)?.href ?? '/
 
 function Item({
   to,
+  icon,
   label,
   value,
   warn,
 }: {
   to: string;
+  icon: IconName;
   label: string;
   value?: ReactNode;
   warn?: string;
@@ -33,6 +34,7 @@ function Item({
   return (
     <li>
       <Link to={to} className="settings-home__item">
+        <Icon name={icon} size={16} />
         <span className="settings-home__label">
           {label}
           {warn && <span className="settings-home__warn">{warn}</span>}
@@ -53,6 +55,30 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** The pages of one group, with the value or warning each shows on its row. */
+function PageItems({
+  group,
+  values,
+  setup,
+}: {
+  group: SettingsGroup;
+  values: Partial<Record<string, ReactNode>>;
+  setup: Setup;
+}) {
+  const { t } = useTranslation();
+  const pending = t('onboarding.needsSetup');
+  return SETTINGS_PAGES.filter((p) => p.group === group && p.id !== 'account').map((p) => (
+    <Item
+      key={p.id}
+      to={p.href}
+      icon={p.icon}
+      label={t(p.title)}
+      value={values[p.id]}
+      warn={setupAttention(setup, p.id) ? pending : undefined}
+    />
+  ));
+}
+
 function AdminGroups({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
   const { version } = useSession();
@@ -70,44 +96,29 @@ function AdminGroups({ setup }: { setup: Setup }) {
       alive = false;
     };
   }, []);
-  const pending = t('onboarding.needsSetup');
   return (
     <>
       <Group title={t(GROUP_TITLES.workspace)}>
-        <Item to={href('members')} label={t('admin.members')} value={members ?? undefined} />
-        <Item
-          to={href('workspace')}
-          label={t('admin.storage')}
-          value={
-            usage
-              ? formatStorage(usage.originalBytes + (usage.derivedBytes ?? 0), i18n.language)
-              : undefined
-          }
+        <PageItems
+          group="workspace"
+          setup={setup}
+          values={{
+            members: members ?? undefined,
+            access: settings ? t(`admin.registrationModes.${settings.registration}`) : undefined,
+          }}
         />
-        <Item to={href('classifications')} label={t('admin.classifications')} />
       </Group>
-      <Group title={t(GROUP_TITLES.instance)}>
-        <Item
-          to={href('providers')}
-          label={t('settingsUi.pages.access')}
-          warn={setupAttention(setup, 'providers') ? pending : undefined}
-        />
-        <Item
-          to={href('registration')}
-          label={t('admin.registration')}
-          value={settings ? t(`admin.registrationModes.${settings.registration}`) : undefined}
-        />
-        <Item to={href('backups')} label={t('backups.title')} />
-        <Item
-          to={href('updates')}
-          label={t('settingsUi.pages.updates')}
-          value={update ? t('updates.navAvailable', { version: update.version }) : undefined}
-        />
-        <Item
-          to={href('instance')}
-          label={t('settingsUi.pages.about')}
-          value={version}
-          warn={setupAttention(setup, 'instance') ? pending : undefined}
+      <Group title={t(GROUP_TITLES.server)}>
+        <PageItems
+          group="server"
+          setup={setup}
+          values={{
+            instance: version,
+            workspace: usage
+              ? formatStorage(usage.originalBytes + (usage.derivedBytes ?? 0), i18n.language)
+              : undefined,
+            updates: update ? t('updates.navAvailable', { version: update.version }) : undefined,
+          }}
         />
       </Group>
     </>
@@ -117,7 +128,7 @@ function AdminGroups({ setup }: { setup: Setup }) {
 /** Phone settings: the Profile tab, as grouped rows like the native apps. */
 export function SettingsHome({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
-  const { user, instance, refresh, version } = useSession();
+  const { user, refresh, version } = useSession();
   const { preference, choose } = useTheme();
   const [email, setEmail] = useState<NotificationPreferences['email'] | null>(null);
   useEffect(() => {
@@ -148,12 +159,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
         </span>
         <Icon name="chevronRight" size={14} />
       </Link>
-      <Group title={t('admin.personal')}>
-        <Item
-          to={href('notifications')}
-          label={t('notifications.emailTitle')}
-          value={email ? t(`settingsUi.notifications.short.${email}`) : undefined}
-        />
+      <Group title={t(GROUP_TITLES.personal)}>
         <li className="settings-home__inline">
           <span className="settings-home__label">{t('admin.theme')}</span>
           <Segmented
@@ -166,26 +172,22 @@ export function SettingsHome({ setup }: { setup: Setup }) {
             }))}
           />
         </li>
-        <Item
-          to={href('preferences')}
-          label={t('settings.profile.language')}
-          value={t(`settings.profile.languages.${user?.locale ?? i18n.language}`)}
+        <PageItems
+          group="personal"
+          setup={setup}
+          values={{
+            preferences: t(`settings.profile.languages.${user?.locale ?? i18n.language}`),
+            notifications: email
+              ? t(`settingsUi.notifications.short.${email === 'off' ? 'immediate' : email}`)
+              : undefined,
+          }}
         />
-        <Item to={href('toolbar')} label={t('settingsUi.pages.toolbar')} />
-        <Item to={href('modules')} label={t('settingsUi.pages.modules')} />
-        <Item to={href('tutorials')} label={t('settingsUi.pages.tutorials')} />
       </Group>
       {admin && <AdminGroups setup={setup} />}
-      <Group title={t('settingsUi.pages.about')}>
-        <FeedbackProfileRow />
-      </Group>
       <button type="button" className="settings-home__signout" onClick={() => void signOut()}>
         {t('auth.signOut')}
       </button>
-      <p className="settings-home__version">
-        Inkadra {version} · AGPL-3.0 ·{' '}
-        <DiagnosticsLink>{t('settingsUi.diagnostics')}</DiagnosticsLink>
-      </p>
+      <p className="settings-home__version">Inkadra {version} · AGPL-3.0</p>
     </div>
   );
 }

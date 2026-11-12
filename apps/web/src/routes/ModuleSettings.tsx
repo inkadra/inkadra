@@ -14,10 +14,10 @@ export function ModuleSettings() {
   const { isOn } = useModules();
   return (
     <Card tour="modules">
-      <div className="settings-rows module-settings">
+      <div className="settings-rows">
         <Row
           leading={
-            <span className="module-settings__glyph" style={kindStyle('board')} aria-hidden="true">
+            <span className="settings-tile" style={kindStyle('board')} aria-hidden="true">
               <Icon name="board" size={16} />
             </span>
           }
@@ -33,24 +33,21 @@ export function ModuleSettings() {
             <Row
               key={id}
               leading={
-                <span
-                  className="module-settings__glyph"
-                  style={MODULE_GLYPHS[id].style}
-                  aria-hidden="true"
-                >
+                <span className="settings-tile" style={MODULE_GLYPHS[id].style} aria-hidden="true">
                   <Icon name={MODULE_GLYPHS[id].icon} size={16} />
                 </span>
               }
-              label={name}
-              help={
+              label={
                 <>
-                  {t(`modules.desc.${id}`)}
-                  <span className="module-settings__keep">
-                    {on
-                      ? t(`modules.keep.${id}`)
-                      : t('modules.offKeep', { text: t(`modules.keep.${id}`) })}
-                  </span>
+                  {name}
+                  {!on && <Badge>{t('settingsUi.off')}</Badge>}
                 </>
+              }
+              help={
+                // What stays is said only when it matters: once the module is off.
+                on
+                  ? t(`modules.desc.${id}`)
+                  : `${t(`modules.desc.${id}`)} ${t(`modules.keep.${id}`)}`
               }
             >
               <Switch

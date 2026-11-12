@@ -1,8 +1,8 @@
 import type { StorageUsage } from '@inkadra/shared';
-import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { Card } from './settings-ui.tsx';
+import { Card, Row, Segmented } from './settings-ui.tsx';
 import './storage-charts.css';
 
 export function formatStorage(bytes: number, locale: string): string {
@@ -25,22 +25,16 @@ const SWATCHES = [
   'var(--ink-text-muted)',
 ];
 
-function Breakdown({
-  title,
-  rows,
-  total,
-  action,
-}: {
-  title: string;
-  rows: Array<{ id: string; label: string; bytes: number }>;
-  total: number;
-  action?: ReactNode;
-}) {
+type View = 'project' | 'user' | 'type';
+type Rows = Array<{ id: string; label: string; bytes: number }>;
+
+/** One breakdown: a stacked bar, then one row per category with its bar, size and share. */
+function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: number }) {
   const { t, i18n } = useTranslation();
   const sorted = [...rows].sort((a, b) => b.bytes - a.bytes);
   const width = (bytes: number) => `${total ? (bytes / total) * 100 : 0}%`;
   return (
-    <Card title={title} className="storage-chart" action={action}>
+    <div className="settings-card__pad storage-chart__body">
       <div className="storage-chart__stack" aria-hidden="true">
         {sorted.map((row, i) => (
           <span
@@ -50,7 +44,9 @@ function Breakdown({
         ))}
       </div>
       <table>
-        <caption className="ink-sr-only">{t('admin.storageCharts.percentScope')}</caption>
+        <caption className="ink-sr-only">
+          {title}. {t('admin.storageCharts.percentScope')}
+        </caption>
         <thead className="ink-sr-only">
           <tr>
             <th scope="col">{t('admin.storageCharts.category')}</th>
@@ -76,88 +72,117 @@ function Breakdown({
           ))}
         </tbody>
       </table>
-    </Card>
+    </div>
   );
 }
 
+/**
+ * Storage figures, then one card of use (decision 0124) whose choice switches between per
+ * project, per person and per type, instead of three cards.
+ */
 export function StorageCharts({ usage }: { usage: StorageUsage }) {
   const { t, i18n } = useTranslation();
+  const [view, setView] = useState<View>('project');
   const projects = usage.byProject.filter((p) => p.scope === 'project').length;
   const top = [...usage.byType].sort((a, b) => b.bytes - a.bytes)[0];
+  const breakdowns: Partial<Record<View, { title: string; total: number; rows: Rows }>> = {
+    project: {
+      title: t('admin.storageCharts.byProject'),
+      total: usage.originalBytes,
+      rows: usage.byProject.map((row) => ({
+        id: row.projectId ?? row.scope,
+        label:
+          row.scope === 'project'
+            ? (row.name ?? t('admin.storageCharts.unassigned'))
+            : t(`admin.storageCharts.${row.scope}`),
+        bytes: row.bytes,
+      })),
+    },
+    ...(usage.byUser && {
+      user: {
+        title: t('admin.storageCharts.byUser'),
+        total: usage.originalBytes + (usage.derivedBytes ?? 0),
+        rows: usage.byUser.map((row) => ({
+          id: row.userId ?? 'none',
+          label: row.name ?? t('admin.storageCharts.noUser'),
+          bytes: row.bytes + (row.derivedBytes ?? 0),
+        })),
+      },
+    }),
+    type: {
+      title: t('admin.storageCharts.byType'),
+      total: usage.originalBytes,
+      rows: usage.byType.map((row) => ({
+        id: row.type,
+        label: t(`admin.storageCharts.types.${row.type}`),
+        bytes: row.bytes,
+      })),
+    },
+  };
+  const shown = breakdowns[view] ?? breakdowns.project;
   return (
-    <div className="storage-usage">
-      <dl className="storage-tiles">
-        <div>
-          <dt>{t('settingsUi.storage.used')}</dt>
-          <dd>{formatStorage(usage.originalBytes + (usage.derivedBytes ?? 0), i18n.language)}</dd>
-          {usage.derivedBytes !== undefined && (
-            <dd className="storage-tiles__detail">
-              {t('admin.storageCharts.usedDetail', {
-                originals: formatStorage(usage.originalBytes, i18n.language),
-                previews: formatStorage(usage.derivedBytes, i18n.language),
-              })}
-            </dd>
-          )}
-        </div>
-        <div>
-          <dt>{t('admin.projects')}</dt>
-          <dd>{projects}</dd>
-        </div>
-        <div>
-          <dt>{t('settingsUi.storage.top')}</dt>
-          <dd>{top?.bytes ? t(`admin.storageCharts.types.${top.type}`) : '—'}</dd>
-        </div>
-      </dl>
+    <>
+      <Card>
+        <dl className="settings-tiles storage-tiles">
+          <div>
+            <dt>{t('settingsUi.storage.used')}</dt>
+            <dd>{formatStorage(usage.originalBytes + (usage.derivedBytes ?? 0), i18n.language)}</dd>
+            {usage.derivedBytes !== undefined && (
+              <dd className="storage-tiles__detail">
+                {t('admin.storageCharts.usedDetail', {
+                  originals: formatStorage(usage.originalBytes, i18n.language),
+                  previews: formatStorage(usage.derivedBytes, i18n.language),
+                })}
+              </dd>
+            )}
+          </div>
+          <div>
+            <dt>{t('admin.projects')}</dt>
+            <dd>{projects}</dd>
+          </div>
+          <div>
+            <dt>{t('settingsUi.storage.top')}</dt>
+            <dd>{top?.bytes ? t(`admin.storageCharts.types.${top.type}`) : '—'}</dd>
+          </div>
+        </dl>
+      </Card>
       {usage.originalBytes === 0 ? (
-        <Card>
+        <Card title={t('settingsUi.storage.usage')}>
           <p className="settings-card__empty">{t('admin.storageEmpty')}</p>
         </Card>
       ) : (
-        <>
-          <Breakdown
-            title={t('admin.storageCharts.byProject')}
-            total={usage.originalBytes}
-            rows={usage.byProject.map((row) => ({
-              id: row.projectId ?? row.scope,
-              label:
-                row.scope === 'project'
-                  ? (row.name ?? t('admin.storageCharts.unassigned'))
-                  : t(`admin.storageCharts.${row.scope}`),
-              bytes: row.bytes,
-            }))}
-          />
-          {usage.byUser && (
-            <Breakdown
-              title={t('admin.storageCharts.byUser')}
-              action={
-                <Link className="space-link" to="/settings/team">
+        shown && (
+          <Card
+            title={t('settingsUi.storage.usage')}
+            className="storage-chart"
+            action={
+              <Segmented
+                label={t('settingsUi.storage.usage')}
+                value={view}
+                onChange={setView}
+                options={(Object.keys(breakdowns) as View[]).map((value) => ({
+                  value,
+                  label: t(`settingsUi.storage.by.${value}`),
+                }))}
+              />
+            }
+          >
+            <Breakdown title={shown.title} total={shown.total} rows={shown.rows} />
+            {view === 'user' && (
+              <Row label={t('admin.members')} help={t('admin.storageCharts.attributionUser')}>
+                <Link className="ink-btn ink-btn--secondary" to="/settings/team" replace>
                   {t('storageLimits.openMembers')}
                 </Link>
-              }
-              total={usage.originalBytes + (usage.derivedBytes ?? 0)}
-              rows={usage.byUser.map((row) => ({
-                id: row.userId ?? 'none',
-                label: row.name ?? t('admin.storageCharts.noUser'),
-                bytes: row.bytes + (row.derivedBytes ?? 0),
-              }))}
-            />
-          )}
-          <Breakdown
-            title={t('admin.storageCharts.byType')}
-            total={usage.originalBytes}
-            rows={usage.byType.map((row) => ({
-              id: row.type,
-              label: t(`admin.storageCharts.types.${row.type}`),
-              bytes: row.bytes,
-            }))}
-          />
-        </>
+              </Row>
+            )}
+          </Card>
+        )
       )}
       <p className="settings-footnote">
         {t(usage.derivedBytes === undefined ? 'admin.storageHelp' : 'admin.storageCharts.scope')}{' '}
         {t('admin.storageCharts.attribution')}
         {usage.byUser && ` ${t('admin.storageCharts.attributionUser')}`}
       </p>
-    </div>
+    </>
   );
 }

@@ -35,6 +35,7 @@
   grid-template-columns: minmax(0, 1fr);
 }
 .settings-window__main {
+  background: var(--ink-bg-canvas);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -254,13 +255,16 @@
 .settings-page {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  padding: 20px 28px 40px;
+  gap: 22px;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
 }
 .settings-page__intro {
   display: flex;
   align-items: center;
   gap: 16px;
+  margin-bottom: -4px;
 }
 .settings__lead {
   flex: 1;
@@ -276,27 +280,24 @@
   flex: none;
 }
 
-/* A group of rows: an uppercase label, then rows divided by thin lines. No card chrome. */
-.settings-card {
+/* One block (decision 0124): an uppercase label, then one bordered card of rows split by
+   hairlines. Everything that sits in a card (rows, list items, padded text, folded rows) gets
+   the same padding and hairline; the card clips the first hairline under its own border. */
+.settings-block {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
-.settings-card--danger .settings-card__head h3,
-.settings-card--danger .settings-row__label {
-  color: var(--ink-danger-fg);
-}
-.settings-card__head {
-  padding: 0 0 8px;
-  border-bottom: 1px solid var(--ink-border-muted);
-}
-.settings-card__title {
+.settings-block__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   min-height: 24px;
+  margin: 0 4px 8px;
 }
-.settings-card__head h2,
-.settings-card__head h3 {
+.settings-block__head h3 {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: 11px;
   font-weight: 600;
@@ -304,11 +305,35 @@
   text-transform: uppercase;
   color: var(--ink-text-muted);
 }
-.settings-card__head p {
-  margin: 2px 0 0;
+.settings-block__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+.settings-block__body {
+  margin: -4px 4px 8px;
   font-size: 12px;
   line-height: 1.45;
   color: var(--ink-text-secondary);
+}
+.settings-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.settings-card > :first-child {
+  margin-top: -1px;
+}
+.settings-card--danger {
+  border-color: var(--ink-danger-border);
+}
+.settings-card--danger .settings-row__label {
+  color: var(--ink-danger-fg);
 }
 .settings-card__meta {
   font-size: 12px;
@@ -316,27 +341,23 @@
   white-space: nowrap;
 }
 .settings-card__pad {
-  padding: 12px 0;
-}
-.settings-card__foot {
-  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-top: 1px solid var(--ink-border-muted);
 }
 .settings-card__empty {
   margin: 0;
-  padding: 14px 0;
+  padding: 14px;
+  border-top: 1px solid var(--ink-border-muted);
   font-size: 13px;
 }
 
 .settings-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 56px;
-  padding: 12px 0;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
   border-top: 1px solid var(--ink-border-muted);
-}
-.settings-rows > .settings-row:first-child {
-  border-top: 0;
 }
 .settings-row__text {
   display: flex;
@@ -346,21 +367,135 @@
   min-width: 0;
 }
 .settings-row__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .settings-row__help {
   font-size: 12px;
   line-height: 1.45;
   color: var(--ink-text-secondary);
 }
+.settings-row__help code {
+  font-size: 11px;
+}
 .settings-row__control {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
   flex: none;
   max-width: 60%;
+}
+
+/* The 32px tile in front of a row; tones are the module and status colours only. */
+.settings-tile {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--ink-radius-sm);
+  /* A module or tool colour when the row sets one (modules, tours), neutral otherwise. */
+  background: var(--kind-bg, var(--ink-surface-2));
+  color: var(--kind-fg, var(--ink-text-secondary));
+  font-size: 10px;
+  font-weight: 600;
+}
+.settings-tile--round {
+  border-radius: 50%;
+}
+.settings-tile--accent {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.settings-tile--ok {
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+.settings-tile--warn {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
+}
+.settings-tile--danger {
+  background: var(--ink-tag-red-bg);
+  color: var(--ink-tag-red);
+}
+.settings-tile--purple {
+  background: var(--ink-tag-purple-bg);
+  color: var(--ink-tag-purple);
+}
+.settings-tile--teal {
+  background: var(--ink-tag-teal-bg);
+  color: var(--ink-tag-teal);
+}
+
+/* The strip that opens a page with a state. */
+.settings-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.settings-summary__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+}
+.settings-summary--ok .settings-summary__icon {
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+.settings-summary--warn .settings-summary__icon {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
+}
+.settings-summary--danger {
+  border-color: var(--ink-danger-border);
+}
+.settings-summary--danger .settings-summary__icon {
+  background: var(--ink-tag-red-bg);
+  color: var(--ink-tag-red);
+}
+.settings-summary--accent .settings-summary__icon {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.settings-summary__text {
+  flex: 1;
+  min-width: 0;
+}
+.settings-summary__text h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.settings-summary__text p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-text-secondary);
+}
+.settings-summary__text .space-meter {
+  margin-top: 8px;
+}
+.settings-summary__action {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: none;
 }
 .settings-input {
   width: 280px;
@@ -377,20 +512,8 @@
   color: var(--ink-text-secondary);
   overflow-wrap: anywhere;
 }
-.settings-provider {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  flex: none;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-3);
-  color: var(--ink-text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-}
 /* Google's brand colours need a light tile in both themes. */
-.settings-provider--google {
+.settings-tile--google {
   background: #fff;
 }
 .settings-file {
@@ -412,46 +535,30 @@
   gap: 5px;
   padding: 2px 8px;
   border-radius: var(--ink-radius-full);
-  background: var(--ink-surface-3);
+  background: var(--ink-surface-2);
   color: var(--ink-text-secondary);
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
-.settings-badge--ok,
-.settings-badge--warn,
-.settings-badge--danger {
-  background: var(--ink-surface-2);
-}
-.settings-badge--ok::before,
-.settings-badge--warn::before,
-.settings-badge--danger::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ink-status-ok);
-}
 .settings-badge--ok {
-  color: var(--ink-status-ok);
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
 }
 .settings-badge--warn {
-  color: var(--ink-status-warn);
-}
-.settings-badge--warn::before {
-  background: var(--ink-status-warn);
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
 }
 .settings-badge--danger {
-  color: var(--ink-status-danger);
-}
-.settings-badge--danger::before {
-  background: var(--ink-status-danger);
+  background: var(--ink-tag-red-bg);
+  color: var(--ink-tag-red);
 }
 .settings-badge--accent {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
 }
 
+/* Lists in a card are rows too: same padding and hairline. */
 .settings-list {
   list-style: none;
   margin: 0;
@@ -460,17 +567,15 @@
 .settings-list li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 0;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
   border-top: 1px solid var(--ink-border-muted);
-}
-.settings-list li:first-child {
-  border-top: 0;
 }
 .settings-list__more {
   display: block;
   width: 100%;
-  padding: 9px 0;
+  padding: 10px 14px;
   border: 0;
   border-top: 1px solid var(--ink-border-muted);
   background: none;
@@ -480,6 +585,10 @@
   text-align: start;
   cursor: pointer;
 }
+.settings-list__more:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
 .settings-list__text {
   display: flex;
   flex: 1;
@@ -487,30 +596,57 @@
   gap: 2px;
   min-width: 0;
 }
-.settings-list .settings-row__help code {
-  font-size: 11px;
+
+/* A row that folds open (update steps, technical details): the summary is the row. */
+.settings-fold > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.settings-fold > summary::-webkit-details-marker {
+  display: none;
+}
+.settings-fold > summary:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.settings-fold__chevron {
+  flex: none;
+  color: var(--ink-text-muted);
+  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
+}
+.settings-fold[open] .settings-fold__chevron {
+  transform: rotate(90deg);
+}
+.settings-fold__body {
+  padding: 0 14px 14px;
 }
 
-/* The clipper row: the store badge drops under the text when the card is narrow. */
-.settings-list li.settings-clipper {
+/* A pair of figures, as on Storage and Server: hairline cells inside one card. */
+.settings-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--ink-border-muted);
+}
+.settings-tiles > div {
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--ink-surface-1);
+}
+
+/* The clipper row: the store badge and the copy button drop under the text when narrow. */
+.settings-clipper {
   flex-wrap: wrap;
 }
-.settings-clipper .settings-list__text {
+.settings-clipper .settings-row__text {
   flex: 1 1 240px;
 }
-.settings-clipper__address {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  margin-top: 4px;
-}
-.settings-clipper__address code {
+.settings-clipper .settings-row__help code {
   overflow-wrap: anywhere;
 }
 .settings-clipper__store {
   display: block;
-  margin-inline-start: auto;
   border-radius: var(--ink-radius-sm);
 }
 .settings-clipper__store img {
@@ -654,94 +790,54 @@
   width: 100%;
   padding-left: 30px;
 }
-.team-filter {
+.team-tools .team-filter {
   width: auto;
 }
-.team-table {
-  table-layout: fixed;
-  overflow-wrap: anywhere;
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.team-table thead th {
-  padding: 9px 8px;
-  border-bottom: 1px solid var(--ink-border-default);
-  color: var(--ink-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  text-align: start;
-  white-space: nowrap;
-}
-.team-table tbody th,
-.team-table td {
-  padding: 9px 8px;
-  border-top: 1px solid var(--ink-border-muted);
-  font-weight: 400;
-  text-align: start;
-  vertical-align: middle;
-}
-.team-table tbody:first-of-type tr:first-child > * {
-  border-top: 0;
-}
-.team-table tr.is-inactive .team-person {
+/* One row per person (decision 0124): who and their figures, then role, right, ⋯. */
+.team-member.is-inactive > .ink-avatar,
+.team-member.is-inactive .team-member__name {
   opacity: 0.6;
 }
-.team-person {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.team-member__name {
   min-width: 0;
+  overflow-wrap: break-word;
 }
-.team-person > span:last-child {
-  min-width: 0;
+/* Words break only when one alone is wider than the line, never while there is room. */
+.team-member__meta {
+  display: block;
+  overflow-wrap: break-word;
 }
-.team-person__name {
-  display: flex;
+.team-member .space-mini {
+  margin-top: 4px;
+}
+/* "251,66 MB / 1 MB": the limit goes to the next line whole, never split. */
+.team-member .space-mini em {
+  white-space: nowrap;
+}
+/*
+ * Who the person is keeps a readable width; role, right to create and ⋯ sit at the end of the
+ * row and drop, right-aligned, to a line of their own when there is not room for both.
+ */
+.team-member {
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-weight: 500;
 }
-.team-role {
+.team-member .settings-row__text {
+  flex: 1 1 240px;
+}
+.team-member .settings-row__control {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: none;
+  margin-left: auto;
+}
+.team-member .team-role {
   width: auto;
   max-width: 100%;
   padding-block: 4px;
 }
-.team-table .team-col--actions {
-  text-align: end;
-  white-space: normal;
-}
-/*
- * Fixed widths for every column but the person, who keeps the rest. The role and the choice
- * fit their longest label in every language ("Miembro", "Comme l’instance (non)") at 1280px.
- */
-.team-table thead th:nth-child(2) {
-  width: 120px;
-}
-.team-table thead .team-col--create {
-  width: 216px;
-}
-.team-table thead .team-col--space {
-  width: 124px;
-}
-/* "251,66 MB / 1 MB": the limit goes to the next line whole, never split. */
-.team-table .space-mini em {
-  white-space: nowrap;
-}
-.team-table thead .team-col--projects {
-  width: 64px;
-}
-.team-table thead .team-col--last {
-  width: 88px;
-  white-space: normal;
-}
-.team-table thead th:last-child {
-  width: 48px;
-}
-.team-pending th,
-.team-pending td {
-  background: var(--ink-surface-2);
+.team-create.settings-muted {
+  font-size: 12px;
 }
 
 /* Phone settings home (RM-Profile) */
@@ -883,8 +979,8 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   .settings-page {
-    gap: 24px;
-    padding: 14px 16px 40px;
+    gap: 20px;
+    padding: 14px 12px 40px;
   }
   /* The enrollment gate is a page of its own, without the shell's header and bottom bar. */
   .settings-page.admin-enrollment {
@@ -907,6 +1003,13 @@
     width: 100%;
     max-width: none;
   }
+  /* A switch, a badge or a lone icon button stays on the row's line, as in the mockup. */
+  .settings-row__control:has(> .ink-switch:only-child),
+  .settings-row__control:has(> .settings-badge:only-child),
+  .settings-row__control:has(> .ink-iconbtn:only-child),
+  .settings-fold__chevron {
+    width: auto;
+  }
   .settings-input {
     width: 100%;
   }
@@ -914,79 +1017,20 @@
     max-width: none;
     flex-basis: 100%;
   }
-  /*
-   * A member is a small card: who (with the ⋯ menu at the end of that line), then one line
-   * each for the role, the right to create projects and the space, title on the left and value
-   * on the right, so every row lines up and no choice is cut ("Amministratore", "Come
-   * l’istanza (sì)").
-   */
-  .team-table thead,
-  .team-table .team-col--projects,
-  .team-table .team-col--last {
-    display: none;
-  }
-  .team-table tr {
+  /* On a phone the ⋯ of a person stays on the name's line; role and right go under. */
+  .team-member {
     position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    border-top: 1px solid var(--ink-border-muted);
+    padding-right: 52px;
   }
-  .team-table tbody:first-of-type tr:first-child {
-    border-top: 0;
+  .team-member .settings-row__control {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-left: 0;
   }
-  .team-table tbody th,
-  .team-table td {
-    padding-inline: 12px;
-    border: 0;
-  }
-  .team-table tbody th {
-    grid-column: 1 / -1;
-    padding-bottom: 6px;
-  }
-  .team-table tbody:first-of-type th {
-    /* The room of the ⋯ button, which sits at the end of this line. */
-    padding-right: 48px;
-  }
-  .team-table td {
-    padding-top: 2px;
-  }
-  .team-table .team-col--role,
-  .team-table .team-col--create,
-  .team-table .team-col--space {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-width: 0;
-    padding-bottom: 8px;
-  }
-  .team-table .team-col--role::before,
-  .team-table .team-col--create::before,
-  .team-table .team-col--space::before {
-    content: attr(data-label);
-    font-size: 11px;
-    color: var(--ink-text-muted);
-  }
-  .team-table .team-col--role .team-role,
-  .team-table .team-col--create .team-role {
-    width: auto;
-    max-width: 100%;
-  }
-  .team-table .team-col--create > .settings-muted {
-    display: flex;
-    align-items: center;
-    min-height: 32px;
-  }
-  .team-table tbody:first-of-type .team-col--actions {
+  .team-member .team-col--actions {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    padding: 0;
-  }
-  .team-pending .team-col--actions {
-    grid-column: 1 / -1;
-    justify-self: end;
-    padding-bottom: 8px;
+    top: 10px;
+    right: 8px;
   }
 }
 
@@ -996,33 +1040,29 @@
   }
 }
 
-/* Toolbar page (#302): tool tiles, a preview of the bar and the reset. */
+/* Board → Toolbar (#302): tool chips with their check, then a preview of the bar. */
 .toolbar-settings {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 .toolbar-settings__tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px;
 }
 .toolbar-settings__tile {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  padding: 12px 6px 10px;
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-2);
-  color: var(--ink-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-bg-canvas);
+  color: var(--ink-text-primary);
   font-size: 12px;
   cursor: pointer;
-}
-.toolbar-settings__tile:has(input:checked) {
-  background: var(--ink-accent-soft-bg);
-  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
-  color: var(--ink-text-primary);
 }
 .toolbar-settings__tile:has(input:disabled) {
   cursor: default;
@@ -1032,16 +1072,15 @@
   outline-offset: 2px;
 }
 .toolbar-settings__check {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+  margin-left: auto;
 }
 .toolbar-settings__icon {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--ink-radius-sm);
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ink-radius-xs);
   background: var(--kind-bg);
   color: var(--kind-fg);
 }
@@ -1049,15 +1088,11 @@
   opacity: 0.55;
 }
 .toolbar-settings__label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-text-muted);
+  font-size: 12px;
+  color: var(--ink-text-secondary);
 }
 .toolbar-settings__preview {
   display: flex;
-  align-self: flex-start;
   align-items: center;
   gap: 2px;
   max-width: 100%;
@@ -1070,61 +1105,36 @@
 .toolbar-settings__preview > span {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   color: var(--kind-fg, var(--ink-text-secondary));
 }
-.toolbar-settings__preview > .toolbar-settings__plus {
-  display: flex;
-  width: auto;
-  gap: 2px;
-  padding: 0 8px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-accent-button);
-  color: var(--ink-on-accent);
-}
-.toolbar-settings__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-}
 
-.calendar-link {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 4px 0 12px;
+/* Connected apps → Calendar: the link and its copy button sit in the row's control. */
+.calendar-link .settings-row__control {
+  flex: 1 1 260px;
+  flex-wrap: nowrap;
 }
 .calendar-link input {
   flex: 1;
   min-width: 0;
   font-family: monospace;
 }
-.calendar-intro {
-  margin: 10px 0 8px;
-  font-size: 12px;
-  color: var(--ink-text-secondary);
+.settings-card__pad.calendar-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.calendar-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-2);
+.calendar-intro {
+  margin: 0;
+  font-size: 12px;
   color: var(--ink-text-secondary);
 }
 .calendar-note {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 6px 0 12px;
-  padding: 9px 11px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-2);
+  margin: 0;
   color: var(--ink-text-secondary);
   font-size: 12px;
 }
@@ -1197,25 +1207,4 @@
   left: 50%;
   translate: -50% 0;
   white-space: nowrap;
-}
-
-/* Modules page (decision 0121): one row per module, its icon in the module's colour. */
-.module-settings .settings-row {
-  align-items: flex-start;
-}
-.module-settings__glyph {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--kind-bg);
-  color: var(--kind-fg);
-}
-.module-settings__keep {
-  display: block;
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--ink-text-muted);
 }

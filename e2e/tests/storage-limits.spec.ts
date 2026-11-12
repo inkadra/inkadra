@@ -87,7 +87,7 @@ test('storage limits: own space, refused uploads, limits and members', async ({
     // Off by default: only what is used.
     await useCookie(page.context(), base, memberCookie);
     await page.goto('/settings?section=account');
-    const card = page.locator('.space-card', { hasText: 'Il tuo spazio' });
+    const card = page.locator('.settings-block', { hasText: 'Il tuo spazio' });
     await expect(card.getByText('Senza limite')).toBeVisible();
     await expect(card.getByRole('meter')).toHaveCount(0);
     await shoot(page, 'space-unlimited', { phone: false });
@@ -171,15 +171,15 @@ test('storage limits: own space, refused uploads, limits and members', async ({
     ).toBe(true);
     await useCookie(page.context(), base, adminCookie);
     await page.goto('/settings?section=workspace');
-    const limits = page.locator('.settings-card', { hasText: 'Limiti di spazio' });
+    const limits = page.locator('.settings-block', { hasText: 'Limiti di spazio' });
     await expect(limits.getByRole('radio', { name: 'Limite', exact: true }).first()).toBeChecked();
     await expect(
-      page.locator('.space-card', { hasText: 'Spazio usato' }).getByRole('meter'),
+      page.locator('.settings-summary', { hasText: 'Originali' }).getByRole('meter'),
     ).toBeVisible();
     await shoot(page, 'storage-limits', { full: true });
 
     await page.goto('/settings/team');
-    const row = page.locator('.team-table tr', { hasText: member.email });
+    const row = page.locator('.team-member', { hasText: member.email });
     await expect(row.getByRole('meter')).toBeVisible();
     await row.getByRole('button', { name: `Azioni per ${member.name}` }).click();
     await expect(page.getByRole('menuitem', { name: 'Cambia il limite di spazio…' })).toBeVisible();

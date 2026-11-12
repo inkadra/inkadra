@@ -36,15 +36,16 @@ test('QA 0.8 settings: provider identity, profile, pending invitations, layout a
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/settings?section=account');
-    await expect(page.locator('.settings-provider').first()).toBeVisible();
+    await expect(page.locator('[data-provider]').first()).toBeVisible();
     if (shots) await page.screenshot({ path: `${shots}/06-account-${width}.png` });
-    expect.soft(await page.locator('.settings-provider--oidc').count()).toBe(1);
+    expect.soft(await page.locator('[data-provider="oidc"]').count()).toBe(1);
+    // The former page of sign-in methods opens Access and permissions (0124).
     await page.goto('/settings?section=providers');
-    await expect(page.locator('.settings-provider').first()).toBeVisible();
+    await expect(page.locator('[data-provider]').first()).toBeVisible();
     if (shots) await page.screenshot({ path: `${shots}/06-access-${width}.png` });
-    expect.soft(await page.locator('.settings-provider--oidc').count()).toBe(1);
+    expect.soft(await page.locator('[data-provider="oidc"]').count()).toBe(1);
     await page.goto('/settings/team');
-    await expect(page.locator('.team-table')).toBeVisible();
+    await expect(page.locator('.team-member').first()).toBeVisible();
     if (shots) await page.screenshot({ path: `${shots}/05-members-${width}.png` });
     const overflow = await page
       .locator('.settings-window__body')

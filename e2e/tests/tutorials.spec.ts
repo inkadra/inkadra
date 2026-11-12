@@ -152,7 +152,10 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   const idxBefore = await page.evaluate(() => window.history.state?.idx);
   await page.getByRole('button', { name: 'Impostazioni' }).click();
-  await page.locator('dialog.settings-window').getByRole('link', { name: 'Tutorial' }).click();
+  await page
+    .locator('dialog.settings-window')
+    .getByRole('link', { name: 'Aiuto e tutorial' })
+    .click();
   await page.getByRole('button', { name: 'Riproduci', exact: true }).click();
   await expect(page.locator('dialog.settings-window')).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}$`));

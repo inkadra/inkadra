@@ -171,6 +171,8 @@ test('account settings make a personal token shown once', async ({ page }) => {
   await signIn(page, guest);
   await page.getByRole('button', { name: 'Impostazioni' }).click();
   await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+  // Personal tokens are in Connected apps (decision 0124).
+  await page.getByRole('link', { name: 'App collegate', exact: true }).click();
   await page.getByRole('button', { name: 'Nuovo token' }).click();
   await page.getByLabel('Nome del token').fill('Script di backup');
   await page.getByRole('button', { name: 'Crea token' }).click();
