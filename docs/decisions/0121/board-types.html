@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tipi di board v3</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 13px; }
+  button { font: inherit; cursor: pointer; }
+  .ctl { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 10px; }
+  .ctl span { color: var(--muted-foreground, #777); font-size: 12px; }
+  .seg { display: inline-flex; gap: 4px; }
+  .seg button { font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border, #ddd); background: var(--card, #fff); color: var(--foreground, #222); }
+  .seg button.on { background: var(--primary, #2563eb); color: var(--primary-foreground, #fff); border-color: transparent; }
+  .rules { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+  .rules th { text-align: left; font-weight: 600; font-size: 11px; color: var(--muted-foreground, #777); padding: 4px 8px; }
+  .rules td { padding: 5px 8px; border-top: 1px solid var(--border, #ddd); }
+  .rules tr.cur td { background: var(--accent-surface, rgba(59,124,246,.14)); font-weight: 600; }
+  .rules tr.cur td:first-child::before { content: '→ '; }
+
+  .app { --app: #141416; --canvas: #161616; --s1: #1C1C1F; --s2: #26262A; --float: #1F1F23; --bd: #2A2A2E; --bd2: #232327; --tx: #EDEDED; --tx2: #A8A8AE; --tx3: #929298; --acc: #3B7CF6; --hl: #1E2A44; --dots: #26262A; --stick: #3A3320;
+    --purple: #B897F0; --purple-bg: #2E253F; --green: #7AD689; --green-bg: #243526; --orange: #F79B54; --orange-bg: #35271E; --teal: #60D8EB; --teal-bg: #20383D; --pink: #FF91CC; --pink-bg: #422533;
+    border: 1px solid var(--bd); border-radius: 16px; overflow: hidden; background: var(--app); color: var(--tx); font-size: 12px; position: relative; margin: 0 auto; }
+  .app.light { --app: #EFEFEC; --canvas: #FAFAF8; --s1: #FFFFFF; --s2: #F6F6F4; --float: #FFFFFF; --bd: #E4E4E0; --bd2: #E8E8E4; --tx: #161616; --tx2: #4A4A47; --tx3: #6C6C68; --acc: #2464D5; --hl: #E6EDFB; --dots: #DCDCD7; --stick: #FFF6D6;
+    --purple: #6A40B0; --purple-bg: #EEEAFA; --green: #1E7729; --green-bg: #E9F3E9; --orange: #AB4800; --orange-bg: #FBECE6; --teal: #1E809C; --teal-bg: #E4F1F6; --pink: #A82965; --pink-bg: #FAE7ED; }
+  .app.phone { max-width: 390px; }
+  .body { display: grid; grid-template-columns: 166px minmax(0, 1fr); min-height: 620px; }
+  .phone .body { grid-template-columns: 1fr; }
+  .side { padding: 10px 8px; }
+  .phone .side { display: none; }
+  .phone .side.open { display: block; position: absolute; inset: 0 30% 0 0; z-index: 40; background: var(--app); border-right: 1px solid var(--bd); box-shadow: 0 0 0 999px rgba(0,0,0,.45); }
+  .lbl { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--tx3); margin: 2px 6px 6px; }
+  .it { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 8px; cursor: pointer; line-height: 1.2; color: var(--tx2); }
+  .it:hover { background: var(--s1); }
+  .it.on { background: var(--s2); color: var(--tx); font-weight: 600; }
+  .it.par { color: var(--tx); font-weight: 600; }
+  .it.sub { padding-left: 24px; font-size: 11.5px; }
+  .ic { width: 13px; height: 13px; flex: none; }
+  .c-storyboard { color: var(--purple); } .c-shotlist, .c-production { color: var(--green); } .c-schedule { color: var(--teal); }
+  .c-review { color: var(--pink); } .c-moodboard { color: var(--orange); } .c-canvas, .c-board, .c-troupe, .c-note { color: var(--tx3); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; display: inline-block; }
+
+  .main { min-width: 0; position: relative; padding: 10px 12px 18px; background-color: var(--canvas); background-image: radial-gradient(var(--dots) 1px, transparent 1.3px); background-size: 22px 22px; border-left: 1px solid var(--bd2); }
+  .phone .main { border-left: 0; }
+  .hbar { display: flex; align-items: center; gap: 4px; background: var(--float); border: 1px solid var(--bd); border-radius: 14px; padding: 4px 6px; margin-bottom: 14px; position: relative; z-index: 6; box-shadow: 0 6px 18px rgba(0,0,0,.18); min-height: 42px; }
+  .hname { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; padding: 0 8px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .glyph { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; flex: none; background: var(--s2); }
+  .htabs { display: flex; gap: 2px; background: var(--app); border-radius: 10px; padding: 3px; min-width: 0; overflow-x: auto; }
+  .htab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; color: var(--tx3); cursor: pointer; white-space: nowrap; font-size: 12px; font-weight: 500; }
+  .htab.on { background: var(--s2); color: var(--tx); font-weight: 700; }
+  .hsp { flex: 1; }
+  .hbtn { border: 0; background: none; color: var(--tx2); border-radius: 8px; padding: 6px 9px; font-size: 12px; white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; }
+  .hbtn:hover { background: var(--s2); }
+  .hbtn.pri { background: var(--acc); color: #fff; font-weight: 600; }
+  .hbtn.pick { border: 1px solid var(--bd); color: var(--tx); }
+  .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; position: relative; z-index: 5; }
+  .hint { color: var(--tx3); font-size: 11px; flex: 1; min-width: 120px; }
+  .tbtn { font-size: 11.5px; border: 1px solid var(--bd); background: var(--s1); border-radius: 999px; padding: 4px 10px; color: var(--tx); white-space: nowrap; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .phone .cols { grid-template-columns: 1fr; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+  .card { background: var(--s1); border: 1px solid var(--bd); border-radius: 16px; padding: 10px; box-shadow: 0 6px 16px rgba(0,0,0,.10); cursor: pointer; min-width: 0; }
+  .card:hover { border-color: var(--tx3); }
+  .card.flash { animation: flash 1.4s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 4px var(--acc); } to { box-shadow: 0 0 0 0 transparent; } }
+  @media (prefers-reduced-motion: reduce) { .card.flash { animation: none; } }
+  .ch { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .meta { margin-left: auto; font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; color: var(--tx3); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .k-storyboard { background: var(--purple-bg); color: var(--purple); } .k-moodboard { background: var(--orange-bg); color: var(--orange); }
+  .k-production { background: var(--green-bg); color: var(--green); } .k-board, .k-note { background: var(--s2); color: var(--tx2); }
+  .mtabs { display: flex; gap: 3px; margin-bottom: 8px; flex-wrap: wrap; }
+  .mtabs span { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; color: var(--tx2); border: 1px solid var(--bd); cursor: pointer; display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+  .mtabs span.on { background: var(--s2); color: var(--tx); border-color: var(--tx3); font-weight: 600; }
+
+  .thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .fr { min-width: 0; border: 1px solid var(--bd); border-radius: 8px; padding: 4px; }
+  .img { aspect-ratio: 16/10; border-radius: 4px; }
+  .fr .lab { font-size: 10px; margin: 4px 1px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--tx2); }
+  .fr .lab b, td.id, .sl b, .cm .q b { font-family: var(--font-mono, ui-monospace, monospace); color: var(--tx); }
+  .fr .lab b { margin-right: 3px; }
+  .fr .row { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; justify-content: space-between; }
+  .mm { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9px; color: var(--tx3); }
+  .st { font-size: 9.5px; border-radius: 999px; padding: 1px 6px; cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
+  .st-shot { background: var(--green-bg); color: var(--green); } .st-ready { background: var(--s2); color: var(--tx2); } .st-draft { color: var(--tx3); border: 1px dashed var(--tx3); }
+  .more { font-size: 10px; color: var(--tx3); margin-top: 6px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.t th { text-align: left; font-family: var(--font-mono, ui-monospace, monospace); font-weight: 400; font-size: 9px; color: var(--tx3); text-transform: uppercase; letter-spacing: .04em; padding: 3px 4px; }
+  table.t td { padding: 5px 4px; border-top: 1px solid var(--bd2); }
+  td.m { font-family: var(--font-mono, ui-monospace, monospace); font-size: 10.5px; } td.id { font-weight: 700; font-size: 10.5px; }
+  .day { font-size: 11.5px; color: var(--tx2); margin: 2px 0 6px; }
+  .sl { min-width: 0; white-space: nowrap; overflow: hidden; display: flex; gap: 8px; align-items: center; background: var(--s2); border: 1px solid var(--bd); border-radius: 8px; padding: 5px 8px; margin-top: 4px; font-size: 11px; }
+  .sl .t { font-family: var(--font-mono, ui-monospace, monospace); font-size: 10px; color: var(--tx3); width: 34px; flex: none; }
+  .sl .x { overflow: hidden; text-overflow: ellipsis; }
+  .sdot { width: 6px; height: 6px; border-radius: 50%; margin-left: auto; flex: none; }
+  .sdot.shot { background: var(--green); } .sdot.ready { background: var(--tx3); } .sdot.draft { border: 1px dashed var(--tx3); }
+  .cm { border: 1px solid var(--bd); border-radius: 8px; padding: 8px; display: flex; gap: 8px; margin-bottom: 4px; }
+  .av { width: 22px; height: 22px; border-radius: 50%; background: var(--s2); display: grid; place-items: center; font-weight: 600; font-size: 10.5px; flex: none; }
+  .cm .who { font-weight: 600; } .cm .org { font-size: 10px; color: var(--tx3); } .cm .q { margin-top: 2px; line-height: 1.35; }
+  .prog { height: 4px; background: var(--s2); border-radius: 99px; margin: 8px 0 4px; overflow: hidden; }
+  .prog i { display: block; height: 100%; background: var(--green); }
+  .pl { display: flex; justify-content: space-between; font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; color: var(--tx3); }
+  .pl .c2 { color: var(--orange); }
+  .big { aspect-ratio: 16/9; border-radius: 8px; }
+  .cap { font-size: 10px; color: var(--tx3); margin: 4px 0 6px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .two .img { aspect-ratio: 16/9; border-radius: 8px; }
+  .sw { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 6px; }
+  .sw div { border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; font-family: var(--font-mono, ui-monospace, monospace); font-size: 8.5px; color: var(--tx3); }
+  .sw i { display: block; height: 22px; } .sw span { display: block; padding: 2px 4px; }
+  .note h3 { margin: 0 0 4px; font-size: 14px; } .note p { margin: 0 0 4px; color: var(--tx2); line-height: 1.4; font-size: 11.5px; }
+  .stick { background: var(--stick); border-radius: 8px; padding: 7px 8px; margin-top: 5px; font-size: 11px; line-height: 1.35; }
+  .crew { display: flex; gap: 8px; align-items: center; padding: 5px 2px; border-top: 1px solid var(--bd2); }
+  .crew:first-child { border-top: 0; } .crew span { color: var(--tx3); font-size: 10.5px; margin-left: auto; white-space: nowrap; }
+  .empty { border: 1px dashed var(--tx3); border-radius: 12px; padding: 14px; text-align: center; color: var(--tx3); font-size: 11px; line-height: 1.45; }
+  .scene { font-family: var(--font-mono, ui-monospace, monospace); font-size: 10px; color: var(--tx3); text-transform: uppercase; margin: 12px 0 6px; }
+  .hl { outline: 2px solid var(--acc) !important; outline-offset: 1px; }
+  tr.hl { outline: none !important; background: var(--hl); } .sl.hl { outline: none !important; background: var(--hl); border-color: var(--acc); }
+
+  .menu { position: absolute; right: 0; top: 46px; width: 240px; background: var(--float); border: 1px solid var(--bd); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.3); padding: 6px; z-index: 20; }
+  .bar .menu { top: 30px; }
+  .mi { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .mi:hover { background: var(--s2); }
+  .mi small { margin-left: auto; color: var(--tx3); font-size: 10px; }
+  .mi.dis { color: var(--tx3); cursor: default; } .mi.dis:hover { background: none; }
+  .mi.cur { background: var(--s2); font-weight: 600; }
+  .msep { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--tx3); padding: 6px 8px 4px; }
+  .chk { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--tx3); display: grid; place-items: center; font-size: 10px; color: #fff; flex: none; }
+  .chk.on { background: var(--acc); border-color: var(--acc); }
+  .foot { font-size: 10.5px; color: var(--tx3); padding: 6px 8px 4px; line-height: 1.35; border-top: 1px solid var(--bd2); margin-top: 4px; }
+  .fv { background: var(--s1); border: 1px solid var(--bd); border-radius: 16px; padding: 14px; }
+  .fv h2 { font-size: 14px; margin: 0 0 2px; } .fv .sub { color: var(--tx3); font-size: 11px; margin-bottom: 12px; }
+  .toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: var(--tx); color: var(--app); padding: 7px 12px; border-radius: 999px; font-size: 11.5px; z-index: 50; max-width: 92%; text-align: center; }
+  @media (max-width: 560px) { .body { grid-template-columns: 1fr; } .app:not(.phone) .side { display: none; } .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const PAL = ['#E07A3F', '#1E3A4C', '#F2C76E', '#B4302A'], COLORS = ['#9B7BF0', '#35B5B5', '#F79B54', '#7AD689'];
+const L = { storyboard: 'Storyboard', shotlist: 'Shot list', schedule: 'Piano riprese', review: 'Revisione', moodboard: 'Moodboard', canvas: 'Lavagna', troupe: 'Troupe', board: 'Lavagna', production: 'Produzione', note: 'Nota' };
+const STATUS = { draft: 'Bozza', ready: 'Pronta', shot: 'Girata' }, NEXT = { draft: 'ready', ready: 'shot', shot: 'draft' };
+const I = {
+  storyboard: '<rect x="1.5" y="3.5" width="5" height="7" rx="1"/><rect x="7.5" y="3.5" width="5" height="7" rx="1"/>',
+  moodboard: '<rect x="1.5" y="2" width="11" height="10" rx="1.5"/><circle cx="5" cy="5.5" r="1.2"/><path d="M2 11l3.5-3.5 2.5 2.5 2-2 2.5 2.5"/>',
+  shotlist: '<path d="M5 3.5h7.5M5 7h7.5M5 10.5h7.5"/><circle cx="2.3" cy="3.5" r=".6"/><circle cx="2.3" cy="7" r=".6"/><circle cx="2.3" cy="10.5" r=".6"/>',
+  schedule: '<rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/><path d="M1.5 5.5h11M4.5 1v3M9.5 1v3"/>',
+  review: '<path d="M2 2.5h10v7H6.5L4 12V9.5H2z"/>',
+  troupe: '<circle cx="5" cy="5" r="2"/><path d="M1.5 12c0-2 1.6-3.5 3.5-3.5S8.5 10 8.5 12"/><circle cx="10" cy="5.5" r="1.6"/><path d="M9.5 8.6c1.8 0 3 1.3 3 3.4"/>',
+  production: '<rect x="1.5" y="5" width="11" height="7.5" rx="1.5"/><path d="M1.5 5l10.5-3 .5 1.8M4.5 4.2l1.2 1M8 3.2l1.2 1"/>',
+  note: '<rect x="2" y="1.5" width="10" height="11" rx="1.5"/><path d="M4.5 5h5M4.5 7.5h5M4.5 10h3"/>',
+  canvas: '<rect x="1.5" y="2" width="11" height="10" rx="1.5"/><path d="M5.5 2v10"/>',
+  menu: '<path d="M2 3.5h10M2 7h10M2 10.5h10"/>', dots: '<circle cx="3" cy="7" r=".9"/><circle cx="7" cy="7" r=".9"/><circle cx="11" cy="7" r=".9"/>',
+};
+I.board = I.canvas;
+const ic = (n, c = true) => `<svg class="ic${c ? ' c-' + n : ''}" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+const RULES = [['board', 'Lavagna (anche quella del progetto)', 'Lavagna', 'Moodboard'], ['moodboard', 'Moodboard', 'Moodboard', 'nessuna'], ['storyboard', 'Storyboard', 'Storyboard', 'Shot list, Revisione'], ['production', 'Produzione (una per progetto)', 'Piano riprese, Troupe', 'nessuna']];
+
+const EXAMPLE = () => ({
+  blank: false, prod: true, root: { id: 'root', type: 'board', name: 'Ultimo treno', views: {} },
+  boards: [
+    { id: 'film', type: 'storyboard', name: 'Film', color: COLORS[0], views: { shotlist: 1, review: 1 },
+      scenes: { 1: 'EXT. Stazione centrale · notte', 2: 'INT. Treno · notte' },
+      frames: [
+        { id: '1A', sc: 1, size: 'Campo lunghissimo', move: 'Fisso', lens: 24, status: 'shot', review: 'ok' },
+        { id: '1B', sc: 1, size: 'Figura intera', move: 'A mano', lens: 50, status: 'shot', review: 'ok' },
+        { id: '1C', sc: 1, size: 'Piano medio', move: 'Fisso', lens: 35, status: 'ready', review: 'change' },
+        { id: '1D', sc: 1, size: 'Primo piano', move: 'Fisso', lens: 85, status: 'ready', review: null },
+        { id: '2A', sc: 2, size: 'Campo largo', move: 'Dolly', lens: 32, status: 'draft', review: null },
+        { id: '2B', sc: 2, size: 'Dettaglio', move: 'Fisso', lens: 100, status: 'draft', review: null },
+      ],
+      comments: [{ who: 'Elena', org: 'Fondazione Cinema Costa · senza account', shot: '1C', text: 'Vorremmo vedere il viso di Rosa quando versa.' }] },
+    { id: 'teaser', type: 'storyboard', name: 'Teaser 15″', color: COLORS[1], views: {},
+      scenes: { 1: 'Montaggio' },
+      frames: [
+        { id: 'T1', sc: 1, size: 'Primo piano', move: 'Fisso', lens: 85, status: 'ready', review: 'ok' },
+        { id: 'T2', sc: 1, size: 'Campo lunghissimo', move: 'Fisso', lens: 24, status: 'draft', review: null },
+        { id: 'T3', sc: 1, size: 'Dettaglio', move: 'Carrello', lens: 100, status: 'draft', review: 'change' },
+      ],
+      comments: [{ who: 'Marco', org: 'Agenzia Nord', shot: 'T3', text: 'Il treno deve entrare da destra.' }] },
+    { id: 'luce', type: 'moodboard', name: 'Luce', views: {}, refs: 3 },
+    { id: 'appunti', type: 'board', name: 'Appunti', views: {}, notes: ['Chiedere il permesso per il binario 4', 'Pioggia finta: 2 torri, 1 autobotte'] },
+  ],
+  days: [
+    { n: 1, date: 'lun 16 nov', place: 'Stazione centrale', call: '18:30', slots: [['18:30', 'Luci, fumo e pioggia'], ['20:00', 'film', '1B'], ['21:30', 'Cena'], ['22:15', 'Spostamento al binario 4'], ['00:30', 'film', '1A']] },
+    { n: 2, date: 'mar 17 nov', place: 'Deposito treni', call: '19:00', slots: [['19:00', 'film', '2A'], ['21:00', 'film', '2B'], ['22:30', 'teaser', 'T1'], ['23:15', 'film', '1C']] },
+  ],
+  crew: [['Matteo M.', 'Regia'], ['Sara B.', 'Fotografia'], ['Luca R.', 'Fotografia · 1° AC'], ['Giulia T.', 'Suono'], ['Elena P.', 'Produzione']],
+});
+let P = EXAMPLE();
+const PROD = { id: 'prod', type: 'production', name: 'Produzione', views: {} };
+const S = { theme: 'dark', dev: 'desk', open: 'root', view: 'canvas', tab: {}, add: false, more: false, drawer: false, sheet: false, toast: '', flash: null };
+
+const boards = () => (P.prod ? [...P.boards, PROD] : P.boards);
+const get = (id) => (id === 'root' ? P.root : boards().find((b) => b.id === id));
+const toggles = (b) => ({ storyboard: ['shotlist', 'review'], board: ['moodboard'] }[b.type] || []);
+const BASE = { storyboard: ['storyboard'], moodboard: ['moodboard'], board: ['canvas'], production: ['schedule', 'troupe'] };
+const viewsOf = (b) => [...BASE[b.type], ...toggles(b).filter((v) => b.views[v])];
+const seed = (s) => [...s].reduce((a, c) => a + c.charCodeAt(0) * 7, 0);
+function art(key) {
+  const n = seed(key), a = PAL[n % 4], b = PAL[(n + 2) % 4], x = 12 + (n * 37) % 76, y = 25 + (n * 23) % 45;
+  return `background: radial-gradient(circle at ${x}% ${y}%, ${a} 0 5%, transparent 24%), radial-gradient(circle at ${100 - x}% 78%, ${b}bb 0 3%, transparent 20%), linear-gradient(180deg,#0c141c 0%,#1E3A4C 72%,#0b1218 100%)`;
+}
+const empty = (t) => `<div class="empty">${t}</div>`;
+
+function tile(b, f) {
+  return `<div class="fr" data-shot="${b.id}:${f.id}"><div class="img" style="${art(b.id + f.id)}"></div><div class="lab"><b>${f.id}</b>${f.size}</div>
+    <div class="row"><span class="st st-${f.status}" data-status="${b.id}:${f.id}" title="Cambia stato">${STATUS[f.status]}</span><span class="mm">${f.lens}mm</span></div></div>`;
+}
+function vStory(b, full) {
+  if (!b.frames.length) return empty('Nessuna inquadratura. Disegna la prima o importa un copione.');
+  if (!full) { const r = b.frames.length - 3; return `<div class="thumbs">${b.frames.slice(0, 3).map((f) => tile(b, f)).join('')}</div>${r > 0 ? `<div class="more">+${r} inquadrature</div>` : ''}`; }
+  return Object.entries(b.scenes).map(([n, name]) => `<div class="scene">SC ${n} · ${name}</div><div class="thumbs">${b.frames.filter((f) => f.sc == n).map((f) => tile(b, f)).join('')}</div>`).join('');
+}
+function vShot(b, full) {
+  if (!b.frames.length) return empty('Lo shot list si riempie con le inquadrature dello storyboard.');
+  const rows = full ? b.frames : b.frames.slice(0, 5);
+  return `<table class="t"><tr><th>#</th><th>Taglio</th>${full ? '<th>Movimento</th>' : ''}<th>Ottica</th>${full ? '<th>Stato</th>' : ''}</tr>${rows.map((f) => `<tr data-shot="${b.id}:${f.id}"><td class="id">${f.id}</td><td>${f.size}</td>${full ? `<td>${f.move}</td>` : ''}<td class="m">${f.lens}mm</td>${full ? `<td><span class="st st-${f.status}" data-status="${b.id}:${f.id}">${STATUS[f.status]}</span></td>` : ''}</tr>`).join('')}</table>`;
+}
+function vSched(b, full) {
+  const days = P.days.map((d) => ({ ...d, slots: d.slots.filter((s) => s.length < 3 || get(s[1])) }));
+  if (!days.length) return empty('Nessuna giornata. Aggiungi un giorno e trascina le inquadrature dagli storyboard del progetto.');
+  const slot = (s) => {
+    if (s.length < 3) return `<div class="sl"><span class="t">${s[0]}</span><span class="x">${s[1]}</span></div>`;
+    const o = get(s[1]), f = o.frames.find((x) => x.id === s[2]);
+    return `<div class="sl" data-shot="${o.id}:${f.id}"><span class="t">${s[0]}</span><i class="dot" style="background:${o.color}" title="${o.name}"></i><span class="x"><b>${f.id}</b> · ${f.size}${full ? ` <span style="color:var(--tx3)">· ${o.name}</span>` : ''}</span><i class="sdot ${f.status}" title="${STATUS[f.status]}"></i></div>`;
+  };
+  return (full ? days : days.slice(0, 1)).map((d) => `<div class="day">${full ? `<b>Giorno ${d.n} · ${d.date}</b> · ` : ''}${d.place} · convocazione ${d.call}</div>${d.slots.map(slot).join('')}`).join('<div style="height:12px"></div>') + (!full && days.length > 1 ? `<div class="more">+${days.length - 1} giornate</div>` : '');
+}
+function vReview(b, full) {
+  if (!b.frames.length) return empty('Crea un link per il cliente quando ci sono inquadrature da approvare.');
+  const ok = b.frames.filter((f) => f.review === 'ok').length, ch = b.frames.filter((f) => f.review === 'change').length;
+  const cms = b.comments.map((m) => `<div class="cm" data-shot="${b.id}:${m.shot}"><div class="av">${m.who[0]}</div><div><div class="who">${m.who}</div><div class="org">${m.org}</div><div class="q">“<b>${m.shot}</b>: ${m.text}”</div></div></div>`).join('');
+  const list = full ? `<div class="scene">Decisioni del cliente</div><table class="t">${b.frames.map((f) => `<tr data-shot="${b.id}:${f.id}"><td class="id">${f.id}</td><td>${f.size}</td><td>${f.review === 'ok' ? '✓ approvata' : f.review === 'change' ? '<span style="color:var(--orange)">da cambiare</span>' : '<span style="color:var(--tx3)">in attesa</span>'}</td></tr>`).join('')}</table>` : '';
+  return `${cms}<div class="prog"><i style="width:${(ok / b.frames.length) * 100}%"></i></div><div class="pl"><span>${ok} di ${b.frames.length} approvate</span><span class="c2">${ch} da cambiare</span></div>${list}`;
+}
+function vMood(b, full) {
+  if (!b.refs) return empty('Nessun riferimento. Trascina qui immagini, link e colori.');
+  return `${full ? '<div class="scene">Gruppo · Luce</div>' : ''}<div class="big" style="${art('mood-big')}"></div><div class="cap">Binario 4, 1:52</div>
+    <div class="two"><div class="img" style="${art('mood-2')}"></div><div class="img" style="${art('mood-3x')}"></div></div>
+    ${full ? '<div class="scene">Gruppo · Colore</div>' : ''}<div class="sw">${PAL.map((p) => `<div><i style="background:${p}"></i><span>${p}</span></div>`).join('')}</div>`;
+}
+function vTroupe(b, full) {
+  if (!P.crew.length) return empty('Nessuna persona in troupe. Aggiungile qui: valgono per tutto il progetto.');
+  const rows = full ? P.crew : P.crew.slice(0, 4);
+  return rows.map(([n, r]) => `<div class="crew"><div class="av">${n[0]}</div><b>${n}</b><span>${r}</span></div>`).join('') + (!full && P.crew.length > 4 ? `<div class="more">+${P.crew.length - 4} persone</div>` : '');
+}
+const vCanvas = (b) => ((b.notes || []).length ? b.notes.map((n) => `<div class="stick">${n}</div>`).join('') : empty('Lavagna vuota.'));
+const V = { storyboard: vStory, shotlist: vShot, schedule: vSched, review: vReview, moodboard: vMood, troupe: vTroupe, canvas: vCanvas };
+function meta(v, b) {
+  if (v === 'storyboard' || v === 'shotlist') return `${b.frames.length} inq`;
+  if (v === 'schedule') return `${P.days.length} giorni`;
+  if (v === 'troupe') return `${P.crew.length} persone`;
+  if (v === 'review') return 'link ospite';
+  if (v === 'moodboard') return b.refs ? '2 gruppi' : 'vuota';
+  return `${(b.notes || []).length} card`;
+}
+
+function card(b) {
+  const vs = viewsOf(b), cur = vs.includes(S.tab[b.id]) ? S.tab[b.id] : vs[0];
+  return `<div class="card${S.flash === b.id ? ' flash' : ''}" data-open="${b.id}:${cur}"><div class="ch"><span class="pill k-${b.type}">${ic(b.type, false)}${b.name}</span><span class="meta">${meta(cur, b)}</span></div>
+    ${vs.length > 1 ? `<div class="mtabs">${vs.map((v) => `<span class="${v === cur ? 'on' : ''}" data-tab="${b.id}:${v}">${ic(v)}${L[v]}</span>`).join('')}</div>` : ''}${V[cur](b, false)}</div>`;
+}
+function canvasRoot() {
+  const bs = boards();
+  const note = `<div class="card"><div class="ch"><span class="pill k-note">${ic('note', false)}Nota</span><span class="meta">sc 1–2</span></div><div class="note"><h3>Ultimo treno</h3><p>Un corto. Una notte, un binario, l'ultimo treno che lascia la città.</p><p>Luce al sodio contro il blu bagnato. Ottiche lunghe, poca macchina.</p></div></div>`;
+  let l = P.blank ? [] : [note], r = [];
+  bs.forEach((b) => (b.type === 'storyboard' || b.type === 'production' ? r : l).push(card(b)));
+  if (!l.length) [l, r] = [r, l];
+  const inner = !bs.length && P.blank ? empty('Progetto nuovo: una lavagna vuota.<br>Con <b>+ Aggiungi</b> metti una lavagna, una moodboard, uno storyboard o la Produzione.')
+    : `<div class="cols"><div class="col">${l.join('')}</div><div class="col">${r.join('')}</div></div>`;
+  return `<div class="bar"><span class="hint">Passa su un'inquadratura: si accende in ogni vista. Clicca lo stato per cambiarlo ovunque.</span>
+    <button class="tbtn" data-blank>${P.blank ? 'Torna all\'esempio' : 'Parti da vuoto'}</button><button class="hbtn pri" data-add>+ Aggiungi</button>${S.add ? addMenu() : ''}</div>${inner}`;
+}
+function addMenu() {
+  return `<div class="menu"><div class="mi" data-new="board">${ic('board')}Lavagna</div><div class="mi" data-new="moodboard">${ic('moodboard')}Moodboard</div><div class="mi" data-new="storyboard">${ic('storyboard')}Storyboard</div>
+    ${P.prod ? `<div class="mi dis">${ic('production')}Produzione<small>già nel progetto</small></div>` : `<div class="mi" data-new="production">${ic('production')}Produzione<small>Piano riprese + Troupe</small></div>`}</div>`;
+}
+function page(b) {
+  const v = S.view, sub = {
+    storyboard: `${b.frames ? b.frames.length : 0} inquadrature`, shotlist: `Le stesse inquadrature di ${b.name}, in tabella`,
+    schedule: 'Un calendario per tutto il progetto: il pallino dice da quale storyboard arriva l\'inquadratura', troupe: 'Le persone del progetto',
+    review: `Il cliente decide sulle inquadrature di ${b.name}`, moodboard: 'Riferimenti, gruppi e palette', canvas: 'Lavagna libera',
+  }[v];
+  return `<div class="fv"><h2>${L[v]} · ${b.name}</h2><div class="sub">${sub}</div>${V[v](b, true)}</div>`;
+}
+const row = (open, icon, text, cls, on) => `<div class="it ${cls}${on ? ' on' : ''}" data-open="${open}">${icon}${text}</div>`;
+function sidebar() {
+  let h = `<div class="lbl">Progetto</div>`;
+  for (const b of [P.root, ...boards()]) {
+    const vs = viewsOf(b), nest = vs.length > 1;
+    h += row(b.id, ic(b.type), b.name, nest && S.open === b.id ? 'par' : '', !nest && S.open === b.id);
+    if (nest) for (const v of vs) h += row(`${b.id}:${v}`, ic(v), L[v], 'sub', S.open === b.id && S.view === v);
+  }
+  return h;
+}
+function header(b) {
+  const vs = viewsOf(b), phone = S.dev === 'phone';
+  const name = `<span class="hname"><span class="glyph">${ic(b.type)}</span>${b.name}</span>`;
+  const tabs = vs.length > 1 ? `<span class="htabs">${vs.map((v) => `<span class="htab${v === S.view ? ' on' : ''}" data-open="${b.id}:${v}">${ic(v)}${L[v]}</span>`).join('')}</span>` : '';
+  const pick = vs.length > 1 ? `<button class="hbtn pick" data-sheet>${ic(S.view)}${L[S.view]} ▾</button>` : '';
+  const more = `<div class="menu"><div class="msep">Viste di questa board</div>${BASE[b.type].map((v) => `<div class="mi dis" style="color:var(--tx)"><span class="chk on">✓</span>${L[v]}<small>sempre</small></div>`).join('')}
+    ${toggles(b).map((v) => `<div class="mi" data-toggle="${b.id}:${v}"><span class="chk${b.views[v] ? ' on' : ''}">${b.views[v] ? '✓' : ''}</span>${L[v]}</div>`).join('') || '<div class="mi dis">Questo tipo non ha altre viste</div>'}
+    <div class="foot">Una vista spenta sparisce dalla barra, dall'albero e dalla card. I dati restano.</div></div>`;
+  const sheet = `<div class="menu"><div class="msep">Vista</div>${vs.map((v) => `<div class="mi${v === S.view ? ' cur' : ''}" data-open="${b.id}:${v}">${ic(v)}${L[v]}</div>`).join('')}</div>`;
+  return `<div class="hbar">${phone ? `<button class="hbtn" data-drawer aria-label="Board">${ic('menu', false)}</button>` : ''}${name}${phone ? '<span class="hsp"></span>' + pick : tabs + '<span class="hsp"></span>'}
+    <button class="hbtn" data-more aria-label="Altro">${ic('dots', false)}</button>${S.more ? more : ''}${S.sheet ? sheet : ''}</div>`;
+}
+function render() {
+  if (!get(S.open)) { S.open = 'root'; S.view = 'canvas'; }
+  const b = get(S.open), vs = viewsOf(b);
+  if (!vs.includes(S.view)) S.view = vs[0];
+  const seg = (k, opts) => `<span class="seg">${opts.map(([v, t]) => `<button class="${S[k] === v ? 'on' : ''}" data-set="${k}:${v}">${t}</button>`).join('')}</span>`;
+  document.getElementById('root').innerHTML = `<div class="ctl">${seg('theme', [['dark', 'Scuro'], ['light', 'Chiaro']])}${seg('dev', [['desk', 'Desktop'], ['phone', 'Telefono']])}<span>La riga evidenziata è il tipo della board aperta.</span></div>
+    <table class="rules"><tr><th>Tipo di board</th><th>Viste sempre in alto</th><th>Viste da accendere (⋯)</th></tr>${RULES.map((r) => `<tr class="${r[0] === b.type ? 'cur' : ''}"><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</table>
+    <div class="app ${S.theme} ${S.dev}"><div class="body"><div class="side${S.drawer ? ' open' : ''}">${sidebar()}</div>
+      <div class="main">${header(b)}${S.open === 'root' && S.view === 'canvas' ? canvasRoot() : page(b)}</div></div>${S.toast ? `<div class="toast">${S.toast}</div>` : ''}</div>`;
+  S.flash = null;
+}
+let serial = 0, timer;
+function addBoard(type) {
+  S.add = false;
+  if (type === 'production') { P.prod = true; S.flash = 'prod'; S.toast = 'Produzione aggiunta: ora il progetto ha Piano riprese e Troupe.'; }
+  else {
+    const n = P.boards.filter((b) => b.type === type).length + 1, id = type + ++serial;
+    P.boards.push({ id, type, name: `${L[type]}${n > 1 ? ' ' + n : ''}`, color: COLORS[(n - 1) % 4], views: {}, frames: type === 'storyboard' ? [] : undefined, scenes: {}, comments: [], refs: 0, notes: [] });
+    S.flash = id; return;
+  }
+  clearTimeout(timer); timer = setTimeout(() => { S.toast = ''; render(); }, 3000);
+}
+function go(t) { const [id, v] = t.split(':'); S.open = id; S.view = v || viewsOf(get(id))[0]; if (v) S.tab[id] = v; }
+document.addEventListener('click', (e) => {
+  const q = (s) => e.target.closest(s); let el; const closeAll = () => { S.add = S.more = S.sheet = S.drawer = false; };
+  if ((el = q('[data-set]'))) { const [k, v] = el.dataset.set.split(':'); S[k] = v; closeAll(); }
+  else if ((el = q('[data-status]'))) { const [b, f] = el.dataset.status.split(':'); const fr = get(b).frames.find((x) => x.id === f); fr.status = NEXT[fr.status]; }
+  else if ((el = q('[data-tab]'))) { const [b, v] = el.dataset.tab.split(':'); S.tab[b] = v; }
+  else if ((el = q('[data-toggle]'))) { const [b, v] = el.dataset.toggle.split(':'); const o = get(b); o.views[v] = !o.views[v]; }
+  else if ((el = q('[data-new]'))) addBoard(el.dataset.new);
+  else if (q('[data-blank]')) { P = P.blank ? EXAMPLE() : { blank: true, prod: false, root: { id: 'root', type: 'board', name: 'Progetto nuovo', views: {} }, boards: [], days: [], crew: [] }; closeAll(); S.open = 'root'; }
+  else if (q('[data-add]')) { const v = !S.add; closeAll(); S.add = v; }
+  else if (q('[data-more]')) { const v = !S.more; closeAll(); S.more = v; }
+  else if (q('[data-sheet]')) { const v = !S.sheet; closeAll(); S.sheet = v; }
+  else if (q('[data-drawer]')) { const v = !S.drawer; closeAll(); S.drawer = v; }
+  else if ((el = q('[data-open]'))) { closeAll(); go(el.dataset.open); }
+  else if (q('.menu')) return;
+  else if (S.add || S.more || S.sheet || S.drawer) closeAll();
+  else return;
+  render();
+});
+document.addEventListener('mouseover', (e) => {
+  const el = e.target.closest('[data-shot]');
+  document.querySelectorAll('.hl').forEach((x) => x.classList.remove('hl'));
+  if (el) document.querySelectorAll(`[data-shot="${el.dataset.shot}"]`).forEach((x) => x.classList.add('hl'));
+});
+render();
+</script>
+</body>
+</html>

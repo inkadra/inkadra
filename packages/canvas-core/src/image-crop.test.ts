@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { croppedRotatedSize, FULL_CROP, rotatedBounds, sanitizeCrop } from './image-crop.ts';
+import {
+  croppedRotatedSize,
+  FULL_CROP,
+  hasImageTransform,
+  isIdentityCrop,
+  normalizeImageRotation,
+  rotatedBounds,
+  sanitizeCrop,
+} from './image-crop.ts';
 
 describe('image crop geometry', () => {
   it('reads a missing crop as the whole picture and clamps the others into it', () => {
@@ -43,5 +51,19 @@ describe('crop geometry as React Native worklets', () => {
     const unknown = croppedRotatedSize(0, 0, null, 180);
     expect(unknown.width).toBeCloseTo(4);
     expect(unknown.height).toBeCloseTo(3);
+  });
+});
+
+describe('image transform', () => {
+  it('turns a rotation into (-180, 180] and sees a crop or an angle as a transform', () => {
+    expect(normalizeImageRotation(270)).toBe(-90);
+    expect(normalizeImageRotation(-180)).toBe(180);
+    expect(normalizeImageRotation(720)).toBe(0);
+    expect(normalizeImageRotation(Number.NaN)).toBe(0);
+    expect(isIdentityCrop({ ...FULL_CROP, aspect: 'free' })).toBe(true);
+    expect(isIdentityCrop({ ...FULL_CROP, aspect: '1:1' })).toBe(false);
+    expect(hasImageTransform({ rotation: 360 })).toBe(false);
+    expect(hasImageTransform({ rotation: 0.5 })).toBe(true);
+    expect(hasImageTransform({ crop: { x: 0, y: 0, w: 0.5, h: 1 } })).toBe(true);
   });
 });

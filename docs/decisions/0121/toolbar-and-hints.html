@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barra e suggerimenti</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-sans, Inter, system-ui, sans-serif); font-size: 13px; }
+  button { font: inherit; cursor: pointer; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-bottom: 8px; }
+  .row > b { font-size: 12px; min-width: 92px; }
+  .seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .seg button { font-size: 12.5px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border, #ddd); background: var(--card, #fff); color: var(--foreground, #222); }
+  .seg button.on { background: var(--primary, #2563eb); color: var(--primary-foreground, #fff); border-color: transparent; }
+  .seg button.off { opacity: .55; text-decoration: line-through; }
+  .lead { color: var(--muted-foreground, #777); font-size: 12px; line-height: 1.45; margin: 2px 0 12px; }
+  .lead b { color: var(--foreground, #222); }
+
+  .app { --canvas: #161616; --s1: #1C1C1F; --s2: #26262A; --float: #1F1F23; --bd: #2A2A2E; --bd2: #232327; --tx: #EDEDED; --tx2: #A8A8AE; --tx3: #929298; --acc: #3B7CF6; --acc-bg: #1E2A44; --acc-fg: #9DB8F2; --dots: #26262A;
+    --purple: #B897F0; --purple-bg: #2E253F; --green: #7AD689; --green-bg: #243526; --orange: #F79B54; --orange-bg: #35271E; --teal: #60D8EB; --teal-bg: #20383D;
+    --t-note: #FEDD4D; --t-image: #01A7D6; --t-link: #00A768; --t-todo: #E53BF6; --t-color: #8B9E0F; --t-table: #F59A45; --t-voice: #FF7AA8; --t-map: #2EC4B0; --t-plan: #A88BFA;
+    border: 1px solid var(--bd); border-radius: 16px; overflow: hidden; background: var(--canvas); color: var(--tx); font-size: 12px; position: relative; }
+  .app.light { --canvas: #FAFAF8; --s1: #FFFFFF; --s2: #F6F6F4; --float: #FFFFFF; --bd: #E4E4E0; --bd2: #E8E8E4; --tx: #161616; --tx2: #4A4A47; --tx3: #6C6C68; --acc: #2464D5; --acc-bg: #E6EDFB; --acc-fg: #2F5AAE; --dots: #DCDCD7;
+    --purple: #6A40B0; --purple-bg: #EEEAFA; --green: #1E7729; --green-bg: #E9F3E9; --orange: #AB4800; --orange-bg: #FBECE6; --teal: #1E809C; --teal-bg: #E4F1F6;
+    --t-note: #513500; --t-image: #093E6F; --t-link: #07492C; --t-todo: #BF22C7; --t-color: #867713; --t-table: #9C4A06; --t-voice: #A3245A; --t-map: #0B5F55; --t-plan: #5B34B8; }
+  .ic { width: 16px; height: 16px; flex: none; }
+  .c-note { color: var(--t-note); } .c-image { color: var(--t-image); } .c-link { color: var(--t-link); } .c-todo { color: var(--t-todo); } .c-color { color: var(--t-color); }
+  .c-table { color: var(--t-table); } .c-voice { color: var(--t-voice); } .c-map { color: var(--t-map); } .c-plan { color: var(--t-plan); }
+  .m-storyboard { color: var(--purple); } .m-production { color: var(--green); } .m-moodboard { color: var(--orange); } .m-base { color: var(--tx3); }
+  .b-storyboard { background: var(--purple-bg); } .b-production { background: var(--green-bg); } .b-moodboard { background: var(--orange-bg); } .b-base { background: var(--s2); }
+
+  .stage { min-height: 540px; position: relative; padding: 12px 14px 100px; background-image: radial-gradient(var(--dots) 1px, transparent 1.3px); background-size: 22px 22px; }
+  .hd { display: inline-flex; gap: 8px; align-items: center; background: var(--float); border: 1px solid var(--bd); border-radius: 12px; padding: 7px 12px; font-weight: 600; margin-bottom: 12px; }
+  .strip { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--s1); border: 1px solid var(--bd); border-radius: 10px; padding: 6px 10px; margin-bottom: 12px; color: var(--tx2); }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-width: 380px; }
+  .cd { background: var(--s1); border: 1px solid var(--bd); border-radius: 12px; padding: 8px; min-height: 62px; color: var(--tx2); font-size: 11px; line-height: 1.35; }
+  .cd b { display: block; font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; color: var(--tx3); margin-bottom: 3px; }
+  .im { aspect-ratio: 4/3; border-radius: 10px; border: 1px solid var(--bd); }
+  .cal { background: var(--s1); border: 1px solid var(--bd); border-radius: 12px; padding: 10px; max-width: 380px; }
+  .cal div { background: var(--s2); border-radius: 8px; padding: 6px 8px; margin-top: 5px; color: var(--tx2); display: flex; gap: 8px; }
+  .cal div span { font-family: var(--font-mono, ui-monospace, monospace); font-size: 10px; color: var(--tx3); }
+  .dock { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: var(--float); border: 1px solid var(--bd); border-radius: 16px; padding: 5px; box-shadow: 0 10px 28px rgba(0,0,0,.28); max-width: calc(100% - 16px); }
+  .grp { display: flex; gap: 1px; padding: 0 3px; border-right: 1px solid var(--bd); }
+  .grp:last-of-type { border-right: 0; }
+  .tool { border: 0; background: none; color: var(--tx2); width: 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; position: relative; }
+  .tool:hover { background: var(--s2); }
+  .tool.on { background: var(--acc-bg); color: var(--acc-fg); }
+  .tool[data-tip]:hover::after { content: attr(data-tip); position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: var(--tx); color: var(--canvas); font-size: 10.5px; padding: 3px 7px; border-radius: 6px; white-space: nowrap; z-index: 30; }
+  .cbtn { border: 0; background: var(--acc); color: #fff; font-weight: 600; border-radius: 10px; padding: 0 12px; height: 34px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+  .pop { position: absolute; bottom: 66px; background: var(--float); border: 1px solid var(--bd); border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,.35); padding: 10px; z-index: 20; }
+  .pop.canvas { right: 14px; width: min(430px, calc(100% - 28px)); }
+  .pop.more { left: 50%; transform: translateX(-50%); width: min(310px, calc(100% - 28px)); }
+  .ph { font-family: var(--font-mono, ui-monospace, monospace); font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--tx3); margin: 2px 4px 8px; }
+  .types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ty { border: 1px solid var(--bd); background: var(--s1); border-radius: 12px; padding: 8px; text-align: left; color: var(--tx); display: block; position: relative; }
+  .ty:hover { border-color: var(--tx3); }
+  .ty.dim { border-style: dashed; background: none; }
+  .ty.dim .pv, .ty.dim .nm, .ty.dim .ds { opacity: .45; }
+  .ty .pv { height: 56px; border-radius: 8px; margin-bottom: 7px; padding: 7px; display: grid; gap: 4px; overflow: hidden; }
+  .ty .nm { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .ty .ds { color: var(--tx3); font-size: 10.5px; margin-top: 2px; line-height: 1.3; }
+  .ty .tag { position: absolute; top: 8px; right: 8px; background: var(--acc); color: #fff; border-radius: 999px; font-size: 10.5px; font-weight: 600; padding: 2px 8px; }
+  .pv i { display: block; border-radius: 4px; background: currentColor; opacity: .55; }
+  .pv.sb { grid-template-columns: repeat(3, 1fr); } .pv.mb { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; } .pv.mb i:first-child { grid-row: span 2; }
+  .pv.pr { grid-template-rows: repeat(4, 1fr); } .pv.pr i:nth-child(2) { width: 70%; } .pv.pr i:nth-child(4) { width: 55%; }
+  .pv.lv { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; } .pv.lv i:nth-child(2) { grid-row: span 2; }
+  .li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .li:hover { background: var(--s2); }
+  .pin { margin-left: auto; border: 1px solid var(--bd); background: none; color: var(--tx3); border-radius: 999px; font-size: 10.5px; padding: 2px 8px; }
+  .pin.on { background: var(--acc-bg); color: var(--acc-fg); border-color: transparent; }
+  .btn { border: 1px solid var(--bd); background: var(--s2); color: var(--tx); border-radius: 8px; padding: 5px 10px; font-size: 11.5px; white-space: nowrap; }
+  .btn.pri { background: var(--acc); border-color: var(--acc); color: #fff; font-weight: 600; }
+  .btn.txt { border-color: transparent; background: none; color: var(--tx3); }
+  .hcard { position: absolute; right: 14px; top: 12px; width: min(290px, calc(100% - 28px)); border: 1px solid var(--bd); border-left: 3px solid currentColor; border-radius: 12px; padding: 10px; background: var(--float); box-shadow: 0 10px 28px rgba(0,0,0,.28); z-index: 8; }
+  .hcard .ht { color: var(--tx); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .hcard .hb { color: var(--tx2); margin: 4px 0 8px; line-height: 1.4; }
+  .ha { display: flex; gap: 6px; flex-wrap: wrap; }
+  .snack { position: absolute; left: 50%; bottom: 68px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: var(--tx); color: var(--canvas); border-radius: 12px; padding: 7px 8px 7px 12px; z-index: 9; max-width: calc(100% - 28px); box-shadow: 0 10px 28px rgba(0,0,0,.3); line-height: 1.35; }
+  .snack button { border: 0; background: none; color: inherit; font-weight: 700; text-decoration: underline; white-space: nowrap; padding: 2px 4px; }
+  .snack .x { text-decoration: none; opacity: .6; }
+  .quiet { position: absolute; right: 14px; top: 12px; width: min(260px, calc(100% - 28px)); border: 1px dashed var(--tx3); border-radius: 12px; padding: 10px; color: var(--tx3); line-height: 1.4; }
+  .toast { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); background: var(--tx); color: var(--canvas); padding: 7px 12px; border-radius: 999px; font-size: 11.5px; z-index: 50; max-width: 92%; text-align: center; }
+  @media (max-width: 600px) { .types { grid-template-columns: 1fr; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grp { padding: 0 1px; } .tool { width: 28px; } .hcard, .quiet { position: static; width: auto; margin-bottom: 12px; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const svg = (p, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const IC = {
+  select: '<path d="M3 2l9 5-4 1.2L6.5 12z"/>', hand: '<path d="M5 8V4.2a1 1 0 012 0V7m0-3.5a1 1 0 012 0V7m0-2.5a1 1 0 012 0V10c0 2.2-1.6 4-4 4S4 12.6 3.4 11L2.5 8.6a1 1 0 011.8-.8z"/>',
+  arrow: '<path d="M3 13L13 3M7 3h6v6"/>', note: '<path d="M3 3h10v7l-3 3H3z"/><path d="M13 10h-3v3"/>', image: '<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="6" cy="6.5" r="1.2"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3"/>',
+  link: '<path d="M7 9a3 3 0 004.2 0l1.6-1.6a3 3 0 00-4.2-4.2L8 3.8M9 7a3 3 0 00-4.2 0L3.2 8.6a3 3 0 004.2 4.2l.6-.6"/>', todo: '<rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.5 8l2 2 3.5-4"/>',
+  color: '<circle cx="8" cy="8" r="5.5"/><circle cx="6" cy="6.5" r=".8"/><circle cx="10" cy="6.5" r=".8"/><circle cx="8" cy="10.5" r=".8"/>', table: '<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 7h12M6.5 3v10"/>',
+  column: '<rect x="2" y="2.5" width="5" height="11" rx="1.2"/><rect x="9" y="2.5" width="5" height="11" rx="1.2"/>', section: '<path d="M3 4v8M9 4v8M3 8h6M12 6v6"/>',
+  voice: '<rect x="6" y="2" width="4" height="7.5" rx="2"/><path d="M3.5 8a4.5 4.5 0 009 0M8 12.5V14"/>', map: '<path d="M2 4l4-1.5 4 1.5 4-1.5v9.5L10 13.5 6 12l-4 1.5zM6 2.5V12M10 4v9.5"/>',
+  frame: '<rect x="2" y="3.5" width="12" height="9" rx="1.5"/><path d="M2 6h12"/>', plan: '<rect x="2" y="2" width="12" height="12" rx="1"/><path d="M2 9h5V5M10 14v-4h4"/>',
+  storyboard: '<rect x="1.5" y="4" width="6" height="8" rx="1"/><rect x="8.5" y="4" width="6" height="8" rx="1"/>', moodboard: '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/><circle cx="6" cy="6.5" r="1.3"/><path d="M2.5 12.5l4-4 2.5 2.5 2-2 2.5 2.5"/>',
+  production: '<rect x="2" y="6" width="12" height="8" rx="1.5"/><path d="M2 6l11.5-3.3.5 2M5 5.2l1.3 1M9 4l1.3 1"/>', board: '<rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M6.5 2.5v11"/>',
+  script: '<path d="M4 2h6l3 3v9H4z"/><path d="M10 2v3h3M6 8h5M6 10.5h5"/>', more: '<circle cx="3.5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="12.5" cy="8" r="1"/>', plus: '<path d="M8 3v10M3 8h10"/>',
+};
+const NAME = { storyboard: 'Storyboard', production: 'Produzione', moodboard: 'Moodboard', plan: 'Pianta del set' };
+const FIXED = [['select', 'Seleziona'], ['hand', 'Mano'], ['arrow', 'Freccia']], CORE = [['note', 'Nota'], ['image', 'Immagine'], ['link', 'Link'], ['todo', 'To-do']];
+const EXTRA = [['column', 'Colonna'], ['section', 'Titolo di sezione'], ['color', 'Colore'], ['table', 'Tabella'], ['voice', 'Nota vocale'], ['map', 'Mappa'], ['frame', 'Inquadratura', 'storyboard'], ['plan', 'Pianta del set', 'plan']];
+const TYPES = [
+  { id: 'board', name: 'Lavagna', mod: null, pv: 'lv', n: 5, desc: 'Spazio libero per note, immagini e file.' },
+  { id: 'moodboard', name: 'Moodboard', mod: 'moodboard', pv: 'mb', n: 3, desc: 'Riferimenti in gruppi, con palette.' },
+  { id: 'storyboard', name: 'Storyboard', mod: 'storyboard', pv: 'sb', n: 3, desc: 'Scene e inquadrature, con Shot list.' },
+  { id: 'production', name: 'Produzione', mod: 'production', pv: 'pr', n: 4, desc: 'Piano riprese e Troupe. Una per progetto.' },
+];
+const SCEN = {
+  script: { label: 'Importo un copione', mod: 'storyboard', head: 'Ultimo treno', title: 'Dalle scene alle inquadrature', long: 'Con il modulo Storyboard ogni scena diventa una riga di inquadrature da disegnare, con lo Shot list già compilato.', short: '12 scene importate. Con Storyboard diventano inquadrature.' },
+  images: { label: 'Aggiungo 14 immagini', mod: 'moodboard', head: 'Appunti', title: 'Ordinale in una moodboard', long: 'Con il modulo Moodboard le immagini si raccolgono in gruppi con un nome, una nota e la palette dei colori.', short: '14 immagini aggiunte. Con Moodboard le ordini in gruppi.' },
+  shared: { label: 'Apro la Produzione di Sara', mod: 'production', head: 'Produzione · aggiunta da Sara', title: 'Questa board usa il modulo Produzione', long: 'Lo hai spento, quindi non compare nei tuoi menu. Accendilo per pianificare giornate e troupe anche tu.', short: 'Produzione è spento nei tuoi moduli.' },
+};
+const DIR = {
+  A: ['A · Card nella pagina', 'Un riquadro che resta finché non rispondi. Si nota di sicuro, ma occupa spazio e chiede una decisione.'],
+  B: ['B · Solo nei menu', 'Nessun messaggio. I moduli spenti restano nel menu Canvas, attenuati, con «Accendi». Li scopri quando cerchi qualcosa; non ti interrompe mai.'],
+  C: ['C · Avviso breve', 'Una riga sopra la barra, una volta sola per modulo, che sparisce da sola dopo qualche secondo. Come gli avvisi «Annulla» che Inkadra ha già.'],
+};
+const S = { theme: 'dark', dir: 'B', scen: 'script', on: { storyboard: false, production: false, moodboard: false, plan: false }, bar: ['column', 'section'], pop: 'canvas', tool: 'select', closed: {}, toast: '' };
+const extras = () => EXTRA.filter((t) => !t[2] || S.on[t[2]]);
+const tint = (id) => (['note', 'image', 'link', 'todo', 'color', 'table', 'voice', 'map', 'plan'].includes(id) ? 'c-' + id : '');
+
+function content() {
+  if (S.scen === 'script') return `<div class="grid">${[['SC 1', 'EXT. Stazione centrale · notte'], ['SC 2', 'INT. Treno · notte'], ['SC 3', 'EXT. Binario 4 · alba'], ['SC 4', 'INT. Bar della stazione']].map(([n, t]) => `<div class="cd"><b>${n}</b>${t}</div>`).join('')}</div>`;
+  if (S.scen === 'images') return `<div class="grid">${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<div class="im" style="background:linear-gradient(${140 + i * 25}deg,#1E3A4C,${['#E07A3F', '#F2C76E', '#B4302A', '#0c141c'][i % 4]})"></div>`).join('')}</div>`;
+  return `<div class="cal"><b>Giorno 1 · lun 16 nov</b>${[['18:30', 'Luci, fumo e pioggia'], ['20:00', '1B · Figura intera'], ['21:30', 'Cena'], ['00:30', '1A · Campo lunghissimo']].map(([t, x]) => `<div><span>${t}</span>${x}</div>`).join('')}</div>`;
+}
+function hint() {
+  const sc = SCEN[S.scen], m = sc.mod, key = S.dir + S.scen;
+  if (S.on[m]) return `<div class="quiet">${NAME[m]} è acceso: qui non compare niente.</div>`;
+  if (S.closed[key]) return `<div class="quiet">Chiuso. In questo punto non torna.</div>`;
+  if (S.dir === 'A') return `<div class="hcard m-${m}"><div class="ht">${svg(IC[m])}${sc.title}</div><div class="hb">${sc.long}</div><div class="ha"><button class="btn pri" data-enable="${m}">Accendi ${NAME[m]}</button><button class="btn" data-close="${key}">Non ora</button><button class="btn txt" data-close="${key}">Non mostrare più</button></div></div>`;
+  if (S.dir === 'C') return `<div class="snack">${sc.short}<button data-enable="${m}">Accendi</button><button class="x" data-close="${key}" aria-label="Chiudi">✕</button></div>`;
+  return S.scen === 'shared' ? '' : `<div class="quiet">Nessun messaggio. Apri <b>Canvas</b>: ${NAME[m]} è lì, attenuato, con «Accendi».</div>`;
+}
+function stage() {
+  const sc = SCEN[S.scen];
+  const tool = ([id, name]) => `<button class="tool${S.tool === id ? ' on' : ''}" data-tool="${id}" data-tip="${name}" aria-label="${name}">${svg(IC[id], S.tool === id ? '' : tint(id))}</button>`;
+  const pinned = extras().filter((t) => S.bar.includes(t[0]));
+  const types = TYPES.filter((t) => !t.mod || S.on[t.mod] || S.dir === 'B');
+  const dimScript = !S.on.storyboard;
+  const canvas = `<div class="pop canvas"><div class="ph">Nuova board</div><div class="types">${types.map((t) => { const dim = t.mod && !S.on[t.mod];
+      return `<button class="ty${dim ? ' dim' : ''}" ${dim ? `data-enable="${t.mod}"` : `data-make="${t.name}"`}><div class="pv ${t.pv} b-${t.mod || 'base'} m-${t.mod || 'base'}">${'<i></i>'.repeat(t.n)}</div><div class="nm">${svg(IC[t.id], 'm-' + (t.mod || 'base'))}${t.name}</div><div class="ds">${dim ? 'Modulo spento.' : t.desc}</div>${dim ? '<span class="tag">Accendi</span>' : ''}</button>`; }).join('')}</div>
+    ${!dimScript ? `<div class="li" style="margin-top:8px" data-make="Importazione del copione">${svg(IC.script, 'm-storyboard')}Importa un copione…</div>` : ''}</div>`;
+  const more = `<div class="pop more"><div class="ph">Altri strumenti</div>${extras().map((t) => `<div class="li" data-tool="${t[0]}">${svg(IC[t[0]], tint(t[0]))}${t[1]}<button class="pin${S.bar.includes(t[0]) ? ' on' : ''}" data-pin="${t[0]}">${S.bar.includes(t[0]) ? 'Nella barra' : 'Metti nella barra'}</button></div>`).join('')}</div>`;
+  const strip = S.scen === 'shared' && S.dir === 'B' && !S.on.production ? `<div class="strip">${svg(IC.production, 'm-production')}Modulo Produzione spento: puoi leggere questa board.<button class="btn" data-enable="production">Accendi</button></div>` : '';
+  return `<div class="stage"><div class="hd">${svg(IC[S.scen === 'shared' ? 'production' : 'board'], S.scen === 'shared' ? 'm-production' : 'm-base')}${sc.head}</div>${strip}${content()}${hint()}
+    ${S.pop === 'canvas' ? canvas : ''}${S.pop === 'more' ? more : ''}
+    <div class="dock" role="toolbar" aria-label="Aggiungi"><div class="grp">${FIXED.map(tool).join('')}</div><div class="grp">${CORE.map(tool).join('')}</div>${pinned.length ? `<div class="grp">${pinned.map(tool).join('')}</div>` : ''}
+      <div class="grp"><button class="tool${S.pop === 'more' ? ' on' : ''}" data-pop="more" data-tip="Altri strumenti" aria-label="Altri strumenti">${svg(IC.more)}</button></div>
+      <button class="cbtn" data-pop="canvas">${svg(IC.plus)}Canvas</button></div></div>`;
+}
+function render() {
+  const seg = (k, opts) => `<span class="seg">${opts.map(([v, t]) => `<button class="${S[k] === v ? 'on' : ''}" data-set="${k}:${v}">${t}</button>`).join('')}</span>`;
+  const mods = `<span class="seg">${Object.keys(NAME).map((m) => `<button class="${S.on[m] ? 'on' : 'off'}" data-mod="${m}" aria-pressed="${S.on[m]}">${NAME[m]}</button>`).join('')}</span>`;
+  document.getElementById('root').innerHTML = `<div class="row"><b>Suggerimenti</b>${seg('dir', Object.entries(DIR).map(([k, v]) => [k, v[0]]))}</div>
+    <div class="row"><b>Situazione</b>${seg('scen', Object.entries(SCEN).map(([k, v]) => [k, v.label]))}</div>
+    <div class="row"><b>I miei moduli</b>${mods}${seg('theme', [['dark', 'Scuro'], ['light', 'Chiaro']])}</div>
+    <p class="lead"><b>${DIR[S.dir][0]}.</b> ${DIR[S.dir][1]}</p>
+    <div class="app ${S.theme}">${stage()}${S.toast ? `<div class="toast">${S.toast}</div>` : ''}</div>`;
+}
+let timer;
+function toast(t) { S.toast = t; clearTimeout(timer); timer = setTimeout(() => { S.toast = ''; render(); }, 2600); }
+document.addEventListener('click', (e) => {
+  const q = (s) => e.target.closest(s); let el;
+  if ((el = q('[data-set]'))) { const [k, v] = el.dataset.set.split(':'); S[k] = v; S.pop = null; }
+  else if ((el = q('[data-pin]'))) { const t = el.dataset.pin; S.bar = S.bar.includes(t) ? S.bar.filter((x) => x !== t) : [...S.bar, t]; }
+  else if ((el = q('[data-mod]'))) S.on[el.dataset.mod] = !S.on[el.dataset.mod];
+  else if ((el = q('[data-enable]'))) { S.on[el.dataset.enable] = true; toast(`${NAME[el.dataset.enable]} acceso.`); }
+  else if ((el = q('[data-close]'))) S.closed[el.dataset.close] = true;
+  else if ((el = q('[data-make]'))) { S.pop = null; toast(`${el.dataset.make}: qui si crea e si apre.`); }
+  else if ((el = q('[data-pop]'))) S.pop = S.pop === el.dataset.pop ? null : el.dataset.pop;
+  else if ((el = q('[data-tool]'))) { S.tool = el.dataset.tool; S.pop = null; }
+  else if (q('.pop')) return;
+  else if (S.pop) S.pop = null;
+  else return;
+  render();
+});
+render();
+</script>
+</body>
+</html>
