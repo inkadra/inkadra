@@ -30,6 +30,7 @@ import type { CalendarDay } from './ScheduleCalendar.tsx';
 import { clockLabel, scheduleTimes } from './schedule.ts';
 import {
   type BlockLook,
+  offersWhole,
   type ScheduleSource,
   SourceDot,
   type SourceGroup,
@@ -147,12 +148,11 @@ export function ScheduleQueue({
       ...g,
       frames: g.frames.filter((f) => !scheduled.has(`shot:${g.boardId}/${f.id}`)),
       // A scene is offered as a whole until a block plans it (decision 0123).
-      whole: !!onAddScene && !!g.scene && !scheduled.has(`scene:${g.boardId}/${g.scene.id}`),
+      whole: !!onAddScene && offersWhole(g, scheduled),
     }))
     .filter((g) => g.frames.length || g.whole);
   const count = waiting.reduce((sum, g) => sum + g.frames.length + (g.whole ? 1 : 0), 0);
-  const total =
-    totalFrames + (onAddScene ? groups.filter((g) => g.scene && !g.scene.omitted).length : 0);
+  const total = totalFrames + (onAddScene ? groups.filter((g) => g.scene).length : 0);
   const castNames = [
     ...new Map(
       waiting
@@ -627,21 +627,24 @@ export function BlockEditor({
       </div>
       {seen ? (
         <div className="schedule__editor-shot">
-          <span className="schedule__editor-pic" aria-hidden="true">
-            {frame ? (
-              <FramePicture
-                assetId={frame.assetId}
-                aspect={frame.aspect}
-                boardAspect={seen.aspect}
-                strokes={frame.strokes}
-                shapes={frame.shapes}
-                referenceOpacity={frame.referenceOpacity}
-                pixels={200}
-              />
-            ) : (
-              block.type === 'scene' && seen.source && <Icon name="film" size={20} />
-            )}
-          </span>
+          {/* No picture of a storyboard that cannot be read (decision 0123). */}
+          {(frame || seen.source) && (
+            <span className="schedule__editor-pic" aria-hidden="true">
+              {frame ? (
+                <FramePicture
+                  assetId={frame.assetId}
+                  aspect={frame.aspect}
+                  boardAspect={seen.aspect}
+                  strokes={frame.strokes}
+                  shapes={frame.shapes}
+                  referenceOpacity={frame.referenceOpacity}
+                  pixels={200}
+                />
+              ) : (
+                block.type === 'scene' && <Icon name="film" size={20} />
+              )}
+            </span>
+          )}
           <span className="schedule__editor-shot-text">
             <b>
               {seen.dot && <SourceDot color={seen.dot.color} name={seen.dot.name} decorative />}

@@ -8,6 +8,7 @@ import { newScheduleBlock } from './schedule.ts';
 import {
   dayElements,
   lookOf,
+  offersWhole,
   plannedKeys,
   type ScheduleSources,
   storyboardDots,
@@ -104,6 +105,15 @@ describe('blocks across storyboards (decision 0123)', () => {
     const kept = shot('gonexxxxxx', GONE, { shotLabel: '7B' });
     expect(withLabels(kept, read)).toBe(kept);
     expect(withLabels(shot(b.frame.id, B), { ...read, across: false }).shotLabel).toBeUndefined();
+  });
+
+  it('offers a scene as a whole until a block plans it, while it has frames to plan or none', () => {
+    const film = read.groups.find((g) => g.boardId === B && g.scene);
+    if (!film) throw new Error('no scene');
+    expect(offersWhole(film, new Set())).toBe(true);
+    expect(offersWhole(film, new Set([`shot:${B}/${b.frame.id}`]))).toBe(false);
+    expect(offersWhole({ ...film, frames: [] }, new Set())).toBe(true);
+    expect(offersWhole(film, new Set([`scene:${B}/${b.scene.id}`]))).toBe(false);
   });
 
   it('keys planned frames and scenes by board and id', () => {

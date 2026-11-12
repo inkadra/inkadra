@@ -190,6 +190,16 @@ export function dayElements(
   return new Map([...sources.byId].filter(([id]) => boards.has(sources.boardOf.get(id) ?? '')));
 }
 
+/**
+ * Whether the queue offers a scene as a whole (decision 0123, answer 4): until a block plans it,
+ * while it has no frames or some of them wait; a scene the script left out is not offered.
+ */
+export function offersWhole(group: SourceGroup, scheduled: ReadonlySet<string>): boolean {
+  const { scene, frames, boardId } = group;
+  if (!scene || scene.omitted || scheduled.has(`scene:${boardId}/${scene.id}`)) return false;
+  return !frames.length || frames.some((f) => !scheduled.has(`shot:${boardId}/${f.id}`));
+}
+
 /** One key per frame or scene that blocks plan, by board: frames scheduled leave the queue. */
 export function plannedKeys(
   blocks: Iterable<

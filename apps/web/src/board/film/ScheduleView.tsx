@@ -73,6 +73,7 @@ import {
   type BlockLook,
   dayElements,
   lookOf,
+  offersWhole,
   plannedKeys,
   type ScheduleSources,
   useScheduleSources,
@@ -1121,7 +1122,11 @@ export function ScheduleView({
     else if (rect) setPopover({ day: dayId, block: blockId, rect });
   };
 
-  const unscheduled = frames.filter((frame) => !scheduled.has(frameKey(frame.id)));
+  // What waits in the queue: frames, and on the Production board whole scenes (decision 0123).
+  const unscheduled = [
+    ...frames.filter((frame) => !scheduled.has(frameKey(frame.id))),
+    ...(across ? groups.filter((g) => offersWhole(g, scheduled)) : []),
+  ];
   const statusText = staleCount
     ? t('schedule.statusConflict')
     : failedAny
