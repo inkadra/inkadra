@@ -3709,7 +3709,13 @@
       "canvas": "Canvas",
       "dateFormat": "Formato de data",
       "dateFormatHelp": "Cronograma, ordem do dia, PDF, comentários e atividade",
-      "fromBrowser": "Do navegador · {{example}}",
+      "browser": "Do navegador",
+      "followsLanguage": "Segue o idioma · {{example}}",
+      "dateFormats": {
+        "dmy": "Dia / mês / ano",
+        "mdy": "Mês / dia / ano",
+        "ymd": "Ano-mês-dia (ISO)"
+      },
       "timeFormat": "Formato de hora",
       "timeFormatHelp": "Para os horários de chamada e o cronograma de filmagem",
       "clock": {
@@ -5102,7 +5108,12 @@
       "resetHelp": "Marcar todos os tours como por ver.",
       "resetAction": "Repor",
       "adminOnly": "só administradores",
-      "prefs": "Preferências dos tutoriais"
+      "prefs": "Preferências dos tutoriais",
+      "groupCount": "{{seen}} de {{total}}",
+      "filter": "Mostrar",
+      "all": "Todos",
+      "allSeen": "Você viu todos os tours",
+      "allSeenHelp": "Reveja-os quando quiser em “Todos”."
     },
     "groups": {
       "start": "Para começar",

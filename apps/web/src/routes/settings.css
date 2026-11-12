@@ -674,6 +674,14 @@
 .settings-muted {
   color: var(--ink-text-secondary);
 }
+/* Date format: the closed control shows the browser's example muted; the open list has it in
+   the option's description instead. */
+.settings-select-example {
+  color: var(--ink-text-secondary);
+}
+.ink-select__option .settings-select-example {
+  display: none;
+}
 .settings-footnote {
   margin: 0;
   font-size: 12px;
@@ -1110,10 +1118,19 @@
   color: var(--kind-fg, var(--ink-text-secondary));
 }
 
-/* Connected apps → Calendar: the link and its copy button sit in the row's control. */
+/* Connected apps → Calendar: the help takes the row's width; the link and its copy button go on
+   a line of their own, aligned with the text past the 32px tile and the row's 12px gap. */
+.settings-row.calendar-link {
+  flex-wrap: wrap;
+}
+.calendar-link .settings-row__text {
+  flex-basis: calc(100% - 44px);
+}
 .calendar-link .settings-row__control {
-  flex: 1 1 260px;
+  flex: 0 0 calc(100% - 44px);
   flex-wrap: nowrap;
+  max-width: none;
+  margin-left: auto;
 }
 .calendar-link input {
   flex: 1;

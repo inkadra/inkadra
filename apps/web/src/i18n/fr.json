@@ -3709,7 +3709,13 @@
       "canvas": "Canevas",
       "dateFormat": "Format de date",
       "dateFormatHelp": "Plan de travail, feuille de service, PDF, commentaires et activité",
-      "fromBrowser": "Selon le navigateur · {{example}}",
+      "browser": "Selon le navigateur",
+      "followsLanguage": "Suit la langue · {{example}}",
+      "dateFormats": {
+        "dmy": "Jour / mois / année",
+        "mdy": "Mois / jour / année",
+        "ymd": "Année-mois-jour (ISO)"
+      },
       "timeFormat": "Format d’heure",
       "timeFormatHelp": "Pour les heures de convocation et le plan de travail",
       "clock": {
@@ -5102,7 +5108,12 @@
       "resetHelp": "Marquer toutes les visites comme à voir.",
       "resetAction": "Réinitialiser",
       "adminOnly": "admins seulement",
-      "prefs": "Préférences des tutoriels"
+      "prefs": "Préférences des tutoriels",
+      "groupCount": "{{seen}} sur {{total}}",
+      "filter": "Afficher",
+      "all": "Toutes",
+      "allSeen": "Vous avez vu toutes les visites",
+      "allSeenHelp": "Revoyez-les quand vous voulez depuis « Toutes »."
     },
     "groups": {
       "start": "Pour commencer",

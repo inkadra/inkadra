@@ -3709,7 +3709,13 @@
       "canvas": "Canvas",
       "dateFormat": "Date format",
       "dateFormatHelp": "Schedule, call sheet, PDF, comments and activity",
-      "fromBrowser": "From the browser · {{example}}",
+      "browser": "From the browser",
+      "followsLanguage": "Follows the language · {{example}}",
+      "dateFormats": {
+        "dmy": "Day / month / year",
+        "mdy": "Month / day / year",
+        "ymd": "Year-month-day (ISO)"
+      },
       "timeFormat": "Time format",
       "timeFormatHelp": "For call times and the shooting schedule",
       "clock": {
@@ -5102,7 +5108,12 @@
       "resetHelp": "Mark every tour as not seen.",
       "resetAction": "Reset",
       "adminOnly": "admins only",
-      "prefs": "Tutorial preferences"
+      "prefs": "Tutorial preferences",
+      "groupCount": "{{seen}} of {{total}}",
+      "filter": "Show",
+      "all": "All",
+      "allSeen": "You have seen every tour",
+      "allSeenHelp": "Replay any of them from “All”."
     },
     "groups": {
       "start": "Getting started",

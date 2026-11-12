@@ -3709,7 +3709,13 @@
       "canvas": "Canvas",
       "dateFormat": "Formato data",
       "dateFormatHelp": "Piano riprese, foglio di lavorazione, PDF, commenti e attività",
-      "fromBrowser": "Dal browser · {{example}}",
+      "browser": "Dal browser",
+      "followsLanguage": "Segue la lingua · {{example}}",
+      "dateFormats": {
+        "dmy": "Giorno / mese / anno",
+        "mdy": "Mese / giorno / anno",
+        "ymd": "Anno-mese-giorno (ISO)"
+      },
       "timeFormat": "Formato ora",
       "timeFormatHelp": "Per orari di convocazione e piano riprese",
       "clock": {
@@ -5102,7 +5108,12 @@
       "resetHelp": "Segna tutti i giri come da vedere.",
       "resetAction": "Ripristina",
       "adminOnly": "solo admin",
-      "prefs": "Preferenze dei tutorial"
+      "prefs": "Preferenze dei tutorial",
+      "groupCount": "{{seen}} di {{total}}",
+      "filter": "Mostra",
+      "all": "Tutti",
+      "allSeen": "Hai visto tutti i giri",
+      "allSeenHelp": "Puoi rivederli quando vuoi da «Tutti»."
     },
     "groups": {
       "start": "Per iniziare",
