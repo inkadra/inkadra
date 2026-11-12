@@ -195,13 +195,13 @@ export function circuitNames(
 
 /**
  * The power per circuit of a plan for the call sheet, the scene sheets, the PDF sheet and the
- * read-only view: computed from the lights every time, never stored. Null without lights that
- * draw power.
+ * read-only view: computed from the lights every time, never stored, in the app's language
+ * (`locale`, required: the host's is not the app's). Null without lights that draw power.
  */
 export function powerLines(
   plan: Pick<PlanElement, 'icons' | 'hiddenLayers' | 'circuits' | 'voltage'>,
   t: Words,
-  locale?: string,
+  locale: string,
 ): PowerLines | null {
   const power = planPower(plan);
   if (power.watts <= 0) return null;

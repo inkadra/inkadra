@@ -412,7 +412,7 @@ export function PlanProperties({
   );
   const baseOf = (icon: PlanIcon) => (icon.on ? icons.find((i) => i.id === icon.on) : undefined);
   // "Dolly on track", as the mockup's Support field; Elements says how long the track is.
-  const supportName = (base: PlanIcon) => supportText(base, icons, t);
+  const supportName = (base: PlanIcon) => supportText(base, icons, t, undefined, lang);
   /** "On Stool · Detach": where an attached icon sits. */
   const onRow = (icon: PlanIcon) => {
     const base = baseOf(icon);

@@ -117,9 +117,31 @@ describe('rows as the mockup lists them (decision 0117)', () => {
 
   it('says a dolly on a track with its length', () => {
     expect(supportText(dolly, icons, t, 70, 'en')).toBe('Dolly on 4 m track');
-    expect(supportText(dolly, icons, t)).toBe('Dolly on track');
+    expect(supportText(dolly, icons, t, undefined, 'en')).toBe('Dolly on track');
     expect(itemSummary(cam, icons, t, { scale: 70, locale: 'en' })).toBe(
       '32 mm · Dolly on 4 m track',
     );
+  });
+
+  it("writes a track's length in the app language, not the machine one", () => {
+    // The machine writes numbers in English; the app is in Italian.
+    const own = Number.prototype.toLocaleString;
+    const spy = vi.spyOn(Number.prototype, 'toLocaleString').mockImplementation(function (
+      this: number,
+      locale,
+      options,
+    ) {
+      return own.call(this, locale ?? 'en-US', options);
+    });
+    try {
+      const long = { ...track, w: 315 };
+      const on = [long, dolly];
+      expect(supportText(dolly, on, t, 70, 'it')).toBe('Dolly on 4,5 m track');
+      // The locale is required: the host's is not the app's (the Android app runs on Hermes).
+      // @ts-expect-error no locale
+      supportText(dolly, on, t, 70);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
