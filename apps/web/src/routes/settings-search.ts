@@ -8,7 +8,6 @@ import type {
 import { SHOT_CATALOG_KEYS, type ShotCatalogKey, shotOptionLabel } from '@inkadra/shared';
 import type { IconName } from '@inkadra/ui';
 import { formatDateTime } from '../lib/datetime.ts';
-import { formatStorage } from './StorageCharts.tsx';
 import type { Tour } from '../tutorial/tours.ts';
 import {
   anchorHref,
@@ -17,6 +16,7 @@ import {
   type SettingsPage,
   settingPage,
 } from './settings-sections.ts';
+import { formatStorage } from './StorageCharts.tsx';
 
 /** Looks up a translation, in the interface language or in the one given (`lng`). */
 export type SettingsTranslate = (key: string, options?: Record<string, string>) => string;

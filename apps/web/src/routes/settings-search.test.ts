@@ -21,7 +21,7 @@ async function translator(language: 'it' | 'en') {
     lng: language,
     resources: { en: { translation: en }, it: { translation: itLocale } },
   });
-  return (key: string, options?: { lng: string }) => i18n.t(key, options);
+  return (key: string, options?: Record<string, string>) => i18n.t(key, options);
 }
 
 async function finder(language: 'it' | 'en') {
@@ -229,11 +229,7 @@ describe('searching the data', () => {
         '/settings?section=classifications&setting=classification%3Atags%3Aant',
       ],
       ['reports', 'report:r1', '/settings?section=reports&setting=report%3Ar1'],
-      [
-        'settings',
-        'usage:u1',
-        '/settings?section=workspace&setting=workspace.byUser%3Au1',
-      ],
+      ['settings', 'usage:u1', '/settings?section=workspace&setting=workspace.byUser%3Au1'],
     ]);
     // Usage per person (#708): the space with its previews, on Storage.
     expect(found.find((r) => r.key === 'usage:u1')).toMatchObject({
