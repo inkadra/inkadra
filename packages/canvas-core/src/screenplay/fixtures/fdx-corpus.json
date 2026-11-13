@@ -1,0 +1,1386 @@
+[
+  {
+    "id": "last-train",
+    "name": "last-train.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\n  <Content>\n    <Paragraph Type=\"Scene Heading\" Number=\"1\">\n      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\n        <Summary>\n          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\n        </Summary>\n      </SceneProperties>\n      <Text>EXT. CENTRAL STATION - NIGHT</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\">\n      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\n    </Paragraph>\n    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\n    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\n    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\n    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"2\">\n      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\n    <Paragraph>\n      <DualDialogue>\n        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\n        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\n      </DualDialogue>\n    </Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"3\">\n      <Text>EXT. PLATFORM 4 - DAWN</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\n  </Content>\n  <TitlePage>\n    <Content>\n      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\n    </Content>\n  </TitlePage>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {
+          "title": "LAST TRAIN",
+          "credit": "written by",
+          "author": "Nora Vidal"
+        },
+        "scenes": [
+          {
+            "heading": "EXT. CENTRAL STATION - NIGHT",
+            "setting": "ext",
+            "time": "night",
+            "location": "CENTRAL STATION",
+            "blocks": [
+              {
+                "kind": "synopsis",
+                "text": "Mara misses the last train and meets Leo."
+              },
+              {
+                "kind": "action",
+                "text": "Rain hammers the glass roof. MARA runs across the empty concourse."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "(out of breath)",
+                    "parenthetical": true
+                  },
+                  {
+                    "text": "No. No, no, no."
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "extension": "(O.S.)",
+                "lines": [
+                  {
+                    "text": "It left four minutes early."
+                  }
+                ]
+              },
+              {
+                "kind": "action",
+                "text": "CLOSE ON THE DEPARTURES BOARD"
+              },
+              {
+                "kind": "transition",
+                "text": "CUT TO:"
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "1"
+          },
+          {
+            "heading": "INT. GUARD BOOTH - CONTINUOUS",
+            "setting": "int",
+            "location": "GUARD BOOTH",
+            "extra": "CONTINUOUS",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "A tiny room: a heater, a radio, a chessboard mid-game."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "Is there a bus?"
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "lines": [
+                  {
+                    "text": "There is me, and there is tea."
+                  }
+                ]
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "2"
+          },
+          {
+            "heading": "EXT. PLATFORM 4 - DAWN",
+            "setting": "ext",
+            "time": "dawn",
+            "location": "PLATFORM 4",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "The first train glides in, empty and gold in the low sun."
+              }
+            ],
+            "characters": [],
+            "number": "3"
+          }
+        ],
+        "characters": ["MARA", "LEO"],
+        "title": "LAST TRAIN"
+      }
+    }
+  },
+  {
+    "id": "last-train-crlf",
+    "name": "last-train-crlf.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\r\n<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\r\n  <Content>\r\n    <Paragraph Type=\"Scene Heading\" Number=\"1\">\r\n      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\r\n        <Summary>\r\n          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\r\n        </Summary>\r\n      </SceneProperties>\r\n      <Text>EXT. CENTRAL STATION - NIGHT</Text>\r\n    </Paragraph>\r\n    <Paragraph Type=\"Action\">\r\n      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\r\n    </Paragraph>\r\n    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\r\n    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\r\n    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\r\n    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\r\n    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\r\n    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\r\n    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\r\n    <Paragraph Type=\"Scene Heading\" Number=\"2\">\r\n      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\r\n    </Paragraph>\r\n    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\r\n    <Paragraph>\r\n      <DualDialogue>\r\n        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\r\n        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\r\n        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\r\n        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\r\n      </DualDialogue>\r\n    </Paragraph>\r\n    <Paragraph Type=\"Scene Heading\" Number=\"3\">\r\n      <Text>EXT. PLATFORM 4 - DAWN</Text>\r\n    </Paragraph>\r\n    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\r\n  </Content>\r\n  <TitlePage>\r\n    <Content>\r\n      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\r\n      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\r\n      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\r\n    </Content>\r\n  </TitlePage>\r\n</FinalDraft>\r\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {
+          "title": "LAST TRAIN",
+          "credit": "written by",
+          "author": "Nora Vidal"
+        },
+        "scenes": [
+          {
+            "heading": "EXT. CENTRAL STATION - NIGHT",
+            "setting": "ext",
+            "time": "night",
+            "location": "CENTRAL STATION",
+            "blocks": [
+              {
+                "kind": "synopsis",
+                "text": "Mara misses the last train and meets Leo."
+              },
+              {
+                "kind": "action",
+                "text": "Rain hammers the glass roof. MARA runs across the empty concourse."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "(out of breath)",
+                    "parenthetical": true
+                  },
+                  {
+                    "text": "No. No, no, no."
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "extension": "(O.S.)",
+                "lines": [
+                  {
+                    "text": "It left four minutes early."
+                  }
+                ]
+              },
+              {
+                "kind": "action",
+                "text": "CLOSE ON THE DEPARTURES BOARD"
+              },
+              {
+                "kind": "transition",
+                "text": "CUT TO:"
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "1"
+          },
+          {
+            "heading": "INT. GUARD BOOTH - CONTINUOUS",
+            "setting": "int",
+            "location": "GUARD BOOTH",
+            "extra": "CONTINUOUS",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "A tiny room: a heater, a radio, a chessboard mid-game."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "Is there a bus?"
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "lines": [
+                  {
+                    "text": "There is me, and there is tea."
+                  }
+                ]
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "2"
+          },
+          {
+            "heading": "EXT. PLATFORM 4 - DAWN",
+            "setting": "ext",
+            "time": "dawn",
+            "location": "PLATFORM 4",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "The first train glides in, empty and gold in the low sun."
+              }
+            ],
+            "characters": [],
+            "number": "3"
+          }
+        ],
+        "characters": ["MARA", "LEO"],
+        "title": "LAST TRAIN"
+      }
+    }
+  },
+  {
+    "id": "last-train-cr",
+    "name": "last-train-cr.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\r<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\r  <Content>\r    <Paragraph Type=\"Scene Heading\" Number=\"1\">\r      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\r        <Summary>\r          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\r        </Summary>\r      </SceneProperties>\r      <Text>EXT. CENTRAL STATION - NIGHT</Text>\r    </Paragraph>\r    <Paragraph Type=\"Action\">\r      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\r    </Paragraph>\r    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\r    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\r    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\r    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\r    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\r    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\r    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\r    <Paragraph Type=\"Scene Heading\" Number=\"2\">\r      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\r    </Paragraph>\r    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\r    <Paragraph>\r      <DualDialogue>\r        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\r        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\r        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\r        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\r      </DualDialogue>\r    </Paragraph>\r    <Paragraph Type=\"Scene Heading\" Number=\"3\">\r      <Text>EXT. PLATFORM 4 - DAWN</Text>\r    </Paragraph>\r    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\r  </Content>\r  <TitlePage>\r    <Content>\r      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\r      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\r      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\r    </Content>\r  </TitlePage>\r</FinalDraft>\r",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {
+          "title": "LAST TRAIN",
+          "credit": "written by",
+          "author": "Nora Vidal"
+        },
+        "scenes": [
+          {
+            "heading": "EXT. CENTRAL STATION - NIGHT",
+            "setting": "ext",
+            "time": "night",
+            "location": "CENTRAL STATION",
+            "blocks": [
+              {
+                "kind": "synopsis",
+                "text": "Mara misses the last train and meets Leo."
+              },
+              {
+                "kind": "action",
+                "text": "Rain hammers the glass roof. MARA runs across the empty concourse."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "(out of breath)",
+                    "parenthetical": true
+                  },
+                  {
+                    "text": "No. No, no, no."
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "extension": "(O.S.)",
+                "lines": [
+                  {
+                    "text": "It left four minutes early."
+                  }
+                ]
+              },
+              {
+                "kind": "action",
+                "text": "CLOSE ON THE DEPARTURES BOARD"
+              },
+              {
+                "kind": "transition",
+                "text": "CUT TO:"
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "1"
+          },
+          {
+            "heading": "INT. GUARD BOOTH - CONTINUOUS",
+            "setting": "int",
+            "location": "GUARD BOOTH",
+            "extra": "CONTINUOUS",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "A tiny room: a heater, a radio, a chessboard mid-game."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "Is there a bus?"
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "lines": [
+                  {
+                    "text": "There is me, and there is tea."
+                  }
+                ]
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "2"
+          },
+          {
+            "heading": "EXT. PLATFORM 4 - DAWN",
+            "setting": "ext",
+            "time": "dawn",
+            "location": "PLATFORM 4",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "The first train glides in, empty and gold in the low sun."
+              }
+            ],
+            "characters": [],
+            "number": "3"
+          }
+        ],
+        "characters": ["MARA", "LEO"],
+        "title": "LAST TRAIN"
+      }
+    }
+  },
+  {
+    "id": "last-train-bom",
+    "name": "last-train-bom.fdx",
+    "text": "﻿<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\n  <Content>\n    <Paragraph Type=\"Scene Heading\" Number=\"1\">\n      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\n        <Summary>\n          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\n        </Summary>\n      </SceneProperties>\n      <Text>EXT. CENTRAL STATION - NIGHT</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\">\n      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\n    </Paragraph>\n    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\n    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\n    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\n    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"2\">\n      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\n    <Paragraph>\n      <DualDialogue>\n        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\n        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\n      </DualDialogue>\n    </Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"3\">\n      <Text>EXT. PLATFORM 4 - DAWN</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\n  </Content>\n  <TitlePage>\n    <Content>\n      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\n    </Content>\n  </TitlePage>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {
+          "title": "LAST TRAIN",
+          "credit": "written by",
+          "author": "Nora Vidal"
+        },
+        "scenes": [
+          {
+            "heading": "EXT. CENTRAL STATION - NIGHT",
+            "setting": "ext",
+            "time": "night",
+            "location": "CENTRAL STATION",
+            "blocks": [
+              {
+                "kind": "synopsis",
+                "text": "Mara misses the last train and meets Leo."
+              },
+              {
+                "kind": "action",
+                "text": "Rain hammers the glass roof. MARA runs across the empty concourse."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "(out of breath)",
+                    "parenthetical": true
+                  },
+                  {
+                    "text": "No. No, no, no."
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "extension": "(O.S.)",
+                "lines": [
+                  {
+                    "text": "It left four minutes early."
+                  }
+                ]
+              },
+              {
+                "kind": "action",
+                "text": "CLOSE ON THE DEPARTURES BOARD"
+              },
+              {
+                "kind": "transition",
+                "text": "CUT TO:"
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "1"
+          },
+          {
+            "heading": "INT. GUARD BOOTH - CONTINUOUS",
+            "setting": "int",
+            "location": "GUARD BOOTH",
+            "extra": "CONTINUOUS",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "A tiny room: a heater, a radio, a chessboard mid-game."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "Is there a bus?"
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "lines": [
+                  {
+                    "text": "There is me, and there is tea."
+                  }
+                ]
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "2"
+          },
+          {
+            "heading": "EXT. PLATFORM 4 - DAWN",
+            "setting": "ext",
+            "time": "dawn",
+            "location": "PLATFORM 4",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "The first train glides in, empty and gold in the low sun."
+              }
+            ],
+            "characters": [],
+            "number": "3"
+          }
+        ],
+        "characters": ["MARA", "LEO"],
+        "title": "LAST TRAIN"
+      }
+    }
+  },
+  {
+    "id": "no-declaration",
+    "name": "no-declaration.fdx",
+    "text": "<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\n  <Content>\n    <Paragraph Type=\"Scene Heading\" Number=\"1\">\n      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\n        <Summary>\n          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\n        </Summary>\n      </SceneProperties>\n      <Text>EXT. CENTRAL STATION - NIGHT</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\">\n      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\n    </Paragraph>\n    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\n    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\n    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\n    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"2\">\n      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\n    <Paragraph>\n      <DualDialogue>\n        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\n        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\n      </DualDialogue>\n    </Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"3\">\n      <Text>EXT. PLATFORM 4 - DAWN</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\n  </Content>\n  <TitlePage>\n    <Content>\n      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\n    </Content>\n  </TitlePage>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {
+          "title": "LAST TRAIN",
+          "credit": "written by",
+          "author": "Nora Vidal"
+        },
+        "scenes": [
+          {
+            "heading": "EXT. CENTRAL STATION - NIGHT",
+            "setting": "ext",
+            "time": "night",
+            "location": "CENTRAL STATION",
+            "blocks": [
+              {
+                "kind": "synopsis",
+                "text": "Mara misses the last train and meets Leo."
+              },
+              {
+                "kind": "action",
+                "text": "Rain hammers the glass roof. MARA runs across the empty concourse."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "(out of breath)",
+                    "parenthetical": true
+                  },
+                  {
+                    "text": "No. No, no, no."
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "extension": "(O.S.)",
+                "lines": [
+                  {
+                    "text": "It left four minutes early."
+                  }
+                ]
+              },
+              {
+                "kind": "action",
+                "text": "CLOSE ON THE DEPARTURES BOARD"
+              },
+              {
+                "kind": "transition",
+                "text": "CUT TO:"
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "1"
+          },
+          {
+            "heading": "INT. GUARD BOOTH - CONTINUOUS",
+            "setting": "int",
+            "location": "GUARD BOOTH",
+            "extra": "CONTINUOUS",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "A tiny room: a heater, a radio, a chessboard mid-game."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "Is there a bus?"
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "lines": [
+                  {
+                    "text": "There is me, and there is tea."
+                  }
+                ]
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "2"
+          },
+          {
+            "heading": "EXT. PLATFORM 4 - DAWN",
+            "setting": "ext",
+            "time": "dawn",
+            "location": "PLATFORM 4",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "The first train glides in, empty and gold in the low sun."
+              }
+            ],
+            "characters": [],
+            "number": "3"
+          }
+        ],
+        "characters": ["MARA", "LEO"],
+        "title": "LAST TRAIN"
+      }
+    }
+  },
+  {
+    "id": "entities",
+    "name": "entities.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Scene Heading\" Number=\"1&amp;2\"><Text>INT. CAF&#201; &amp; BAR &#x2013; NIGHT</Text></Paragraph>\n<Paragraph Type=\"Action\"><Text>Tom says &quot;hi&quot; &lt;loudly&gt; &apos;now&apos; &#128512; &#x1F600;</Text></Paragraph>\n<Paragraph Type=\"Character\"><Text>JOS&#xC9;</Text></Paragraph>\n<Paragraph Type=\"Dialogue\"><Text>Fish &amp; chips.</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. CAFÉ & BAR – NIGHT",
+            "setting": "int",
+            "time": "night",
+            "location": "CAFÉ & BAR",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "Tom says \"hi\" <loudly> 'now' 😀 😀"
+              },
+              {
+                "kind": "dialogue",
+                "character": "JOSÉ",
+                "lines": [
+                  {
+                    "text": "Fish & chips."
+                  }
+                ]
+              }
+            ],
+            "characters": ["JOSÉ"],
+            "number": "1&2"
+          }
+        ],
+        "characters": ["JOSÉ"]
+      }
+    }
+  },
+  {
+    "id": "cdata",
+    "name": "cdata.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Scene Heading\"><Text><![CDATA[EXT. ROOF & <TOP> - DAY]]></Text></Paragraph>\n<Paragraph Type=\"Action\"><Text><![CDATA[a < b && c]]> and <![CDATA[]]>more</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "EXT. ROOF & <TOP> - DAY",
+            "setting": "ext",
+            "time": "day",
+            "location": "ROOF & <TOP>",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "a < b && c and more"
+              }
+            ],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "comments-and-pis",
+    "name": "comments-and-pis.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<!-- a comment before -->\n<Paragraph Type=\"Scene Heading\"><!-- inside --><Text>INT. HALL - DAY</Text><?fd keep?></Paragraph>\n<Paragraph Type=\"Action\"><Text>One <!-- gone -->two</Text><?pi x?><Text> three</Text></Paragraph>\n<?processing instruction?>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. HALL - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "HALL",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "One two three"
+              }
+            ],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "multiline-text",
+    "name": "multiline-text.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Scene Heading\"><Text>INT. KITCHEN\n - NIGHT</Text></Paragraph>\n<Paragraph Type=\"Action\"><Text>Line one\r\nline two\rline three\n\tindented</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. KITCHEN\n - NIGHT",
+            "setting": "int",
+            "time": "night",
+            "location": "KITCHEN",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "Line one\nline two\nline three\n indented"
+              }
+            ],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "attribute-whitespace",
+    "name": "attribute-whitespace.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type = 'Scene\tHeading' Number=\" 7 \n\"><Text>EXT. FIELD - DAY</Text></Paragraph>\n<Paragraph Type=\"Scene\nHeading\"><Text>INT. BARN - NIGHT</Text></Paragraph>\n<Paragraph  Type=\"Action\"\n   Extra=\"&#10;x&#9;y\" ><Text>Hay.</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "EXT. FIELD - DAY",
+            "setting": "ext",
+            "time": "day",
+            "location": "FIELD",
+            "blocks": [],
+            "characters": [],
+            "number": "7"
+          },
+          {
+            "heading": "INT. BARN - NIGHT",
+            "setting": "int",
+            "time": "night",
+            "location": "BARN",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "Hay."
+              }
+            ],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "self-closing-and-empty",
+    "name": "self-closing-and-empty.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Scene Heading\"><Text>INT. VOID - DAY</Text></Paragraph>\n<Paragraph Type=\"Action\"/>\n<Paragraph Type=\"Action\"><Text/></Paragraph>\n<Paragraph Type=\"Action\"><Text></Text><Text>Only this.</Text></Paragraph>\n<Paragraph Type=\"Scene Heading\"><Text>   </Text></Paragraph>\n<Paragraph/>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. VOID - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "VOID",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "Only this."
+              }
+            ],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "default-namespace",
+    "name": "default-namespace.fdx",
+    "text": "<?xml version=\"1.0\"?><FinalDraft xmlns=\"urn:fd\" Version=\"5\"><Content><Paragraph Type=\"Scene Heading\"><Text>INT. NS - DAY</Text></Paragraph><Paragraph Type=\"Action\"><Text>Namespaced.</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. NS - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "NS",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "Namespaced."
+              }
+            ],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "no-type-and-unknown-types",
+    "name": "no-type-and-unknown-types.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Scene Heading\" Number=\"  12A  \"><Text>INT. OFFICE - DAY</Text></Paragraph>\n<Paragraph><Text>No type is action.</Text></Paragraph>\n<Paragraph Type=\"Shot\"><Text>ANGLE ON DESK</Text></Paragraph>\n<Paragraph Type=\"General\"><Text>General text.</Text></Paragraph>\n<Paragraph Type=\"Cast List\"><Text>MARA, LEO</Text></Paragraph>\n<Paragraph Type=\"New Act\"><Text>ACT TWO</Text></Paragraph>\n<Paragraph Type=\"Scene Heading\"><Text>EXT. STREET - NIGHT</Text></Paragraph>\n<Paragraph Type=\"Parenthetical\"><Text>(alone)</Text></Paragraph>\n<Paragraph Type=\"Dialogue\"><Text>Orphan dialogue.</Text></Paragraph>\n<Paragraph Type=\"Character\"><Text>MARA (V.O.)</Text></Paragraph>\n<Paragraph Type=\"Parenthetical\"><Text>(quiet)</Text></Paragraph>\n<Paragraph Type=\"Dialogue\"><Text>Hello.</Text></Paragraph>\n<Paragraph Type=\"Transition\"><Text>FADE OUT.</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. OFFICE - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "OFFICE",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "No type is action."
+              },
+              {
+                "kind": "action",
+                "text": "ANGLE ON DESK"
+              },
+              {
+                "kind": "action",
+                "text": "General text."
+              }
+            ],
+            "characters": [],
+            "number": "12A"
+          },
+          {
+            "heading": "EXT. STREET - NIGHT",
+            "setting": "ext",
+            "time": "night",
+            "location": "STREET",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "(alone)"
+              },
+              {
+                "kind": "action",
+                "text": "Orphan dialogue."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "extension": "(V.O.)",
+                "lines": [
+                  {
+                    "text": "(quiet)",
+                    "parenthetical": true
+                  },
+                  {
+                    "text": "Hello."
+                  }
+                ]
+              },
+              {
+                "kind": "transition",
+                "text": "FADE OUT."
+              }
+            ],
+            "characters": ["MARA"],
+            "section": "ACT TWO"
+          }
+        ],
+        "characters": ["MARA"]
+      }
+    }
+  },
+  {
+    "id": "prelude-and-nesting",
+    "name": "prelude-and-nesting.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text>Cold open before any heading.</Text></Paragraph>\n<Paragraph Type=\"Scene Heading\"><SceneProperties><Summary><Paragraph><Text>First</Text></Paragraph><Paragraph><Text>Second</Text><Paragraph><Text>Nested</Text></Paragraph></Paragraph></Summary></SceneProperties><Text>INT. ATTIC - DAWN</Text></Paragraph>\n<Paragraph><DualDialogue><Paragraph Type=\"Character\"><Text>A</Text></Paragraph><Paragraph Type=\"Dialogue\"><Text>One.</Text></Paragraph><Other/><Paragraph Type=\"Character\"><Text>B</Text></Paragraph><Paragraph Type=\"Dialogue\"><Text>Two.</Text></Paragraph></DualDialogue></Paragraph>\n<Wrapper><Paragraph Type=\"Action\"><Text>Not a direct paragraph: skipped.</Text></Paragraph></Wrapper>\n<Paragraph Type=\"Action\"><Text>Run <Style>with child</Style> text</Text><Note>ignored</Note></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "",
+            "prelude": true,
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "Cold open before any heading."
+              }
+            ],
+            "characters": []
+          },
+          {
+            "heading": "INT. ATTIC - DAWN",
+            "setting": "int",
+            "time": "dawn",
+            "location": "ATTIC",
+            "blocks": [
+              {
+                "kind": "synopsis",
+                "text": "First"
+              },
+              {
+                "kind": "synopsis",
+                "text": "Second"
+              },
+              {
+                "kind": "synopsis",
+                "text": "Nested"
+              },
+              {
+                "kind": "dialogue",
+                "character": "A",
+                "lines": [
+                  {
+                    "text": "One."
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "B",
+                "lines": [
+                  {
+                    "text": "Two."
+                  }
+                ]
+              },
+              {
+                "kind": "action",
+                "text": "Run with child text"
+              }
+            ],
+            "characters": ["A", "B"]
+          }
+        ],
+        "characters": ["A", "B"]
+      }
+    }
+  },
+  {
+    "id": "title-page",
+    "name": "title-page.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Scene Heading\"><Text>INT. ROOM - DAY</Text></Paragraph>\n</Content>\n<TitlePage><Content><Paragraph><Text>THE &amp; TITLE</Text></Paragraph><Paragraph><Text></Text></Paragraph><Paragraph><Text>Written by</Text></Paragraph><Paragraph><Text>Ann &lt;Lee&gt;</Text></Paragraph><Paragraph><Text>Draft 3</Text></Paragraph></Content></TitlePage>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {
+          "title": "THE & TITLE",
+          "credit": "Written by",
+          "author": "Ann <Lee>"
+        },
+        "scenes": [
+          {
+            "heading": "INT. ROOM - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "ROOM",
+            "blocks": [],
+            "characters": []
+          }
+        ],
+        "characters": [],
+        "title": "THE & TITLE"
+      }
+    }
+  },
+  {
+    "id": "unicode-and-invisible",
+    "name": "unicode-and-invisible.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Scene Heading\"><Text>INT. CASA DI MARA – NOTTE</Text></Paragraph>\n<Paragraph Type=\"Action\"><Text>Già​ più tardi  —  fine.﻿</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. CASA DI MARA – NOTTE",
+            "setting": "int",
+            "time": "night",
+            "location": "CASA DI MARA",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "Già più tardi — fine."
+              }
+            ],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "content-missing",
+    "name": "content-missing.fdx",
+    "text": "<?xml version=\"1.0\"?><FinalDraft Version=\"5\"><TitlePage/></FinalDraft>",
+    "expected": {
+      "error": "empty"
+    }
+  },
+  {
+    "id": "two-content",
+    "name": "two-content.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content><Content><Paragraph Type=\"Scene Heading\"><Text>INT. B - DAY</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. A - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "A",
+            "blocks": [],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "doctype",
+    "name": "doctype.fdx",
+    "text": "<?xml version=\"1.0\"?><!DOCTYPE FinalDraft><FinalDraft/>",
+    "expected": {
+      "error": "unsafe"
+    }
+  },
+  {
+    "id": "entity-declaration",
+    "name": "entity-declaration.fdx",
+    "text": "<FinalDraft><!ENTITY x \"y\"><Content/></FinalDraft>",
+    "expected": {
+      "error": "unsafe"
+    }
+  },
+  {
+    "id": "unclosed",
+    "name": "unclosed.fdx",
+    "text": "<FinalDraft><Content>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "wrong-root",
+    "name": "wrong-root.fdx",
+    "text": "<other/>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "mismatched",
+    "name": "mismatched.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Contents></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "unknown-entity",
+    "name": "unknown-entity.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text>caf&eacute;</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "bare-ampersand",
+    "name": "bare-ampersand.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text>Fish & chips</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "bad-char-ref",
+    "name": "bad-char-ref.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text>nul &#0; here</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "surrogate-char-ref",
+    "name": "surrogate-char-ref.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text>half &#xD800; here</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "control-character",
+    "name": "control-character.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text>bell \u0007 here</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "lt-in-attribute",
+    "name": "lt-in-attribute.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=\"a<b\"><Text>x</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "duplicate-attribute",
+    "name": "duplicate-attribute.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=\"Action\" Type=\"Action\"><Text>x</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "unquoted-attribute",
+    "name": "unquoted-attribute.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=Action><Text>x</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "no-space-between-attributes",
+    "name": "no-space-between-attributes.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=\"Action\"Number=\"1\"><Text>x</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "text-after-root",
+    "name": "text-after-root.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content></FinalDraft>junk",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "second-root",
+    "name": "second-root.fdx",
+    "text": "<FinalDraft><Content><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content></FinalDraft><FinalDraft/>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "text-before-root",
+    "name": "text-before-root.fdx",
+    "text": "junk<FinalDraft><Content><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "whitespace-before-declaration",
+    "name": "whitespace-before-declaration.fdx",
+    "text": "  <?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\n  <Content>\n    <Paragraph Type=\"Scene Heading\" Number=\"1\">\n      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\n        <Summary>\n          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\n        </Summary>\n      </SceneProperties>\n      <Text>EXT. CENTRAL STATION - NIGHT</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\">\n      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\n    </Paragraph>\n    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\n    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\n    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\n    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"2\">\n      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\n    <Paragraph>\n      <DualDialogue>\n        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\n        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\n      </DualDialogue>\n    </Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"3\">\n      <Text>EXT. PLATFORM 4 - DAWN</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\n  </Content>\n  <TitlePage>\n    <Content>\n      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\n    </Content>\n  </TitlePage>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "declaration-twice",
+    "name": "declaration-twice.fdx",
+    "text": "<?xml version=\"1.0\"?>\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\n  <Content>\n    <Paragraph Type=\"Scene Heading\" Number=\"1\">\n      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\n        <Summary>\n          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\n        </Summary>\n      </SceneProperties>\n      <Text>EXT. CENTRAL STATION - NIGHT</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\">\n      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\n    </Paragraph>\n    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\n    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\n    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\n    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"2\">\n      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\n    <Paragraph>\n      <DualDialogue>\n        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\n        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\n      </DualDialogue>\n    </Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"3\">\n      <Text>EXT. PLATFORM 4 - DAWN</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\n  </Content>\n  <TitlePage>\n    <Content>\n      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\n    </Content>\n  </TitlePage>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "double-dash-comment",
+    "name": "double-dash-comment.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<!-- a -- b --><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "unclosed-comment",
+    "name": "unclosed-comment.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<!-- open <Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "unclosed-cdata",
+    "name": "unclosed-cdata.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text><![CDATA[open</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "cdata-end-in-text",
+    "name": "cdata-end-in-text.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<Paragraph Type=\"Action\"><Text>a ]]> b</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "cdata-outside-root",
+    "name": "cdata-outside-root.fdx",
+    "text": "<![CDATA[x]]><FinalDraft><Content><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "bad-name",
+    "name": "bad-name.fdx",
+    "text": "<FinalDraft><Content><1Paragraph/><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "xml-pi-in-body",
+    "name": "xml-pi-in-body.fdx",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<FinalDraft DocumentType=\"Script\" Version=\"5\">\n<Content>\n<?xml version=\"1.0\"?><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph>\n</Content>\n</FinalDraft>\n",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "undeclared-prefix",
+    "name": "undeclared-prefix.fdx",
+    "text": "<FinalDraft><Content><fd:Paragraph Type=\"Action\"><Text>x</Text></fd:Paragraph><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "end-tag-space",
+    "name": "end-tag-space.fdx",
+    "text": "<FinalDraft ><Content ><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content ></FinalDraft\n>",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. A - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "A",
+            "blocks": [],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  },
+  {
+    "id": "empty",
+    "name": "empty.fdx",
+    "text": "",
+    "expected": {
+      "error": "invalid"
+    }
+  },
+  {
+    "id": "misnamed-txt-xml",
+    "name": "script.txt",
+    "text": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n<FinalDraft DocumentType=\"Script\" Template=\"No\" Version=\"5\">\n  <Content>\n    <Paragraph Type=\"Scene Heading\" Number=\"1\">\n      <SceneProperties Length=\"1\" Page=\"1\" Title=\"\">\n        <Summary>\n          <Paragraph Alignment=\"Left\"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>\n        </Summary>\n      </SceneProperties>\n      <Text>EXT. CENTRAL STATION - NIGHT</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\">\n      <Text>Rain hammers the glass roof. </Text><Text Style=\"Bold\">MARA</Text><Text> runs across the empty concourse.</Text>\n    </Paragraph>\n    <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n    <Paragraph Type=\"Parenthetical\"><Text>(out of breath)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>No. No, no, no.</Text></Paragraph>\n    <Paragraph Type=\"Character\"><Text>LEO (O.S.)</Text></Paragraph>\n    <Paragraph Type=\"Dialogue\"><Text>It left four minutes early.</Text></Paragraph>\n    <Paragraph Type=\"Shot\"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>\n    <Paragraph Type=\"Transition\"><Text>CUT TO:</Text></Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"2\">\n      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>\n    <Paragraph>\n      <DualDialogue>\n        <Paragraph Type=\"Character\"><Text>MARA</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>Is there a bus?</Text></Paragraph>\n        <Paragraph Type=\"Character\"><Text>LEO</Text></Paragraph>\n        <Paragraph Type=\"Dialogue\"><Text>There is me, and there is tea.</Text></Paragraph>\n      </DualDialogue>\n    </Paragraph>\n    <Paragraph Type=\"Scene Heading\" Number=\"3\">\n      <Text>EXT. PLATFORM 4 - DAWN</Text>\n    </Paragraph>\n    <Paragraph Type=\"Action\"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>\n  </Content>\n  <TitlePage>\n    <Content>\n      <Paragraph Alignment=\"Center\"><Text>LAST TRAIN</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>written by</Text></Paragraph>\n      <Paragraph Alignment=\"Center\"><Text>Nora Vidal</Text></Paragraph>\n    </Content>\n  </TitlePage>\n</FinalDraft>\n",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {
+          "title": "LAST TRAIN",
+          "credit": "written by",
+          "author": "Nora Vidal"
+        },
+        "scenes": [
+          {
+            "heading": "EXT. CENTRAL STATION - NIGHT",
+            "setting": "ext",
+            "time": "night",
+            "location": "CENTRAL STATION",
+            "blocks": [
+              {
+                "kind": "synopsis",
+                "text": "Mara misses the last train and meets Leo."
+              },
+              {
+                "kind": "action",
+                "text": "Rain hammers the glass roof. MARA runs across the empty concourse."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "(out of breath)",
+                    "parenthetical": true
+                  },
+                  {
+                    "text": "No. No, no, no."
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "extension": "(O.S.)",
+                "lines": [
+                  {
+                    "text": "It left four minutes early."
+                  }
+                ]
+              },
+              {
+                "kind": "action",
+                "text": "CLOSE ON THE DEPARTURES BOARD"
+              },
+              {
+                "kind": "transition",
+                "text": "CUT TO:"
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "1"
+          },
+          {
+            "heading": "INT. GUARD BOOTH - CONTINUOUS",
+            "setting": "int",
+            "location": "GUARD BOOTH",
+            "extra": "CONTINUOUS",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "A tiny room: a heater, a radio, a chessboard mid-game."
+              },
+              {
+                "kind": "dialogue",
+                "character": "MARA",
+                "lines": [
+                  {
+                    "text": "Is there a bus?"
+                  }
+                ]
+              },
+              {
+                "kind": "dialogue",
+                "character": "LEO",
+                "lines": [
+                  {
+                    "text": "There is me, and there is tea."
+                  }
+                ]
+              }
+            ],
+            "characters": ["MARA", "LEO"],
+            "number": "2"
+          },
+          {
+            "heading": "EXT. PLATFORM 4 - DAWN",
+            "setting": "ext",
+            "time": "dawn",
+            "location": "PLATFORM 4",
+            "blocks": [
+              {
+                "kind": "action",
+                "text": "The first train glides in, empty and gold in the low sun."
+              }
+            ],
+            "characters": [],
+            "number": "3"
+          }
+        ],
+        "characters": ["MARA", "LEO"],
+        "title": "LAST TRAIN"
+      }
+    }
+  },
+  {
+    "id": "misnamed-txt-root",
+    "name": "script.txt",
+    "text": "<FinalDraft><Content><Paragraph Type=\"Scene Heading\"><Text>INT. A - DAY</Text></Paragraph></Content></FinalDraft>",
+    "expected": {
+      "script": {
+        "format": "fdx",
+        "titlePage": {},
+        "scenes": [
+          {
+            "heading": "INT. A - DAY",
+            "setting": "int",
+            "time": "day",
+            "location": "A",
+            "blocks": [],
+            "characters": []
+          }
+        ],
+        "characters": []
+      }
+    }
+  }
+]
