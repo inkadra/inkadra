@@ -151,3 +151,22 @@ it('refuses to regenerate when the copies would not fit', async () => {
   expect(open?.disabled).toBe(true);
   expect(host.textContent).toContain('videoSettings.existing.noRoom');
 });
+
+it('turns live playback off, keeping the live-only resolutions on disk', async () => {
+  const live = view({
+    settings: {
+      ...DEFAULT_VIDEO_SETTINGS,
+      rungs: { '480': 'stored', '720': 'stored', '1080': 'stored', '2160': 'live' },
+      live: { enabled: true, maxSessions: 3, perViewer: 1 },
+    },
+  });
+  await show(live);
+  expect(host.textContent).toContain('videoSettings.live.noSpace');
+  const toggle = host.querySelector<HTMLInputElement>('input[role="switch"]');
+  vi.mocked(api.patch).mockResolvedValue(view());
+  await act(async () => toggle?.click());
+  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', {
+    live: { enabled: false },
+    rungs: { '480': 'stored', '720': 'stored', '1080': 'stored', '2160': 'stored' },
+  });
+});
