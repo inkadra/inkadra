@@ -5825,6 +5825,10 @@
           "3": {
             "title": "À la volée",
             "text": "Seulement avec un GPU : les résolutions non gardées sont préparées pendant qu’on regarde, dans la limite de ce que supporte la carte."
+          },
+          "4": {
+            "title": "Avancé",
+            "text": "Pour les experts : refaites le test du GPU et changez les valeurs de chaque résolution. Rétablir revient au niveau."
           }
         }
       }
@@ -6605,7 +6609,6 @@
       "enabled": "Lecture à la volée",
       "enabledHelp": "Juste après l’envoi, et pour les résolutions que tu ne gardes pas sur le disque.",
       "maxSessions": "Vidéos à la volée en même temps",
-      "maxSessionsHelp": "Pour tout le serveur. Au-delà, on reçoit les copies déjà enregistrées.",
       "perViewer": "Par personne ou lien",
       "perViewerHelp": "Combien de vidéos à la volée une personne, ou les invités d’un lien, peuvent ouvrir en même temps.",
       "modeLabel": "{{rung}} : où elle est gardée",
@@ -6621,9 +6624,29 @@
         "too-slow": "GPU trop lent pour le temps réel (mesuré au démarrage).",
         "failed": "La mesure au démarrage a échoué : détails dans le journal du serveur.",
         "set-off": "Désactivée par le serveur (VIDEO_LIVE_MAX_SESSIONS=0)."
-      },
-      "measured_one": "Mesuré au démarrage : une session, {{speed}}× temps réel.",
-      "measured_other": "Mesuré au démarrage : {{count}} sessions, {{speed}}× temps réel."
+      }
+    },
+    "advanced": {
+      "title": "Avancé",
+      "show": "Afficher",
+      "hide": "Masquer",
+      "collapsed": "Pour qui connaît l’encodage vidéo",
+      "collapsedHelp": "Test de performances, sessions à la volée et valeurs de chaque résolution.",
+      "benchmark": "Test de performances",
+      "benchmarkRunning": "Test en cours : encodage de 5 secondes de vidéo d’essai sur le GPU.",
+      "benchmarkBusy": "Test en cours…",
+      "rerun": "Refaire le test de performances",
+      "measuredAt_one": "Dernière mesure : une session, {{speed}}× temps réel ({{time}}).",
+      "measuredAt_other": "Dernière mesure : {{count}} sessions, {{speed}}× temps réel ({{time}}).",
+      "neverMeasured": "Pas encore mesuré.",
+      "overMeasured": "Plus que la valeur mesurée ({{count}}) : les vidéos peuvent saccader.",
+      "sessionsHelp": "Pour tout le serveur ; 0 désactive la lecture à la volée. Au-delà, on reçoit les copies enregistrées.",
+      "reset": "Rétablir",
+      "custom": "personnalisé",
+      "customPreset": "Personnalisée",
+      "rungHelp": "Ils partent du niveau choisi et valent pour les copies nouvelles et régénérées.",
+      "target": "Débit moyen",
+      "peak": "Débit de pointe"
     }
   }
 }

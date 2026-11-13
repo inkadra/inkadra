@@ -5825,6 +5825,10 @@
           "3": {
             "title": "On the fly",
             "text": "Nur mit GPU: Nicht gespeicherte Auflösungen entstehen beim Zuschauen, so viele Sitzungen wie die Karte schafft."
+          },
+          "4": {
+            "title": "Erweitert",
+            "text": "Für Fachleute: GPU erneut testen und die Werte jeder Auflösung ändern. Zurücksetzen kehrt zur Stufe zurück."
           }
         }
       }
@@ -6605,7 +6609,6 @@
       "enabled": "Wiedergabe on the fly",
       "enabledHelp": "Gleich nach dem Hochladen und für Auflösungen, die du nicht speicherst.",
       "maxSessions": "Videos on the fly gleichzeitig",
-      "maxSessionsHelp": "Für den ganzen Server. Darüber bekommen Zuschauer die gespeicherten Kopien.",
       "perViewer": "Pro Person oder Link",
       "perViewerHelp": "Wie viele Videos on the fly eine Person oder die Gäste eines Links gleichzeitig öffnen können.",
       "modeLabel": "{{rung}}: wo sie liegt",
@@ -6621,9 +6624,29 @@
         "too-slow": "GPU zu langsam für Echtzeit (beim Start gemessen).",
         "failed": "Die Messung beim Start ist fehlgeschlagen: Details im Server-Log.",
         "set-off": "Vom Server abgeschaltet (VIDEO_LIVE_MAX_SESSIONS=0)."
-      },
-      "measured_one": "Beim Start gemessen: eine Sitzung, {{speed}}× Echtzeit.",
-      "measured_other": "Beim Start gemessen: {{count}} Sitzungen, {{speed}}× Echtzeit."
+      }
+    },
+    "advanced": {
+      "title": "Erweitert",
+      "show": "Anzeigen",
+      "hide": "Ausblenden",
+      "collapsed": "Für alle, die sich mit Videokodierung auskennen",
+      "collapsedHelp": "Leistungstest, Live-Sitzungen und die Werte jeder Auflösung.",
+      "benchmark": "Leistungstest",
+      "benchmarkRunning": "Test läuft: 5 Sekunden Testvideo werden auf der GPU kodiert.",
+      "benchmarkBusy": "Test läuft…",
+      "rerun": "Leistungstest wiederholen",
+      "measuredAt_one": "Zuletzt gemessen: eine Sitzung, {{speed}}× Echtzeit ({{time}}).",
+      "measuredAt_other": "Zuletzt gemessen: {{count}} Sitzungen, {{speed}}× Echtzeit ({{time}}).",
+      "neverMeasured": "Noch nicht gemessen.",
+      "overMeasured": "Mehr als gemessen ({{count}}): Videos können ruckeln.",
+      "sessionsHelp": "Für den ganzen Server; 0 schaltet die Live-Wiedergabe aus. Darüber hinaus erhalten Zuschauer die gespeicherten Kopien.",
+      "reset": "Zurücksetzen",
+      "custom": "angepasst",
+      "customPreset": "Angepasst",
+      "rungHelp": "Sie starten bei der gewählten Stufe und gelten für neue und neu erstellte Kopien.",
+      "target": "Durchschnittliche Bitrate",
+      "peak": "Spitzenbitrate"
     }
   }
 }

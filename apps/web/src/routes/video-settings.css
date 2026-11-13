@@ -150,3 +150,35 @@
     text-align: left;
   }
 }
+.video-advanced__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+.video-advanced__field {
+  width: 130px;
+}
+.video-advanced__problem {
+  color: var(--ink-status-danger, var(--ink-tag-red));
+  font-size: 12px;
+}
+.video-meter.is-indeterminate i {
+  width: 30%;
+  animation: video-meter-slide 1.4s var(--ink-ease-out) infinite;
+}
+@keyframes video-meter-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .video-meter.is-indeterminate i {
+    width: 100%;
+    animation: none;
+    opacity: 0.5;
+  }
+}

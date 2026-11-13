@@ -5825,6 +5825,10 @@
           "3": {
             "title": "Em tempo real",
             "text": "Só com GPU: as resoluções que não guardas são preparadas enquanto alguém vê, dentro das sessões que a placa aguenta."
+          },
+          "4": {
+            "title": "Avançado",
+            "text": "Para especialistas: repita o teste da GPU e altere os valores de cada resolução. Repor volta ao nível."
           }
         }
       }
@@ -6605,7 +6609,6 @@
       "enabled": "Reprodução em tempo real",
       "enabledHelp": "Logo após o envio, e para as resoluções que não guardas no disco.",
       "maxSessions": "Vídeos em tempo real ao mesmo tempo",
-      "maxSessionsHelp": "Para todo o servidor. Acima disso, quem vê recebe as cópias já guardadas.",
       "perViewer": "Por pessoa ou ligação",
       "perViewerHelp": "Quantos vídeos em tempo real uma pessoa, ou os convidados de uma ligação, podem abrir ao mesmo tempo.",
       "modeLabel": "{{rung}}: onde fica",
@@ -6621,9 +6624,29 @@
         "too-slow": "GPU demasiado lenta para tempo real (medida no arranque).",
         "failed": "A medição no arranque falhou: detalhes no registo do servidor.",
         "set-off": "Desligada pelo servidor (VIDEO_LIVE_MAX_SESSIONS=0)."
-      },
-      "measured_one": "Medido no arranque: uma sessão, {{speed}}× tempo real.",
-      "measured_other": "Medido no arranque: {{count}} sessões, {{speed}}× tempo real."
+      }
+    },
+    "advanced": {
+      "title": "Avançado",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "collapsed": "Para quem conhece codificação de vídeo",
+      "collapsedHelp": "Teste de desempenho, sessões em tempo real e valores de cada resolução.",
+      "benchmark": "Teste de desempenho",
+      "benchmarkRunning": "Teste em curso: a codificar 5 segundos de vídeo de teste na GPU.",
+      "benchmarkBusy": "A testar…",
+      "rerun": "Repetir o teste de desempenho",
+      "measuredAt_one": "Última medição: uma sessão, {{speed}}× tempo real ({{time}}).",
+      "measuredAt_other": "Última medição: {{count}} sessões, {{speed}}× tempo real ({{time}}).",
+      "neverMeasured": "Ainda sem medição.",
+      "overMeasured": "Mais do que o medido ({{count}}): os vídeos podem engasgar.",
+      "sessionsHelp": "Para todo o servidor; 0 desliga a reprodução em tempo real. Acima disso, quem vê recebe as cópias guardadas.",
+      "reset": "Repor",
+      "custom": "personalizado",
+      "customPreset": "Personalizada",
+      "rungHelp": "Partem do nível escolhido e valem para cópias novas e regeneradas.",
+      "target": "Bitrate médio",
+      "peak": "Bitrate de pico"
     }
   }
 }

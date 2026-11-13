@@ -1,8 +1,8 @@
 import {
   ladderFor,
-  rungMbPerMinute,
   type UpdateVideoSettings,
   VIDEO_AUDIO_KBPS,
+  VIDEO_LIVE_SESSIONS_MAX,
   VIDEO_RUNGS,
   VIDEO_TARGET_KBPS,
   type VideoQuality,
@@ -18,6 +18,7 @@ import {
   Icon,
   Select,
   Switch,
+  TextField,
 } from '@inkadra/ui';
 import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,9 +29,17 @@ import './video-settings.css';
 
 const QUALITIES: VideoQuality[] = ['light', 'balanced', 'high'];
 
-/** Megabytes a minute of `rung` above 30 fps: the video part grows by 40 %. */
-const fastMbPerMinute = (quality: VideoQuality, rung: VideoRung) =>
-  ((VIDEO_TARGET_KBPS[quality][rung] * 1.4 + VIDEO_AUDIO_KBPS) * 60) / 8 / 1000;
+type Custom = VideoSettingsView['settings']['custom'];
+
+/** Target kbit/s of a rung: the admin's when set (Advanced), else the preset's. */
+const targetKbps = (quality: VideoQuality, rung: VideoRung, custom?: Custom) =>
+  custom?.[rung]?.target !== undefined
+    ? (custom[rung]?.target as number) / 1000
+    : VIDEO_TARGET_KBPS[quality][rung];
+
+/** Megabytes a minute of `rung`, up to 30 fps or above (the video part grows by 40 %). */
+const mbPerMinute = (quality: VideoQuality, rung: VideoRung, fast = false, custom?: Custom) =>
+  ((targetKbps(quality, rung, custom) * (fast ? 1.4 : 1) + VIDEO_AUDIO_KBPS) * 60) / 8 / 1000;
 
 /** Megabytes a minute of the copies of a source of shorter side `side` (decision 0128). */
 export function copiesMbPerMinute(
@@ -38,22 +47,25 @@ export function copiesMbPerMinute(
   rungs: VideoRung[],
   side = 2160,
   fast = false,
+  custom?: Custom,
 ) {
-  return ladderFor(rungs, side).reduce(
-    (sum, r) => sum + (fast ? fastMbPerMinute(quality, r) : rungMbPerMinute(quality, r)),
-    0,
-  );
+  return ladderFor(rungs, side).reduce((sum, r) => sum + mbPerMinute(quality, r, fast, custom), 0);
 }
 
 /** Megabytes the copies of the whole library would take with these choices. */
-export function libraryMb(view: VideoSettingsView, quality: VideoQuality, rungs: VideoRung[]) {
+export function libraryMb(
+  view: VideoSettingsView,
+  quality: VideoQuality,
+  rungs: VideoRung[],
+  custom?: Custom,
+) {
   return view.library.reduce((sum, row) => {
     const side = Number(row.side);
     const slow = row.minutes - row.fastMinutes;
     return (
       sum +
-      slow * copiesMbPerMinute(quality, rungs, side) +
-      row.fastMinutes * copiesMbPerMinute(quality, rungs, side, true)
+      slow * copiesMbPerMinute(quality, rungs, side, false, custom) +
+      row.fastMinutes * copiesMbPerMinute(quality, rungs, side, true, custom)
     );
   }, 0);
 }
@@ -93,7 +105,7 @@ export function useVideoSettings() {
       setError(true);
     }
   }, []);
-  const running = view?.backfill?.status === 'running';
+  const running = view?.backfill?.status === 'running' || view?.benchmark?.running === true;
   // While a regeneration runs, its progress comes back every few seconds.
   useEffect(() => {
     if (!running) return;
@@ -102,7 +114,7 @@ export function useVideoSettings() {
         .get<VideoSettingsView>('/instance/video-settings')
         .then(setView)
         .catch(() => {});
-    }, 5000);
+    }, 3000);
     return () => clearInterval(timer);
   }, [running]);
   return { view, setView, error, save };
@@ -143,7 +155,7 @@ function ExistingVideos({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const chosen = VIDEO_RUNGS.filter((r) => view.settings.rungs[r] === 'stored');
-  const after = libraryMb(view, view.settings.quality, chosen) * 1e6;
+  const after = libraryMb(view, view.settings.quality, chosen, view.settings.custom) * 1e6;
   const growth = Math.max(0, after - view.copiesBytes);
   const room = view.freeBytes === null || growth < view.freeBytes;
   const hours = Math.max(1, Math.round(regenerationHours(view, chosen)));
@@ -313,7 +325,6 @@ function LiveCard({
 }) {
   const { t, i18n } = useTranslation();
   const { live } = view.settings;
-  const maxId = useId();
   const perId = useId();
   const status = view.liveStatus;
   // Only on a GPU fast enough (decision 0128): otherwise the reason, and no switch.
@@ -334,15 +345,6 @@ function LiveCard({
         </Row>
       </Card>
     );
-  const measured =
-    status.speed !== null && !status.locked
-      ? t('videoSettings.live.measured', {
-          count: status.sessions,
-          speed: new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(
-            status.speed,
-          ),
-        })
-      : null;
   const off = () => {
     // Rungs offered only live would be offered nowhere: they are kept on disk instead.
     const rungs = Object.fromEntries(
@@ -378,31 +380,6 @@ function LiveCard({
       {live.enabled && (
         <>
           <Row
-            label={t('videoSettings.live.maxSessions')}
-            help={
-              <>
-                {t('videoSettings.live.maxSessionsHelp')}
-                {measured && <> {measured}</>}
-              </>
-            }
-            htmlFor={maxId}
-          >
-            <Select
-              id={maxId}
-              className="ink-input space-limit__unit"
-              value={String(live.maxSessions)}
-              disabled={status.locked}
-              onChange={(v) => void save({ live: { maxSessions: Number(v) } })}
-            >
-              {/* Never more than measured: the admin can only lower it. */}
-              {Array.from({ length: status.sessions }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={String(n)}>
-                  {n}
-                </option>
-              ))}
-            </Select>
-          </Row>
-          <Row
             label={t('videoSettings.live.perViewer')}
             help={t('videoSettings.live.perViewerHelp')}
             htmlFor={perId}
@@ -414,7 +391,7 @@ function LiveCard({
               onChange={(v) => void save({ live: { perViewer: Number(v) } })}
             >
               {[1, 2, 3, 4]
-                .filter((n) => n <= live.maxSessions)
+                .filter((n) => n <= Math.max(1, live.maxSessions))
                 .map((n) => (
                   <option key={n} value={String(n)}>
                     {n}
@@ -423,6 +400,243 @@ function LiveCard({
             </Select>
           </Row>
         </>
+      )}
+    </Card>
+  );
+}
+
+/** A number field of Advanced, saved when it is left or Enter is pressed. */
+function NumberField({
+  label,
+  value,
+  unit,
+  step,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  unit?: string;
+  step: number;
+  onCommit: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const n = Number(draft.replace(',', '.'));
+    if (!Number.isFinite(n) || draft.trim() === '') setDraft(String(value));
+    else if (n !== value) onCommit(n);
+  };
+  return (
+    <TextField
+      label={unit ? `${label} (${unit})` : label}
+      className="video-advanced__field"
+      type="number"
+      inputMode="decimal"
+      step={step}
+      value={draft}
+      onChange={(e) => setDraft(e.currentTarget.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+      }}
+    />
+  );
+}
+
+/**
+ * "Avanzate" (decision 0128), collapsed by default, for expert admins: the performance test
+ * again, live sessions over or under the measurement, and the target, peak and quality value of
+ * each rung over the preset. No ffmpeg arguments and no backend: VIDEO_PROXY_HWACCEL forces one.
+ */
+function AdvancedCard({
+  view,
+  setView,
+}: {
+  view: VideoSettingsView;
+  setView: (view: VideoSettingsView) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const bodyId = useId();
+  const sessionsId = useId();
+  const { settings } = view;
+  const status = view.liveStatus;
+  const presets = view.presetValues?.[settings.quality];
+  const param = view.qualityParam ?? 'crf';
+  const mbit = (bits: number) => Math.round(bits / 10_000) / 100;
+  const fmt = (n: number, digits = 1) =>
+    new Intl.NumberFormat(i18n.language, { maximumFractionDigits: digits }).format(n);
+  const patch = async (body: UpdateVideoSettings) => {
+    setProblem(null);
+    try {
+      setView(await trackSave(api.patch<VideoSettingsView>('/instance/video-settings', body)));
+    } catch (err) {
+      // The server checks every value: its reason is shown under the fields.
+      setProblem(err instanceof Error && err.message ? err.message : t('auth.errors.generic'));
+    }
+  };
+  const benchmark = async () => {
+    setProblem(null);
+    try {
+      setView(await api.post<VideoSettingsView>('/instance/video-settings/benchmark', {}));
+    } catch (err) {
+      setProblem(err instanceof Error && err.message ? err.message : t('auth.errors.generic'));
+    }
+  };
+  const setField = (rung: VideoRung, field: 'target' | 'peak' | 'quality', value: number | null) => {
+    const preset = presets?.[rung];
+    const next = { ...settings.custom?.[rung] };
+    if (value === null || (preset && preset[field] === value)) delete next[field];
+    else next[field] = value;
+    void patch({ custom: { [rung]: Object.keys(next).length ? next : null } });
+  };
+  const measuredText =
+    status?.measured !== null && status?.measured !== undefined && status.measuredAt
+      ? t('videoSettings.advanced.measuredAt', {
+          count: status.measured,
+          speed: status.speed ? fmt(status.speed) : '–',
+          time: new Date(status.measuredAt).toLocaleString(i18n.language, {
+            dateStyle: 'short',
+            timeStyle: 'short',
+          }),
+        })
+      : t('videoSettings.advanced.neverMeasured');
+  const running = view.benchmark?.running === true;
+  const measured = status?.measured ?? null;
+  const sessions = settings.live.maxSessions;
+  return (
+    <Card
+      anchor="video.advanced"
+      tour="video-advanced"
+      title={t('videoSettings.advanced.title')}
+      action={
+        <Button
+          variant="ghost"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} />
+          {open ? t('videoSettings.advanced.hide') : t('videoSettings.advanced.show')}
+        </Button>
+      }
+    >
+      {open ? (
+        <div id={bodyId}>
+          <Row
+            className="settings-row--stack"
+            leading={<Tile icon="clock" />}
+            label={t('videoSettings.advanced.benchmark')}
+            help={running ? t('videoSettings.advanced.benchmarkRunning') : measuredText}
+          >
+            <Button
+              variant="secondary"
+              disabled={running || !view.enabled}
+              onClick={() => void benchmark()}
+            >
+              {running ? t('videoSettings.advanced.benchmarkBusy') : t('videoSettings.advanced.rerun')}
+            </Button>
+          </Row>
+          {running && (
+            <div className="settings-card__pad">
+              <div className="video-meter is-indeterminate" role="progressbar" aria-label={t('videoSettings.advanced.benchmark')}>
+                <i />
+              </div>
+            </div>
+          )}
+          {status?.reason !== 'no-gpu' && (
+            <Row
+              className="settings-row--stack"
+              label={t('videoSettings.live.maxSessions')}
+              help={
+                measured !== null && sessions > measured
+                  ? t('videoSettings.advanced.overMeasured', { count: measured })
+                  : t('videoSettings.advanced.sessionsHelp')
+              }
+              htmlFor={sessionsId}
+            >
+              <Select
+                id={sessionsId}
+                className="ink-input space-limit__unit"
+                value={String(sessions)}
+                disabled={status?.locked}
+                onChange={(v) => void patch({ live: { maxSessions: Number(v) } })}
+              >
+                {Array.from({ length: VIDEO_LIVE_SESSIONS_MAX + 1 }, (_, n) => (
+                  <option key={n} value={String(n)}>
+                    {n === 0 ? t('videoSettings.live.off') : n}
+                  </option>
+                ))}
+              </Select>
+              {status?.locked && (
+                <span className="space-chip">
+                  <Icon name="lock" size={12} />
+                  <code>VIDEO_LIVE_MAX_SESSIONS</code>
+                </span>
+              )}
+              {!status?.locked && measured !== null && sessions !== measured && (
+                <Button variant="ghost" onClick={() => void patch({ live: { maxSessions: null } })}>
+                  {t('videoSettings.advanced.reset')}
+                </Button>
+              )}
+            </Row>
+          )}
+          {presets &&
+            VIDEO_RUNGS.map((rung) => {
+              const own = settings.custom?.[rung];
+              const value = (field: 'target' | 'peak' | 'quality') =>
+                own?.[field] ?? presets[rung][field];
+              return (
+                <Row
+                  key={rung}
+                  className="settings-row--stack"
+                  label={
+                    <>
+                      {t(`videoSettings.rungs.${rung}`)}{' '}
+                      {own && <Badge tone="accent">{t('videoSettings.advanced.custom')}</Badge>}
+                    </>
+                  }
+                  help={t('videoSettings.advanced.rungHelp')}
+                >
+                  <div className="video-advanced__fields">
+                    <NumberField
+                      label={t('videoSettings.advanced.target')}
+                      unit="Mbit/s"
+                      step={0.1}
+                      value={mbit(value('target'))}
+                      onCommit={(n) => setField(rung, 'target', Math.round(n * 1e6))}
+                    />
+                    <NumberField
+                      label={t('videoSettings.advanced.peak')}
+                      unit="Mbit/s"
+                      step={0.1}
+                      value={mbit(value('peak'))}
+                      onCommit={(n) => setField(rung, 'peak', Math.round(n * 1e6))}
+                    />
+                    <NumberField
+                      label={param === 'global_quality' ? 'global_quality' : param.toUpperCase()}
+                      step={1}
+                      value={value('quality')}
+                      onCommit={(n) => setField(rung, 'quality', Math.round(n))}
+                    />
+                    {own && (
+                      <Button variant="ghost" onClick={() => void patch({ custom: { [rung]: null } })}>
+                        {t('videoSettings.advanced.reset')}
+                      </Button>
+                    )}
+                  </div>
+                </Row>
+              );
+            })}
+          {problem && (
+            <p className="settings-card__pad video-advanced__problem" role="alert">
+              {problem}
+            </p>
+          )}
+        </div>
+      ) : (
+        <Row label={t('videoSettings.advanced.collapsed')} help={t('videoSettings.advanced.collapsedHelp')} />
       )}
     </Card>
   );
@@ -444,8 +658,10 @@ export function VideoSettings() {
   const { settings, locked, encoder } = view;
   // Space counts only the rungs kept on disk: live ones take none.
   const chosen = VIDEO_RUNGS.filter((r) => settings.rungs[r] === 'stored');
-  const perMinute = copiesMbPerMinute(settings.quality, chosen);
-  const all = libraryMb(view, settings.quality, chosen);
+  const custom = settings.custom;
+  const customised = Object.keys(custom ?? {}).length > 0;
+  const perMinute = copiesMbPerMinute(settings.quality, chosen, 2160, false, custom);
+  const all = libraryMb(view, settings.quality, chosen, custom);
   const videos = view.library.reduce((sum, r) => sum + r.videos, 0);
   const minutes = Math.round(view.library.reduce((sum, r) => sum + r.minutes, 0));
   const hardware = encoder !== null && encoder.backend !== 'software';
@@ -521,21 +737,29 @@ export function VideoSettings() {
               <span className="video-preset__name">
                 {t(`videoSettings.quality.${q}`)}
                 {q === 'balanced' && <Badge>{t('videoSettings.quality.recommended')}</Badge>}
+                {customised && q === settings.quality && (
+                  <Badge tone="accent">{t('videoSettings.advanced.customPreset')}</Badge>
+                )}
               </span>
               <span className="video-preset__desc">{t(`videoSettings.quality.${q}Help`)}</span>
               <span className="video-preset__size num">
-                {number(copiesMbPerMinute(q, chosen))}{' '}
+                {number(copiesMbPerMinute(q, chosen, 2160, false, q === settings.quality ? custom : undefined))}{' '}
                 <small>{t('videoSettings.mbPerMinute')}</small>
               </span>
               <span className="video-preset__hour num">
                 {t('videoSettings.gbPerHour', {
-                  size: number((copiesMbPerMinute(q, chosen) * 60) / 1000, 1),
+                  size: number(
+                    (copiesMbPerMinute(q, chosen, 2160, false, q === settings.quality ? custom : undefined) * 60) / 1000,
+                    1,
+                  ),
                 })}
               </span>
             </ChoiceTile>
           ))}
         </div>
       </Card>
+
+      <AdvancedCard view={view} setView={setView} />
 
       <Card
         anchor="video.renditions"
@@ -573,7 +797,7 @@ export function VideoSettings() {
               {settings.rungs[r] === 'live'
                 ? t('videoSettings.live.noSpace')
                 : t('videoSettings.mbPerMinuteAbout', {
-                    size: number(rungMbPerMinute(settings.quality, r), r === '2160' ? 0 : 1),
+                    size: number(mbPerMinute(settings.quality, r, false, custom), r === '2160' ? 0 : 1),
                   })}
             </span>
           </Row>
@@ -615,7 +839,7 @@ export function VideoSettings() {
         <div className="settings-card__pad">
           <ul className="video-examples num">
             {EXAMPLES.map((e) => {
-              const copies = copiesMbPerMinute(settings.quality, chosen, e.side);
+              const copies = copiesMbPerMinute(settings.quality, chosen, e.side, false, custom);
               const plus = (copies / e.mb) * 100;
               return (
                 <li key={e.key}>

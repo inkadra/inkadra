@@ -5825,6 +5825,10 @@
           "3": {
             "title": "Live",
             "text": "GPU only: resolutions not kept are prepared while someone watches, within the sessions the card can take."
+          },
+          "4": {
+            "title": "Advanced",
+            "text": "For experts: test the GPU again and change the values of each resolution. Reset goes back to the preset."
           }
         }
       }
@@ -6605,7 +6609,6 @@
       "enabled": "Live playback",
       "enabledHelp": "Right after an upload, and for resolutions you do not keep on disk.",
       "maxSessions": "Live videos at once",
-      "maxSessionsHelp": "On the whole server. Past it, viewers get the copies already saved.",
       "perViewer": "Per person or link",
       "perViewerHelp": "How many live videos one person, or the guests of one link, can open at once.",
       "modeLabel": "{{rung}}: where it is kept",
@@ -6621,9 +6624,29 @@
         "too-slow": "GPU too slow for real time (measured at start).",
         "failed": "The measurement at start failed: details in the server log.",
         "set-off": "Turned off by the server (VIDEO_LIVE_MAX_SESSIONS=0)."
-      },
-      "measured_one": "Measured at start: one session, {{speed}}× real time.",
-      "measured_other": "Measured at start: {{count}} sessions, {{speed}}× real time."
+      }
+    },
+    "advanced": {
+      "title": "Advanced",
+      "show": "Show",
+      "hide": "Hide",
+      "collapsed": "For people who know video encoding",
+      "collapsedHelp": "Performance test, live sessions and the values of each resolution.",
+      "benchmark": "Performance test",
+      "benchmarkRunning": "Test running: encoding 5 seconds of sample video on the GPU.",
+      "benchmarkBusy": "Testing…",
+      "rerun": "Run the performance test again",
+      "measuredAt_one": "Last measured: one session, {{speed}}× real time ({{time}}).",
+      "measuredAt_other": "Last measured: {{count}} sessions, {{speed}}× real time ({{time}}).",
+      "neverMeasured": "Not measured yet.",
+      "overMeasured": "More than measured ({{count}}): videos may stutter.",
+      "sessionsHelp": "For the whole server; 0 turns live playback off. Beyond it, viewers get the stored copies.",
+      "reset": "Reset",
+      "custom": "custom",
+      "customPreset": "Custom",
+      "rungHelp": "They start from the chosen preset. They apply to new and regenerated copies.",
+      "target": "Average bitrate",
+      "peak": "Peak bitrate"
     }
   }
 }

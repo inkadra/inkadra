@@ -165,6 +165,11 @@ export const SETTINGS: SettingEntry[] = [
     'videoSettings.live.modes.live',
   ]),
   s('video.existing', 'videoSettings.existing.title', ['videoSettings.existing.regenerate']),
+  s('video.advanced', 'videoSettings.advanced.title', [
+    'videoSettings.advanced.rerun',
+    'videoSettings.advanced.target',
+    'videoSettings.advanced.peak',
+  ], ['CRF', 'CQ', 'global_quality', 'bitrate']),
   s('backups.now', 'backups.now'),
   s('backups.nightly', 'backups.nightly'),
   s('backups.time', 'backups.time'),

@@ -112,8 +112,9 @@ export function customRate(settings: ProxySettings, rung: VideoRung, side: numbe
   const base = rungRate(settings.quality, side, fps, peakCap(settings));
   const c = settings.custom?.[rung];
   if (!c) return base;
-  const target = c.target ?? base.target;
-  const peak = Math.max(target, c.peak ?? base.peak);
+  const cap = peakCap(settings) ?? Number.POSITIVE_INFINITY;
+  const target = Math.min(c.target ?? base.target, cap);
+  const peak = Math.min(Math.max(target, c.peak ?? base.peak), cap);
   return { target, peak, buffer: peak * 2 };
 }
 

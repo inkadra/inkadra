@@ -166,7 +166,10 @@ rung live). Capability **`video-live`**; clients need nothing more than `playbac
   one session ran at 5.35×, which gives 3 (three ran at 1.78× each, four at 1.33×). 0, a timeout
   or an error turns live off with the reason ("GPU troppo lenta per il tempo reale", or the log).
   Saved with the encoder (`liveSessions`, `liveSpeed`, `measuredAt`), shown in Diagnostics and on
-  the Video page; `VIDEO_LIVE_MAX_SESSIONS` overrides it. `video-live` is announced only where
+  the Video page; `VIDEO_LIVE_MAX_SESSIONS` overrides it. The admin may set another value under
+  "Avanzate", from 0 (off) to 16, even above the measurement, with the warning "Più del valore
+  misurato (N): i video possono andare a scatti"; "Ripristina" goes back to the measurement, and
+  the environment variable still wins and locks the field. `video-live` is announced only where
   live playback runs.
 - One session per viewer and video (a person, or one guest of a link), a 30-minute lease renewed
   by every request, ended after 5 minutes without one; a sweep every two seconds. Limits: videos
@@ -190,7 +193,7 @@ rung live). Capability **`video-live`**; clients need nothing more than `playbac
   read in place. Ranged reads through ffmpeg were not used: ffmpeg would need the HTTP protocol,
   which `safeInput` forbids on purpose.
 - The probe facts the source rule needs are kept in `asset.media_info`.
-- Settings → Video: "Riproduzione al volo" (on/off, videos at once, per person or link) and, per
+- Settings → Video: "Riproduzione al volo" (on/off, per person or link) and, per
   resolution, "Salva su disco" or "Solo al volo". Live rungs take no space in the estimates.
 
 ### Data and API
@@ -215,7 +218,8 @@ Additive in v1, capability **`video-renditions`** in `GET /api/v1/instance/versi
   downloading the original. `GuestAsset.playback`, routes under
   `/guest/links/:linkId/assets/:assetId/hls/*`.
 - Admin: `GET/PATCH /instance/video-settings`, `GET /instance/video-settings/estimate`,
-  `POST/DELETE /instance/video-settings/reprocess`.
+  `POST/DELETE /instance/video-settings/reprocess`, `POST /instance/video-settings/benchmark`
+  (detection and the live measurement again, on the worker; 409 while one runs).
 
 Environment, as for the storage limits: when set it wins and locks the control in the page.
 New `VIDEO_QUALITY` (`light|balanced|high`) and `VIDEO_RENDITIONS` (`480,720,1080`).
@@ -235,7 +239,26 @@ one is ready, and a rung taken out of the settings is removed only by that actio
 Settings → Server → **Video** (`?section=video`, after Archiviazione): encoder strip, quality
 tiles with "circa N MB al minuto", rungs with their estimate and totals for this instance,
 the playable-originals choice, "Video esistenti" with the estimate and a Rigenera action, the
-encoder details. The player gets one Quality menu (Auto, the ready rungs, those in preparation
+encoder details.
+
+**Avanzate** (collapsed, under the presets, for expert admins; only `packages/ui` controls):
+
+- "Rifai il test di prestazioni" queues encoder detection and the live measurement on the
+  worker (job `video-benchmark`, stale after 10 minutes); the button shows the run, then the new
+  result and its time. The running worker keeps the encoder it chose at start; the new
+  measurement changes the saved values and the live cap.
+- Videos at once for live playback, as above.
+- Per rung (480/720/1080/2160): target bitrate, peak bitrate and the quality value, labelled by
+  the parameter of the active backend (CRF on libx264, CQ on NVENC, global_quality on QSV and
+  VAAPI). Fields start from the preset; an edited one is marked "personalizzato" with
+  "Ripristina", and the preset tiles show "Personalizzata". The server checks 200 kbit/s to
+  80 Mbit/s, peak at least the target, quality 0 to 51, with a clear message. Values are kept in
+  `instance_setting` `video` (`custom`); estimates use them, and the rung recipe gets
+  `/t<target>p<peak>q<quality>`, so "Rigenera" finds the copies made with other values. Custom
+  values apply as given at any frame rate, still under `VIDEO_PROXY_BITRATE` when it is set. No free ffmpeg
+  arguments and no backend choice: `VIDEO_PROXY_HWACCEL` still forces one.
+
+The player gets one Quality menu (Auto, the ready rungs, those in preparation
 disabled with their percentage, Originale). Playing a file stays part of Board (always on,
 0121); the setting belongs to the instance.
 

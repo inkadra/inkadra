@@ -25,6 +25,13 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+const rungValues = (quality: number) => ({
+  '480': { target: 1_200_000, peak: 1_800_000, quality },
+  '720': { target: 2_500_000, peak: 3_750_000, quality },
+  '1080': { target: 4_500_000, peak: 6_750_000, quality },
+  '2160': { target: 14_000_000, peak: 21_000_000, quality },
+});
+
 const view = (patch: Partial<VideoSettingsView> = {}): VideoSettingsView => ({
   settings: DEFAULT_VIDEO_SETTINGS,
   locked: { quality: false, rungs: false, live: false },
@@ -53,9 +60,17 @@ const view = (patch: Partial<VideoSettingsView> = {}): VideoSettingsView => ({
     available: true,
     reason: null,
     sessions: 3,
+    measured: 3,
     speed: 5.35,
     measuredAt: '2026-11-13T12:00:00.000Z',
     locked: false,
+  },
+  benchmark: { running: false, startedAt: null },
+  qualityParam: 'global_quality',
+  presetValues: {
+    light: rungValues(24),
+    balanced: rungValues(28),
+    high: rungValues(21),
   },
   ...patch,
 });
@@ -203,13 +218,79 @@ it('shows live playback as unavailable without a GPU, with the reason and no swi
   expect(host.querySelector('input[role="switch"]')).toBeNull();
 });
 
-it('offers at most the sessions measured at start', async () => {
+async function openAdvanced() {
+  const toggle = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.advanced.show',
+  );
+  await act(async () => toggle?.click());
+}
+
+it('keeps Advanced collapsed, then lets the admin raise live sessions over the measurement', async () => {
   await show(view());
-  expect(host.textContent).toContain('videoSettings.live.measured:{"count":3,"speed":"5.4"}');
-  const trigger = host.querySelector('[role="combobox"]');
-  // Three is there, four is not: the admin can only lower the measured value.
+  expect(host.textContent).toContain('videoSettings.advanced.collapsed');
+  expect(host.textContent).not.toContain('videoSettings.advanced.rerun');
+  await openAdvanced();
+  expect(host.textContent).toContain('videoSettings.advanced.measuredAt');
+  vi.mocked(api.patch).mockResolvedValue(
+    view({ settings: { ...DEFAULT_VIDEO_SETTINGS, live: { enabled: true, maxSessions: 6, perViewer: 1 } } }),
+  );
+  chooseSelect(host.querySelector('[data-tour="video-advanced"] [role="combobox"]'), '6');
+  await act(async () => {});
+  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', { live: { maxSessions: 6 } });
+  expect(host.textContent).toContain('videoSettings.advanced.overMeasured:{"count":3}');
+  // Ripristina goes back to the measured value.
   vi.mocked(api.patch).mockResolvedValue(view());
-  chooseSelect(trigger, '2');
-  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', { live: { maxSessions: 2 } });
-  expect(() => chooseSelect(host.querySelector('[role="combobox"]'), '4')).toThrow(/missing/);
+  const reset = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.advanced.reset',
+  );
+  await act(async () => reset?.click());
+  expect(api.patch).toHaveBeenLastCalledWith('/instance/video-settings', {
+    live: { maxSessions: null },
+  });
+});
+
+it('marks a custom rung value as personalizzato, with Ripristina and a Personalizzata preset', async () => {
+  await show(view());
+  await openAdvanced();
+  expect(host.textContent).toContain('global_quality');
+  const target = host.querySelector<HTMLInputElement>('input[type="number"]');
+  expect(target?.value).toBe('1.2');
+  const custom = view({
+    settings: { ...DEFAULT_VIDEO_SETTINGS, custom: { '480': { target: 1_500_000 } } },
+  });
+  vi.mocked(api.patch).mockResolvedValue(custom);
+  await act(async () => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    set?.call(target, '1.5');
+    target?.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => target?.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', {
+    custom: { '480': { target: 1_500_000 } },
+  });
+  expect(host.textContent).toContain('videoSettings.advanced.custom');
+  expect(host.textContent).toContain('videoSettings.advanced.customPreset');
+  vi.mocked(api.patch).mockResolvedValue(view());
+  const reset = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.advanced.reset',
+  );
+  await act(async () => reset?.click());
+  expect(api.patch).toHaveBeenLastCalledWith('/instance/video-settings', {
+    custom: { '480': null },
+  });
+});
+
+it('runs the performance test again from Advanced', async () => {
+  await show(view());
+  await openAdvanced();
+  vi.mocked(api.post).mockResolvedValue(
+    view({ benchmark: { running: true, startedAt: '2026-11-13T12:05:00.000Z' } }),
+  );
+  const rerun = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.advanced.rerun',
+  );
+  await act(async () => rerun?.click());
+  expect(api.post).toHaveBeenCalledWith('/instance/video-settings/benchmark', {});
+  expect(host.textContent).toContain('videoSettings.advanced.benchmarkRunning');
+  expect(host.querySelector('.video-meter.is-indeterminate')).not.toBeNull();
 });

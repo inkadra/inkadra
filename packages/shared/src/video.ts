@@ -119,7 +119,7 @@ export const DEFAULT_VIDEO_SETTINGS: VideoSettings = {
 
 /**
  * Whether live playback can run on this instance (decision 0128): only on a GPU, with the
- * sessions the worker measured at start (or VIDEO_LIVE_MAX_SESSIONS), the most the admin can set.
+ * sessions the worker measured, the admin's own value, or VIDEO_LIVE_MAX_SESSIONS, which wins.
  */
 export const VideoLiveStatus = z
   .object({

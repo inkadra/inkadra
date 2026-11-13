@@ -5825,6 +5825,10 @@
           "3": {
             "title": "Al volo",
             "text": "Solo con la GPU: le risoluzioni non salvate si preparano mentre qualcuno guarda, entro quante sessioni regge la scheda."
+          },
+          "4": {
+            "title": "Avanzate",
+            "text": "Per esperti: rifai il test della GPU e cambia i valori di ogni risoluzione. Ripristina torna al livello."
           }
         }
       }
@@ -6605,7 +6609,6 @@
       "enabled": "Riproduzione al volo",
       "enabledHelp": "Subito dopo il caricamento, e per le risoluzioni che non salvi su disco.",
       "maxSessions": "Video al volo insieme",
-      "maxSessionsHelp": "Per tutto il server. Oltre, chi guarda riceve le copie già salvate.",
       "perViewer": "Per persona o link",
       "perViewerHelp": "Quanti video al volo può aprire insieme una persona, o gli ospiti di un link.",
       "modeLabel": "{{rung}}: dove sta",
@@ -6621,9 +6624,29 @@
         "too-slow": "GPU troppo lenta per il tempo reale (misurata all’avvio).",
         "failed": "La misura all’avvio non è riuscita: dettagli nel log del server.",
         "set-off": "Spenta dal server (VIDEO_LIVE_MAX_SESSIONS=0)."
-      },
-      "measured_one": "Misurato all’avvio: una sessione, {{speed}}× tempo reale.",
-      "measured_other": "Misurato all’avvio: {{count}} sessioni, {{speed}}× tempo reale."
+      }
+    },
+    "advanced": {
+      "title": "Avanzate",
+      "show": "Mostra",
+      "hide": "Nascondi",
+      "collapsed": "Per chi conosce la codifica video",
+      "collapsedHelp": "Test di prestazioni, sessioni al volo e valori di ogni risoluzione.",
+      "benchmark": "Test di prestazioni",
+      "benchmarkRunning": "Test in corso: codifica di 5 secondi di prova sulla GPU.",
+      "benchmarkBusy": "Test in corso…",
+      "rerun": "Rifai il test di prestazioni",
+      "measuredAt_one": "Ultima misura: una sessione, {{speed}}× tempo reale ({{time}}).",
+      "measuredAt_other": "Ultima misura: {{count}} sessioni, {{speed}}× tempo reale ({{time}}).",
+      "neverMeasured": "Nessuna misura ancora.",
+      "overMeasured": "Più del valore misurato ({{count}}): i video possono andare a scatti.",
+      "sessionsHelp": "Per tutto il server; 0 spegne la riproduzione al volo. Oltre, chi guarda riceve le copie già salvate.",
+      "reset": "Ripristina",
+      "custom": "personalizzato",
+      "customPreset": "Personalizzata",
+      "rungHelp": "Partono dal livello scelto. Valgono per le nuove copie e per quelle rigenerate.",
+      "target": "Bitrate medio",
+      "peak": "Bitrate di picco"
     }
   }
 }
