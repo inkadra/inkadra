@@ -19,11 +19,11 @@ size and seed always give the same bytes. It writes:
   the table, update size in bytes, the history (operations by kind, sessions, client ids) and the
   ids benchmarks edit (`bench.frameId`, a frame with exactly 800 strokes, and `bench.tableId`).
 
-| Size   | Elements | Drawn cards (strokes each) | Rich notes | Table rows | Sessions | Update  | Time on a desktop       |
-| ------ | -------- | -------------------------- | ---------- | ---------- | -------- | ------- | ----------------------- |
-| small  | 200      | 6 (60–120)                 | 10         | 100        | 60       | 0.3 MB  | 0.2 s                   |
-| medium | 1000     | 30 (500–1000)              | 50         | 500        | 400      | 7.5 MB  | 6 s                     |
-| large  | 3000     | 60 (500–1000)              | 150        | 500        | 1000     | 14.9 MB | 34 s                    |
+| Size   | Elements | Drawn cards (strokes each) | Rich notes | Table rows | Sessions | Update  | Time on a desktop |
+| ------ | -------- | -------------------------- | ---------- | ---------- | -------- | ------- | ----------------- |
+| small  | 200      | 6 (60–120)                 | 10         | 100        | 60       | 0.3 MB  | 0.2 s             |
+| medium | 1000     | 30 (500–1000)              | 50         | 500        | 400      | 7.5 MB  | 6 s               |
+| large  | 3000     | 60 (500–1000)              | 150        | 500        | 1000     | 14.9 MB | 34 s              |
 
 ## How it is built
 
