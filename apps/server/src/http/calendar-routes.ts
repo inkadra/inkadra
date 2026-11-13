@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { API_PREFIX, Id } from '@inkadra/shared';
+import { API_PREFIX, Id, offered, readUserPreferences } from '@inkadra/shared';
 import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
@@ -19,6 +19,7 @@ import {
   projectMember,
   shootingDay,
   user,
+  userPreference,
 } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { mailText } from '../mail-texts.ts';
@@ -90,9 +91,14 @@ export function registerCalendarRoutes(
     if (!Id.safeParse(userId).success || token.length > 100)
       throw new HttpError('not_found', 'Calendar not found.');
     const [credential] = await db
-      .select({ feed: calendarFeed, user: { locale: user.locale } })
+      .select({
+        feed: calendarFeed,
+        user: { locale: user.locale },
+        preferences: userPreference.preferences,
+      })
       .from(calendarFeed)
       .innerJoin(user, and(eq(user.id, calendarFeed.userId), isNull(user.deactivatedAt)))
+      .leftJoin(userPreference, eq(userPreference.userId, calendarFeed.userId))
       .where(eq(calendarFeed.userId, userId as string));
     const settings = await readInstanceSettings(db, config);
     if (
@@ -137,31 +143,38 @@ export function registerCalendarRoutes(
     const day = 86400000;
     const from = new Date(Date.now() - FEED_PAST_DAYS * day).toISOString().slice(0, 10);
     const to = new Date(Date.now() + FEED_FUTURE_DAYS * day).toISOString().slice(0, 10);
-    const days = boards.length
-      ? await db
-          .select({
-            id: shootingDay.id,
-            boardId: shootingDay.boardId,
-            date: shootingDay.date,
-            callTime: shootingDay.callTime,
-            wrap: shootingDay.wrap,
-            location: shootingDay.location,
-            updatedAt: shootingDay.updatedAt,
-          })
-          .from(shootingDay)
-          .where(
-            and(
-              inArray(
-                shootingDay.boardId,
-                boards.map((r) => r.board.id),
+    // Production off (decision 0121, #676): no shooting days; they come back when it is on again.
+    const shooting = offered(
+      readUserPreferences(credential.preferences).modulesOff,
+      'calendar',
+      'shooting',
+    );
+    const days =
+      shooting && boards.length
+        ? await db
+            .select({
+              id: shootingDay.id,
+              boardId: shootingDay.boardId,
+              date: shootingDay.date,
+              callTime: shootingDay.callTime,
+              wrap: shootingDay.wrap,
+              location: shootingDay.location,
+              updatedAt: shootingDay.updatedAt,
+            })
+            .from(shootingDay)
+            .where(
+              and(
+                inArray(
+                  shootingDay.boardId,
+                  boards.map((r) => r.board.id),
+                ),
+                gte(shootingDay.date, from),
+                lte(shootingDay.date, to),
               ),
-              gte(shootingDay.date, from),
-              lte(shootingDay.date, to),
-            ),
-          )
-          .orderBy(asc(shootingDay.date), asc(shootingDay.id))
-          .limit(FEED_MAX_EVENTS)
-      : [];
+            )
+            .orderBy(asc(shootingDay.date), asc(shootingDay.id))
+            .limit(FEED_MAX_EVENTS)
+        : [];
     const texts = mailText(credential.user).calendar;
     // Cheap fingerprint of everything the body is built from: rows' timestamps, the window and the
     // credential. It is the validator, so a 304 never decodes a document.
