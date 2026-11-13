@@ -28,7 +28,6 @@ a page of three rows next to a read-only page of sign-in methods. Three pages sh
 | Server · admin    | Generale · Archiviazione · Backup · Stato del server · Aggiornamenti                       |
 
 Moves:
-
 - Account keeps profile, sign-in methods and sessions; "Il tuo spazio" follows Sessions; tokens,
   the clipper and "Segnala un problema" leave.
 - Preferences becomes "Aspetto e lingua" (theme, language, date and time). Its Canvas card and the
