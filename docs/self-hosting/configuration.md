@@ -20,22 +20,23 @@ services:
 
 ## Server
 
-| Variable        | Default                          | Meaning                                                                                          |
-| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                            |
-| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path         |
-| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out            |
-| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                                       |
-| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab` |
-| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                            |
-| `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                                    |
-| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                              |
-| `PORT`          | `3000`                           | Port of the web server                                                                           |
-| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                  |
-| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                            |
-| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                            |
-| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                             |
-| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                             |
+| Variable               | Default                          | Meaning                                                                                          |
+| ---------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`             | `production`                     | `development`, `production` or `test`                                                            |
+| `PUBLIC_URL`           | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path         |
+| `AUTH_SECRET_PREVIOUS` | unset                            | Optional previous encryption secret (at least 32 characters); see rotation below                 |
+| `AUTH_SECRET`          | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out            |
+| `DATABASE_URL`         | set by compose                   | Postgres connection string                                                                       |
+| `REDIS_URL`            | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab` |
+| `INSTANCE_NAME`        | `Inkadra`                        | Name shown in the app                                                                            |
+| `REGISTRATION`         | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                                    |
+| `HOST`                 | `0.0.0.0`                        | Interface the web server listens on                                                              |
+| `PORT`                 | `3000`                           | Port of the web server                                                                           |
+| `COLLAB_PORT`          | `3001`                           | Port of the collaboration server, in split mode                                                  |
+| `DATA_DIR`             | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                            |
+| `WEB_DIST`             |                                  | Folder of the built web app; unset for the default next to the server                            |
+| `TRUST_PROXY`          | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                             |
+| `LOG_LEVEL`            | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                             |
 
 ## Files and uploads
 
@@ -473,3 +474,19 @@ every instance that uses it: beyond that, reports wait in the local queue and le
 Settings says so. If the relay gives no answer to a write, the report is marked as not confirmed:
 trying again from Settings is safe, because the relay recognises a report it already has. GitHub
 attachments live on `feedback-assets` and are not removed by the local retention setting.
+
+## Rotating the authentication secret
+
+Set `AUTH_SECRET_PREVIOUS` to the old `AUTH_SECRET`, replace `AUTH_SECRET` with a new random
+value of at least 32 characters, and restart every Inkadra role with the same pair of values.
+Keep both values private. Session cookies and known-device cookies still use only the current
+secret: this signs everyone out. Calendar feeds must be regenerated.
+
+New sealed values use the current secret. The previous secret only keeps existing invitation
+and share-link tokens, app token proofs, two-factor secrets and recovery codes readable.
+There is no automatic rewrite of stored values. Keep `AUTH_SECRET_PREVIOUS` until all values
+written with it have expired, been revoked or been replaced, including two-factor enrollment
+and app proof keys, which may otherwise live indefinitely. Removing it sooner makes those old
+values unreadable. Only one previous secret is supported: complete that replacement before
+rotating again. After a suspected compromise, revoke or replace affected credentials rather
+than relying on retaining the compromised secret.

@@ -115,4 +115,27 @@ describe('web app files', () => {
     expect(logs.join('')).toContain('/s/[redacted]');
     expect(logs.join('')).toContain('/api/v1/guest/by-token/[redacted]');
   });
+  it('redacts invitation, authentication, calendar and attachment credentials, including unmatched paths', async () => {
+    for (const path of [
+      '/join/private-credential',
+      '/reset-password?token=private-query',
+      '/api/v1/invitations/by-token/private-credential',
+      '/api/v1/invitations/by-token/private-credential/claim',
+      '/api/v1/invitations/by-token/private-credential/unknown',
+      '/api/auth/reset-password/private-credential?token=private-query',
+      '/api/auth/magic-link/verify?token=private-query',
+      '/api/auth/unknown?code=private-query&state=private-state',
+      '/calendar/private-credential.ics',
+      '/api/v1/feedback/attachments/private-credential',
+    ]) {
+      logs.length = 0;
+      await app.inject(path);
+      const requests = logs.flatMap((line) => {
+        const entry = JSON.parse(line);
+        return entry.req ? [entry.req.url] : [];
+      });
+      expect(requests.length).toBeGreaterThan(0);
+      expect(requests.join('')).not.toMatch(/private-credential|private-query|private-state/);
+    }
+  });
 });

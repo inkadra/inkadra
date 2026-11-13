@@ -108,16 +108,26 @@ export async function createApp(deps: AppDeps) {
       {
         serializers: {
           req(req: FastifyRequest) {
-            // These paths contain bearer credentials. Never persist them in request logs.
-            const url = req.url.startsWith(`${API_PREFIX}/feedback/attachments/`)
-              ? `${API_PREFIX}/feedback/attachments/[redacted]`
-              : req.url.startsWith('/calendar/')
-                ? '/calendar/[redacted].ics'
-                : req.url.startsWith(GUEST_PAGE_PATH)
-                  ? `${GUEST_PAGE_PATH}[redacted]`
-                  : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
-                    ? `${API_PREFIX}/guest/by-token/[redacted]`
-                    : req.url;
+            // These paths contain bearer credentials; authentication and reset queries do too.
+            // Keep those out of request logs, including unmatched subpaths.
+            const url =
+              req.url.split('?')[0] === '/reset-password'
+                ? '/reset-password'
+                : req.url.startsWith('/api/auth/')
+                  ? '/api/auth/[redacted]'
+                  : req.url.startsWith('/join/')
+                    ? '/join/[redacted]'
+                    : req.url.startsWith(`${API_PREFIX}/invitations/by-token/`)
+                      ? `${API_PREFIX}/invitations/by-token/[redacted]`
+                      : req.url.startsWith(`${API_PREFIX}/feedback/attachments/`)
+                        ? `${API_PREFIX}/feedback/attachments/[redacted]`
+                        : req.url.startsWith('/calendar/')
+                          ? '/calendar/[redacted].ics'
+                          : req.url.startsWith(GUEST_PAGE_PATH)
+                            ? `${GUEST_PAGE_PATH}[redacted]`
+                            : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
+                              ? `${API_PREFIX}/guest/by-token/[redacted]`
+                              : req.url;
             const client = req.headers['inkadra-client'];
             return {
               method: req.method,

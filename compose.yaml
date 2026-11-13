@@ -25,6 +25,7 @@ services:
     environment:
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      AUTH_SECRET_PREVIOUS: ${AUTH_SECRET_PREVIOUS:-}
       DATABASE_URL: postgres://inkadra:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/inkadra
       REDIS_URL: redis://valkey:6379
       INSTANCE_NAME: ${INSTANCE_NAME:-Inkadra}
