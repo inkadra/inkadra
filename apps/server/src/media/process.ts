@@ -14,7 +14,6 @@ import { readExif } from './exif.ts';
 import { readFileMetadata } from './file-metadata.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
-import { applyVideoSettings, readVideoSettings, type VideoEnv } from '../video-settings.ts';
 import { recipeOf, videoPlan } from './ladder.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
