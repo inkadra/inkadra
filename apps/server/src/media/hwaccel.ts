@@ -119,16 +119,14 @@ export function keyframeArgs(fps: number | null) {
   ];
 }
 
-/** Colour tags of every copy: SDR BT.709, limited range (HDR is tone mapped first). */
+/**
+ * Colour tags of every copy: SDR BT.709, limited range (HDR is tone mapped first). Written in
+ * the bitstream: ffmpeg 9 turns `-colorspace` and its siblings into a conversion of the frames,
+ * which it cannot do on frames kept on the GPU (spike of decision 0128).
+ */
 export const BT709_TAGS = [
-  '-colorspace',
-  'bt709',
-  '-color_primaries',
-  'bt709',
-  '-color_trc',
-  'bt709',
-  '-color_range',
-  'tv',
+  '-bsf:v',
+  'h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0',
 ];
 
 /**
@@ -139,7 +137,8 @@ export const BT709_TAGS = [
  */
 export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): VideoPipeline {
   const { w, h } = scaleSize(opts.resolution);
-  const cpuScale = `scale=${w}:${h}:flags=lanczos,setsar=1`;
+  // swscale converts the matrix and range to what the tags say; the GPU scalers keep them.
+  const cpuScale = `scale=${w}:${h}:flags=lanczos:out_color_matrix=bt709:out_range=tv,setsar=1`;
   const { target, peak, buffer } = opts.rate;
   const q = QUALITY_VALUES[opts.quality];
   const cap = ['-maxrate', String(peak), '-bufsize', String(buffer)];

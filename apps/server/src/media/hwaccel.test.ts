@@ -62,7 +62,9 @@ describe('videoPipeline', () => {
   it('aims libx264 at a constant quality under the peak of the preset', () => {
     const p = videoPipeline(SOFTWARE_ENCODER, { ...opts, gpu: true });
     expect(p.input).toEqual([]);
-    expect(p.filter).toMatch(/^scale='if\(gte\(iw,ih\),-2,min\(1080.*:flags=lanczos,setsar=1$/);
+    expect(p.filter).toMatch(
+      /^scale='if\(gte\(iw,ih\),-2,min\(1080.*:flags=lanczos:out_color_matrix=bt709:out_range=tv,setsar=1$/,
+    );
     expect(p.codec).toEqual([
       '-c:v',
       'libx264',
@@ -86,14 +88,8 @@ describe('videoPipeline', () => {
       '250',
       '-profile:v',
       'high',
-      '-colorspace',
-      'bt709',
-      '-color_primaries',
-      'bt709',
-      '-color_trc',
-      'bt709',
-      '-color_range',
-      'tv',
+      '-bsf:v',
+      'h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0',
     ]);
   });
 
@@ -120,7 +116,7 @@ describe('videoPipeline', () => {
     expect(gpu.codec).toEqual(expect.arrayContaining(['-b_ref_mode', 'middle', '-forced-idr']));
     const cpu = videoPipeline(nvenc, { ...opts, gpu: false });
     expect(cpu.input).toEqual([]);
-    expect(cpu.filter).toMatch(/^scale=.*:flags=lanczos,setsar=1,format=yuv420p$/);
+    expect(cpu.filter).toMatch(/^scale=.*:out_range=tv,setsar=1,format=yuv420p$/);
     // Older cards: the same quality, without lookahead and B-frame references.
     const basic = videoPipeline({ ...nvenc, tuning: 'basic' }, { ...opts, gpu: true });
     expect(basic.codec).toEqual(expect.arrayContaining(['-cq', '26', '-spatial-aq', '1']));

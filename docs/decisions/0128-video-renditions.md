@@ -79,7 +79,9 @@ H.264 HLS rungs at 2.5/5/8/25 Mbit/s with CRF 23: the same range.
 
 Common to every encoder: keyframes forced every two seconds by time
 (`-force_key_frames expr:gte(t,n_forced*2)`, `-g` ten seconds as a net, no scene-cut keyframes),
-so every rung switches at the same instants; BT.709 tags; `-profile:v high`.
+so every rung switches at the same instants; BT.709 tags written in the bitstream
+(`h264_metadata`: ffmpeg 9 turns `-colorspace` into a frame conversion it cannot do on GPU
+frames), the CPU scaler converting matrix and range to them; `-profile:v high`.
 
 - **libx264**: `-crf Q -maxrate -bufsize -aq-mode 3 -sc_threshold 0`.
 - **NVENC**, full tuning: `-preset p5 -tune hq -rc vbr -cq Q -b:v 0 -maxrate -bufsize
