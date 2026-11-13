@@ -79,3 +79,28 @@ it('names the clipper once next to its device', async () => {
   );
   expect(host.textContent).toContain('authorize.clients.clipper · Chrome · Linux');
 });
+
+it('resumes a pending provider sign-in once, without authorizing a different account', async () => {
+  const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {});
+  const key = `inkadra:reauth:${window.location.pathname}${window.location.search}`;
+  const path = '/authorize?client_id=mobile&redirect_uri=inkadra%3A%2F%2Fcallback&code_challenge=abc&code_challenge_method=S256';
+  sessionStorage.setItem(key, JSON.stringify({ userId: 'member', input: null, at: Date.now() }));
+  vi.mocked(api.get).mockResolvedValueOnce({ id: 'another-member' });
+  await act(async () => root.render(<MemoryRouter initialEntries={[path]}><Authorize /></MemoryRouter>));
+  expect(api.post).not.toHaveBeenCalled();
+  expect(assign).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem(key)).toBeNull();
+  expect(host.textContent).toContain('authorize.failed');
+});
+
+it('retries the pending authorization after returning from the provider', async () => {
+  const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {});
+  const key = `inkadra:reauth:${window.location.pathname}${window.location.search}`;
+  sessionStorage.setItem(key, JSON.stringify({ userId: 'member', input: null, at: Date.now() }));
+  vi.mocked(api.post).mockResolvedValueOnce({ redirectTo: 'inkadra://callback?code=ok' });
+  const path = '/authorize?client_id=mobile&redirect_uri=inkadra%3A%2F%2Fcallback&code_challenge=abc&code_challenge_method=S256';
+  await act(async () => root.render(<MemoryRouter initialEntries={[path]}><Authorize /></MemoryRouter>));
+  expect(api.post).toHaveBeenCalledOnce();
+  expect(assign).toHaveBeenCalledWith('inkadra://callback?code=ok');
+  expect(sessionStorage.getItem(key)).toBeNull();
+});
