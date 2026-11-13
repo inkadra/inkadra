@@ -26,14 +26,14 @@ forever, and a 4K 100 Mbit/s MP4 was served as is because the browser can decode
 
 `videoPlan` gives each upload one of:
 
-| Source                                                             | Copies                                     |
-| ------------------------------------------------------------------ | ------------------------------------------ |
-| Audio not every browser plays                                      | AAC M4A, as in 0051                        |
-| Plays in the browser and is **light**                              | none                                       |
-| Plays in the browser but is **heavy**                              | the ladder; the original stays a choice    |
-| QuickTime/Matroska with light 8-bit H.264 (phone MOV)              | a remux, one `proxy` copy, as today        |
-| Anything else (ProRes, DNx, HEVC, 10 bit, 4:2:2, MXF, AVI, AV1, …) | the ladder                                 |
-| Past the limits, copies off, no ffmpeg                             | `skipped`                                  |
+| Source                                                             | Copies                                  |
+| ------------------------------------------------------------------ | --------------------------------------- |
+| Audio not every browser plays                                      | AAC M4A, as in 0051                     |
+| Plays in the browser and is **light**                              | none                                    |
+| Plays in the browser but is **heavy**                              | the ladder; the original stays a choice |
+| QuickTime/Matroska with light 8-bit H.264 (phone MOV)              | a remux, one `proxy` copy, as today     |
+| Anything else (ProRes, DNx, HEVC, 10 bit, 4:2:2, MXF, AVI, AV1, …) | the ladder                              |
+| Past the limits, copies off, no ffmpeg                             | `skipped`                               |
 
 **Heavy**: shorter side over 1080, or more than 12 Mbit/s on average (`size × 8 / duration`),
 or more than 60 fps. **Light enough to remux**: 8-bit 4:2:0 H.264, no larger than the copy, at
@@ -61,11 +61,11 @@ and mixing codecs between rungs breaks level switching.
 Target video bitrate per rung up to 30 fps (above 30 fps: × 1.4); peak (`-maxrate`) = 1.5 ×
 target; buffer = two seconds at the peak.
 
-| Preset                    | 480p    | 720p    | 1080p  | 2160p  | MB/min 480+720+1080 |
-| ------------------------- | ------- | ------- | ------ | ------ | ------------------- |
-| Leggera                   | 0.9 M   | 1.8 M   | 3.5 M  | 12 M   | 49                  |
-| **Bilanciata** (default)  | 1.4 M   | 3.0 M   | 6.0 M  | 20 M   | 81                  |
-| Alta                      | 2.0 M   | 4.5 M   | 10 M   | 32 M   | 127                 |
+| Preset                   | 480p  | 720p  | 1080p | 2160p | MB/min 480+720+1080 |
+| ------------------------ | ----- | ----- | ----- | ----- | ------------------- |
+| Leggera                  | 0.9 M | 1.8 M | 3.5 M | 12 M  | 49                  |
+| **Bilanciata** (default) | 1.4 M | 3.0 M | 6.0 M | 20 M  | 81                  |
+| Alta                     | 2.0 M | 4.5 M | 10 M  | 32 M  | 127                 |
 
 `MB/min = (video kbit/s + 128) × 0.0075`. These are ceilings: the encoders aim at a constant
 quality under the peak, so interviews and screen recordings stay well below. Immich caps its
@@ -102,11 +102,11 @@ before.
 `parseProbe` also reads transfer, primaries, matrix, range, field order, sample aspect ratio,
 rotation, bitrate and the channels of each audio track.
 
-| Source                                        | Decode | Scale                  | Then                                         |
-| --------------------------------------------- | ------ | ---------------------- | -------------------------------------------- |
-| 8-bit SDR, upright, progressive, GPU codec    | GPU    | GPU                    | encoder                                      |
+| Source                                        | Decode | Scale                  | Then                                          |
+| --------------------------------------------- | ------ | ---------------------- | --------------------------------------------- |
+| 8-bit SDR, upright, progressive, GPU codec    | GPU    | GPU                    | encoder                                       |
 | 10-bit SDR or HDR, upright, GPU codec         | GPU    | GPU, staying at 10 bit | download, dither or tone map, upload, encoder |
-| Rotated, interlaced, ProRes, DNx, 4:2:2/4:4:4 | CPU    | CPU, lanczos           | upload, encoder                              |
+| Rotated, interlaced, ProRes, DNx, 4:2:2/4:4:4 | CPU    | CPU, lanczos           | upload, encoder                               |
 
 Rotated sources (every portrait phone video) are decoded on the CPU: with frames kept on the GPU,
 ffmpeg 9 skips the rotation without an error and the copy comes out on its side (spike).
@@ -183,16 +183,16 @@ disabled with their percentage, Originale). Playing a file stays part of Board (
 Sources: Sony XAVC HS 4K50 HEVC 4:2:2 10-bit S-Log, handheld indoor footage (clip A, 12 s; clip
 F, 12 s, noisier). Reference: lanczos 1080p 8-bit; VMAF v0.6.1 at 1080p.
 
-| Encode                                       | A kbit/s | A VMAF | F kbit/s | F VMAF |
-| -------------------------------------------- | -------- | ------ | -------- | ------ |
-| Before: libx264 veryfast CRF 23, 5M          | 740      | 89.4   | 835      | 83.6   |
-| libx264 fast CRF 22, AQ 3                    | 1625     | 92.9   | 1762     | 85.7   |
-| **libx264 fast CRF 21, AQ 3**                | 2165     | 94.1   | 2795     | 86.6   |
-| libx264 fast CRF 20                          | 2811     | 94.4   | 4090     | 87.2   |
-| Before: NVENC p4 CQ 23, 5M                   | 3654     | 95.2   | 4722     | 87.8   |
-| NVENC p5 CQ 23, spatial + temporal AQ        | 10332    | 95.0   | 12459    | 89.2   |
-| **NVENC p5 CQ 26, spatial AQ, lookahead**    | 6111     | 94.8   | 11110    | 89.1   |
-| NVENC p5 CQ 26, no AQ                        | 2229     | 94.8   | 4736     | 88.2   |
+| Encode                                    | A kbit/s | A VMAF | F kbit/s | F VMAF |
+| ----------------------------------------- | -------- | ------ | -------- | ------ |
+| Before: libx264 veryfast CRF 23, 5M       | 740      | 89.4   | 835      | 83.6   |
+| libx264 fast CRF 22, AQ 3                 | 1625     | 92.9   | 1762     | 85.7   |
+| **libx264 fast CRF 21, AQ 3**             | 2165     | 94.1   | 2795     | 86.6   |
+| libx264 fast CRF 20                       | 2811     | 94.4   | 4090     | 87.2   |
+| Before: NVENC p4 CQ 23, 5M                | 3654     | 95.2   | 4722     | 87.8   |
+| NVENC p5 CQ 23, spatial + temporal AQ     | 10332    | 95.0   | 12459    | 89.2   |
+| **NVENC p5 CQ 26, spatial AQ, lookahead** | 6111     | 94.8   | 11110    | 89.1   |
+| NVENC p5 CQ 26, no AQ                     | 2229     | 94.8   | 4736     | 88.2   |
 
 - libx264 CRF 21 is the knee of the curve: Bilanciata 21, Leggera 24, Alta 19.
 - NVENC's AQ triples the rate for no VMAF gain (VMAF does not see the banding in shadows AQ is
