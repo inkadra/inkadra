@@ -93,6 +93,31 @@ export function requestProblem(
   };
 }
 
+/**
+ * A board that could not be saved or opened (collab). One problem per board and error: until it
+ * is saved, its edits live only in the memory of the process.
+ */
+export function boardProblem(
+  kind: 'board_save_failed' | 'board_load_failed',
+  role: ServerRole,
+  boardId: string,
+  err: Error,
+  at = Date.now(),
+): ProblemInput {
+  const message = technicalText(`${err.name}: ${err.message}`.split('\n')[0] ?? '');
+  return {
+    id: `${kind}:${boardId}:${short(message)}`,
+    kind,
+    severity: 'error',
+    role,
+    technical: `${role} · board\n${message}`,
+    assetId: null,
+    service: null,
+    job: null,
+    at,
+  };
+}
+
 export function recordProblem(
   store: MonitorStore | undefined,
   input: ProblemInput | null,

@@ -23,7 +23,8 @@ import { noteWriter, type PendingWriters, storeWriters } from './board-writers.t
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
-import type { PresenceBoard } from './monitor/store.ts';
+import { boardProblem, recordProblem } from './monitor/problems.ts';
+import type { MonitorStore, PresenceBoard } from './monitor/store.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import {
@@ -151,9 +152,29 @@ export function createCollabServer(deps: {
   limits?: CollabLimits;
   /** Oldest client schema that may write (decision 0102); tests lower it. */
   minWriterSchema?: number;
+  /** Where a board that cannot be saved or opened goes for the Server page (#514). */
+  monitor?: { store: MonitorStore; role: 'collab' | 'all' };
 }) {
   const { db, auth, log, limits } = deps;
   const minWriterSchema = deps.minWriterSchema ?? MIN_WRITER_SCHEMA;
+  const reportBoard = (
+    kind: 'board_save_failed' | 'board_load_failed',
+    boardId: string,
+    err: unknown,
+  ) => {
+    log.error({ err, boardId }, kind === 'board_save_failed' ? 'board not stored' : 'board not loaded');
+    if (deps.monitor)
+      recordProblem(
+        deps.monitor.store,
+        boardProblem(
+          kind,
+          deps.monitor.role,
+          boardId,
+          err instanceof Error ? err : new Error(String(err)),
+        ),
+        log,
+      );
+  };
   /**
    * The oldest client schema that may write a document (decision 0102): the minimum for clients
    * that declare the strict card check, the current schema for the others. A document a newer
@@ -426,15 +447,20 @@ export function createCollabServer(deps: {
     async onLoadDocument({ document, documentName }) {
       const boardId = parseBoardDocName(documentName);
       if (!boardId) throw new Error('Unknown document');
-      const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
-      if (row) Y.applyUpdate(document, row.state);
-      if (limits) grown.set(document, row?.state.byteLength ?? 0);
-      const steps = migrateBoardDoc(document, boardId);
-      if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
-      prepareImageDrawings(document);
-      assignments.set(document, assignedItems(document));
-      openedAt.set(document, Date.now());
-      return document;
+      try {
+        const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
+        if (row) Y.applyUpdate(document, row.state);
+        if (limits) grown.set(document, row?.state.byteLength ?? 0);
+        const steps = migrateBoardDoc(document, boardId);
+        if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
+        prepareImageDrawings(document);
+        assignments.set(document, assignedItems(document));
+        openedAt.set(document, Date.now());
+        return document;
+      } catch (err) {
+        reportBoard('board_load_failed', boardId, err);
+        throw err;
+      }
     },
 
     async beforeSync({ connection, document, context, type, payload }) {
@@ -535,7 +561,12 @@ export function createCollabServer(deps: {
       } catch (err) {
         // The board was deleted for good (its project, or emptied from the trash) while open:
         // there is nothing to keep it for. Returning lets Hocuspocus unload the document.
-        if (!boardGone(err)) throw err;
+        if (!boardGone(err)) {
+          // Hocuspocus keeps the document in memory and prints the error to stderr; this is the
+          // structured line and the Server page problem.
+          reportBoard('board_save_failed', boardId, err);
+          throw err;
+        }
         log.info({ boardId }, 'board deleted while open: document not stored');
         return;
       }

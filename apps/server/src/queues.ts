@@ -128,7 +128,21 @@ export function createRedis(url: string) {
   return new IORedis(url, { maxRetriesPerRequest: null, lazyConnect: true });
 }
 
-export function createQueues(url: string, opts: { prefix?: string } = {}) {
+/**
+ * BullMQ re-emits every connection error of its Redis client, and prints the raw error when
+ * nothing listens. While Valkey is down that is a stack trace per queue per attempt: log one
+ * line a minute instead, with the code only (the driver error may carry the connection string).
+ */
+export function queueErrors(log: Pick<Logger, 'warn'>) {
+  let last = Number.NEGATIVE_INFINITY;
+  return (queue: string) => (err: Error & { code?: string }) => {
+    if (Date.now() - last < 60_000) return;
+    last = Date.now();
+    log.warn({ queue, code: err.code }, 'queue connection error');
+  };
+}
+
+export function createQueues(url: string, opts: { prefix?: string; log?: Pick<Logger, 'warn'> } = {}) {
   const connection = createRedis(url);
   const media = new Queue(QUEUES.media, { connection, prefix: opts.prefix });
   const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
@@ -136,6 +150,11 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
   const proxies = new Queue(QUEUES.proxies, { connection, prefix: opts.prefix });
   const office = new Queue(QUEUES.office, { connection, prefix: opts.prefix });
   const email = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
+  if (opts.log) {
+    const onError = queueErrors(opts.log);
+    for (const [name, q] of Object.entries({ media, maintenance, transfers, proxies, office, email }))
+      q.on('error', onError(name));
+  }
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
@@ -375,7 +394,8 @@ export async function startWorkers(
   opts: { prefix?: string } = {},
 ) {
   const connection = createRedis(url);
-  const queues = createQueues(url, opts);
+  const queues = createQueues(url, { ...opts, log });
+  const onError = queueErrors(log);
   const backupDeps: BackupDeps | undefined = deps.transfers && {
     db: deps.db,
     storage: deps.storage,
@@ -532,6 +552,7 @@ export async function startWorkers(
   );
 
   const scheduler = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
+  scheduler.on('error', onError('scheduler'));
   await scheduler.upsertJobScheduler(
     'purge-uploads',
     { every: 60 * 60 * 1000 },
@@ -563,6 +584,7 @@ export async function startWorkers(
     },
   );
   const mailScheduler = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
+  mailScheduler.on('error', onError('mail-scheduler'));
   if (deps.mailer?.enabled)
     await enqueueReleaseNews(deps.db, VERSION, deps.mailer, async (version) => {
       const jobId = `release-news-${version}`;
@@ -625,6 +647,7 @@ export async function startWorkers(
 
   const monitor = deps.monitor;
   for (const w of [maintenance, media, proxies, email, transfers, ...(office ? [office] : [])]) {
+    w.on('error', onError(w.name));
     w.on('failed', (job, err) => {
       log.error({ queue: w.name, job: job?.id, err }, 'job failed');
       // Only once it gave up: a retry that works is not a problem.

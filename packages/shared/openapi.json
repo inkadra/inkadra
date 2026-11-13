@@ -5743,6 +5743,8 @@
               "disk_full",
               "service_down",
               "server_error",
+              "board_save_failed",
+              "board_load_failed",
               "config_check"
             ],
             "description": "Open list: clients show a kind they do not know with the generic text. `config_check`: a failing diagnostic check (`checkId`), gone once it passes; it cannot be marked seen."
