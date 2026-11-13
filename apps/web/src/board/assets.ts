@@ -102,11 +102,21 @@ function suspended(): boolean {
   return navigator.onLine === false || document.visibilityState === 'hidden';
 }
 
-/** One poller per observed asset, even when several cards show the same file. */
-function startPolling(id: string) {
-  if (pollers.has(id) || !needsPolling(id)) return;
+/**
+ * One poller per observed asset, even when several cards show the same file. `once` asks at
+ * least once even about an asset that looks settled.
+ */
+function startPolling(id: string, once = false) {
+  if (pollers.has(id) || (!once && !needsPolling(id))) return;
+  let ask = once;
   const poller = createPoller({
-    run: () => (needsPolling(id) ? fetchOnce(id) : Promise.resolve({ kind: 'done' })),
+    run: () => {
+      if (!ask && !needsPolling(id)) return Promise.resolve({ kind: 'done' });
+      return fetchOnce(id).then((outcome) => {
+        if (outcome.kind !== 'retry') ask = false;
+        return outcome;
+      });
+    },
     interval: POLL_MS,
     max: 60_000,
     hidden: suspended,
@@ -122,10 +132,42 @@ export function refetchPendingOrUnknown() {
   }
 }
 
+/** A video without a playable copy, which a regeneration started since may be making now. */
+function lacksCopy(value: Asset | 'missing' | undefined): boolean {
+  if (!value || value === 'missing' || value.kind !== 'video') return false;
+  return value.proxy?.status === 'skipped' || value.proxy?.status === 'failed';
+}
+
+/**
+ * Asks again about the videos without a copy: shown ones once now (then polled while their
+ * copies are made), the others are forgotten so their cards fetch them when they mount. Called
+ * when this tab starts a regeneration and when a board comes back into view.
+ * shortcut: no push reaches asset changes, so a board kept in view in another tab or browser
+ * only learns once it is hidden and shown again; upgrade with an asset notice on the board
+ * channel (board-notices.ts) if that matters.
+ */
+export function refetchVideosWithoutCopy() {
+  for (const [id, value] of cache) {
+    if (!lacksCopy(value)) continue;
+    if (!listeners.has(id)) {
+      cache.delete(id);
+      continue;
+    }
+    pollers.get(id)?.stop();
+    pollers.delete(id);
+    startPolling(id, true);
+  }
+}
+
+function onVisibilityChange() {
+  refetchPendingOrUnknown();
+  if (document.visibilityState === 'visible') refetchVideosWithoutCopy();
+}
+
 function subscribe(id: string, listener: () => void) {
   if (listeners.size === 0) {
     window.addEventListener('online', refetchPendingOrUnknown);
-    document.addEventListener('visibilitychange', refetchPendingOrUnknown);
+    document.addEventListener('visibilitychange', onVisibilityChange);
   }
   let set = listeners.get(id);
   if (!set) {
@@ -143,7 +185,7 @@ function subscribe(id: string, listener: () => void) {
     }
     if (listeners.size === 0) {
       window.removeEventListener('online', refetchPendingOrUnknown);
-      document.removeEventListener('visibilitychange', refetchPendingOrUnknown);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     }
   };
 }

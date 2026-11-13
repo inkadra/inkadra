@@ -4,7 +4,14 @@ import { act, type ReactNode, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RequestError } from '../lib/api.ts';
-import { primeAsset, resetAssetCache, setAssetLoader, useAsset } from './assets.ts';
+import {
+  getCachedAsset,
+  primeAsset,
+  refetchVideosWithoutCopy,
+  resetAssetCache,
+  setAssetLoader,
+  useAsset,
+} from './assets.ts';
 
 const api = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock('../lib/api.ts', async (original) => ({
@@ -43,6 +50,11 @@ const asset: Asset = {
 function Card({ id = asset.id }: { id?: string }) {
   const value = useAsset(id);
   return <span>{value === 'missing' ? value : (value?.status ?? 'loading')}</span>;
+}
+
+function VideoCard() {
+  const value = useAsset(asset.id);
+  return <span>{value && value !== 'missing' ? value.proxy?.status : 'loading'}</span>;
 }
 
 function GuestPage() {
@@ -98,6 +110,40 @@ afterEach(async () => {
 });
 
 describe('mounted asset polling', () => {
+  it('learns that the copy of a skipped video is being made again', async () => {
+    const proxy = (status: 'skipped' | 'processing' | 'ready') => ({
+      status,
+      progress: null,
+      url: null,
+      mime: 'video/mp4' as const,
+      width: null,
+      height: null,
+      size: null,
+    });
+    const skipped = { ...asset, status: 'ready' as const, proxy: proxy('skipped') };
+    primeAsset(skipped);
+    primeAsset({ ...skipped, id: 'unmounted' });
+    await render(<VideoCard />);
+    await advance(60_000);
+    expect(api.get).not.toHaveBeenCalled();
+
+    // A regeneration started: the shown card asks once, then polls while the copy is made.
+    api.get
+      .mockResolvedValueOnce({ ...skipped, proxy: proxy('processing') })
+      .mockResolvedValue({ ...skipped, proxy: proxy('ready') });
+    await act(async () => refetchVideosWithoutCopy());
+    expect(container.textContent).toBe('processing');
+    expect(getCachedAsset('unmounted')).toBeUndefined();
+    await advance(4000);
+    expect(container.textContent).toBe('ready');
+    await advance(60_000);
+    expect(api.get).toHaveBeenCalledTimes(2);
+
+    // Coming back into view asks only about videos still without a copy.
+    await event(document, 'visibilitychange');
+    expect(api.get).toHaveBeenCalledTimes(2);
+  });
+
   it('recovers after a network error without ever rendering missing', async () => {
     api.get
       .mockRejectedValueOnce(new TypeError('offline'))
