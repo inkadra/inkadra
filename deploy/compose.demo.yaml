@@ -13,9 +13,6 @@ services:
     ports: !reset []
     environment:
       DEMO_MODE: "true"
-      DEMO_TTL: ${DEMO_TTL:-1h}
-      DEMO_STORAGE: ${DEMO_STORAGE:-100MB}
-      DEMO_MAX_SANDBOXES: ${DEMO_MAX_SANDBOXES:-50}
       # Required: without them the demo refuses to start (decision 0084).
       TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:?set TURNSTILE_SITE_KEY in .env}
       TURNSTILE_SECRET: ${TURNSTILE_SECRET:?set TURNSTILE_SECRET in .env}
@@ -33,6 +30,8 @@ services:
       SMTP_URL: ""
       FEEDBACK_RELAY_URL: ""
       FEEDBACK_GITHUB_TOKEN: ""
+      # .env reaches this container whole: the tunnel token stays out of the sandboxes' reach.
+      CLOUDFLARE_TUNNEL_TOKEN: ""
       # Only cloudflared, at its fixed address below, may say who the visitor is. Cloudflare
       # appends the address it saw (the one of CF-Connecting-IP) to X-Forwarded-For, and
       # Inkadra takes the last entry after the trusted hop: what a visitor writes in the header
