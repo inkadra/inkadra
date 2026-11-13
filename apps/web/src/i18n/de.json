@@ -5683,7 +5683,7 @@
           },
           "2": {
             "title": "Wie es läuft",
-            "text": "Speicherplatz, Sicherung und Tempo in klaren Worten; unter Erweitert die Verläufe, alle paar Sekunden aktualisiert."
+            "text": "Speicherplatz, Sicherung und Tempo in klaren Worten; unter Erweitert die Verläufe, alle paar Sekunden aktualisiert. The CPU chart includes GPU use when hardware video encoding and readings are available."
           },
           "3": {
             "title": "Probleme",
@@ -6131,6 +6131,8 @@
       "today": "heute ↓ {{in}} ↑ {{out}}",
       "storage": "Speicherplatz",
       "cpuMeta": "Mittel {{avg}} · Spitze {{peak}}",
+      "gpu": "GPU",
+      "gpuMeta": "GPU-Spitze {{peak}} · nur der Container",
       "memoryMeta": "Spitze {{peak}}",
       "latency": "Antwortzeiten",
       "latencyMeta": "p95 · Fehler {{errors}}",

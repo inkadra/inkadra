@@ -42,3 +42,8 @@ than a small studio's server should carry.
 - S3 storage shows the space used only: providers do not report a total, so there is no "months
   left".
 - GPU use, disk I/O, temperatures and host traffic are out of scope.
+
+## Amendment
+
+GPU monitoring is now included by [decision 0129](0129-container-gpu-use.md): container-scoped
+DRM fdinfo readings appear inside the CPU chart; drivers without fdinfo leave the value absent.

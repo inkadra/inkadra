@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { availableParallelism, cpus, freemem, totalmem } from 'node:os';
 
 /**
@@ -12,6 +12,7 @@ const CGROUP = '/sys/fs/cgroup';
 export interface ContainerReading {
   /** Microseconds of CPU used since the cgroup (or, outside one, the host) started. */
   cpuUsec: number;
+  gpu?: GpuReading | null;
   cores: number;
   memory: number;
   memoryLimit: number | null;
@@ -105,4 +106,92 @@ export async function readContainer(): Promise<ContainerReading> {
     hostCores: !cgroupCores || cgroupCores >= host,
     hostMemory: !cgroupMemory || cgroupMemory >= totalmem(),
   };
+}
+
+export interface DrmClient {
+  id: string;
+  device: string;
+  engines: Record<string, { busy: number; total: number | null; capacity: number }>;
+}
+export type GpuReading = Map<string, DrmClient>;
+
+/** DRM's common fdinfo keys; a client can be shared by several fds and processes. */
+export function parseDrmFdinfo(text: string): DrmClient | null {
+  const fields = new Map(
+    text.split('\n').map((line) => {
+      const colon = line.indexOf(':');
+      return [line.slice(0, colon), line.slice(colon + 1).trim()];
+    }),
+  );
+  const driver = fields.get('drm-driver');
+  const id = fields.get('drm-client-id');
+  if (!driver || !id || !/^\d+$/.test(id)) return null;
+  const device = fields.get('drm-pdev') ?? driver;
+  const engines: DrmClient['engines'] = {};
+  const uint = (key: string, ns = false) => {
+    const value = fields.get(key);
+    if (!value || !(ns ? /^\d+ ns$/ : /^\d+$/).test(value)) return null;
+    const n = Number(value.split(' ')[0]);
+    return Number.isFinite(n) ? n : null;
+  };
+  for (const key of fields.keys()) {
+    const match = /^drm-(?:engine|cycles)-(.+)$/.exec(key);
+    if (!match || key.startsWith('drm-engine-capacity-')) continue;
+    const name = match[1];
+    if (!name) continue;
+    const ns = uint(`drm-engine-${name}`, true);
+    const cycles = uint(`drm-cycles-${name}`);
+    const total = uint(`drm-total-cycles-${name}`);
+    const capacity = uint(`drm-engine-capacity-${name}`) ?? 1;
+    if (capacity <= 0) continue;
+    if (ns !== null) engines[name] = { busy: ns, total: null, capacity };
+    else if (cycles !== null && total !== null) engines[name] = { busy: cycles, total, capacity };
+  }
+  return Object.keys(engines).length ? { id, device, engines } : null;
+}
+
+/** Only processes visible in this PID namespace, without additional privileges. */
+export async function readGpu(proc = '/proc'): Promise<GpuReading | null> {
+  const pids = await readdir(proc).catch(() => null);
+  if (!pids) return null;
+  // No process holding the GPU open is a reading too: an idle GPU, 0 %.
+  const clients: GpuReading = new Map();
+  for (const pid of pids) {
+    if (!/^\d+$/.test(pid)) continue;
+    const dir = `${proc}/${pid}/fdinfo`;
+    for (const fd of await readdir(dir).catch(() => [])) {
+      const text = await read(`${dir}/${fd}`);
+      const client = text ? parseDrmFdinfo(text) : null;
+      if (client) clients.set(`${client.device}/${client.id}`, client);
+    }
+  }
+  // shortcut: proprietary NVIDIA drivers usually have no DRM fdinfo; add a driver API only
+  // when container-scoped counters are available without extra privileges (never nvidia-smi).
+  return clients;
+}
+
+/** The busiest engine, summing only clients that survive both readings. */
+export function gpuPercent(
+  before: GpuReading | null | undefined,
+  after: GpuReading | null | undefined,
+  ms: number,
+): number | null {
+  if (!before || !after || ms <= 0) return null;
+  const engines = new Map<string, number>();
+  for (const [id, client] of after) {
+    const old = before.get(id);
+    if (!old) continue;
+    for (const [name, counter] of Object.entries(client.engines)) {
+      const prev = old.engines[name];
+      if (!prev || (prev.total === null) !== (counter.total === null)) continue;
+      const elapsed = counter.total === null ? ms * 1e6 : counter.total - (prev.total ?? 0);
+      if (elapsed <= 0) continue;
+      // Drivers may briefly report a smaller busy counter: keep the previous high-water mark.
+      const delta = Math.max(0, counter.busy - prev.busy);
+      counter.busy = Math.max(counter.busy, prev.busy);
+      const key = `${client.device}/${name}`;
+      engines.set(key, (engines.get(key) ?? 0) + delta / elapsed / counter.capacity);
+    }
+  }
+  return engines.size ? Math.min(100, Math.max(...engines.values()) * 100) : 0;
 }

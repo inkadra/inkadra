@@ -5683,7 +5683,7 @@
           },
           "2": {
             "title": "Comment il va",
-            "text": "Espace, sauvegarde et vitesse en mots simples ; dans Avancé, les courbes, mises à jour toutes les quelques secondes."
+            "text": "Espace, sauvegarde et vitesse en mots simples ; dans Avancé, les courbes, mises à jour toutes les quelques secondes. The CPU chart includes GPU use when hardware video encoding and readings are available."
           },
           "3": {
             "title": "Les problèmes",
@@ -6131,6 +6131,8 @@
       "today": "aujourd’hui ↓ {{in}} ↑ {{out}}",
       "storage": "Espace",
       "cpuMeta": "moyenne {{avg}} · pic {{peak}}",
+      "gpu": "GPU",
+      "gpuMeta": "pic GPU {{peak}} · conteneur uniquement",
       "memoryMeta": "pic {{peak}}",
       "latency": "Temps de réponse",
       "latencyMeta": "p95 · erreurs {{errors}}",

@@ -5683,7 +5683,7 @@
           },
           "2": {
             "title": "Cómo está",
-            "text": "Espacio, copia de seguridad y velocidad en palabras sencillas; en Avanzada las curvas, actualizadas cada pocos segundos."
+            "text": "Espacio, copia de seguridad y velocidad en palabras sencillas; en Avanzada las curvas, actualizadas cada pocos segundos. The CPU chart includes GPU use when hardware video encoding and readings are available."
           },
           "3": {
             "title": "Los problemas",
@@ -6131,6 +6131,8 @@
       "today": "hoy ↓ {{in}} ↑ {{out}}",
       "storage": "Espacio",
       "cpuMeta": "media {{avg}} · máximo {{peak}}",
+      "gpu": "GPU",
+      "gpuMeta": "pico GPU {{peak}} · solo el contenedor",
       "memoryMeta": "máximo {{peak}}",
       "latency": "Tiempos de respuesta",
       "latencyMeta": "p95 · errores {{errors}}",

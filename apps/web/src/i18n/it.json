@@ -5683,7 +5683,7 @@
           },
           "2": {
             "title": "Come sta",
-            "text": "Spazio, backup e velocità in parole semplici; in Avanzata le curve, aggiornate ogni pochi secondi."
+            "text": "Spazio, backup e velocità in parole semplici; in Avanzata le curve, aggiornate ogni pochi secondi. La scheda CPU include la GPU quando il server la usa per i video e può misurarla."
           },
           "3": {
             "title": "I problemi",
@@ -6131,6 +6131,8 @@
       "today": "oggi ↓ {{in}} ↑ {{out}}",
       "storage": "Spazio",
       "cpuMeta": "media {{avg}} · picco {{peak}}",
+      "gpu": "GPU",
+      "gpuMeta": "picco GPU {{peak}} · solo il container",
       "memoryMeta": "picco {{peak}}",
       "latency": "Tempi di risposta",
       "latencyMeta": "p95 · errori {{errors}}",

@@ -1,7 +1,7 @@
 import { hostname } from 'node:os';
 import type { ServerRole } from '@inkadra/shared';
 import type { Logger } from 'pino';
-import { type ContainerReading, readContainer } from './resources.ts';
+import { type ContainerReading, gpuPercent, readContainer, readGpu } from './resources.ts';
 import {
   type MonitorStore,
   type Point,
@@ -73,6 +73,7 @@ export function average(points: Point[], t: number): Point {
   const people = points.map((p) => p.people).filter((v): v is number => typeof v === 'number');
   return {
     t,
+    g: mean(points.map((p) => p.g)),
     c: mean(points.map((p) => p.c)) ?? 0,
     cc: mean(points.map((p) => p.cc)) ?? 0,
     m: Math.round(mean(points.map((p) => p.m)) ?? 0),
@@ -111,6 +112,7 @@ export function pointFrom(
   const processUsec = after.cpu.user + after.cpu.system - (before.cpu.user + before.cpu.system);
   return {
     t,
+    g: gpuPercent(before.container.gpu, after.container.gpu, ms),
     c: Math.max(0, cpuUsec / 1e6 / seconds),
     cc: after.container.cores,
     m: after.container.memory,
@@ -145,6 +147,7 @@ export function startSampler(opts: {
   async function sample() {
     const at = Date.now();
     const container = await readContainer();
+    if (opts.role !== 'collab') container.gpu = await readGpu();
     const cpu = process.cpuUsage();
     const rss = process.memoryUsage.rss();
     const presence = opts.presence?.();

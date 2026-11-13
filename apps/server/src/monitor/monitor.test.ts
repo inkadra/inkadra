@@ -1,16 +1,22 @@
+import { mkdir, mkdtemp, rename, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import IORedis from 'ioredis';
 import { describe, expect, it, vi } from 'vitest';
 import { beatStatus, repeating } from './health.ts';
 import { jobProblem, technicalText } from './problems.ts';
 import {
+  gpuPercent,
   parseCpuMax,
   parseCpuStat,
+  parseDrmFdinfo,
   parseInactiveFile,
   parseMemoryMax,
   parseNetDev,
+  readGpu,
 } from './resources.ts';
 import { average, Bucket, LatencyRecorder, pointFrom, SAMPLE_MS } from './sampler.ts';
-import { capacity, combine, imageFlavour, RANGES, serverLive } from './status.ts';
+import { capacity, combine, imageFlavour, liveNow, RANGES, serverLive } from './status.ts';
 import {
   lastHour,
   type MonitorStore,
@@ -92,12 +98,12 @@ describe('samples', () => {
     const base = { c: 1, cc: 2, m: 100, ml: 200, rx: 10, tx: 4, pc: 0.5, pm: 50 };
     const a = average(
       [
-        { ...base, t: 0, p95: 80, req: 10, err: 0 },
-        { ...base, t: 10, c: 3, p95: 120, req: 5, err: 1 },
+        { ...base, g: 20, t: 0, p95: 80, req: 10, err: 0 },
+        { ...base, g: 60, t: 10, c: 3, p95: 120, req: 5, err: 1 },
       ],
       0,
     );
-    expect(a).toMatchObject({ c: 2, p95: 120, req: 15, err: 1 });
+    expect(a).toMatchObject({ c: 2, g: 40, p95: 120, req: 15, err: 1 });
   });
 });
 
@@ -265,6 +271,7 @@ describe('the live values', () => {
     const live = await serverLive(await filled(), '1h', now);
     expect(live.step).toBe(20);
     expect(live.now).toEqual({
+      gpu: null,
       cpu: { used: 3, cores: 8 },
       memory: { used: 2e9, limit: 8e9 },
       network: { in: 200, out: 100 },
@@ -458,5 +465,131 @@ describe('image flavour', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe('DRM GPU readings', () => {
+  const i915 = (id: number, busy: number, device = '0000:00:02.0') => `pos: 0
+flags: 0100002
+drm-driver: i915
+drm-client-id: ${id}
+drm-pdev: ${device}
+drm-engine-render: 0 ns
+drm-engine-video: ${busy} ns
+drm-engine-capacity-video: 2
+`;
+  const reading = (...texts: string[]) =>
+    new Map(
+      texts.map((text) => {
+        const client = parseDrmFdinfo(text);
+        if (!client) throw new Error('Invalid fixture');
+        return [`${client.device}/${client.id}`, client];
+      }),
+    );
+  it('parses i915 and amdgpu time counters and rejects non-DRM or malformed counters', () => {
+    expect(parseDrmFdinfo(i915(1, 100))?.engines.video).toEqual({
+      busy: 100,
+      total: null,
+      capacity: 2,
+    });
+    expect(parseDrmFdinfo(i915(1, 100).replace('i915', 'amdgpu'))).not.toBeNull();
+    expect(parseDrmFdinfo('pos: 0\nflags: 0100002')).toBeNull();
+    expect(
+      parseDrmFdinfo('drm-driver: xe\ndrm-client-id: 1\ndrm-cycles-video: invalid'),
+    ).toBeNull();
+  });
+  it('sums surviving clients per engine, divides capacity, and ignores exited and new clients', () => {
+    const before = reading(i915(1, 100e6), i915(2, 800e6));
+    const after = reading(i915(1, 900e6), i915(3, 2e9));
+    expect(gpuPercent(before, after, 1000)).toBe(40);
+    expect(gpuPercent(before, reading(i915(1, 50e6)), 1000)).toBe(0);
+    expect(gpuPercent(null, after, 1000)).toBeNull();
+    // Only a new client, or none at all: the GPU was idle, not unknown.
+    expect(gpuPercent(before, reading(i915(4, 0)), 1000)).toBe(0);
+    expect(gpuPercent(new Map(), new Map(), 5000)).toBe(0);
+    expect(
+      gpuPercent(reading(i915(1, 0), i915(2, 0)), reading(i915(1, 400e6), i915(2, 600e6)), 1000),
+    ).toBe(50);
+  });
+  it('uses xe total cycles and capacity rather than wall time', () => {
+    const xe = (busy: number, total: number) => `drm-driver: xe
+ dr m: ignored
+drm-client-id: 7
+drm-pdev: 0000:03:00.0
+drm-cycles-vcs: ${busy}
+drm-total-cycles-vcs: ${total}
+drm-engine-capacity-vcs: 2`;
+    expect(gpuPercent(reading(xe(100, 1000)), reading(xe(500, 2000)), 5)).toBe(20);
+  });
+  it('reads visible processes once per device/client and tolerates missing files', async () => {
+    const proc = await mkdtemp(join(tmpdir(), 'inkadra-gpu-'));
+    await mkdir(join(proc, '123/fdinfo'), { recursive: true });
+    await mkdir(join(proc, '456/fdinfo'), { recursive: true });
+    await writeFile(join(proc, '123/fdinfo/1'), i915(1, 100));
+    await writeFile(join(proc, '456/fdinfo/2'), i915(1, 100));
+    await writeFile(join(proc, '456/fdinfo/3'), i915(1, 200, '0000:03:00.0'));
+    expect((await readGpu(proc))?.size).toBe(2);
+    expect(await readGpu(join(proc, 'missing'))).toBeNull();
+    const idle = await mkdtemp(join(tmpdir(), 'inkadra-gpu-idle-'));
+    expect((await readGpu(idle))?.size).toBe(0);
+    await rename(proc, `${proc}_to_delete`);
+  });
+  it('preserves worker GPU values and counts each container once, including live values', () => {
+    const base: Point = {
+      t: 1000,
+      c: 0,
+      cc: 4,
+      m: 0,
+      ml: 100,
+      rx: 0,
+      tx: 0,
+      pc: 0,
+      pm: 0,
+      box: 'same-machine',
+    };
+    const raw = new Map([
+      ['web@a', [base]],
+      ['worker@a', [{ ...base, g: 40 }]],
+      ['collab@a', [{ ...base, g: 40 }]],
+      ['worker@b', [{ ...base, g: 20 }]],
+    ]);
+    expect(combine(raw, 0, 5)[0]?.gpu).toBe(60);
+    expect(liveNow(raw, 2000).gpu).toBe(60);
+    const point = pointFrom(
+      2000,
+      1000,
+      {
+        container: {
+          cpuUsec: 0,
+          cores: 4,
+          memory: 0,
+          memoryLimit: 100,
+          rx: 0,
+          tx: 0,
+          machine: null,
+          hostCores: false,
+          hostMemory: false,
+          gpu: reading(i915(1, 0)),
+        },
+        cpu: { user: 0, system: 0 },
+      },
+      {
+        container: {
+          cpuUsec: 0,
+          cores: 4,
+          memory: 0,
+          memoryLimit: 100,
+          rx: 0,
+          tx: 0,
+          machine: null,
+          hostCores: false,
+          hostMemory: false,
+          gpu: reading(i915(1, 800e6)),
+        },
+        cpu: { user: 0, system: 0 },
+        rss: 0,
+      },
+    );
+    expect(point.g).toBe(40);
   });
 });
