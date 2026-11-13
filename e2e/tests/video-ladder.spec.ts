@@ -157,6 +157,28 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
         ],
       },
     }),
+    // 1080p offered only live ("Solo al volo"): no copy is coming, so the card just plays.
+    liveOnly: (real: Asset) => ({
+      ...real,
+      playback: {
+        ...real.playback,
+        renditions: [
+          ...(real.playback?.renditions ?? []),
+          {
+            name: '1080',
+            status: 'queued',
+            progress: null,
+            width: null,
+            height: null,
+            bitrate: null,
+            size: null,
+            url: null,
+            live: true,
+            liveOnly: true,
+          },
+        ],
+      },
+    }),
     prores: (real: Asset) => ({
       ...real,
       proxy: { status: 'processing', progress: 35, url: null },
@@ -179,7 +201,10 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
     const json = change(real);
     await page.route(`**/api/v1/assets/${assetId}`, (route) => route.fulfill({ json }));
     await page.goto(boardUrl);
-    await expect(card.locator('.fcard__prep')).toBeVisible();
+    if (name === 'liveOnly') {
+      await expect(card.locator('button[data-play-link]')).toBeVisible();
+      await expect(card.locator('.fcard__prep')).toHaveCount(0);
+    } else await expect(card.locator('.fcard__prep')).toBeVisible();
     await shoot(page, `ladder-card-${name}`);
     if (name === 'live') {
       await card.locator('.fcard__footer').dblclick();

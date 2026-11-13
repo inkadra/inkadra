@@ -140,7 +140,8 @@ A rung can be **stored** (encoded once, as above) or **live** (encoded while som
 Live is used for rungs still queued or processing right after an upload, so a video plays at
 once; for rungs the admin sets to "Solo al volo" (2160p, say); and for "no stored copies" (every
 rung live). Capability **`video-live`**; clients need nothing more than `playback.hls`
-(`AssetRendition.live` marks the rungs offered live).
+(`AssetRendition.live` marks the rungs offered live; `liveOnly` those never stored, which stay
+`queued` with nothing to wait for).
 
 - The master playlist lists stored and live rungs together, smallest first; live ones point to
   `live/{rung}.m3u8`, a playlist of two-second fMP4 segments computed from the duration

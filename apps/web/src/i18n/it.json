@@ -2011,7 +2011,8 @@
       "original": "Originale",
       "live": "al volo",
       "liveCopy": "copia al {{percent}}%",
-      "liveNote": "Le qualità «al volo» le converte la scheda grafica mentre guardi; quando la copia è pronta si passa a quella."
+      "liveNote": "Le qualità «al volo» le converte la scheda grafica mentre guardi; quando la copia è pronta si passa a quella.",
+      "liveOnlyNote": "Le qualità «al volo» le converte la scheda grafica mentre guardi, senza salvare una copia."
     }
   },
   "search": {

@@ -2011,7 +2011,8 @@
       "original": "Original",
       "live": "em tempo real",
       "liveCopy": "cópia a {{percent}}%",
-      "liveNote": "As qualidades «em tempo real» são convertidas pela placa gráfica enquanto vê; quando a cópia está pronta, passa-se para ela."
+      "liveNote": "As qualidades «em tempo real» são convertidas pela placa gráfica enquanto vê; quando a cópia está pronta, passa-se para ela.",
+      "liveOnlyNote": "As qualidades «em tempo real» são convertidas pela placa gráfica enquanto vê, sem guardar uma cópia."
     }
   },
   "search": {
