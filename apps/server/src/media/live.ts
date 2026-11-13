@@ -164,6 +164,33 @@ export function liveVariant(row: AssetRow, rung: VideoRung, settings: ProxySetti
   };
 }
 
+/**
+ * The HLS output of a live session: fMP4 segments of SEGMENT_S seconds from `n`, in `dir`.
+ * The init segment is a bare name: ffmpeg writes it next to the playlist (in `dir`), and an
+ * absolute path there doubles the folder and fails with ENOENT (exit 254).
+ */
+export const liveOutput = (dir: string, n: number) => (path: string) => [
+  '-avoid_negative_ts',
+  'disabled',
+  '-f',
+  'hls',
+  '-hls_time',
+  String(SEGMENT_S),
+  '-hls_segment_type',
+  'fmp4',
+  '-hls_flags',
+  'temp_file+independent_segments',
+  '-hls_playlist_type',
+  'event',
+  '-hls_fmp4_init_filename',
+  'init.mp4',
+  '-hls_segment_filename',
+  join(dir, 'seg-%d.m4s'),
+  '-start_number',
+  String(n),
+  path,
+];
+
 interface Session {
   key: string;
   /** Who counts against the per-viewer limit: a person, or a share link with all its guests. */
@@ -499,28 +526,7 @@ export class LiveSessions {
     const encoder = this.deps.encoder;
     if (!encoder || encoder.backend === 'software') return;
     const from = n * SEGMENT_S;
-    const out = (path: string) => [
-      '-avoid_negative_ts',
-      'disabled',
-      '-f',
-      'hls',
-      '-hls_time',
-      String(SEGMENT_S),
-      '-hls_segment_type',
-      'fmp4',
-      '-hls_flags',
-      'temp_file+independent_segments',
-      '-hls_playlist_type',
-      'event',
-      // Absolute, as the segments: a bare name lands in the working folder of the process.
-      '-hls_fmp4_init_filename',
-      join(session.dir, 'init.mp4'),
-      '-hls_segment_filename',
-      join(session.dir, 'seg-%d.m4s'),
-      '-start_number',
-      String(n),
-      path,
-    ];
+    const out = liveOutput(session.dir, n);
     const args = ladderArgs(
       input,
       [{ rung, path: join(session.dir, 'live.m3u8') }],
