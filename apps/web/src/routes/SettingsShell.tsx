@@ -169,7 +169,9 @@ export function SettingsShell({
   // The server page says what its view shows: plain words, or every part.
   const serverView = useServerView();
   const lead =
-    current.id === 'server' && serverView === 'simple' ? 'settingsUi.leads.serverSimple' : current.lead;
+    current.id === 'server' && serverView === 'simple'
+      ? 'settingsUi.leads.serverSimple'
+      : current.lead;
   // Each page starts from the neutral "saved automatically" message.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset on page change only.
   useEffect(() => resetSaveState(), [current.id]);
