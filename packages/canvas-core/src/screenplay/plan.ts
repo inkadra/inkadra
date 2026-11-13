@@ -262,10 +262,7 @@ export function castName(name: string): string {
   if (name !== name.toUpperCase()) return name;
   return name
     .toLowerCase()
-    .replace(
-      /(^|[\s\-'’.])(\p{L})/gu,
-      (_, sep: string, ch: string) => sep + ch.toUpperCase(),
-    );
+    .replace(/(^|[\s\-'’.])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
 /** Articles, prepositions and conjunctions of the interface languages, lower case in a name. */
