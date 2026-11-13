@@ -355,6 +355,10 @@
 .project-appearance__picker--inline .project-appearance__emojis button {
   font-size: 16px;
 }
+.project-appearance__picker--inline .project-appearance__invalid {
+  bottom: -14px;
+  line-height: 14px;
+}
 
 /* Phones: 44 px targets, so the shared panel grows to fit the larger tiles. */
 @media (width < 768px) {

@@ -593,7 +593,8 @@ export function AppearancePicker({
       className={`project-appearance__picker${label ? ' project-appearance__picker--inline' : ''}`}
       style={
         {
-          '--appearance-validation': `${label ? tokens.space[4] : tokens.space[6]}px`,
+          // Inline, the error sits in the gap under the picker instead of a reserved line.
+          '--appearance-validation': `${label ? 0 : tokens.space[6]}px`,
         } as CSSProperties
       }
     >
