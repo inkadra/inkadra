@@ -72,8 +72,8 @@ Media tools are included in the standard image (see [The image](README.md#the-im
 | `VIDEO_PROXIES`               | `true`                | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage                                                                                                 |
 | `VIDEO_PROXY_MAX_DURATION`    | `7200`                | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                                                                                |
 | `VIDEO_PROXY_MAX_SOURCE_SIZE` | `20GB`                | Largest video that gets a playable copy, as bytes or with a unit; `0` for no limit                                                                                                                                    |
-| `VIDEO_PROXY_RESOLUTION`      | `1080`                | Shorter side of the copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                                                                                   |
-| `VIDEO_PROXY_BITRATE`         | `5M`                  | Peak video bitrate of the copy (`5M`, `2500k`); about 40 MB per minute at `5M`                                                                                                                                        |
+| `VIDEO_PROXY_RESOLUTION`      | unset (`1080`)        | Largest shorter side of a copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                                                                             |
+| `VIDEO_PROXY_BITRATE`         | unset                 | Cap on the peak video bitrate of every copy (`5M`, `2500k`). Unset, the quality preset sets the rate by size and frame rate: about 46 MB per minute for 1080p (decision 0128)                                         |
 | `VIDEO_PROXY_CONCURRENCY`     | `1`, `2` with a GPU   | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores. Unset, it is `2` when a hardware encoder was found |
 | `VIDEO_PROXY_THREADS`         | `2`                   | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                                                                             |
 | `VIDEO_PROXY_HWACCEL`         | `auto`                | Hardware encoding of the copies: `auto`, `nvenc`, `qsv`, `vaapi` or `none` (libx264 only). See [Hardware video encoding](#hardware-video-encoding)                                                                    |
@@ -91,8 +91,10 @@ one-second test encode that works. The first that passes is used, and the log sa
 does not work the worker falls back to libx264 and Diagnostics shows a warning.
 
 The copy is the same whatever encodes it: H.264 High and AAC in an MP4, the shorter side at
-most `VIDEO_PROXY_RESOLUTION`, `VIDEO_PROXY_BITRATE` at peak, and the same length, size and
-time limits. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and AV1) are also
+most `VIDEO_PROXY_RESOLUTION`, a keyframe every two seconds, a constant quality under a peak
+rate set by the quality preset ([decision 0128](../decisions/0128-video-renditions.md)), and the
+same length, size and time limits. GPUs and drivers that refuse the full rate control (QVBR,
+lookahead) get plain VBR at the preset's target: Diagnostics then says _basic rate control_. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and AV1) are also
 decoded and scaled on the GPU; ProRes, DNxHD and 4:2:2 sources are decoded on the CPU and only
 encoded on the GPU. **If the GPU fails on a file** (a profile it does not take, a busy device),
 that copy is made again with libx264: a video never ends up without its copy because of the GPU.

@@ -99,13 +99,19 @@ const Env = z.object({
   VIDEO_PROXY_MAX_DURATION: z.coerce.number().int().min(0).default(7200),
   /** Largest source that gets a copy: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */
   VIDEO_PROXY_MAX_SOURCE_SIZE: z.string().default('20GB').transform(parseSize),
-  /** Shorter side of the copy, in pixels (1080 makes 1920×1080 at most); never upscaled. */
-  VIDEO_PROXY_RESOLUTION: z.coerce.number().int().min(144).max(2160).default(1080),
-  /** Peak video bitrate of the copy, as ffmpeg reads it (`5M`, `2500k`). */
+  /**
+   * Largest shorter side of a copy, in pixels (1080 makes 1920×1080 at most); never upscaled.
+   * Unset: 1080 (decision 0128).
+   */
+  VIDEO_PROXY_RESOLUTION: z.coerce.number().int().min(144).max(2160).optional(),
+  /**
+   * Cap on the peak video bitrate of a copy, as ffmpeg reads it (`5M`, `2500k`). Unset: the
+   * quality preset sets the rate of each size and frame rate (decision 0128).
+   */
   VIDEO_PROXY_BITRATE: z
     .string()
     .regex(/^\d+(\.\d+)?[kKmM]?$/, 'Use a bitrate such as 5M or 2500k')
-    .default('5M'),
+    .optional(),
   /**
    * Copies made at once by each worker. Each takes up to 4 GiB of address space (about 1 to
    * 2 GB of RAM in practice for 1080p) and VIDEO_PROXY_THREADS cores. Unset: 1 with libx264,

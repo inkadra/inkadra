@@ -8,6 +8,13 @@ import {
   type VideoEncoder,
   videoPipeline,
 } from './hwaccel.ts';
+import {
+  DEFAULT_VIDEO_QUALITY,
+  parseBitrate,
+  type RungRate,
+  rungRate,
+  type VideoQuality,
+} from './quality.ts';
 import { limitedCommand, runTool, toolEnv } from './tools.ts';
 
 export { type MediaTools, mediaTools, resetMediaTools } from './tools.ts';
@@ -227,10 +234,12 @@ export interface ProxySettings {
   maxDurationS: number;
   /** Largest source in bytes; 0 = no limit. */
   maxSourceBytes: number;
-  /** Shorter side of the copy, in pixels. */
+  /** Shorter side of the copy, in pixels (VIDEO_PROXY_RESOLUTION, else 1080). */
   resolution: number;
-  /** Peak video bitrate, as ffmpeg reads it (`5M`). */
-  bitrate: string;
+  /** Quality preset (decision 0128): the rate and quality of each size. */
+  quality: VideoQuality;
+  /** Cap on the peak video bitrate, as ffmpeg reads it (VIDEO_PROXY_BITRATE); null: the preset's. */
+  bitrate: string | null;
   /** Encoder threads of one copy. */
   threads: number;
   /** Detected when the worker starts (VIDEO_PROXY_HWACCEL); libx264 if unset. */
@@ -242,7 +251,8 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
   maxDurationS: 7200,
   maxSourceBytes: 20 * 1024 ** 3,
   resolution: 1080,
-  bitrate: '5M',
+  quality: DEFAULT_VIDEO_QUALITY,
+  bitrate: null,
   threads: 2,
 };
 
@@ -299,17 +309,37 @@ function plannedSeconds(info: VideoInfo, settings: ProxySettings) {
   return info.durationMs ? Math.min(info.durationMs / 1000, cap) : cap;
 }
 
-/** `5M` → 5 000 000 bits per second. */
-const bitsPerSecond = (bitrate: string) => {
-  const m = /^(\d+(?:\.\d+)?)([kKmM]?)$/.exec(bitrate);
-  const unit = { k: 1e3, m: 1e6 }[m?.[2]?.toLowerCase() ?? ''] ?? 1;
-  return m ? Number(m[1]) * unit : 5e6;
-};
-
-/** H.264 that already fits only changes container: the picture is copied, not re-encoded. */
-export function copiesVideo(info: VideoInfo, settings: ProxySettings) {
+/** Shorter side of the copy of `info`: the source's, at most the resolution of `settings`. */
+function copySide(info: VideoInfo, settings: ProxySettings) {
   const short = Math.min(info.width ?? Infinity, info.height ?? Infinity);
-  return plainH264(info) && short <= settings.resolution;
+  return Number.isFinite(short) ? Math.min(short, settings.resolution) : settings.resolution;
+}
+
+/** Rate of the copy of `info`: the preset's for its size and frame rate, under the cap. */
+export function proxyRate(info: VideoInfo, settings: ProxySettings): RungRate {
+  return rungRate(
+    settings.quality,
+    copySide(info, settings),
+    info.frameRate,
+    parseBitrate(settings.bitrate),
+  );
+}
+
+/** Average bitrate of a whole source file, bit/s, or null without a duration. */
+export const sourceBitrate = (info: VideoInfo, sourceBytes: number) =>
+  info.durationMs ? (sourceBytes * 8 * 1000) / info.durationMs : null;
+
+/**
+ * H.264 that already fits only changes container: the picture is copied, not re-encoded. It
+ * fits when it is 8-bit 4:2:0, no larger than the copy, at most 60 frames per second, and no
+ * heavier than the peak of the High preset at its size (a 100 Mbit/s camera file is encoded).
+ */
+export function copiesVideo(info: VideoInfo, settings: ProxySettings, sourceBytes: number) {
+  const short = Math.min(info.width ?? Infinity, info.height ?? Infinity);
+  if (!plainH264(info) || short > settings.resolution) return false;
+  if ((info.frameRate ?? 0) > 60) return false;
+  const rate = sourceBitrate(info, sourceBytes);
+  return rate !== null && rate <= rungRate('high', short, info.frameRate).peak;
 }
 
 /**
@@ -318,8 +348,8 @@ export function copiesVideo(info: VideoInfo, settings: ProxySettings) {
  */
 export function proxyMaxBytes(info: VideoInfo, settings: ProxySettings, sourceBytes: number) {
   const margin = 16 * 1024 * 1024;
-  const video = info.videoCodec ? bitsPerSecond(settings.bitrate) : 0;
-  const estimate = copiesVideo(info, settings)
+  const video = info.videoCodec ? proxyRate(info, settings).peak : 0;
+  const estimate = copiesVideo(info, settings, sourceBytes)
     ? sourceBytes * 1.1
     : (plannedSeconds(info, settings) * (video + 384_000) * 1.5) / 8;
   const capped =
@@ -349,13 +379,15 @@ export function proxyArgs(
   encoder: VideoEncoder = settings.encoder ?? SOFTWARE_ENCODER,
   container: string | null = null,
 ) {
-  const copyVideo = copiesVideo(info, settings);
+  const copyVideo = copiesVideo(info, settings, sourceBytes);
   // An audio file (#327) has no picture: only its sound is copied or encoded, as for videos.
   const soundOnly = !info.videoCodec;
   const copyAudio = info.audioCodec === 'aac';
   const pipeline = videoPipeline(encoder, {
     resolution: settings.resolution,
-    bitrate: settings.bitrate,
+    rate: proxyRate(info, settings),
+    quality: settings.quality,
+    fps: info.frameRate,
     gpu: decodesOnGpu(encoder, info),
   });
   return [
@@ -399,8 +431,13 @@ export function proxyArgs(
 }
 
 /** Address-space cap of the copy of `info` with `encoder`: 4 GiB whenever the CPU decodes. */
-export function proxyMemory(info: VideoInfo, settings: ProxySettings, encoder: VideoEncoder) {
-  return copiesVideo(info, settings) || !info.videoCodec
+export function proxyMemory(
+  info: VideoInfo,
+  settings: ProxySettings,
+  encoder: VideoEncoder,
+  sourceBytes: number,
+) {
+  return copiesVideo(info, settings, sourceBytes) || !info.videoCodec
     ? FFMPEG_MEMORY
     : encoderMemory(encoder, decodesOnGpu(encoder, info));
 }
@@ -434,7 +471,7 @@ export async function makeProxy(
     ffmpeg,
     proxyArgs(input, output, info, settings, opts.sourceBytes, encoder, opts.container ?? null),
     {
-      memoryBytes: proxyMemory(info, settings, encoder),
+      memoryBytes: proxyMemory(info, settings, encoder, opts.sourceBytes),
       // Above -fs: ffmpeg stops cleanly at its own limit, the kernel only past it.
       fileBytes: proxyMaxBytes(info, settings, opts.sourceBytes) + 64 * 1024 * 1024,
       nice: true,

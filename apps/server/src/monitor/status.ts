@@ -261,7 +261,7 @@ async function transcodes(
     const progress = Math.max(0, Math.min(100, r.progress ?? 0));
     const since = started.get(r.id);
     const elapsed = since ? now - since : null;
-    const lines = r.height ? Math.min(r.height, config.VIDEO_PROXY_RESOLUTION) : null;
+    const lines = r.height ? Math.min(r.height, config.VIDEO_PROXY_RESOLUTION ?? 1080) : null;
     return {
       assetId: r.id,
       name: visible.has(r.projectId) ? r.filename : null,
