@@ -19,13 +19,14 @@ export function toAsset(g: GuestAsset): Asset {
     width: g.width,
     height: g.height,
     durationMs: g.durationMs,
-    // Guests have no playable video copies yet (decision 0048): their videos play as
-    // uploaded. Audio streams as its copy when there is one (streamUrl, #327).
+    // Videos play their reduced copies (decision 0128) whatever the link allows; the original
+    // only with downloads. Audio streams as its copy when there is one (streamUrl, #327).
     videoCodec: null,
     audioCodec: null,
     frameRate: null,
     pageCount: null,
     proxy: null,
+    playback: g.playback ?? null,
     waveformUrl: g.waveformUrl,
     animated: g.animated,
     status: 'ready',

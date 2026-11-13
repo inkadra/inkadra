@@ -61,8 +61,10 @@ import {
   fileHeaders,
   isThumbnail,
   parseRange,
+  sendRanged,
   sendWaveform,
 } from './assets-routes.ts';
+import { renditionsOf, sendHls, toPlayback } from './hls.ts';
 import { toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import {
@@ -99,6 +101,7 @@ const BoardParams = z.object({ linkId: Id, boardId: Id });
 const ElementParams = BoardParams.extend({ elementId: ElementRef });
 const PlanParams = BoardParams.extend({ planId: ElementRef });
 const AssetParams = z.object({ linkId: Id, assetId: Id });
+const GuestHlsParams = z.object({ linkId: Id, assetId: Id, file: z.string().max(20) });
 const VariantParams = AssetParams.extend({ size: ThumbnailSize });
 
 type GuestEvent =
@@ -276,12 +279,13 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
 
   async function guestAssets(ctx: GuestContext, ids: string[]): Promise<GuestAsset[]> {
     if (ids.length === 0) return [];
-    const [rows, variants] = await Promise.all([
+    const [rows, variants, renditions] = await Promise.all([
       db
         .select()
         .from(asset)
         .where(and(inArray(asset.id, ids), eq(asset.projectId, ctx.link.projectId))),
       db.select().from(assetVariant).where(inArray(assetVariant.assetId, ids)),
+      renditionsOf(db, ids),
     ]);
     const download = ctx.link.allowDownload;
     return rows
@@ -318,6 +322,17 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           variants.some((v) => v.assetId === row.id && v.size === 'waveform')
             ? `${assetPath(ctx.link.id, row.id)}/waveform`
             : null,
+        // The reduced copies of a video stream whatever `allowDownload` says, as sound does
+        // (decision 0128); the original is a choice only when the link allows downloads.
+        ...(row.kind === 'video' && ctx.assets.shown.has(row.id)
+          ? {
+              playback: toPlayback(
+                renditions.filter((r) => r.assetId === row.id),
+                `${assetPath(ctx.link.id, row.id)}/hls`,
+                download && row.proxyStatus === null,
+              ),
+            }
+          : {}),
       }));
   }
 
@@ -799,6 +814,23 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       }
       reply.header('content-length', size);
       return reply.send(await storage.read(key));
+    });
+
+    // The playlists and rungs of a video of the link (decision 0128): streamed whatever
+    // `allowDownload` says, checked on every request.
+    scope.get(v1('/guest/links/:linkId/assets/:assetId/hls/:file'), async (req, reply) => {
+      const { linkId, assetId, file } = GuestHlsParams.parse(req.params);
+      const ctx = await guests.requireGuest(req, reply, linkId);
+      if (!ctx.assets.shown.has(assetId)) throw new HttpError('not_found', 'Asset not found.');
+      const row = await projectAsset(ctx, assetId);
+      if (row.kind !== 'video') throw new HttpError('not_found', 'Asset not found.');
+      return sendHls(req, reply, db, storage, row, file, {
+        notFound: () => {
+          throw new HttpError('not_found', 'Asset not found.');
+        },
+        ranged: (key, size) => sendRanged(req, reply, storage, key, size),
+        fileHeaders: guestFileHeaders,
+      });
     });
 
     scope.get(v1('/guest/links/:linkId/assets/:assetId/waveform'), async (req, reply) => {
