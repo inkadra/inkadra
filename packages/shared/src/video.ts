@@ -89,11 +89,15 @@ export const VideoSettings = z
     live: z
       .object({
         enabled: z.boolean(),
-        maxSessions: z.int().min(0).max(VIDEO_LIVE_SESSIONS_MAX).openapi({
-          description:
-            'Renditions encoded at once for viewers, on the whole instance; 0 turns live ' +
-            'playback off. By default what the worker measured; the admin may set more.',
-        }),
+        maxSessions: z
+          .int()
+          .min(0)
+          .max(VIDEO_LIVE_SESSIONS_MAX)
+          .openapi({
+            description:
+              'Renditions encoded at once for viewers, on the whole instance; 0 turns live ' +
+              'playback off. By default what the worker measured; the admin may set more.',
+          }),
         perViewer: z.int().min(1).max(8).openapi({
           description: 'At once for one person or one share link.',
         }),

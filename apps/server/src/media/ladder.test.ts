@@ -5,8 +5,8 @@ import {
   generationOf,
   isHeavy,
   ladderArgs,
-  renditionCodecs,
   recipesFor,
+  renditionCodecs,
   renditionKey,
   videoPlan,
 } from './ladder.ts';
@@ -158,11 +158,21 @@ describe('recipes (decision 0128)', () => {
       ...DEFAULT_PROXY_SETTINGS,
       custom: { '720': { target: 4_000_000, peak: 5_000_000, quality: 18 } },
     });
-    expect(args).toEqual(expect.arrayContaining(['-crf', '18', '-maxrate', '5000000', '-bufsize', '10000000']));
+    expect(args).toEqual(
+      expect.arrayContaining(['-crf', '18', '-maxrate', '5000000', '-bufsize', '10000000']),
+    );
   });
 
   it('keep custom values under VIDEO_PROXY_BITRATE', () => {
-    const capped = { ...DEFAULT_PROXY_SETTINGS, bitrate: '3M', custom: { '720': { target: 4_000_000, peak: 6_000_000 } } };
-    expect(customRate(capped, '720', 720, 25)).toEqual({ target: 3_000_000, peak: 3_000_000, buffer: 6_000_000 });
+    const capped = {
+      ...DEFAULT_PROXY_SETTINGS,
+      bitrate: '3M',
+      custom: { '720': { target: 4_000_000, peak: 6_000_000 } },
+    };
+    expect(customRate(capped, '720', 720, 25)).toEqual({
+      target: 3_000_000,
+      peak: 3_000_000,
+      buffer: 6_000_000,
+    });
   });
 });

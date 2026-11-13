@@ -672,13 +672,10 @@ async function proxyState(
     const ready = await deps.db
       .select({ name: assetRendition.name, recipe: assetRendition.recipe })
       .from(assetRendition)
-      .where(
-        and(
-          eq(assetRendition.assetId, assetId),
-          eq(assetRendition.status, 'ready'),
-        ),
-      );
-    const done = plan.rungs.every((r) => ready.some((x) => x.name === r && x.recipe === recipes[r]));
+      .where(and(eq(assetRendition.assetId, assetId), eq(assetRendition.status, 'ready')));
+    const done = plan.rungs.every((r) =>
+      ready.some((x) => x.name === r && x.recipe === recipes[r]),
+    );
     if (plan.original) return { status: null, enqueue: !done };
     return done ? { status: 'ready', enqueue: false } : { status: 'queued', enqueue: true };
   }

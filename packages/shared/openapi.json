@@ -3640,6 +3640,281 @@
           },
           "liveStatus": {
             "$ref": "#/components/schemas/VideoLiveStatus"
+          },
+          "benchmark": {
+            "type": "object",
+            "properties": {
+              "running": {
+                "type": "boolean"
+              },
+              "startedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "running",
+              "startedAt"
+            ]
+          },
+          "presetValues": {
+            "type": "object",
+            "properties": {
+              "light": {
+                "type": "object",
+                "properties": {
+                  "480": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "720": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "1080": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "2160": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  }
+                }
+              },
+              "balanced": {
+                "type": "object",
+                "properties": {
+                  "480": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "720": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "1080": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "2160": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  }
+                }
+              },
+              "high": {
+                "type": "object",
+                "properties": {
+                  "480": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "720": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "1080": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  },
+                  "2160": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "integer"
+                      },
+                      "peak": {
+                        "type": "integer"
+                      },
+                      "quality": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "peak",
+                      "quality"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "qualityParam": {
+            "type": "string",
+            "enum": [
+              "crf",
+              "cq",
+              "global_quality"
+            ]
           }
         },
         "required": [
@@ -3722,9 +3997,9 @@
               },
               "maxSessions": {
                 "type": "integer",
-                "minimum": 1,
-                "maximum": 64,
-                "description": "Renditions encoded at once for viewers, on the whole instance."
+                "minimum": 0,
+                "maximum": 16,
+                "description": "Renditions encoded at once for viewers, on the whole instance; 0 turns live playback off. By default what the worker measured; the admin may set more."
               },
               "perViewer": {
                 "type": "integer",
@@ -3739,6 +4014,24 @@
               "perViewer"
             ],
             "description": "Renditions made while someone watches: right after an upload, for `live` rungs, past the limits the player keeps to the stored ones."
+          },
+          "custom": {
+            "type": "object",
+            "properties": {
+              "480": {
+                "$ref": "#/components/schemas/VideoRungCustom"
+              },
+              "720": {
+                "$ref": "#/components/schemas/VideoRungCustom"
+              },
+              "1080": {
+                "$ref": "#/components/schemas/VideoRungCustom"
+              },
+              "2160": {
+                "$ref": "#/components/schemas/VideoRungCustom"
+              }
+            },
+            "description": "Values set by hand over the preset, by rung (Advanced)."
           }
         },
         "required": [
@@ -3747,6 +4040,27 @@
           "playable",
           "live"
         ]
+      },
+      "VideoRungCustom": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "integer",
+            "minimum": 200000,
+            "maximum": 80000000
+          },
+          "peak": {
+            "type": "integer",
+            "minimum": 200000,
+            "maximum": 80000000
+          },
+          "quality": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 51
+          }
+        },
+        "additionalProperties": false
       },
       "VideoLibrary": {
         "type": "object",
@@ -3848,6 +4162,14 @@
             "minimum": 0,
             "description": "The cap: measured, or from the environment."
           },
+          "measured": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Sessions the last measurement allowed; the admin may set more."
+          },
           "speed": {
             "type": [
               "number",
@@ -3941,16 +4263,76 @@
                 "type": "boolean"
               },
               "maxSessions": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 64,
-                "description": "Renditions encoded at once for viewers, on the whole instance."
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 16,
+                "description": "null: back to the value the worker measured."
               },
               "perViewer": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 8,
                 "description": "At once for one person or one share link."
+              }
+            }
+          },
+          "custom": {
+            "type": "object",
+            "properties": {
+              "480": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/VideoRungCustom"
+                  },
+                  {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "720": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/VideoRungCustom"
+                  },
+                  {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "1080": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/VideoRungCustom"
+                  },
+                  {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "2160": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/VideoRungCustom"
+                  },
+                  {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -17529,6 +17911,75 @@
         "responses": {
           "200": {
             "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSettingsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/video-settings/benchmark": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: detect the encoder and measure live playback again.",
+        "description": "Queued on the worker, as at its start; `VideoSettingsView.benchmark` says when it ends. 409 while one runs.",
+        "responses": {
+          "202": {
+            "description": "Started",
             "content": {
               "application/json": {
                 "schema": {

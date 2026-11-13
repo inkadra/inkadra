@@ -89,7 +89,10 @@ describe('live playback limits (decision 0128)', () => {
     const measured = await readVideoSettings(db(gpu), env);
     expect(measured.live).toMatchObject({ available: true, sessions: 3, measured: 3, speed: 5.35 });
     expect(measured.settings.live).toMatchObject({ enabled: true, maxSessions: 3 });
-    expect((await readVideoSettings(db({ ...gpu, live: { maxSessions: 2 } }), env)).settings.live.maxSessions).toBe(2);
+    expect(
+      (await readVideoSettings(db({ ...gpu, live: { maxSessions: 2 } }), env)).settings.live
+        .maxSessions,
+    ).toBe(2);
     // More than measured is allowed: the page warns.
     const higher = await readVideoSettings(db({ ...gpu, live: { maxSessions: 6 } }), env);
     expect(higher.live).toMatchObject({ sessions: 6, measured: 3, available: true });
@@ -97,7 +100,10 @@ describe('live playback limits (decision 0128)', () => {
     const off = await readVideoSettings(db({ ...gpu, live: { maxSessions: 0 } }), env);
     expect(off.live).toMatchObject({ available: false, reason: 'set-off' });
     // The environment wins over both.
-    const env5 = await readVideoSettings(db({ ...gpu, live: { maxSessions: 6 } }), { ...env, VIDEO_LIVE_MAX_SESSIONS: 5 });
+    const env5 = await readVideoSettings(db({ ...gpu, live: { maxSessions: 6 } }), {
+      ...env,
+      VIDEO_LIVE_MAX_SESSIONS: 5,
+    });
     expect(env5.live).toMatchObject({ sessions: 5, locked: true });
   });
 
@@ -121,7 +127,9 @@ describe('live playback limits (decision 0128)', () => {
 
 describe('custom values of the rungs (Advanced)', () => {
   it('needs the peak at least the target, with the preset filling what is not given', () => {
-    expect(invalidCustom('balanced', { '1080': { target: 8_000_000, peak: 12_000_000 } })).toBeNull();
+    expect(
+      invalidCustom('balanced', { '1080': { target: 8_000_000, peak: 12_000_000 } }),
+    ).toBeNull();
     expect(invalidCustom('balanced', { '1080': { target: 8_000_000, peak: 6_000_000 } })).toMatch(
       /1080p .* must be at least its target/,
     );
@@ -131,7 +139,9 @@ describe('custom values of the rungs (Advanced)', () => {
   });
 
   it('checks the bounds at the boundary: 200k to 80M, quality 0 to 51', () => {
-    const ok = UpdateVideoSettings.safeParse({ custom: { '720': { target: 200_000, quality: 0 } } });
+    const ok = UpdateVideoSettings.safeParse({
+      custom: { '720': { target: 200_000, quality: 0 } },
+    });
     expect(ok.success).toBe(true);
     for (const bad of [
       { target: 199_999 },
@@ -147,7 +157,9 @@ describe('custom values of the rungs (Advanced)', () => {
 
   it('gives the worker the custom values', () => {
     const custom = { '720': { target: 4_000_000 } };
-    expect(applyVideoSettings(DEFAULT_PROXY_SETTINGS, { ...DEFAULT_VIDEO_SETTINGS, custom }).custom).toEqual(custom);
+    expect(
+      applyVideoSettings(DEFAULT_PROXY_SETTINGS, { ...DEFAULT_VIDEO_SETTINGS, custom }).custom,
+    ).toEqual(custom);
   });
 });
 

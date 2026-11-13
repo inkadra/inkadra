@@ -166,7 +166,11 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
       );
     },
     async runVideoBenchmark() {
-      await maintenance.add('video-benchmark', {}, { jobId: `video-benchmark-${Date.now()}`, ...KEEP });
+      await maintenance.add(
+        'video-benchmark',
+        {},
+        { jobId: `video-benchmark-${Date.now()}`, ...KEEP },
+      );
     },
     async runVideoBackfill(delayMs = 0) {
       await maintenance.add(

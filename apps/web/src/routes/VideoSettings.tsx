@@ -484,7 +484,11 @@ function AdvancedCard({
       setProblem(err instanceof Error && err.message ? err.message : t('auth.errors.generic'));
     }
   };
-  const setField = (rung: VideoRung, field: 'target' | 'peak' | 'quality', value: number | null) => {
+  const setField = (
+    rung: VideoRung,
+    field: 'target' | 'peak' | 'quality',
+    value: number | null,
+  ) => {
     const preset = presets?.[rung];
     const next = { ...settings.custom?.[rung] };
     if (value === null || (preset && preset[field] === value)) delete next[field];
@@ -535,12 +539,18 @@ function AdvancedCard({
               disabled={running || !view.enabled}
               onClick={() => void benchmark()}
             >
-              {running ? t('videoSettings.advanced.benchmarkBusy') : t('videoSettings.advanced.rerun')}
+              {running
+                ? t('videoSettings.advanced.benchmarkBusy')
+                : t('videoSettings.advanced.rerun')}
             </Button>
           </Row>
           {running && (
             <div className="settings-card__pad">
-              <div className="video-meter is-indeterminate" role="progressbar" aria-label={t('videoSettings.advanced.benchmark')}>
+              <div
+                className="video-meter is-indeterminate"
+                role="progressbar"
+                aria-label={t('videoSettings.advanced.benchmark')}
+              >
                 <i />
               </div>
             </div>
@@ -621,7 +631,10 @@ function AdvancedCard({
                       onCommit={(n) => setField(rung, 'quality', Math.round(n))}
                     />
                     {own && (
-                      <Button variant="ghost" onClick={() => void patch({ custom: { [rung]: null } })}>
+                      <Button
+                        variant="ghost"
+                        onClick={() => void patch({ custom: { [rung]: null } })}
+                      >
                         {t('videoSettings.advanced.reset')}
                       </Button>
                     )}
@@ -636,7 +649,10 @@ function AdvancedCard({
           )}
         </div>
       ) : (
-        <Row label={t('videoSettings.advanced.collapsed')} help={t('videoSettings.advanced.collapsedHelp')} />
+        <Row
+          label={t('videoSettings.advanced.collapsed')}
+          help={t('videoSettings.advanced.collapsedHelp')}
+        />
       )}
     </Card>
   );
@@ -743,13 +759,29 @@ export function VideoSettings() {
               </span>
               <span className="video-preset__desc">{t(`videoSettings.quality.${q}Help`)}</span>
               <span className="video-preset__size num">
-                {number(copiesMbPerMinute(q, chosen, 2160, false, q === settings.quality ? custom : undefined))}{' '}
+                {number(
+                  copiesMbPerMinute(
+                    q,
+                    chosen,
+                    2160,
+                    false,
+                    q === settings.quality ? custom : undefined,
+                  ),
+                )}{' '}
                 <small>{t('videoSettings.mbPerMinute')}</small>
               </span>
               <span className="video-preset__hour num">
                 {t('videoSettings.gbPerHour', {
                   size: number(
-                    (copiesMbPerMinute(q, chosen, 2160, false, q === settings.quality ? custom : undefined) * 60) / 1000,
+                    (copiesMbPerMinute(
+                      q,
+                      chosen,
+                      2160,
+                      false,
+                      q === settings.quality ? custom : undefined,
+                    ) *
+                      60) /
+                      1000,
                     1,
                   ),
                 })}
@@ -797,7 +829,10 @@ export function VideoSettings() {
               {settings.rungs[r] === 'live'
                 ? t('videoSettings.live.noSpace')
                 : t('videoSettings.mbPerMinuteAbout', {
-                    size: number(mbPerMinute(settings.quality, r, false, custom), r === '2160' ? 0 : 1),
+                    size: number(
+                      mbPerMinute(settings.quality, r, false, custom),
+                      r === '2160' ? 0 : 1,
+                    ),
                   })}
             </span>
           </Row>

@@ -232,7 +232,12 @@ it('keeps Advanced collapsed, then lets the admin raise live sessions over the m
   await openAdvanced();
   expect(host.textContent).toContain('videoSettings.advanced.measuredAt');
   vi.mocked(api.patch).mockResolvedValue(
-    view({ settings: { ...DEFAULT_VIDEO_SETTINGS, live: { enabled: true, maxSessions: 6, perViewer: 1 } } }),
+    view({
+      settings: {
+        ...DEFAULT_VIDEO_SETTINGS,
+        live: { enabled: true, maxSessions: 6, perViewer: 1 },
+      },
+    }),
   );
   chooseSelect(host.querySelector('[data-tour="video-advanced"] [role="combobox"]'), '6');
   await act(async () => {});

@@ -104,11 +104,15 @@ export function recipesFor(quality: string, custom: ProxySettings['custom'] = {}
     }),
   ) as Recipes;
 }
-export const recipesOf = (settings: ProxySettings) =>
-  recipesFor(settings.quality, settings.custom);
+export const recipesOf = (settings: ProxySettings) => recipesFor(settings.quality, settings.custom);
 
 /** The rate of a rung, the preset's under the cap, with the values the admin set over it. */
-export function customRate(settings: ProxySettings, rung: VideoRung, side: number, fps: number | null) {
+export function customRate(
+  settings: ProxySettings,
+  rung: VideoRung,
+  side: number,
+  fps: number | null,
+) {
   const base = rungRate(settings.quality, side, fps, peakCap(settings));
   const c = settings.custom?.[rung];
   if (!c) return base;

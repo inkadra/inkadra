@@ -161,8 +161,7 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
   const { target, peak, buffer } = opts.rate;
   const preset = QUALITY_VALUES[opts.quality];
   const own = opts.qualityValue;
-  const q =
-    own === undefined ? preset : { ...preset, crf: own, cq: own, globalQuality: own };
+  const q = own === undefined ? preset : { ...preset, crf: own, cq: own, globalQuality: own };
   const cap = ['-maxrate', String(peak), '-bufsize', String(buffer)];
   const lowPower = encoder.lowPower ? ['-low_power', '1'] : [];
   const full = encoder.tuning !== 'basic';

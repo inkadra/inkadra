@@ -17,10 +17,10 @@ import type { Database } from './db/client.ts';
 import { instanceSetting } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
 import type { Jobs } from './jobs.ts';
-import type { VideoEncoder } from './media/hwaccel.ts';
-import { QUALITY_VALUES, rungRate, VIDEO_QUALITIES } from './media/quality.ts';
-import type { Recipes } from './media/ladder.ts';
 import { readVideoEncoder } from './media/encoder-setting.ts';
+import type { VideoEncoder } from './media/hwaccel.ts';
+import type { Recipes } from './media/ladder.ts';
+import { QUALITY_VALUES, rungRate, VIDEO_QUALITIES } from './media/quality.ts';
 import type { ProxySettings } from './media/video.ts';
 import { countNeeding, readBackfill } from './video-backfill.ts';
 
@@ -240,11 +240,7 @@ export function invalidCustom(
 /** The values of each preset for each rung on `backend`, as the Advanced fields start from. */
 export function presetValues(backend: VideoEncoder['backend'] | undefined) {
   const param =
-    backend === 'nvenc'
-      ? 'cq'
-      : backend === 'qsv' || backend === 'vaapi'
-        ? 'globalQuality'
-        : 'crf';
+    backend === 'nvenc' ? 'cq' : backend === 'qsv' || backend === 'vaapi' ? 'globalQuality' : 'crf';
   const values = Object.fromEntries(
     VIDEO_QUALITIES.map((q) => [
       q,
@@ -387,7 +383,8 @@ async function writeBenchmark(db: Pick<Database, 'insert'>, running: boolean, st
  * One at a time: 409 while one runs.
  */
 export async function startBenchmark(db: Database | Tx, jobs: Jobs) {
-  if (!jobs.runVideoBenchmark) throw new HttpError('conflict', 'This server makes no video copies.');
+  if (!jobs.runVideoBenchmark)
+    throw new HttpError('conflict', 'This server makes no video copies.');
   if ((await readBenchmark(db)).running)
     throw new HttpError('conflict', 'A performance test is already running.');
   await writeBenchmark(db, true, new Date().toISOString());
