@@ -144,8 +144,8 @@ If you want object storage on the same machine, [`deploy/compose.rustfs.yaml`](.
 Set two random values in `.env`:
 
 ```sh
-S3_ACCESS_KEY_ID=$(openssl rand -hex 12)
-S3_SECRET_ACCESS_KEY=$(openssl rand -hex 32)
+printf 'S3_ACCESS_KEY_ID=%s\nS3_SECRET_ACCESS_KEY=%s\n' \
+  "$(openssl rand -hex 12)" "$(openssl rand -hex 32)" >> .env
 ```
 
 ```sh

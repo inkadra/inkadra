@@ -44,8 +44,7 @@ errors. On 0.9.0 use `0.9.0-media`. Existing videos can have missing copies rege
 **Settings → Video** on current `main`; this does not regenerate PDF thumbnails.
 
 **The report icon is missing, or a report waits.** Without a destination, reports are off and the
-icon is hidden: see [What leaves your server](README.md#what-leaves-your-server). **Settings → About →
-Reports** shows what is waiting and why: a waiting report reads _Waiting to be sent_, and its
+icon is hidden: see [What leaves your server](README.md#what-leaves-your-server). **Settings → Reports** shows what is waiting and why: a waiting report reads _Waiting to be sent_, and its
 expanded row has **Try again**.
 
 **The page loads but sign-in fails or loops back to the login.** Check that the proxy replaces

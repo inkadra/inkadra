@@ -356,8 +356,8 @@ someone plays a link card, and Google profile pictures for accounts that sign in
 
 ### Reports to the developers
 
-People can report a problem from inside the app: an icon next to the notifications,
-`Ctrl/⌘+Shift+B`, or **Settings → About**. On every instance where no administrator has saved a
+Open **Report a problem** from the icon next to notifications,
+`Ctrl/⌘+Shift+B`, or **Settings → Help and tutorials**. On every instance where no administrator has saved a
 choice, new or upgraded, those reports go to the Inkadra developers.
 
 **What leaves:** the title and description someone wrote and, if they kept them selected,
@@ -398,7 +398,7 @@ here. Guests cannot report unless you allow them.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../screenshots/guide/reports-settings-dark.png">
-  <img src="../screenshots/guide/reports-settings-light.png" alt="Settings, About, Reports: a switch for sending to the Inkadra developers, with what it means, and the destination: developers, own GitHub repository, administrators' Inbox only, or off">
+  <img src="../screenshots/guide/reports-settings-light.png" alt="Settings, Reports: a switch for sending to the Inkadra developers, with what it means, and the destination: developers, own GitHub repository, administrators' Inbox only, or off">
 </picture>
 
 Limits, the direct GitHub route and how delivery retries work are in

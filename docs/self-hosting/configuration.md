@@ -37,6 +37,9 @@ services:
 | `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                             |
 | `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                             |
 
+`INSTANCE_NAME` and `REGISTRATION` are installation defaults; saved administrator choices
+in Settings override them.
+
 `TZ` sets the container time zone used for scheduled backups (UTC unless configured). It is
 not forwarded by default. The image bundles Node 26.13; the host does not need Node.
 
@@ -128,14 +131,14 @@ Sync** (`qsv`) or **VAAPI**, and AMD GPUs with **VAAPI**. When the worker starts
 NVENC, then Quick Sync, then VAAPI: each needs its encoder in ffmpeg, the device, and a
 one-second test encode that works. The first that passes is used, and the log says which
 (`video encoding: Intel Quick Sync (Intel, /dev/dri/renderD128, low power)`), as does
-**Settings → Server status** (_Video encoding_). Naming one backend tries only that one; if it
-does not work the worker falls back to libx264 and Diagnostics shows a warning.
+**Settings → Video**. Naming one backend tries only that one; if it
+does not work the worker falls back to libx264 and the Video page shows the selected encoder.
 
 The copy is the same whatever encodes it: H.264 High and AAC in an MP4, the shorter side at
 most `VIDEO_PROXY_RESOLUTION`, a keyframe every two seconds, a constant quality under a peak
 rate set by the quality preset ([decision 0128](../decisions/0128-video-renditions.md)), and the
 same length, size and time limits. GPUs and drivers that refuse the full rate control (QVBR,
-lookahead) get plain VBR at the preset's target: Diagnostics then says _basic rate control_. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and AV1) are also
+lookahead) get plain VBR at the preset's target: the encoder label then says _basic rate control_. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and AV1) are also
 decoded and scaled on the GPU; ProRes, DNxHD and 4:2:2 sources are decoded on the CPU and only
 encoded on the GPU. **If the GPU fails on a file** (a profile it does not take, a busy device),
 that copy is made again with libx264: a video never ends up without its copy because of the GPU.
@@ -203,7 +206,7 @@ setting `VIDEO_PROXY_CONCURRENCY`.
 **Checking it.** After starting the stack:
 
 1. the worker log has `video encoding: …` with the backend, not `Software (libx264)`;
-2. Settings → Server status shows the same under _Video encoding_;
+2. Settings → Video shows the selected encoder;
 3. upload a ProRes or HEVC clip: the copy is made, and `nvidia-smi` (NVIDIA) or
    `intel_gpu_top` (Intel, on the host) shows the encoder busy meanwhile;
 4. the worker log has no `hardware encoding failed` for it (which would mean libx264 made it).
@@ -272,7 +275,9 @@ These change `compose.yaml` itself, not the server.
 
 ## Sign-in and email
 
-Step by step in [Sign-in](sign-in.md). Every variable is optional.
+Setup instructions are in [Sign-in](sign-in.md). Leave unused providers unset. Set Google
+client id and secret together; OIDC needs discovery URL, client id and secret together.
+`SMTP_URL` requires `MAIL_FROM`.
 
 | Variable                 | Default                | Meaning                                                                           |
 | ------------------------ | ---------------------- | --------------------------------------------------------------------------------- |
