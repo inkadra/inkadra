@@ -627,7 +627,8 @@ export async function serverStatus(
   const [bytes] = await db.execute<{ originals: string; copies: string; previews: string }>(sql`
     select
       (select coalesce(sum(size), 0) from asset where status <> 'pending')::text as originals,
-      (select coalesce(sum(bytes), 0) from asset_variant where size = 'proxy')::text as copies,
+      ((select coalesce(sum(bytes), 0) from asset_variant where size = 'proxy')
+        + (select coalesce(sum(bytes), 0) from asset_rendition))::text as copies,
       (select coalesce(sum(bytes), 0) from asset_variant where size <> 'proxy')::text as previews`);
   const originals = Number(bytes?.originals ?? 0);
   const copies = Number(bytes?.copies ?? 0);

@@ -47,6 +47,8 @@ export const BUCKET_PREFIX = 'backups/';
 const SKIPPED_TABLES = new Set<string>([
   'instance_backup',
   'project_transfer',
+  // The rungs of video ladders (decision 0128) are made again with "Rigenera", like proxies.
+  'asset_rendition',
   ...BACKUP_REBUILT_TABLES,
 ]);
 const NAME = /^[a-z_][a-z0-9_]{0,62}$/;

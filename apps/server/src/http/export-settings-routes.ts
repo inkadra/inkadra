@@ -13,6 +13,7 @@ import {
   z,
 } from '@inkadra/shared';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { renditionFiles } from './hls.ts';
 import type { FastifyInstance } from 'fastify';
 import { projectRole, touchesProject } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -179,9 +180,11 @@ async function dropUnusedLogo(tx: Tx, projectId: string, assetId: string): Promi
     .select({ key: assetVariant.storageKey, size: assetVariant.size })
     .from(assetVariant)
     .where(eq(assetVariant.assetId, assetId));
+  const renditions = await renditionFiles(tx, [assetId]);
   await tx.delete(asset).where(eq(asset.id, assetId));
   return [
     file.storageKey,
+    ...renditions,
     ...variants.flatMap((v) => [v.key, animatedVariantKey(assetId, v.size)]),
   ];
 }

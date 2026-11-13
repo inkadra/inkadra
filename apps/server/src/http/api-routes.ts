@@ -10,6 +10,7 @@ import {
   type InstanceVersion,
   PLAN_SHEET_PDF_CAPABILITY,
   SERVER_LIVE_CAPABILITY,
+  VIDEO_RENDITIONS_CAPABILITY,
   TRANSFER_CANCEL_CAPABILITY,
   UpdateMe,
   type User,
@@ -152,6 +153,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         SERVER_LIVE_CAPABILITY,
         CLASSIFICATION_DELETE_CAPABILITY,
         IDEMPOTENT_IMPORT_CAPABILITY,
+        VIDEO_RENDITIONS_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });

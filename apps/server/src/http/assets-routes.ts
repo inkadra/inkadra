@@ -28,6 +28,13 @@ import { officeKey } from '../media/office.ts';
 import { ensureFreeSpace, NotEnoughSpace, privateInput, withJobDir } from '../media/scratch.ts';
 import { extractVideoFrame, FRAME_MAX_BYTES, mediaTools, NoVideoFrame } from '../media/video.ts';
 import { RateLimiter } from '../rate-limits.ts';
+import {
+  proxyRendition,
+  type RenditionRow,
+  renditionsOf,
+  sendHls,
+  toPlayback,
+} from './hls.ts';
 import { animatedVariantKey, readAll, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
@@ -50,6 +57,7 @@ const MAX_RUNNING_FRAMES = 2;
 const FRAME_DEADLINE_MS = 2 * 60_000;
 
 const AssetParams = z.object({ assetId: Id });
+const HlsParams = z.object({ assetId: Id, file: z.string().max(20) });
 const FileQuery = z.object({ download: z.enum(['1']).optional() });
 
 const v1 = (path: string) => `${API_PREFIX}${path}`;
@@ -70,12 +78,23 @@ export type ThumbnailRow = VariantRow & {
 export const isThumbnail = (v: VariantRow): v is ThumbnailRow =>
   v.size !== 'proxy' && v.size !== 'waveform';
 
-/** Where the playable copy of a video stands, for the API; null when there is none to make. */
-export function toProxy(row: typeof asset.$inferSelect, variants: VariantRow[]): AssetProxy | null {
+/**
+ * Where the playable copy of a video stands, for the API; null when there is none to make. A
+ * video with a ladder (decision 0128) serves its largest rung up to 1080 there, for clients
+ * that do not read `playback`.
+ */
+export function toProxy(
+  row: typeof asset.$inferSelect,
+  variants: VariantRow[],
+  renditions: RenditionRow[] = [],
+): AssetProxy | null {
   if (!row.proxyStatus) return null;
-  const made = row.proxyStatus === 'ready' ? variants.find((v) => v.size === 'proxy') : undefined;
+  const ready = row.proxyStatus === 'ready';
+  const made =
+    (ready ? variants.find((v) => v.size === 'proxy') : undefined) ??
+    (ready ? proxyRendition(renditions) : null);
   return {
-    status: row.proxyStatus === 'ready' && !made ? 'failed' : row.proxyStatus,
+    status: ready && !made ? 'failed' : row.proxyStatus,
     progress: row.proxyProgress,
     url: made ? proxyUrl(row.id) : null,
     mime: row.kind === 'audio' ? 'audio/mp4' : 'video/mp4',
@@ -85,6 +104,8 @@ export function toProxy(row: typeof asset.$inferSelect, variants: VariantRow[]):
   };
 }
 
+export const hlsBase = (assetId: string) => v1(`/assets/${assetId}/hls`);
+
 /** Types shown in the page; anything else (HTML, SVG, scripts, documents) is downloaded. */
 const INLINE =
   /^(image\/(jpeg|png|gif|webp|avif)|video\/(mp4|webm|quicktime)|audio\/[a-z0-9.+-]+|application\/pdf)$/;
@@ -92,7 +113,11 @@ const INLINE =
 // Files never change after upload: cache them for good, but only in the viewer's browser.
 const IMMUTABLE = 'private, max-age=31536000, immutable';
 
-export function toAsset(row: typeof asset.$inferSelect, variants: VariantRow[]): Asset {
+export function toAsset(
+  row: typeof asset.$inferSelect,
+  variants: VariantRow[],
+  renditions?: RenditionRow[],
+): Asset {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -108,7 +133,11 @@ export function toAsset(row: typeof asset.$inferSelect, variants: VariantRow[]):
     audioCodec: row.audioCodec,
     frameRate: row.frameRate,
     pageCount: row.pageCount,
-    proxy: toProxy(row, variants),
+    proxy: toProxy(row, variants, renditions),
+    // Only where the caller read the rungs: other lists leave the field out.
+    ...(renditions && row.kind === 'video'
+      ? { playback: toPlayback(renditions, hlsBase(row.id), row.proxyStatus === null) }
+      : {}),
     waveformUrl:
       row.status === 'ready' && variants.some((v) => v.size === 'waveform')
         ? waveformUrl(row.id)
@@ -205,7 +234,19 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       .from(assetVariant)
       .where(eq(assetVariant.assetId, assetId))
       .orderBy(asc(assetVariant.width));
-    return toAsset(row, variants);
+    return toAsset(row, variants, row.kind === 'video' ? await renditionsOf(db, [row.id]) : []);
+  });
+
+  // The adaptive playback of a video (decision 0128), for every role that sees its card.
+  app.get(v1('/assets/:assetId/hls/:file'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { assetId, file } = HlsParams.parse(req.params);
+    const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
+    return sendHls(req, reply, db, storage, row, file, {
+      notFound: (r) => sendError(r, 'not_found', 'This video has no such copy.'),
+      ranged: (key, size) => sendRanged(req, reply, storage, key, size),
+      fileHeaders,
+    });
   });
 
   app.get(v1('/assets/:assetId/frame'), async (req, reply) => {
@@ -337,13 +378,17 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     const { assetId } = AssetParams.parse(req.params);
     const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
     // Like the stream of an original video, every role that sees the card may play it.
-    const [made] = await db
+    const [variant] = await db
       .select()
       .from(assetVariant)
       .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
+    // A ladder (decision 0128): its largest rung up to 1080, an MP4 that plays on its own.
+    const rung = variant ? null : proxyRendition(await renditionsOf(db, [assetId]));
+    const made = variant ?? (rung?.storageKey ? { ...rung, storageKey: rung.storageKey, mime: 'video/mp4' } : null);
     if (!made || row.proxyStatus !== 'ready')
       return sendError(reply, 'not_found', 'This file has no playable copy.');
-    const etag = `${row.sha256 ?? row.id}-proxy`;
+    // The rung is replaced at a new key when regenerated: the tag follows it.
+    const etag = rung ? `${row.id}-${made.storageKey.split('/').pop()}` : `${row.sha256 ?? row.id}-proxy`;
     fileHeaders(reply, etag);
     if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
     const audio = made.mime === 'audio/mp4';

@@ -105,8 +105,16 @@ export async function usedBytes(
   const condition = sql.join(where, sql` and `);
   const [row] = await db.execute<{ originals: string; derived: string }>(sql`select
     (select coalesce(sum(a.size), 0) from asset a where ${condition})::text as originals,
-    (select coalesce(sum(v.bytes), 0) from asset_variant v join asset a on a.id = v.asset_id
-      where ${condition})::text as derived`);
+    ((select coalesce(sum(v.bytes), 0) from asset_variant v join asset a on a.id = v.asset_id
+      where ${condition})
+      + ${
+        // The rungs of video ladders count in the instance total only, never in a person's
+        // space: one upload would grow with every rung (decision 0128).
+        opts.userId
+          ? sql`0`
+          : sql`(select coalesce(sum(r.bytes), 0) from asset_rendition r
+              join asset a on a.id = r.asset_id where ${condition})`
+      })::text as derived`);
   return { originals: Number(row?.originals ?? 0), derived: Number(row?.derived ?? 0) };
 }
 

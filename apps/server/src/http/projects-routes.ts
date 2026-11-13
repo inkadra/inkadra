@@ -54,6 +54,7 @@ import {
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { officeFiles } from '../media/office.ts';
+import { renditionFiles } from './hls.ts';
 import { animatedVariantKey } from '../storage.ts';
 import { storageUsage } from '../storage-usage.ts';
 import { iso } from './api-routes.ts';
@@ -701,6 +702,10 @@ export async function projectFiles(
   return [
     ...originals.map((r) => r.key),
     ...officeFiles(originals),
+    ...(await renditionFiles(
+      tx,
+      originals.map((r) => r.id),
+    )),
     ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
   ];
 }
