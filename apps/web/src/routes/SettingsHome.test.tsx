@@ -3,7 +3,6 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
-import { authApi } from '../lib/api.ts';
 import { SettingsHome } from './SettingsHome.tsx';
 
 const session = vi.hoisted(() => ({
@@ -18,7 +17,8 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
 vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({ preference: 'dark', choose }) }));
-vi.mock('./projects.ts', () => ({ setCachedProjects: vi.fn() }));
+const signOut = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('../lib/sign-out.ts', () => ({ signOut }));
 vi.mock('../lib/api.ts', () => ({
   api: {
     get: vi.fn(async (path: string) =>
@@ -85,8 +85,7 @@ it('shows grouped rows with current values, inline theme and sign out', async ()
   });
   expect(choose).toHaveBeenCalledWith('light');
   await act(async () => host.querySelector<HTMLButtonElement>('.settings-home__signout')?.click());
-  expect(authApi.signOut).toHaveBeenCalled();
-  expect(session.refresh).toHaveBeenCalled();
+  expect(signOut).toHaveBeenCalledOnce();
   expect(host.textContent).toContain('Inkadra 0.4.0');
 });
 
