@@ -92,11 +92,7 @@ import {
   useProjectGroups,
 } from './project-groups.ts';
 import { onboardingTitle } from './project-setup.ts';
-import {
-  getCachedProjects,
-  refreshProjects,
-  subscribeProjects,
-} from './projects.ts';
+import { getCachedProjects, refreshProjects, subscribeProjects } from './projects.ts';
 import { ProjectsContext } from './projects-context.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
@@ -237,10 +233,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const groups = useProjectGroups(!!user);
   const grouped = groupProjects(projects ?? [], groups, (p) => p);
   // Dropped on the Projects heading, a project leaves its group.
-  const looseDrop = useDropTarget('loose', (id) => void moveToGroup(id, null).catch(reportGroupError));
+  const looseDrop = useDropTarget(
+    'loose',
+    (id) => void moveToGroup(id, null).catch(reportGroupError),
+  );
   // The group a project made from a group's menu goes into.
   const newProjectGroup = useRef<string | undefined>(undefined);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
   const [creating, setCreating] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -385,8 +385,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     leaveInbox();
     navigate(to);
   };
-
-  const [signOutFailed, setSignOutFailed] = useState(false);
 
   const openNewProject = (groupId?: string) => {
     if (!canCreate) return;

@@ -27,16 +27,16 @@ async function request<T>(path: string, init: RequestInit = {}, binary = false):
   try {
     body = text
       ? JSON.parse(text, (key, value) => {
-        // Avatar records keep canonical absolute URLs, but browser traffic stays on its host.
-        if (key === 'image' && typeof value === 'string') {
-          try {
-            const url = new URL(value);
-            if (/^\/api\/v1\/users\/[^/]+\/avatar\/[^/]+$/.test(url.pathname))
-              return new URL(url.pathname, window.location.origin).href;
-          } catch {
-            /* Leave non-URL values to their existing consumers. */
+          // Avatar records keep canonical absolute URLs, but browser traffic stays on its host.
+          if (key === 'image' && typeof value === 'string') {
+            try {
+              const url = new URL(value);
+              if (/^\/api\/v1\/users\/[^/]+\/avatar\/[^/]+$/.test(url.pathname))
+                return new URL(url.pathname, window.location.origin).href;
+            } catch {
+              /* Leave non-URL values to their existing consumers. */
+            }
           }
-        }
           return value;
         })
       : null;

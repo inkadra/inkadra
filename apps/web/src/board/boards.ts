@@ -71,7 +71,8 @@ export function useProjectBoards(projectId: string | undefined): ProjectBoards {
     // is a minute old, and when the tab comes back (#824). One request serves every reader.
     const revalidate = () => {
       if (document.visibilityState !== 'visible') return;
-      if (Date.now() - (fetched.get(projectId) ?? 0) >= BOARDS_STALE_MS) void refreshBoards(projectId);
+      if (Date.now() - (fetched.get(projectId) ?? 0) >= BOARDS_STALE_MS)
+        void refreshBoards(projectId);
     };
     const timer = setInterval(revalidate, BOARDS_STALE_MS);
     document.addEventListener('visibilitychange', revalidate);

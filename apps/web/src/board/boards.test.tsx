@@ -15,14 +15,15 @@ it('lists every child board, storyboards included, in their saved order', () => 
   expect(childBoards(items, 'root').map((b) => b.id)).toEqual(['a', 'b']);
 });
 
+function Reader() {
+  useProjectBoards('p-stale');
+  return null;
+}
+
 it('reads a project’s board list again once it is a minute old (#824)', async () => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   vi.useFakeTimers();
   const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [] });
-  function Reader() {
-    useProjectBoards('p-stale');
-    return null;
-  }
   const host = document.createElement('div');
   const root = createRoot(host);
   try {

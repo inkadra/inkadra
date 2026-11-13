@@ -2,8 +2,8 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { GuestRequestError } from './api.ts';
 import { type GuestActions, GuestActionsContext } from './actions.ts';
+import { GuestRequestError } from './api.ts';
 import { PickControls } from './GuestCardExtras.tsx';
 
 vi.mock('react-i18next', () => ({
