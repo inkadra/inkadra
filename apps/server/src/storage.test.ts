@@ -62,9 +62,9 @@ it('local storage keeps the previous file when a write fails half-way', async ()
     yield Buffer.from('trunc');
     throw new Error('disk full');
   }
-  await expect(
-    storage.write(key, broken() as unknown as Buffer, 'image/webp'),
-  ).rejects.toThrow('disk full');
+  await expect(storage.write(key, broken() as unknown as Buffer, 'image/webp')).rejects.toThrow(
+    'disk full',
+  );
   expect((await readAll(await storage.read(key))).toString()).toBe('whole');
   expect(readdirSync(dirname(join(root, key)))).toEqual([basename(key)]);
 });

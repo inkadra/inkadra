@@ -346,7 +346,9 @@ export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 
     let reserved: Awaited<ReturnType<Database['$client']['reserve']>> | undefined;
     try {
       reserved = await db.$client.reserve();
-      const [lock] = await reserved<{ ok: boolean }[]>`select pg_try_advisory_lock(${BACKFILL_LOCK}) as ok`;
+      const [lock] = await reserved<
+        { ok: boolean }[]
+      >`select pg_try_advisory_lock(${BACKFILL_LOCK}) as ok`;
       if (!lock?.ok) return;
       let total = 0;
       let after: string | undefined;

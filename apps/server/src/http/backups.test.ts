@@ -515,7 +515,9 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       .set({ runId: randomUUID(), heartbeatAt: new Date() })
       .where(eq(instanceBackup.id, id));
     expect(await runBackup(backupDeps(), id)).toBeNull();
-    expect((await db.select().from(instanceBackup).where(eq(instanceBackup.id, id)))[0]).toMatchObject({
+    expect(
+      (await db.select().from(instanceBackup).where(eq(instanceBackup.id, id)))[0],
+    ).toMatchObject({
       status: 'running',
     });
     // That run went quiet a few minutes ago: its worker died, this one finishes the backup.

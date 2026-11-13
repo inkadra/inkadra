@@ -189,7 +189,8 @@ export async function replayUnsavedBoards(db: Database, dir: string, log: Logger
       if (boardGone(err)) {
         await rm(file, { force: true });
         log.info({ boardId }, 'board kept on disk at the last shutdown was deleted: dropped');
-      } else log.error({ err, boardId, file }, 'board kept on disk not stored: retried at next start');
+      } else
+        log.error({ err, boardId, file }, 'board kept on disk not stored: retried at next start');
     }
   }
 }
