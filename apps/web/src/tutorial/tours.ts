@@ -477,7 +477,7 @@ export const TOURS: Tour[] = [
   {
     id: 'storage',
     group: 'admin',
-    icon: 'archive',
+    icon: 'disk',
     admin: true,
     offer: 'storage-limits',
     href: '/settings?section=workspace',

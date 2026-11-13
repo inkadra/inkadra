@@ -72,6 +72,10 @@ const paths = {
   ),
   star: <path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z" />,
   archive: <path d="M4 7h16M6 7v12h12V7M9 4h6" />,
+  /** Storage and the database: a cylinder, so it never reads as a bin. */
+  disk: (
+    <path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3v12c0 1.7-3.6 3-8 3s-8-1.3-8-3zM4 6c0 1.7 3.6 3 8 3s8-1.3 8-3M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   chevronDown: <path d="M7 10l5 5 5-5" />,
   image: (

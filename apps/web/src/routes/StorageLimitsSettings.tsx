@@ -192,7 +192,7 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
         tour="storage-used"
         anchor="workspace.used"
         tone={tone === 'danger' ? 'danger' : tone === 'warn' ? 'warn' : 'ok'}
-        icon="archive"
+        icon="disk"
         title={[
           size(used),
           limits.total !== null && t('storageLimits.ofLimit', { limit: size(limits.total) }),
