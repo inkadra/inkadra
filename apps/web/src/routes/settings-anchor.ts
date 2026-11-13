@@ -4,6 +4,9 @@ import { ANCHOR_PARAM } from './settings-sections.ts';
 
 /** How long a row found by the search stays highlighted. */
 const FOUND_MS = 2400;
+/** How long an opened row stays in view while what is above it is still loading. */
+const SETTLE_MS = 1500;
+const HANDS_ON = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
 export const FOUND_CLASS = 'settings-found';
 const FIELDS = 'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea';
 const FOCUSABLE = `${FIELDS}, button:not([disabled]), summary, a[href], [tabindex]:not([tabindex="-1"])`;
@@ -45,22 +48,37 @@ export function useRevealAnchor(root: RefObject<HTMLElement | null>) {
     const scope = root.current;
     if (!anchor || !scope) return;
     let undo: (() => void) | undefined;
+    let row: HTMLElement | undefined;
     const observer = new MutationObserver(() => void reveal());
     const giveUp = window.setTimeout(() => observer.disconnect(), 10000);
+    // Cards above the row that load after it (Storage's limits) push it down: keep it centred
+    // for a moment, until the person scrolls or acts themselves.
+    const keep = new MutationObserver(() => row?.scrollIntoView?.({ block: 'center' }));
+    const settle = () => {
+      keep.disconnect();
+      for (const type of HANDS_ON) (scope as HTMLElement).removeEventListener(type, settle);
+    };
+    let settled = 0;
     function reveal() {
-      const row = [...(scope as HTMLElement).querySelectorAll<HTMLElement>('[data-setting]')].find(
+      row = [...(scope as HTMLElement).querySelectorAll<HTMLElement>('[data-setting]')].find(
         (el) => el.dataset.setting === anchor,
       );
       if (!row) return false;
       observer.disconnect();
       window.clearTimeout(giveUp);
       undo = revealRow(row);
+      keep.observe(scope as HTMLElement, { childList: true, subtree: true });
+      for (const type of HANDS_ON)
+        (scope as HTMLElement).addEventListener(type, settle, { passive: true });
+      settled = window.setTimeout(settle, SETTLE_MS);
       return true;
     }
     if (!reveal()) observer.observe(scope, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
       window.clearTimeout(giveUp);
+      window.clearTimeout(settled);
+      settle();
       undo?.();
     };
   }, [anchor, key, root]);
