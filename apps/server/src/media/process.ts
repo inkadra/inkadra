@@ -8,6 +8,7 @@ import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetRendition, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
+import { applyVideoSettings, readVideoSettings, type VideoEnv } from '../video-settings.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
 import { readFileMetadata } from './file-metadata.ts';

@@ -26,6 +26,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
+import { recipeFor } from '../media/ladder.ts';
 import { diskSpace, growthPerMonth } from '../monitor/health.ts';
 import {
   type Limits,
@@ -38,9 +39,8 @@ import {
   usedBytes,
 } from '../storage-limits.ts';
 import { revokeTokens } from '../tokens.ts';
-import { saveVideoSettings, videoSettingsView } from '../video-settings.ts';
-import { recipeFor } from '../media/ladder.ts';
 import { CHECK_NOW_MS, checkForUpdates, readUpdates } from '../updates.ts';
+import { saveVideoSettings, videoSettingsView } from '../video-settings.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 

@@ -143,8 +143,14 @@ const Env = z.object({
    */
   VIDEO_RENDITIONS: z
     .string()
-    .regex(/^\s*(480|720|1080|2160)(\s*,\s*(480|720|1080|2160))*\s*$/, 'Use rungs such as 480,720,1080')
-    .transform((v) => [...new Set(v.split(',').map((r) => r.trim()))] as Array<'480' | '720' | '1080' | '2160'>)
+    .regex(
+      /^\s*(480|720|1080|2160)(\s*,\s*(480|720|1080|2160))*\s*$/,
+      'Use rungs such as 480,720,1080',
+    )
+    .transform(
+      (v) =>
+        [...new Set(v.split(',').map((r) => r.trim()))] as Array<'480' | '720' | '1080' | '2160'>,
+    )
     .optional(),
   /**
    * Renditions encoded while someone watches (decision 0128). Set, it wins over Settings →

@@ -18,7 +18,10 @@ const env = { VIDEO_PROXIES: true } as const;
 describe('video settings', () => {
   it('reads the defaults, then the stored choices', async () => {
     expect((await readVideoSettings(db(null), env)).settings).toEqual(DEFAULT_VIDEO_SETTINGS);
-    const stored = await readVideoSettings(db({ quality: 'high', rungs: { '2160': 'stored' } }), env);
+    const stored = await readVideoSettings(
+      db({ quality: 'high', rungs: { '2160': 'stored' } }),
+      env,
+    );
     expect(stored.settings.quality).toBe('high');
     expect(stored.settings.rungs).toEqual({
       '480': 'stored',
