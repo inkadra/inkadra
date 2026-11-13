@@ -150,5 +150,4 @@ export function ffmpegError(stderr: string, max = 500): string {
 }
 
 /** Keeps the end of a growing stderr: the error comes last. */
-export const keepTail = (stderr: string, chunk: string, max = 8000) =>
-  (stderr + chunk).slice(-max);
+export const keepTail = (stderr: string, chunk: string, max = 8000) => (stderr + chunk).slice(-max);
