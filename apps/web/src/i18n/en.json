@@ -4056,7 +4056,15 @@
     "archivedCount_other": "{{count}} archived",
     "empty": "No values yet.",
     "unsaved": "Unsaved changes",
-    "discard": "Discard"
+    "discard": "Discard",
+    "uses_one": "Used {{count}} time",
+    "uses_other": "Used {{count}} times",
+    "deleteLabel": "Delete {{name}}",
+    "delete": "Delete",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteBody": "It has never been used: no project, card or frame loses it. It leaves the list when you save.",
+    "inUseTitle": "A value was used meanwhile",
+    "inUse": "Someone has just used a value you are deleting, so nothing was saved. Reload: you can archive it instead."
   },
   "appearance": {
     "label": "Appearance",
@@ -5587,8 +5595,8 @@
             "text": "The new name changes on every frame that uses it."
           },
           "2": {
-            "title": "Archive",
-            "text": "It leaves the menus but stays on the frames that have it."
+            "title": "Archive or delete",
+            "text": "An archived value leaves the menus but stays where it is used. One that was never used can be deleted."
           }
         }
       },

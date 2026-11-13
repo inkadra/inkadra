@@ -1,14 +1,15 @@
 import {
   type ClassificationCatalogs,
   type ClassificationOption,
+  canDeleteClassification,
   DEFAULT_SHOT_CATALOGS,
   SHOT_CATALOG_KEYS,
   type ShotCatalogKey,
 } from '@inkadra/shared';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, IconButton } from '@inkadra/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../lib/api.ts';
+import { api, RequestError } from '../lib/api.ts';
 import { isRenamedDefault, setClassifications, shotOptionLabel } from '../lib/classifications.ts';
 import './classification-settings.css';
 
@@ -40,7 +41,13 @@ export function ClassificationSettings() {
   const { t } = useTranslation();
   const [saved, setSavedCatalogs] = useState<ClassificationCatalogs | null>(null);
   const [draft, setDraft] = useState<ClassificationCatalogs | null>(null);
-  const [error, setError] = useState(false);
+  /** `inUse`: a value removed here was used meanwhile (decision 0126). */
+  const [error, setError] = useState<false | 'failed' | 'inUse'>(false);
+  /** The value whose removal is being confirmed. */
+  const [removing, setRemoving] = useState<{
+    key: CatalogKey;
+    option: ClassificationOption;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [open, setOpen] = useState<ReadonlySet<CatalogKey>>(new Set());
@@ -52,11 +59,11 @@ export function ClassificationSettings() {
   const load = useCallback(async () => {
     setError(false);
     try {
-      const catalogs = await api.get<ClassificationCatalogs>('/instance/classifications');
+      const catalogs = await api.get<ClassificationCatalogs>('/instance/classifications?uses=true');
       setSavedCatalogs(catalogs);
       setDraft(catalogs);
     } catch {
-      setError(true);
+      setError('failed');
     }
   }, []);
   useEffect(() => {
@@ -69,6 +76,16 @@ export function ClassificationSettings() {
     setJustSaved(false);
     setDraft({ ...draft, [key]: options });
   };
+  const remove = (key: CatalogKey, id: string) => {
+    if (draft)
+      update(
+        key,
+        draft[key].filter((o) => o.id !== id),
+      );
+  };
+  /** A value not saved yet goes at once; a saved one only if nothing uses it, after asking. */
+  const isNew = (key: CatalogKey, option: ClassificationOption) =>
+    !saved?.[key].some((o) => o.id === option.id);
   const nameOf = (key: CatalogKey, option: ClassificationOption) =>
     isShot(key) ? shotOptionLabel(key, option, t) : option.label;
   /** Same rule as the server: a name cannot be another value's name, id or original tag. */
@@ -102,8 +119,8 @@ export function ClassificationSettings() {
       {error && (
         <div role="alert" className="catalogs__error">
           <div>
-            <b>{t('catalogs.errorTitle')}</b>
-            <p>{t('catalogs.error')}</p>
+            <b>{t(error === 'inUse' ? 'catalogs.inUseTitle' : 'catalogs.errorTitle')}</b>
+            <p>{t(error === 'inUse' ? 'catalogs.inUse' : 'catalogs.error')}</p>
           </div>
           <Button onClick={() => void load()}>{t('catalogs.reload')}</Button>
         </div>
@@ -140,8 +157,11 @@ export function ClassificationSettings() {
               setClassifications(result);
               setJustSaved(true);
               setTriedSaving(false);
-            } catch {
-              setError(true);
+            } catch (err) {
+              const reason =
+                err instanceof RequestError &&
+                (err.details as { reason?: string } | undefined)?.reason;
+              setError(reason === 'classification_in_use' ? 'inUse' : 'failed');
             } finally {
               setBusy(false);
             }
@@ -160,6 +180,10 @@ export function ClassificationSettings() {
                     const bodyId = `catalog-${key}`;
                     const restored = isShot(key) ? restoredDefaults(key, options) : null;
                     const emptyText = isShot(key) ? t('catalogs.emptyShots') : t('catalogs.empty');
+                    const deletable = (o: ClassificationOption) =>
+                      isNew(key, o) || canDeleteClassification(o);
+                    // The buttons line up: every row keeps the place of Delete once one has it.
+                    const deleteSlot = options.some(deletable);
                     return (
                       <section key={key} className="catalogs__card">
                         <h3 className="catalogs__head">
@@ -296,6 +320,11 @@ export function ClassificationSettings() {
                                             {t('catalogs.archived')}
                                           </span>
                                         )}
+                                        {!!option.uses && (
+                                          <span className="catalogs__uses ink-muted">
+                                            {t('catalogs.uses', { count: option.uses })}
+                                          </span>
+                                        )}
                                         <Button
                                           variant="ghost"
                                           aria-pressed={option.archived}
@@ -317,6 +346,23 @@ export function ClassificationSettings() {
                                               : 'catalogs.archive',
                                           )}
                                         </Button>
+                                        {deletable(option) ? (
+                                          <IconButton
+                                            icon="trash"
+                                            className="catalogs__delete"
+                                            label={t('catalogs.deleteLabel', { name })}
+                                            disabled={busy}
+                                            onClick={() =>
+                                              isNew(key, option)
+                                                ? remove(key, option.id)
+                                                : setRemoving({ key, option })
+                                            }
+                                          />
+                                        ) : (
+                                          deleteSlot && (
+                                            <span className="catalogs__delete" aria-hidden="true" />
+                                          )
+                                        )}
                                       </div>
                                       {problem && (
                                         <p id={hintId} className="catalogs__hint">
@@ -363,6 +409,27 @@ export function ClassificationSettings() {
               </div>
             ))}
           </div>
+          {removing && (
+            <Dialog
+              open
+              title={t('catalogs.deleteTitle', { name: nameOf(removing.key, removing.option) })}
+              onClose={() => setRemoving(null)}
+            >
+              <p>{t('catalogs.deleteBody')}</p>
+              <DialogActions>
+                <Button onClick={() => setRemoving(null)}>{t('project.cancel')}</Button>
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    remove(removing.key, removing.option.id);
+                    setRemoving(null);
+                  }}
+                >
+                  {t('catalogs.delete')}
+                </Button>
+              </DialogActions>
+            </Dialog>
+          )}
           {/* Manual save (decision 0124): the bar shows only when there is something to save. */}
           {dirty ? (
             <div className="catalogs__bar">

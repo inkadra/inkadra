@@ -4056,7 +4056,15 @@
     "archivedCount_other": "{{count}} archiviert",
     "empty": "Noch keine Werte.",
     "unsaved": "Ungespeicherte Änderungen",
-    "discard": "Verwerfen"
+    "discard": "Verwerfen",
+    "uses_one": "{{count}}-mal verwendet",
+    "uses_other": "{{count}}-mal verwendet",
+    "deleteLabel": "{{name}} löschen",
+    "delete": "Löschen",
+    "deleteTitle": "„{{name}}“ löschen?",
+    "deleteBody": "Der Wert wurde nie verwendet: Kein Projekt, keine Karte und kein Frame verliert ihn. Er verschwindet beim Speichern aus der Liste.",
+    "inUseTitle": "Ein Wert wurde inzwischen verwendet",
+    "inUse": "Jemand hat gerade einen Wert verwendet, den du löschst, deshalb wurde nichts gespeichert. Lade neu: Du kannst ihn stattdessen archivieren."
   },
   "appearance": {
     "label": "Aussehen",
@@ -5587,8 +5595,8 @@
             "text": "Der neue Name ändert sich auf jedem Frame, der ihn nutzt."
           },
           "2": {
-            "title": "Archivieren",
-            "text": "Er verschwindet aus den Menüs, bleibt aber auf seinen Frames."
+            "title": "Archivieren oder löschen",
+            "text": "Ein archivierter Wert verschwindet aus den Menüs, bleibt aber, wo er verwendet wird. Einen nie verwendeten kannst du löschen."
           }
         }
       },

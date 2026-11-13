@@ -2,6 +2,7 @@ import { CURRENT_SCHEMA_VERSION, MIN_WRITER_SCHEMA } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
   BOARD_WRITERS_CAPABILITY,
+  CLASSIFICATION_DELETE_CAPABILITY,
   COLLAB_PATH,
   type Health,
   type Instance,
@@ -148,6 +149,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         PLAN_SHEET_PDF_CAPABILITY,
         TRANSFER_CANCEL_CAPABILITY,
         SERVER_LIVE_CAPABILITY,
+        CLASSIFICATION_DELETE_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });
