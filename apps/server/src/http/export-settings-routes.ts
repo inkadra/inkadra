@@ -13,7 +13,6 @@ import {
   z,
 } from '@inkadra/shared';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { renditionFiles } from './hls.ts';
 import type { FastifyInstance } from 'fastify';
 import { projectRole, touchesProject } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -35,6 +34,7 @@ import { iso } from './api-routes.ts';
 import { toAsset } from './assets-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { renditionFiles } from './hls.ts';
 
 interface Deps {
   db: Database;

@@ -1,11 +1,16 @@
 import { randomBytes } from 'node:crypto';
 import { ladderFor, type VideoRung } from '@inkadra/shared';
-import { encoderMemory, SOFTWARE_ENCODER, type VideoEncoder, videoPipeline } from './hwaccel.ts';
+import {
+  encoderMemory,
+  FFMPEG_MEMORY,
+  SOFTWARE_ENCODER,
+  type VideoEncoder,
+  videoPipeline,
+} from './hwaccel.ts';
 import { AUDIO_KBPS, parseBitrate, rungRate } from './quality.ts';
 import {
   copiesVideo,
   decodesOnGpu,
-  FFMPEG_MEMORY,
   frameFilters,
   mergesMono,
   type ProxySettings,
@@ -81,8 +86,7 @@ export function rungSide(info: VideoInfo, settings: ProxySettings, rung: VideoRu
 
 /** What made a rung: the codec, the preset and the version of the encoding table. */
 export const RECIPE_VERSION = 1;
-export const recipeOf = (settings: ProxySettings) =>
-  `h264/${settings.quality}/${RECIPE_VERSION}`;
+export const recipeOf = (settings: ProxySettings) => `h264/${settings.quality}/${RECIPE_VERSION}`;
 
 /** A new generation of files: six characters in their storage key and in their URLs. */
 export const newGeneration = () => randomBytes(6).toString('base64url').slice(0, 6);

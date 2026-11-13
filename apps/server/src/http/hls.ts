@@ -104,7 +104,10 @@ export function hlsFile(name: string) {
   const m = FILE.exec(name);
   if (!m) return null;
   if (m[1] === 'master') return m[2] === 'm3u8' ? { kind: 'master' as const } : null;
-  return { kind: m[2] === 'mp4' ? ('file' as const) : ('playlist' as const), rung: m[1] as VideoRung };
+  return {
+    kind: m[2] === 'mp4' ? ('file' as const) : ('playlist' as const),
+    rung: m[1] as VideoRung,
+  };
 }
 
 /**
@@ -127,10 +130,7 @@ export async function sendHls(
 ) {
   const parsed = hlsFile(file);
   if (!parsed) return send.notFound(reply);
-  const rows = await db
-    .select()
-    .from(assetRendition)
-    .where(eq(assetRendition.assetId, row.id));
+  const rows = await db.select().from(assetRendition).where(eq(assetRendition.assetId, row.id));
   if (parsed.kind === 'master') {
     if (!rows.some(isReady)) return send.notFound(reply);
     reply.header('cache-control', 'private, no-cache');
@@ -151,4 +151,3 @@ export async function sendHls(
   const size = rung.bytes ?? (await storage.size(rung.storageKey)) ?? 0;
   return send.ranged(rung.storageKey, size);
 }
-

@@ -48,9 +48,9 @@ describe('videoPlan', () => {
       kind: 'ladder',
       original: true,
     });
-    expect(
-      videoPlan('video/mp4', camera, 125e6, { ...settings, playable: 'never' }).kind,
-    ).toBe('none');
+    expect(videoPlan('video/mp4', camera, 125e6, { ...settings, playable: 'never' }).kind).toBe(
+      'none',
+    );
     expect(
       videoPlan('video/mp4', { ...phone, audioCodec: 'aac' }, 10e6, {
         ...settings,
@@ -92,8 +92,9 @@ describe('ladderArgs', () => {
     expect(graph).toContain('zscale=dither=error_diffusion');
     expect(graph).toContain('[0:a:0]asplit=2[a0][a1]');
     expect(args.filter((a) => a === '-map')).toHaveLength(4);
-    expect(args.filter((a) => a === '+frag_keyframe+empty_moov+default_base_moof+global_sidx'))
-      .toHaveLength(2);
+    expect(
+      args.filter((a) => a === '+frag_keyframe+empty_moov+default_base_moof+global_sidx'),
+    ).toHaveLength(2);
     // Each rung has its own rate: 720p and 1080p at 25 fps, balanced.
     expect(args).toEqual(expect.arrayContaining(['-maxrate', '4500000']));
     expect(args).toEqual(expect.arrayContaining(['-maxrate', '9000000']));
@@ -102,12 +103,10 @@ describe('ladderArgs', () => {
 
   it('deinterlaces once, merges mono tracks, puts device options before the input', () => {
     const qsv: VideoEncoder = { backend: 'qsv', device: '/dev/dri/renderD128', label: '' };
-    const args = ladderArgs(
-      '/in',
-      outputs,
-      info({ interlaced: true, audioChannels: [1, 1] }),
-      { ...settings, encoder: qsv },
-    );
+    const args = ladderArgs('/in', outputs, info({ interlaced: true, audioChannels: [1, 1] }), {
+      ...settings,
+      encoder: qsv,
+    });
     const graph = args[args.indexOf('-filter_complex') + 1] ?? '';
     expect(graph.startsWith('[0:V:0]bwdif=mode=send_frame:deint=interlaced,split=2')).toBe(true);
     expect(graph).toContain('[0:a:0][0:a:1]amerge=inputs=2,asplit=2[a0][a1]');
@@ -116,7 +115,12 @@ describe('ladderArgs', () => {
   });
 
   it('leaves sound out of a silent video', () => {
-    const args = ladderArgs('/in', outputs, info({ audioCodec: null, audioChannels: [] }), settings);
+    const args = ladderArgs(
+      '/in',
+      outputs,
+      info({ audioCodec: null, audioChannels: [] }),
+      settings,
+    );
     expect(args.join(' ')).not.toContain('asplit');
     expect(args.join(' ')).not.toContain('-c:a');
   });

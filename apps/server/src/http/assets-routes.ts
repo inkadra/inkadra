@@ -28,17 +28,11 @@ import { officeKey } from '../media/office.ts';
 import { ensureFreeSpace, NotEnoughSpace, privateInput, withJobDir } from '../media/scratch.ts';
 import { extractVideoFrame, FRAME_MAX_BYTES, mediaTools, NoVideoFrame } from '../media/video.ts';
 import { RateLimiter } from '../rate-limits.ts';
-import {
-  proxyRendition,
-  type RenditionRow,
-  renditionsOf,
-  sendHls,
-  toPlayback,
-} from './hls.ts';
 import { animatedVariantKey, readAll, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
+import { proxyRendition, type RenditionRow, renditionsOf, sendHls, toPlayback } from './hls.ts';
 
 interface Deps {
   db: Database;
@@ -384,11 +378,15 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
     // A ladder (decision 0128): its largest rung up to 1080, an MP4 that plays on its own.
     const rung = variant ? null : proxyRendition(await renditionsOf(db, [assetId]));
-    const made = variant ?? (rung?.storageKey ? { ...rung, storageKey: rung.storageKey, mime: 'video/mp4' } : null);
+    const made =
+      variant ??
+      (rung?.storageKey ? { ...rung, storageKey: rung.storageKey, mime: 'video/mp4' } : null);
     if (!made || row.proxyStatus !== 'ready')
       return sendError(reply, 'not_found', 'This file has no playable copy.');
     // The rung is replaced at a new key when regenerated: the tag follows it.
-    const etag = rung ? `${row.id}-${made.storageKey.split('/').pop()}` : `${row.sha256 ?? row.id}-proxy`;
+    const etag = rung
+      ? `${row.id}-${made.storageKey.split('/').pop()}`
+      : `${row.sha256 ?? row.id}-proxy`;
     fileHeaders(reply, etag);
     if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
     const audio = made.mime === 'audio/mp4';

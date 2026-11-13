@@ -6,8 +6,8 @@ import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
 import { proxyKey, readAll, type Storage } from '../storage.ts';
 import { SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
-import { makeLadder } from './ladder-run.ts';
 import { videoPlan } from './ladder.ts';
+import { makeLadder } from './ladder-run.ts';
 import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
   copiesVideo,

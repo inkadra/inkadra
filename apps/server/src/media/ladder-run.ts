@@ -114,7 +114,8 @@ export async function makeLadder(
         for (const name of runRungs)
           if (!current(name) && rows.find((r) => r.name === name)?.status !== 'ready')
             await setRendition(db, assetId, name, { status: 'processing', progress: percent });
-        if (aggregate) await setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: overall });
+        if (aggregate)
+          await setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: overall });
         await onProgress?.(overall);
       })
       .catch(() => {});

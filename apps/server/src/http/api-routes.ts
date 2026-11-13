@@ -10,10 +10,10 @@ import {
   type InstanceVersion,
   PLAN_SHEET_PDF_CAPABILITY,
   SERVER_LIVE_CAPABILITY,
-  VIDEO_RENDITIONS_CAPABILITY,
   TRANSFER_CANCEL_CAPABILITY,
   UpdateMe,
   type User,
+  VIDEO_RENDITIONS_CAPABILITY,
 } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';

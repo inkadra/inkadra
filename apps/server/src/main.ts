@@ -24,6 +24,7 @@ import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.
 import type { VideoEncoder } from './media/hwaccel.ts';
 import { mapUserAgent } from './media/maps.ts';
 import { DEFAULT_VIDEO_QUALITY } from './media/quality.ts';
+import type { VideoRung } from '@inkadra/shared';
 import { sweepJobDirs } from './media/scratch.ts';
 import { checkHealth } from './monitor/health.ts';
 import { LatencyRecorder, startSampler } from './monitor/sampler.ts';
@@ -157,6 +158,8 @@ async function main() {
       resolution: config.VIDEO_PROXY_RESOLUTION ?? 1080,
       quality: DEFAULT_VIDEO_QUALITY,
       bitrate: config.VIDEO_PROXY_BITRATE ?? null,
+      rungs: ['480', '720', '1080'] as VideoRung[],
+      playable: 'heavy' as const,
       threads: config.VIDEO_PROXY_THREADS,
       ...(encoder ? { encoder } : {}),
     },
