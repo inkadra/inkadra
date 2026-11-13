@@ -1487,7 +1487,9 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       const stranger = await signUp(source.app, 'key-stranger');
       expect((await lookup(key, stranger)).statusCode).toBe(404);
       expect((await lookup(randomUUID())).statusCode).toBe(404);
-      expect((await call(source.app, null, 'GET', `/transfers/import-requests/${key}`)).statusCode).toBe(401);
+      expect(
+        (await call(source.app, null, 'GET', `/transfers/import-requests/${key}`)).statusCode,
+      ).toBe(401);
       // Seven days later the key is forgotten: the lookup says 404 and a POST imports again.
       await source.db
         .update(creationRequest)

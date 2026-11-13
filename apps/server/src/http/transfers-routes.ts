@@ -274,9 +274,7 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
   // Only the caller's own key matches: it is hashed with the person (decision 0127).
   app.get(v1('/transfers/import-requests/:idempotencyKey'), async (req) => {
     const actor = await requireActor(auth, req, db);
-    const { idempotencyKey } = z
-      .object({ idempotencyKey: ImportIdempotencyKey })
-      .parse(req.params);
+    const { idempotencyKey } = z.object({ idempotencyKey: ImportIdempotencyKey }).parse(req.params);
     const [found] = await db
       .select({ transfer: projectTransfer })
       .from(creationRequest)
