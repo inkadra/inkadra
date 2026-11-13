@@ -167,7 +167,7 @@ function home() {
 
 <p align="center">${SHOT('board', 'A moodboard in Inkadra: notes, film stills, a column of references, a colour palette and a checklist on an infinite canvas')}</p>
 
-Inkadra is a free, open source visual workspace for people who make films and photographs: moodboards, storyboards, shot lists and client review on an infinite canvas, running on your own server.
+Inkadra is a free, open source workspace for people who make films and photographs: moodboards, storyboards, shot lists, set plans and client review on an infinite canvas, on your own server. Try it on the [public demo](https://demo.inkadra.com), with no account.
 
 ## Start here
 
