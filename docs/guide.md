@@ -279,3 +279,9 @@ means and how to turn it off. The dialog also says where the report is going.
   <source media="(prefers-color-scheme: dark)" srcset="screenshots/guide/report-dialog-dark.png">
   <img src="screenshots/guide/report-dialog-light.png" alt="The report dialog: bug, idea or question, title, description, a screenshot with Draw and Blur, and a list of what is sent, each item with its checkbox">
 </picture>
+
+## Tell us what you think
+
+Tell us what works and what doesn't, in [Discussions](https://github.com/inkadra/inkadra/discussions)
+or with **Report a problem**. If Inkadra is useful to you, a donation on
+[Ko-fi](https://ko-fi.com/teovader) helps keep it going.

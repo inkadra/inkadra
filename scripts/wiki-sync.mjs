@@ -191,6 +191,8 @@ ${tables.join('\n\n')}
 - **Questions and ideas:** [Discussions](${REPO}/discussions)
 - **Bugs:** [Issues](${REPO}/issues)
 - **Security problems:** [Security policy](${REPO}/blob/main/SECURITY.md)
+
+Tell us what works and what doesn't in [Discussions](${REPO}/discussions) or with **Report a problem** in the app. If Inkadra is useful to you, a donation on [Ko-fi](https://ko-fi.com/teovader) helps keep it going.
 `;
 }
 

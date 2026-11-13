@@ -22,7 +22,8 @@
   <a href="docs/guide.md">Tour</a> ·
   <a href="docs/self-hosting">Self-hosting guide</a> ·
   <a href="https://github.com/inkadra/inkadra/wiki">Documentation</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a>
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="#support-the-project">Support the project</a>
 </p>
 
 <p align="center">
@@ -141,11 +142,13 @@ Much of Inkadra's code, tests and reviews are written with AI coding agents, dir
 maintainer. Every change goes through CI, tests and review before it is merged, but mistakes are
 still possible: keep backups and [report what you find](https://github.com/inkadra/inkadra/issues/new/choose).
 
-## Support
+## Support the project
 
-Inkadra is free, with no ads and no tracking. If it helps your work, you can
-[buy me a coffee on Ko-fi](https://ko-fi.com/teovader). Stars, bug reports and word of mouth help
-too.
+Inkadra is free, with no paid features, no ads and no tracking, and one person develops it in the
+open. If it is useful to you, a donation on [Ko-fi](https://ko-fi.com/teovader) helps keep it
+going. Telling us what works and what doesn't helps as much: write in
+[Discussions](https://github.com/inkadra/inkadra/discussions), open an issue, or use
+**Report a problem** in the app. A star on GitHub helps other people find it.
 
 ## Licence
 

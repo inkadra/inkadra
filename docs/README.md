@@ -41,3 +41,7 @@ request. A new wiki page also goes in the list in `scripts/wiki-sync.mjs`.
 `screenshots/guide` hold the pictures of the README, the tour and the self-hosting guide, rebuilt
 by `pnpm --filter @inkadra/e2e screenshots`; a few other folders there are written by end-to-end
 tests and scripts.
+
+Tell us what works and what doesn't in [Discussions](https://github.com/inkadra/inkadra/discussions)
+or with **Report a problem** in the app. If Inkadra is useful to you, a donation on
+[Ko-fi](https://ko-fi.com/teovader) helps keep it going.

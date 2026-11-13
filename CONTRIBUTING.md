@@ -1,6 +1,9 @@
 # Contributing to Inkadra
 
-The conventions every change follows, whoever writes it.
+Feedback and bug reports are contributions too: write in
+[Discussions](https://github.com/inkadra/inkadra/discussions), open an
+[issue](https://github.com/inkadra/inkadra/issues/new/choose), or use **Report a problem** in the
+app. The rest of this page is the conventions every change follows, whoever writes it.
 
 ## Ground rules
 
