@@ -518,6 +518,10 @@
 .fcard__preview--video {
   background: #111113;
 }
+/* On the dark video ground the muted text colour is unreadable in the light theme. */
+.fcard__preview--video .fcard__state {
+  color: rgb(255 255 255 / 0.72);
+}
 .fcard__preview--picture {
   background: var(--ink-surface-2);
 }
