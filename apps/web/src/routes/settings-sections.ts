@@ -49,7 +49,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
   page('classifications', 'workspace', 'tag', 'admin.classifications', 'catalogs.scope'),
   page('reports', 'workspace', 'report', 'settingsUi.pages.reports'),
   page('instance', 'server', 'home', 'settingsUi.pages.general'),
-  page('workspace', 'server', 'archive', 'admin.storage', 'settingsUi.leads.storage'),
+  page('workspace', 'server', 'disk', 'admin.storage', 'settingsUi.leads.storage'),
   page('backups', 'server', 'clock', 'backups.title'),
   page('server', 'server', 'tiles', 'settingsUi.pages.server'),
   page('updates', 'server', 'upload', 'settingsUi.pages.updates'),
