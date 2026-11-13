@@ -52,6 +52,11 @@ function Card({ id = asset.id }: { id?: string }) {
   return <span>{value === 'missing' ? value : (value?.status ?? 'loading')}</span>;
 }
 
+function VideoCard() {
+  const value = useAsset(asset.id);
+  return <span>{value && value !== 'missing' ? value.proxy?.status : 'loading'}</span>;
+}
+
 function GuestPage() {
   useEffect(() => {
     setAssetLoader(async () => null);
@@ -116,10 +121,6 @@ describe('mounted asset polling', () => {
       size: null,
     });
     const skipped = { ...asset, status: 'ready' as const, proxy: proxy('skipped') };
-    function VideoCard() {
-      const value = useAsset(asset.id);
-      return <span>{value && value !== 'missing' ? value.proxy?.status : 'loading'}</span>;
-    }
     primeAsset(skipped);
     primeAsset({ ...skipped, id: 'unmounted' });
     await render(<VideoCard />);
