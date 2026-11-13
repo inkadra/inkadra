@@ -79,7 +79,7 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
     const done = await video({ proxyStatus: 'ready' });
     await db
       .insert(assetRendition)
-      .values({ assetId: done, name: '1080', status: 'ready', recipe: RECIPE });
+      .values({ assetId: done, name: '1080', status: 'ready', recipe: RECIPE['1080'] });
     const light = await video({ proxyStatus: 'ready' });
     await db
       .insert(assetRendition)

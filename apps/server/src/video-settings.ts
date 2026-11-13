@@ -198,7 +198,7 @@ export async function saveVideoSettings(
   if (reason) throw new HttpError('bad_request', reason);
   const [row] = await db.select().from(instanceSetting).where(eq(instanceSetting.key, KEY));
   const before = (row?.value ?? {}) as Record<string, unknown>;
-  const storedLive = { ...((before.live as Record<string, unknown>) ?? {}), ...liveRest };
+  const storedLive: Record<string, unknown> = { ...((before.live as Record<string, unknown>) ?? {}), ...liveRest };
   // Ripristina: back to the measurement, which a new test may change.
   if (maxSessions === null) delete storedLive.maxSessions;
   else if (maxSessions !== undefined) storedLive.maxSessions = maxSessions;
