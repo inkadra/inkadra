@@ -307,3 +307,18 @@ it('keeps the touch calendar trigger focusable without a native picker or keyboa
     media.mockRestore();
   }
 });
+
+it('keeps pointer focus inside the calendar before activating its controls', async () => {
+  await act(async () =>
+    root.render(<DateField label="Due" value="2026-11-20" onChange={() => {}} />),
+  );
+  await act(async () => host.querySelector<HTMLInputElement>('input')?.click());
+  const next = host.querySelector<HTMLButtonElement>('[aria-label="Next month"]')!;
+  const press = new PointerEvent('pointerdown', { bubbles: true, cancelable: true });
+  await act(async () => next.dispatchEvent(press));
+  expect(press.defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(next);
+  await act(async () => next.click());
+  expect(host.querySelector('.ink-date__heading')?.textContent).toMatch(/December|dicembre/i);
+  expect(host.querySelector('.ink-date__panel')).not.toBeNull();
+});

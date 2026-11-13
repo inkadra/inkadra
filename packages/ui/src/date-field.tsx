@@ -355,6 +355,13 @@ export function DateField({
             role="dialog"
             aria-label={label}
             className="ink-date__panel"
+            onPointerDown={(event) => {
+              const button = (event.target as HTMLElement).closest('button');
+              if (!button || button.disabled) return;
+              // WebKit otherwise blurs to the surrounding dialog before the button's click.
+              event.preventDefault();
+              button.focus();
+            }}
             onKeyDown={(event) => {
               // The calendar's keys stay here: a dialog or form around it must not act on them.
               event.stopPropagation();
