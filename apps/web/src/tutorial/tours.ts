@@ -510,7 +510,7 @@ export const TOURS: Tour[] = [
     steps: [
       { anchor: 'video-encoder', media: 'gear', side: 'bottom' },
       { anchor: 'video-presets', media: 'play', side: 'top' },
-      { anchor: null, media: 'gear' },
+      { anchor: 'video-existing', media: 'gear', side: 'top' },
     ],
   },
   {

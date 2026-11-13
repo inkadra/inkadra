@@ -13,7 +13,7 @@ vi.mock('react-i18next', () => ({
 }));
 vi.mock('../lib/api.ts', async (load) => ({
   ...(await load<typeof import('../lib/api.ts')>()),
-  api: { get: vi.fn(), patch: vi.fn() },
+  api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() },
 }));
 
 const host = document.createElement('div');
@@ -105,4 +105,49 @@ it('locks what the environment sets, and says when copies are off', async () => 
   root = createRoot(host);
   await show(view({ enabled: false, encoder: null }));
   expect(host.textContent).toContain('videoSettings.encoder.off');
+});
+
+it('regenerates existing videos after asking, then shows the progress and stops', async () => {
+  await show(view({ outdated: 3, copiesBytes: 2e9, freeBytes: 400e9 }));
+  expect(host.textContent).toContain('videoSettings.existing.outdated:{"count":3}');
+  const open = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.existing.regenerate',
+  );
+  await act(async () => open?.click());
+  const start = [...document.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.existing.start',
+  );
+  const running = view({
+    outdated: 3,
+    queue: { queued: 0, processing: 1 },
+    backfill: {
+      scope: 'outdated',
+      status: 'running',
+      total: 3,
+      done: 1,
+      startedAt: '2026-11-13T12:00:00.000Z',
+    },
+  });
+  vi.mocked(api.post).mockResolvedValue(running);
+  await act(async () => start?.click());
+  expect(api.post).toHaveBeenCalledWith('/instance/video-settings/reprocess', {
+    scope: 'outdated',
+  });
+  expect(host.textContent).toContain('videoSettings.existing.progress:{"done":"1","total":"3"}');
+  expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('1');
+  vi.mocked(api.delete).mockResolvedValue(view({ outdated: 2 }));
+  const stop = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.existing.stop',
+  );
+  await act(async () => stop?.click());
+  expect(api.delete).toHaveBeenCalledWith('/instance/video-settings/reprocess');
+});
+
+it('refuses to regenerate when the copies would not fit', async () => {
+  await show(view({ outdated: 3, freeBytes: 1e6 }));
+  const open = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'videoSettings.existing.regenerate',
+  );
+  expect(open?.disabled).toBe(true);
+  expect(host.textContent).toContain('videoSettings.existing.noRoom');
 });

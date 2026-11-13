@@ -5805,7 +5805,7 @@
           },
           "2": {
             "title": "Only for new videos",
-            "text": "Videos already uploaded keep their copies until you regenerate them."
+            "text": "Regenerate them when you like: old copies stay until the new ones are ready."
           }
         }
       }
@@ -6550,6 +6550,35 @@
       "format": "Format",
       "h264": "H.264: plays in every browser and on every phone.",
       "av1": "This card can also encode AV1; Inkadra does not use it yet."
+    },
+    "existing": {
+      "title": "Existing videos",
+      "outdated_one": "One video has copies made with the previous settings",
+      "outdated_other": "{{count}} videos have copies made with the previous settings",
+      "upToDate": "Video copies are already made with these settings",
+      "help": "Current copies stay until the new ones are ready.",
+      "noRoom": "About {{size}} more is needed: free some space before regenerating.",
+      "regenerate": "Regenerate copies…",
+      "progress": "{{done}} of {{total}} videos redone",
+      "running_one": "one in progress",
+      "running_other": "{{count}} in progress",
+      "stop": "Stop",
+      "meter": "Videos redone",
+      "first": "New videos go first. You can close this page.",
+      "space": "Space of the copies",
+      "toAbout": "GB → about",
+      "time": "Estimated time",
+      "hours_one": "hour",
+      "hours_other": "hours",
+      "free": "Free space",
+      "dialogTitle": "Regenerate the video copies",
+      "dialogBody": "The server makes the copies again with the settings of this page, one video at a time, after new uploads. Current copies stay until the new ones are ready; resolutions no longer chosen are removed.",
+      "scope": "Which videos",
+      "scopes": {
+        "outdated": "All with different settings",
+        "missing": "Only those without copies"
+      },
+      "start": "Regenerate"
     }
   }
 }

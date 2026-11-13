@@ -5805,7 +5805,7 @@
           },
           "2": {
             "title": "Solo per i nuovi",
-            "text": "I video già caricati tengono le loro copie finché non le rigeneri."
+            "text": "Rigenerale quando vuoi: le copie vecchie restano finché le nuove non sono pronte."
           }
         }
       }
@@ -6550,6 +6550,35 @@
       "format": "Formato",
       "h264": "H.264: si riproduce su ogni browser e telefono.",
       "av1": "Questa scheda sa codificare anche AV1; Inkadra non lo usa ancora."
+    },
+    "existing": {
+      "title": "Video esistenti",
+      "outdated_one": "Un video ha copie fatte con le impostazioni di prima",
+      "outdated_other": "{{count}} video hanno copie fatte con le impostazioni di prima",
+      "upToDate": "Le copie dei video sono già fatte con queste impostazioni",
+      "help": "Le copie attuali restano finché quelle nuove non sono pronte.",
+      "noRoom": "Servono circa {{size}} in più: libera spazio prima di rigenerare.",
+      "regenerate": "Rigenera le copie…",
+      "progress": "{{done}} di {{total}} video rifatti",
+      "running_one": "uno in corso",
+      "running_other": "{{count}} in corso",
+      "stop": "Interrompi",
+      "meter": "Video rifatti",
+      "first": "I video nuovi passano davanti. Puoi chiudere questa pagina.",
+      "space": "Spazio delle copie",
+      "toAbout": "GB → circa",
+      "time": "Tempo stimato",
+      "hours_one": "ora",
+      "hours_other": "ore",
+      "free": "Spazio libero",
+      "dialogTitle": "Rigenera le copie dei video",
+      "dialogBody": "Il server rifà le copie con le impostazioni di questa pagina, un video alla volta, dopo i caricamenti nuovi. Le copie attuali restano finché quelle nuove non sono pronte; le risoluzioni non più scelte vengono tolte.",
+      "scope": "Quali video",
+      "scopes": {
+        "outdated": "Tutti quelli con impostazioni diverse",
+        "missing": "Solo quelli senza copie"
+      },
+      "start": "Rigenera"
     }
   }
 }

@@ -5805,7 +5805,7 @@
           },
           "2": {
             "title": "Só para os novos",
-            "text": "Os vídeos já enviados mantêm as cópias até as regenerares."
+            "text": "Regenera-as quando quiseres: as cópias antigas ficam até as novas estarem prontas."
           }
         }
       }
@@ -6550,6 +6550,35 @@
       "format": "Formato",
       "h264": "H.264: reproduz-se em qualquer navegador e telemóvel.",
       "av1": "Esta placa também codifica AV1; o Inkadra ainda não o usa."
+    },
+    "existing": {
+      "title": "Vídeos existentes",
+      "outdated_one": "Um vídeo tem cópias feitas com as definições anteriores",
+      "outdated_other": "{{count}} vídeos têm cópias feitas com as definições anteriores",
+      "upToDate": "As cópias já estão feitas com estas definições",
+      "help": "As cópias atuais ficam até as novas estarem prontas.",
+      "noRoom": "São precisos cerca de {{size}} a mais: liberta espaço antes de regenerar.",
+      "regenerate": "Regenerar as cópias…",
+      "progress": "{{done}} de {{total}} vídeos refeitos",
+      "running_one": "um em curso",
+      "running_other": "{{count}} em curso",
+      "stop": "Interromper",
+      "meter": "Vídeos refeitos",
+      "first": "Os vídeos novos passam à frente. Podes fechar esta página.",
+      "space": "Espaço das cópias",
+      "toAbout": "GB → cerca de",
+      "time": "Tempo estimado",
+      "hours_one": "hora",
+      "hours_other": "horas",
+      "free": "Espaço livre",
+      "dialogTitle": "Regenerar as cópias dos vídeos",
+      "dialogBody": "O servidor refaz as cópias com as definições desta página, um vídeo de cada vez, depois dos envios novos. As cópias atuais ficam até as novas estarem prontas; as resoluções que deixaram de estar escolhidas são removidas.",
+      "scope": "Que vídeos",
+      "scopes": {
+        "outdated": "Todos com definições diferentes",
+        "missing": "Só os que não têm cópias"
+      },
+      "start": "Regenerar"
     }
   }
 }

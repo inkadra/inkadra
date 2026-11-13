@@ -5805,7 +5805,7 @@
           },
           "2": {
             "title": "Seulement pour les nouvelles",
-            "text": "Les vidéos déjà envoyées gardent leurs copies jusqu’à ce que tu les régénères."
+            "text": "Régénère-les quand tu veux : les anciennes copies restent jusqu’à ce que les nouvelles soient prêtes."
           }
         }
       }
@@ -6550,6 +6550,35 @@
       "format": "Format",
       "h264": "H.264 : se lit sur tous les navigateurs et téléphones.",
       "av1": "Cette carte sait aussi encoder l’AV1 ; Inkadra ne l’utilise pas encore."
+    },
+    "existing": {
+      "title": "Vidéos existantes",
+      "outdated_one": "Une vidéo a des copies faites avec les réglages précédents",
+      "outdated_other": "{{count}} vidéos ont des copies faites avec les réglages précédents",
+      "upToDate": "Les copies sont déjà faites avec ces réglages",
+      "help": "Les copies actuelles restent jusqu’à ce que les nouvelles soient prêtes.",
+      "noRoom": "Il faut environ {{size}} de plus : libère de la place avant de régénérer.",
+      "regenerate": "Régénérer les copies…",
+      "progress": "{{done}} sur {{total}} vidéos refaites",
+      "running_one": "une en cours",
+      "running_other": "{{count}} en cours",
+      "stop": "Arrêter",
+      "meter": "Vidéos refaites",
+      "first": "Les nouvelles vidéos passent devant. Tu peux fermer cette page.",
+      "space": "Place des copies",
+      "toAbout": "Go → environ",
+      "time": "Temps estimé",
+      "hours_one": "heure",
+      "hours_other": "heures",
+      "free": "Place libre",
+      "dialogTitle": "Régénérer les copies des vidéos",
+      "dialogBody": "Le serveur refait les copies avec les réglages de cette page, une vidéo à la fois, après les nouveaux envois. Les copies actuelles restent jusqu’à ce que les nouvelles soient prêtes ; les résolutions qui ne sont plus choisies sont retirées.",
+      "scope": "Quelles vidéos",
+      "scopes": {
+        "outdated": "Toutes celles aux réglages différents",
+        "missing": "Seulement celles sans copies"
+      },
+      "start": "Régénérer"
     }
   }
 }
