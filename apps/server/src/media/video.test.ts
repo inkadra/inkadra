@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   copiesVideo,
   DEFAULT_PROXY_SETTINGS,
+  decodesOnGpu,
   MAX_INT32,
-  PROXY_MAX_RUN_MS,
   parseProbe,
   proxyArgs,
   proxyMaxBytes,
   proxyPlan,
-  proxyTimeoutMs,
+  StallWatch,
   safeInput,
+  shortCopy,
   sniffAudio,
   type VideoInfo,
   webPlayable,
@@ -42,7 +43,7 @@ describe('parseProbe', () => {
           side_data_list: [{ rotation: -90 }],
           disposition: { attached_pic: 0 },
         },
-        { codec_type: 'audio', codec_name: 'aac' },
+        { codec_type: 'audio', codec_name: 'aac', channels: 2 },
       ],
     });
     expect(parsed).toEqual({
@@ -53,7 +54,40 @@ describe('parseProbe', () => {
       audioCodec: 'aac',
       frameRate: 29.97,
       pixelFormat: 'yuv420p10le',
+      hdr: null,
+      bits: 10,
+      interlaced: false,
+      rotated: true,
+      audioChannels: [2],
     });
+  });
+
+  it('reads HDR, interlacing and the mono tracks of camera files', () => {
+    const parsed = parseProbe({
+      format: { duration: '6' },
+      streams: [
+        {
+          codec_type: 'video',
+          codec_name: 'hevc',
+          pix_fmt: 'p010le',
+          color_transfer: 'arib-std-b67',
+          field_order: 'progressive',
+        },
+        { codec_type: 'audio', codec_name: 'pcm_s24be', channels: 1 },
+        { codec_type: 'audio', codec_name: 'pcm_s24be', channels: 1 },
+      ],
+    });
+    expect(parsed).toMatchObject({ hdr: 'hlg', bits: 10, rotated: false, audioChannels: [1, 1] });
+    const dv = parseProbe({
+      streams: [
+        { codec_type: 'video', codec_name: 'mpeg2video', pix_fmt: 'yuv420p', field_order: 'tb' },
+      ],
+    });
+    expect(dv).toMatchObject({ interlaced: true, bits: 8, hdr: null });
+    const pq = parseProbe({
+      streams: [{ codec_type: 'video', pix_fmt: 'yuv422p12le', color_transfer: 'smpte2084' }],
+    });
+    expect(pq).toMatchObject({ hdr: 'pq', bits: 12 });
   });
 
   it('turns odd answers into nulls', () => {
@@ -70,6 +104,11 @@ describe('parseProbe', () => {
       audioCodec: null,
       frameRate: null,
       pixelFormat: null,
+      hdr: null,
+      bits: 8,
+      interlaced: false,
+      rotated: false,
+      audioChannels: [],
     });
     expect(parseProbe(null).videoCodec).toBeNull();
   });
@@ -90,6 +129,10 @@ describe('webPlayable', () => {
     expect(
       webPlayable('video/webm', info({ videoCodec: 'vp9', audioCodec: 'opus', pixelFormat: null })),
     ).toBe(true);
+  });
+
+  it('gives AV1 WebM a copy: Safari plays it only on recent hardware', () => {
+    expect(webPlayable('video/webm', info({ videoCodec: 'av1', audioCodec: 'opus' }))).toBe(false);
   });
 
   it('does not trust camera formats', () => {
@@ -160,19 +203,58 @@ describe('proxyArgs', () => {
     expect(list).not.toContain('0:v:0');
   });
 
-  it('caps the length, the size and the threads of the copy', () => {
+  it('caps the length and the threads of the copy, and plans its size', () => {
     const list = args(info({ videoCodec: 'prores' }));
     expect(flagValue(list, '-t')).toBe('7200');
     expect(flagValue(list, '-threads')).toBe('2');
+    // No -fs: a copy cut at a size would look finished. The size is the kernel's limit.
+    expect(list).not.toContain('-fs');
     // 10 s at the 9 Mbit/s peak plus sound, half again, and a 16 MB margin.
-    expect(Number(flagValue(list, '-fs'))).toBe(
-      proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 5 * 1024 ** 2),
-    );
-    expect(Number(flagValue(list, '-fs'))).toBeLessThan(34 * 1024 ** 2);
+    const planned = proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 5e6);
+    expect(planned).toBeLessThan(34 * 1024 ** 2);
     expect(args(info(), { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0 })).not.toContain('-t');
     // A remux is as large as its source, not as the bitrate says.
-    const remux = Number(flagValue(args(info({ audioCodec: 'opus' })), '-fs'));
-    expect(remux).toBeGreaterThan(5.5 * 1024 ** 2);
+    expect(
+      proxyMaxBytes(info({ audioCodec: 'opus' }), DEFAULT_PROXY_SETTINGS, 5e6),
+    ).toBeGreaterThan(5.5e6);
+  });
+
+  it('keeps timestamps, and brings slow motion down to 60 fps', () => {
+    const prores = info({ videoCodec: 'prores' });
+    expect(args(prores).join(' ')).toContain('-fps_mode passthrough');
+    const fast = args({ ...prores, frameRate: 120 }).join(' ');
+    expect(fast).toContain('-fpsmax 60');
+    expect(fast).not.toContain('-fps_mode');
+    // A remux keeps the stream as it is.
+    expect(args(info({ audioCodec: 'opus' }))).not.toContain('-fps_mode');
+  });
+
+  it('merges two mono tracks into stereo, at 48 kHz', () => {
+    const camera = info({ videoCodec: 'prores', audioCodec: 'pcm_s24be', audioChannels: [1, 1] });
+    const line = args(camera).join(' ');
+    expect(line).toContain('-filter_complex [0:a:0][0:a:1]amerge=inputs=2[a]');
+    expect(line).toContain('-map 0:V:0 -map [a]');
+    expect(line).toContain('-c:a aac -b:a 128k -ac 2 -ar 48000');
+    // AAC in two mono tracks is encoded again too.
+    expect(args({ ...camera, audioCodec: 'aac' }).join(' ')).not.toContain('-c:a copy');
+  });
+
+  it('tone maps HDR and dithers 10 bit after scaling, deinterlaces before', () => {
+    const hlg = args(
+      info({ videoCodec: 'hevc', pixelFormat: 'yuv420p10le', hdr: 'hlg', bits: 10 }),
+    );
+    expect(flagValue(hlg, '-vf')).toMatch(
+      /flags=lanczos,setsar=1,format=yuv420p10le,zscale=t=linear/,
+    );
+    expect(flagValue(hlg, '-vf')).not.toContain('out_color_matrix');
+    expect(flagValue(hlg, '-vf')).toContain('tonemap=tonemap=hable');
+    const log = args(info({ videoCodec: 'prores', pixelFormat: 'yuv422p10le', bits: 10 }));
+    expect(flagValue(log, '-vf')).toMatch(
+      /out_range=tv,setsar=1,format=yuv420p10le,zscale=dither=error_diffusion,format=yuv420p$/,
+    );
+    const dv = args(info({ videoCodec: 'dvvideo', interlaced: true }));
+    expect(flagValue(dv, '-vf')).toMatch(/^bwdif=mode=send_frame:deint=interlaced,scale=/);
+    expect(flagValue(args(info({ videoCodec: 'prores' })), '-vf')).not.toContain('zscale');
   });
 
   it('plans a video of unknown length for the cap, not for nothing', () => {
@@ -186,20 +268,43 @@ describe('proxyArgs', () => {
   });
 });
 
-describe('proxyTimeoutMs', () => {
-  it('is four times the length, at least ten minutes, at most four hours', () => {
-    expect(proxyTimeoutMs(info({ durationMs: 60_000 }), DEFAULT_PROXY_SETTINGS)).toBe(600_000);
-    expect(proxyTimeoutMs(info({ durationMs: 30 * 60_000 }), DEFAULT_PROXY_SETTINGS)).toBe(
-      2 * 60 * 60_000,
+describe('StallWatch', () => {
+  it('stalls once ffmpeg reports no progress for the whole delay', () => {
+    const watch = new StallWatch(1000, 0);
+    expect(watch.stalled(999)).toBe(false);
+    watch.progress(5, 900);
+    // The same time again is no progress.
+    watch.progress(5, 1500);
+    expect(watch.stalled(1899)).toBe(false);
+    expect(watch.stalled(1900)).toBe(true);
+    // A device that never gives a first frame stalls too.
+    expect(new StallWatch(1000, 0).stalled(1000)).toBe(true);
+  });
+});
+
+describe('shortCopy', () => {
+  it('refuses a copy that stops before the source, up to the limit', () => {
+    const source = info({ durationMs: 100_000 });
+    expect(shortCopy(source, info({ durationMs: 99_000 }), DEFAULT_PROXY_SETTINGS)).toBeNull();
+    expect(shortCopy(source, info({ durationMs: 60_000 }), DEFAULT_PROXY_SETTINGS)).toBe(
+      'the copy lasts 60.0 s of 100.0 s',
     );
-    expect(proxyTimeoutMs(info({ durationMs: MAX_INT32 }), DEFAULT_PROXY_SETTINGS)).toBe(
-      PROXY_MAX_RUN_MS,
-    );
-    // Unknown length: the cap of the instance, so four hours here too.
-    expect(proxyTimeoutMs(info({ durationMs: null }), DEFAULT_PROXY_SETTINGS)).toBe(
-      PROXY_MAX_RUN_MS,
-    );
-    expect(PROXY_MAX_RUN_MS).toBeLessThan(MAX_INT32);
+    expect(shortCopy(source, info({ durationMs: null }), DEFAULT_PROXY_SETTINGS)).not.toBeNull();
+    // Cut on purpose at the duration limit: kept.
+    const capped = { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 60 };
+    expect(shortCopy(source, info({ durationMs: 60_000 }), capped)).toBeNull();
+    // No duration to compare with: nothing to say.
+    expect(shortCopy(info({ durationMs: null }), info(), DEFAULT_PROXY_SETTINGS)).toBeNull();
+  });
+});
+
+describe('decodesOnGpu', () => {
+  it('keeps rotated and interlaced sources off the card', () => {
+    const nvenc = { backend: 'nvenc' as const, label: '' };
+    const hevc = info({ videoCodec: 'hevc' });
+    expect(decodesOnGpu(nvenc, hevc)).toBe(true);
+    expect(decodesOnGpu(nvenc, { ...hevc, rotated: true })).toBe(false);
+    expect(decodesOnGpu(nvenc, { ...hevc, interlaced: true })).toBe(false);
   });
 });
 
@@ -271,7 +376,6 @@ describe('audio files (#327)', () => {
     expect(line).toContain('-c:a aac');
     expect(line).not.toContain('-c:v');
     expect(line).toContain('-t 7200');
-    expect(line).toContain('-fs');
     // Sized for sound, not for a 5 Mbit/s picture.
     expect(proxyMaxBytes(sound('opus'), DEFAULT_PROXY_SETTINGS, 1e6)).toBeLessThan(
       proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 1e6),

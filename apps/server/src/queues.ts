@@ -1,7 +1,7 @@
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
-import { and, eq, lt } from 'drizzle-orm';
+import { and, eq, inArray, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
 import { sweepAccessExpiry } from './access-expiry.ts';
@@ -155,6 +155,13 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
         },
       );
     },
+    async proxyQueued(assetId) {
+      const job = await proxies.getJob(`proxy-${assetId}`);
+      if (!job) return false;
+      return ['waiting', 'active', 'delayed', 'prioritized', 'waiting-children'].includes(
+        await job.getState(),
+      );
+    },
     async convertOffice(assetId) {
       // As with playable copies: a finished job would turn a reprocess into a no-op.
       const jobId = `office-${assetId}`;
@@ -249,6 +256,35 @@ export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   return { removed, requeued };
 }
 
+/** A copy shown as queued or processing this long without a job is queued again. */
+export const STUCK_PROXY_MS = 15 * 60_000;
+
+/**
+ * Queues again the copies of videos shown as `queued` or `processing` for over fifteen minutes
+ * with no job waiting or running: Redis lost the queue, or a job stalled past BullMQ's limit
+ * and failed without its asset. Without this the card would wait for ever (decision 0128).
+ */
+export async function requeueStuckProxies(db: Database, jobs: Jobs) {
+  if (!jobs.makeProxy || !jobs.proxyQueued) return 0;
+  const rows = await db
+    .select({ id: asset.id })
+    .from(asset)
+    .where(
+      and(
+        inArray(asset.proxyStatus, ['queued', 'processing']),
+        lt(asset.createdAt, new Date(Date.now() - STUCK_PROXY_MS)),
+      ),
+    )
+    .limit(200);
+  let requeued = 0;
+  for (const { id } of rows) {
+    if (await jobs.proxyQueued(id)) continue;
+    await jobs.makeProxy(id);
+    requeued += 1;
+  }
+  return requeued;
+}
+
 /** The nightly backup at the time of the settings, in the server's time zone. */
 async function scheduleBackups(queue: Queue, settings: BackupSettings) {
   if (!settings.enabled) {
@@ -324,7 +360,11 @@ export async function startWorkers(
         await deps.storage.remove(keys);
         return { removed: keys.length };
       }
-      if (job.name === 'purge-uploads') return purgeUploads(deps.db, deps.storage, queues.jobs);
+      if (job.name === 'purge-uploads')
+        return {
+          ...(await purgeUploads(deps.db, deps.storage, queues.jobs)),
+          proxies: await requeueStuckProxies(deps.db, queues.jobs),
+        };
       if (job.name === 'version-retention') {
         const versions = await applyVersionRetention(deps.db);
         return { ...versions, writers: (await pruneWriters(deps.db)).removed };

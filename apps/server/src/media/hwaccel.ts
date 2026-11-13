@@ -104,6 +104,15 @@ export interface PipelineOptions {
   fps: number | null;
   /** Decode and scale on the card as well (see gpuDecodes). */
   gpu: boolean;
+  /** CPU filters before the scale, on the CPU path (deinterlacing). */
+  pre?: string;
+  /**
+   * CPU filters after the scale, ending in 8-bit 4:2:0 (tone mapping, dithering). On the GPU
+   * path the card scales at 10 bit and the smaller frames come down for them.
+   */
+  post?: string;
+  /** HDR source: `post` tone maps it, from the source's own matrix. */
+  hdr?: boolean;
 }
 
 /**
@@ -137,8 +146,13 @@ export const BT709_TAGS = [
  */
 export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): VideoPipeline {
   const { w, h } = scaleSize(opts.resolution);
-  // swscale converts the matrix and range to what the tags say; the GPU scalers keep them.
-  const cpuScale = `scale=${w}:${h}:flags=lanczos:out_color_matrix=bt709:out_range=tv,setsar=1`;
+  const post = opts.post ? `,${opts.post}` : '';
+  // swscale converts the matrix and range to what the tags say (not for HDR: tone mapping
+  // reads the source's own matrix); the GPU scalers keep them.
+  const matrix = opts.hdr ? '' : ':out_color_matrix=bt709:out_range=tv';
+  const cpuScale = `${opts.pre ? `${opts.pre},` : ''}scale=${w}:${h}:flags=lanczos${matrix},setsar=1${post}`;
+  // 10-bit frames scaled on the card, brought down for the CPU filters.
+  const down = (format: string) => `:format=${format},hwdownload,format=p010le${post}`;
   const { target, peak, buffer } = opts.rate;
   const q = QUALITY_VALUES[opts.quality];
   const cap = ['-maxrate', String(peak), '-bufsize', String(buffer)];
@@ -150,7 +164,9 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
     case 'nvenc':
       return {
         input: opts.gpu ? ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda'] : [],
-        filter: opts.gpu ? `scale_cuda=w=${w}:h=${h}:format=yuv420p` : `${cpuScale},format=yuv420p`,
+        filter: opts.gpu
+          ? `scale_cuda=w=${w}:h=${h}${opts.post ? `${down('p010le')},format=yuv420p` : ':format=yuv420p'}`
+          : `${cpuScale},format=yuv420p`,
         codec: [
           '-c:v',
           'h264_nvenc',
@@ -180,7 +196,7 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
           ? ['-hwaccel', 'vaapi', '-hwaccel_device', device, '-hwaccel_output_format', 'vaapi']
           : ['-init_hw_device', `vaapi=va:${device}`, '-filter_hw_device', 'va'],
         filter: opts.gpu
-          ? `scale_vaapi=w=${w}:h=${h}:format=nv12`
+          ? `scale_vaapi=w=${w}:h=${h}${opts.post ? `${down('p010')},format=nv12,hwupload` : ':format=nv12'}`
           : `${cpuScale},format=nv12,hwupload`,
         codec: [
           '-c:v',
@@ -212,7 +228,9 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
             : []),
         ],
         filter: opts.gpu
-          ? `scale_vaapi=w=${w}:h=${h}:format=nv12,hwmap=derive_device=qsv,format=qsv`
+          ? opts.post
+            ? `scale_vaapi=w=${w}:h=${h}${down('p010')},format=nv12,hwupload=extra_hw_frames=64,format=qsv`
+            : `scale_vaapi=w=${w}:h=${h}:format=nv12,hwmap=derive_device=qsv,format=qsv`
           : `${cpuScale},format=nv12,hwupload=extra_hw_frames=64,format=qsv`,
         codec: [
           '-c:v',

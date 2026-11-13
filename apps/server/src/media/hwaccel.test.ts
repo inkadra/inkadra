@@ -189,6 +189,23 @@ describe('videoPipeline', () => {
     expect(basic.codec).toEqual(expect.arrayContaining(['-b:v', '6000000']));
   });
 
+  it('scales 10-bit frames on the card and brings them down for the CPU filters', () => {
+    const post = 'format=yuv420p10le,zscale=dither=error_diffusion,format=yuv420p';
+    const nvenc = videoPipeline({ backend: 'nvenc', label: '' }, { ...opts, gpu: true, post });
+    expect(nvenc.filter).toMatch(
+      /^scale_cuda=w=.*:format=p010le,hwdownload,format=p010le,format=yuv420p10le,zscale=dither=error_diffusion,format=yuv420p,format=yuv420p$/,
+    );
+    const qsv = videoPipeline(
+      { backend: 'qsv', device: '/dev/dri/renderD128', label: '' },
+      { ...opts, gpu: true, post },
+    );
+    expect(qsv.filter).toMatch(
+      /^scale_vaapi=w=.*:format=p010,hwdownload,format=p010le,format=yuv420p10le,zscale=.*,format=nv12,hwupload=extra_hw_frames=64,format=qsv$/,
+    );
+    const cpu = videoPipeline(SOFTWARE_ENCODER, { ...opts, gpu: false, pre: 'bwdif', post });
+    expect(cpu.filter).toMatch(/^bwdif,scale=.*setsar=1,format=yuv420p10le,zscale=dither/);
+  });
+
   it('leaves ProRes, 4:2:2 and 10-bit H.264 to the CPU decoder', () => {
     expect(gpuDecodes('h264', 'yuv420p')).toBe(true);
     expect(gpuDecodes('hevc', 'yuv420p10le')).toBe(true);
@@ -253,7 +270,7 @@ describe('proxyArgs with a hardware encoder', () => {
     expect(args.indexOf('-init_hw_device')).toBeLessThan(input);
     expect(args.indexOf('-protocol_whitelist')).toBeLessThan(input);
     expect(args[input + 1]).toBe('/in/source');
-    expect(args).toEqual(expect.arrayContaining(['-map', '0:V:0', '-t', '7200', '-fs']));
+    expect(args).toEqual(expect.arrayContaining(['-map', '0:V:0', '-t', '7200']));
     expect(args).toEqual(expect.arrayContaining(['-threads', '2', '-c:a', 'aac']));
     expect(args.join(' ')).toContain('hwmap=derive_device=qsv');
     expect(args.at(-1)).toBe('/out.mp4');

@@ -5,12 +5,13 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, project } from '../db/schema.ts';
+import { requeueStuckProxies, STUCK_PROXY_MS } from '../queues.ts';
 import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { writeZip } from '../transfers/zip.ts';
@@ -171,6 +172,27 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     const variants = await db.select().from(assetVariant).where(eq(assetVariant.assetId, id));
     return { row, variants: variants.sort((a, b) => a.width - b.width) };
   };
+
+  it('queues again a copy shown as queued with no job, once it is old enough', async () => {
+    const stuck = await upload(Buffer.from('x'), 'video/quicktime', 'stuck.mov');
+    const waiting = await upload(Buffer.from('x'), 'video/quicktime', 'waiting.mov');
+    const fresh = await upload(Buffer.from('x'), 'video/quicktime', 'fresh.mov');
+    const old = new Date(Date.now() - STUCK_PROXY_MS - 60_000);
+    await db
+      .update(asset)
+      .set({ proxyStatus: 'queued', createdAt: old })
+      .where(inArray(asset.id, [stuck, waiting]));
+    await db.update(asset).set({ proxyStatus: 'processing' }).where(eq(asset.id, fresh));
+    const made: string[] = [];
+    const jobs = {
+      processAsset: async () => {},
+      deleteFiles: async () => {},
+      makeProxy: async (id: string) => void made.push(id),
+      proxyQueued: async (id: string) => id === waiting,
+    };
+    expect(await requeueStuckProxies(db, jobs)).toBe(1);
+    expect(made).toEqual([stuck]);
+  });
 
   it.each([1, 2])(
     'prefers the full v%s saved composite and persists layer count',
