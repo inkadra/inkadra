@@ -42,7 +42,7 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=$domain" \
   -keyout "$work/certs/privkey.pem" -out "$work/certs/fullchain.pem" 2>/dev/null
 chmod 644 "$work/certs/"*.pem
 
-compose() { docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" "${files[@]}" "$@"; }
+compose() { INKADRA_ENV_FILE="$work/.env" docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" "${files[@]}" "$@"; }
 
 failed=0
 cleanup() {
