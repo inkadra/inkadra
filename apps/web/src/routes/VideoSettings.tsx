@@ -320,7 +320,10 @@ function LiveCard({
   const off = () => {
     // Rungs offered only live would be offered nowhere: they are kept on disk instead.
     const rungs = Object.fromEntries(
-      VIDEO_RUNGS.map((r) => [r, view.settings.rungs[r] === 'live' ? 'stored' : view.settings.rungs[r]]),
+      VIDEO_RUNGS.map((r) => [
+        r,
+        view.settings.rungs[r] === 'live' ? 'stored' : view.settings.rungs[r],
+      ]),
     ) as UpdateVideoSettings['rungs'];
     void save({ live: { enabled: false }, rungs });
   };
