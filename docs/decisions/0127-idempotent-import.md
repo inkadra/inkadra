@@ -30,6 +30,13 @@ as in 0098. Then the key is looked up, under an advisory lock on its hash. Only 
 the one-import-at-a-time check (409), the size limit (413) and receiving the archive follow. So
 a retry while the first import is still queued or running gets that import, not the 409.
 
+**Lock.** The advisory lock on the key hash is held only around short database work, never
+while the archive is received: the first lookup takes it in its own short transaction and
+releases it, and the final transaction that inserts the transfer and its `creation_request` row
+takes it again and checks the key once more before inserting. A slow or stalled upload therefore
+never holds a database connection, a transaction or the lock, and cannot block other requests
+with the same key or anyone else's.
+
 **Replay.** The same person with the same key gets **202** with `Location` and the transfer of
 the first import **as it is now**, the same answer as the first request, whatever its status:
 
@@ -43,7 +50,10 @@ body. Like 0098 it remembers only the transfer id, never a stored response.
 
 **Changed request.** The archive is not compared, because a replay is answered without
 receiving it. The fingerprint is the declared Content-Length: the same key with another
-Content-Length answers **409** `conflict`, as a changed payload does in 0098.
+Content-Length answers **409** `conflict`, as a changed payload does in 0098. A different archive
+of exactly the same byte length cannot be told apart without reading the body and is answered as
+a replay of the first import: an accepted limit of not reading the archive on replays. Clients
+avoid it by using a new key for every archive the person picks.
 
 **Removed transfer.** If the transfer of the key was removed (`DELETE /transfers/{id}`), a retry
 answers **404** `not_found` and starts nothing, as a retry after a deletion does in 0098. Starting
@@ -52,9 +62,10 @@ import's project stays when its transfer is removed, and an import cancelled dur
 transaction keeps its project, decision 0125). The client drops the queued import.
 
 **Two requests at once.** If a retry arrives while the first request is still being received,
-there is no row yet: both receive their archive. Whichever commits its transfer first wins; the
-other finds the key under the lock, discards its archive and answers like a replay. One
-transfer, one project.
+there is no row yet: both pass the first lookup and receive their archive, without the lock.
+Whichever commits its transfer first wins; the other finds the key when its final transaction
+checks it again under the lock, discards its archive and answers like a replay. One transfer,
+one project.
 
 **Lookup.** `GET /api/v1/transfers/import-requests/{idempotencyKey}` (key percent-encoded)
 answers **200** with the caller's transfer of that key as it is now, or **404** `not_found` when
@@ -63,13 +74,17 @@ removed, or key expired. Only the caller's own: the key is hashed with the perso
 person's key is indistinguishable from an unknown one. It lets the app ask "was it accepted?"
 without sending the archive again: on 200 it follows that transfer; on 404 a POST with the same
 key is safe (if the first request is still arriving, the race above keeps one import). The
-recommended retry is therefore lookup first, then POST only on 404.
+recommended retry is therefore lookup first, then POST only on 404, for an import started
+within the last seven days (see Retention). The server registers this route before
+`GET /transfers/{transferId}`, so `import-requests` is never read as a transfer id.
 
 **Retention.** Keys are remembered for seven days, as in 0098, which is also how long
 `GET /transfers` lists a transfer. Upload housekeeping removes expired keys. After that, a POST
 with the old key starts a new import and the lookup answers 404; the transfer itself stays
 readable by its id (`GET /transfers/{transferId}`) for as long as its row exists. Deleting the
-account removes its keys.
+account removes its keys. So clients, an app's offline queue included, drop a queued import
+started more than seven days ago instead of retrying it after a 404 from the lookup: past the
+window an expired key looks like a fresh import, and a retry could create a duplicate project.
 
 **Older servers.** Servers that honour the key and answer the lookup advertise the capability
 `idempotent-import` (`IDEMPOTENT_IMPORT_CAPABILITY` in `packages/shared`) on

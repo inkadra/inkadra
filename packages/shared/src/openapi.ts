@@ -1332,7 +1332,8 @@ registry.registerPath({
     '`POST /projects/import` find out whether it was accepted without sending the archive ' +
     'again. 404 when the caller has no such import: never received (or still being ' +
     'received), started by someone else, removed, or the key is older than seven days. A 404 ' +
-    'means a retry of the POST with the same key is safe. Sessions and personal tokens.',
+    'means a retry of the POST with the same key is safe (for an import started within the ' +
+    'last seven days). Sessions and personal tokens.',
   request: { params: z.object({ idempotencyKey: ImportIdempotencyKey }) },
   responses: { 200: { description: 'Transfer', ...json(ProjectTransfer) }, ...errors },
 });
