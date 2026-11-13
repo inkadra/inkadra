@@ -446,3 +446,26 @@ it('keeps a focused disabled day as the keyboard cursor without selecting the ol
   );
   expect(document.activeElement?.getAttribute('data-day')).toBe('2026-11-16');
 });
+
+it('keeps the desktop panel within a viewport with no space on either side', async () => {
+  const bounds = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue({ top: 180, bottom: 216, left: 20 } as DOMRect);
+  const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(374);
+  const viewport = vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(390);
+  try {
+    await act(async () =>
+      root.render(<DateField label="Due" value="2026-11-20" onChange={() => {}} />),
+    );
+    await act(async () => host.querySelector('input')?.click());
+    expect(
+      (host.querySelector('.ink-date__layer') as HTMLElement).style.getPropertyValue(
+        '--ink-date-top',
+      ),
+    ).toBe('8px');
+  } finally {
+    bounds.mockRestore();
+    height.mockRestore();
+    viewport.mockRestore();
+  }
+});

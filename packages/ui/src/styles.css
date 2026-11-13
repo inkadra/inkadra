@@ -1545,8 +1545,13 @@ select {
 .ink-date__layer.is-closing {
   pointer-events: none;
 }
+/* Never taller than the window (a phone held sideways, a high zoom): the panel scrolls. */
 .ink-date__panel {
   box-sizing: border-box;
+  max-height: calc(100dvh - 16px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-muted);

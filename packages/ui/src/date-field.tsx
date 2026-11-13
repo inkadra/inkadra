@@ -152,17 +152,23 @@ export function DateField({
     if (!el || !box) return;
     el.showPopover();
     // Under the field, or above it when there is no room below; it grows away from the field.
+    // With room on neither side (a low window, a high zoom) it starts at the top of the window,
+    // over the field, and the panel scrolls within the window's height.
     const position = () => {
       const rect = box.getBoundingClientRect();
       const width = el.offsetWidth;
       const height = el.offsetHeight;
-      const below = rect.bottom + 6 + height <= window.innerHeight - 8 || rect.top - 6 - height < 8;
+      const fitsBelow = rect.bottom + 6 + height <= window.innerHeight - 8;
+      const below = fitsBelow || rect.top - 6 - height < 8;
       el.dataset.side = below ? 'below' : 'above';
       el.style.setProperty(
         '--ink-date-left',
         `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`,
       );
-      el.style.setProperty('--ink-date-top', below ? `${rect.bottom + 6}px` : 'auto');
+      el.style.setProperty(
+        '--ink-date-top',
+        below ? `${fitsBelow ? rect.bottom + 6 : 8}px` : 'auto',
+      );
       el.style.setProperty(
         '--ink-date-bottom',
         below ? 'auto' : `${window.innerHeight - rect.top + 6}px`,
