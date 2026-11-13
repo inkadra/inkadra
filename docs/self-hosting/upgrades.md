@@ -12,6 +12,9 @@ Pin a version in `.env`, so an upgrade happens when you decide:
 INKADRA_TAG=0.9.0
 ```
 
+Each release publishes `X.Y.Z`, `X.Y` and `latest`; pre-releases (`0.3.0-rc.1`) never move
+`X.Y` or `latest`, and `edge` follows every change on `main`.
+
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
 back up (see [Backups](README.md#backups): `docker compose exec -u node inkadra node
 /app/dist/main.js backup create`, plus a copy of the data volume or the bucket), change
@@ -47,7 +50,10 @@ These changes are on `main`, not in 0.9.0.
     file, in the file itself or in the shell: otherwise the container reads `.env`;
   - a stack manager that passes variables without a `.env` file next to `compose.yaml` needs one,
     or `INKADRA_ENV_FILE` naming the file it keeps them in;
-  - variables set only in the shell, not in the file, no longer reach the container;
+  - variables set only in the shell (`INSTANCE_NAME=x docker compose up`), not in the file, no
+    longer reach the container;
+  - a `.env` line named like a variable of the image (`NODE_ENV`, `DATA_DIR`, `PORT`) now
+    overrides it;
   - `DATABASE_URL` and `REDIS_URL` in `.env` are still ignored, as `compose.yaml` sets them.
 
   A hand-edited copy of the old `compose.yaml` keeps working unchanged.
@@ -455,15 +461,6 @@ To list the packages inside it:
 docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.9.0 --format '{{ json .SBOM }}'
 ```
 
-## How releases are made
-
-Every push to `main` publishes `edge` and `sha-<commit>`. For a release, a maintainer runs the
-Release workflow, which tags `vX.Y.Z` on `main`, opens the GitHub release and starts CI on the
-tag. CI runs in full (tests, end-to-end, the reverse proxy examples, a vulnerability scan of
-the image), builds amd64 and arm64 on native runners without build cache, publishes `X.Y.Z`,
-`X.Y` and `latest`, and attaches the deployment files to the release. Versions with a suffix
-(`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
-
-Tell us how your upgrade went and
-what was unclear in this guide in [GitHub Discussions](https://github.com/inkadra/inkadra/discussions)
-or an [issue](https://github.com/inkadra/inkadra/issues/new/choose).
+Tell us how your upgrade went and what was unclear in this guide in
+[GitHub Discussions](https://github.com/inkadra/inkadra/discussions) or an
+[issue](https://github.com/inkadra/inkadra/issues/new/choose).

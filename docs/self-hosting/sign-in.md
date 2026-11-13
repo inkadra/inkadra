@@ -41,8 +41,9 @@ link then reads as used, so send a new invitation.
    GOOGLE_ALLOWED_DOMAINS=studio.it
    ```
 
-With `GOOGLE_ALLOWED_DOMAINS`, Google must vouch for the Workspace domain (`hd`) on every
-sign-in: personal `@gmail.com` accounts are refused, even when they were linked before.
+Set the id and secret together. With `GOOGLE_ALLOWED_DOMAINS`, Google must vouch for the
+Workspace domain (`hd`) on every sign-in: personal `@gmail.com` accounts are refused, even when
+they were linked before.
 
 People who already have an account can also add Google from **Settings → Account → Sign-in methods**.
 Signing in with Google with the same address links it to the existing account automatically,
@@ -64,10 +65,11 @@ In your provider, create an application (client) of type _confidential_ / _web_ 
 Set these in `.env`:
 
 ```sh
-OIDC_NAME=Authentik
+OIDC_NAME=Authentik                     # label of the button; SSO by default
 OIDC_DISCOVERY_URL=https://auth.example.com/application/o/inkadra/.well-known/openid-configuration
 OIDC_CLIENT_ID=…
 OIDC_CLIENT_SECRET=…
+# OIDC_SCOPES=openid email profile      # the default
 # true only if the provider verifies every email address: links sign-ins to existing accounts
 # even without email_verified; the existing account's email must still be verified (see Google)
 OIDC_TRUST_EMAIL=false
@@ -75,15 +77,18 @@ OIDC_TRUST_EMAIL=false
 OIDC_ALLOWED_DOMAINS=studio.it
 ```
 
-With `OIDC_ALLOWED_DOMAINS`, the provider must mark the address as verified (`email_verified`)
-and its domain must be in the list. See [Configuration](configuration.md#sign-in-and-email).
+The discovery address, client id and secret go together. With `OIDC_ALLOWED_DOMAINS`, the
+provider must mark the address as verified (`email_verified` set to `true` or `"true"`) and its
+domain must be in the list; without it there is no domain check. If the discovery address is
+Google's (`accounts.google.com`), the `hd` claim is checked instead, against
+`OIDC_ALLOWED_DOMAINS` or, when that is empty, `GOOGLE_ALLOWED_DOMAINS`.
 
 The discovery address is usually the issuer followed by `/.well-known/openid-configuration`
 (Authentik: `…/application/o/<slug>/…`, Keycloak: `…/realms/<realm>/…`).
 
 ## Email
 
-With `SMTP_URL` and `MAIL_FROM` Inkadra emails invitations, sign-in links ("Send me a link",
+With `SMTP_URL` and `MAIL_FROM` (required with it) Inkadra emails invitations, sign-in links ("Send me a link",
 valid 15 minutes) and password resets:
 
 ```sh

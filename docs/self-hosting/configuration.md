@@ -60,16 +60,8 @@ use powers of 1000. Boolean settings accept `true` or `false` unless stated othe
 
 ## Public demo
 
-`DEMO_MODE` defaults to `false`. Setting it to `true` enables temporary sandboxes and disables
-sign-in providers, email, reports, maps and heavy media previews. It is not a normal team
-installation. See [demo configuration](../demo.md) before enabling it.
-
-| Variable                                 | Default | Allowed values                                                |
-| ---------------------------------------- | ------- | ------------------------------------------------------------- |
-| `DEMO_TTL`                               | `1h`    | Seconds or an integer with `s`, `m`, `h`; at least one minute |
-| `DEMO_STORAGE`                           | `100MB` | Space per sandbox, decimal units                              |
-| `DEMO_MAX_SANDBOXES`                     | `50`    | Integer 1–10000                                               |
-| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET` | unset   | Set both together; required in production demo mode           |
+`DEMO_MODE=true` turns the instance into a public demo of temporary sandboxes, not a team
+installation: its `DEMO_*` and `TURNSTILE_*` settings are in [the demo guide](../demo.md).
 
 ## Media previews
 
@@ -265,36 +257,8 @@ These change `compose.yaml` itself. They reach the container too, which ignores 
 
 ## Sign-in and email
 
-Setup instructions are in [Sign-in](sign-in.md). Leave unused providers unset. Set Google
-client id and secret together; OIDC needs discovery URL, client id and secret together.
-`SMTP_URL` requires `MAIL_FROM`.
-
-| Variable                 | Default                | Meaning                                                                           |
-| ------------------------ | ---------------------- | --------------------------------------------------------------------------------- |
-| `GOOGLE_CLIENT_ID`       |                        | OAuth client of type "Web application" in Google Cloud. Shows the Google button   |
-| `GOOGLE_CLIENT_SECRET`   |                        | Its secret                                                                        |
-| `GOOGLE_ALLOWED_DOMAINS` | any                    | Comma-separated Google Workspace domains that may sign in, e.g. `studio.it`       |
-| `OIDC_NAME`              | `SSO`                  | Label of the button of your OpenID Connect provider                               |
-| `OIDC_DISCOVERY_URL`     |                        | Its `.well-known/openid-configuration` address                                    |
-| `OIDC_CLIENT_ID`         |                        | Client id given by the provider                                                   |
-| `OIDC_CLIENT_SECRET`     |                        | Client secret given by the provider                                               |
-| `OIDC_SCOPES`            | `openid email profile` | Scopes to ask for                                                                 |
-| `OIDC_TRUST_EMAIL`       | `false`                | `true` links OIDC sign-ins to existing accounts with the same email               |
-| `OIDC_ALLOWED_DOMAINS`   | any                    | Comma-separated email domains whose verified OIDC accounts may sign in            |
-| `SMTP_URL`               |                        | `smtp://user:password@host:587` or `smtps://…:465`. Turns on email                |
-| `MAIL_FROM`              |                        | Sender, e.g. `Inkadra <inkadra@example.com>`. Required with `SMTP_URL`            |
-| `CLIPPER_EXTENSION_IDS`  |                        | Ids of self-built browser clippers allowed to sign in. The official one always is |
-
-Allowed domains are checked on every sign-in, also for people who already have an account:
-
-- **Google** checks the `hd` claim, the Workspace domain Google itself vouches for. A personal
-  `@gmail.com` account has no `hd`, so with `GOOGLE_ALLOWED_DOMAINS` set it cannot sign in,
-  even if it was linked before.
-- **OIDC** checks the domain of the email address, and only accepts it when the provider marks
-  it verified (`email_verified` set to `true`, or the string `"true"`). Without
-  `OIDC_ALLOWED_DOMAINS` there is no domain check. If `OIDC_DISCOVERY_URL` points at Google
-  (`accounts.google.com`), the `hd` claim is checked instead, against `OIDC_ALLOWED_DOMAINS` or,
-  when that is empty, `GOOGLE_ALLOWED_DOMAINS`.
+Google, an OpenID Connect provider, email (`SMTP_URL`, `MAIL_FROM`) and self-built clippers
+(`CLIPPER_EXTENSION_IDS`) are set up in [Sign-in](sign-in.md), with every variable.
 
 ## TRUST_PROXY
 
@@ -411,83 +375,40 @@ Use the pinned proxy container IP and verify the peer address in your deployment
 
 ## In-app reports
 
-Reporting to the **Inkadra developers is on without a saved choice**, also on an upgraded instance,
-via the relay described below. What leaves and how to turn it off, in plain words:
-[What leaves your server](README.md#what-leaves-your-server).
-Saved administrator choices override that default. In Settings → Reports an administrator
-chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
-guests may report (off by default) and how long attachments are kept (90 days by default; 30
-days or one year on request). Every report is first saved in the local database; attachments
-use the configured instance storage (`STORAGE_DRIVER`, `DATA_DIR` or the existing `S3_*`
-variables). Include both in backups.
+Reporting to the **Inkadra developers is on without a saved choice**, also on an instance
+upgraded from a version where reporting was off. What leaves and how to turn it off:
+[What leaves your server](README.md#what-leaves-your-server). In Settings → Reports an
+administrator chooses Inkadra developers, own GitHub, Inbox only or Off, the repository, whether
+guests may report (off by default) and how long attachments are kept (90 days by default). A saved
+choice always wins. Every report is first saved in the database, attachments in the instance
+storage: both are in your backups.
 
-| Environment variable    | Purpose                                                                                                                                                        |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FEEDBACK_GITHUB_TOKEN` | Server-only fine-grained GitHub token. Unset/empty by default. Never sent to the browser, logged or displayed in Settings.                                     |
-| `PUBLIC_URL`            | Existing canonical instance URL, used for attachment links. It must be reachable by people opening links and by GitHub's image proxy for embedded screenshots. |
+| Variable                | Default                     | Meaning                                                                                                                                             |
+| ----------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FEEDBACK_RELAY_URL`    | `https://relay.inkadra.com` | Relay to the Inkadra developers. Another `https://` relay (`http://` only to this machine), or empty (`FEEDBACK_RELAY_URL=`) to turn this route off |
+| `FEEDBACK_GITHUB_TOKEN` | unset                       | Token of your own GitHub route. Server only: never sent to the browser, logged or shown in Settings                                                 |
+| `PUBLIC_URL`            | required                    | Used for attachment links: people opening them, and GitHub's image proxy for screenshots, must reach it                                             |
 
-`FEEDBACK_RELAY_URL` controls the developer relay (see below). Destination, repository, guest policy and
-retention are administrator settings.
+To keep reports off when upgrading, save a choice in Settings → Reports or set
+`FEEDBACK_RELAY_URL=` before you upgrade.
 
-**The direct-path token.** A fine-grained personal access token, ideally of a service account: issues show
-that account as their author. Restrict it to **one selected private repository**, with
-**Issues: read and write** and the automatically required **Metadata: read**. Contents is not
-needed: nothing is committed to GitHub. Do not choose the public application repository.
+**Your own GitHub route.** A fine-grained personal access token, ideally of a service account
+(issues show it as author), restricted to **one selected private repository** with **Issues:
+read and write** and the automatically required **Metadata: read**; not the public application
+repository. Create the labels `bug`, `idea`, `question`, `from-app`, `area:home`, `area:board`,
+`area:settings`, `area:guest` and `area:other` beforehand. Privacy of the repository is checked
+when it is saved and before every delivery; a failed check keeps the report local.
 
-**The repository** needs the labels `bug`, `idea`, `question`, `from-app` and `area:home`,
-`area:board`, `area:settings`, `area:guest`, `area:other`. Create them beforehand: whether GitHub
-creates a missing label for an Issues-only token is not guaranteed. Private visibility is checked
-when the setting is saved and before every delivery; a failed check keeps the report local.
-With destination GitHub and no token yet, reports wait locally and are delivered once the token
-is set. Existing direct GitHub installations retain their chosen destination.
+**What a report can carry.** Members: fifteen reports an hour, one screenshot, five files up to
+25 MB and one video up to 100 MB. Guests: two an hour, text up to 4,000 characters and one
+screenshot up to 5 MB. The instance takes 100 an hour. Only images, videos, PDF and plain text are
+accepted; screenshots and PNG, JPEG and WebP files lose their metadata (GPS included), HEIC and
+other images and PDFs keep it, and device videos need ffmpeg to lose it. Through the developer relay: 10 MiB per image or
+file, 25 MiB per video, 32 MiB per report, and 40 reports a day per network and 60 in total;
+beyond that, or during an outage, reports wait locally and Settings says so. Drafts never leave
+in the background, only after the preview and a manual send.
 
-**Limits.** Members can submit fifteen reports/hour and guests two; the instance limit is 100/hour.
-Members may attach one screenshot, five files up to 25 MB each, and one video up to 100 MB.
-Guests may send text (description up to 4,000 characters), one screenshot up to 5 MB, environment
-and sanitized page information. Types are sniffed from the bytes: images, videos, PDF and plain
-text only; nothing but screenshots is served inline. Screenshots and PNG, JPEG and WebP files are
-rewritten without metadata (GPS included), up to 40 megapixels; HEIC and other formats leave as
-they came. Uploads go through a temporary file in `DATA_DIR/tmp`, not memory.
-Report text goes into the issue with mentions, references, links and markup neutralised.
-
-**Direct-path attachment links** are random bearer credentials: **anyone holding a link can open it until
-it expires**, without an Inkadra or GitHub login. Expired links stop working immediately; a
-maintenance sweep removes the files within about one minute. Unsubmitted uploads expire after 24
-hours. Do not post these links publicly. Screenshots inside private GitHub issues depend on the
-instance being reachable; whether GitHub shows them is unverified.
-
-**Delivery.** When GitHub answers 429, 403 or cannot be reached before the write, the report
-retries with exponential backoff and the person has already seen "sent", with a local reference.
-A lost connection or a 5xx during the write itself leaves the outcome unknown: the report is
-marked "To check on GitHub" and not posted again, to prevent duplicates. A 401, 404, 410, 422 or a
-repository that is no longer private stops the retries: the reason is logged and shown in
-Settings → Reports, and **Try again** there sends those reports round again. A report still
-retrying reads "Waiting to be sent", and **Try again** in its expanded row runs the same delivery
-sooner, with no risk of a duplicate. If the destination changes, queued reports stay local, marked
-"Inbox only", and never go to the repository chosen before.
-Offline drafts are never sent in the background: text stays in the browser and leaves only after
-the preview and a manual send. Videos stay in tab memory.
-
-### Reports to the Inkadra developers
-
-`FEEDBACK_RELAY_URL` defaults to `https://relay.inkadra.com`. Set it to
-another `https://` relay URL to override (plain `http://` only to this machine), or to the empty
-string to disable this route. No GitHub or Cloudflare credential is installed in the app for it.
-
-**Every instance without a saved choice uses this destination, including one upgraded from an
-earlier version where reporting was off.** To keep reports off, save a choice in Settings → Reports
-or set the empty value before upgrading. Guests stay disabled. Settings lets administrators turn
-developer reporting off with one switch (Inbox), choose Inbox only, disable reports, or configure
-their own private GitHub repository. Saved administrator choices always take precedence, including
-existing direct GitHub setups. A dialog opened before the choice changed asks to read it again.
-
-For report contents, redaction, metadata and attachment retention, see
-[What leaves your server](README.md#what-leaves-your-server). PDFs retain their metadata.
-Device videos need ffmpeg for metadata removal; the dialog refuses them without it.
-
-**Limits.** 10 MiB per image or file, 25 MiB per video, 32 MiB per report; direct GitHub keeps its
-100 MiB video limit. The relay accepts 40 reports a day per network and 60 a day in total, across
-every instance that uses it: beyond that, reports wait in the local queue and leave by themselves. During an outage they wait too, and
-Settings says so. If the relay gives no answer to a write, the report is marked as not confirmed:
-trying again from Settings is safe, because the relay recognises a report it already has. GitHub
-attachments live on `feedback-assets` and are not removed by the local retention setting.
+**Attachment links** of your own GitHub route are bearer links: **anyone holding one can open it
+until it expires**, without signing in. Do not post them publicly. Reports that cannot be
+delivered are listed in Settings → Reports with the reason and a **Try again** that never posts
+twice.
