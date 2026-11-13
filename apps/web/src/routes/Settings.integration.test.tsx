@@ -3,14 +3,14 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
-import { api } from '../lib/api.ts';
+import { api, authApi, RequestError } from '../lib/api.ts';
 import { chooseSelect } from '../test/select.ts';
 import { Settings } from './Settings.tsx';
 
 const session = vi.hoisted(() => ({
-  user: { role: 'admin', name: 'Editor', email: 'editor@example.test', locale: 'en' },
+  user: { id: 'editor', role: 'admin', name: 'Editor', email: 'editor@example.test', locale: 'en' },
   version: '1.0.0',
-  instance: { publicUrl: 'http://localhost:3000', auth: { google: false, oidc: [] } },
+  instance: { publicUrl: 'http://localhost:3000', auth: { emailPassword: true, google: false, oidc: [] } },
   refresh: vi.fn(),
 }));
 const phone = vi.hoisted(() => ({ value: false }));
@@ -21,10 +21,10 @@ vi.mock('react-i18next', () => ({
 }));
 vi.mock('../i18n/index.ts', () => ({ LOCALES: ['en', 'it'] }));
 vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({ preference: 'system', choose: vi.fn() }) }));
-vi.mock('../lib/api.ts', () => ({
-  api: { get: vi.fn(async () => ({ items: [] })), patch: vi.fn(async () => ({})) },
-  authApi: { listAccounts: vi.fn(async () => []) },
-  RequestError: class extends Error {},
+vi.mock('../lib/api.ts', async (original) => ({
+  ...(await original<typeof import('../lib/api.ts')>()),
+  api: { get: vi.fn(async () => ({ items: [] })), post: vi.fn(), patch: vi.fn(async () => ({})) },
+  authApi: { signIn: vi.fn(async () => ({})), listAccounts: vi.fn(async () => []) },
 }));
 vi.mock('./AppLayout.tsx', () => ({
   useInstanceSetupState: () => ({ checks: null, error: false }),
@@ -49,6 +49,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   root = createRoot(host);
   vi.clearAllMocks();
+  sessionStorage.clear();
 });
 const render = (path: string) =>
   act(async () =>
@@ -177,4 +178,24 @@ it('points to the clipper in the store until a clipper token exists, then shows 
   expect(row()?.textContent).toContain('settings.tokens.clipper.connected');
   expect(row()?.querySelector('code')).not.toBeNull();
   vi.mocked(api.get).mockImplementation(async () => ({ items: [] }));
+});
+
+it('keeps the token name and retries creation after confirming the password', async () => {
+  vi.mocked(api.post).mockRejectedValueOnce(new RequestError(403, 'forbidden', '', { reason: 'reauth_required' }))
+    .mockResolvedValueOnce({ name: 'My integration', token: 'demo-token' });
+  await render('/settings?section=apps');
+  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'settingsUi.account.newToken')?.click());
+  const input = host.querySelector('input[maxlength="80"]') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'My integration');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => host.querySelector('form.settings-form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(input.value).toBe('My integration');
+  expect(host.querySelector('form.login__form')).not.toBeNull();
+  vi.mocked(api.get).mockResolvedValueOnce({ id: 'editor' } as never);
+  await act(async () => host.querySelector('form.login__form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(authApi.signIn).toHaveBeenCalledWith('editor@example.test', '');
+  expect(api.post).toHaveBeenNthCalledWith(2, '/me/tokens', { name: 'My integration' });
+  expect(host.textContent).toContain('demo-token');
 });

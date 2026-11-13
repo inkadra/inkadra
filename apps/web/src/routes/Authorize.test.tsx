@@ -52,11 +52,11 @@ it('reauthenticates an old session and preserves the complete app authorization 
   expect(allow).toBeDefined();
   await act(async () => allow?.click());
   expect(authApi.signOut).not.toHaveBeenCalled();
-  expect(document.body.textContent).toContain('auth.signIn');
+  expect(host.textContent).toContain('auth.signIn');
   expect(assign).not.toHaveBeenCalled();
-  expect(document.body.textContent).toContain('auth.errors.reauthRequired');
+  expect(host.textContent).toContain('auth.errors.reauthRequired');
   vi.mocked(api.post).mockResolvedValueOnce({ redirectTo: 'inkadra://callback?code=ok' });
-  const form = document.body.querySelector('form');
+  const form = host.querySelector('form');
   expect(form).not.toBeNull();
   await act(async () =>
     form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),

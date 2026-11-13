@@ -1050,7 +1050,7 @@ function Tokens() {
         title={t('settings.tokens.title')}
         body={t('settings.tokens.body')}
         action={
-          <Button variant="ghost" icon="plus" onClick={() => setOpen(true)}>
+          <Button data-tour="apps-tokens" variant="ghost" icon="plus" onClick={() => setOpen(true)}>
             {t('settingsUi.account.newToken')}
           </Button>
         }

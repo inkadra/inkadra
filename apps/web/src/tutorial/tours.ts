@@ -398,6 +398,17 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'appsTokens',
+    group: 'tools',
+    icon: 'key',
+    offer: null,
+    href: '/settings?section=apps',
+    steps: [
+      { anchor: 'apps-tokens', media: 'gear' },
+      { anchor: null, media: 'gear' },
+    ],
+  },
+  {
     // Settings → Modules (decision 0121).
     id: 'modules',
     group: 'tools',

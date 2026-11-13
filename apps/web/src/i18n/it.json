@@ -5188,6 +5188,19 @@
       "role2": "Invita"
     },
     "tours": {
+      "appsTokens": {
+        "name": "App e token",
+        "steps": {
+          "0": {
+            "title": "Crea un token",
+            "text": "Dai un nome al token per l’app da collegare. Copialo dopo averlo creato."
+          },
+          "1": {
+            "title": "Conferma la tua identità",
+            "text": "Se l’accesso è troppo vecchio, conferma con password o provider. Inkadra riprova senza perdere il nome del token."
+          }
+        }
+      },
       "welcome": {
         "steps": {
           "0": {
