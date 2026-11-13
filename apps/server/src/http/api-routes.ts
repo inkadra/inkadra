@@ -5,6 +5,7 @@ import {
   CLASSIFICATION_DELETE_CAPABILITY,
   COLLAB_PATH,
   type Health,
+  IDEMPOTENT_IMPORT_CAPABILITY,
   type Instance,
   type InstanceVersion,
   PLAN_SHEET_PDF_CAPABILITY,
@@ -150,6 +151,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         TRANSFER_CANCEL_CAPABILITY,
         SERVER_LIVE_CAPABILITY,
         CLASSIFICATION_DELETE_CAPABILITY,
+        IDEMPOTENT_IMPORT_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });
