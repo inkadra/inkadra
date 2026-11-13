@@ -22,12 +22,20 @@ import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
 import { isOffice, officeTable, SHEET_PREVIEW, tableable } from './office.ts';
 import { PdfReader } from './PdfReader.tsx';
+import { QualityMenu } from './QualityMenu.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
 import { ViewerImage } from './ViewerImage.tsx';
+import {
+  NO_SOURCE,
+  playbackSource,
+  type QualityChoice,
+  useKeepPosition,
+  useVideoSource,
+} from './video-source.ts';
 import {
   isVideoLink,
   isYoutubeUrl,
@@ -307,15 +315,26 @@ export function MediaViewer({
   const [copied, setCopied] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [quality, setQuality] = useState<QualityChoice>('auto');
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset original toggle when switching elements
   useEffect(() => {
     setShowOriginal(false);
+    setQuality('auto');
     setOfficePage(1);
     setOfficeSheet(0);
   }, [element.id]);
   const isTransformedImage = element.type === 'image' && hasImageTransform(element);
-  const playback = ready ? playbackUrl(ready) : undefined;
+  // A video with rungs plays their playlist (decision 0128); others as before.
+  const source = ready?.kind === 'video' ? playbackSource(ready) : null;
+  const playback = source ? (source.hls ?? source.src) : ready ? playbackUrl(ready) : undefined;
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(playback, ready?.id);
+  const played = useVideoSource(
+    videoRef,
+    source ?? NO_SOURCE,
+    quality,
+    ready?.playback?.renditions,
+  );
+  useKeepPosition(videoRef, quality);
   // The viewer's own media take turns with the cards (one player at a time).
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoTurn = useInlineMedia('viewer-video', videoRef);
@@ -654,7 +673,7 @@ export function MediaViewer({
                 <video
                   ref={videoRef}
                   className="viewer__media viewer__media--contain"
-                  src={playback}
+                  src={played.src}
                   poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
                   controls
                   autoPlay
@@ -670,6 +689,14 @@ export function MediaViewer({
                   onLoadedData={(e) => setVideoPaused(e.currentTarget.paused)}
                   style={unplayable ? { display: 'none' } : undefined}
                 />
+                {!unplayable && ready.playback && ready.playback.renditions.length > 0 && (
+                  <QualityMenu
+                    asset={ready}
+                    choice={quality}
+                    onChoose={setQuality}
+                    playing={played.height}
+                  />
+                )}
                 {unplayable && (
                   <VideoUnplayable
                     poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}

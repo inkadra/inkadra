@@ -412,6 +412,9 @@ importers:
       '@tiptap/y-tiptap':
         specifier: ^3.0.12
         version: 3.0.12(prosemirror-model@1.25.12)(prosemirror-state@1.4.4)(prosemirror-view@1.42.7)(y-protocols@1.0.7(yjs@13.6.33))(yjs@13.6.33)
+      hls.js:
+        specifier: 1.6.15
+        version: 1.6.15
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13
@@ -2967,6 +2970,9 @@ packages:
   heic-decode@2.1.0:
     resolution: {integrity: sha512-0fB3O3WMk38+PScbHLVp66jcNhsZ/ErtQ6u2lMYu/YxXgbBtl+oKOhGQHa4RpvE68k8IzbWkABzHnyAIjR758A==}
     engines: {node: '>=8.0.0'}
+
+  hls.js@1.6.15:
+    resolution: {integrity: sha512-E3a5VwgXimGHwpRGV+WxRTKeSp2DW5DI5MWv34ulL3t5UNmyJWCQ1KmLEHbYzcfThfXG8amBL+fCYPneGHC4VA==}
 
   html-parse-stringify@4.0.1:
     resolution: {integrity: sha512-0zHsZJrK7S3K2aucXWL6ycoYJ/iNtIcFHC/nYQgFklPtrv5LpJctIiSCroWZWeuoXvuyFdzp6KzjJQ+OT5MfFw==}
@@ -6153,6 +6159,8 @@ snapshots:
   heic-decode@2.1.0:
     dependencies:
       libheif-js: 1.23.5
+
+  hls.js@1.6.15: {}
 
   html-parse-stringify@4.0.1: {}
 

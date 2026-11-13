@@ -91,7 +91,10 @@ function needsPolling(id: string): boolean {
     value.status === 'pending' ||
     value.status === 'processing' ||
     proxy === 'queued' ||
-    proxy === 'processing'
+    proxy === 'processing' ||
+    // Rungs of the ladder still being made (decision 0128): the others appear as they get ready.
+    (value.playback?.renditions.some((r) => r.status === 'queued' || r.status === 'processing') ??
+      false)
   );
 }
 

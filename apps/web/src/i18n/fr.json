@@ -469,7 +469,8 @@
       "glyphs_other": "{{count}} glyphes",
       "polygons_one": "{{count}} polygone",
       "polygons_other": "{{count}} polygones",
-      "unavailable": "Format non pris en charge : aucune copie lisible disponible."
+      "unavailable": "Format non pris en charge : aucune copie lisible disponible.",
+      "watchable": "Déjà visible"
     },
     "voiceNote": {
       "label": "Note vocale",
@@ -1985,7 +1986,16 @@
     "pdfPage": "{{name}}, page {{page}} sur {{total}}",
     "pdfPrevious": "Page précédente",
     "pdfNext": "Page suivante",
-    "pdfPageNumber": "Page {{page}} sur {{total}}"
+    "pdfPageNumber": "Page {{page}} sur {{total}}",
+    "quality": {
+      "title": "Qualité",
+      "label": "Qualité : {{quality}}",
+      "auto": "Auto",
+      "autoAt": "Auto · {{quality}}",
+      "now": "maintenant {{quality}}",
+      "preparing": "en préparation · {{percent}} %",
+      "original": "Original"
+    }
   },
   "search": {
     "title": "Rechercher",
@@ -5295,6 +5305,10 @@
           "2": {
             "title": "Les liens aussi",
             "text": "YouTube et Vimeo se lisent dans la carte."
+          },
+          "3": {
+            "title": "Qualité de la vidéo",
+            "text": "Dans la visionneuse, « Qualité » choisit la résolution ; Auto suit la connexion."
           }
         }
       },

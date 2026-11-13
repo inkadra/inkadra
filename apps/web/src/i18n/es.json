@@ -469,7 +469,8 @@
       "glyphs_other": "{{count}} glifos",
       "polygons_one": "{{count}} polígono",
       "polygons_other": "{{count}} polígonos",
-      "unavailable": "Formato no compatible: no hay copia reproducible disponible."
+      "unavailable": "Formato no compatible: no hay copia reproducible disponible.",
+      "watchable": "Ya se puede ver"
     },
     "voiceNote": {
       "label": "Nota de voz",
@@ -1985,7 +1986,16 @@
     "pdfPage": "{{name}}, página {{page}} de {{total}}",
     "pdfPrevious": "Página anterior",
     "pdfNext": "Página siguiente",
-    "pdfPageNumber": "Página {{page}} de {{total}}"
+    "pdfPageNumber": "Página {{page}} de {{total}}",
+    "quality": {
+      "title": "Calidad",
+      "label": "Calidad: {{quality}}",
+      "auto": "Auto",
+      "autoAt": "Auto · {{quality}}",
+      "now": "ahora {{quality}}",
+      "preparing": "preparando · {{percent}}%",
+      "original": "Original"
+    }
   },
   "search": {
     "title": "Buscar",
@@ -5295,6 +5305,10 @@
           "2": {
             "title": "También enlaces",
             "text": "YouTube y Vimeo se ven en la tarjeta."
+          },
+          "3": {
+            "title": "Calidad del vídeo",
+            "text": "En el visor, «Calidad» elige la resolución; Auto sigue la conexión."
           }
         }
       },
