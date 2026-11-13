@@ -46,10 +46,7 @@ interface Deleted {
 const DELETED = 'classifications_deleted';
 
 async function readDeleted(db: Pick<Database, 'select'>): Promise<Deleted[]> {
-  const [row] = await db
-    .select()
-    .from(instanceSetting)
-    .where(eq(instanceSetting.key, DELETED));
+  const [row] = await db.select().from(instanceSetting).where(eq(instanceSetting.key, DELETED));
   return ((row?.value as { values?: Deleted[] } | undefined)?.values ?? []).filter(
     (d) => CATALOG_KEYS.includes(d.key) && typeof d.id === 'string',
   );
@@ -159,7 +156,11 @@ export async function saveCatalogs(
     ) as Record<CatalogKey, ClassificationOption[]>;
     const uses = await countUses(tx, byKey);
     const used = removed
-      .map(({ key, option }) => ({ catalog: key, id: option.id, uses: uses.get(`${key}:${option.id}`) }))
+      .map(({ key, option }) => ({
+        catalog: key,
+        id: option.id,
+        uses: uses.get(`${key}:${option.id}`),
+      }))
       .filter((r) => r.uses !== 0);
     if (used.length)
       throw new HttpError('conflict', 'These values are in use: archive them instead.', {

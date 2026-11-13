@@ -44,9 +44,10 @@ export function ClassificationSettings() {
   /** `inUse`: a value removed here was used meanwhile (decision 0126). */
   const [error, setError] = useState<false | 'failed' | 'inUse'>(false);
   /** The value whose removal is being confirmed. */
-  const [removing, setRemoving] = useState<{ key: CatalogKey; option: ClassificationOption } | null>(
-    null,
-  );
+  const [removing, setRemoving] = useState<{
+    key: CatalogKey;
+    option: ClassificationOption;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [open, setOpen] = useState<ReadonlySet<CatalogKey>>(new Set());

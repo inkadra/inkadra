@@ -107,10 +107,12 @@ describe('shared classification catalogs', () => {
     const back = structuredClone(removed);
     back.revision = current.revision;
     back.tags.push({ id, label: 'Night', archived: false });
-    expect(() => validateCatalogUpdate(current, { ...back, tags: [] }, new Set([id]))).not.toThrow();
-    expect(() => validateCatalogUpdate(copy(), { ...copy(), tags: back.tags }, new Set([id]))).toThrow(
-      'deleted value',
-    );
+    expect(() =>
+      validateCatalogUpdate(current, { ...back, tags: [] }, new Set([id])),
+    ).not.toThrow();
+    expect(() =>
+      validateCatalogUpdate(copy(), { ...copy(), tags: back.tags }, new Set([id])),
+    ).toThrow('deleted value');
     const defaults = copy();
     defaults.shotMovements.shift();
     expect(() => validateCatalogUpdate(copy(), defaults)).toThrow('Archive');

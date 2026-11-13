@@ -201,9 +201,9 @@ it('offers Delete only on values nothing uses, after a confirmation', async () =
   expect(host.querySelectorAll('.catalogs__name')).toHaveLength(5);
   await act(async () => button('catalogs.delete')?.click());
   expect(host.querySelector('dialog')).toBeNull();
-  expect([...host.querySelectorAll<HTMLInputElement>('.catalogs__name')].map((i) => i.value)).toEqual(
-    ['Short film', 'Commercial', 'Notte', 'Neve'],
-  );
+  expect(
+    [...host.querySelectorAll<HTMLInputElement>('.catalogs__name')].map((i) => i.value),
+  ).toEqual(['Short film', 'Commercial', 'Notte', 'Neve']);
   // Used meanwhile: the server refuses with a reason the page explains.
   await act(async () => button('settings.save')?.click());
   expect(vi.mocked(api.put).mock.calls[0]?.[1]).toMatchObject({ tags: [used, archived] });

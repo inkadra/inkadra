@@ -47,7 +47,8 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
     });
   const catalogs = async (who: keyof typeof cookies = 'admin') =>
     (await call(who, 'GET', '/instance/classifications')).json() as ClassificationCatalogs;
-  const save = (next: ClassificationCatalogs) => call('admin', 'PUT', '/instance/classifications', next);
+  const save = (next: ClassificationCatalogs) =>
+    call('admin', 'PUT', '/instance/classifications', next);
   type Key = 'projectTypes' | 'tags' | 'shotSizes';
   /** Adds a value to a catalog and returns it as saved. */
   const add = async (key: Key, label: string) => {
@@ -77,15 +78,26 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
   function doc(boardId: string, content: { tags?: string[]; shot?: string }) {
     const d = createBoardDoc(boardId);
     const base = { x: 0, y: 0, w: 240, z: 'a0', parent: null, createdBy: null, createdAt: 0 };
-    if (content.tags) addElement(d, { ...base, id: newElementId(), type: 'note', tags: content.tags });
+    if (content.tags)
+      addElement(d, { ...base, id: newElementId(), type: 'note', tags: content.tags });
     if (content.shot) {
       const scene = { ...base, id: newElementId(), type: 'scene' as const, number: '1', title: '' };
       addElement(d, scene);
-      addElement(d, { ...base, id: newElementId(), parent: scene.id, type: 'frame', shot: content.shot });
+      addElement(d, {
+        ...base,
+        id: newElementId(),
+        parent: scene.id,
+        type: 'frame',
+        shot: content.shot,
+      });
     }
     return d;
   }
-  async function store(tx: Database | Parameters<Parameters<Database['transaction']>[0]>[0], boardId: string, d: Y.Doc) {
+  async function store(
+    tx: Database | Parameters<Parameters<Database['transaction']>[0]>[0],
+    boardId: string,
+    d: Y.Doc,
+  ) {
     const state = Y.encodeStateAsUpdate(d);
     await tx
       .insert(boardDoc)
@@ -266,7 +278,11 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
     const type = await add('projectTypes', 'Fotoromanzo');
     const tag = await add('tags', 'Pioggia battente');
     const shot = await add('shotSizes', 'Dettaglio mani');
-    const { projectId, boardId, doc: d } = await board_({
+    const {
+      projectId,
+      boardId,
+      doc: d,
+    } = await board_({
       type: type.id,
       tags: [tag.id],
       shot: shot.id,
@@ -302,7 +318,10 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
       .select({ id: board.id })
       .from(board)
       .where(sql`${board.projectId} = ${done.projectId} and ${board.parentBoardId} is null`);
-    const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, root?.id ?? ''));
+    const [row] = await db
+      .select()
+      .from(boardDoc)
+      .where(eq(boardDoc.boardId, root?.id ?? ''));
     const back = new Y.Doc();
     Y.applyUpdate(back, row?.state ?? new Uint8Array());
     const frames = [...roots(back).elements.values()]
