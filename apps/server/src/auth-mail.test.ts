@@ -14,10 +14,12 @@ it('does not await SMTP and handles delivery failures', async () => {
       log,
     ),
   ).toBeUndefined();
-  await vi.waitFor(() => expect(log.warn).toHaveBeenCalledWith(
+  await vi.waitFor(() =>
+    expect(log.warn).toHaveBeenCalledWith(
       { err: expect.objectContaining({ message: 'SMTP unavailable' }) },
       'security email delivery failed',
-    ));
+    ),
+  );
 });
 
 it('keeps the cause of a mail failure and masks the addresses in it', () => {

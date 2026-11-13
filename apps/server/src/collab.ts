@@ -162,7 +162,10 @@ export function createCollabServer(deps: {
     boardId: string,
     err: unknown,
   ) => {
-    log.error({ err, boardId }, kind === 'board_save_failed' ? 'board not stored' : 'board not loaded');
+    log.error(
+      { err, boardId },
+      kind === 'board_save_failed' ? 'board not stored' : 'board not loaded',
+    );
     if (deps.monitor)
       recordProblem(
         deps.monitor.store,

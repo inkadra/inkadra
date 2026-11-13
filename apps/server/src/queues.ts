@@ -142,7 +142,10 @@ export function queueErrors(log: Pick<Logger, 'warn'>) {
   };
 }
 
-export function createQueues(url: string, opts: { prefix?: string; log?: Pick<Logger, 'warn'> } = {}) {
+export function createQueues(
+  url: string,
+  opts: { prefix?: string; log?: Pick<Logger, 'warn'> } = {},
+) {
   const connection = createRedis(url);
   const media = new Queue(QUEUES.media, { connection, prefix: opts.prefix });
   const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
@@ -152,7 +155,14 @@ export function createQueues(url: string, opts: { prefix?: string; log?: Pick<Lo
   const email = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
   if (opts.log) {
     const onError = queueErrors(opts.log);
-    for (const [name, q] of Object.entries({ media, maintenance, transfers, proxies, office, email }))
+    for (const [name, q] of Object.entries({
+      media,
+      maintenance,
+      transfers,
+      proxies,
+      office,
+      email,
+    }))
       q.on('error', onError(name));
   }
   const jobs: Jobs = {
