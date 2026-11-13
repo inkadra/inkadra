@@ -6,7 +6,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, notification, user } from '../db/schema.ts';
+import {
+  asset,
+  assetVariant,
+  board,
+  boardElementIndex,
+  boardGrant,
+  notification,
+  user,
+} from '../db/schema.ts';
 import { type Limits, overrideAllowed, personLimit, saveLimits } from '../storage-limits.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
@@ -60,6 +68,7 @@ describe.skipIf(!url)('storage limits on uploads (needs DATABASE_URL)', () => {
     member: { cookie: '', id: '' },
   };
   let projectId = '';
+  let rootBoardId = '';
   const tus = { 'tus-resumable': '1.0.0' };
 
   const call = async (
@@ -129,7 +138,9 @@ describe.skipIf(!url)('storage limits on uploads (needs DATABASE_URL)', () => {
     }
     await db.update(user).set({ role: 'admin' }).where(eq(user.id, as.admin.id));
     await db.update(user).set({ role: 'member' }).where(eq(user.id, as.member.id));
-    projectId = (await call('member', 'POST', '/api/v1/projects', { name: 'Quota' })).json().id;
+    const created = (await call('member', 'POST', '/api/v1/projects', { name: 'Quota' })).json();
+    projectId = created.id;
+    rootBoardId = created.rootBoardId;
   });
 
   afterAll(async () => {
@@ -205,14 +216,62 @@ describe.skipIf(!url)('storage limits on uploads (needs DATABASE_URL)', () => {
 
   it('lists the largest files and asks the administrators for space once a day', async () => {
     const files = (await call('member', 'GET', '/api/v1/me/storage/files')).json();
-    expect(files.items[0]).toMatchObject({ filename: 'take.mov', projectName: 'Quota' });
+    expect(files.items[0]).toMatchObject({
+      filename: 'take.mov',
+      projectName: 'Quota',
+      kind: 'other',
+      projectColor: expect.any(String),
+    });
+    expect(files.items[0].thumbnailUrl).toBeUndefined();
+    expect(files.items[0].boardId).toBeUndefined();
     expect(files.hiddenCount).toBe(0);
+    const space = (await call('member', 'GET', '/api/v1/me/storage')).json();
+    expect(files.totalBytes).toBe(space.originalBytes + space.derivedBytes);
     // The administrator is not a member of the project: counted, never named.
     const theirs = (
       await call('admin', 'GET', `/api/v1/instance/members/${as.member.id}/files`)
     ).json();
     expect(theirs.items).toEqual([]);
     expect(theirs.hiddenCount).toBeGreaterThan(0);
+    expect(theirs.totalBytes).toBe(files.totalBytes);
+
+    // A card on the root board shows the file, which has a thumbnail.
+    const fileId: string = files.items[0].id;
+    await db.insert(assetVariant).values({
+      assetId: fileId,
+      size: '256',
+      width: 256,
+      height: 144,
+      storageKey: 'derived-test',
+      bytes: 10,
+    });
+    await db.insert(boardElementIndex).values({
+      boardId: rootBoardId,
+      projectId,
+      elementId: 'take-card',
+      type: 'video',
+      assetId: fileId,
+    });
+    const [child] = await db
+      .insert(board)
+      .values({ projectId, parentBoardId: rootBoardId, title: 'Shared', position: 'a1' })
+      .returning();
+    const mine = (await call('member', 'GET', '/api/v1/me/storage/files')).json();
+    expect(mine.items[0]).toMatchObject({
+      id: fileId,
+      thumbnailUrl: `/api/v1/assets/${fileId}/variants/256`,
+      boardId: rootBoardId,
+      cardId: 'take-card',
+    });
+    // Invited to a sub-board only, the administrator sees the file but not the card's board.
+    await db.insert(boardGrant).values({ boardId: child!.id, userId: as.admin.id, role: 'viewer' });
+    const granted = (
+      await call('admin', 'GET', `/api/v1/instance/members/${as.member.id}/files`)
+    ).json();
+    expect(granted.items[0]).toMatchObject({ id: fileId, projectName: 'Quota' });
+    expect(granted.items[0].boardId).toBeUndefined();
+    expect(granted.items[0].cardId).toBeUndefined();
+    await db.delete(boardGrant).where(eq(boardGrant.userId, as.admin.id));
     expect((await call('member', 'POST', '/api/v1/me/storage/request', {})).json()).toEqual({
       sent: true,
     });

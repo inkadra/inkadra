@@ -1,10 +1,11 @@
 import type { MyStorage, StorageFiles, StorageFull, UpdateStorageLimits } from '@inkadra/shared';
 import { eq, type SQL, sql } from 'drizzle-orm';
-import { live } from './access.ts';
+import { boardRoles, live } from './access.ts';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import { instanceSetting, user } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
+import { fileCategory } from './storage-usage.ts';
 
 /**
  * Storage limits (decision 0081): a total for the instance, a default for each person and a
@@ -205,7 +206,8 @@ export const personBytes = (userId: SQL) => sql<string>`(
 
 /**
  * The 50 largest files `ownerId` uploaded, with their copies. Files in projects `viewerId`
- * cannot open are counted, never named, as in Settings → Storage.
+ * cannot open are counted, never named, as in Settings → Storage. Each listed file says where
+ * a card shows it, on a board the viewer can open, and has the thumbnail the viewer may load.
  */
 export async function largestFiles(
   db: Reader,
@@ -217,35 +219,72 @@ export async function largestFiles(
     or exists(select 1 from board_grant g join board b on b.id = g.board_id
       where b.project_id = a.project_id and b.deleted_at is null and g.user_id = ${viewerId}
         and ${live('g')}))`;
-  const files = sql`select a.id, a.filename, a.project_id, a.created_at, ${visible} as visible,
+  const files = sql`select a.id, a.filename, a.mime, a.project_id, a.created_at,
+      ${visible} as visible,
       a.size + coalesce((select sum(v.bytes) from asset_variant v where v.asset_id = a.id), 0)
         as bytes
     from asset a
     where a.created_by = ${ownerId} and a.status in ('processing', 'ready', 'failed')`;
-  const rows = await db.execute<{
-    id: string;
-    filename: string;
-    project_id: string;
-    project_name: string;
-    created_at: Date | string;
-    bytes: string;
-  }>(sql`select f.id, f.filename, f.project_id, p.name as project_name, f.created_at,
-      f.bytes::text as bytes
+  const rows = [
+    ...(await db.execute<{
+      id: string;
+      filename: string;
+      mime: string;
+      project_id: string;
+      project_name: string;
+      project_color: NonNullable<StorageFiles['items'][number]['projectColor']>;
+      created_at: Date | string;
+      bytes: string;
+      thumbnail: boolean;
+    }>(sql`select f.id, f.filename, f.mime, f.project_id, p.name as project_name,
+      p.icon_color as project_color, f.created_at, f.bytes::text as bytes,
+      exists(select 1 from asset_variant v where v.asset_id = f.id and v.size = '256')
+        as thumbnail
     from (${files}) f join project p on p.id = f.project_id
-    where f.visible order by f.bytes desc, f.id limit 50`);
+    where f.visible order by f.bytes desc, f.id limit 50`)),
+  ];
   const [hidden] = await db.execute<{ n: string; bytes: string }>(sql`select count(*)::text as n,
       coalesce(sum(f.bytes), 0)::text as bytes from (${files}) f where not f.visible`);
+  const used = await usedBytes(db, { userId: ownerId });
+  // The cards showing each file, most recently changed first; only boards the viewer opens.
+  const cards =
+    rows.length === 0
+      ? []
+      : [
+          ...(await db.execute<{ asset_id: string; board_id: string; element_id: string }>(
+            sql`select e.asset_id, e.board_id, e.element_id from board_element_index e
+              where e.asset_id in (${sql.join(
+                rows.map((r) => sql`${r.id}::uuid`),
+                sql`, `,
+              )})
+              order by e.updated_at desc, e.board_id, e.element_id`,
+          )),
+        ];
+  const open = await boardRoles(
+    db,
+    { id: viewerId },
+    cards.map((c) => c.board_id),
+  );
+  const cardOf = new Map<string, { boardId: string; cardId: string }>();
+  for (const c of cards)
+    if (open.has(c.board_id) && !cardOf.has(c.asset_id))
+      cardOf.set(c.asset_id, { boardId: c.board_id, cardId: c.element_id });
   return {
-    items: [...rows].map((r) => ({
+    items: rows.map((r) => ({
       id: r.id,
       filename: r.filename,
       bytes: Number(r.bytes),
       projectId: r.project_id,
       projectName: r.project_name,
       createdAt: new Date(r.created_at).toISOString(),
+      kind: fileCategory(r.mime),
+      ...(r.thumbnail && { thumbnailUrl: `/api/v1/assets/${r.id}/variants/256` }),
+      ...cardOf.get(r.id),
+      projectColor: r.project_color,
     })),
     hiddenCount: Number(hidden?.n ?? 0),
     hiddenBytes: Number(hidden?.bytes ?? 0),
+    totalBytes: total(used),
   };
 }
 

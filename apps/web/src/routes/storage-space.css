@@ -63,35 +63,227 @@
   color: var(--ink-accent-soft-fg);
 }
 
-.space-files table {
+/* The largest files: a fixed head and foot, only the list scrolls. */
+.ink-dialog:has(> .space-files) {
+  width: min(640px, calc(100vw - 32px));
+}
+.ink-dialog[open]:has(> .space-files) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (width >= 768px) {
+  .ink-dialog[open]:has(> .space-files) {
+    max-height: calc(100dvh - 48px);
+  }
+}
+.ink-dialog:has(> .space-files) > .ink-dialog__title {
+  margin-bottom: 4px;
+}
+.space-files {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  font-size: 13px;
+}
+.space-files > p,
+.space-files p {
+  margin: 0;
+}
+.space-files__sub {
+  color: var(--ink-text-secondary);
+}
+.space-files__summary {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.space-files__summary b {
+  font-weight: 600;
+}
+.space-files__summary .storage-chart__stack {
+  gap: 2px;
+  margin: 0;
+}
+.space-files__summary .storage-chart__stack > span {
+  display: block;
+  flex: none;
+}
+.space-files__rest {
+  background: var(--ink-border-strong);
+}
+.space-files__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.space-files__legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.space-files__legend .space-files__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+.space-files__legend i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.space-files__count {
+  margin-left: 6px;
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.space-files__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 -16px;
+  padding: 4px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--ink-border-subtle);
+  list-style: none;
+}
+.space-file.ink-row {
+  align-items: center;
+  gap: 12px;
+}
+.space-file .ink-row__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.space-file__thumb {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.space-file__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.space-file__play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink-on-accent);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+/* Only the project name gives way on a narrow row. */
+.ink-row__where > .space-file__sep,
+.ink-row__where > .space-file__kind {
+  flex: none;
+}
+/* The project marker: a small diamond in the project's colour. */
+.ink-row__where > .space-file__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  rotate: 45deg;
+}
+.space-file .ink-row__trail {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.space-file__size {
+  min-width: 72px;
+  color: var(--ink-text-primary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  text-align: end;
+}
+.space-file__size small {
+  display: block;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+}
+/* "Apri" shows on hover and keyboard focus; the whole row is the link. */
+.space-file__open {
+  opacity: 0;
+  transition: opacity var(--ink-dur-fast);
+}
+.space-file:is(:hover, :focus-visible) .space-file__open {
+  opacity: 1;
+}
+.space-files__note {
+  flex: 1 1 240px;
+  margin: 0 auto 0 0;
+  color: var(--ink-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+@media (width < 768px) {
+  .space-file__open {
+    display: none;
+  }
+  .space-files__note {
+    flex-basis: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .space-file__open {
+    transition: none;
+  }
+}
+
+/* The files a full space refused, in the upload notice. */
+.space-refused table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
-.space-files th,
-.space-files td {
+.space-refused th,
+.space-refused td {
   padding: 7px 0;
   border-bottom: 1px solid var(--ink-border-subtle);
   font-weight: 400;
   text-align: left;
   vertical-align: top;
 }
-.space-files td {
+.space-refused td {
   padding-left: 12px;
   color: var(--ink-text-secondary);
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
 }
-.space-files__name {
+.space-refused__name {
   display: block;
   overflow-wrap: anywhere;
 }
-.space-files__project {
-  color: var(--ink-text-secondary);
-  font-size: 12px;
-}
-.space-files > p {
+.space-refused > p {
   margin: 10px 0 0;
   font-size: 12px;
 }
