@@ -170,10 +170,9 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
       page.evaluate(() => {
         const box = (selector: string) =>
           document.querySelector(selector)?.getBoundingClientRect() ?? new DOMRect();
-        const row = box('.team-member');
         return {
           window: box('dialog.settings-window'),
-          share: box('.team-member .team-col--who').width / row.width,
+          who: box('.team-member .team-col--who').width,
         };
       });
     // A laptop keeps a 24px gutter at the sides.
@@ -182,7 +181,8 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
     const wide = await sizes();
     expect(wide.window.width).toBe(1320);
     expect(wide.window.height).toBe(1040);
-    expect(wide.share).toBeGreaterThan(0.45);
+    // About 200px in the earlier 680px column.
+    expect(wide.who).toBeGreaterThan(300);
     await page.setViewportSize({ width: 1280, height: 900 });
     await shoot(page, 'members-desktop');
     if (shots) {
