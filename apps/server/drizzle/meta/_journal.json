@@ -323,6 +323,13 @@
       "when": 1794509643318,
       "tag": "0045_shooting_day_project",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794569409760,
+      "tag": "0046_asset_rendition",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { Id, Timestamp, z } from './common.ts';
+import { AssetPlayback } from './video.ts';
 
 export const AssetKind = z.enum(['image', 'video', 'audio', 'file']);
 export type AssetKind = z.infer<typeof AssetKind>;
@@ -131,6 +132,15 @@ export const Asset = z
         'audio file not every browser plays. Null for other files and for media that already ' +
         'play (H.264 MP4, WebM, MP3, AAC, WAV, FLAC): use `url` then.',
     }),
+    playback: AssetPlayback.nullable()
+      .optional()
+      .openapi({
+        description:
+          'Adaptive playback of a video (decision 0128): the HLS master playlist of its ' +
+          'reduced copies and the state of each. Null for other files and for videos that ' +
+          'play as they are; absent from servers without `video-renditions`. `proxy` keeps ' +
+          'working for clients that do not read this.',
+      }),
     waveformUrl: z
       .string()
       .nullable()

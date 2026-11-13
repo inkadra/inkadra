@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+
 import { AssetTrack, AssetVariant, ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
 import { ShotCatalogs } from './classifications.ts';
@@ -6,6 +7,7 @@ import { CommentCount, ElementRef } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
 import { GuestElementReview } from './reviews.ts';
 import { UserSummary } from './users.ts';
+import { AssetPlayback } from './video.ts';
 
 /**
  * Share links for people without an account (docs/decisions/0013). A guest never receives the
@@ -305,6 +307,15 @@ export const GuestAsset = z
         description:
           '`/api/v1/guest/links/{linkId}/assets/{assetId}/waveform`: the peaks of an audio ' +
           'card (`AudioWaveform`), else null.',
+      }),
+    playback: AssetPlayback.nullable()
+      .optional()
+      .openapi({
+        description:
+          'As `Asset.playback`, with paths under `/api/v1/guest/links/{linkId}/assets/' +
+          '{assetId}/hls/`: guests stream the reduced copies of a video whatever ' +
+          '`allowDownload` says, as they hear audio (decision 0128). `original` is true only ' +
+          'when the link allows downloads. Absent from servers without `video-renditions`.',
       }),
   })
   .openapi('GuestAsset');
