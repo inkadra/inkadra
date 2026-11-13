@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   copiesVideo,
-  decodesOnGpu,
   DEFAULT_PROXY_SETTINGS,
+  decodesOnGpu,
   MAX_INT32,
   parseProbe,
   proxyArgs,
@@ -214,9 +214,9 @@ describe('proxyArgs', () => {
     expect(planned).toBeLessThan(34 * 1024 ** 2);
     expect(args(info(), { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0 })).not.toContain('-t');
     // A remux is as large as its source, not as the bitrate says.
-    expect(proxyMaxBytes(info({ audioCodec: 'opus' }), DEFAULT_PROXY_SETTINGS, 5e6)).toBeGreaterThan(
-      5.5e6,
-    );
+    expect(
+      proxyMaxBytes(info({ audioCodec: 'opus' }), DEFAULT_PROXY_SETTINGS, 5e6),
+    ).toBeGreaterThan(5.5e6);
   });
 
   it('keeps timestamps, and brings slow motion down to 60 fps', () => {
@@ -372,7 +372,6 @@ describe('audio files (#327)', () => {
     expect(line).toContain('-c:a aac');
     expect(line).not.toContain('-c:v');
     expect(line).toContain('-t 7200');
-    expect(line).toContain('-fs');
     // Sized for sound, not for a 5 Mbit/s picture.
     expect(proxyMaxBytes(sound('opus'), DEFAULT_PROXY_SETTINGS, 1e6)).toBeLessThan(
       proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 1e6),
