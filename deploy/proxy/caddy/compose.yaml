@@ -22,10 +22,27 @@ services:
       - caddy-config:/config
     depends_on:
       - inkadra
+    networks:
+      default:
+        # The one address TRUST_PROXY trusts below.
+        ipv4_address: 10.212.47.2
 
   inkadra:
     # Reached through Caddy only.
     ports: !reset []
+    environment:
+      # Only Caddy may say who the client is, unless .env names another proxy.
+      TRUST_PROXY: ${TRUST_PROXY:-10.212.47.2}
+
+networks:
+  # A fixed subnet, so the proxy has a fixed address that TRUST_PROXY can name. Containers
+  # without a fixed address get one from the upper half. If Docker says the pool overlaps with
+  # another network, pick a free subnet here and change the two addresses above.
+  default:
+    ipam:
+      config:
+        - subnet: 10.212.47.0/24
+          ip_range: 10.212.47.128/25
 
 volumes:
   caddy-data:

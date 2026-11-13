@@ -74,6 +74,9 @@ set `INKADRA_DOMAIN` and `ACME_EMAIL`, then
 docker compose -f compose.yaml -f deploy/proxy/traefik/compose.yaml up -d
 ```
 
+The bundled Traefik reads its two routes from a file, not from Docker labels, so it never gets
+the Docker socket: access to the socket, even mounted `:ro`, is full control of the host.
+
 If Traefik already runs on the machine, add only the labels to the `inkadra` service, use your
 own entry point and certificate resolver names, attach the service to the network Traefik
 watches, and remove its `ports`:
@@ -88,19 +91,30 @@ labels:
 ```
 
 Traefik v3 cuts requests that take longer than 60 seconds to read. Raise it on the HTTPS entry
-point, in the static configuration:
+point, in the static configuration. Uploads arrive in resumable pieces of at most 50 MiB, so a
+finite value such as 30 minutes is enough for them even on a slow link; a project import is one
+request and must arrive within that time (the bundled Traefik uses `30m`):
 
 ```yaml
 entryPoints:
   websecure:
     transport:
       respondingTimeouts:
-        readTimeout: 0 # or a generous value such as 30m
+        readTimeout: 30m
 ```
 
 WebSockets and `X-Forwarded-*` headers need nothing. For split mode, add a second router for
-`PathPrefix(`/collab`)` pointing at the `collab` service on port 3001, as in
-[`compose.split.yaml`](../../deploy/proxy/traefik/compose.split.yaml).
+`/collab` pointing at the `collab` service on port 3001, as the bundled
+[`compose.split.yaml`](../../deploy/proxy/traefik/compose.split.yaml) does:
+
+```yaml
+labels: # on the collab service
+  - traefik.enable=true
+  - traefik.http.routers.inkadra-collab.rule=Host(`inkadra.example.com`) && PathPrefix(`/collab`)
+  - traefik.http.routers.inkadra-collab.entrypoints=websecure
+  - traefik.http.routers.inkadra-collab.tls.certresolver=letsencrypt
+  - traefik.http.services.inkadra-collab.loadbalancer.server.port=3001
+```
 
 ## Nginx
 
@@ -187,17 +201,18 @@ Cloudflare dashboard (they are on by default).
 Whatever the proxy, finish with these four:
 
 1. **`TRUST_PROXY` lists only the proxy**: its single pinned container IP,
-   not every private network and not the whole Tailscale range. See
-   [`TRUST_PROXY`](configuration.md#trust_proxy).
+   not every private network and not the whole Tailscale range. The bundled proxies in
+   `deploy/proxy` do this for you. See [`TRUST_PROXY`](configuration.md#trust_proxy).
 2. **Port 3000 stays private**: inside the Docker network, or bound to `127.0.0.1`. Never publish
    it on a public interface.
 3. **The proxy sets the forwarding headers itself**, replacing what the client sent, and serves
    only HTTPS: a permanent redirect (301 or 308) from HTTP to HTTPS.
-4. **HSTS at the proxy**, once HTTPS works for good: browsers then refuse plain HTTP for that
-   domain for a year. Add `includeSubDomains` only if every subdomain of it serves HTTPS.
+4. **HSTS**, once HTTPS works for good: browsers then refuse plain HTTP for that domain for a
+   year. Inkadra sends it by default when `PUBLIC_URL` is https, on HTTPS requests only; the
+   proxy can send it too. Add `includeSubDomains` only if every subdomain of it serves HTTPS.
 
-Inkadra can send HSTS itself with `HSTS_ENABLED=true`, and sends its own
-`Content-Security-Policy` (report-only until `CSP_ENFORCE=true`), `Permissions-Policy` and
+Inkadra sends HSTS itself (`HSTS_ENABLED`, on by default), and its own enforced
+`Content-Security-Policy` (report-only with `CSP_ENFORCE=false`), `Permissions-Policy` and
 `Cross-Origin-Opener-Policy`: see [Browser security headers](configuration.md#browser-security-headers).
 Do not add a second `Content-Security-Policy` at the proxy; the browser would apply both.
 

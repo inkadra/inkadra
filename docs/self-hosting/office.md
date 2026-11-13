@@ -50,15 +50,23 @@ with namespace flags, so on a default container the sandbox cannot start and con
 only those calls to Docker's default one, never `seccomp=unconfined`, `--privileged` or
 extra capabilities.
 
-Create the profile next to your compose file (needs `curl` and `jq`; without `jq`, append the
-same object to the `syscalls` array of the default profile by hand):
+Create the profile next to your compose file (needs `curl`, `sha256sum` and `jq`; without `jq`,
+append the same object to the `syscalls` array of the default profile by hand). The download is
+Docker's default profile at a fixed commit, checked against its SHA-256 before use, so a later
+change upstream cannot alter your sandbox unnoticed:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/moby/profiles/main/seccomp/default.json \
-  | jq '.syscalls += [{"names": ["clone", "clone3", "unshare", "setns", "mount", "umount2",
-      "pivot_root", "sethostname", "setdomainname"], "action": "SCMP_ACT_ALLOW"}]' \
-  > inkadra-office-seccomp.json
+curl -fsSL -o docker-default-seccomp.json \
+  https://raw.githubusercontent.com/moby/profiles/7b5ccfab2d6b4e0aa64c6cce401a2705788eafeb/seccomp/default.json
+echo "15434cc9c9037d85b35027a60721bf45f381782b4283b01d94663366e71569f8  docker-default-seccomp.json" \
+  | sha256sum -c - &&
+jq '.syscalls += [{"names": ["clone", "clone3", "unshare", "setns", "mount", "umount2",
+    "pivot_root", "sethostname", "setdomainname"], "action": "SCMP_ACT_ALLOW"}]' \
+  docker-default-seccomp.json > inkadra-office-seccomp.json
 ```
+
+On macOS, use `shasum -a 256 -c -` instead of `sha256sum -c -`. If the check fails, no profile
+is written: do not use the downloaded file.
 
 Then add the worker next to the single container of the default install (`command: all`):
 
