@@ -247,9 +247,9 @@ it('offers configured active project types using stable identifiers', async () =
 });
 
 it('proposes the icon a project got without one, and sends the one chosen', async () => {
-  expect(host.querySelector('[role="radio"][aria-checked="true"]')?.getAttribute('aria-label')).toBe(
-    `appearance.shapes.${serverDefault.shape}`,
-  );
+  expect(
+    host.querySelector('[role="radio"][aria-checked="true"]')?.getAttribute('aria-label'),
+  ).toBe(`appearance.shapes.${serverDefault.shape}`);
   const choose = (label: string) =>
     act(async () => host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click());
   await choose('appearance.shapes.clapperboard');

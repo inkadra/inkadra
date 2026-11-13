@@ -142,7 +142,9 @@ export function ProjectSetupForm({
   }, [busy, onBusyChange]);
   const locked = busy || !!progress.current.project;
   const dirty =
-    !created && !locked && !!(name.trim() || appearance.changed || start || end || email.trim() || invites.length);
+    !created &&
+    !locked &&
+    !!(name.trim() || appearance.changed || start || end || email.trim() || invites.length);
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
@@ -416,7 +418,10 @@ export function ProjectSetupForm({
             {t('projectsPage.open')}
           </Button>
         ) : (
-          <Button type="submit" variant="primary" disabled={busy || !name.trim() || dateError || !appearance.valid}
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={busy || !name.trim() || dateError || !appearance.valid}
           >
             {error && project
               ? t('projectsPage.retry')
