@@ -296,7 +296,15 @@ export const AssetRendition = z
 export type AssetRendition = z.infer<typeof AssetRendition>;
 
 /** Why a source never plays live (decision 0128): what the graphics card cannot do alone. */
-export const VideoNoLive = z.enum(['prores', 'dnx', 'chroma', 'interlaced', 'hdr', 'rotated', 'codec']);
+export const VideoNoLive = z.enum([
+  'prores',
+  'dnx',
+  'chroma',
+  'interlaced',
+  'hdr',
+  'rotated',
+  'codec',
+]);
 export type VideoNoLive = z.infer<typeof VideoNoLive>;
 
 export const AssetPlayback = z

@@ -144,7 +144,9 @@ export function toAsset(
     proxy: toProxy(row, variants, renditions),
     // Only where the caller read the rungs: other lists leave the field out.
     ...(renditions && row.kind === 'video'
-      ? { playback: toPlayback(renditions, hlsBase(row.id), row.proxyStatus === null, live, noLive) }
+      ? {
+          playback: toPlayback(renditions, hlsBase(row.id), row.proxyStatus === null, live, noLive),
+        }
       : {}),
     waveformUrl:
       row.status === 'ready' && variants.some((v) => v.size === 'waveform')

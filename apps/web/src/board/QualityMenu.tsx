@@ -139,17 +139,15 @@ export function QualityMenu({
             item(
               r.name as VideoRung,
               rungLabel(r.status === 'ready' ? (r.height ?? r.name) : r.name),
-              r.status === 'ready'
-                ? null
-                : r.live
-                  ? (
-                      <>
-                        <span className="live-tag">{t('viewer.quality.live')}</span>
-                        {r.status === 'processing' &&
-                          ` · ${t('viewer.quality.liveCopy', { percent: r.progress ?? 0 })}`}
-                      </>
-                    )
-                  : t('viewer.quality.preparing', { percent: r.progress ?? 0 }),
+              r.status === 'ready' ? null : r.live ? (
+                <>
+                  <span className="live-tag">{t('viewer.quality.live')}</span>
+                  {r.status === 'processing' &&
+                    ` · ${t('viewer.quality.liveCopy', { percent: r.progress ?? 0 })}`}
+                </>
+              ) : (
+                t('viewer.quality.preparing', { percent: r.progress ?? 0 })
+              ),
               // A rung offered live plays before its file is made (decision 0128).
               r.status !== 'ready' && !r.live,
             ),

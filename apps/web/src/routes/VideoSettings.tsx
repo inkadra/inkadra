@@ -13,15 +13,7 @@ import {
   type VideoRungCustom,
   type VideoSettingsView,
 } from '@inkadra/shared';
-import {
-  Button,
-  Checkbox,
-  ChoiceTile,
-  Dialog,
-  DialogActions,
-  Icon,
-  Switch,
-} from '@inkadra/ui';
+import { Button, Checkbox, ChoiceTile, Dialog, DialogActions, Icon, Switch } from '@inkadra/ui';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -392,10 +384,7 @@ function LiveCard({
                 rungs[r] === 'live'
                   ? t('videoSettings.live.noSpace')
                   : t('videoSettings.live.onDisk', {
-                      size: number(
-                        mbPerMinute(quality, r, false, custom),
-                        r === '2160' ? 0 : 1,
-                      ),
+                      size: number(mbPerMinute(quality, r, false, custom), r === '2160' ? 0 : 1),
                     })
               }
             >
@@ -697,9 +686,12 @@ function AdvancedCard({
       ? t('videoSettings.advanced.benchmarkRunning')
       : measured === null
         ? t('videoSettings.advanced.neverMeasured')
-        : t(fresh ? 'videoSettings.advanced.measuredNow' : 'videoSettings.advanced.measuredAtStart', {
-            count: measured,
-          });
+        : t(
+            fresh ? 'videoSettings.advanced.measuredNow' : 'videoSettings.advanced.measuredAtStart',
+            {
+              count: measured,
+            },
+          );
   const benchHelp = !gpu
     ? t('videoSettings.advanced.noGpuHelp')
     : running
@@ -749,7 +741,9 @@ function AdvancedCard({
                 disabled={!gpu || running || !view.enabled}
                 onClick={() => void benchmark()}
               >
-                {running ? t('videoSettings.advanced.benchmarkBusy') : t('videoSettings.advanced.rerun')}
+                {running
+                  ? t('videoSettings.advanced.benchmarkBusy')
+                  : t('videoSettings.advanced.rerun')}
               </Button>
               {running && (
                 <div
@@ -771,9 +765,12 @@ function AdvancedCard({
           {presets && (
             <Card
               title={t('videoSettings.advanced.rates')}
-              body={`${t('videoSettings.advanced.ratesHelp')} ${t('videoSettings.advanced.qualityHelp', {
-                name: t(`videoSettings.advanced.qualityNames.${qualityName}`),
-              })}`}
+              body={`${t('videoSettings.advanced.ratesHelp')} ${t(
+                'videoSettings.advanced.qualityHelp',
+                {
+                  name: t(`videoSettings.advanced.qualityNames.${qualityName}`),
+                },
+              )}`}
             >
               <div className="settings-card__pad">
                 <table className="video-rtable">
@@ -954,7 +951,9 @@ export function VideoSettings() {
             className="video-link"
             onClick={() =>
               void save({
-                custom: Object.fromEntries(VIDEO_RUNGS.map((r) => [r, null])) as UpdateVideoSettings['custom'],
+                custom: Object.fromEntries(
+                  VIDEO_RUNGS.map((r) => [r, null]),
+                ) as UpdateVideoSettings['custom'],
               })
             }
           >

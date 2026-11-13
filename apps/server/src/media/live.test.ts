@@ -38,7 +38,14 @@ const qsv: VideoEncoder = { backend: 'qsv', label: '' };
 describe('live playback', () => {
   it('names why a source never plays live, for the card', () => {
     const media = (over: object) => ({
-      mediaInfo: { hdr: null, bits: 8, pixelFormat: 'yuv420p', interlaced: false, rotated: false, ...over },
+      mediaInfo: {
+        hdr: null,
+        bits: 8,
+        pixelFormat: 'yuv420p',
+        interlaced: false,
+        rotated: false,
+        ...over,
+      },
     });
     expect(liveBlocker(row(), qsv)).toBeNull();
     // Nothing to say without a GPU: live playback does not run at all.

@@ -6404,6 +6404,19 @@
                   "$ref": "#/components/schemas/AssetRendition"
                 },
                 "description": "Smallest first; a rung larger than the source is never listed."
+              },
+              "noLive": {
+                "type": "string",
+                "enum": [
+                  "prores",
+                  "dnx",
+                  "chroma",
+                  "interlaced",
+                  "hdr",
+                  "rotated",
+                  "codec"
+                ],
+                "description": "Live playback runs on this server but never for this source (decision 0128): it waits for its stored rungs. Only from servers with `video-live`."
               }
             },
             "required": [
@@ -11236,6 +11249,19 @@
                   "$ref": "#/components/schemas/AssetRendition"
                 },
                 "description": "Smallest first; a rung larger than the source is never listed."
+              },
+              "noLive": {
+                "type": "string",
+                "enum": [
+                  "prores",
+                  "dnx",
+                  "chroma",
+                  "interlaced",
+                  "hdr",
+                  "rotated",
+                  "codec"
+                ],
+                "description": "Live playback runs on this server but never for this source (decision 0128): it waits for its stored rungs. Only from servers with `video-live`."
               }
             },
             "required": [

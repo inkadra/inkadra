@@ -170,7 +170,7 @@ export const SETTINGS: SettingEntry[] = [
     'videoSettings.advanced.title',
     [
       'videoSettings.advanced.rerun',
-    'videoSettings.advanced.sessions',
+      'videoSettings.advanced.sessions',
       'videoSettings.advanced.target',
       'videoSettings.advanced.peak',
     ],

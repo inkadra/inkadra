@@ -238,7 +238,14 @@ it('shows live playback as unavailable with the software encoder: switch off and
 });
 
 it('says live is off when the sessions are 0, and offers each chosen resolution live when on', async () => {
-  await show(view({ settings: { ...DEFAULT_VIDEO_SETTINGS, live: { enabled: true, maxSessions: 0, perViewer: 1 } } }));
+  await show(
+    view({
+      settings: {
+        ...DEFAULT_VIDEO_SETTINGS,
+        live: { enabled: true, maxSessions: 0, perViewer: 1 },
+      },
+    }),
+  );
   expect(host.textContent).toContain('videoSettings.live.zero');
   expect(host.textContent).toContain('videoSettings.live.off');
   await act(async () => root.unmount());
@@ -250,7 +257,9 @@ it('says live is off when the sessions are 0, and offers each chosen resolution 
   expect(host.querySelectorAll('input[name^="video-rung-mode-"][value="live"]')).toHaveLength(3);
   vi.mocked(api.patch).mockResolvedValue(view());
   await act(async () =>
-    host.querySelector<HTMLInputElement>('input[name="video-rung-mode-1080"][value="live"]')?.click(),
+    host
+      .querySelector<HTMLInputElement>('input[name="video-rung-mode-1080"][value="live"]')
+      ?.click(),
   );
   expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', {
     rungs: { ...DEFAULT_VIDEO_SETTINGS.rungs, '1080': 'live' },
@@ -272,7 +281,12 @@ it('keeps Avanzate collapsed, and lets the admin raise live sessions over the me
   expect(host.textContent).toContain('videoSettings.advanced.measuredAtStart:{"count":3}');
   const field = host.querySelector<HTMLInputElement>('#video-sessions');
   vi.mocked(api.patch).mockResolvedValue(
-    view({ settings: { ...DEFAULT_VIDEO_SETTINGS, live: { enabled: true, maxSessions: 6, perViewer: 1 } } }),
+    view({
+      settings: {
+        ...DEFAULT_VIDEO_SETTINGS,
+        live: { enabled: true, maxSessions: 6, perViewer: 1 },
+      },
+    }),
   );
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, '6');
