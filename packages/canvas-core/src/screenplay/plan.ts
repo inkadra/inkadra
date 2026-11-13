@@ -283,13 +283,16 @@ const PARTICLES = new Set(
 export function placeName(name: string): string {
   if (name !== name.toUpperCase()) return name;
   // Not the first word of the name or of a part after a comma, nor the last. No lookbehind
-  // (decision 0116): the character before the spaces is checked in the whole name.
+  // (decision 0116): the character before the spaces is checked in the whole name. It is taken
+  // as a code point and tested without `$`: V8 14 (Node 26) fails `[\p{L}]$` on astral letters.
   return castName(name).replace(
     /(\s+)(\p{L}+)(?=\s)/gu,
-    (all, space: string, word: string, at: number, text: string) =>
-      /[\p{L}\p{N}]$/u.test(text.slice(0, at)) && PARTICLES.has(word.toLowerCase())
+    (all, space: string, word: string, at: number, text: string) => {
+      const before = [...text.slice(Math.max(0, at - 2), at)].pop() ?? '';
+      return /[\p{L}\p{N}]/u.test(before) && PARTICLES.has(word.toLowerCase())
         ? space + word.toLowerCase()
-        : all,
+        : all;
+    },
   );
 }
 
