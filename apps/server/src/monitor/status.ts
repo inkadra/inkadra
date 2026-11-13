@@ -1,6 +1,7 @@
 import type {
   DiagnosticCheck,
   ServerEvent,
+  ServerLive,
   ServerPresenceBoard,
   ServerProblem,
   ServerProcess,
@@ -58,7 +59,7 @@ export interface ServerDeps {
 
 /** Which tier a range reads and how far apart its points are, at most ~180 of them. */
 export const RANGES: Record<ServerRange, { tier: Tier; window: number; step: number }> = {
-  '15m': { tier: 'raw', window: 15 * 60, step: 10 },
+  '15m': { tier: 'raw', window: 15 * 60, step: 5 },
   '1h': { tier: 'raw', window: 3600, step: 20 },
   '24h': { tier: 'm1', window: 86_400, step: 480 },
   '7d': { tier: 'm10', window: 7 * 86_400, step: 3600 },
@@ -130,7 +131,7 @@ export function combine(
     .map((t) => {
       const processes = new Map<string, Point>();
       for (const [process, own] of slices) {
-        // Samples every 10 s fall 0 or 2 to a slice on the clock: an empty slice keeps the one
+        // Samples every 5 s fall 0 or 2 to a 5 s slice on the clock: an empty slice keeps the one
         // before, so a process does not drop out of the sums every other point.
         const p = own.get(t) ?? own.get(t - step);
         if (p) processes.set(process, p);
@@ -516,6 +517,64 @@ export function imageFlavour(): 'standard' | 'office' | null {
       : null;
 }
 
+/**
+ * The values of now from the raw samples of the last 5 minutes: cores and memory of the newest
+ * sample of every container, traffic of this minute, the slowest p95 of these 5 minutes.
+ */
+export function liveNow(raw: Map<string, Point[]>, now: number): ServerLive['now'] {
+  const recent = combine(raw, now - 60_000, 60).at(-1);
+  const hosts = new Map<string, Point>();
+  for (const [process, list] of raw) {
+    const last = list.at(-1);
+    if (last && now - last.t < 60_000 && !hosts.has(hostOf(process)))
+      hosts.set(hostOf(process), last);
+  }
+  const containers = [...hosts.values()];
+  const room = capacity(containers);
+  const webRecent = combine(raw, now - 5 * 60_000, 300).at(-1);
+  return {
+    cpu: { used: sum(containers.map((p) => p.c)), cores: room.cores },
+    memory: {
+      used: Math.round(sum(containers.map((p) => p.m))),
+      limit: containers.length ? room.memory : null,
+    },
+    network:
+      recent && recent.in !== null && recent.out !== null
+        ? { in: recent.in, out: recent.out }
+        : null,
+    p95: webRecent?.p95 ?? null,
+  };
+}
+
+/**
+ * What the page asks every few seconds (#514): the values of now and the newest points of
+ * `range`, from the monitor store alone. It never reads the database, so it stays cheap.
+ */
+export async function serverLive(
+  store: MonitorStore,
+  range: ServerRange,
+  now = Date.now(),
+): Promise<ServerLive> {
+  const { tier, step } = RANGES[range];
+  const stepMs = step * 1000;
+  // The slice of now and the two before it, whole; one more before them so a process whose
+  // sample fell there still counts in the first (as `combine` does in the full history).
+  const from = Math.floor((now - 2 * stepMs) / stepMs) * stepMs;
+  const rawFrom = now - 5 * 60_000;
+  const beats = await store.beats();
+  const alive = (since: number) => beats.filter((b) => b.at >= since).map(processKey);
+  const raw = await store.points('raw', alive(rawFrom), Math.min(rawFrom, from - stepMs));
+  const points =
+    tier === 'raw' ? raw : await store.points(tier, alive(from - stepMs), from - stepMs);
+  return {
+    checkedAt: iso(now),
+    range,
+    step,
+    history: combine(points, from - stepMs, step).filter((p) => Date.parse(p.t) >= from),
+    now: liveNow(raw, now),
+  };
+}
+
 /** The Server page (#514) for administrator `adminId`. */
 export async function serverStatus(
   deps: ServerDeps,
@@ -543,19 +602,9 @@ export async function serverStatus(
     store.problems(),
   ]);
   const history = combine(points, from, step);
-  const recent = combine(raw ?? points, now - 60_000, 60).at(-1);
   const hour = combine(raw ?? points, now - 3_600_000, 3600);
   const day = combine(today ?? points, midnight.getTime(), 60);
-  const lastPoints = [...(raw ?? points).entries()].flatMap(([process, list]) => {
-    const last = list.at(-1);
-    return last && now - last.t < 60_000 ? [[process, last] as const] : [];
-  });
-  const hosts = new Map<string, Point>();
-  for (const [process, p] of lastPoints)
-    if (!hosts.has(hostOf(process))) hosts.set(hostOf(process), p);
-  const containers = [...hosts.values()];
-  const room = capacity(containers);
-  const webRecent = combine(raw ?? points, now - 5 * 60_000, 300).at(-1);
+  const live = liveNow(raw ?? points, now);
   const hourRequests = hour.at(-1);
 
   const processes: ServerProcess[] = beats
@@ -586,11 +635,15 @@ export async function serverStatus(
   const growth = await growthPerMonth(db, now);
 
   const backupSettings = await readBackupSettings(db);
-  const [lastBackup] = await db
-    .select()
-    .from(instanceBackup)
-    .orderBy(desc(instanceBackup.startedAt))
-    .limit(1);
+  const [[lastBackup], [lastSuccess]] = await Promise.all([
+    db.select().from(instanceBackup).orderBy(desc(instanceBackup.startedAt)).limit(1),
+    db
+      .select({ at: instanceBackup.finishedAt, startedAt: instanceBackup.startedAt })
+      .from(instanceBackup)
+      .where(eq(instanceBackup.status, 'ready'))
+      .orderBy(desc(instanceBackup.startedAt))
+      .limit(1),
+  ]);
   const next = nextBackupAt(backupSettings, new Date(now));
 
   const [dbInfo, queueInfo, encoder, alerts, events, transcodeInfo, people, problemList] =
@@ -641,21 +694,16 @@ export async function serverStatus(
     history,
     events,
     now: {
-      cpu: { used: sum(containers.map((p) => p.c)), cores: room.cores },
-      memory: {
-        used: Math.round(sum(containers.map((p) => p.m))),
-        limit: containers.length ? room.memory : null,
-      },
-      network:
-        recent && recent.in !== null && recent.out !== null
-          ? {
-              in: recent.in,
-              out: recent.out,
-              todayIn: Math.round(sum(day.map((s) => (s.in ?? 0) * 60))),
-              todayOut: Math.round(sum(day.map((s) => (s.out ?? 0) * 60))),
-            }
-          : null,
-      responses: { p95: webRecent?.p95 ?? null, errors: hourRequests?.errors ?? null },
+      cpu: live.cpu,
+      memory: live.memory,
+      network: live.network
+        ? {
+            ...live.network,
+            todayIn: Math.round(sum(day.map((s) => (s.in ?? 0) * 60))),
+            todayOut: Math.round(sum(day.map((s) => (s.out ?? 0) * 60))),
+          }
+        : null,
+      responses: { p95: live.p95, errors: hourRequests?.errors ?? null },
     },
     processes,
     services,
@@ -677,6 +725,7 @@ export async function serverStatus(
       lastStatus: lastBackup?.status ?? null,
       size: lastBackup?.size ?? null,
       nextAt: next ? next.toISOString() : null,
+      lastSuccessAt: lastSuccess ? (lastSuccess.at ?? lastSuccess.startedAt).toISOString() : null,
     },
     database: { version: dbInfo.version, size: dbInfo.size, connections: dbInfo.connections },
     encoder: encoder ? { backend: encoder.backend, label: encoder.label } : null,

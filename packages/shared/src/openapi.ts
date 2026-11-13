@@ -170,6 +170,7 @@ import {
 import {
   RetriedProblems,
   ServerAlerts,
+  ServerLive,
   ServerStatus,
   ServerStatusQuery,
   UpdateServerAlerts,
@@ -1401,6 +1402,18 @@ registry.registerPath({
     'jobs, people on boards, problems of the last 7 days and alert settings.',
   request: { query: ServerStatusQuery },
   responses: { 200: { description: 'Server status', ...json(ServerStatus) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/server/live'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: the values of now and the newest history points ' +
+    'of `range`, from the monitor store alone, cheap enough to ask every few seconds. Only on ' +
+    'servers that advertise the capability `server-live`.',
+  request: { query: ServerStatusQuery },
+  responses: { 200: { description: 'Live values', ...json(ServerLive) }, ...errors },
 });
 registry.registerPath({
   method: 'patch',

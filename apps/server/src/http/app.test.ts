@@ -114,6 +114,8 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'token-proof',
         'board-writers',
         'plan-sheet-pdf',
+        'transfer-cancel',
+        'server-live',
         'classification-delete',
       ],
     });

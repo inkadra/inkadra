@@ -8,9 +8,9 @@ import type { Logger } from 'pino';
  * report, or memory in a web role that runs alone (no REDIS_URL, so no other process either).
  */
 
-/** Raw samples every 10 s for an hour, then minute and ten-minute averages for 24 h and 7 days. */
+/** Raw samples every 5 s for an hour, then minute and ten-minute averages for 24 h and 7 days. */
 export const TIERS = {
-  raw: { step: 10, keep: 360 },
+  raw: { step: 5, keep: 720 },
   m1: { step: 60, keep: 1440 },
   m10: { step: 600, keep: 1008 },
 } as const;

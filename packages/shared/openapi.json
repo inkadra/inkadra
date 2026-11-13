@@ -4589,6 +4589,15 @@
             ],
             "format": "date-time",
             "example": "2026-11-02T09:30:00.000Z"
+          },
+          "lastSuccessAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the last backup that succeeded finished; null without one. Older servers leave it out."
           }
         },
         "required": [
@@ -4927,6 +4936,115 @@
         "required": [
           "enabled",
           "email"
+        ]
+      },
+      "ServerLive": {
+        "type": "object",
+        "properties": {
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "range": {
+            "type": "string",
+            "enum": [
+              "15m",
+              "1h",
+              "24h",
+              "7d"
+            ]
+          },
+          "step": {
+            "type": "integer",
+            "description": "Seconds between history points."
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerSample"
+            },
+            "description": "The newest points of `range`, at its step: a point replaces the one of the same `t` in the full history, the others come after it."
+          },
+          "now": {
+            "type": "object",
+            "properties": {
+              "cpu": {
+                "type": "object",
+                "properties": {
+                  "used": {
+                    "type": "number",
+                    "description": "Cores in use."
+                  },
+                  "cores": {
+                    "type": "number",
+                    "description": "Cores Inkadra may use (cgroup limit or host)."
+                  }
+                },
+                "required": [
+                  "used",
+                  "cores"
+                ]
+              },
+              "memory": {
+                "type": "object",
+                "properties": {
+                  "used": {
+                    "type": "integer"
+                  },
+                  "limit": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "used",
+                  "limit"
+                ]
+              },
+              "network": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "in": {
+                    "type": "number"
+                  },
+                  "out": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "in",
+                  "out"
+                ],
+                "description": "Bytes per second; today’s totals stay in the full status."
+              },
+              "p95": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Milliseconds, the last 5 minutes."
+              }
+            },
+            "required": [
+              "cpu",
+              "memory",
+              "network",
+              "p95"
+            ]
+          }
+        },
+        "required": [
+          "checkedAt",
+          "range",
+          "step",
+          "history",
+          "now"
         ]
       },
       "UpdateServerAlerts": {
@@ -17883,6 +18001,91 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ServerStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/server/live": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session: the values of now and the newest history points of `range`, from the monitor store alone, cheap enough to ask every few seconds. Only on servers that advertise the capability `server-live`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "15m",
+                "1h",
+                "24h",
+                "7d"
+              ],
+              "default": "1h"
+            },
+            "required": false,
+            "name": "range",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live values",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerLive"
                 }
               }
             }

@@ -1,11 +1,10 @@
-import type { ServerProblem, ServerService, ServerStatus } from '@inkadra/shared';
-
-/** How a meter reads in plain words: calm, busy or at the limit (#514). */
-export type Verdict = 'ok' | 'busy' | 'high';
-
-export function loadVerdict(share: number): Verdict {
-  return share < 0.6 ? 'ok' : share < 0.85 ? 'busy' : 'high';
-}
+import type {
+  DiagnosticCheck,
+  ServerProblem,
+  ServerProblemKind,
+  ServerService,
+  ServerStatus,
+} from '@inkadra/shared';
 
 /** Under half a second is fast, as the page says. */
 export function speedVerdict(p95: number | null): 'fast' | 'slow' | 'verySlow' | 'idle' {
@@ -106,4 +105,70 @@ export function niceMax(value: number): number {
   const exp = 10 ** Math.floor(Math.log10(value));
   for (const m of [1, 2, 2.5, 5, 10]) if (value <= m * exp) return m * exp;
   return 10 * exp;
+}
+
+/** Configuration from the checks of the server and of this browser. */
+export function configStatus(checks: DiagnosticCheck[]): ServerService['status'] {
+  return checks.some((c) => c.status === 'error')
+    ? 'down'
+    : checks.some((c) => c.status === 'warning')
+      ? 'warning'
+      : 'ok';
+}
+
+/**
+ * The verdict of the status card: green, orange when it works but something needs fixing (the
+ * space almost full, the last backup failed, a check that does not pass), red when a service
+ * stopped. Orange names the most serious of them, in that order.
+ */
+export type Health =
+  | { level: 'ok' }
+  | { level: 'warn'; reason: 'space' | 'backup' | 'check'; check?: DiagnosticCheck }
+  | { level: 'bad'; service: ServerService };
+
+export function healthOf(status: ServerStatus, checks: DiagnosticCheck[]): Health {
+  const down = downServices(status.services)[0];
+  if (down) return { level: 'bad', service: down };
+  if (storageVerdict(status.storage).key === 'almostFull')
+    return { level: 'warn', reason: 'space' };
+  if (status.backup.lastStatus === 'failed') return { level: 'warn', reason: 'backup' };
+  const failing = checks.find((c) => c.status !== 'ok');
+  if (failing) return { level: 'warn', reason: 'check', check: failing };
+  return { level: 'ok' };
+}
+
+const NAMED: Record<'space' | 'backup' | 'check', ServerProblemKind> = {
+  space: 'disk_full',
+  backup: 'backup_failed',
+  check: 'config_check',
+};
+
+/** Open problems, newest first, with the one the orange card names on top. */
+export function sortedProblems(problems: ServerProblem[], health: Health): ServerProblem[] {
+  const open = openProblems(problems);
+  if (health.level !== 'warn') return open;
+  const kind = NAMED[health.reason];
+  return [...open.filter((p) => p.kind === kind), ...open.filter((p) => p.kind !== kind)];
+}
+
+const peakOf = (values: Array<number | null>) =>
+  Math.max(0, ...values.filter((v): v is number => v !== null));
+
+/** CPU axis: up to its peak, at least 10 % so a quiet server is not a wall of noise. */
+export function cpuScale(values: Array<number | null>): number {
+  return Math.min(100, niceMax(Math.max(10, peakOf(values))));
+}
+
+/**
+ * Memory axis: up to its peak, so the line reads; back to the limit, drawn as a line, once the
+ * use passes half of it.
+ */
+export function memoryScale(
+  values: Array<number | null>,
+  limit: number | null,
+): { max: number; limit: boolean } {
+  const peak = peakOf(values);
+  if (limit && peak > limit / 2) return { max: limit, limit: true };
+  // Under half of the limit, the peak rounded up stays under it too (niceMax at most doubles).
+  return { max: niceMax(peak || 1), limit: false };
 }
