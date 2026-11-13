@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
-import { api } from '../lib/api.ts';
+import { api, RequestError } from '../lib/api.ts';
 import { ClassificationSettings } from './ClassificationSettings.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -12,7 +12,10 @@ vi.mock('../lib/classifications.ts', async (original) => ({
   ...(await original<typeof import('../lib/classifications.ts')>()),
   setClassifications: vi.fn(),
 }));
-vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), put: vi.fn() } }));
+vi.mock('../lib/api.ts', async (original) => ({
+  ...(await original<typeof import('../lib/api.ts')>()),
+  api: { get: vi.fn(), put: vi.fn() },
+}));
 
 const catalogs: ClassificationCatalogs = {
   revision: 1,
@@ -189,5 +192,59 @@ it('names the frame-panel fallback when a list has no active value', async () =>
     ),
   );
   expect(host.textContent).toContain('catalogs.emptyShots');
+  act(() => root.unmount());
+});
+
+it('offers Delete only on values nothing uses, after a confirmation', async () => {
+  const unused = { id: crypto.randomUUID(), label: 'Pioggia', archived: false, uses: 0 };
+  const used = { id: crypto.randomUUID(), label: 'Notte', archived: false, uses: 12 };
+  const archived = { id: crypto.randomUUID(), label: 'Neve', archived: true, uses: 0 };
+  // A default keeps its code: archived, never deleted, even when unused.
+  const projectTypes = catalogs.projectTypes.map((o) => ({ ...o, uses: 0 }));
+  vi.mocked(api.get).mockResolvedValueOnce({
+    ...structuredClone(catalogs),
+    projectTypes,
+    tags: [unused, used, archived],
+  });
+  vi.mocked(api.put).mockRejectedValueOnce(
+    new RequestError(409, 'conflict', 'In use', {
+      reason: 'classification_in_use',
+      values: [{ catalog: 'tags', id: unused.id, uses: 1 }],
+    }),
+  );
+  host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings?section=classifications']}>
+        <ClassificationSettings />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => toggle('catalogs.projectTypes'));
+  await act(async () => toggle('catalogs.tags'));
+  const rows = [...host.querySelectorAll('.catalogs__row')];
+  const deletes = rows.map((r) => !!r.querySelector('button.catalogs__delete'));
+  expect(deletes).toEqual([false, false, true, false, true]);
+  // A used value keeps Archive and says how often it is used.
+  expect(rows[3]?.textContent).toContain('catalogs.uses');
+  expect(rows[3]?.textContent).toContain('catalogs.archive');
+  expect(rows[2]?.textContent).not.toContain('catalogs.uses');
+
+  await act(async () =>
+    rows[2]?.querySelector<HTMLButtonElement>('button.catalogs__delete')?.click(),
+  );
+  expect(host.querySelector('dialog')?.textContent).toContain('catalogs.deleteBody');
+  expect(host.querySelectorAll('.catalogs__name')).toHaveLength(5);
+  await act(async () => button('catalogs.delete')?.click());
+  expect(host.querySelector('dialog')).toBeNull();
+  expect(
+    [...host.querySelectorAll<HTMLInputElement>('.catalogs__name')].map((i) => i.value),
+  ).toEqual(['Short film', 'Commercial', 'Notte', 'Neve']);
+  // Used meanwhile: the server refuses with a reason the page explains.
+  await act(async () => button('settings.save')?.click());
+  expect(vi.mocked(api.put).mock.calls[0]?.[1]).toMatchObject({ tags: [used, archived] });
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain('catalogs.inUse');
   act(() => root.unmount());
 });

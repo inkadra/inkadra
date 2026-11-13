@@ -3,6 +3,7 @@ import { compareZ, type Element, readElement, roots } from '@inkadra/doc-schema'
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
+import { reviveUsed } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, boardElementIndex } from '../db/schema.ts';
 
@@ -274,6 +275,11 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
       e.text = join(name, e.text);
     }
   }
+  // A tag or storyboard value removed while this document still held it comes back (0126).
+  await reviveUsed(tx, {
+    tags: entries.flatMap((e) => e.tags),
+    text: entries.flatMap((e) => (e.type === 'frame' ? [e.text] : [])),
+  });
   await tx.delete(boardElementIndex).where(eq(boardElementIndex.boardId, boardId));
   for (let i = 0; i < entries.length; i += 500) {
     await tx

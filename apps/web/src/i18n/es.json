@@ -4048,7 +4048,15 @@
     "archivedCount_other": "{{count}} archivados",
     "empty": "Aún no hay valores.",
     "unsaved": "Cambios sin guardar",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "uses_one": "Usado {{count}} vez",
+    "uses_other": "Usado {{count}} veces",
+    "deleteLabel": "Eliminar {{name}}",
+    "delete": "Eliminar",
+    "deleteTitle": "¿Eliminar «{{name}}»?",
+    "deleteBody": "Nunca se ha usado: ningún proyecto, tarjeta o fotograma lo pierde. Desaparece de la lista al guardar.",
+    "inUseTitle": "Un valor se usó mientras tanto",
+    "inUse": "Alguien acaba de usar un valor que estás eliminando, así que no se guardó nada. Recarga: podrás archivarlo."
   },
   "appearance": {
     "label": "Aspecto",
@@ -5579,8 +5587,8 @@
             "text": "El nuevo nombre cambia en cada fotograma que lo usa."
           },
           "2": {
-            "title": "Archiva",
-            "text": "Sale de los menús pero queda en los fotogramas que lo tienen."
+            "title": "Archivar o eliminar",
+            "text": "Un valor archivado sale de los menús pero se queda donde se usa. Uno que nunca se ha usado se puede eliminar."
           }
         }
       },

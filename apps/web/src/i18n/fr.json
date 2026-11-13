@@ -4048,7 +4048,15 @@
     "archivedCount_other": "{{count}} archivés",
     "empty": "Aucune valeur pour l’instant.",
     "unsaved": "Modifications non enregistrées",
-    "discard": "Annuler les modifications"
+    "discard": "Annuler les modifications",
+    "uses_one": "Utilisée {{count}} fois",
+    "uses_other": "Utilisée {{count}} fois",
+    "deleteLabel": "Supprimer {{name}}",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer « {{name}} » ?",
+    "deleteBody": "Cette valeur n’a jamais été utilisée : aucun projet, carte ou plan ne la perd. Elle quitte la liste à l’enregistrement.",
+    "inUseTitle": "Une valeur a été utilisée entre-temps",
+    "inUse": "Quelqu’un vient d’utiliser une valeur que vous supprimez : rien n’a été enregistré. Rechargez : vous pourrez l’archiver."
   },
   "appearance": {
     "label": "Apparence",
@@ -5579,8 +5587,8 @@
             "text": "Le nouveau nom change sur chaque image qui l’utilise."
           },
           "2": {
-            "title": "Archiver",
-            "text": "Il quitte les menus mais reste sur les images qui l’ont."
+            "title": "Archiver ou supprimer",
+            "text": "Une valeur archivée quitte les menus mais reste là où elle est utilisée. Une valeur jamais utilisée peut être supprimée."
           }
         }
       },

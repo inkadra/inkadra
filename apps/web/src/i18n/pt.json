@@ -4048,7 +4048,15 @@
     "archivedCount_other": "{{count}} arquivados",
     "empty": "Nenhum valor ainda.",
     "unsaved": "Alterações não salvas",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "uses_one": "Usado {{count}} vez",
+    "uses_other": "Usado {{count}} vezes",
+    "deleteLabel": "Excluir {{name}}",
+    "delete": "Excluir",
+    "deleteTitle": "Excluir “{{name}}”?",
+    "deleteBody": "Nunca foi usado: nenhum projeto, cartão ou quadro o perde. Ele sai da lista quando você salvar.",
+    "inUseTitle": "Um valor foi usado nesse meio-tempo",
+    "inUse": "Alguém acabou de usar um valor que você está excluindo, então nada foi salvo. Recarregue: você poderá arquivá-lo."
   },
   "appearance": {
     "label": "Aparência",
@@ -5579,8 +5587,8 @@
             "text": "O novo nome muda em cada fotograma que o usa."
           },
           "2": {
-            "title": "Arquive",
-            "text": "Sai dos menus mas fica nos fotogramas que o têm."
+            "title": "Arquivar ou excluir",
+            "text": "Um valor arquivado sai dos menus, mas continua onde é usado. Um que nunca foi usado pode ser excluído."
           }
         }
       },

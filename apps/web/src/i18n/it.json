@@ -4048,7 +4048,15 @@
     "archivedCount_other": "{{count}} archiviati",
     "empty": "Ancora nessun valore.",
     "unsaved": "Modifiche non salvate",
-    "discard": "Annulla modifiche"
+    "discard": "Annulla modifiche",
+    "uses_one": "Usato {{count}} volta",
+    "uses_other": "Usato {{count}} volte",
+    "deleteLabel": "Elimina {{name}}",
+    "delete": "Elimina",
+    "deleteTitle": "Eliminare «{{name}}»?",
+    "deleteBody": "Non è mai stato usato: nessun progetto, card o frame lo perde. Sparisce dalla lista quando salvi.",
+    "inUseTitle": "Un valore è stato usato nel frattempo",
+    "inUse": "Qualcuno ha appena usato un valore che stai eliminando, quindi non è stato salvato nulla. Ricarica: potrai archiviarlo."
   },
   "appearance": {
     "label": "Aspetto",
@@ -5579,8 +5587,8 @@
             "text": "Il nuovo nome cambia su ogni frame che lo usa."
           },
           "2": {
-            "title": "Archivia",
-            "text": "Esce dai menu ma resta sui frame che lo hanno."
+            "title": "Archivia o elimina",
+            "text": "Un valore archiviato esce dai menu ma resta dove è usato. Uno mai usato si può eliminare."
           }
         }
       },
