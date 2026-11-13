@@ -422,6 +422,12 @@
 .server-table td:last-child {
   padding-right: 0;
 }
+/* Only the name gives way in a narrow card, at spaces; a process dot hangs beside its lines. */
+.server-table tbody th:first-child {
+  padding-left: 15px;
+  text-indent: -15px;
+  white-space: normal;
+}
 .server-table .server-table__n {
   text-align: end;
 }
@@ -543,6 +549,14 @@
   }
   .server-hide-phone {
     display: none;
+  }
+  /* A phone card is about 340px: the four columns of the process table fit without scrolling. */
+  .server-table-wrap {
+    padding-inline: 12px;
+  }
+  .server-table th,
+  .server-table td {
+    padding-inline: 5px;
   }
   .server-card-wrap .settings-block__head {
     flex-wrap: wrap;
