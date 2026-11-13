@@ -274,7 +274,7 @@ upgrade as below.
    ```sh
    docker run --rm -e POSTGRES_USER=inkadra -e POSTGRES_DB=inkadra -e POSTGRES_PASSWORD=unused \
      -e PGDATA=/var/lib/postgresql/data -e PGAUTO_ONESHOT=yes \
-     -v inkadra_postgres-data:/var/lib/postgresql/data pgautoupgrade/pgautoupgrade:18-alpine
+     -v inkadra_postgres-data:/var/lib/postgresql/data pgautoupgrade/pgautoupgrade:18.6-alpine
    ```
 
 4. **Start.**
