@@ -1334,6 +1334,25 @@ registry.registerPath({
   responses: { 204: { description: 'Removed' }, ...errors },
 });
 registry.registerPath({
+  method: 'post',
+  path: v1('/transfers/{transferId}/cancel'),
+  tags: ['Transfers'],
+  security: secured,
+  summary:
+    'Cancel an export or import of the caller that is still `queued` or `running` (decision ' +
+    '0125): it becomes `failed` (`cancelled`) and stays in the list; the worker stops at its ' +
+    'next step. Never removes anything: a transfer already `ready` or `failed` (cancelled ' +
+    'included, so a second cancel) answers 409 `conflict` with details: ProjectTransfer, the ' +
+    'transfer as it is now. Servers advertise the capability `transfer-cancel`; older ones ' +
+    'answer 404 like an unknown transfer. Sessions and personal tokens.',
+  request: { params: idParam('transferId') },
+  responses: {
+    200: { description: 'Cancelled', ...json(ProjectTransfer) },
+    409: { description: 'Already ready or failed (details: ProjectTransfer)', ...json(ApiError) },
+    ...errors,
+  },
+});
+registry.registerPath({
   method: 'get',
   path: v1('/instance/backups'),
   tags: ['Instance'],
