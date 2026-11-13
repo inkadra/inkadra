@@ -146,7 +146,6 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         BOARD_WRITERS_CAPABILITY,
         PLAN_SHEET_PDF_CAPABILITY,
         CLASSIFICATION_DELETE_CAPABILITY,
-        CLASSIFICATION_DELETE_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });

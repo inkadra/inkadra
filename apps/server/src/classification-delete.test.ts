@@ -46,7 +46,9 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
       ...(payload === undefined ? {} : { payload: payload as object }),
     });
   const catalogs = async (who: keyof typeof cookies = 'admin') =>
-    (await call(who, 'GET', '/instance/classifications?uses=true')).json() as ClassificationCatalogs;
+    (
+      await call(who, 'GET', '/instance/classifications?uses=true')
+    ).json() as ClassificationCatalogs;
   const save = (next: ClassificationCatalogs) =>
     call('admin', 'PUT', '/instance/classifications', next);
   type Key = 'projectTypes' | 'tags' | 'shotSizes';
