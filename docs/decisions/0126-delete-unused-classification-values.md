@@ -54,10 +54,11 @@ without the `legacy` binding (the free text belongs to the other value now).
 name and so its original text: that is safe because the removed tag had no uses, so no free-text
 tag was bound to it, and a late use of its UUID brings it back without the binding, as above.
 
-**API (additive).** `ClassificationOption.uses` is optional: `GET` and `PUT
-/instance/classifications` fill it for administrators, on every value that can be counted (all
-project types and tags, storyboard values with a UUID). Members never get it: counts say where
-private projects use a value. It is ignored on save and never stored. `GET /instance/version`
+**API (additive).** `ClassificationOption.uses` is optional. It is filled for administrators on
+`GET /instance/classifications?uses=true` and in the `PUT` response, on every value that can be
+counted (all project types and tags, storyboard values with a UUID). Plain `GET`, which every
+client reads on focus, stays free of the count. Members never get it: counts say where private
+projects use a value. It is ignored in a request body and never stored. `GET /instance/version`
 advertises `classification-delete`: a client offers Delete only when the server lists it and the
 value has `uses: 0`.
 

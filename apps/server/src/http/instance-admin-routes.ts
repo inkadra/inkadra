@@ -1,6 +1,7 @@
 import {
   API_PREFIX,
   ClassificationCatalogs,
+  ClassificationsQuery,
   Id,
   type StorageLimits,
   UpdateInstanceMember,
@@ -51,9 +52,11 @@ export function registerInstanceAdminRoutes(
   };
   app.get(`${API_PREFIX}/instance/classifications`, async (req) => {
     const actor = await requireActor(auth, req, db);
-    // Counts only for administrators: they say where private projects use a value (0126).
+    const query = ClassificationsQuery.parse(req.query ?? {});
     const catalogs = await readClassifications(db);
-    return actor.role === 'admin' ? withUses(db, catalogs) : catalogs;
+    // Counts only for administrators, who ask for them: they say where private projects use a
+    // value, and every client reads this list often (decision 0126).
+    return actor.role === 'admin' && query.uses ? withUses(db, catalogs) : catalogs;
   });
   app.put(`${API_PREFIX}/instance/classifications`, async (req) => {
     const actor = await admin(req);

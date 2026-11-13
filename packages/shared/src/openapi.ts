@@ -35,7 +35,7 @@ import {
   UpdateBoard,
 } from './boards.ts';
 import { CalendarFeed } from './calendar.ts';
-import { ClassificationCatalogs } from './classifications.ts';
+import { ClassificationCatalogs, ClassificationsQuery } from './classifications.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
   CommentCounts,
@@ -930,6 +930,7 @@ registry.registerPath({
   path: v1('/instance/classifications'),
   tags: ['Instance'],
   security: secured,
+  request: { query: ClassificationsQuery },
   responses: {
     200: { description: 'Instance-wide classification catalogs', ...json(ClassificationCatalogs) },
     ...errors,

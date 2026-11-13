@@ -10,8 +10,9 @@ export const ClassificationOption = z.object({
   /** Original free-text tag, kept forever so existing Yjs documents need no rewrite. */
   legacy: z.string().max(40).optional(),
   /**
-   * How many projects (types) or board elements (tags, storyboard values) use the value; only
-   * for administrators, absent where it cannot be counted (decision 0126). Ignored on save.
+   * How many projects (types) or board elements (tags, storyboard values) use the value: for
+   * administrators, on `GET ?uses=true` and on save; absent where it cannot be counted
+   * (decision 0126). Ignored in a request body.
    */
   uses: z.int().min(0).optional(),
 });
@@ -75,6 +76,10 @@ export const ClassificationCatalogs = ShotCatalogs.extend({
   tags: z.array(ClassificationOption).max(500),
 }).openapi('ClassificationCatalogs');
 export type ClassificationCatalogs = z.infer<typeof ClassificationCatalogs>;
+export const ClassificationsQuery = z.object({
+  /** `true`: an administrator also gets `uses` on each value (decision 0126). */
+  uses: z.enum(['true']).optional(),
+});
 export const DEFAULT_CLASSIFICATIONS: ClassificationCatalogs = {
   revision: 0,
   projectTypes: [

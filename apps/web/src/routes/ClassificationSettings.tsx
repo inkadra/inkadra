@@ -59,7 +59,7 @@ export function ClassificationSettings() {
   const load = useCallback(async () => {
     setError(false);
     try {
-      const catalogs = await api.get<ClassificationCatalogs>('/instance/classifications');
+      const catalogs = await api.get<ClassificationCatalogs>('/instance/classifications?uses=true');
       setSavedCatalogs(catalogs);
       setDraft(catalogs);
     } catch {
