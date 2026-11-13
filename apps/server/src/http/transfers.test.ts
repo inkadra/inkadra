@@ -1084,7 +1084,12 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
 
     it("refuses someone else's, unknown and unauthenticated cancels", async () => {
       const id = await exportRow();
-      const foreign = await call(source.app, people.editor ?? null, 'POST', `/transfers/${id}/cancel`);
+      const foreign = await call(
+        source.app,
+        people.editor ?? null,
+        'POST',
+        `/transfers/${id}/cancel`,
+      );
       expect(foreign.statusCode).toBe(404);
       expect(foreign.json().error.code).toBe('not_found');
       const unknown = await call(

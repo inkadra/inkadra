@@ -250,7 +250,8 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       .where(and(eq(projectTransfer.id, row.id), inArray(projectTransfer.status, ACTIVE)))
       .returning();
     // A queued import's uploaded archive: no worker will ever read it.
-    if (stopped && row.status === 'queued') await rm(transferFile(dataDir, row.id), { force: true });
+    if (stopped && row.status === 'queued')
+      await rm(transferFile(dataDir, row.id), { force: true });
     return stopped;
   };
 
