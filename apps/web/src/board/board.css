@@ -6071,6 +6071,8 @@ button.card__play {
   box-shadow: var(--ink-focus-ring);
 }
 .viewer-quality__menu {
+  /* Under its button, not over it: `.menu` places popovers on their own elsewhere. */
+  position: static;
   min-width: 210px;
 }
 .viewer-quality__item small {
