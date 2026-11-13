@@ -12,7 +12,11 @@ import {
   PROJECT_ARCHIVE_FORMAT,
   ProjectArchiveManifest,
 } from './project-archive.ts';
-import { ProjectTransfer } from './transfers.ts';
+import {
+  IDEMPOTENT_IMPORT_CAPABILITY,
+  ImportIdempotencyKey,
+  ProjectTransfer,
+} from './transfers.ts';
 
 const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const at = '2026-11-02T09:30:00.000Z';
@@ -280,4 +284,22 @@ it('documents transfers and backups in OpenAPI', () => {
       expiresAt: at,
     }).success,
   ).toBe(true);
+});
+
+it('takes an import Idempotency-Key in the form of the other creations (decision 0127)', () => {
+  expect(IDEMPOTENT_IMPORT_CAPABILITY).toBe('idempotent-import');
+  expect(ImportIdempotencyKey.safeParse(id).success).toBe(true);
+  expect(ImportIdempotencyKey.safeParse('k'.repeat(128)).success).toBe(true);
+  for (const bad of ['', 'k'.repeat(129), 'two words', 'caffè'])
+    expect(ImportIdempotencyKey.safeParse(bad).success).toBe(false);
+  const doc = buildOpenApiDocument();
+  const header = doc.paths?.['/api/v1/projects/import']?.post?.parameters?.find(
+    (p) => 'name' in p && p.name === 'Idempotency-Key',
+  );
+  expect(header).toMatchObject({ in: 'header', required: false });
+  const lookup = doc.paths?.['/api/v1/transfers/import-requests/{idempotencyKey}']?.get;
+  expect(lookup?.parameters).toEqual([
+    expect.objectContaining({ name: 'idempotencyKey', in: 'path', required: true }),
+  ]);
+  expect(Object.keys(lookup?.responses ?? {})).toEqual(expect.arrayContaining(['200', '404']));
 });

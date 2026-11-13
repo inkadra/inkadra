@@ -17218,6 +17218,21 @@
           }
         ],
         "summary": "Import a project archive as a new project owned by the caller. The body is the zip (`application/zip`, with Content-Length, at most `IMPORT_MAX_SIZE`); the worker checks and reads it afterwards. One import at a time per person. Sessions and personal tokens. Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects.",
+        "description": "Retry safely with `Idempotency-Key` (decision 0127, capability `idempotent-import`): the key is checked after sign-in, the project-creation check, Content-Type and Content-Length and before the one-import-at-a-time check and the archive, so a retry is answered without reading the archive again. Without the header nothing changes.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\x21-\\x7e]{1,128}$",
+              "example": "6f1c2b7e-3d4a-4f8e-9b1a-2c5d7e9f0a13",
+              "description": "Remembered for seven days per person. A retry with the same key starts nothing and answers 202 with the transfer of the first import as it is now, whatever its status (`queued`, `running`, `ready`, `failed` including `cancelled`); 404 once that transfer was removed; 409 when Content-Length differs from the first request. Two requests with the same key received at once make one import: the later one discards its archive and answers like a retry."
+            },
+            "required": false,
+            "description": "Remembered for seven days per person. A retry with the same key starts nothing and answers 202 with the transfer of the first import as it is now, whatever its status (`queued`, `running`, `ready`, `failed` including `cancelled`); 404 once that transfer was removed; 409 when Content-Length differs from the first request. Two requests with the same key received at once make one import: the later one discards its archive and answers like a retry.",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -17231,7 +17246,7 @@
         },
         "responses": {
           "202": {
-            "description": "Import queued",
+            "description": "Import queued, or the import this Idempotency-Key started",
             "headers": {
               "Location": {
                 "description": "`/api/v1/transfers/{transferId}`: poll it until `ready` or `failed`.",
@@ -17289,7 +17304,7 @@
             }
           },
           "409": {
-            "description": "Another import of the caller is still running",
+            "description": "Another import of the caller is still running, or Idempotency-Key was used with a different Content-Length",
             "content": {
               "application/json": {
                 "schema": {
@@ -17352,6 +17367,86 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProjectTransfers"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/import-requests/{idempotencyKey}": {
+      "get": {
+        "tags": [
+          "Transfers"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's import started with this `Idempotency-Key` (decision 0127, capability `idempotent-import`), as it is now. Lets a client that lost the answer of `POST /projects/import` find out whether it was accepted without sending the archive again. 404 when the caller has no such import: never received (or still being received), started by someone else, removed, or the key is older than seven days. A 404 means a retry of the POST with the same key is safe (for an import started within the last seven days). Sessions and personal tokens.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\x21-\\x7e]{1,128}$",
+              "example": "6f1c2b7e-3d4a-4f8e-9b1a-2c5d7e9f0a13"
+            },
+            "required": true,
+            "name": "idempotencyKey",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transfer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectTransfer"
                 }
               }
             }
