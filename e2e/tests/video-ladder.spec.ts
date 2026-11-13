@@ -173,11 +173,11 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
       },
     }),
   };
+  // The real asset once, then fixed answers: no request of the page waits on another.
+  const real = (await (await page.request.get(`/api/v1/assets/${assetId}`)).json()) as Asset;
   for (const [name, change] of Object.entries(states)) {
-    await page.route(`**/api/v1/assets/${assetId}`, async (route) => {
-      const real = await route.fetch();
-      await route.fulfill({ response: real, json: change((await real.json()) as Asset) });
-    });
+    const json = change(real);
+    await page.route(`**/api/v1/assets/${assetId}`, (route) => route.fulfill({ json }));
     await page.goto(boardUrl);
     await expect(card.locator('.fcard__prep')).toBeVisible();
     await shoot(page, `ladder-card-${name}`);
@@ -284,13 +284,13 @@ test('Settings → Video shows the encoder, the presets, the estimates and live 
   );
   const direct = await page.request.get('/api/v1/instance/video-settings');
   expect(direct.status(), await direct.text()).toBe(200);
+  // The real view once, then fixed answers: no request of the page waits on another.
+  const real = (await direct.json()) as VideoSettingsView;
   let running = false;
   let look: (view: VideoSettingsView) => VideoSettingsView = studio;
   await page.route('**/api/v1/instance/video-settings*', async (route) => {
-    const real = await route.fetch();
-    const view = look((await real.json()) as VideoSettingsView);
+    const view = look(real);
     await route.fulfill({
-      response: real,
       json: running
         ? {
             ...view,
