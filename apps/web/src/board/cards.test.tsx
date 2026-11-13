@@ -420,6 +420,14 @@ describe('file card family', () => {
     state.progress = null;
   });
 
+  it('shows no processing label over the upload bar of a video', () => {
+    state.progress = 0.2;
+    const html = ready({ kind: 'video', mime: 'video/quicktime', filename: 'clip.mov' });
+    state.progress = null;
+    expect(html).toContain('board.file.uploading:20');
+    expect(html).not.toContain('board.image.processing');
+  });
+
   it('replaces a local image with the ready server thumbnail for file and image cards', () => {
     Object.assign(state, {
       kind: 'image',

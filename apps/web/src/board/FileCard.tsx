@@ -263,9 +263,25 @@ function ReadyFileCard({
   } else if (asset.kind === 'video' && element.showPreview === false) {
     preview = null;
   } else if (asset.kind === 'video') {
-    preview = <VideoPreview element={element} asset={asset} pixels={pixels} state={state} />;
+    preview = (
+      <VideoPreview
+        element={element}
+        asset={asset}
+        pixels={pixels}
+        state={state}
+        uploading={uploading}
+      />
+    );
   } else if (family === 'audio') {
-    preview = <AudioPreview id={element.id} asset={asset} state={state} width={width} />;
+    preview = (
+      <AudioPreview
+        id={element.id}
+        asset={asset}
+        state={state}
+        width={width}
+        uploading={uploading}
+      />
+    );
   } else {
     const src =
       (asset.variants.length > 0 ? pickVariant(asset, pixels) : '') ||
@@ -486,11 +502,14 @@ function VideoPreview({
   asset,
   pixels,
   state,
+  uploading,
 }: {
   element: FileElement;
   asset: Asset;
   pixels: number;
   state: 'ready' | 'processing' | 'failed';
+  /** The upload bar and the footer already say so: no "Processing" over the bar. */
+  uploading: boolean;
 }) {
   const { t } = useTranslation();
   const { openElement } = useBoard();
@@ -593,7 +612,7 @@ function VideoPreview({
               {formatDuration(asset.durationMs)}
             </span>
           )}
-          {state === 'processing' && !poster && (
+          {state === 'processing' && !uploading && !poster && (
             <span className="fcard__state">{t('board.image.processing')}</span>
           )}
         </>
@@ -614,11 +633,13 @@ export function AudioPreview({
   asset,
   state,
   width,
+  uploading,
 }: {
   id: string;
   asset: Asset;
   state: 'ready' | 'processing' | 'failed';
   width: number;
+  uploading: boolean;
 }) {
   const { t } = useTranslation();
   const peaks = useWaveform(state === 'ready' ? asset.waveformUrl : null);
@@ -640,7 +661,7 @@ export function AudioPreview({
           <span className="fcard__audio-icon" aria-hidden="true">
             <Icon name="volume" size={22} />
           </span>
-          {state === 'processing' && (
+          {state === 'processing' && !uploading && (
             <span className="fcard__state">{t('board.image.processing')}</span>
           )}
         </>
