@@ -11,8 +11,8 @@ import { AUDIO_KBPS, parseBitrate, rungRate } from './quality.ts';
 import {
   copiesVideo,
   decodesOnGpu,
-  liveDecodable,
   frameFilters,
+  liveDecodable,
   mergesMono,
   type ProxySettings,
   proxyPlan,
