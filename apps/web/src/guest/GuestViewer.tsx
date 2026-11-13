@@ -1,14 +1,22 @@
 import { ImageCrop, Stroke } from '@inkadra/doc-schema';
 import type { GuestElement } from '@inkadra/shared';
 import { IconButton } from '@inkadra/ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CroppedImage } from '../board/CroppedImage.tsx';
 import { movingVariantUrl } from '../board/moving.tsx';
+import { QualityMenu } from '../board/QualityMenu.tsx';
+import {
+  NO_SOURCE,
+  playbackSource,
+  type QualityChoice,
+  useKeepPosition,
+  useVideoSource,
+} from '../board/video-source.ts';
 import { isUnplayableVideoError, useVideoUnplayable, VideoUnplayable } from '../board/viewer.tsx';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
-import { guestVariant } from './guest-assets.ts';
+import { guestVariant, toAsset } from './guest-assets.ts';
 import { isPicture } from './model.ts';
 
 const assetOf = (el: GuestElement) => (typeof el.assetId === 'string' ? el.assetId : undefined);
@@ -22,7 +30,23 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
   const actions = useGuestActions();
   const ref = useRef<HTMLDialogElement>(null);
   const asset = actions.assets.get(assetOf(element) ?? '');
-  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(asset?.downloadUrl, asset?.id);
+  // The reduced copies when the video has them (decision 0128), else the original with
+  // downloads, as before.
+  const source = asset ? playbackSource(toAsset(asset)) : NO_SOURCE;
+  const streams = asset?.kind === 'video' && Boolean(source.hls);
+  const original = actions.rights.download ? (asset?.downloadUrl ?? null) : null;
+  const [quality, setQuality] = useState<QualityChoice>('auto');
+  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(
+    streams ? source.hls : asset?.downloadUrl,
+    asset?.id,
+  );
+  const played = useVideoSource(
+    videoRef,
+    streams ? { ...source, original } : NO_SOURCE,
+    quality,
+    asset?.playback?.renditions,
+  );
+  useKeepPosition(videoRef, quality);
 
   const caption =
     typeof element.caption === 'string'
@@ -59,23 +83,31 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
       onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
     >
       <div className="guest-viewer__stage">
-        {asset?.kind === 'video' && actions.rights.download && asset.downloadUrl ? (
+        {asset?.kind === 'video' && (streams || (actions.rights.download && asset.downloadUrl)) ? (
           <>
             {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
             <video
               ref={videoRef}
               className="guest-viewer__media"
-              src={asset.downloadUrl}
+              src={streams ? played.src : (asset.downloadUrl ?? undefined)}
               poster={src || undefined}
               controls
               onError={onVideoError}
               style={unplayable ? { display: 'none' } : undefined}
             />
+            {streams && !unplayable && (
+              <QualityMenu
+                asset={toAsset(asset)}
+                choice={quality}
+                onChoose={setQuality}
+                playing={played.height}
+              />
+            )}
             {unplayable && (
               <VideoUnplayable
                 poster={src || undefined}
                 filename={asset.filename || caption || title}
-                downloadUrl={actions.rights.download ? asset.downloadUrl : undefined}
+                downloadUrl={actions.rights.download ? (asset.downloadUrl ?? undefined) : undefined}
                 downloadLabel={t('guest.download')}
                 message={t('guest.viewer.unplayable')}
                 className="guest-viewer__unplayable"

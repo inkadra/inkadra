@@ -17,6 +17,7 @@ import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   asset,
+  assetRendition,
   assetVariant,
   board,
   boardDoc,
@@ -2035,6 +2036,90 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect((await call(null, 'GET', g(link, `/assets/${A}/waveform`))).status).toBe(401);
     expect(
       (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/waveform`))).status,
+    ).toBe(404);
+  });
+
+  it('streams the reduced copies of a video without downloads, never the original', async () => {
+    const [sb] = await db
+      .insert(board)
+      .values({ projectId: P, title: 'Girato', position: 'a9', parentBoardId: B.R, kind: 'board' })
+      .returning();
+    const S = sb?.id as string;
+    const [clip] = await db
+      .insert(asset)
+      .values({
+        projectId: P,
+        kind: 'video',
+        mime: 'video/quicktime',
+        filename: 'A003_C012.mov',
+        size: 1000,
+        storageKey: 'originals/A003_C012.mov',
+        status: 'ready',
+        proxyStatus: 'ready',
+        width: 3840,
+        height: 2160,
+      })
+      .returning();
+    const V = clip?.id as string;
+    await deps.storage.write(
+      `variants/${V}/rabcdef-480.mp4`,
+      Buffer.from('fragmented'),
+      'video/mp4',
+    );
+    await db.insert(assetRendition).values({
+      assetId: V,
+      name: '480',
+      status: 'ready',
+      width: 854,
+      height: 480,
+      codecs: 'avc1.64001e,mp4a.40.2',
+      bitrate: 1_000_000,
+      peakBitrate: 1_500_000,
+      bytes: 10,
+      storageKey: `variants/${V}/rabcdef-480.mp4`,
+      playlist: '#EXTM3U\n#EXT-X-ENDLIST\n',
+      recipe: 'h264/balanced/1',
+    });
+    await saveDoc(S, [{ ...el, id: 'file_video_1', type: 'file', assetId: V, parent: null }]);
+    const link = await createLink('editor', S);
+    const o = await open(link);
+    const snap = await call({ cookie: o.cookie }, 'GET', g(link, `/boards/${S}`));
+    const base = `/api/v1/guest/links/${link.id}/assets/${V}/hls`;
+    expect(snap.body.assets.find((a: { id: string }) => a.id === V)).toMatchObject({
+      downloadUrl: null,
+      playback: {
+        original: false,
+        renditions: [{ name: '480', status: 'ready', url: `${base}/480.mp4?v=abcdef` }],
+      },
+    });
+    const master = await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/hls/master.m3u8`));
+    expect(master.status).toBe(200);
+    expect(master.text).toContain('480.m3u8');
+    const media = await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/hls/480.m3u8`));
+    expect(media.text).toBe('#EXTM3U\n#EXT-X-ENDLIST\n');
+    const part = await call(
+      { cookie: o.cookie },
+      'GET',
+      g(link, `/assets/${V}/hls/480.mp4`),
+      undefined,
+      { range: 'bytes=0-4' },
+    );
+    expect(part.status).toBe(206);
+    expect(part.text).toBe('fragm');
+    // The original stays refused without downloads; no rung that is not there, nothing without a
+    // session or for another asset.
+    expect((await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/file`))).status).toBe(
+      403,
+    );
+    expect(
+      (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/hls/1080.mp4`))).status,
+    ).toBe(404);
+    expect(
+      (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/hls/../proxy`))).status,
+    ).toBe(404);
+    expect((await call(null, 'GET', g(link, `/assets/${V}/hls/master.m3u8`))).status).toBe(401);
+    expect(
+      (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/hls/master.m3u8`))).status,
     ).toBe(404);
   });
 
