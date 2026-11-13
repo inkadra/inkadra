@@ -1,6 +1,6 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from './config.ts';
@@ -51,6 +51,23 @@ function contract(name: string, make: () => Storage) {
 }
 
 contract('local storage', () => localStorage(mkdtempSync(join(tmpdir(), 'inkadra-storage-'))));
+
+it('local storage keeps the previous file when a write fails half-way', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'inkadra-storage-'));
+  const storage = localStorage(root);
+  const key = variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13', '256');
+  await storage.write(key, Buffer.from('whole'), 'image/webp');
+  // writeFile also takes an iterable: one that breaks off stands in for a crash or a full disk.
+  async function* broken() {
+    yield Buffer.from('trunc');
+    throw new Error('disk full');
+  }
+  await expect(
+    storage.write(key, broken() as unknown as Buffer, 'image/webp'),
+  ).rejects.toThrow('disk full');
+  expect((await readAll(await storage.read(key))).toString()).toBe('whole');
+  expect(readdirSync(dirname(join(root, key)))).toEqual([basename(key)]);
+});
 
 // Run against an S3 server with S3_TEST_ENDPOINT, S3_TEST_BUCKET, S3_TEST_ACCESS_KEY_ID and
 // S3_TEST_SECRET_ACCESS_KEY, for example RustFS as in deploy/.

@@ -127,7 +127,14 @@ export function localStorage(root: string): Storage {
     async write(key, body) {
       const target = path(key);
       await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, body);
+      // Keys are cached forever: a crash mid-write must never leave a truncated file at the key.
+      const partial = `${target}.partial`;
+      try {
+        await writeFile(partial, body);
+        await rename(partial, target);
+      } finally {
+        await rm(partial, { force: true });
+      }
     },
     async writeStream(key, body) {
       const target = path(key);
