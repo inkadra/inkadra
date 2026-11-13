@@ -12,6 +12,9 @@ Pin a version in `.env`, so an upgrade happens when you decide:
 INKADRA_TAG=0.9.0
 ```
 
+Each release publishes `X.Y.Z`, `X.Y` and `latest`; pre-releases (`0.3.0-rc.1`) never move
+`X.Y` or `latest`, and `edge` follows every change on `main`.
+
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
 back up (see [Backups](README.md#backups): `docker compose exec -u node inkadra node
 /app/dist/main.js backup create`, plus a copy of the data volume or the bucket), change
@@ -23,8 +26,8 @@ docker compose up -d --wait
 ```
 
 Database migrations run when the new version starts, before it accepts requests. Compare your
-`compose.yaml` and `deploy/` files with the ones attached to the release: new settings arrive
-there.
+`compose.yaml` and `deploy/` files with the ones attached to the release, and your `.env` with
+its `.env.example`, which lists new settings.
 
 Going back to an older version after its migrations ran is not supported: restore the backup
 taken before the upgrade instead, with that older version
@@ -37,6 +40,23 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 ## After 0.9.0 (current main)
 
 These changes are on `main`, not in 0.9.0.
+
+- **`compose.yaml` hands the whole `.env` to the container** (`env_file`), instead of a list of
+  about 50 settings: every documented setting now works from `.env` alone, `TZ`,
+  `IMPORT_MAX_SIZE`, `OFFICE_PREVIEWS` and the video settings included. If you take the new file:
+  - use it with this version or a newer one: an empty line such as `OIDC_SCOPES=` means the
+    default only from this version on, and can stop 0.9.0 at start;
+  - if you start Compose with `--env-file <other file>`, also set `INKADRA_ENV_FILE` to that
+    file, in the file itself or in the shell: otherwise the container reads `.env`;
+  - a stack manager that passes variables without a `.env` file next to `compose.yaml` needs one,
+    or `INKADRA_ENV_FILE` naming the file it keeps them in;
+  - variables set only in the shell (`INSTANCE_NAME=x docker compose up`), not in the file, no
+    longer reach the container;
+  - a `.env` line named like a variable of the image (`NODE_ENV`, `DATA_DIR`, `PORT`) now
+    overrides it;
+  - `DATABASE_URL` and `REDIS_URL` in `.env` are still ignored, as `compose.yaml` sets them.
+
+  A hand-edited copy of the old `compose.yaml` keeps working unchanged.
 
 - **Media tools are now in the standard image.** Remove `-media` from `INKADRA_TAG` when
   moving to these builds, not when installing 0.9.0. Standard still excludes LibreOffice.
@@ -358,7 +378,7 @@ made: stop everything, empty the volume and unpack `postgres-data-16.tgz` into i
 
 0.4 hardens sign-in. Before you change `INKADRA_TAG`:
 
-1. **Pass the new settings to the container.** The `compose.yaml` on `main` forwards
+1. **Pass the new settings to the container.** The `compose.yaml` of later releases passes
    `OIDC_ALLOWED_DOMAINS`, `CSP_ENFORCE` and `HSTS_ENABLED` from `.env`. The
    files attached to the 0.4.0 release do not: if you use them and want any of these, add them
    under `environment` of the `inkadra` service, for example `HSTS_ENABLED: ${HSTS_ENABLED:-false}`.
@@ -441,15 +461,6 @@ To list the packages inside it:
 docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.9.0 --format '{{ json .SBOM }}'
 ```
 
-## How releases are made
-
-Every push to `main` publishes `edge` and `sha-<commit>`. For a release, a maintainer runs the
-Release workflow, which tags `vX.Y.Z` on `main`, opens the GitHub release and starts CI on the
-tag. CI runs in full (tests, end-to-end, the reverse proxy examples, a vulnerability scan of
-the image), builds amd64 and arm64 on native runners without build cache, publishes `X.Y.Z`,
-`X.Y` and `latest`, and attaches the deployment files to the release. Versions with a suffix
-(`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
-
-Tell us how your upgrade went and
-what was unclear in this guide in [GitHub Discussions](https://github.com/inkadra/inkadra/discussions)
-or an [issue](https://github.com/inkadra/inkadra/issues/new/choose).
+Tell us how your upgrade went and what was unclear in this guide in
+[GitHub Discussions](https://github.com/inkadra/inkadra/discussions) or an
+[issue](https://github.com/inkadra/inkadra/issues/new/choose).

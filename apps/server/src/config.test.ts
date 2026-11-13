@@ -35,6 +35,37 @@ describe('CSP_REPORT_URI', () => {
   });
 });
 
+describe('empty variables', () => {
+  // compose.yaml hands the container every line of .env, `OIDC_SCOPES=` included.
+  it('read as unset, except FEEDBACK_RELAY_URL, where empty turns the relay off', () => {
+    const empty = {
+      UPLOAD_MAX_SIZE: '',
+      LOG_LEVEL: '',
+      HSTS_ENABLED: '',
+      VIDEO_PROXY_MAX_DURATION: '',
+      OIDC_ALLOWED_DOMAINS: '',
+      OIDC_SCOPES: '',
+      TRUST_PROXY: '',
+      MAP_GEOCODER_URL: '',
+      INSTANCE_NAME: '',
+    };
+    const c = loadConfig({ ...base, ...empty });
+    expect(c).toEqual(loadConfig(base));
+    expect(c).toMatchObject({
+      UPLOAD_MAX_SIZE: 20 * 1024 ** 3,
+      LOG_LEVEL: 'info',
+      HSTS_ENABLED: false,
+      VIDEO_PROXY_MAX_DURATION: 7200,
+      OIDC_ALLOWED_DOMAINS: [],
+      OIDC_SCOPES: 'openid email profile',
+      TRUST_PROXY: 'loopback,linklocal,uniquelocal',
+      INSTANCE_NAME: 'Inkadra',
+      FEEDBACK_RELAY_URL: 'https://relay.inkadra.com',
+    });
+    expect(loadConfig({ ...base, ...empty, FEEDBACK_RELAY_URL: '' }).FEEDBACK_RELAY_URL).toBe('');
+  });
+});
+
 it('identifies edge revisions without changing release versions', async () => {
   try {
     vi.stubEnv('INKADRA_VERSION', 'edge');

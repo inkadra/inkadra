@@ -18,8 +18,7 @@ For direct private HTTP access and the required proxy trust restrictions, see
 [Direct LAN and Tailscale access](configuration.md#direct-lan-and-tailscale-access).
 
 The proxy must replace forwarded host and protocol headers and preserve `Host` (or set
-`X-Forwarded-Host`). Inkadra uses them only from a trusted peer. HSTS and CSP's
-`upgrade-insecure-requests` apply only to verified HTTPS responses.
+`X-Forwarded-Host`). Inkadra uses them only from a trusted peer.
 
 The configurations in [`deploy/proxy`](../../deploy/proxy) (Caddy, Traefik, Nginx) are tested by
 CI on every change, in all-in-one and split mode, with
@@ -174,53 +173,23 @@ Whatever the proxy, finish with these four:
 4. **HSTS at the proxy**, once HTTPS works for good: browsers then refuse plain HTTP for that
    domain for a year. Add `includeSubDomains` only if every subdomain of it serves HTTPS.
 
-Inkadra can send HSTS itself with `HSTS_ENABLED=true`, and sends its own
-`Content-Security-Policy` (report-only until `CSP_ENFORCE=true`), `Permissions-Policy` and
-`Cross-Origin-Opener-Policy`: see [Browser security headers](configuration.md#browser-security-headers).
-Do not add a second `Content-Security-Policy` at the proxy; the browser would apply both.
+Inkadra sends its own `Content-Security-Policy`, `Permissions-Policy` and
+`Cross-Origin-Opener-Policy`, and HSTS with `HSTS_ENABLED=true`, only on verified HTTPS: see
+[Browser security headers](configuration.md#browser-security-headers). Do not add a second
+`Content-Security-Policy` at the proxy; the browser would apply both.
 
-**Caddy** redirects HTTP to HTTPS permanently by itself and replaces `X-Forwarded-For` from
-untrusted clients:
+HSTS and the redirect, per proxy:
 
-```caddy
-inkadra.example.com {
-	header Strict-Transport-Security "max-age=31536000"
-	reverse_proxy 127.0.0.1:3000
-}
-```
-
-**Traefik**: a permanent redirect on the HTTP entry point (static configuration; the bundled
-`deploy/proxy/traefik` already has it), and a headers middleware on the router:
-
-```yaml
-entryPoints:
-  web:
-    address: ":80"
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-          permanent: true
-```
-
-```yaml
-labels:
-  - traefik.http.middlewares.inkadra-headers.headers.stsSeconds=31536000
-  - traefik.http.routers.inkadra.middlewares=inkadra-headers
-```
-
-Traefik replaces `X-Forwarded-For` from clients it does not trust; leave `forwardedHeaders.insecure`
-off and `forwardedHeaders.trustedIPs` empty unless another proxy sits in front of it.
-
-**Nginx**: the `return 301` server block of the [template](../../deploy/proxy/nginx/inkadra.conf.template)
-handles the redirect; in the `listen 443` server add:
-
-```nginx
-add_header Strict-Transport-Security "max-age=31536000" always;
-# Nginx is the first hop: replace what the client sent instead of appending to it.
-proxy_set_header X-Forwarded-For $remote_addr;
-```
-
-If Nginx sits behind another proxy or a CDN, keep `$proxy_add_x_forwarded_for` and configure
-`set_real_ip_from` for that proxy instead.
+- **Caddy** redirects to HTTPS permanently and replaces `X-Forwarded-For` from untrusted clients
+  by itself: add `header Strict-Transport-Security "max-age=31536000"` to the site block.
+- **Traefik**: a permanent redirect on the HTTP entry point (`entryPoints.web.http.redirections.entryPoint`
+  with `to: websecure`, `scheme: https`, `permanent: true`; the bundled `deploy/proxy/traefik`
+  has it), and on the router the labels
+  `traefik.http.middlewares.inkadra-headers.headers.stsSeconds=31536000` and
+  `traefik.http.routers.inkadra.middlewares=inkadra-headers`. Leave `forwardedHeaders.insecure`
+  off and `forwardedHeaders.trustedIPs` empty unless another proxy sits in front of Traefik.
+- **Nginx**: the `return 301` server of the [template](../../deploy/proxy/nginx/inkadra.conf.template)
+  redirects; in the `listen 443` server add
+  `add_header Strict-Transport-Security "max-age=31536000" always;` and, as the first hop,
+  `proxy_set_header X-Forwarded-For $remote_addr;`. Behind another proxy or a CDN, keep
+  `$proxy_add_x_forwarded_for` and set `set_real_ip_from` for it instead.

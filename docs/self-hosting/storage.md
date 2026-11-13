@@ -20,40 +20,9 @@ Compose creates the `inkadra-data` volume and keeps it across upgrades.
 
 ## A folder on the host
 
-To keep files on a disk, an array or a NAS dataset of your choice, set the folders in `.env`
-(for each kind of data on a different disk, see
-[Data on different disks](#data-on-different-disks)):
-
-```sh
-INKADRA_DATA=/mnt/tank/inkadra/data
-POSTGRES_DATA=/mnt/tank/inkadra/postgres
-```
-
-The containers run as fixed, unprivileged users. Inkadra runs as uid 1000 and, with
-`compose.yaml`, gives its data folder to that user when it starts. The Postgres folder must
-belong to uid 70 beforehand:
-
-```sh
-mkdir -p /mnt/tank/inkadra/data /mnt/tank/inkadra/postgres
-chown -R 70:70 /mnt/tank/inkadra/postgres      # postgres:18-alpine runs as uid 70
-chown -R 1000:1000 /mnt/tank/inkadra/data      # optional with compose.yaml, needed without it
-```
-
-On TrueNAS SCALE, create a dataset per folder (for example `apps/inkadra/data` and
-`apps/inkadra/postgres`), use the paths under `/mnt/<pool>/…`, and set the owners as above
-from the shell or in the dataset permissions (user and group with those numeric ids). Keep
-the database on a dataset with `sync=standard`, the default, never `disabled`.
-
-PostgreSQL 18 keeps its files in `18/docker` inside that folder, so the folder is meant for
-this one purpose; a folder that holds the files of PostgreSQL 16 directly (`PG_VERSION`,
-`base/`) is refused, see [Upgrades](upgrades.md#upgrading-to-postgresql-18).
-
-Avoid network shares (NFS, SMB) for `POSTGRES_DATA`: Postgres needs local disk semantics. For
-`INKADRA_DATA` a share works if it maps the owner to uid 1000.
-
-## Data on different disks
-
-Set a separate host folder for each kind of data in `.env`:
+To keep data on a disk, an array or a NAS dataset of your choice, set its folder in `.env`. Any
+of the three can go elsewhere, each on its own disk if you like
+([data on different disks](#data-on-different-disks)):
 
 ```sh
 INKADRA_DATA=/mnt/hdd/inkadra/data          # uploads, previews, nightly backups, upload parts
@@ -61,23 +30,40 @@ POSTGRES_DATA=/mnt/ssd/inkadra/postgres     # the database: this is what makes t
 VALKEY_DATA=/mnt/ssd/inkadra/valkey         # job queues and sign-in limits
 ```
 
-Make the folders and give them to the right users before the first start:
+The containers run as fixed, unprivileged users. Make the folders and give them to the right
+users before the first start:
 
 ```sh
 sudo mkdir -p /mnt/hdd/inkadra/data /mnt/ssd/inkadra/postgres /mnt/ssd/inkadra/valkey
-sudo chown -R 1000:1000 /mnt/hdd/inkadra/data       # Inkadra runs as uid 1000
 sudo chown -R 70:70 /mnt/ssd/inkadra/postgres       # postgres:18-alpine runs as uid 70
+sudo chown -R 1000:1000 /mnt/hdd/inkadra/data       # optional with compose.yaml, needed without it
 docker compose up -d --wait
 ```
 
-| Folder          | Owner                 | Who sets it                                                          |
-| --------------- | --------------------- | -------------------------------------------------------------------- |
-| `INKADRA_DATA`  | uid 1000              | You, or `compose.yaml`, which gives it to uid 1000 at startup        |
-| `POSTGRES_DATA` | uid 70                | You, beforehand. PostgreSQL keeps its files in `18/docker` inside it |
-| `VALKEY_DATA`   | uid 999, in the image | The Valkey image, at startup: leave it as it is                      |
+| Folder          | Owner                 | Who sets it                                                   |
+| --------------- | --------------------- | ------------------------------------------------------------- |
+| `INKADRA_DATA`  | uid 1000              | You, or `compose.yaml`, which gives it to uid 1000 at startup |
+| `POSTGRES_DATA` | uid 70                | You, beforehand                                               |
+| `VALKEY_DATA`   | uid 999, in the image | The Valkey image, at startup: leave it as it is               |
 
-The owners are numbers: on the host they may show up as other names, or as no name at all. Keep
-`tmp` and `backups` inside `INKADRA_DATA`, as they come: do not mount them on a disk of their own.
+The owners are numbers: on the host they may show up as other names, or as no name at all.
+
+PostgreSQL 18 keeps its files in `18/docker` inside its folder, so the folder is meant for this
+one purpose; a folder that holds the files of PostgreSQL 16 directly (`PG_VERSION`, `base/`) is
+refused, see [Upgrades](upgrades.md#upgrading-to-postgresql-18). Avoid network shares (NFS, SMB)
+for `POSTGRES_DATA`: Postgres needs local disk semantics. For `INKADRA_DATA` a share works if it
+maps the owner to uid 1000.
+
+On TrueNAS SCALE, create a dataset per folder (for example `apps/inkadra/data` and
+`apps/inkadra/postgres`), use the paths under `/mnt/<pool>/…`, and set the owners as above from
+the shell or in the dataset permissions (user and group with those numeric ids). Keep the
+database on a dataset with `sync=standard`, the default, never `disabled`.
+
+## Data on different disks
+
+Put the database (and Valkey) on the fastest disk and the uploads on the largest, as in the
+example above. Keep `tmp` and `backups` inside `INKADRA_DATA`, as they come: do not mount them on a
+disk of their own.
 
 ### Backing up the folders
 

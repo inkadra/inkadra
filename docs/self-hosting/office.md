@@ -22,10 +22,10 @@ only, with your existing database, Redis and storage settings. The web/collab ro
 ordinary image.
 
 Office documents travel on their own `office` queue, which only a worker with
-`OFFICE_PREVIEWS=true` **and** LibreOffice reads. Set `OFFICE_PREVIEWS=true` on the `-office`
-worker and also on every other container that runs workers (the single `all` container, or each
-`worker` of the split layout): there it only sends Office documents to that queue and never
-converts them itself, since it has no LibreOffice. A container without `OFFICE_PREVIEWS` reads
+`OFFICE_PREVIEWS=true` **and** LibreOffice reads. With `OFFICE_PREVIEWS=true` in `.env`, every
+container gets it: the ones that run workers without LibreOffice (the single `all` container, or
+each `worker` of the split layout) only send Office documents to that queue and never convert
+them themselves. A container without `OFFICE_PREVIEWS` reads
 Office documents itself, with CSV/XLSX grids and icon cards only, so leave the variable off
 everywhere if you run no `-office` worker: with it on and no such worker, Office cards stay
 "processing" until one starts.
@@ -59,14 +59,12 @@ curl -fsSL https://raw.githubusercontent.com/moby/profiles/main/seccomp/default.
   > inkadra-office-seccomp.json
 ```
 
-Then add the worker next to the single container of the default install (`command: all`):
+Set `OFFICE_PREVIEWS=true` in `.env`, then add the worker next to the single container of the
+default install (`command: all`):
 
 ```yaml
 # compose.office.yaml: docker compose -f compose.yaml -f compose.office.yaml up -d
 services:
-  inkadra:
-    environment:
-      OFFICE_PREVIEWS: "true" # sends Office documents to the worker below
   office-worker:
     extends: # same database, Redis, storage and volume settings
       file: compose.yaml
@@ -80,16 +78,13 @@ services:
     depends_on:
       inkadra:
         condition: service_healthy
-    environment:
-      OFFICE_PREVIEWS: "true"
     security_opt:
       - seccomp=./inkadra-office-seccomp.json
     cap_drop: [ALL]
 ```
 
 The `inkadra` container keeps its ordinary image and keeps making every other preview. With the
-split layout (`deploy/compose.split.yaml`), give the `worker` role the image instead (and add
-`OFFICE_PREVIEWS: "true"` to any other worker you run):
+split layout (`deploy/compose.split.yaml`), give the `worker` role the image instead:
 
 ```yaml
 # compose.office.yaml: docker compose -f compose.yaml -f deploy/compose.split.yaml -f compose.office.yaml up -d
@@ -99,8 +94,6 @@ services:
     cap_add: !reset []
     # Same version as the other roles; set INKADRA_TAG without a suffix (for example 0.9.0).
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
-    environment:
-      OFFICE_PREVIEWS: "true"
     security_opt:
       - seccomp=./inkadra-office-seccomp.json
     cap_drop: [ALL]
