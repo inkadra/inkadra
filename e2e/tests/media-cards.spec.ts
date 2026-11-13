@@ -251,6 +251,8 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
       json: {
         ...asset,
         proxy: { ...asset.proxy, status: 'processing', progress: 42, url: null },
+        // Before its first rung is ready a ladder has nothing to play either (decision 0128).
+        playback: null,
       },
     });
   });
