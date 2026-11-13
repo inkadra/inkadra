@@ -2,6 +2,9 @@ import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
 import { and, eq, inArray, lt } from 'drizzle-orm';
+import { recipeFor } from './media/ladder.ts';
+import { proxySettings } from './media/process.ts';
+import { stepBackfill } from './video-backfill.ts';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
 import { sweepAccessExpiry } from './access-expiry.ts';
@@ -89,7 +92,10 @@ export type JobPayloads = {
   'maintenance:purge-uploads': Record<string, never>;
   'maintenance:anonymise-guests': Record<string, never>;
   'media:process': { assetId: string };
-  'media-proxies:make': { assetId: string };
+  /** `regenerate`: a regeneration from Settings → Video, made again over older copies. */
+  'media-proxies:make': { assetId: string; regenerate?: boolean };
+  /** The next block of a regeneration of video copies (decision 0128). */
+  'maintenance:video-backfill': Record<string, never>;
   'office:convert': { assetId: string };
   'collab:read-element': { boardId: string; elementId: string; expiresAt: number };
   'collab:read-columns': { boardId: string; expiresAt: number };
@@ -137,7 +143,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
         { jobId: `process-${assetId}`, ...ATTEMPTS, ...KEEP },
       );
     },
-    async makeProxy(assetId) {
+    async makeProxy(assetId, opts) {
       // A finished or failed job keeps its id for a while, and an add with that id would do
       // nothing: it goes first, so a second pass of the asset (an import, a retry) queues again.
       const jobId = `proxy-${assetId}`;
@@ -146,14 +152,30 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
       // Two tries: a copy that fails twice is a source ffmpeg cannot read, not bad luck.
       await proxies.add(
         'make',
-        { assetId },
+        { assetId, ...(opts?.regenerate ? { regenerate: true } : {}) },
         {
           jobId,
           attempts: 2,
           backoff: { type: 'fixed', delay: 60_000 },
+          // A regeneration waits behind every upload (jobs without a priority go first).
+          ...(opts?.regenerate ? { priority: 10 } : {}),
           ...KEEP,
         },
       );
+    },
+    async runVideoBackfill(delayMs = 0) {
+      await maintenance.add(
+        'video-backfill',
+        {},
+        { jobId: `video-backfill-${Date.now()}`, delay: delayMs, ...KEEP },
+      );
+    },
+    async regenerationsWaiting() {
+      return proxies.getPrioritizedCount();
+    },
+    async cancelRegenerations() {
+      for (const job of await proxies.getJobs(['prioritized'], 0, 10_000))
+        if ((job.data as { regenerate?: boolean }).regenerate) await job.remove().catch(() => {});
     },
     async proxyQueued(assetId) {
       const job = await proxies.getJob(`proxy-${assetId}`);
@@ -255,6 +277,10 @@ export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   }
   return { removed, requeued };
 }
+
+/** The recipe copies are made with now: the regeneration redoes the others. */
+const currentRecipe = async (deps: Pick<MediaDeps, 'db' | 'proxies' | 'videoEnv'>) =>
+  recipeFor((await proxySettings(deps)).quality);
 
 /** A copy shown as queued or processing this long without a job is queued again. */
 export const STUCK_PROXY_MS = 15 * 60_000;
@@ -360,6 +386,11 @@ export async function startWorkers(
         await deps.storage.remove(keys);
         return { removed: keys.length };
       }
+      if (job.name === 'video-backfill') {
+        const again = await stepBackfill(deps.db, queues.jobs, await currentRecipe(deps));
+        if (again) await queues.jobs.runVideoBackfill?.(60_000);
+        return { again };
+      }
       if (job.name === 'purge-uploads')
         return {
           ...(await purgeUploads(deps.db, deps.storage, queues.jobs)),
@@ -439,9 +470,14 @@ export async function startWorkers(
     QUEUES.proxies,
     async (job) => {
       if (job.name !== 'make') throw new Error(`Unknown job ${job.name}`);
-      const { assetId } = job.data as JobPayloads['media-proxies:make'];
+      const { assetId, regenerate } = job.data as JobPayloads['media-proxies:make'];
       try {
-        return await runProxy({ ...deps, log }, assetId, (percent) => job.updateProgress(percent));
+        return await runProxy(
+          { ...deps, log },
+          assetId,
+          (percent) => job.updateProgress(percent),
+          { regenerate: regenerate === true },
+        );
       } catch (err) {
         // A copy that ran out of time would run out of time again.
         if (err instanceof ProxyTimeout) throw new UnrecoverableError(err.message);
@@ -843,6 +879,9 @@ export function inlineJobs(
   };
   // Playable copies run one after the other, as with the default worker concurrency.
   let proxyChain: Promise<unknown> = Promise.resolve();
+  // Regenerations queued here and not started yet, and stops so far (decision 0128).
+  let regenerations = 0;
+  let cancelled = 0;
   const self: Jobs & { idle(): Promise<void> } = {
     async processAsset(assetId) {
       track(
@@ -860,15 +899,20 @@ export function inlineJobs(
         }),
       );
     },
-    async makeProxy(assetId) {
+    async makeProxy(assetId, opts) {
       // The copies made and failed today on the Server page, as the worker's events tell them.
       const event = (kind: 'video_ready' | 'video_failed', started: number) =>
         monitor
           ?.event({ t: Date.now(), kind, ms: Date.now() - started })
           .catch((err) => log.warn({ err }, 'server event not saved'));
+      if (opts?.regenerate) regenerations += 1;
+      const generation = cancelled;
       const run = proxyChain.then(() => {
         const started = Date.now();
-        return runProxy({ ...deps, log }, assetId).then(
+        if (opts?.regenerate) regenerations -= 1;
+        // Stopped since it was queued: dropped, as the queue drops its waiting jobs.
+        if (opts?.regenerate && generation !== cancelled) return;
+        return runProxy({ ...deps, log }, assetId, undefined, opts).then(
           (result) => {
             if (!('skipped' in result)) event('video_ready', started);
           },
@@ -886,6 +930,19 @@ export function inlineJobs(
       });
       proxyChain = run.catch(() => {});
       track(run);
+    },
+    async runVideoBackfill(delayMs = 0) {
+      const timer = setTimeout(() => {
+        const step = currentRecipe(deps).then((recipe) => stepBackfill(deps.db, self, recipe));
+        track(step.then((again) => (again ? self.runVideoBackfill?.(60_000) : undefined)));
+      }, delayMs);
+      timer.unref?.();
+    },
+    async regenerationsWaiting() {
+      return regenerations;
+    },
+    async cancelRegenerations() {
+      cancelled += 1;
     },
     async deleteFiles(keys) {
       track(deps.storage.remove(keys));
