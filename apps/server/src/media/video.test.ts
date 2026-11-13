@@ -240,8 +240,12 @@ describe('proxyArgs', () => {
   });
 
   it('tone maps HDR and dithers 10 bit after scaling, deinterlaces before', () => {
-    const hlg = args(info({ videoCodec: 'hevc', pixelFormat: 'yuv420p10le', hdr: 'hlg', bits: 10 }));
-    expect(flagValue(hlg, '-vf')).toMatch(/flags=lanczos,setsar=1,format=yuv420p10le,zscale=t=linear/);
+    const hlg = args(
+      info({ videoCodec: 'hevc', pixelFormat: 'yuv420p10le', hdr: 'hlg', bits: 10 }),
+    );
+    expect(flagValue(hlg, '-vf')).toMatch(
+      /flags=lanczos,setsar=1,format=yuv420p10le,zscale=t=linear/,
+    );
     expect(flagValue(hlg, '-vf')).not.toContain('out_color_matrix');
     expect(flagValue(hlg, '-vf')).toContain('tonemap=tonemap=hable');
     const log = args(info({ videoCodec: 'prores', pixelFormat: 'yuv422p10le', bits: 10 }));
