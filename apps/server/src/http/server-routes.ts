@@ -8,7 +8,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth.ts';
 import { saveServerAlerts } from '../monitor/alerts.ts';
-import { retryProblem, type ServerDeps, serverStatus } from '../monitor/status.ts';
+import { retryProblem, type ServerDeps, serverLive, serverStatus } from '../monitor/status.ts';
 import type { Storage } from '../storage.ts';
 import { requireSession } from './auth-routes.ts';
 import { runChecks } from './diagnostics.ts';
@@ -37,6 +37,14 @@ export function registerServerRoutes(
     if (!checks || Date.now() - checks.at > CHECKS_MS)
       checks = { at: Date.now(), list: await runChecks(deps, req) };
     return serverStatus(deps, actor.id, range, checks.list);
+  });
+
+  // Every few seconds while the page is open: the monitor store only, never the database
+  // aggregates of the full status.
+  app.get(`${API_PREFIX}/instance/server/live`, async (req) => {
+    await admin(req);
+    const { range } = ServerStatusQuery.parse(req.query ?? {});
+    return serverLive(store, range);
   });
 
   app.patch(`${API_PREFIX}/instance/server/alerts`, async (req) => {

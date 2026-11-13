@@ -1,15 +1,18 @@
 import type { DiagnosticCheck, ServerRange, ServerStatus } from '@inkadra/shared';
-import { Button, Segmented, Select } from '@inkadra/ui';
-import { type ReactNode, useState } from 'react';
+import { Button, Segmented } from '@inkadra/ui';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatStorage } from '../StorageCharts.tsx';
 import { Card } from '../settings-ui.tsx';
-import { chartSpan, markers, mbit, memoryMax, xLabels } from './charts.tsx';
-import { type ServerActions, useWhen } from './common.ts';
+import { chartSpan, markers, mbit, xLabels } from './charts.ts';
+import { type ServerActions, usePeek, useWhen } from './common.ts';
 import {
+  ago,
   bits,
+  cpuScale,
   diskCompresses,
   duration,
+  memoryScale,
   niceMax,
   number,
   openProblems,
@@ -18,377 +21,332 @@ import {
 import { ServerChart } from './ServerChart.tsx';
 import {
   Alerts,
-  configStatus,
   People,
   PROBLEMS_ID,
   ProcessTable,
   problemText,
   QueueTable,
+  ShareBar,
+  StatusCard,
+  scrollToItem,
 } from './SimpleView.tsx';
 
 type Props = { status: ServerStatus; checks: DiagnosticCheck[]; actions: ServerActions };
 
 const RANGES: ServerRange[] = ['15m', '1h', '24h', '7d'];
 
+const known = (values: Array<number | null>) => values.filter((v): v is number => v !== null);
 const mean = (values: Array<number | null>) => {
-  const known = values.filter((v): v is number => v !== null);
-  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
+  const k = known(values);
+  return k.length ? k.reduce((a, b) => a + b, 0) / k.length : null;
 };
 const peak = (values: Array<number | null>) => {
-  const known = values.filter((v): v is number => v !== null);
-  return known.length ? Math.max(...known) : null;
+  const k = known(values);
+  return k.length ? Math.max(...k) : null;
 };
 
-/** One line with what an administrator checks first, and the period of every chart. */
-function Summary({ status, checks, actions }: Props) {
+/** "updated 3 s ago", counted every second while the page is on screen. */
+function Updated({ at }: { at: number | null }) {
   const { t, i18n } = useTranslation();
-  const when = useWhen();
-  const lang = i18n.language;
-  const now = new Date(status.checkedAt).getTime();
-  const ok = checks.filter((c) => c.status === 'ok').length;
-  const roles = [...new Set(status.processes.map((p) => t(`server.roles.${p.role}`)))];
-  const item = (label: string, value: ReactNode, tone?: 'ok' | 'warn') => (
-    <div>
-      <dt>{label}</dt>
-      <dd className={tone ? `server-strip__value--${tone}` : undefined}>{value}</dd>
-    </div>
-  );
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  if (at === null) return null;
   return (
-    <div className="server-strip" data-tour="server">
-      <dl>
-        {item(t('server.advanced.version'), status.version)}
-        {status.startedAt &&
-          item(
-            t('server.advanced.uptime'),
-            duration(now - new Date(status.startedAt).getTime(), lang, 'short'),
-          )}
-        {item(t('server.advanced.processes'), roles.join(' · ') || '—')}
-        {item(
-          t('server.advanced.video'),
-          status.encoder ? status.encoder.backend.toUpperCase() : '—',
-        )}
-        {item(
-          t('server.advanced.checks'),
-          t('server.advanced.checksValue', { ok, total: checks.length }),
-          configStatus(checks) === 'ok' ? 'ok' : 'warn',
-        )}
-        {item(
-          t('server.advanced.p95'),
-          status.now.responses.p95 === null
-            ? '—'
-            : `${number(status.now.responses.p95, lang, 0)} ms`,
-        )}
-        {item(
-          t('server.advanced.backup'),
-          status.backup.lastAt ? when(status.backup.lastAt, now) : '—',
-          status.backup.lastStatus === 'ready'
-            ? 'ok'
-            : status.backup.lastStatus === 'failed'
-              ? 'warn'
-              : undefined,
-        )}
-      </dl>
-      <Segmented
-        label={t('server.advanced.range')}
-        value={actions.range}
-        onChange={actions.setRange}
-        options={RANGES.map((r) => ({ value: r, label: t(`server.advanced.ranges.${r}`) }))}
-      />
-    </div>
+    <span className="settings-card__meta server-updated">
+      {t('server.advanced.updated', {
+        time: ago(new Date(at).toISOString(), Math.max(now, at), i18n.language),
+      })}
+    </span>
   );
 }
 
-function Tile({
-  label,
+/** One measure: its name, the value of now, mean and peak, then its curve. */
+function TrendCell({
+  name,
   meta,
   value,
-  sub,
+  hint,
   children,
 }: {
-  label: string;
+  name: string;
   meta: string;
   value: ReactNode;
-  sub?: ReactNode;
-  children?: ReactNode;
+  hint: ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <div className="server-tile">
-      <div className="server-tile__head">
-        <span>{label}</span>
-        <span className="server-tile__meta">{meta}</span>
+    <div className="server-cell server-cell--trend">
+      <div className="server-cell__head">
+        <span className="server-cell__name">{name}</span>
+        <span className="server-cell__meta">{meta}</span>
       </div>
-      <div className="server-meter__value">{value}</div>
-      {sub && <div className="server-meter__hint">{sub}</div>}
+      <div className="server-value">{value}</div>
+      <div className="server-hint">{hint}</div>
       {children}
     </div>
   );
 }
 
-function Tiles({ status }: { status: ServerStatus }) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language;
-  const h = status.history;
-  const times = h.map((s) => s.t);
-  const span = chartSpan(status);
-  const { cpu, memory, network } = status.now;
-  const store = status.storage;
-  const spark = (
-    label: string,
-    tone: 'cpu' | 'memory' | 'in',
-    values: Array<number | null>,
-    max: number,
-  ) => (
-    <ServerChart
-      compact
-      label={label}
-      times={times}
-      span={span}
-      series={[{ label, tone, values }]}
-      max={max}
-      ticks={[]}
-      format={(v) => String(v)}
-      xLabels={['', '', '']}
-      height={28}
-    />
-  );
-  const inMax = niceMax(Math.max(1, ...h.map((s) => mbit(s.in) ?? 0)));
-  return (
-    <Card title={t('server.advanced.summary')}>
-      <div className="server-tiles">
-        <Tile
-          label={t('server.advanced.cpu')}
-          meta={t('server.advanced.cores', { count: Math.round(cpu.cores * 10) / 10 })}
-          value={
-            <>
-              {cpu.cores ? number((cpu.used / cpu.cores) * 100, lang, 0) : '—'}
-              <small> %</small>
-            </>
-          }
-        >
-          {spark(
-            t('server.advanced.cpu'),
-            'cpu',
-            h.map((s) => s.cpu),
-            100,
-          )}
-        </Tile>
-        <Tile
-          label={t('server.advanced.memory')}
-          meta={
-            memory.limit
-              ? t('server.advanced.limit', { size: formatStorage(memory.limit, lang) })
-              : ''
-          }
-          value={formatStorage(memory.used, lang)}
-        >
-          {spark(
-            t('server.advanced.memory'),
-            'memory',
-            h.map((s) => s.memory),
-            memoryMax(status),
-          )}
-        </Tile>
-        <Tile
-          label={t('server.advanced.network')}
-          meta={t('server.advanced.container')}
-          value={network ? <>↓ {bits(network.in, lang)}</> : '—'}
-          sub={
-            network
-              ? `↑ ${bits(network.out, lang)} · ${t('server.advanced.today', {
-                  in: formatStorage(network.todayIn, lang),
-                  out: formatStorage(network.todayOut, lang),
-                })}`
-              : undefined
-          }
-        >
-          {spark(
-            t('server.advanced.network'),
-            'in',
-            h.map((s) => mbit(s.in)),
-            inMax,
-          )}
-        </Tile>
-        <Tile
-          label={t('server.advanced.storage')}
-          meta={`${store.driver} · ${store.location}`}
-          value={
-            <>
-              {formatStorage(store.used, lang)}
-              {store.total !== null && <small> / {formatStorage(store.total, lang)}</small>}
-            </>
-          }
-          sub={
-            <>
-              {t('server.advanced.storageSplit', {
-                originals: formatStorage(store.originals, lang),
-                copies: formatStorage(store.copies, lang),
-                previews: formatStorage(store.previews, lang),
-              })}
-              {diskCompresses(store) && (
-                <>
-                  <br />
-                  {t('server.meters.storage.compressed')}
-                </>
-              )}
-            </>
-          }
-        >
-          {store.total !== null && (
-            <span className="server-bar" aria-hidden="true">
-              <span
-                className="server-bar__fill server-bar__fill--cpu"
-                style={{ width: `${(store.used / store.total) * 100}%` }}
-              />
-            </span>
-          )}
-        </Tile>
-      </div>
-    </Card>
-  );
-}
-
-function ChartCard({
-  title,
-  meta,
-  caption,
-  children,
-}: {
-  title: string;
-  meta?: string;
-  caption?: string;
-  children: ReactNode;
-}) {
-  return (
-    <Card
-      title={title}
-      body={caption}
-      action={meta ? <span className="settings-card__meta">{meta}</span> : undefined}
-    >
-      <div className="server-chart-card">{children}</div>
-    </Card>
-  );
-}
-
-function Charts({ status }: { status: ServerStatus }) {
+/** CPU, memory, response times and network: the value of now on top of its curve. */
+function Trend({ status, actions }: { status: ServerStatus; actions: ServerActions }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const h = status.history;
   const times = h.map((s) => s.t);
   const span = chartSpan(status);
   const labels = xLabels(t, status.range);
-  const marks = markers(t, status);
-  const cpu = h.map((s) => s.cpu);
-  const mem = h.map((s) => s.memory);
-  const lat = h.map((s) => s.p95);
-  const memMax = memoryMax(status);
-  const latMax = niceMax(Math.max(100, ...lat.map((v) => v ?? 0)));
-  const netMax = niceMax(Math.max(1, ...h.flatMap((s) => [mbit(s.in) ?? 0, mbit(s.out) ?? 0])));
-  const pct = (v: number | null) => (v === null ? '—' : `${number(v, lang, 0)} %`);
-  const errors = mean(h.map((s) => s.errors));
   const range = t(`server.chart.ranges.${status.range}`);
-  if (!h.length)
-    return (
-      <Card title={t('server.chart.title')}>
-        <p className="settings-card__empty settings-muted">{t('server.chart.empty')}</p>
-      </Card>
-    );
+  const { cpu, memory, network, responses } = status.now;
+  const cpuNow = cpu.cores ? (cpu.used / cpu.cores) * 100 : null;
+  const cpuValues = h.map((s) => s.cpu);
+  const memValues = h.map((s) => s.memory);
+  const lat = h.map((s) => s.p95);
+  const pct = (v: number | null) => (v === null ? '—' : `${number(v, lang, 0)} %`);
+  const cpuMax = cpuScale([...cpuValues, cpuNow]);
+  const mem = memoryScale([...memValues, memory.used], memory.limit);
+  const memPeak = Math.max(peak(memValues) ?? 0, memory.used);
+  const memShare = memory.limit ? memory.used / memory.limit : null;
+  const latMax = niceMax(Math.max(100, ...known(lat)));
+  const netMax = niceMax(Math.max(1, ...h.flatMap((s) => [mbit(s.in) ?? 0, mbit(s.out) ?? 0])));
+  const errors = mean(h.map((s) => s.errors)) ?? responses.errors ?? 0;
+  const label = (metric: string) => t('server.chart.label', { metric, range });
+  const axis = (max: number) => [0, max / 2, max];
   return (
-    <>
-      <div className="server-grid">
-        <ChartCard
-          title={t('server.advanced.cpu')}
-          meta={t('server.advanced.cpuMeta', { avg: pct(mean(cpu)), peak: pct(peak(cpu)) })}
-          caption={t('server.advanced.cpuCap', {
-            count: Math.round(status.now.cpu.cores * 10) / 10,
+    <Card
+      title={t('server.chart.title')}
+      tour="server-health"
+      className="server-card-wrap"
+      action={
+        <span className="server-card-actions">
+          <Updated at={actions.updatedAt} />
+          <Segmented
+            label={t('server.advanced.range')}
+            value={actions.range}
+            onChange={actions.setRange}
+            options={RANGES.map((r) => ({ value: r, label: t(`server.advanced.ranges.${r}`) }))}
+          />
+        </span>
+      }
+    >
+      <div className="server-cells server-cells--2">
+        <TrendCell
+          name={t('server.advanced.cpu')}
+          meta={t('server.advanced.cores', { count: Math.round(cpu.cores * 10) / 10 })}
+          value={
+            <>
+              {cpuNow === null ? '—' : number(cpuNow, lang, 0)} <small>%</small>
+            </>
+          }
+          hint={t('server.advanced.cpuMeta', {
+            avg: pct(mean(cpuValues)),
+            peak: pct(peak(cpuValues)),
           })}
         >
           <ServerChart
-            label={t('server.chart.label', { metric: t('server.advanced.cpu'), range })}
+            label={label(t('server.advanced.cpu'))}
             times={times}
             span={span}
-            series={[{ label: t('server.advanced.cpu'), tone: 'cpu', values: cpu }]}
-            max={100}
-            ticks={[0, 50, 100]}
+            series={[{ label: t('server.advanced.cpu'), tone: 'cpu', values: cpuValues }]}
+            max={cpuMax}
+            ticks={axis(cpuMax)}
             format={(v) => `${number(v, lang, 0)} %`}
             xLabels={labels}
-            markers={marks}
-            height={140}
+            markers={markers(t, status)}
           />
-        </ChartCard>
-        <ChartCard
-          title={t('server.advanced.memory')}
-          meta={t('server.advanced.memoryMeta', { peak: formatStorage(peak(mem) ?? 0, lang) })}
-          caption={
-            status.now.memory.limit
-              ? t('server.advanced.memoryCap', {
-                  limit: formatStorage(status.now.memory.limit, lang),
-                })
-              : undefined
+        </TrendCell>
+        <TrendCell
+          name={t('server.advanced.memory')}
+          meta={
+            memory.limit
+              ? t('server.advanced.limit', { size: formatStorage(memory.limit, lang) })
+              : ''
+          }
+          value={formatStorage(memory.used, lang)}
+          hint={
+            <>
+              {t('server.advanced.memoryMeta', { peak: formatStorage(memPeak, lang) })}
+              {memShare !== null && (
+                <>
+                  {' · '}
+                  <span className={memShare >= 0.8 ? 'server-warn' : undefined}>
+                    {t('server.advanced.ofLimit', { share: percent(memShare, lang, 1) })}
+                  </span>
+                </>
+              )}
+            </>
           }
         >
           <ServerChart
-            label={t('server.chart.label', { metric: t('server.advanced.memory'), range })}
+            label={label(t('server.advanced.memory'))}
             times={times}
             span={span}
-            series={[{ label: t('server.advanced.memory'), tone: 'memory', values: mem }]}
-            max={memMax}
-            ticks={[0, memMax / 2, memMax]}
-            format={(v) => formatStorage(v, lang)}
+            series={[{ label: t('server.advanced.memory'), tone: 'memory', values: memValues }]}
+            max={mem.max}
+            ticks={axis(mem.max)}
+            format={(v) => (v === 0 ? '0' : formatStorage(v, lang))}
             xLabels={labels}
-            height={140}
+            {...(mem.limit ? { limit: t('server.advanced.limitLine') } : {})}
           />
-        </ChartCard>
+        </TrendCell>
+        <TrendCell
+          name={t('server.advanced.latency')}
+          meta={t('server.advanced.latencyMeta', { errors: percent(errors, lang, 1) })}
+          value={
+            responses.p95 === null ? (
+              '—'
+            ) : (
+              <>
+                {number(responses.p95, lang, 0)} <small>ms</small>
+              </>
+            )
+          }
+          hint={t('server.advanced.latencyHint')}
+        >
+          <ServerChart
+            label={label(t('server.advanced.latency'))}
+            times={times}
+            span={span}
+            series={[{ label: 'p95', tone: 'cpu', values: lat }]}
+            max={latMax}
+            ticks={axis(latMax)}
+            format={(v) => (v === 0 ? '0' : `${number(v, lang, 0)} ms`)}
+            xLabels={labels}
+          />
+        </TrendCell>
+        <TrendCell
+          name={t('server.advanced.network')}
+          meta={t('server.advanced.networkOnly')}
+          value={
+            network ? (
+              <span className="server-value--pair">
+                <span>
+                  <i className="server-swatch server-swatch--in" />
+                  <span aria-hidden="true">↓</span>
+                  <span className="ink-sr-only">{t('server.meters.network.in')}</span>{' '}
+                  {bits(network.in, lang)}
+                </span>
+                <span>
+                  <i className="server-swatch server-swatch--out" />
+                  <span aria-hidden="true">↑</span>
+                  <span className="ink-sr-only">{t('server.meters.network.out')}</span>{' '}
+                  {bits(network.out, lang)}
+                </span>
+              </span>
+            ) : (
+              '—'
+            )
+          }
+          hint={
+            network
+              ? t('server.advanced.today', {
+                  in: formatStorage(network.todayIn, lang),
+                  out: formatStorage(network.todayOut, lang),
+                })
+              : t('server.meters.network.unknown')
+          }
+        >
+          <ServerChart
+            label={label(t('server.advanced.network'))}
+            times={times}
+            span={span}
+            series={[
+              { label: t('server.chart.received'), tone: 'in', values: h.map((s) => mbit(s.in)) },
+              {
+                label: t('server.chart.sent'),
+                tone: 'out',
+                values: h.map((s) => mbit(s.out)),
+                below: true,
+              },
+            ]}
+            max={netMax}
+            ticks={axis(netMax)}
+            format={(v) => (v === 0 ? '0' : `${number(v, lang)} Mb/s`)}
+            xLabels={labels}
+            mirrored
+          />
+        </TrendCell>
       </div>
-      <ChartCard
-        title={t('server.advanced.latency')}
-        meta={t('server.advanced.latencyMeta', { errors: percent(errors ?? 0, lang, 1) })}
-        caption={t('server.advanced.latencyCap')}
-      >
-        <ServerChart
-          label={t('server.chart.label', { metric: t('server.advanced.latency'), range })}
-          times={times}
-          span={span}
-          series={[{ label: 'p95', tone: 'cpu', values: lat }]}
-          max={latMax}
-          ticks={[0, latMax / 2, latMax]}
-          format={(v) => `${number(v, lang, 0)} ms`}
-          xLabels={labels}
-          height={140}
-        />
-      </ChartCard>
-      <ChartCard title={t('server.advanced.networkTitle')} meta={t('server.advanced.networkMeta')}>
-        <div className="server-legend">
-          <span>
-            <i className="server-legend__swatch server-legend__swatch--in" />
-            {t('server.advanced.in')}
-          </span>
-          <span>
-            <i className="server-legend__swatch server-legend__swatch--out" />
-            {t('server.advanced.out')}
-          </span>
+      {h.length === 0 && (
+        <p className="settings-card__empty settings-muted">{t('server.chart.empty')}</p>
+      )}
+    </Card>
+  );
+}
+
+/** The space has no curve: four equal cells, the compression note at the bottom. */
+function Space({ status }: { status: ServerStatus }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const store = status.storage;
+  const share = store.total ? store.used / store.total : null;
+  const cell = (label: string, value: number, hint: ReactNode, extra?: ReactNode) => {
+    const [n, unit] = formatStorage(value, lang).split(/\s(?=\S+$)/);
+    return (
+      <div className="server-cell">
+        <span className="server-cell__label">{label}</span>
+        <div className="server-value">
+          {n} {unit && <small>{unit}</small>}
         </div>
-        <ServerChart
-          label={t('server.chart.label', { metric: t('server.advanced.networkTitle'), range })}
-          times={times}
-          span={span}
-          series={[
-            { label: t('server.chart.received'), tone: 'in', values: h.map((s) => mbit(s.in)) },
-            {
-              label: t('server.chart.sent'),
-              tone: 'out',
-              values: h.map((s) => mbit(s.out)),
-              below: true,
-            },
-          ]}
-          max={netMax}
-          ticks={[0, netMax / 2, netMax]}
-          format={(v) => `${number(v, lang)} Mbit/s`}
-          xLabels={labels}
-          height={170}
-          mirrored
-        />
-      </ChartCard>
-    </>
+        {extra}
+        <div className="server-hint">{hint}</div>
+      </div>
+    );
+  };
+  return (
+    <Card
+      title={t('server.advanced.storage')}
+      action={
+        <span className="settings-card__meta server-ellipsis">
+          {store.driver} · {store.location}
+        </span>
+      }
+    >
+      <div className="server-cells">
+        {cell(
+          t('server.advanced.space.used'),
+          store.used,
+          store.total !== null && share !== null
+            ? t('server.advanced.space.of', {
+                total: formatStorage(store.total, lang),
+                share: percent(share, lang, 1),
+              })
+            : t('server.meters.storage.bucket'),
+          share !== null && (
+            <ShareBar
+              share={share}
+              label={t('server.how.space.bar')}
+              text={percent(share, lang, 1)}
+              warn={share >= 0.9}
+            />
+          ),
+        )}
+        {cell(
+          t('server.advanced.space.originals'),
+          store.originals,
+          t('server.advanced.space.originalsHint'),
+        )}
+        {cell(
+          t('server.advanced.space.copies'),
+          store.copies,
+          t('server.advanced.space.copiesHint'),
+        )}
+        {cell(
+          t('server.advanced.space.previews'),
+          store.previews,
+          t('server.advanced.space.previewsHint'),
+        )}
+      </div>
+      {diskCompresses(store) && (
+        <p className="settings-footnote server-card-foot">
+          {t('server.meters.storage.compressed')}
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -415,7 +373,7 @@ function Transcodes({ status }: { status: ServerStatus }) {
               <li key={job.assetId}>
                 <div className="settings-list__text">
                   <span className={job.name ? 'server-name' : 'server-name server-name--hidden'}>
-                    {name}
+                    <span className="server-ellipsis">{name}</span>
                     {status.encoder && status.encoder.backend !== 'software' && (
                       <span className="settings-badge settings-badge--accent">
                         {status.encoder.backend.toUpperCase()}
@@ -432,19 +390,7 @@ function Transcodes({ status }: { status: ServerStatus }) {
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
-                  <span
-                    className="server-bar"
-                    role="progressbar"
-                    aria-label={name}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={job.progress}
-                  >
-                    <span
-                      className="server-bar__fill server-bar__fill--cpu"
-                      style={{ width: `${job.progress}%` }}
-                    />
-                  </span>
+                  <ShareBar share={job.progress / 100} label={name} text={`${job.progress} %`} />
                 </div>
                 <span className="server-pct">
                   {percent(job.progress / 100, lang)}
@@ -457,7 +403,7 @@ function Transcodes({ status }: { status: ServerStatus }) {
           })}
         </ul>
       )}
-      <p className="settings-footnote server-foot">
+      <p className="settings-footnote server-card-foot">
         {t('server.advanced.transcodesFoot', {
           ready: v.readyToday,
           failed: v.failedToday,
@@ -472,35 +418,56 @@ function Transcodes({ status }: { status: ServerStatus }) {
 function ErrorLog({ status, actions }: { status: ServerStatus; actions: ServerActions }) {
   const { t } = useTranslation();
   const when = useWhen();
+  const peeked = usePeek();
   const [filter, setFilter] = useState<'all' | 'errors'>('all');
+  const items = useRef(new Map<string, HTMLLIElement>());
   const now = new Date(status.checkedAt).getTime();
   const list = openProblems(status.problems).filter(
     (p) => filter === 'all' || p.severity === 'error',
   );
+  // From "Technical details in Advanced": to that entry, highlighted and focused.
+  useEffect(() => {
+    if (!peeked) return;
+    const item = items.current.get(peeked);
+    if (!item) return;
+    scrollToItem(item, 'center');
+    item.focus({ preventScroll: true });
+  }, [peeked]);
   return (
     <section id={PROBLEMS_ID} className="server-anchor" data-tour="server-problems">
-      <Card title={t('server.advanced.log')}>
+      <Card
+        title={t('server.advanced.log')}
+        className="server-card-wrap"
+        action={
+          <span className="server-card-actions">
+            <span className="settings-card__meta server-hide-phone">
+              {t('server.problems.period')}
+            </span>
+            <Button onClick={actions.sendToDevelopers}>{t('server.problems.send')}</Button>
+          </span>
+        }
+      >
         <div className="server-toolbar">
-          <Select
-            className="server-select"
-            aria-label={t('server.advanced.severity')}
+          <Segmented
+            label={t('server.advanced.severity')}
             value={filter}
-            onChange={(v) => setFilter(v as 'all' | 'errors')}
+            onChange={setFilter}
             options={[
               { value: 'all', label: t('server.advanced.all') },
               { value: 'errors', label: t('server.advanced.errorsOnly') },
             ]}
           />
-          <Button onClick={() => void actions.retryAll()} disabled={!list.some((p) => p.retry)}>
-            {t('server.advanced.retryAll')}
-          </Button>
-          <Button
-            onClick={() => void actions.seenAll()}
-            disabled={!list.some((p) => p.kind !== 'config_check')}
-          >
-            {t('server.advanced.seenAll')}
-          </Button>
-          <Button onClick={actions.sendToDevelopers}>{t('server.problems.send')}</Button>
+          <span className="server-toolbar__end">
+            <Button onClick={() => void actions.retryAll()} disabled={!list.some((p) => p.retry)}>
+              {t('server.advanced.retryAll')}
+            </Button>
+            <Button
+              onClick={() => void actions.seenAll()}
+              disabled={!list.some((p) => p.kind !== 'config_check')}
+            >
+              {t('server.advanced.seenAll')}
+            </Button>
+          </span>
         </div>
         {actions.actionError && (
           <p role="alert" className="settings-error server-error">
@@ -511,29 +478,44 @@ function ErrorLog({ status, actions }: { status: ServerStatus; actions: ServerAc
           <p className="settings-card__empty settings-muted">{t('server.problems.empty')}</p>
         ) : (
           <ul className="settings-list server-log">
-            {list.map((p) => (
-              <li key={p.id}>
-                <span className={`server-sev server-sev--${p.severity}`}>
-                  {t(`server.advanced.${p.severity}`)}
-                </span>
-                <div className="settings-list__text">
-                  <span className="settings-row__label">
-                    {problemText(t, p).title} <span className="settings-badge">×{p.count}</span>
+            {list.map((p) => {
+              const title = problemText(t, p).title;
+              const found = p.id === peeked;
+              return (
+                <li
+                  key={p.id}
+                  ref={(el) => {
+                    if (el) items.current.set(p.id, el);
+                    else items.current.delete(p.id);
+                  }}
+                  className={found ? 'server-log__found' : undefined}
+                  tabIndex={found ? -1 : undefined}
+                  aria-current={found ? 'true' : undefined}
+                >
+                  <span className={`server-sev server-sev--${p.severity}`}>
+                    {t(`server.advanced.${p.severity}`)}
                   </span>
-                  <code className="server-code server-code--inline">
-                    {p.technical.replace(/\n/g, ' · ')}
-                  </code>
-                </div>
-                <span className="server-log__when">
-                  {when(p.lastAt, now)}
-                  {p.retry && (
-                    <Button variant="ghost" onClick={() => void actions.retry(p)}>
-                      {t('server.problems.retry')}
-                    </Button>
-                  )}
-                </span>
-              </li>
-            ))}
+                  <div className="settings-list__text">
+                    <span className="settings-row__label">
+                      {title} <span className="settings-badge">×{p.count}</span>
+                    </span>
+                    <code className="server-code">{p.technical.replace(/\n/g, ' · ')}</code>
+                  </div>
+                  <span className="server-log__when">
+                    {when(p.lastAt, now)}
+                    {p.retry && (
+                      <Button
+                        variant="ghost"
+                        aria-label={t('server.problems.retryNamed', { title })}
+                        onClick={() => void actions.retry(p)}
+                      >
+                        {t('server.problems.retry')}
+                      </Button>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>
@@ -545,11 +527,14 @@ export function AdvancedView({ status, checks, actions }: Props) {
   const { t } = useTranslation();
   return (
     <>
-      <Summary status={status} checks={checks} actions={actions} />
-      <Tiles status={status} />
-      <Charts status={status} />
-      <div className="server-grid">
+      <StatusCard status={status} checks={checks} advanced />
+      <Trend status={status} actions={actions} />
+      <Space status={status} />
+      <div className="server-pair">
         <Transcodes status={status} />
+        <People status={status} advanced />
+      </div>
+      <div className="server-pair">
         <Card title={t('server.advanced.queues')}>
           {status.queues.length ? (
             <QueueTable status={status} />
@@ -557,12 +542,9 @@ export function AdvancedView({ status, checks, actions }: Props) {
             <p className="settings-card__empty settings-muted">{t('server.advanced.noQueues')}</p>
           )}
         </Card>
-      </div>
-      <div className="server-grid">
         <Card title={t('server.advanced.processesTitle')}>
-          <ProcessTable status={status} advanced />
+          <ProcessTable status={status} />
         </Card>
-        <People status={status} advanced />
       </div>
       <ErrorLog status={status} actions={actions} />
       <Alerts status={status} actions={actions} />
