@@ -26,9 +26,9 @@ import {
   ProcessTable,
   problemText,
   QueueTable,
-  scrollToItem,
   ShareBar,
   StatusCard,
+  scrollToItem,
 } from './SimpleView.tsx';
 
 type Props = { status: ServerStatus; checks: DiagnosticCheck[]; actions: ServerActions };
