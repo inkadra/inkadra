@@ -5,9 +5,9 @@ import {
   type Detection,
   detectVideoEncoder,
   type EncoderTuning,
+  type HwAccelMode,
   type LiveMeasure,
   measureLive,
-  type HwAccelMode,
   SOFTWARE_ENCODER,
   type VideoEncoder,
 } from './hwaccel.ts';
@@ -87,7 +87,8 @@ export async function chooseVideoEncoder(
       measuredAt: new Date().toISOString(),
       liveError: live.error,
     });
-    if (live.error) log.warn({ speed: live.speed, reason: live.error }, 'live video playback is off');
+    if (live.error)
+      log.warn({ speed: live.speed, reason: live.error }, 'live video playback is off');
     else log.info({ sessions: live.sessions, speed: live.speed }, 'live video playback measured');
   }
   await db

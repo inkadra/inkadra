@@ -83,7 +83,12 @@ describe('live playback limits (decision 0128)', () => {
 
   it('uses the sessions measured at start, and lets the admin only lower them', async () => {
     const measured = await readVideoSettings(db(gpu), env);
-    expect(measured.live).toMatchObject({ available: true, sessions: 3, speed: 5.35, reason: null });
+    expect(measured.live).toMatchObject({
+      available: true,
+      sessions: 3,
+      speed: 5.35,
+      reason: null,
+    });
     expect(measured.settings.live).toMatchObject({ enabled: true, maxSessions: 3 });
     const lower = await readVideoSettings(db({ ...gpu, live: { maxSessions: 2 } }), env);
     expect(lower.settings.live.maxSessions).toBe(2);

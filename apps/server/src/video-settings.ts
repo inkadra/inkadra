@@ -2,11 +2,11 @@ import {
   DEFAULT_VIDEO_SETTINGS,
   type UpdateVideoSettings,
   VIDEO_RUNGS,
+  type VideoLiveStatus,
   type VideoQuality,
   VideoRung,
   VideoRungMode,
   VideoSettings,
-  type VideoLiveStatus,
   type VideoSettingsView,
   z,
 } from '@inkadra/shared';
@@ -103,7 +103,10 @@ export async function readVideoSettings(
   if (env.VIDEO_RENDITIONS) settings.rungs = envRungs(env.VIDEO_RENDITIONS);
   if (env.VIDEO_LIVE !== undefined) settings.live = { ...settings.live, enabled: env.VIDEO_LIVE };
   // The admin can only lower what was measured; no GPU (or too slow) means no live playback.
-  settings.live.maxSessions = Math.max(1, Math.min(value.live?.maxSessions ?? live.sessions, live.sessions));
+  settings.live.maxSessions = Math.max(
+    1,
+    Math.min(value.live?.maxSessions ?? live.sessions, live.sessions),
+  );
   settings.live.perViewer = Math.min(settings.live.perViewer, settings.live.maxSessions);
   if (!live.available) settings.live.enabled = false;
   // A rung set to live only, with live playback off, is kept on disk: it plays all the same.
@@ -153,7 +156,10 @@ export async function saveVideoSettings(
 ): Promise<VideoSettings> {
   const { settings: current, locked, live } = await readVideoSettings(db, env);
   if (patch.live?.enabled && !live.available)
-    throw new HttpError('conflict', 'Live playback needs GPU hardware encoding fast enough for it.');
+    throw new HttpError(
+      'conflict',
+      'Live playback needs GPU hardware encoding fast enough for it.',
+    );
   if (patch.live?.maxSessions !== undefined && patch.live.maxSessions > live.sessions)
     throw new HttpError(
       'bad_request',

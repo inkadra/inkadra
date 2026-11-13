@@ -185,7 +185,10 @@ it('turns live playback off, keeping the live-only resolutions on disk', async (
 it('shows live playback as unavailable without a GPU, with the reason and no switch', async () => {
   await show(
     view({
-      settings: { ...DEFAULT_VIDEO_SETTINGS, live: { enabled: false, maxSessions: 1, perViewer: 1 } },
+      settings: {
+        ...DEFAULT_VIDEO_SETTINGS,
+        live: { enabled: false, maxSessions: 1, perViewer: 1 },
+      },
       liveStatus: {
         available: false,
         reason: 'no-gpu',

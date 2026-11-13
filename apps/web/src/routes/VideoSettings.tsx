@@ -396,10 +396,10 @@ function LiveCard({
             >
               {/* Never more than measured: the admin can only lower it. */}
               {Array.from({ length: status.sessions }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={String(n)}>
-                    {n}
-                  </option>
-                ))}
+                <option key={n} value={String(n)}>
+                  {n}
+                </option>
+              ))}
             </Select>
           </Row>
           <Row

@@ -42,12 +42,24 @@ describe('live playback', () => {
     // HDR tone mapping, a card left decoding on the CPU).
     expect(liveEligible(row({ ...uhd, videoCodec: 'prores' }), qsv)).toBe(false);
     const media = (over: object) => ({
-      mediaInfo: { hdr: null, bits: 8, pixelFormat: 'yuv420p', interlaced: false, rotated: false, ...over },
+      mediaInfo: {
+        hdr: null,
+        bits: 8,
+        pixelFormat: 'yuv420p',
+        interlaced: false,
+        rotated: false,
+        ...over,
+      },
     });
     expect(liveEligible(row(media({ pixelFormat: 'yuv422p10le', bits: 10 })), qsv)).toBe(false);
     expect(liveEligible(row(media({ rotated: true })), qsv)).toBe(false);
     expect(liveEligible(row(media({ interlaced: true })), qsv)).toBe(false);
-    expect(liveEligible(row({ videoCodec: 'hevc', ...media({ hdr: 'hlg', bits: 10, pixelFormat: 'yuv420p10le' }) }), qsv)).toBe(false);
+    expect(
+      liveEligible(
+        row({ videoCodec: 'hevc', ...media({ hdr: 'hlg', bits: 10, pixelFormat: 'yuv420p10le' }) }),
+        qsv,
+      ),
+    ).toBe(false);
     expect(liveEligible(row(), { ...qsv, cpuDecode: true })).toBe(false);
     expect(liveEligible(row({ status: 'processing' }), qsv)).toBe(false);
   });

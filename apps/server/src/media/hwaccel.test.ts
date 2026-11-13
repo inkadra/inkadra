@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   type DetectIo,
   detectVideoEncoder,
-  liveSessionsFor,
-  measureLive,
-  parseSpeed,
   encoderMemory,
   gpuDecodes,
+  liveSessionsFor,
+  measureLive,
   NVENC_GPU_MEMORY,
+  parseSpeed,
   SOFTWARE_ENCODER,
   testEncodeArgs,
   type VideoEncoder,
@@ -526,7 +526,11 @@ describe('live benchmark (decision 0128)', () => {
 
   it('measures five seconds of 1080p decoded and encoded on the GPU', async () => {
     const { mock, calls } = bench('frame=125 speed=5.35x');
-    expect(await measureLive('ffmpeg', qsv, mock)).toEqual({ sessions: 3, speed: 5.35, error: null });
+    expect(await measureLive('ffmpeg', qsv, mock)).toEqual({
+      sessions: 3,
+      speed: 5.35,
+      error: null,
+    });
     expect(mock.sample).toHaveBeenCalledWith('ffmpeg', { width: 1920, height: 1080, seconds: 5 });
     expect(calls[0]?.args).toEqual(expect.arrayContaining(['-hwaccel', 'vaapi', 'h264_qsv']));
     expect(calls[0]?.timeout).toBe(60_000);

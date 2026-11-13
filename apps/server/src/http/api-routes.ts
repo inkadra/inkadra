@@ -17,7 +17,6 @@ import {
   VIDEO_RENDITIONS_CAPABILITY,
 } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
-import type { LiveContext } from './hls.ts';
 import type { FastifyInstance } from 'fastify';
 import { canCreateProjects } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
@@ -32,6 +31,7 @@ import { mediaTools } from '../media/video.ts';
 import { myTasks } from '../tasks.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import type { LiveContext } from './hls.ts';
 
 interface Deps {
   config: Config;

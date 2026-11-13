@@ -99,13 +99,19 @@ export const DEFAULT_VIDEO_SETTINGS: VideoSettings = {
 export const VideoLiveStatus = z
   .object({
     available: z.boolean(),
-    reason: z.enum(['no-gpu', 'too-slow', 'failed', 'set-off']).nullable().openapi({
-      description:
-        '`no-gpu`: no hardware encoder (libx264 never encodes live). `too-slow`: the GPU ' +
-        'measured under 1.5× real time. `failed`: the measurement failed (see the log). ' +
-        '`set-off`: VIDEO_LIVE_MAX_SESSIONS is 0.',
-    }),
-    sessions: z.int().min(0).openapi({ description: 'The cap: measured, or from the environment.' }),
+    reason: z
+      .enum(['no-gpu', 'too-slow', 'failed', 'set-off'])
+      .nullable()
+      .openapi({
+        description:
+          '`no-gpu`: no hardware encoder (libx264 never encodes live). `too-slow`: the GPU ' +
+          'measured under 1.5× real time. `failed`: the measurement failed (see the log). ' +
+          '`set-off`: VIDEO_LIVE_MAX_SESSIONS is 0.',
+      }),
+    sessions: z
+      .int()
+      .min(0)
+      .openapi({ description: 'The cap: measured, or from the environment.' }),
     speed: z.number().positive().nullable().openapi({
       description: 'Speed of one 1080p live encode measured at start, × real time.',
     }),

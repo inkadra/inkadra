@@ -314,7 +314,12 @@ export interface DetectIo {
    * Runs the live benchmark (`args`, at a lower priority, killed past `timeoutMs`); resolves
    * with ffmpeg's stderr when it worked, else null.
    */
-  bench(ffmpeg: string, args: string[], encoder: VideoEncoder, timeoutMs: number): Promise<string | null>;
+  bench(
+    ffmpeg: string,
+    args: string[],
+    encoder: VideoEncoder,
+    timeoutMs: number,
+  ): Promise<string | null>;
   /** Whether the worker may open `path` for reading and writing. */
   canOpen(path: string): Promise<boolean>;
   /** Name of the first NVIDIA GPU (`nvidia-smi`), or null. */
@@ -574,7 +579,8 @@ export async function measureLive(
       '-',
     ];
     const stderr = await io.bench(ffmpeg, args, encoder, BENCH_TIMEOUT_MS);
-    if (stderr === null) return { sessions: 0, speed: null, error: 'benchmark failed or timed out' };
+    if (stderr === null)
+      return { sessions: 0, speed: null, error: 'benchmark failed or timed out' };
     const speed = parseSpeed(stderr);
     if (speed === null) return { sessions: 0, speed: null, error: 'no speed in the benchmark' };
     const sessions = liveSessionsFor(speed);

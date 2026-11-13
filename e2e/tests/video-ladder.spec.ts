@@ -115,9 +115,7 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
   await expect(card.locator('[data-play-link]')).toBeVisible();
   await card.locator('button[data-play-link]').click();
   const video = card.locator('video');
-  await expect
-    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime > 0))
-    .toBe(true);
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime > 0)).toBe(true);
   await shoot(page, 'ladder-card');
 
   await card.locator('.fcard__footer').dblclick();

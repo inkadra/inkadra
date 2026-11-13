@@ -7,9 +7,9 @@ import { type Auth, countUsers } from '../auth.ts';
 import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { readVideoEncoder } from '../media/encoder-setting.ts';
-import { liveStatus } from '../video-settings.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import type { Storage } from '../storage.ts';
+import { liveStatus } from '../video-settings.ts';
 import { requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
