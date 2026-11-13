@@ -61,7 +61,12 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
       storageKey: `variants/${old}/proxy.mp4`,
       mime: 'video/mp4',
     });
-    const remux = await video({ proxyStatus: 'ready', videoCodec: 'h264', width: 1920, height: 1080 });
+    const remux = await video({
+      proxyStatus: 'ready',
+      videoCodec: 'h264',
+      width: 1920,
+      height: 1080,
+    });
     await db.insert(assetVariant).values({
       assetId: remux,
       size: 'proxy',
@@ -71,7 +76,9 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
       mime: 'video/mp4',
     });
     const done = await video({ proxyStatus: 'ready' });
-    await db.insert(assetRendition).values({ assetId: done, name: '1080', status: 'ready', recipe: RECIPE });
+    await db
+      .insert(assetRendition)
+      .values({ assetId: done, name: '1080', status: 'ready', recipe: RECIPE });
     const light = await video({ proxyStatus: 'ready' });
     await db
       .insert(assetRendition)

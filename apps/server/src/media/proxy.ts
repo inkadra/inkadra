@@ -125,7 +125,8 @@ async function transcode(
       regenerate,
     });
     // The ladder is in: the single copy of before goes (decision 0128).
-    if (regenerate && !('skipped' in result && result.skipped === 'gone')) await dropOldCopy(db, storage, assetId);
+    if (regenerate && !('skipped' in result && result.skipped === 'gone'))
+      await dropOldCopy(db, storage, assetId);
     return result;
   }
   // A regeneration of a copy that stays a single one changes nothing.

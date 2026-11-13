@@ -14,8 +14,8 @@ import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import { instanceSetting } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
-import { readVideoEncoder } from './media/encoder-setting.ts';
 import type { Jobs } from './jobs.ts';
+import { readVideoEncoder } from './media/encoder-setting.ts';
 import type { ProxySettings } from './media/video.ts';
 import { countNeeding, readBackfill } from './video-backfill.ts';
 

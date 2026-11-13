@@ -194,7 +194,9 @@ function ExistingVideos({
             <Button
               variant="danger"
               disabled={busy}
-              onClick={() => void act(() => api.delete<VideoSettingsView>('/instance/video-settings/reprocess'))}
+              onClick={() =>
+                void act(() => api.delete<VideoSettingsView>('/instance/video-settings/reprocess'))
+              }
             >
               {t('videoSettings.existing.stop')}
             </Button>
@@ -207,7 +209,9 @@ function ExistingVideos({
             aria-valuenow={run.done}
             aria-label={t('videoSettings.existing.meter')}
           >
-            <i style={{ width: `${run.total ? Math.min(100, (run.done / run.total) * 100) : 0}%` }} />
+            <i
+              style={{ width: `${run.total ? Math.min(100, (run.done / run.total) * 100) : 0}%` }}
+            />
           </div>
           <div className="video-run__line">
             <span>{t('videoSettings.existing.first')}</span>

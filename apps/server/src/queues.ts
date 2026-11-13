@@ -2,9 +2,6 @@ import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn, ServerQueueId } from '@inkadra/shared';
 import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
 import { and, eq, inArray, lt } from 'drizzle-orm';
-import { recipeFor } from './media/ladder.ts';
-import { proxySettings } from './media/process.ts';
-import { stepBackfill } from './video-backfill.ts';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
 import { sweepAccessExpiry } from './access-expiry.ts';
@@ -33,8 +30,9 @@ import type { Database } from './db/client.ts';
 import { asset, clientAsset, creationRequest } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
+import { recipeFor } from './media/ladder.ts';
 import { officeConverterInstalled } from './media/office.ts';
-import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
+import { type MediaDeps, markFailed, processAsset, proxySettings } from './media/process.ts';
 import { markProxyFailed, runProxy } from './media/proxy.ts';
 import { ProxyTimeout } from './media/video.ts';
 import { jobProblem, recordProblem } from './monitor/problems.ts';
@@ -55,6 +53,7 @@ import {
   type SaveVersionResult,
   type VersionWriter,
 } from './versions.ts';
+import { stepBackfill } from './video-backfill.ts';
 
 /**
  * Background job queues. Producers live in the web process, consumers in `inkadra worker`.
@@ -472,12 +471,9 @@ export async function startWorkers(
       if (job.name !== 'make') throw new Error(`Unknown job ${job.name}`);
       const { assetId, regenerate } = job.data as JobPayloads['media-proxies:make'];
       try {
-        return await runProxy(
-          { ...deps, log },
-          assetId,
-          (percent) => job.updateProgress(percent),
-          { regenerate: regenerate === true },
-        );
+        return await runProxy({ ...deps, log }, assetId, (percent) => job.updateProgress(percent), {
+          regenerate: regenerate === true,
+        });
       } catch (err) {
         // A copy that ran out of time would run out of time again.
         if (err instanceof ProxyTimeout) throw new UnrecoverableError(err.message);
