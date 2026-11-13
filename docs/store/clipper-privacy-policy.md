@@ -67,7 +67,7 @@ also runs the server you connect to, or with any analytics or advertising servic
 
 - **Disconnect** in the extension's settings: this revokes the token on the server if it can be
   reached, removes the stored data above and drops the permission for the server's address.
-- **Revoke the token** on the web, in Settings → Account → Apps and tokens. Do this if you removed
+- **Revoke the token** on the web, in Settings → Connected apps. Do this if you removed
   the extension without disconnecting, or disconnected while offline: the token then stays valid on
   the server.
 - **Delete saved content** on your server. To delete anything else held there, ask its administrator.
