@@ -238,13 +238,17 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
     await page.screenshot({ path: 'test-results/screenshots/ui-select/export-dialog.png' });
     const trigger = dialog.getByRole('combobox').first();
     await trigger.click();
-    await page.screenshot({ path: 'test-results/screenshots/ui-select/default-open-desktop-dark.png' });
+    await page.screenshot({
+      path: 'test-results/screenshots/ui-select/default-open-desktop-dark.png',
+    });
     await page.keyboard.press('Escape');
     await page.evaluate(() => {
       document.documentElement.dataset.theme = 'light';
     });
     await trigger.click();
-    await page.screenshot({ path: 'test-results/screenshots/ui-select/default-open-desktop-light.png' });
+    await page.screenshot({
+      path: 'test-results/screenshots/ui-select/default-open-desktop-light.png',
+    });
     await page.keyboard.press('Escape');
     await page.setViewportSize({ width: 390, height: 844 });
     await trigger.click();

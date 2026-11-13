@@ -41,16 +41,22 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await chooseSelect(scene.getByLabel('Interno o esterno'), 'ext');
   await chooseSelect(scene.getByLabel('Momento', { exact: true }), 'night');
   if (process.env.SELECT_SCREENSHOTS) {
-    await page.screenshot({ path: 'test-results/screenshots/ui-select/storyboard-scene-header.png' });
+    await page.screenshot({
+      path: 'test-results/screenshots/ui-select/storyboard-scene-header.png',
+    });
     const trigger = scene.getByLabel('Interno o esterno');
     await trigger.click();
-    await page.screenshot({ path: 'test-results/screenshots/ui-select/quiet-open-desktop-dark.png' });
+    await page.screenshot({
+      path: 'test-results/screenshots/ui-select/quiet-open-desktop-dark.png',
+    });
     await page.keyboard.press('Escape');
     await page.evaluate(() => {
       document.documentElement.dataset.theme = 'light';
     });
     await trigger.click();
-    await page.screenshot({ path: 'test-results/screenshots/ui-select/quiet-open-desktop-light.png' });
+    await page.screenshot({
+      path: 'test-results/screenshots/ui-select/quiet-open-desktop-light.png',
+    });
     await page.keyboard.press('Escape');
     await page.evaluate(() => {
       document.documentElement.dataset.theme = 'dark';
