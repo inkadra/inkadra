@@ -3675,6 +3675,7 @@
       "toolbar": "Choisissez les outils de « Autres outils » que vous voyez dans la barre du bas. Les autres restent dans ⋯ et dans la palette de commandes.",
       "tutorials": "Revoyez les visites guidées, choisissez de les proposer ou non et demandez de l’aide.",
       "server": "Comment va le serveur : ressources, services, tâches, problèmes et alertes.",
+      "serverSimple": "Comment va le serveur, en mots simples : espace, sauvegarde, vitesse et problèmes à regarder.",
       "updates": "La version utilisée, les nouveautés et un avis quand une nouvelle sort. Inkadra ne se met pas à jour tout seul : c’est toi qui le mets à jour, sur le serveur.",
       "modules": "Choisissez les parties d’Inkadra que vous utilisez. Un module désactivé disparaît de vos menus, de la barre, des notifications et des tutoriels. Cela ne vaut que pour vous et ne supprime rien : ce qui existe reste visible, et en le réactivant vous retrouvez tout.",
       "board": "Le comportement de vos boards et les outils de la barre du bas. Cela ne vaut que pour vous, sur chaque appareil.",

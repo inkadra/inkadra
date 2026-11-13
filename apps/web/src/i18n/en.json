@@ -3675,6 +3675,7 @@
       "toolbar": "Choose which tools of More you see in the bottom bar. The others stay in More (⋯) and in the command palette.",
       "tutorials": "Watch the guided tours again, choose whether to offer them and ask for help.",
       "server": "How the server is doing: resources, services, jobs, problems and alerts.",
+      "serverSimple": "How the server is doing, in plain words: space, backup, speed and problems to look at.",
       "updates": "The version in use, what’s new and a notice when a new one is out. Inkadra doesn’t update itself: you update it, on the server.",
       "modules": "Choose the parts of Inkadra you use. A module that is off leaves your menus, the bar, notifications and tutorials. It applies to you only and deletes nothing: what exists stays visible, and turning it back on brings everything back.",
       "board": "How your boards behave and which tools you have in the bottom bar. It applies to you only, on every device.",

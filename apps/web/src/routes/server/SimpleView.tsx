@@ -182,7 +182,7 @@ export function StatusCard({
                 <>
                   {v2.active.length}
                   {v2.waiting > 0 && (
-                    <small> · {t('server.simple.waiting', { count: v2.waiting })}</small>
+                    <small> · {t('server.simple.waiting', { n: v2.waiting })}</small>
                   )}
                 </>,
               )}

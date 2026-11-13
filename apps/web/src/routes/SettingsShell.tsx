@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { useSession } from '../lib/session.tsx';
 import { usePendingUpdate } from '../lib/updates.ts';
+import { useServerView } from './server/ServerSettings.tsx';
 import { resetSaveState, type SaveState, useSaveState } from './settings-save.ts';
 import {
   CHECK_PAGES,
@@ -165,13 +166,17 @@ export function SettingsShell({
   const { t } = useTranslation();
   const location = useLocation();
   const current = page ?? settingsSection(location.pathname, location.search);
+  // The server page says what its view shows: plain words, or every part.
+  const serverView = useServerView();
+  const lead =
+    current.id === 'server' && serverView === 'simple' ? 'settingsUi.leads.serverSimple' : current.lead;
   // Each page starts from the neutral "saved automatically" message.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset on page change only.
   useEffect(() => resetSaveState(), [current.id]);
   return (
     <div className="settings-page">
       <div className="settings-page__intro">
-        <p className="settings__lead">{t(current.lead)}</p>
+        <p className="settings__lead">{t(lead)}</p>
         {actions && <div className="settings-page__actions">{actions}</div>}
       </div>
       {children}

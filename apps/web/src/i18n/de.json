@@ -3675,6 +3675,7 @@
       "toolbar": "Wähle, welche Werkzeuge aus „Weitere“ du in der unteren Leiste siehst. Die anderen bleiben in ⋯ und in der Befehlspalette.",
       "tutorials": "Sieh dir die geführten Touren erneut an, wähle, ob sie angeboten werden, und bitte um Hilfe.",
       "server": "Wie es dem Server geht: Ressourcen, Dienste, Aufträge, Probleme und Warnungen.",
+      "serverSimple": "Wie es dem Server geht, in klaren Worten: Speicherplatz, Sicherung, Tempo und Probleme zum Ansehen.",
       "updates": "Die laufende Version, die Neuerungen und ein Hinweis, wenn eine neue erscheint. Inkadra aktualisiert sich nicht selbst: Das Update machst du, auf dem Server.",
       "modules": "Wähle die Teile von Inkadra, die du nutzt. Ein ausgeschaltetes Modul verschwindet aus deinen Menüs, der Leiste, den Benachrichtigungen und den Tutorials. Es gilt nur für dich und löscht nichts: Was existiert, bleibt sichtbar, und wenn du es wieder einschaltest, ist alles wieder da.",
       "board": "Wie sich deine Boards verhalten und welche Werkzeuge du in der unteren Leiste hast. Gilt nur für dich, auf jedem Gerät.",

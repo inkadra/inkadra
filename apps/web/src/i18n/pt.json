@@ -3675,6 +3675,7 @@
       "toolbar": "Escolha que ferramentas de «Mais ferramentas» vê na barra inferior. As outras ficam em ⋯ e na paleta de comandos.",
       "tutorials": "Reveja os tours guiados, escolha se quer recebê-los e peça ajuda.",
       "server": "Como está o servidor: recursos, serviços, trabalhos, problemas e alertas.",
+      "serverSimple": "Como está o servidor, em palavras simples: espaço, cópia de segurança, velocidade e problemas a ver.",
       "updates": "A versão em uso, as novidades e um aviso quando sai uma nova. O Inkadra não se atualiza sozinho: quem atualiza é você, no servidor.",
       "modules": "Escolha as partes do Inkadra que usa. Um módulo desligado sai dos seus menus, da barra, das notificações e dos tutoriais. Vale só para si e não apaga nada: o que existe continua visível e, ao voltar a ligá-lo, encontra tudo.",
       "board": "Como seus boards se comportam e quais ferramentas você tem na barra inferior. Vale só para você, em todos os dispositivos.",

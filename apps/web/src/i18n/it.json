@@ -3675,6 +3675,7 @@
       "toolbar": "Scegli quali strumenti di «Altro» vedi nella barra in basso. Gli altri restano in «Altro» (⋯) e nella palette dei comandi.",
       "tutorials": "Rivedi i giri guidati, scegli se proporli e chiedi aiuto.",
       "server": "Come sta il server: risorse, servizi, lavori, problemi e avvisi.",
+      "serverSimple": "Come sta il server, in parole semplici: spazio, backup, velocità e problemi da guardare.",
       "updates": "La versione in uso, le novità e un avviso quando ne esce una nuova. Inkadra non si aggiorna da solo: l’aggiornamento lo fai tu, sul server.",
       "modules": "Scegli le parti di Inkadra che usi. Un modulo spento sparisce dai tuoi menu, dalla barra, dalle notifiche e dai tutorial. Vale solo per te e non cancella niente: quello che esiste resta visibile, e se lo riaccendi ritrovi tutto.",
       "board": "Come si comportano le tue board e quali strumenti hai nella barra in basso. Vale solo per te, su ogni dispositivo.",

@@ -103,8 +103,8 @@ function demo(range: keyof typeof RANGES, now: number, variant: Variant = 'ok') 
       cpu: { used: 0.36, cores: 4 },
       memory:
         variant === 'memory' ? { used: 1.62e9, limit: 2e9 } : { used: 2.98e8, limit: 33.39e9 },
-      network: { in: 2.25e6, out: 0.5e6, todayIn: 21e9, todayOut: 6e9 },
-      responses: { p95: 120, errors: 0.001 },
+      network: { in: 2.6e4, out: 1.2e3, todayIn: 10.55e6, todayOut: 926.75e3 },
+      responses: { p95: 373, errors: 0.001 },
     },
     processes: [
       {
@@ -160,7 +160,10 @@ function demo(range: keyof typeof RANGES, now: number, variant: Variant = 'ok') 
       lastStatus: backupFailed ? 'failed' : 'ready',
       size: backupFailed ? null : 2.4e9,
       nextAt: next.toISOString(),
-      lastSuccessAt: (backupFailed ? new Date(lastNight.getTime() - 86_400_000) : night).toISOString(),
+      lastSuccessAt: (backupFailed
+        ? new Date(lastNight.getTime() - 86_400_000)
+        : night
+      ).toISOString(),
     },
     database: { version: 'PostgreSQL 18.1', size: 1.1e9, connections: 14 },
     encoder: { backend: 'vaapi', label: 'VAAPI (Intel)' },
@@ -346,7 +349,13 @@ const SIZES: Record<Size, { width: number; height: number }> = {
   phone: { width: 390, height: 844 },
 };
 
-async function open(browser: Browser, cookie: string, theme: 'dark' | 'light', size: Size, video?: string) {
+async function open(
+  browser: Browser,
+  cookie: string,
+  theme: 'dark' | 'light',
+  size: Size,
+  video?: string,
+) {
   const phone = size === 'phone';
   const ctx = await browser.newContext({
     baseURL: base,
