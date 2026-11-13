@@ -52,7 +52,13 @@ afterEach(() => {
 it('schedules anonymisation separately and isolates it from upload purge failures', async () => {
   const pendingUploads = vi.fn().mockResolvedValue([]);
   const db = {
-    select: () => ({ from: () => ({ where: pendingUploads }) }),
+    // The stuck copies of videos are read with `.limit()` too (decision 0128): none here.
+    select: () => ({
+      from: () => ({
+        where: (...args: unknown[]) =>
+          Object.assign(pendingUploads(...args), { limit: async () => [] }),
+      }),
+    }),
     delete: () => ({ where: vi.fn().mockResolvedValue(undefined) }),
   } as unknown as Database;
   const workers = await startWorkers('redis://unused', pino({ level: 'silent' }), {
@@ -76,7 +82,11 @@ it('schedules anonymisation separately and isolates it from upload purge failure
     if (!run) throw new Error('Maintenance worker missing');
     vi.mocked(clearExpiredGuestNames).mockRejectedValueOnce(new Error('Anonymisation failed'));
     await expect(run({ name: 'anonymise-guests' })).rejects.toThrow('Anonymisation failed');
-    await expect(run({ name: 'purge-uploads' })).resolves.toEqual({ removed: 0, requeued: 0 });
+    await expect(run({ name: 'purge-uploads' })).resolves.toEqual({
+      removed: 0,
+      requeued: 0,
+      proxies: 0,
+    });
     pendingUploads.mockRejectedValueOnce(new Error('Purge failed'));
     await expect(run({ name: 'purge-uploads' })).rejects.toThrow('Purge failed');
     vi.mocked(clearExpiredGuestNames).mockResolvedValueOnce(undefined);
