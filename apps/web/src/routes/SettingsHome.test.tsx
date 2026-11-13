@@ -38,7 +38,6 @@ vi.mock('../lib/api.ts', () => ({
     ),
     patch: vi.fn(),
   },
-  authApi: { signOut: vi.fn(async () => {}) },
 }));
 
 const host = document.createElement('div');
