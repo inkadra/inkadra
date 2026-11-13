@@ -10,7 +10,7 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 vi.mock('../lib/session.tsx', () => ({
   useSession: () => ({
     user: { name: 'Member', email: 'member@example.com' },
-    instance: { name: 'Inkadra' },
+    instance: { name: 'Inkadra', publicUrl: window.location.origin, auth: { emailPassword: true, oidc: [] } },
   }),
 }));
 vi.mock('../lib/api.ts', async (original) => ({
@@ -46,8 +46,9 @@ it('reauthenticates an old session and preserves the complete app authorization 
   );
   expect(allow).toBeDefined();
   await act(async () => allow?.click());
-  expect(authApi.signOut).toHaveBeenCalledOnce();
-  expect(assign).toHaveBeenCalledWith(`/login?next=${encodeURIComponent(path)}`);
+  expect(authApi.signOut).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain('auth.signIn');
+  expect(assign).not.toHaveBeenCalled();
   expect(host.textContent).toContain('auth.errors.reauthRequired');
 });
 
