@@ -732,7 +732,8 @@ button.fcard__play:focus-visible {
 .fcard__rung.is-done .fcard__bar i {
   background: #7ad689;
 }
-.card__duration--top {
+/* Doubled class: the base .card__duration comes later in this file and sets bottom. */
+.card__duration.card__duration--top {
   top: 6px;
   bottom: auto;
 }
