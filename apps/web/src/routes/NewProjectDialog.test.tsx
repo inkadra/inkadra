@@ -44,7 +44,8 @@ beforeEach(async () => {
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => root.render(<ProjectSetupForm onClose={close} onCreated={created} onDirtyChange={dirty} />),
+  await act(async () =>
+    root.render(<ProjectSetupForm onClose={close} onCreated={created} onDirtyChange={dirty} />),
   );
 });
 afterEach(() => {
