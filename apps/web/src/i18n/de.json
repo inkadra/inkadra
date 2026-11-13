@@ -5683,7 +5683,7 @@
           },
           "2": {
             "title": "Wie es läuft",
-            "text": "Speicherplatz, Sicherung und Tempo in klaren Worten; unter Erweitert die Verläufe, alle paar Sekunden aktualisiert."
+            "text": "Speicherplatz, Sicherung und Tempo in klaren Worten; unter Erweitert die Verläufe, alle paar Sekunden aktualisiert. The CPU chart includes GPU use when hardware video encoding and readings are available."
           },
           "3": {
             "title": "Probleme",

@@ -5047,6 +5047,15 @@
             ],
             "description": "Percent of the cores Inkadra may use."
           },
+          "gpu": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percent of the busiest GPU engine used by Inkadra containers; absent without DRM fdinfo."
+          },
           "memory": {
             "type": [
               "integer",
@@ -5131,6 +5140,15 @@
       "ServerNow": {
         "type": "object",
         "properties": {
+          "gpu": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percent of the busiest GPU engine used by Inkadra containers; absent without DRM fdinfo."
+          },
           "cpu": {
             "type": "object",
             "properties": {
@@ -5820,6 +5838,15 @@
           "now": {
             "type": "object",
             "properties": {
+              "gpu": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Percent of the busiest GPU engine used by Inkadra containers; absent without DRM fdinfo."
+              },
               "cpu": {
                 "type": "object",
                 "properties": {

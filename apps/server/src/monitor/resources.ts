@@ -108,7 +108,6 @@ export async function readContainer(): Promise<ContainerReading> {
   };
 }
 
-
 export interface DrmClient {
   id: string;
   device: string;
@@ -118,10 +117,12 @@ export type GpuReading = Map<string, DrmClient>;
 
 /** DRM's common fdinfo keys; a client can be shared by several fds and processes. */
 export function parseDrmFdinfo(text: string): DrmClient | null {
-  const fields = new Map(text.split('\n').map((line) => {
-    const colon = line.indexOf(':');
-    return [line.slice(0, colon), line.slice(colon + 1).trim()];
-  }));
+  const fields = new Map(
+    text.split('\n').map((line) => {
+      const colon = line.indexOf(':');
+      return [line.slice(0, colon), line.slice(colon + 1).trim()];
+    }),
+  );
   const driver = fields.get('drm-driver');
   const id = fields.get('drm-client-id');
   if (!driver || !id || !/^\d+$/.test(id)) return null;
@@ -167,7 +168,11 @@ export async function readGpu(proc = '/proc'): Promise<GpuReading | null> {
 }
 
 /** The busiest engine, summing only clients that survive both readings. */
-export function gpuPercent(before: GpuReading | null | undefined, after: GpuReading | null | undefined, ms: number): number | null {
+export function gpuPercent(
+  before: GpuReading | null | undefined,
+  after: GpuReading | null | undefined,
+  ms: number,
+): number | null {
   if (!before || !after || ms <= 0) return null;
   const engines = new Map<string, number>();
   for (const [id, client] of after) {

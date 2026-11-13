@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, rename } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import IORedis from 'ioredis';
@@ -7,13 +7,13 @@ import { beatStatus, repeating } from './health.ts';
 import { jobProblem, technicalText } from './problems.ts';
 import {
   gpuPercent,
-  parseDrmFdinfo,
-  readGpu,
   parseCpuMax,
   parseCpuStat,
+  parseDrmFdinfo,
   parseInactiveFile,
   parseMemoryMax,
   parseNetDev,
+  readGpu,
 } from './resources.ts';
 import { average, Bucket, LatencyRecorder, pointFrom, SAMPLE_MS } from './sampler.ts';
 import { capacity, combine, imageFlavour, liveNow, RANGES, serverLive } from './status.ts';
@@ -468,7 +468,6 @@ describe('image flavour', () => {
   });
 });
 
-
 describe('DRM GPU readings', () => {
   const i915 = (id: number, busy: number, device = '0000:00:02.0') => `pos: 0
 flags: 0100002
@@ -479,16 +478,25 @@ drm-engine-render: 0 ns
 drm-engine-video: ${busy} ns
 drm-engine-capacity-video: 2
 `;
-  const reading = (...texts: string[]) => new Map(texts.map((text) => {
-    const client = parseDrmFdinfo(text);
-    if (!client) throw new Error('Invalid fixture');
-    return [`${client.device}/${client.id}`, client];
-  }));
+  const reading = (...texts: string[]) =>
+    new Map(
+      texts.map((text) => {
+        const client = parseDrmFdinfo(text);
+        if (!client) throw new Error('Invalid fixture');
+        return [`${client.device}/${client.id}`, client];
+      }),
+    );
   it('parses i915 and amdgpu time counters and rejects non-DRM or malformed counters', () => {
-    expect(parseDrmFdinfo(i915(1, 100))?.engines.video).toEqual({ busy: 100, total: null, capacity: 2 });
+    expect(parseDrmFdinfo(i915(1, 100))?.engines.video).toEqual({
+      busy: 100,
+      total: null,
+      capacity: 2,
+    });
     expect(parseDrmFdinfo(i915(1, 100).replace('i915', 'amdgpu'))).not.toBeNull();
     expect(parseDrmFdinfo('pos: 0\nflags: 0100002')).toBeNull();
-    expect(parseDrmFdinfo('drm-driver: xe\ndrm-client-id: 1\ndrm-cycles-video: invalid')).toBeNull();
+    expect(
+      parseDrmFdinfo('drm-driver: xe\ndrm-client-id: 1\ndrm-cycles-video: invalid'),
+    ).toBeNull();
   });
   it('sums surviving clients per engine, divides capacity, and ignores exited and new clients', () => {
     const before = reading(i915(1, 100e6), i915(2, 800e6));
@@ -497,7 +505,9 @@ drm-engine-capacity-video: 2
     expect(gpuPercent(before, reading(i915(1, 50e6)), 1000)).toBe(0);
     expect(gpuPercent(null, after, 1000)).toBeNull();
     expect(gpuPercent(before, reading(i915(4, 0)), 1000)).toBeNull();
-    expect(gpuPercent(reading(i915(1, 0), i915(2, 0)), reading(i915(1, 400e6), i915(2, 600e6)), 1000)).toBe(50);
+    expect(
+      gpuPercent(reading(i915(1, 0), i915(2, 0)), reading(i915(1, 400e6), i915(2, 600e6)), 1000),
+    ).toBe(50);
   });
   it('uses xe total cycles and capacity rather than wall time', () => {
     const xe = (busy: number, total: number) => `drm-driver: xe
@@ -521,7 +531,18 @@ drm-engine-capacity-vcs: 2`;
     await rename(proc, `${proc}_to_delete`);
   });
   it('preserves worker GPU values and counts each container once, including live values', () => {
-    const base: Point = { t: 1000, c: 0, cc: 4, m: 0, ml: 100, rx: 0, tx: 0, pc: 0, pm: 0, box: 'same-machine' };
+    const base: Point = {
+      t: 1000,
+      c: 0,
+      cc: 4,
+      m: 0,
+      ml: 100,
+      rx: 0,
+      tx: 0,
+      pc: 0,
+      pm: 0,
+      box: 'same-machine',
+    };
     const raw = new Map([
       ['web@a', [base]],
       ['worker@a', [{ ...base, g: 40 }]],
@@ -530,9 +551,41 @@ drm-engine-capacity-vcs: 2`;
     ]);
     expect(combine(raw, 0, 5)[0]?.gpu).toBe(60);
     expect(liveNow(raw, 2000).gpu).toBe(60);
-    const point = pointFrom(2000, 1000,
-      { container: { cpuUsec: 0, cores: 4, memory: 0, memoryLimit: 100, rx: 0, tx: 0, machine: null, hostCores: false, hostMemory: false, gpu: reading(i915(1, 0)) }, cpu: { user: 0, system: 0 } },
-      { container: { cpuUsec: 0, cores: 4, memory: 0, memoryLimit: 100, rx: 0, tx: 0, machine: null, hostCores: false, hostMemory: false, gpu: reading(i915(1, 800e6)) }, cpu: { user: 0, system: 0 }, rss: 0 });
+    const point = pointFrom(
+      2000,
+      1000,
+      {
+        container: {
+          cpuUsec: 0,
+          cores: 4,
+          memory: 0,
+          memoryLimit: 100,
+          rx: 0,
+          tx: 0,
+          machine: null,
+          hostCores: false,
+          hostMemory: false,
+          gpu: reading(i915(1, 0)),
+        },
+        cpu: { user: 0, system: 0 },
+      },
+      {
+        container: {
+          cpuUsec: 0,
+          cores: 4,
+          memory: 0,
+          memoryLimit: 100,
+          rx: 0,
+          tx: 0,
+          machine: null,
+          hostCores: false,
+          hostMemory: false,
+          gpu: reading(i915(1, 800e6)),
+        },
+        cpu: { user: 0, system: 0 },
+        rss: 0,
+      },
+    );
     expect(point.g).toBe(40);
   });
 });

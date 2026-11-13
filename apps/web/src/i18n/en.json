@@ -5683,7 +5683,7 @@
           },
           "2": {
             "title": "How it is doing",
-            "text": "Space, backup and speed in plain words; in Advanced the curves, updated every few seconds."
+            "text": "Space, backup and speed in plain words; in Advanced the curves, updated every few seconds. The CPU chart includes GPU use when hardware video encoding and readings are available."
           },
           "3": {
             "title": "Problems",

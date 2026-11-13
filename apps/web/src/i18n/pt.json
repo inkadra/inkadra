@@ -5683,7 +5683,7 @@
           },
           "2": {
             "title": "Como está",
-            "text": "Espaço, cópia de segurança e velocidade em palavras simples; em Avançada as curvas, atualizadas a cada poucos segundos."
+            "text": "Espaço, cópia de segurança e velocidade em palavras simples; em Avançada as curvas, atualizadas a cada poucos segundos. The CPU chart includes GPU use when hardware video encoding and readings are available."
           },
           "3": {
             "title": "Os problemas",

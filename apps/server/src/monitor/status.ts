@@ -69,11 +69,14 @@ export const RANGES: Record<ServerRange, { tier: Tier; window: number; step: num
 function addContainer(hosts: Map<string, Point>, process: string, point: Point) {
   const host = hostOf(process);
   const old = hosts.get(host);
-  hosts.set(host, old ? { ...old, g: old.g == null ? point.g ?? null : Math.max(old.g, point.g ?? 0) } : point);
+  hosts.set(
+    host,
+    old ? { ...old, g: old.g == null ? (point.g ?? null) : Math.max(old.g, point.g ?? 0) } : point,
+  );
 }
 
 const gpuOf = (containers: Point[]) => {
-  const values = containers.flatMap((p) => typeof p.g === 'number' ? [p.g] : []);
+  const values = containers.flatMap((p) => (typeof p.g === 'number' ? [p.g] : []));
   return values.length ? Math.min(100, sum(values)) : null;
 };
 
@@ -149,8 +152,7 @@ export function combine(
         if (p) processes.set(process, p);
       }
       const hosts = new Map<string, Point>();
-      for (const [process, p] of processes)
-        addContainer(hosts, process, p);
+      for (const [process, p] of processes) addContainer(hosts, process, p);
       const containers = [...hosts.values()];
       const { cores } = capacity(containers);
       const known = (pick: (p: Point) => number | null) => {
@@ -539,8 +541,7 @@ export function liveNow(raw: Map<string, Point[]>, now: number): ServerLive['now
   const hosts = new Map<string, Point>();
   for (const [process, list] of raw) {
     const last = list.at(-1);
-    if (last && now - last.t < 60_000)
-      addContainer(hosts, process, last);
+    if (last && now - last.t < 60_000) addContainer(hosts, process, last);
   }
   const containers = [...hosts.values()];
   const room = capacity(containers);
