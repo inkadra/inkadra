@@ -53,12 +53,16 @@ export async function readVideoSettings(
   const [row] = await db.select().from(instanceSetting).where(eq(instanceSetting.key, KEY));
   const stored = Stored.safeParse(row?.value ?? {});
   const value = stored.success ? stored.data : {};
+  // Live sessions at once by default from the spike on an Intel N100: four 1080p sessions run
+  // at 1.33× real time, six at 0.88×; from 4K HEVC four at 0.87×. Three with a GPU, one without.
+  const saved = value.live?.maxSessions === undefined ? await readVideoEncoder(db) : null;
+  const defaultSessions = saved && saved.backend !== 'software' ? 3 : 1;
   const settings: VideoSettings = {
     ...DEFAULT_VIDEO_SETTINGS,
     ...(value.quality ? { quality: value.quality } : {}),
     ...(value.playable ? { playable: value.playable } : {}),
     rungs: { ...DEFAULT_VIDEO_SETTINGS.rungs, ...value.rungs },
-    live: { ...DEFAULT_VIDEO_SETTINGS.live, ...value.live },
+    live: { ...DEFAULT_VIDEO_SETTINGS.live, maxSessions: defaultSessions, ...value.live },
   };
   if (env.VIDEO_QUALITY) settings.quality = env.VIDEO_QUALITY;
   if (env.VIDEO_RENDITIONS) settings.rungs = envRungs(env.VIDEO_RENDITIONS);
@@ -73,6 +77,21 @@ export async function readVideoSettings(
       rungs: env.VIDEO_RENDITIONS !== undefined,
       live: env.VIDEO_LIVE !== undefined,
     },
+  };
+}
+
+/** The settings of the Video page through a ten-second cache: every playlist reads them. */
+export function cachedVideoSettings(db: Pick<Database, 'select'>, env: VideoEnv) {
+  let kept: { at: number; value: Promise<VideoSettings> } | null = null;
+  return () => {
+    if (!kept || Date.now() - kept.at > 10_000) {
+      const value = readVideoSettings(db, env).then((r) => r.settings);
+      kept = { at: Date.now(), value };
+      value.catch(() => {
+        kept = null;
+      });
+    }
+    return kept.value;
   };
 }
 

@@ -250,6 +250,15 @@ export async function processAsset(
           videoCodec: info?.videoCodec ?? null,
           audioCodec: info?.audioCodec ?? null,
           frameRate: info?.frameRate ?? null,
+          mediaInfo: info?.videoCodec
+            ? {
+                hdr: info.hdr ?? null,
+                bits: info.bits ?? 8,
+                pixelFormat: info.pixelFormat,
+                interlaced: info.interlaced ?? false,
+                rotated: info.rotated ?? false,
+              }
+            : null,
           proxyStatus,
           proxyProgress: proxyStatus === 'ready' ? 100 : null,
           palette: result.palette,

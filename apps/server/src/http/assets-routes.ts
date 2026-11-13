@@ -16,6 +16,7 @@ import {
   VariantQuery,
   VideoFrameQuery,
   z,
+  type VideoRung,
 } from '@inkadra/shared';
 import { and, asc, eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -32,7 +33,15 @@ import { animatedVariantKey, readAll, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
-import { proxyRendition, type RenditionRow, renditionsOf, sendHls, toPlayback } from './hls.ts';
+import {
+  offeredLive,
+  proxyRendition,
+  type RenditionRow,
+  renditionsOf,
+  sendHls,
+  toPlayback,
+  type LiveContext,
+} from './hls.ts';
 
 interface Deps {
   db: Database;
@@ -41,6 +50,8 @@ interface Deps {
   /** Scratch space of frame extraction; swept at startup when it is DATA_DIR/tmp. */
   tmpDir?: string;
   config?: Pick<Config, 'DEMO_MODE'>;
+  /** Live playback of video rungs (decision 0128). */
+  live?: LiveContext;
 }
 
 /** Frames one person may ask for in a minute: each can start ffmpeg and download an original. */
@@ -51,7 +62,7 @@ const MAX_RUNNING_FRAMES = 2;
 const FRAME_DEADLINE_MS = 2 * 60_000;
 
 const AssetParams = z.object({ assetId: Id });
-const HlsParams = z.object({ assetId: Id, file: z.string().max(20) });
+const HlsParams = z.object({ assetId: Id, '*': z.string().max(40) });
 const FileQuery = z.object({ download: z.enum(['1']).optional() });
 
 const v1 = (path: string) => `${API_PREFIX}${path}`;
@@ -111,6 +122,7 @@ export function toAsset(
   row: typeof asset.$inferSelect,
   variants: VariantRow[],
   renditions?: RenditionRow[],
+  live: VideoRung[] = [],
 ): Asset {
   return {
     id: row.id,
@@ -130,7 +142,7 @@ export function toAsset(
     proxy: toProxy(row, variants, renditions),
     // Only where the caller read the rungs: other lists leave the field out.
     ...(renditions && row.kind === 'video'
-      ? { playback: toPlayback(renditions, hlsBase(row.id), row.proxyStatus === null) }
+      ? { playback: toPlayback(renditions, hlsBase(row.id), row.proxyStatus === null, live) }
       : {}),
     waveformUrl:
       row.status === 'ready' && variants.some((v) => v.size === 'waveform')
@@ -228,19 +240,22 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       .from(assetVariant)
       .where(eq(assetVariant.assetId, assetId))
       .orderBy(asc(assetVariant.width));
-    return toAsset(row, variants, row.kind === 'video' ? await renditionsOf(db, [row.id]) : []);
+    const renditions = row.kind === 'video' ? await renditionsOf(db, [row.id]) : [];
+    const live =
+      deps.live && row.kind === 'video' ? await offeredLive(deps.live, row, renditions) : null;
+    return toAsset(row, variants, renditions, live?.names ?? []);
   });
 
   // The adaptive playback of a video (decision 0128), for every role that sees its card.
-  app.get(v1('/assets/:assetId/hls/:file'), async (req, reply) => {
+  app.get(v1('/assets/:assetId/hls/*'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
-    const { assetId, file } = HlsParams.parse(req.params);
+    const { assetId, '*': file } = HlsParams.parse(req.params);
     const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
     return sendHls(req, reply, db, storage, row, file, {
       notFound: (r) => sendError(r, 'not_found', 'This video has no such copy.'),
       ranged: (key, size) => sendRanged(req, reply, storage, key, size),
       fileHeaders,
-    });
+    }, deps.live && { context: deps.live, who: { id: `user:${actor.id}`, group: `user:${actor.id}` } });
   });
 
   app.get(v1('/assets/:assetId/frame'), async (req, reply) => {

@@ -113,16 +113,19 @@ export interface PipelineOptions {
   post?: string;
   /** HDR source: `post` tone maps it, from the source's own matrix. */
   hdr?: boolean;
+  /** Seconds the encode starts at, keeping source timestamps (live playback). */
+  from?: number;
 }
 
 /**
  * Keyframes every two seconds, by time (variable frame rates included), so every copy and
  * every rung can be cut and switched at the same instants; `-g` (ten seconds) is only a net.
  */
-export function keyframeArgs(fps: number | null) {
+export function keyframeArgs(fps: number | null, from = 0) {
   return [
     '-force_key_frames',
-    'expr:gte(t,n_forced*2)',
+    // From a seek, timestamps are the source's (-copyts): the grid stays on even seconds.
+    from > 0 ? `expr:gte(t,${from}+n_forced*2)` : 'expr:gte(t,n_forced*2)',
     '-g',
     String(Math.max(1, Math.round((fps ?? 25) * 10))),
   ];
@@ -159,7 +162,7 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
   const lowPower = encoder.lowPower ? ['-low_power', '1'] : [];
   const full = encoder.tuning !== 'basic';
   const device = encoder.device ?? DEFAULT_VAAPI_DEVICE;
-  const common = [...keyframeArgs(opts.fps), '-profile:v', 'high', ...BT709_TAGS];
+  const common = [...keyframeArgs(opts.fps, opts.from), '-profile:v', 'high', ...BT709_TAGS];
   switch (encoder.backend) {
     case 'nvenc':
       return {

@@ -25,6 +25,11 @@ import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.
 import type { VideoEncoder } from './media/hwaccel.ts';
 import { mapUserAgent } from './media/maps.ts';
 import { DEFAULT_VIDEO_QUALITY } from './media/quality.ts';
+import { detectVideoEncoder } from './media/hwaccel.ts';
+import { LiveSessions } from './media/live.ts';
+import { mediaTools } from './media/tools.ts';
+import type { LiveContext } from './http/hls.ts';
+import { cachedVideoSettings } from './video-settings.ts';
 import { sweepJobDirs } from './media/scratch.ts';
 import { checkHealth } from './monitor/health.ts';
 import { LatencyRecorder, startSampler } from './monitor/sampler.ts';
@@ -274,8 +279,39 @@ async function main() {
       notices = queuedNotices.notifier;
       closers.unshift(() => queuedNotices.close());
     }
+    // Live playback of video rungs runs where requests arrive (decision 0128).
+    let live: LiveContext | undefined;
+    if (config.VIDEO_PROXIES) {
+      const { ffmpeg } = await mediaTools();
+      const liveEncoder =
+        encoder ??
+        (ffmpeg
+          ? (
+              await detectVideoEncoder(ffmpeg, {
+                mode: config.VIDEO_PROXY_HWACCEL,
+                vaapiDevice: config.VIDEO_PROXY_VAAPI_DEVICE,
+              }).catch(() => null)
+            )?.encoder
+          : undefined);
+      const sessions = new LiveSessions({
+        storage,
+        tmpDir,
+        ...(liveEncoder ? { encoder: liveEncoder } : {}),
+        proxies: media.proxies,
+        log,
+      });
+      sessions.start();
+      closers.unshift(() => sessions.close());
+      live = {
+        sessions,
+        ...(liveEncoder ? { encoder: liveEncoder } : {}),
+        proxies: media.proxies,
+        settings: cachedVideoSettings(db, config),
+      };
+    }
     const webDist = config.WEB_DIST ?? join(here, '..', 'web');
     const app = await createApp({
+      ...(live ? { live } : {}),
       config: { ...config, WEB_DIST: webDist },
       db,
       auth,

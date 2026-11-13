@@ -20,6 +20,7 @@ import { type Mailer, noMailer } from '../mailer.ts';
 import { recordProblem, requestProblem } from '../monitor/problems.ts';
 import type { LatencyRecorder } from '../monitor/sampler.ts';
 import type { ServerDeps } from '../monitor/status.ts';
+import type { LiveContext } from './hls.ts';
 import { type MonitorStore, memoryStore } from '../monitor/store.ts';
 import { rememberOrigin, requestIsSecure } from '../request-origin.ts';
 import { DocViews } from '../share-links.ts';
@@ -62,6 +63,8 @@ import { registerUploads } from './uploads.ts';
 import { registerVersionRoutes } from './versions-routes.ts';
 
 export interface AppDeps {
+  /** Live playback of video rungs (decision 0128); absent where copies are off. */
+  live?: LiveContext;
   /** Tests only: fake GitHub HTTP server. */
   feedbackGitHubUrl?: string;
   config: Config;

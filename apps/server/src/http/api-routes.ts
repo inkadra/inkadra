@@ -13,6 +13,7 @@ import {
   TRANSFER_CANCEL_CAPABILITY,
   UpdateMe,
   type User,
+  VIDEO_LIVE_CAPABILITY,
   VIDEO_RENDITIONS_CAPABILITY,
 } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
@@ -154,6 +155,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         CLASSIFICATION_DELETE_CAPABILITY,
         IDEMPOTENT_IMPORT_CAPABILITY,
         VIDEO_RENDITIONS_CAPABILITY,
+        VIDEO_LIVE_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });
