@@ -101,9 +101,22 @@ export interface VideoInfo {
   frameRate: number | null;
   /** Pixel format of the video stream (`yuv420p`, `yuv422p10le`…). */
   pixelFormat: string | null;
+  /** HDR transfer: PQ (HDR10, Dolby Vision 8.1) or HLG (iPhone); null for SDR. */
+  hdr?: 'pq' | 'hlg' | null;
+  /** Bits per sample of the picture: 8, 10, 12. */
+  bits?: number;
+  /** Interlaced fields (DV, XDCAM 1080i, AVCHD), to deinterlace. */
+  interlaced?: boolean;
+  /** Turned by its display matrix (phone videos): ffmpeg rotates it on the CPU only. */
+  rotated?: boolean;
+  /** Channels of each audio track, in order (`[1, 1]`: two mono tracks of a camera). */
+  audioChannels?: number[];
 }
 
 interface ProbeStream {
+  color_transfer?: string;
+  field_order?: string;
+  channels?: number;
   codec_type?: string;
   codec_name?: string;
   pix_fmt?: string;
@@ -134,6 +147,7 @@ export function parseProbe(json: unknown): VideoInfo {
   // Cover art of an MP4 or MKV is a "video" stream too: never take it for the picture.
   const video = streams.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
   const audio = streams.find((s) => s.codec_type === 'audio');
+  const audios = streams.filter((s) => s.codec_type === 'audio');
   const seconds = Number(data.format?.duration);
   const ms = Math.round(seconds * 1000);
   const rotation = Math.abs(video?.side_data_list?.find((d) => d.rotation)?.rotation ?? 0);
@@ -149,8 +163,24 @@ export function parseProbe(json: unknown): VideoInfo {
     audioCodec: name(audio?.codec_name),
     frameRate: rate(video?.avg_frame_rate) ?? rate(video?.r_frame_rate),
     pixelFormat: name(video?.pix_fmt),
+    hdr: HDR_TRANSFERS[video?.color_transfer ?? ''] ?? null,
+    bits: bitsOf(video?.pix_fmt),
+    interlaced: ['tt', 'bb', 'tb', 'bt'].includes(video?.field_order ?? ''),
+    rotated: rotation % 360 !== 0,
+    audioChannels: audios.map((a) =>
+      Number.isInteger(a.channels) && (a.channels ?? 0) > 0 ? (a.channels as number) : 0,
+    ),
   };
 }
+
+const HDR_TRANSFERS: Record<string, 'pq' | 'hlg'> = { smpte2084: 'pq', 'arib-std-b67': 'hlg' };
+
+/** Bits per sample from a pixel format name: `yuv420p10le` is 10, `p010le` 10, the rest 8. */
+const bitsOf = (format: string | undefined) => {
+  const m = /p(\d{2})(le|be)?$/.exec(format ?? '') ?? /^p0(\d{2})/.exec(format ?? '');
+  const bits = m ? Number(m[1]) : 8;
+  return bits >= 9 && bits <= 16 ? bits : 8;
+};
 
 export async function probeVideo(
   ffprobe: string,
@@ -165,7 +195,8 @@ export async function probeVideo(
       ...safeInput(container),
       '-show_entries',
       'format=duration:stream=codec_type,codec_name,pix_fmt,width,height,avg_frame_rate,' +
-        'r_frame_rate:stream_disposition=attached_pic:stream_side_data=rotation',
+        'r_frame_rate,color_transfer,field_order,channels:stream_disposition=attached_pic:' +
+        'stream_side_data=rotation',
       '-of',
       'json',
       file,
@@ -249,14 +280,17 @@ export interface ProxySettings {
 export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
   enabled: true,
   maxDurationS: 7200,
-  maxSourceBytes: 20 * 1024 ** 3,
+  maxSourceBytes: 0,
   resolution: 1080,
   quality: DEFAULT_VIDEO_QUALITY,
   bitrate: null,
   threads: 2,
 };
 
-/** Longest a copy may run, whatever the video: 4 hours. */
+/**
+ * Longest a copy may run, whatever the video: 4 hours. A copy that stops progressing is killed
+ * long before, by the stall watchdog (StallWatch).
+ */
 export const PROXY_MAX_RUN_MS = 4 * 60 * 60 * 1000;
 
 /** 8-bit 4:2:0 H.264, which every browser decodes. */
@@ -265,7 +299,7 @@ const plainH264 = (info: VideoInfo) =>
 
 /**
  * Whether a browser plays the original as it is: H.264 (8-bit 4:2:0) with AAC, MP3 or no
- * sound in an MP4, or VP8, VP9 or AV1 with Opus, Vorbis or no sound in a WebM. QuickTime,
+ * sound in an MP4, or VP8 or VP9 with Opus, Vorbis or no sound in a WebM. QuickTime,
  * Matroska with other codecs, AVI, MPEG and MXF are not played reliably by every browser.
  */
 export function webPlayable(container: string, info: VideoInfo): boolean {
@@ -273,7 +307,8 @@ export function webPlayable(container: string, info: VideoInfo): boolean {
     return plainH264(info) && [null, 'aac', 'mp3'].includes(info.audioCodec);
   if (container === 'video/webm')
     return (
-      ['vp8', 'vp9', 'av1'].includes(info.videoCodec ?? '') &&
+      // Not AV1: Safari decodes it only on hardware with an AV1 decoder (decision 0128).
+      ['vp8', 'vp9'].includes(info.videoCodec ?? '') &&
       [null, 'opus', 'vorbis'].includes(info.audioCodec)
     );
   return false;
@@ -357,13 +392,60 @@ export function proxyMaxBytes(info: VideoInfo, settings: ProxySettings, sourceBy
   return Math.ceil(capped + margin);
 }
 
-/** Whether `encoder` decodes `info` on the GPU (else the CPU decodes, and it is capped as such). */
+/**
+ * Whether `encoder` decodes `info` on the GPU (else the CPU decodes, and it is capped as such).
+ * Never a rotated source (frames kept on the card skip the rotation without an error) nor an
+ * interlaced one (deinterlaced on the CPU).
+ */
 export function decodesOnGpu(encoder: VideoEncoder, info: VideoInfo) {
   return (
     encoder.backend !== 'software' &&
     !encoder.cpuDecode &&
+    !info.rotated &&
+    !info.interlaced &&
     gpuDecodes(info.videoCodec, info.pixelFormat)
   );
+}
+
+/** HDR (PQ or HLG) to SDR BT.709 with the Hable curve, dithered to 8 bit (decision 0128). */
+export const TONEMAP =
+  'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,' +
+  'zscale=t=bt709:m=bt709:r=tv:dither=error_diffusion,format=yuv420p';
+
+/** CPU filters around the scale: deinterlacing before, tone mapping or dithering after. */
+export function frameFilters(info: VideoInfo): { pre?: string; post?: string; hdr?: boolean } {
+  // 4:2:0 first: zscale finds no path from untagged 4:2:2 (camera log) without a matrix.
+  const post = info.hdr
+    ? `format=yuv420p10le,${TONEMAP}`
+    : (info.bits ?? 8) > 8
+      ? 'format=yuv420p10le,zscale=dither=error_diffusion,format=yuv420p'
+      : undefined;
+  return {
+    ...(info.interlaced ? { pre: 'bwdif=mode=send_frame:deint=interlaced' } : {}),
+    ...(post ? { post } : {}),
+    ...(info.hdr ? { hdr: true } : {}),
+  };
+}
+
+/** The first two audio tracks are mono (camera files): they become one stereo track. */
+export const mergesMono = (info: VideoInfo) =>
+  info.audioChannels?.[0] === 1 && info.audioChannels?.[1] === 1;
+
+/**
+ * Why a finished copy cannot be kept, or null: shorter than the source (up to the duration
+ * limit) by more than a second or 2 %. ffmpeg ends with 0 on a decode error half way through.
+ */
+export function shortCopy(info: VideoInfo, copy: VideoInfo, settings: ProxySettings) {
+  if (!info.durationMs) return null;
+  const expected =
+    settings.maxDurationS > 0
+      ? Math.min(info.durationMs, settings.maxDurationS * 1000)
+      : info.durationMs;
+  const got = copy.durationMs ?? 0;
+  const slack = Math.max(1000, expected * 0.02);
+  return got >= expected - slack
+    ? null
+    : `the copy lasts ${(got / 1000).toFixed(1)} s of ${(expected / 1000).toFixed(1)} s`;
 }
 
 /**
@@ -382,14 +464,19 @@ export function proxyArgs(
   const copyVideo = copiesVideo(info, settings, sourceBytes);
   // An audio file (#327) has no picture: only its sound is copied or encoded, as for videos.
   const soundOnly = !info.videoCodec;
-  const copyAudio = info.audioCodec === 'aac';
+  const merge = mergesMono(info);
+  const copyAudio = info.audioCodec === 'aac' && !merge && (info.audioChannels?.[0] ?? 2) <= 2;
   const pipeline = videoPipeline(encoder, {
     resolution: settings.resolution,
     rate: proxyRate(info, settings),
     quality: settings.quality,
     fps: info.frameRate,
     gpu: decodesOnGpu(encoder, info),
+    ...frameFilters(info),
   });
+  // Timestamps pass through (variable frame rate stays so); slow motion is brought to 60 fps.
+  // ffmpeg refuses the two together.
+  const fps = (info.frameRate ?? 0) > 60 ? ['-fpsmax', '60'] : ['-fps_mode', 'passthrough'];
   return [
     '-nostdin',
     '-v',
@@ -400,7 +487,10 @@ export function proxyArgs(
     '-i',
     input,
     // `V`, not `v`: video streams that are not cover art (attached pictures).
-    ...(soundOnly ? ['-map', '0:a:0', '-vn'] : ['-map', '0:V:0', '-map', '0:a:0?']),
+    ...(merge ? ['-filter_complex', '[0:a:0][0:a:1]amerge=inputs=2[a]'] : []),
+    ...(soundOnly
+      ? ['-map', merge ? '[a]' : '0:a:0', '-vn']
+      : ['-map', '0:V:0', '-map', merge ? '[a]' : '0:a:0?']),
     '-sn',
     '-dn',
     '-map_metadata',
@@ -411,14 +501,13 @@ export function proxyArgs(
       ? []
       : copyVideo
         ? ['-c:v', 'copy']
-        : ['-vf', pipeline.filter, ...pipeline.codec]),
-    ...(copyAudio ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2']),
+        : ['-vf', pipeline.filter, ...pipeline.codec, ...fps]),
+    ...(copyAudio ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '48000']),
     '-threads',
     String(settings.threads),
-    // Whatever the header says, the copy stops at the length and the size it is planned for.
+    // Whatever the header says, the copy stops at the length it is planned for. No `-fs`: a
+    // copy cut at a size would end with 0 and look finished; the kernel's limit kills it instead.
     ...(settings.maxDurationS > 0 ? ['-t', String(settings.maxDurationS)] : []),
-    '-fs',
-    String(proxyMaxBytes(info, settings, sourceBytes)),
     '-movflags',
     '+faststart',
     '-f',
@@ -445,6 +534,33 @@ export function proxyMemory(
 /** ffmpeg ran out of time: another attempt would too. */
 export class ProxyTimeout extends Error {}
 
+/** No progress for this long: ffmpeg is stuck on the file or the device, and is killed. */
+export const STALL_MS = 5 * 60_000;
+
+/**
+ * Watches the `out_time_us` ffmpeg reports: stalled once it has not grown for `stallMs`. The
+ * time before the first frame counts too (a device that never opens).
+ */
+export class StallWatch {
+  private best = -1;
+  private since: number;
+  constructor(
+    private readonly stallMs: number,
+    now: number,
+  ) {
+    this.since = now;
+  }
+  progress(outTimeUs: number, now: number) {
+    if (outTimeUs > this.best) {
+      this.best = outTimeUs;
+      this.since = now;
+    }
+  }
+  stalled(now: number) {
+    return now - this.since >= this.stallMs;
+  }
+}
+
 /**
  * Writes the playable H.264/AAC MP4 of `input` to `output`, calling `onProgress` with the
  * percent done (0–99) as ffmpeg reports it. Runs at a lower priority, with caps on memory and
@@ -464,6 +580,8 @@ export async function makeProxy(
     /** Sniffed type of the source (sniffVideo). */
     container?: string | null;
     onProgress?: (percent: number) => void;
+    /** No progress for this long kills ffmpeg as a failed (retried) attempt. */
+    stallMs?: number;
   },
 ): Promise<void> {
   const encoder = opts.encoder ?? settings.encoder ?? SOFTWARE_ENCODER;
@@ -483,6 +601,7 @@ export async function makeProxy(
     let pending = '';
     let last = -1;
     let timedOut = false;
+    let stalled = false;
     const timer = setTimeout(
       () => {
         timedOut = true;
@@ -490,6 +609,19 @@ export async function makeProxy(
       },
       Math.min(opts.timeoutMs, MAX_INT32),
     );
+    const watch = new StallWatch(opts.stallMs ?? STALL_MS, Date.now());
+    const watchdog = setInterval(
+      () => {
+        if (!watch.stalled(Date.now())) return;
+        stalled = true;
+        child.kill('SIGKILL');
+      },
+      Math.min(15_000, opts.stallMs ?? STALL_MS),
+    );
+    const stop = () => {
+      clearTimeout(timer);
+      clearInterval(watchdog);
+    };
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => {
       pending += chunk;
@@ -497,6 +629,7 @@ export async function makeProxy(
       pending = lines.pop() ?? '';
       for (const line of lines) {
         const m = /^out_time_us=(\d+)/.exec(line);
+        if (m) watch.progress(Number(m[1]), Date.now());
         if (!m || !info.durationMs) continue;
         const percent = Math.min(99, Math.floor(Number(m[1]) / 10 / info.durationMs));
         if (percent > last) {
@@ -510,12 +643,18 @@ export async function makeProxy(
       if (stderr.length < 4000) stderr += chunk;
     });
     child.on('error', (err) => {
-      clearTimeout(timer);
+      stop();
       reject(err);
     });
     child.on('close', (code, signal) => {
-      clearTimeout(timer);
+      stop();
       if (code === 0) resolve();
+      else if (stalled)
+        reject(
+          new Error(
+            `ffmpeg made no progress for ${Math.round((opts.stallMs ?? STALL_MS) / 60_000)} minutes`,
+          ),
+        );
       else if (timedOut)
         reject(new ProxyTimeout(`ffmpeg ran past ${Math.round(opts.timeoutMs / 60_000)} minutes`));
       else
@@ -526,15 +665,6 @@ export async function makeProxy(
         );
     });
   });
-}
-
-/**
- * Time a copy may take: four times its planned length (the duration, else the cap), at least
- * ten minutes, at most four hours.
- */
-export function proxyTimeoutMs(info: VideoInfo, settings: ProxySettings) {
-  const planned = plannedSeconds(info, settings) * 1000 * 4;
-  return Math.min(PROXY_MAX_RUN_MS, MAX_INT32, Math.max(10 * 60_000, planned));
 }
 
 /** Past the last frame of the file ffmpeg succeeds and writes nothing. */

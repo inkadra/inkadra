@@ -10,6 +10,8 @@ export interface Jobs {
    * worker after the poster; missing where nothing makes them.
    */
   makeProxy?(assetId: string): Promise<void>;
+  /** Whether the copy of an asset is waiting or running in the queue (decision 0128). */
+  proxyQueued?(assetId: string): Promise<boolean>;
   /**
    * The pages and grids of an Office document, made by a worker with LibreOffice (decision
    * 0065); missing where nothing makes them.

@@ -97,8 +97,11 @@ const Env = z.object({
   VIDEO_PROXIES: bool('true'),
   /** Longest source, in seconds, that gets a copy; 0 = no limit. */
   VIDEO_PROXY_MAX_DURATION: z.coerce.number().int().min(0).default(7200),
-  /** Largest source that gets a copy: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */
-  VIDEO_PROXY_MAX_SOURCE_SIZE: z.string().default('20GB').transform(parseSize),
+  /**
+   * Largest source that gets a copy: bytes or a size such as `500MB`, `20GB`; 0 = no limit,
+   * the default (decision 0128): the cost of a copy follows the duration, not the bytes.
+   */
+  VIDEO_PROXY_MAX_SOURCE_SIZE: z.string().default('0').transform(parseSize),
   /**
    * Largest shorter side of a copy, in pixels (1080 makes 1920×1080 at most); never upscaled.
    * Unset: 1080 (decision 0128).

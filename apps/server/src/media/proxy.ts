@@ -17,8 +17,9 @@ import {
   ProxyTimeout,
   probeVideo,
   proxyMaxBytes,
+  PROXY_MAX_RUN_MS,
   proxyPlan,
-  proxyTimeoutMs,
+  shortCopy,
   sniffAudio,
   sniffVideo,
 } from './video.ts';
@@ -138,7 +139,7 @@ async function transcode(
   const used = await runAttempts({
     first: encoder,
     retries,
-    totalMs: proxyTimeoutMs(info, settings),
+    totalMs: PROXY_MAX_RUN_MS,
     // The sweep of stale job folders goes by mtime: each attempt marks this one as alive.
     touch: async () => {
       const now = new Date();
@@ -156,8 +157,8 @@ async function transcode(
       written = 0;
       shown = 0;
     },
-    run: (attempt, timeoutMs) =>
-      makeProxy(ffmpeg, source, out, info, settings, {
+    run: async (attempt, timeoutMs) => {
+      await makeProxy(ffmpeg, source, out, info, settings, {
         timeoutMs,
         sourceBytes: row.size,
         container,
@@ -174,7 +175,13 @@ async function transcode(
             .then(() => onProgress?.(percent))
             .catch(() => {});
         },
-      }),
+      });
+      // ffmpeg ends with 0 on a decode error half way through: a short copy is a failure,
+      // tried again by the next attempt, never saved as ready.
+      const made = await probeVideo(ffprobe, out, info.videoCodec ? 'video/mp4' : 'audio/mp4');
+      const short = shortCopy(info, made, settings);
+      if (short) throw new Error(short);
+    },
   });
   await writing;
 
