@@ -283,5 +283,4 @@ means and how to turn it off. The dialog also says where the report is going.
 ## Tell us what you think
 
 Tell us what works and what doesn't, in [Discussions](https://github.com/inkadra/inkadra/discussions)
-or with **Report a problem**. If Inkadra is useful to you, a donation on
-[Ko-fi](https://ko-fi.com/teovader) helps keep it going.
+or with **Report a problem**.
