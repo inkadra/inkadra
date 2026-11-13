@@ -250,12 +250,12 @@ export class LiveSessions {
   }
 
   /** Starts the sweep and the back-pressure of running encodes (every two seconds). */
-  start() {
+  async start() {
     if (this.timer) return;
+    // Folders of a previous run of the process: nothing plays from them any more.
+    await rm(join(this.deps.tmpDir, 'live'), { recursive: true, force: true });
     this.timer = setInterval(() => void this.tick(), 2000);
     this.timer.unref?.();
-    // Folders of a previous run of the process: nothing plays from them any more.
-    void rm(join(this.deps.tmpDir, 'live'), { recursive: true, force: true });
   }
 
   async close() {
@@ -331,6 +331,12 @@ export class LiveSessions {
     if (!inWindow) {
       session.attempt = 0;
       await this.run(session, row, rung, n);
+    }
+    // ffmpeg creates the init segment empty and fills it with the first segment: it is whole
+    // once that one is there.
+    if (file === 'init') {
+      const first = await this.wait(session, `seg-${session.start}.m4s`);
+      return first ? join(session.dir, 'init.mp4') : null;
     }
     return this.wait(session, name);
   }

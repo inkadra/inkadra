@@ -300,7 +300,7 @@ async function main() {
         proxies: media.proxies,
         log,
       });
-      sessions.start();
+      await sessions.start();
       closers.unshift(() => sessions.close());
       live = {
         sessions,
