@@ -322,3 +322,16 @@ it('keeps pointer focus inside the calendar before activating its controls', asy
   expect(host.querySelector('.ink-date__heading')?.textContent).toMatch(/December|dicembre/i);
   expect(host.querySelector('.ink-date__panel')).not.toBeNull();
 });
+
+it('uses the calendar when the browser falls back from date to an unvalidated text input', async () => {
+  const type = vi.spyOn(HTMLInputElement.prototype, 'type', 'get').mockReturnValue('text');
+  try {
+    await act(async () => root.render(<DateField label="Due" value="" onChange={() => {}} />));
+    const input = host.querySelector('input') as HTMLInputElement;
+    expect(input.readOnly).toBe(true);
+    await act(async () => input.click());
+    expect(host.querySelector('.ink-date__panel')).not.toBeNull();
+  } finally {
+    type.mockRestore();
+  }
+});

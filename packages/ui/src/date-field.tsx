@@ -84,6 +84,11 @@ export function DateField({
   const [coarse] = useState(
     () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches,
   );
+  const [nativeDate] = useState(() => {
+    const probe = document.createElement('input');
+    probe.type = 'date';
+    return probe.type === 'date';
+  });
   const lang = document.documentElement.lang || undefined;
   const min = props.min === undefined ? undefined : String(props.min);
   const max = props.max === undefined ? undefined : String(props.max);
@@ -302,7 +307,8 @@ export function DateField({
         aria-label={label}
         aria-haspopup="dialog"
         aria-controls={mounted ? `${id}-calendar` : undefined}
-        readOnly={props.readOnly || coarse}
+        // shortcut: engines without date inputs use the calendar; typing needs a text parser.
+        readOnly={props.readOnly || coarse || !nativeDate}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onClick={(e) => {
