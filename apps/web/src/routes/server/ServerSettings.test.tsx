@@ -449,8 +449,8 @@ it('merges the live values: newer points replace those of the same time, the win
   expect(mergeLive(before, { ...live, checkedAt: t(-5) })).toBe(before);
 });
 
-it.each(['vaapi', 'software', null] as const)(
-  'shows GPU only with hardware encoding and a reading (%s)',
+it.each(['vaapi', 'qsv', 'nvenc', 'software', null] as const)(
+  'shows GPU only with Intel or AMD hardware encoding and a reading (%s)',
   async (backend) => {
     const s = status();
     vi.mocked(api.get).mockResolvedValue({
@@ -461,13 +461,14 @@ it.each(['vaapi', 'software', null] as const)(
     });
     await act(async () => updatePreferences({ serverView: 'advanced' }));
     await render();
-    expect(host.textContent?.includes('server.advanced.gpu 40 %')).toBe(backend === 'vaapi');
+    const shown = backend === 'vaapi' || backend === 'qsv';
+    expect(host.textContent?.includes('server.advanced.gpu 40 %')).toBe(shown);
     expect(host.querySelectorAll('.server-cell--trend')).toHaveLength(4);
     expect(
       host
         .querySelectorAll('.server-cell--trend')[0]
         ?.querySelectorAll('.server-chart__line--memory').length,
-    ).toBe(backend === 'vaapi' ? 1 : 0);
+    ).toBe(shown ? 1 : 0);
   },
 );
 

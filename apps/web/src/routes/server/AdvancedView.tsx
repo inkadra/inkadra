@@ -104,7 +104,10 @@ function Trend({ status, actions }: { status: ServerStatus; actions: ServerActio
   const { cpu, memory, network, responses } = status.now;
   const cpuNow = cpu.cores ? (cpu.used / cpu.cores) * 100 : null;
   const gpuNow =
-    status.encoder && status.encoder.backend !== 'software' ? (status.now.gpu ?? null) : null;
+    // NVENC has no DRM fdinfo: its reading would be a flat 0 %, so only Intel and AMD show it.
+    status.encoder?.backend === 'qsv' || status.encoder?.backend === 'vaapi'
+      ? (status.now.gpu ?? null)
+      : null;
   const gpuValues = h.map((s) => s.gpu ?? null);
   const cpuValues = h.map((s) => s.cpu);
   const memValues = h.map((s) => s.memory);

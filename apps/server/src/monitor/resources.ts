@@ -152,8 +152,11 @@ export function parseDrmFdinfo(text: string): DrmClient | null {
 
 /** Only processes visible in this PID namespace, without additional privileges. */
 export async function readGpu(proc = '/proc'): Promise<GpuReading | null> {
+  const pids = await readdir(proc).catch(() => null);
+  if (!pids) return null;
+  // No process holding the GPU open is a reading too: an idle GPU, 0 %.
   const clients: GpuReading = new Map();
-  for (const pid of await readdir(proc).catch(() => [])) {
+  for (const pid of pids) {
     if (!/^\d+$/.test(pid)) continue;
     const dir = `${proc}/${pid}/fdinfo`;
     for (const fd of await readdir(dir).catch(() => [])) {
@@ -164,7 +167,7 @@ export async function readGpu(proc = '/proc'): Promise<GpuReading | null> {
   }
   // shortcut: proprietary NVIDIA drivers usually have no DRM fdinfo; add a driver API only
   // when container-scoped counters are available without extra privileges (never nvidia-smi).
-  return clients.size ? clients : null;
+  return clients;
 }
 
 /** The busiest engine, summing only clients that survive both readings. */
@@ -190,5 +193,5 @@ export function gpuPercent(
       engines.set(key, (engines.get(key) ?? 0) + delta / elapsed / counter.capacity);
     }
   }
-  return engines.size ? Math.min(100, Math.max(...engines.values()) * 100) : null;
+  return engines.size ? Math.min(100, Math.max(...engines.values()) * 100) : 0;
 }

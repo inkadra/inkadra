@@ -504,7 +504,9 @@ drm-engine-capacity-video: 2
     expect(gpuPercent(before, after, 1000)).toBe(40);
     expect(gpuPercent(before, reading(i915(1, 50e6)), 1000)).toBe(0);
     expect(gpuPercent(null, after, 1000)).toBeNull();
-    expect(gpuPercent(before, reading(i915(4, 0)), 1000)).toBeNull();
+    // Only a new client, or none at all: the GPU was idle, not unknown.
+    expect(gpuPercent(before, reading(i915(4, 0)), 1000)).toBe(0);
+    expect(gpuPercent(new Map(), new Map(), 5000)).toBe(0);
     expect(
       gpuPercent(reading(i915(1, 0), i915(2, 0)), reading(i915(1, 400e6), i915(2, 600e6)), 1000),
     ).toBe(50);
@@ -528,6 +530,8 @@ drm-engine-capacity-vcs: 2`;
     await writeFile(join(proc, '456/fdinfo/3'), i915(1, 200, '0000:03:00.0'));
     expect((await readGpu(proc))?.size).toBe(2);
     expect(await readGpu(join(proc, 'missing'))).toBeNull();
+    const idle = await mkdtemp(join(tmpdir(), 'inkadra-gpu-idle-'));
+    expect((await readGpu(idle))?.size).toBe(0);
     await rename(proc, `${proc}_to_delete`);
   });
   it('preserves worker GPU values and counts each container once, including live values', () => {
