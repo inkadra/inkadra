@@ -196,7 +196,9 @@ it('offers Delete only on values nothing uses, after a confirmation', async () =
   expect(rows[3]?.textContent).toContain('catalogs.archive');
   expect(rows[2]?.textContent).not.toContain('catalogs.uses');
 
-  await act(async () => rows[2]?.querySelector<HTMLButtonElement>('button.catalogs__delete')?.click());
+  await act(async () =>
+    rows[2]?.querySelector<HTMLButtonElement>('button.catalogs__delete')?.click(),
+  );
   expect(host.querySelector('dialog')?.textContent).toContain('catalogs.deleteBody');
   expect(host.querySelectorAll('.catalogs__name')).toHaveLength(5);
   await act(async () => button('catalogs.delete')?.click());
