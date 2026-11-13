@@ -1,6 +1,6 @@
 # Contributing to Inkadra
 
-Thanks for helping. This page is the set of conventions every change follows, whoever writes it.
+The conventions every change follows, whoever writes it.
 
 ## Ground rules
 
@@ -13,11 +13,42 @@ Thanks for helping. This page is the set of conventions every change follows, wh
   and needs a maintainer's review before anything is built on it.
 - **Explain non-obvious choices** in `docs/decisions/` (see below), not in pull request threads
   that nobody will find later.
-- Keep the repository about the product: no personal notes, editor or tool-specific files.
+- Keep the repository about the product: no personal notes, working documents (checklists,
+  one-off test protocols, dated audits), pull-request screenshots, or editor and tool-specific files.
 
 ## Setup
 
-See the _Develop_ section of the [README](README.md). Useful commands:
+You need Node 26 or newer, pnpm 12 (`npm i -g pnpm@12.17.0`), PostgreSQL 16 or newer
+(`compose.yaml` runs 18) and Valkey or Redis.
+
+```sh
+pnpm install
+cat > apps/server/.env <<'ENV'
+PUBLIC_URL=http://localhost:5173
+DATABASE_URL=postgres://inkadra:inkadra@localhost:5432/inkadra
+REDIS_URL=redis://localhost:6379
+AUTH_SECRET=change-me-to-32-random-characters-or-more
+ENV
+pnpm dev     # API on :3000, web app on http://localhost:5173
+```
+
+| Path                   | What it is                                                              |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `apps/web`             | Web app (React, Vite)                                                   |
+| `apps/server`          | API, auth, collaboration and background jobs: one image, several roles  |
+| `apps/clipper`         | Browser extension for Chrome, Edge, Brave and Arc                       |
+| `relay`                | Worker that passes in-app reports to the developers' private repository |
+| `packages/shared`      | API contract (Zod schemas, OpenAPI) and domain rules shared by clients  |
+| `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)             |
+| `packages/canvas-core` | Canvas math and board rules shared by web and mobile                    |
+| `packages/ui`          | Design tokens, card measures and interface components                   |
+| `packages/print`       | Printed pages as drawing operations: model, text, measure, layout, PDF  |
+| `e2e`                  | End-to-end tests (Playwright)                                           |
+
+The Android app is developed in a separate repository and is not released yet; it uses the
+packages above and the server's `/api/v1`.
+
+Useful commands:
 
 | Command                     | What it does                                           |
 | --------------------------- | ------------------------------------------------------ |
@@ -26,6 +57,7 @@ See the _Develop_ section of the [README](README.md). Useful commands:
 | `pnpm typecheck`            | TypeScript in every package                            |
 | `pnpm test`                 | Unit tests; server tests also need `DATABASE_URL`      |
 | `pnpm test:e2e`             | Playwright against the built app (`pnpm build` first)  |
+| `pnpm test:perf`            | Load tests (Playwright)                                |
 | `pnpm openapi`              | Regenerate `packages/shared/openapi.json`              |
 | `pnpm mock`                 | Mock API server from the OpenAPI document, on :4010    |
 | `pnpm db:generate`          | Generate a migration after editing the database schema |
@@ -76,19 +108,19 @@ the change, may lower `min`, and the entry names that test by its title, which s
   The screenshots of the README and the docs come from a sample project: rebuild them with
   `SHOTS_BASE_URL=… pnpm --filter @inkadra/e2e screenshots` against an empty instance on the
   standard image, with ffmpeg on your PATH, and look at each one before committing it.
-- Every pull request needs green CI (lint, types, tests, end-to-end, secret scan, licences,
-  image build) and an approving review from someone who did not write it.
+- Every pull request needs green CI: lint, types and unit tests, end-to-end tests, the secret
+  scan, the workflow lint and the image build.
 - Sign off every commit (`git commit -s`) to certify the
-  [Developer Certificate of Origin](https://developercertificate.org). Commits without a
-  `Signed-off-by` line cannot be merged.
-- Licences differ by folder: `apps/server` and `apps/web` are AGPL-3.0, everything in
-  `packages/` is MPL-2.0 and starts each file with `SPDX-License-Identifier: MPL-2.0`. A
+  [Developer Certificate of Origin](https://developercertificate.org).
+- Licences differ by folder: `apps/server`, `apps/web` and the rest of the repository are
+  AGPL-3.0; `apps/clipper` and everything in `packages/` are MPL-2.0, and each of their files
+  starts with `SPDX-License-Identifier: MPL-2.0`. A
   package never imports from an app ([decision 0008](docs/decisions/0008-licences-per-component.md)).
 - Logic that two clients must apply alike (the same input gives the same result) lives once in a
   package and the web app imports it from there; it is never copied from an app into another
   client ([decision 0116](docs/decisions/0116-shared-client-logic-in-mpl-packages.md)).
 - Commits: imperative mood, short subject (`Add project list endpoint`), body when the why is
-  not obvious. Maintainers squash or merge; history on `main` stays linear.
+  not obvious.
 
 ## Decisions
 
@@ -98,11 +130,15 @@ Number them in order and never rewrite an accepted one; supersede it with a new 
 ## Releases
 
 Versions follow semver. A maintainer runs the **Release** workflow on `main` with the version:
-it tags `vX.Y.Z`, publishes the GitHub release with generated notes and starts CI on the tag.
+it tags `vX.Y.Z`, publishes the GitHub release and starts CI on the tag. The release notes are
+`docs/releases/X.Y.Z.<lang>.md`: the English file is the body of the release, and every language
+is attached for the Updates page of each instance
+([decision 0080](docs/decisions/0080-update-check.md)); without them GitHub generates the notes.
 CI runs in full, publishes `ghcr.io/inkadra/inkadra:X.Y.Z`, `X.Y` and `latest`, each also with the
-suffix `-office`, for amd64 and arm64 with build provenance and an SBOM, and attaches the deployment files to the release.
-`X.Y.Z-rc.N` makes a pre-release, which moves neither `latest` nor `X.Y`. Every push to `main`
-publishes the `edge` tag. See [decision 0010](docs/decisions/0010-images-and-releases.md).
+suffix `-office`, for amd64 and arm64 with build provenance and an SBOM, and attaches the
+deployment files to the release. `X.Y.Z-rc.N` makes a pre-release, which moves neither `latest`
+nor `X.Y`. Every push to `main` publishes the `edge` tag. See
+[decision 0010](docs/decisions/0010-images-and-releases.md).
 
 ## CI
 
