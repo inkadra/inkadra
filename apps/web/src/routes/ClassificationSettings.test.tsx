@@ -189,14 +189,14 @@ it('offers Delete only on values nothing uses, after a confirmation', async () =
   await act(async () => toggle('catalogs.projectTypes'));
   await act(async () => toggle('catalogs.tags'));
   const rows = [...host.querySelectorAll('.catalogs__row')];
-  const deletes = rows.map((r) => !!r.querySelector('.catalogs__delete'));
+  const deletes = rows.map((r) => !!r.querySelector('button.catalogs__delete'));
   expect(deletes).toEqual([false, false, true, false, true]);
   // A used value keeps Archive and says how often it is used.
   expect(rows[3]?.textContent).toContain('catalogs.uses');
   expect(rows[3]?.textContent).toContain('catalogs.archive');
   expect(rows[2]?.textContent).not.toContain('catalogs.uses');
 
-  await act(async () => rows[2]?.querySelector<HTMLButtonElement>('.catalogs__delete')?.click());
+  await act(async () => rows[2]?.querySelector<HTMLButtonElement>('button.catalogs__delete')?.click());
   expect(host.querySelector('dialog')?.textContent).toContain('catalogs.deleteBody');
   expect(host.querySelectorAll('.catalogs__name')).toHaveLength(5);
   await act(async () => button('catalogs.delete')?.click());

@@ -181,6 +181,9 @@
 .catalogs__delete {
   flex: none;
 }
+span.catalogs__delete {
+  width: 30px;
+}
 .catalogs__add {
   align-self: flex-start;
 }

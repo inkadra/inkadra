@@ -180,6 +180,10 @@ export function ClassificationSettings() {
                     const bodyId = `catalog-${key}`;
                     const restored = isShot(key) ? restoredDefaults(key, options) : null;
                     const emptyText = isShot(key) ? t('catalogs.emptyShots') : t('catalogs.empty');
+                    const deletable = (o: ClassificationOption) =>
+                      isNew(key, o) || canDeleteClassification(o);
+                    // The buttons line up: every row keeps the place of Delete once one has it.
+                    const deleteSlot = options.some(deletable);
                     return (
                       <section key={key} className="catalogs__card">
                         <h3 className="catalogs__head">
@@ -342,8 +346,7 @@ export function ClassificationSettings() {
                                               : 'catalogs.archive',
                                           )}
                                         </Button>
-                                        {(isNew(key, option) ||
-                                          canDeleteClassification(option)) && (
+                                        {deletable(option) ? (
                                           <IconButton
                                             icon="trash"
                                             className="catalogs__delete"
@@ -355,6 +358,10 @@ export function ClassificationSettings() {
                                                 : setRemoving({ key, option })
                                             }
                                           />
+                                        ) : (
+                                          deleteSlot && (
+                                            <span className="catalogs__delete" aria-hidden="true" />
+                                          )
                                         )}
                                       </div>
                                       {problem && (
