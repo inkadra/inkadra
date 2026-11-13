@@ -444,3 +444,30 @@ it('merges the live values: newer points replace those of the same time, the win
   // Nor does one older than the full reading.
   expect(mergeLive(before, { ...live, checkedAt: t(-5) })).toBe(before);
 });
+
+it('shows the thumbnail of a file being converted, and a placeholder without one', async () => {
+  const s = status();
+  const hidden = s.transcodes.active[0] as ServerStatus['transcodes']['active'][number];
+  const url = '/api/v1/assets/0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11/variants/256';
+  vi.mocked(api.get).mockResolvedValue({
+    ...s,
+    transcodes: {
+      ...s.transcodes,
+      active: [
+        hidden,
+        {
+          ...hidden,
+          assetId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11',
+          name: 'Spot.mov',
+          thumbnailUrl: url,
+        },
+      ],
+    },
+  });
+  await act(async () => updatePreferences({ serverView: 'advanced' }));
+  await render();
+  const thumbs = [...host.querySelectorAll('.server-thumb')];
+  expect(thumbs).toHaveLength(2);
+  expect(thumbs[0]?.querySelector('img')).toBeNull();
+  expect(thumbs[1]?.querySelector('img')?.getAttribute('src')).toBe(url);
+});
