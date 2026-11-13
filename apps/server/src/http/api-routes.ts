@@ -7,8 +7,8 @@ import {
   type Instance,
   type InstanceVersion,
   PLAN_SHEET_PDF_CAPABILITY,
-  TRANSFER_CANCEL_CAPABILITY,
   SERVER_LIVE_CAPABILITY,
+  TRANSFER_CANCEL_CAPABILITY,
   UpdateMe,
   type User,
 } from '@inkadra/shared';
