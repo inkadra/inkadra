@@ -10,6 +10,7 @@ import {
   type VideoEncoder,
   videoPipeline,
 } from './hwaccel.ts';
+import { rungRate } from './quality.ts';
 import { DEFAULT_PROXY_SETTINGS, proxyArgs, proxyMemory, type VideoInfo } from './video.ts';
 
 const ENCODERS = `Encoders:
@@ -23,9 +24,12 @@ const ENCODERS = `Encoders:
  * Detection with every probe mocked: `works` lists the backends whose test encode passes,
  * `gpuFails` those whose GPU-decode test then fails.
  */
-function io(over: Partial<DetectIo> & { works?: string[]; gpuFails?: string[] } = {}) {
+function io(
+  over: Partial<DetectIo> & { works?: string[]; gpuFails?: string[]; basicOnly?: string[] } = {},
+) {
   const works = over.works ?? [];
   const gpuFails = over.gpuFails ?? [];
+  const basicOnly = over.basicOnly ?? [];
   const sampleDone = vi.fn(async () => {});
   const mock = {
     sampleDone,
@@ -34,6 +38,7 @@ function io(over: Partial<DetectIo> & { works?: string[]; gpuFails?: string[] } 
       async (_ffmpeg: string, _args: string[], e: VideoEncoder, gpuDecode: boolean) => {
         if (!works.includes(e.lowPower ? `${e.backend}-lp` : e.backend))
           return 'Device creation failed';
+        if (e.tuning === 'full' && basicOnly.includes(e.backend)) return 'Invalid RC mode';
         return gpuDecode && gpuFails.includes(e.backend) ? 'Impossible to convert' : null;
       },
     ),
@@ -46,29 +51,60 @@ function io(over: Partial<DetectIo> & { works?: string[]; gpuFails?: string[] } 
   return mock;
 }
 
-const opts = { resolution: 1080, bitrate: '5M' };
+const opts = {
+  resolution: 1080,
+  rate: rungRate('balanced', 1080, 25),
+  quality: 'balanced' as const,
+  fps: 25,
+};
 
 describe('videoPipeline', () => {
-  it('keeps the libx264 arguments of #354 for software', () => {
+  it('aims libx264 at a constant quality under the peak of the preset', () => {
     const p = videoPipeline(SOFTWARE_ENCODER, { ...opts, gpu: true });
     expect(p.input).toEqual([]);
-    expect(p.filter).toMatch(/^scale='if\(gte\(iw,ih\),-2,min\(1080/);
+    expect(p.filter).toMatch(/^scale='if\(gte\(iw,ih\),-2,min\(1080.*:flags=lanczos,setsar=1$/);
     expect(p.codec).toEqual([
       '-c:v',
       'libx264',
       '-preset',
-      'veryfast',
+      'fast',
       '-crf',
-      '23',
+      '21',
       '-maxrate',
-      '5M',
+      '9000000',
       '-bufsize',
-      '10M',
+      '18000000',
+      '-aq-mode',
+      '3',
+      '-sc_threshold',
+      '0',
       '-pix_fmt',
       'yuv420p',
+      '-force_key_frames',
+      'expr:gte(t,n_forced*2)',
+      '-g',
+      '250',
       '-profile:v',
       'high',
+      '-colorspace',
+      'bt709',
+      '-color_primaries',
+      'bt709',
+      '-color_trc',
+      'bt709',
+      '-color_range',
+      'tv',
     ]);
+  });
+
+  it('follows the preset: the light one is faster and lighter', () => {
+    const p = videoPipeline(SOFTWARE_ENCODER, {
+      ...opts,
+      quality: 'light',
+      rate: rungRate('light', 1080, 25),
+      gpu: false,
+    });
+    expect(p.codec).toEqual(expect.arrayContaining(['veryfast', '-crf', '24', '-maxrate', '5250000']));
   });
 
   it('decodes and scales on the card with NVENC, or only encodes there', () => {
@@ -77,11 +113,17 @@ describe('videoPipeline', () => {
     expect(gpu.input).toEqual(['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda']);
     expect(gpu.filter).toMatch(/^scale_cuda=w='if.*':h='if.*':format=yuv420p$/);
     expect(gpu.codec).toEqual(
-      expect.arrayContaining(['h264_nvenc', '-maxrate', '5M', '-bufsize', '10M', 'high']),
+      expect.arrayContaining(['h264_nvenc', '-cq', '26', '-maxrate', '9000000', 'high']),
     );
+    expect(gpu.codec).toEqual(expect.arrayContaining(['-b_ref_mode', 'middle', '-forced-idr']));
     const cpu = videoPipeline(nvenc, { ...opts, gpu: false });
     expect(cpu.input).toEqual([]);
-    expect(cpu.filter).toMatch(/^scale=.*,format=yuv420p$/);
+    expect(cpu.filter).toMatch(/^scale=.*:flags=lanczos,setsar=1,format=yuv420p$/);
+    // Older cards: the same quality, without lookahead and B-frame references.
+    const basic = videoPipeline({ ...nvenc, tuning: 'basic' }, { ...opts, gpu: true });
+    expect(basic.codec).toEqual(expect.arrayContaining(['-cq', '26', '-spatial-aq', '1']));
+    expect(basic.codec).not.toContain('-b_ref_mode');
+    expect(basic.codec).not.toContain('-rc-lookahead');
   });
 
   it('uses the render node for VAAPI, uploading CPU frames when it cannot decode', () => {
@@ -104,9 +146,16 @@ describe('videoPipeline', () => {
       'va',
     ]);
     expect(cpu.filter).toMatch(/^scale=.*,format=nv12,hwupload$/);
+    // The average is the preset's target, no longer half the peak.
     expect(cpu.codec).toEqual(
-      expect.arrayContaining(['h264_vaapi', '-low_power', '1', '-b:v', '2.5M', '-maxrate', '5M']),
+      expect.arrayContaining(['h264_vaapi', '-low_power', '1', '-rc_mode', 'QVBR']),
     );
+    expect(cpu.codec).toEqual(
+      expect.arrayContaining(['-b:v', '6000000', '-maxrate', '9000000', '-global_quality', '24']),
+    );
+    const basic = videoPipeline({ ...vaapi, tuning: 'basic' }, { ...opts, gpu: false });
+    expect(basic.codec).toEqual(expect.arrayContaining(['-rc_mode', 'VBR', '-b:v', '6000000']));
+    expect(basic.codec).not.toContain('-global_quality');
   });
 
   it('maps VAAPI frames to QSV, or uploads CPU frames to it', () => {
@@ -131,6 +180,15 @@ describe('videoPipeline', () => {
     expect(cpu.input).not.toContain('-hwaccel');
     expect(cpu.filter).toMatch(/^scale=.*,format=nv12,hwupload=extra_hw_frames=64,format=qsv$/);
     expect(cpu.codec.slice(0, 2)).toEqual(['-c:v', 'h264_qsv']);
+    // QVBR: a quality with a target and a cap; medium, not veryfast.
+    expect(cpu.codec).toEqual(
+      expect.arrayContaining(['-preset', 'medium', '-global_quality', '24', '-b:v', '6000000']),
+    );
+    expect(cpu.codec).toEqual(expect.arrayContaining(['-maxrate', '9000000', '-forced_idr', '1']));
+    const basic = videoPipeline({ ...qsv, tuning: 'basic' }, { ...opts, gpu: false });
+    expect(basic.codec).not.toContain('-global_quality');
+    expect(basic.codec).not.toContain('-extbrc');
+    expect(basic.codec).toEqual(expect.arrayContaining(['-b:v', '6000000']));
   });
 
   it('leaves ProRes, 4:2:2 and 10-bit H.264 to the CPU decoder', () => {
@@ -168,12 +226,12 @@ describe('videoPipeline', () => {
     const hevc = { ...base, videoCodec: 'hevc', pixelFormat: 'yuv420p' };
     const prores = { ...base, videoCodec: 'prores', pixelFormat: 'yuv422p10le' };
     const small = { ...base, width: 1280, height: 720, videoCodec: 'h264', pixelFormat: 'yuv420p' };
-    expect(proxyMemory(hevc, settings, nvenc)).toBe(NVENC_GPU_MEMORY);
-    expect(proxyMemory(prores, settings, nvenc)).toBe(4 * 1024 ** 3);
-    expect(proxyMemory(hevc, settings, { ...nvenc, cpuDecode: true })).toBe(4 * 1024 ** 3);
-    expect(proxyMemory(hevc, settings, SOFTWARE_ENCODER)).toBe(4 * 1024 ** 3);
+    expect(proxyMemory(hevc, settings, nvenc, 1e8)).toBe(NVENC_GPU_MEMORY);
+    expect(proxyMemory(prores, settings, nvenc, 1e8)).toBe(4 * 1024 ** 3);
+    expect(proxyMemory(hevc, settings, { ...nvenc, cpuDecode: true }, 1e8)).toBe(4 * 1024 ** 3);
+    expect(proxyMemory(hevc, settings, SOFTWARE_ENCODER, 1e8)).toBe(4 * 1024 ** 3);
     // A remux decodes nothing: the software cap.
-    expect(proxyMemory(small, settings, nvenc)).toBe(4 * 1024 ** 3);
+    expect(proxyMemory(small, settings, nvenc, 5e6)).toBe(4 * 1024 ** 3);
   });
 });
 
@@ -239,7 +297,7 @@ describe('proxyArgs with a hardware encoder', () => {
       '/out.mp4',
       info({ videoCodec: 'h264', pixelFormat: 'yuv420p', width: 1920, height: 1080 }),
       settings,
-      1e9,
+      5e6,
     );
     expect(args).not.toContain('-init_hw_device');
     expect(args).toEqual(expect.arrayContaining(['-c:v', 'copy']));
@@ -256,7 +314,12 @@ describe('detectVideoEncoder', () => {
   it('picks NVENC first with auto, named after the card', async () => {
     const mock = io({ works: ['nvenc', 'qsv', 'vaapi'] });
     const { encoder, rejected } = await detectVideoEncoder('ffmpeg', { mode: 'auto' }, mock);
-    expect(encoder).toEqual({ backend: 'nvenc', label: 'NVENC (NVIDIA GeForce RTX 3060)' });
+    expect(encoder).toEqual({
+      backend: 'nvenc',
+      tuning: 'full',
+      codecs: ['h264'],
+      label: 'NVENC (NVIDIA GeForce RTX 3060)',
+    });
     expect(rejected).toEqual([]);
     // The CPU-decode test, under 4 GiB, then the GPU-decode test on a sample clip.
     expect(vi.mocked(mock.testEncode).mock.calls.map((c) => c[3])).toEqual([false, true]);
@@ -274,6 +337,8 @@ describe('detectVideoEncoder', () => {
       backend: 'qsv',
       device: '/dev/dri/renderD128',
       cpuDecode: true,
+      tuning: 'full',
+      codecs: ['h264'],
       label: 'Intel Quick Sync (Intel, /dev/dri/renderD128, CPU decode)',
     });
     expect(rejected).toEqual([
@@ -306,9 +371,11 @@ describe('detectVideoEncoder', () => {
       backend: 'qsv',
       device: '/dev/dri/renderD128',
       lowPower: true,
+      tuning: 'full',
+      codecs: ['h264'],
       label: 'Intel Quick Sync (Intel, /dev/dri/renderD128, low power)',
     });
-    expect(rejected.map((r) => r.backend)).toEqual(['nvenc', 'qsv']);
+    expect(rejected.map((r) => r.backend)).toEqual(['nvenc', 'nvenc', 'qsv', 'qsv']);
     expect(mock.canOpen).toHaveBeenCalledWith('/dev/dri/renderD128');
   });
 
@@ -322,8 +389,30 @@ describe('detectVideoEncoder', () => {
     expect(encoder).toEqual({
       backend: 'vaapi',
       device: '/dev/dri/renderD129',
+      tuning: 'full',
+      codecs: ['h264'],
       label: 'VAAPI (AMD, /dev/dri/renderD129)',
     });
+  });
+
+  it('falls back to the basic rate control a driver takes, and says so', async () => {
+    const mock = io({ works: ['vaapi'], basicOnly: ['vaapi'], vendor: async () => '0x1002' });
+    const { encoder, rejected } = await detectVideoEncoder('ffmpeg', { mode: 'vaapi' }, mock);
+    expect(encoder.tuning).toBe('basic');
+    expect(encoder.label).toBe('VAAPI (AMD, /dev/dri/renderD128, basic rate control)');
+    expect(rejected).toEqual([
+      { backend: 'vaapi', reason: 'test encode (full) failed: Invalid RC mode' },
+    ]);
+  });
+
+  it('records AV1 when the card encodes it, without using it', async () => {
+    const mock = io({
+      works: ['nvenc'],
+      encoders: async () => `${ENCODERS} V....D av1_nvenc  NVIDIA NVENC av1 encoder (codec av1)\n`,
+    });
+    const { encoder } = await detectVideoEncoder('ffmpeg', { mode: 'auto' }, mock);
+    expect(encoder.codecs).toEqual(['h264', 'av1']);
+    expect(vi.mocked(mock.testEncode).mock.calls[2]?.[1]).toContain('av1_nvenc');
   });
 
   it('skips backends ffmpeg lacks and devices the worker cannot open', async () => {
@@ -353,7 +442,8 @@ describe('detectVideoEncoder', () => {
     const missed = await detectVideoEncoder('ffmpeg', { mode: 'nvenc' }, failing);
     expect(missed.encoder).toBe(SOFTWARE_ENCODER);
     expect(missed.rejected).toEqual([
-      { backend: 'nvenc', reason: 'test encode failed: Device creation failed' },
+      { backend: 'nvenc', reason: 'test encode (full) failed: Device creation failed' },
+      { backend: 'nvenc', reason: 'test encode (basic) failed: Device creation failed' },
     ]);
 
     const none = io();

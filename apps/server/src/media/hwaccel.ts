@@ -4,6 +4,7 @@ import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
+import { QUALITY_VALUES, type RungRate, rungRate, type VideoQuality } from './quality.ts';
 import { limitedCommand, toolEnv } from './tools.ts';
 
 const exec = promisify(execFile);
@@ -26,13 +27,23 @@ export interface VideoEncoder {
   lowPower?: boolean;
   /** Decode and scale on the CPU even when the GPU could: the retry of a failed GPU decode. */
   cpuDecode?: boolean;
+  /**
+   * Rate control the card took at detection: `full` (quality under a cap, lookahead) or
+   * `basic` (VBR at the target), for older GPUs and drivers. Unset on libx264.
+   */
+  tuning?: EncoderTuning;
+  /** Codecs the card encodes besides H.264 (`av1`): shown, not used (decision 0128). */
+  codecs?: string[];
   /** Shown in the logs and in Diagnostics: `NVENC (NVIDIA GeForce RTX 3060)`, `Software`. */
   label: string;
 }
 
+export type EncoderTuning = 'full' | 'basic';
+
 export const SOFTWARE_ENCODER: VideoEncoder = { backend: 'software', label: 'Software (libx264)' };
 
 const ENCODER_NAME = { nvenc: 'h264_nvenc', qsv: 'h264_qsv', vaapi: 'h264_vaapi' } as const;
+const AV1_NAME = { nvenc: 'av1_nvenc', qsv: 'av1_qsv', vaapi: 'av1_vaapi' } as const;
 
 /** Address space of one ffmpeg run (as in video.ts). */
 export const FFMPEG_MEMORY = 4 * 1024 ** 3;
@@ -57,18 +68,6 @@ export interface VideoPipeline {
   filter: string;
   codec: string[];
 }
-
-/** `5M` → `2.5M`: the average rate asked of hardware encoders, under the peak. */
-const halved = (bitrate: string) => {
-  const m = /^(\d+(?:\.\d+)?)([kKmM]?)$/.exec(bitrate);
-  return m ? `${Number(m[1]) / 2}${m[2]}` : bitrate;
-};
-
-/** `5M` → `10M`: the rate-control buffer is two seconds at the peak rate. */
-export const doubled = (bitrate: string) => {
-  const m = /^(\d+(?:\.\d+)?)([kKmM]?)$/.exec(bitrate);
-  return m ? `${Number(m[1]) * 2}${m[2]}` : bitrate;
-};
 
 /** Codecs and pixel formats the GPU decoders of all three backends take in practice. */
 const GPU_CODECS = new Set(['h264', 'hevc', 'vp9', 'av1', 'mpeg2video', 'vc1', 'vp8']);
@@ -97,20 +96,57 @@ export function scaleSize(resolution: number) {
   };
 }
 
+/** What a copy aims for: its size, rate and quality preset, and the source frame rate. */
+export interface PipelineOptions {
+  resolution: number;
+  rate: RungRate;
+  quality: VideoQuality;
+  fps: number | null;
+  /** Decode and scale on the card as well (see gpuDecodes). */
+  gpu: boolean;
+}
+
 /**
- * ffmpeg arguments of the video of a playable copy with `encoder`. `gpu` decodes and scales
- * on the card as well (see gpuDecodes); otherwise frames are scaled on the CPU and uploaded.
- * The rate is the same everywhere: `bitrate` at peak, a two-second buffer.
+ * Keyframes every two seconds, by time (variable frame rates included), so every copy and
+ * every rung can be cut and switched at the same instants; `-g` (ten seconds) is only a net.
  */
-export function videoPipeline(
-  encoder: VideoEncoder,
-  opts: { resolution: number; bitrate: string; gpu: boolean },
-): VideoPipeline {
+export function keyframeArgs(fps: number | null) {
+  return [
+    '-force_key_frames',
+    'expr:gte(t,n_forced*2)',
+    '-g',
+    String(Math.max(1, Math.round((fps ?? 25) * 10))),
+  ];
+}
+
+/** Colour tags of every copy: SDR BT.709, limited range (HDR is tone mapped first). */
+export const BT709_TAGS = [
+  '-colorspace',
+  'bt709',
+  '-color_primaries',
+  'bt709',
+  '-color_trc',
+  'bt709',
+  '-color_range',
+  'tv',
+];
+
+/**
+ * ffmpeg arguments of the video of a playable copy with `encoder` (decision 0128): constant
+ * quality under a peak (CRF on libx264, CQ on NVENC, QVBR on Quick Sync and VAAPI, or plain
+ * VBR at the target on the `basic` tuning older hardware is left with). `gpu` decodes and
+ * scales on the card as well; otherwise frames are scaled on the CPU and uploaded.
+ */
+export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): VideoPipeline {
   const { w, h } = scaleSize(opts.resolution);
-  const cpuScale = `scale=${w}:${h}`;
-  const peak = ['-maxrate', opts.bitrate, '-bufsize', doubled(opts.bitrate)];
+  const cpuScale = `scale=${w}:${h}:flags=lanczos,setsar=1`;
+  const { target, peak, buffer } = opts.rate;
+  const q = QUALITY_VALUES[opts.quality];
+  const cap = ['-maxrate', String(peak), '-bufsize', String(buffer)];
   const lowPower = encoder.lowPower ? ['-low_power', '1'] : [];
+  const full = encoder.tuning !== 'basic';
   const device = encoder.device ?? DEFAULT_VAAPI_DEVICE;
+  const common = [...keyframeArgs(opts.fps), '-profile:v', 'high', ...BT709_TAGS];
   switch (encoder.backend) {
     case 'nvenc':
       return {
@@ -120,16 +156,23 @@ export function videoPipeline(
           '-c:v',
           'h264_nvenc',
           '-preset',
-          'p4',
+          'p5',
+          ...(full ? ['-tune', 'hq'] : []),
           '-rc',
           'vbr',
           '-cq',
-          '23',
+          String(q.cq),
           '-b:v',
           '0',
-          ...peak,
-          '-profile:v',
-          'high',
+          ...cap,
+          '-spatial-aq',
+          '1',
+          ...(full ? ['-rc-lookahead', '20', '-bf', '3', '-b_ref_mode', 'middle'] : []),
+          '-forced-idr',
+          '1',
+          '-no-scenecut',
+          '1',
+          ...common,
         ],
       };
     case 'vaapi':
@@ -144,13 +187,14 @@ export function videoPipeline(
           '-c:v',
           'h264_vaapi',
           ...lowPower,
-          '-rc_mode',
-          'VBR',
+          // VAAPI takes a quality and a cap together only as QVBR, which not every driver has.
+          ...(full
+            ? ['-rc_mode', 'QVBR', '-global_quality', String(q.globalQuality)]
+            : ['-rc_mode', 'VBR']),
           '-b:v',
-          halved(opts.bitrate),
-          ...peak,
-          '-profile:v',
-          'high',
+          String(target),
+          ...cap,
+          ...common,
         ],
       };
     case 'qsv':
@@ -176,12 +220,17 @@ export function videoPipeline(
           'h264_qsv',
           ...lowPower,
           '-preset',
-          'veryfast',
+          'medium',
+          // A quality with -b:v and -maxrate makes ffmpeg pick QVBR; without it, VBR.
+          ...(full
+            ? ['-global_quality', String(q.globalQuality), '-extbrc', '1', '-look_ahead_depth', '30']
+            : []),
           '-b:v',
-          halved(opts.bitrate),
-          ...peak,
-          '-profile:v',
-          'high',
+          String(target),
+          ...cap,
+          '-forced_idr',
+          '1',
+          ...common,
         ],
       };
     default:
@@ -192,14 +241,17 @@ export function videoPipeline(
           '-c:v',
           'libx264',
           '-preset',
-          'veryfast',
+          q.x264Preset,
           '-crf',
-          '23',
-          ...peak,
+          String(q.crf),
+          ...cap,
+          '-aq-mode',
+          '3',
+          '-sc_threshold',
+          '0',
           '-pix_fmt',
           'yuv420p',
-          '-profile:v',
-          'high',
+          ...common,
         ],
       };
   }
@@ -333,7 +385,13 @@ export const defaultDetectIo: DetectIo = {
  */
 export function testEncodeArgs(encoder: VideoEncoder, sample?: string) {
   const gpu = sample !== undefined;
-  const pipeline = videoPipeline(encoder, { resolution: 360, bitrate: '2M', gpu });
+  const pipeline = videoPipeline(encoder, {
+    resolution: 360,
+    rate: rungRate('balanced', 360, 25),
+    quality: 'balanced',
+    fps: 25,
+    gpu,
+  });
   return [
     '-nostdin',
     '-hide_banner',
@@ -351,12 +409,54 @@ export function testEncodeArgs(encoder: VideoEncoder, sample?: string) {
   ];
 }
 
+/** One second of AV1 from the card, thrown away: detection only, never used for copies. */
+export function av1TestArgs(encoder: VideoEncoder) {
+  if (encoder.backend === 'software') return [];
+  const device = encoder.device ?? DEFAULT_VAAPI_DEVICE;
+  const upload =
+    encoder.backend === 'nvenc'
+      ? { input: [], filter: 'format=yuv420p' }
+      : encoder.backend === 'qsv'
+        ? {
+            input: ['-init_hw_device', `vaapi=va:${device}`, '-init_hw_device', 'qsv=qs@va', '-filter_hw_device', 'qs'],
+            filter: 'format=nv12,hwupload=extra_hw_frames=64,format=qsv',
+          }
+        : {
+            input: ['-init_hw_device', `vaapi=va:${device}`, '-filter_hw_device', 'va'],
+            filter: 'format=nv12,hwupload',
+          };
+  return [
+    '-nostdin',
+    '-hide_banner',
+    '-v',
+    'error',
+    ...upload.input,
+    '-f',
+    'lavfi',
+    '-i',
+    'testsrc2=size=640x360:rate=25:duration=1',
+    '-vf',
+    upload.filter,
+    '-c:v',
+    AV1_NAME[encoder.backend],
+    ...(encoder.lowPower ? ['-low_power', '1'] : []),
+    '-an',
+    '-f',
+    'null',
+    '-',
+  ];
+}
+
 const VENDORS: Record<string, string> = { '0x8086': 'Intel', '0x1002': 'AMD', '0x10de': 'NVIDIA' };
 
 async function label(encoder: VideoEncoder, io: DetectIo) {
   if (encoder.backend === 'nvenc') {
     const name = await io.nvidiaName();
-    const details = [name, encoder.cpuDecode ? 'CPU decode' : null].filter(Boolean);
+    const details = [
+      name,
+      encoder.cpuDecode ? 'CPU decode' : null,
+      encoder.tuning === 'basic' ? 'basic rate control' : null,
+    ].filter(Boolean);
     return details.length ? `NVENC (${details.join(', ')})` : 'NVENC';
   }
   const device = encoder.device ?? DEFAULT_VAAPI_DEVICE;
@@ -366,6 +466,7 @@ async function label(encoder: VideoEncoder, io: DetectIo) {
     device,
     encoder.lowPower ? 'low power' : null,
     encoder.cpuDecode ? 'CPU decode' : null,
+    encoder.tuning === 'basic' ? 'basic rate control' : null,
   ].filter(Boolean);
   return `${encoder.backend === 'qsv' ? 'Intel Quick Sync' : 'VAAPI'} (${details.join(', ')})`;
 }
@@ -405,17 +506,26 @@ export async function detectVideoEncoder(
       rejected.push({ backend, reason: `${device} is missing or not readable by the worker` });
       continue;
     }
-    // Intel's free media driver only has the low-power entry point: tried second.
+    // Intel's free media driver only has the low-power entry point: tried second. Each entry
+    // point tries the full rate control first, then the basic one older drivers keep.
     const variants = backend === 'nvenc' ? [false] : [false, true];
     for (const lowPower of variants) {
-      const candidate: VideoEncoder = {
-        backend,
-        label: '',
-        ...(backend === 'nvenc' ? {} : { device }),
-        ...(lowPower ? { lowPower } : {}),
-      };
-      const error = await io.testEncode(ffmpeg, testEncodeArgs(candidate), candidate, false);
-      if (error === null) {
+      for (const tuning of ['full', 'basic'] as const) {
+        const candidate: VideoEncoder = {
+          backend,
+          label: '',
+          tuning,
+          ...(backend === 'nvenc' ? {} : { device }),
+          ...(lowPower ? { lowPower } : {}),
+        };
+        const error = await io.testEncode(ffmpeg, testEncodeArgs(candidate), candidate, false);
+        if (error !== null) {
+          rejected.push({
+            backend,
+            reason: `test encode (${[tuning, lowPower ? 'low power' : null].filter(Boolean).join(', ')}) failed: ${error}`,
+          });
+          continue;
+        }
         const sample = await io.sample(ffmpeg);
         try {
           const gpuError = sample
@@ -428,13 +538,13 @@ export async function detectVideoEncoder(
         } finally {
           await sample?.done();
         }
+        if (new RegExp(`\\s${AV1_NAME[backend]}\\s`).test(list)) {
+          const av1 = await io.testEncode(ffmpeg, av1TestArgs(candidate), candidate, false);
+          candidate.codecs = av1 === null ? ['h264', 'av1'] : ['h264'];
+        } else candidate.codecs = ['h264'];
         candidate.label = await label(candidate, io);
         return { encoder: candidate, requested, rejected };
       }
-      rejected.push({
-        backend,
-        reason: `test encode${lowPower ? ' (low power)' : ''} failed: ${error}`,
-      });
     }
   }
   return { encoder: SOFTWARE_ENCODER, requested, rejected };

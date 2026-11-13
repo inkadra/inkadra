@@ -128,8 +128,9 @@ describe('proxyPlan', () => {
 });
 
 describe('proxyArgs', () => {
+  // 5 MB for 10 s: 4 Mbit/s, light enough to remux.
   const args = (i: VideoInfo, settings = DEFAULT_PROXY_SETTINGS) =>
-    proxyArgs('/in', '/out.mp4', i, settings, 50 * 1024 ** 2);
+    proxyArgs('/in', '/out.mp4', i, settings, 5 * 1024 ** 2);
   const flagValue = (list: string[], flag: string) => list[list.indexOf(flag) + 1];
 
   it('only changes the container of H.264 that fits, re-encoding sound that is not AAC', () => {
@@ -143,7 +144,9 @@ describe('proxyArgs', () => {
     const encode = args(info({ videoCodec: 'prores', pixelFormat: 'yuv422p10le' }));
     const line = encode.join(' ');
     expect(line).toContain('-c:v libx264');
-    expect(line).toContain('-maxrate 5M -bufsize 10M');
+    // Balanced 1080p at 25 fps: 6 Mbit/s aimed at, 9 at peak, a two-second buffer.
+    expect(line).toContain('-crf 21 -maxrate 9000000 -bufsize 18000000');
+    expect(line).toContain('-force_key_frames expr:gte(t,n_forced*2)');
     expect(line).toContain('min(1080,');
     expect(line).toContain('-protocol_whitelist file');
     expect(line).toContain('+faststart');
@@ -161,20 +164,20 @@ describe('proxyArgs', () => {
     const list = args(info({ videoCodec: 'prores' }));
     expect(flagValue(list, '-t')).toBe('7200');
     expect(flagValue(list, '-threads')).toBe('2');
-    // 10 s at 5 Mbit/s plus sound, half again, and a 16 MB margin.
+    // 10 s at the 9 Mbit/s peak plus sound, half again, and a 16 MB margin.
     expect(Number(flagValue(list, '-fs'))).toBe(
-      proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 50 * 1024 ** 2),
+      proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 5 * 1024 ** 2),
     );
-    expect(Number(flagValue(list, '-fs'))).toBeLessThan(30 * 1024 ** 2);
+    expect(Number(flagValue(list, '-fs'))).toBeLessThan(34 * 1024 ** 2);
     expect(args(info(), { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0 })).not.toContain('-t');
     // A remux is as large as its source, not as the bitrate says.
     const remux = Number(flagValue(args(info({ audioCodec: 'opus' })), '-fs'));
-    expect(remux).toBeGreaterThan(55 * 1024 ** 2);
+    expect(remux).toBeGreaterThan(5.5 * 1024 ** 2);
   });
 
   it('plans a video of unknown length for the cap, not for nothing', () => {
     const unknown = info({ videoCodec: 'prores', durationMs: null });
-    // 7200 s at 5.384 Mbit/s, half again: about 7 GB, never 0.
+    // 7200 s at 9.384 Mbit/s, half again: about 12 GB, never 0.
     expect(proxyMaxBytes(unknown, DEFAULT_PROXY_SETTINGS, 1000)).toBeGreaterThan(6e9);
     const noCap = { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0, maxSourceBytes: 0 };
     // No limit of its own: the 4-hour run limit plans an hour of video.
@@ -281,10 +284,22 @@ it.each(['ac3', 'eac3', 'dts', 'flac', 'opus', 'aac'])(
   (audioCodec) => {
     const source = info({ width: 1280, height: 720, audioCodec });
     expect(webPlayable('video/webm', source)).toBe(false);
-    expect(copiesVideo(source, DEFAULT_PROXY_SETTINGS)).toBe(true);
-    const args = proxyArgs('/in.mkv', '/out.mp4', source, DEFAULT_PROXY_SETTINGS, 32e6);
+    expect(copiesVideo(source, DEFAULT_PROXY_SETTINGS, 5e6)).toBe(true);
+    const args = proxyArgs('/in.mkv', '/out.mp4', source, DEFAULT_PROXY_SETTINGS, 5e6);
     expect(args.join(' ')).toContain('-map 0:V:0 -map 0:a:0?');
     expect(args.join(' ')).toContain('-c:v copy');
     expect(args.join(' ')).toContain(audioCodec === 'aac' ? '-c:a copy' : '-c:a aac');
   },
 );
+
+describe('copiesVideo (decision 0128)', () => {
+  it('re-encodes H.264 that is too heavy or too fast to stream as it is', () => {
+    const phone = info({ width: 1920, height: 1080, frameRate: 30 });
+    // 10 s: 10 MB is 8 Mbit/s, under the 15 Mbit/s peak of High at 1080p.
+    expect(copiesVideo(phone, DEFAULT_PROXY_SETTINGS, 10e6)).toBe(true);
+    // A 100 Mbit/s camera file, slow motion at 120 fps, a source without a duration.
+    expect(copiesVideo(phone, DEFAULT_PROXY_SETTINGS, 125e6)).toBe(false);
+    expect(copiesVideo({ ...phone, frameRate: 120 }, DEFAULT_PROXY_SETTINGS, 5e6)).toBe(false);
+    expect(copiesVideo({ ...phone, durationMs: null }, DEFAULT_PROXY_SETTINGS, 5e6)).toBe(false);
+  });
+});

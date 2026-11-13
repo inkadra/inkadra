@@ -4,6 +4,7 @@ import { instanceSetting } from '../db/schema.ts';
 import {
   type Detection,
   detectVideoEncoder,
+  type EncoderTuning,
   type HwAccelMode,
   SOFTWARE_ENCODER,
   type VideoEncoder,
@@ -18,6 +19,10 @@ export interface SavedEncoder {
   label: string;
   requested: HwAccelMode;
   detectedAt: string;
+  /** Rate control the card took (decision 0128); absent on libx264 and older rows. */
+  tuning?: EncoderTuning;
+  /** Codecs the card encodes (`h264`, `av1`): AV1 is shown, not used. */
+  codecs?: string[];
 }
 
 interface Log {
@@ -57,6 +62,8 @@ export async function chooseVideoEncoder(
     label: encoder.label,
     requested,
     detectedAt: new Date().toISOString(),
+    ...(encoder.tuning ? { tuning: encoder.tuning } : {}),
+    ...(encoder.codecs ? { codecs: encoder.codecs } : {}),
   };
   await db
     .insert(instanceSetting)
@@ -80,5 +87,9 @@ export async function readVideoEncoder(db: Pick<Database, 'select'>): Promise<Sa
     label: value.label,
     requested: value.requested ?? 'auto',
     detectedAt: value.detectedAt ?? '',
+    ...(value.tuning === 'full' || value.tuning === 'basic' ? { tuning: value.tuning } : {}),
+    ...(Array.isArray(value.codecs)
+      ? { codecs: value.codecs.filter((c): c is string => typeof c === 'string').slice(0, 4) }
+      : {}),
   };
 }

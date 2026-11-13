@@ -23,6 +23,7 @@ import { createMailer } from './mailer.ts';
 import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.ts';
 import type { VideoEncoder } from './media/hwaccel.ts';
 import { mapUserAgent } from './media/maps.ts';
+import { DEFAULT_VIDEO_QUALITY } from './media/quality.ts';
 import { sweepJobDirs } from './media/scratch.ts';
 import { checkHealth } from './monitor/health.ts';
 import { LatencyRecorder, startSampler } from './monitor/sampler.ts';
@@ -153,8 +154,9 @@ async function main() {
       enabled: config.VIDEO_PROXIES,
       maxDurationS: config.VIDEO_PROXY_MAX_DURATION,
       maxSourceBytes: config.VIDEO_PROXY_MAX_SOURCE_SIZE,
-      resolution: config.VIDEO_PROXY_RESOLUTION,
-      bitrate: config.VIDEO_PROXY_BITRATE,
+      resolution: config.VIDEO_PROXY_RESOLUTION ?? 1080,
+      quality: DEFAULT_VIDEO_QUALITY,
+      bitrate: config.VIDEO_PROXY_BITRATE ?? null,
       threads: config.VIDEO_PROXY_THREADS,
       ...(encoder ? { encoder } : {}),
     },
