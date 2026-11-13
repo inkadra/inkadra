@@ -7,6 +7,7 @@ place, next to the others, and Vimeo and Instagram links should preview as well 
 Every embed is a third-party page inside Inkadra, so each one has a privacy and CSP cost.
 
 **Decision.**
+
 - **Inline player.** Play on a YouTube, Vimeo or Instagram card swaps the thumbnail for the
   player in the card's picture. No iframe exists before play: until the click the card shows
   only our own preview and a play button, and nothing is requested from the provider. One card

@@ -10,6 +10,7 @@ what a script provides: scenes with number, INT/EXT, location, time of day and s
 frames with action, dialogue, notes and cast (decision 0012).
 
 **Decision.**
+
 - **Our own parsers**, in `apps/web/src/board/film/screenplay`, with no dependency. The
   Fountain libraries we looked at are unmaintained, render HTML (which we would have to
   sanitise and then take apart again) or carry licences we would have to check per release;

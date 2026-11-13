@@ -2,6 +2,7 @@
 
 Inkadra does not serve HTTPS itself: a reverse proxy in front of it does. Whatever you use, the
 proxy must
+
 1. serve Inkadra on its own (sub)domain over HTTPS, the same address as `PUBLIC_URL`, at the
    root path (not under `/inkadra/`);
 2. pass WebSocket upgrades on `/collab`, and keep them open for hours;
@@ -128,6 +129,7 @@ address, Tailscale) or split them.
 ## Nginx Proxy Manager
 
 Add a proxy host:
+
 - **Details.** Domain: your domain. Scheme `http`, forward hostname: `inkadra` if Nginx Proxy
   Manager is in the same Docker network, otherwise the machine's address (with
   `INKADRA_BIND=0.0.0.0`). Port `3000`. Turn on **Websockets Support**. Leave **Cache Assets**
@@ -150,6 +152,7 @@ machine, set `TRUST_PROXY` to its address.
 
 [Pangolin](https://github.com/fosrl/pangolin) publishes services through a tunnel to a VPS, with
 Traefik on the VPS doing HTTPS. Create a resource:
+
 - **Type** HTTP, with the subdomain of `PUBLIC_URL`.
 - **Target** `http`, the address Pangolin's site connector (Newt) reaches Inkadra on, port
   `3000`: `inkadra` if Newt runs in the same Docker network, otherwise the machine's LAN or
@@ -159,6 +162,7 @@ Traefik on the VPS doing HTTPS. Create a resource:
   has its own sign-in.
 
 WebSockets work without settings. Two things are on the VPS side and in Inkadra's `.env`:
+
 - Raise Traefik's read timeout for large uploads: in Pangolin's
   `config/traefik/traefik_config.yml`, set `readTimeout` under
   `entryPoints.websecure.transport.respondingTimeouts` as shown under [Traefik](#traefik), and
@@ -181,6 +185,7 @@ Cloudflare dashboard (they are on by default).
 ## Security headers
 
 Whatever the proxy, finish with these four:
+
 1. **`TRUST_PROXY` lists only the proxy**: its single pinned container IP,
    not every private network and not the whole Tailscale range. See
    [`TRUST_PROXY`](configuration.md#trust_proxy).

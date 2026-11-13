@@ -6,6 +6,7 @@ Accepted, 2026-10.
 permissions and assets need relational queries and constraints.
 
 **Decision.**
+
 - Each board has one Yjs document named `board:<uuid>` with two root types: `meta`
   (`schemaVersion`, `boardId`) and `elements` (a map of element id to element map). Element
   types and fields are defined in `packages/doc-schema`; rich text lives in a `Y.XmlFragment`

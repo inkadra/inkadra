@@ -25,6 +25,7 @@ up with several rooms. The coordinator allowed one schema bump for this.
 
 **Schema version 26: three optional additions.** `WRITER_SCHEMAS` gets `26: { min: 26 }`: a client
 of schema 25 would drop the new fields when it copies a plan, so it stays read-only.
+
 - `sun.day` on a plan: the shooting day the sun's date follows, by id.
 - `stepNote` on a plan icon: the note of the last blocking position, where the icon stands.
 - `roomSizes` on a plan: false hides the rooms' sizes.
@@ -104,6 +105,7 @@ picker. North reads "Up, 0°": the way it points, in eight words, before its deg
 
 **The editor's choices live in the account** (`UserPreferences`, additive in API v1, as
 `shotGroupBy`):
+
 - `planSnap`: snap to the grid (G);
 - `planAttach`: icons attach to a base; this is the phone's Snap toggle, and Alt still places free
   for one drop;
@@ -137,6 +139,7 @@ each id once, even when the list is valid as a whole (`planFavorites`, `planRece
 `tutorialsSeen` too).
 
 Kept per session on purpose:
+
 - the tool, the selection and the active layer;
 - the base drawn as a ghost behind a setup;
 - the open tab and sheet;
@@ -147,6 +150,7 @@ The read-only view's legend has no state to keep. Nothing new is kept in the bro
 **What a click cannot reach.** A layer that is locked or hidden is out of reach on the drawing,
 covered bases included: a click again or Alt + click passes over them, as over anything on that
 layer (decision 0118's `reachable`). Elements keeps them reachable:
+
 - a row of a locked layer shows the lock and how to unlock it, as before;
 - a row of a hidden layer or of Grip and crew stays a focusable button, dimmed, and opens "Hidden:
   Lights · Show Lights", by pointer, touch and keyboard.
@@ -155,6 +159,7 @@ So a base under a carried item can always be reached. The carried item's Propert
 need their "Select" for the base.
 
 **Smaller parities:**
+
 - A counter or table counts its seats by their kind ("4 stools").
 - A light's second line leaves out a level at 100 %.
 - The start dialog writes sizes with one decimal ("8.0 m"), and "Start empty" is a bordered

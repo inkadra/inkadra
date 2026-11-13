@@ -7,6 +7,7 @@ photos in HEIC, and camera metadata that can reveal where someone lives. Install
 single small server with a local disk to S3-compatible buckets.
 
 **Decision.**
+
 - Uploads use tus 1.0 (`@tus/server`) at `/api/v1/uploads`. The creation request also creates
   the asset row, with status `pending`, and the upload id **is** the asset id, so clients know
   it from the first response (`Inkadra-Asset-Id`). Clients send chunks of at most 50 MiB, which

@@ -8,6 +8,7 @@ frames remain the source of truth for shot content (0012). Board grants can rest
 within a project (0011), so a project-wide endpoint must not expose a restricted board's plan.
 
 **Decision.**
+
 - Postgres stores `shooting_day`, owned by a project and anchored to a board. The first slice
   lists days for the current board only and checks its effective role: viewer reads, editor
   writes. No guest endpoint exposes internal production notes or cast. Guests see an empty,

@@ -304,6 +304,7 @@ bucket versioning or replication). The format is described in
 
 These backups stay on the same disk as your files, so they do not protect you from losing that
 disk. **A complete backup, copied to another machine, is:**
+
 1. the data: the `inkadra-data` volume or your `INKADRA_DATA` folder, which holds the nightly
    zips too, or the bucket;
 2. your `.env`, because `AUTH_SECRET` is needed to read two-factor secrets and sealed tokens;
@@ -399,6 +400,7 @@ here. Guests cannot report unless you allow them.
 </picture>
 
 **To turn it off,** use either of these:
+
 - In **Settings → About → Reports**, switch off _Send to the Inkadra developers_ (reports stay in
   the administrators' Inbox), or choose another destination: your own private GitHub repository,
   Inbox only, or Off. A saved choice always wins.

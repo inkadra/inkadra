@@ -10,6 +10,7 @@ the documents open. Writing straight to `board_doc` would be lost the next time 
 stores its copy of an open document.
 
 **Decision.**
+
 - The card is added **where the document is live**, through a Hocuspocus direct connection,
   so open boards receive it like any other edit. In `all` mode the web role calls the
   collaboration server in the same process. In split mode it puts an `add-card` job on the

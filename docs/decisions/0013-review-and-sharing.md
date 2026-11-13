@@ -12,6 +12,7 @@ card, including the ones not meant for them. And approvals are a record people r
 must say who decided and when.
 
 **Decision.**
+
 - **Comments live in Postgres** (`comment`), on a board (`element_id` null) or on a card
   (element id of the document). A thread is its first comment plus replies, one level deep; a
   reply always belongs to a thread of the same board (composite foreign key). Viewers read,
@@ -209,6 +210,7 @@ must say who decided and when.
   is an additive change; removing or renaming one is not.
 
 **Security model for guests.**
+
 - **No document, no WebSocket.** The collab server accepts only sessions and tokens of
   accounts; a guest cookie is never a credential there. Guests get a snapshot rendered by the
   server from the stored document: hidden elements and their children are left out, arrows
@@ -316,6 +318,7 @@ also look inside board versions, because a restore can bring a file back. Builds
 document version 3 can no longer open boards saved by newer ones and reload.
 
 **Defaults the product owner may revisit.**
+
 - Review status is shown to every guest role, `guest_view` included, in the guest-safe shape.
 - Comments are `team` by default; `everyone` is a deliberate choice.
 - Review decisions, comments and names of one link's guests are never shown to guests of

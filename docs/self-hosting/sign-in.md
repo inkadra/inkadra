@@ -55,6 +55,7 @@ links even when it does not. The account's email has to be verified either way.
 ## An OpenID Connect provider
 
 In your provider, create an application (client) of type _confidential_ / _web_ with:
+
 - redirect URI `https://<your PUBLIC_URL host>/api/auth/callback/oidc`;
 - scopes `openid email profile`;
 - authorization code flow (PKCE is used and can be required).

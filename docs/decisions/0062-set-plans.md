@@ -9,6 +9,7 @@ existed only inside storyboard frames, whose picture follows the frame's aspect 
 under a reference image.
 
 **Decision.**
+
 - Document version 14 adds the `plan` element, a plain card (not a container) with an optional
   `title` and three arrays over one drawing that is `PLAN_ASPECT` (3:2) wide per unit of height:
   - `strokes` and `shapes`: the frame drawing's `Stroke` and `FrameShape`, unchanged, in
@@ -43,6 +44,7 @@ under a reference image.
   duplicate keep every stroke, shape and icon.
 
 **Version 15 (round 6 of the mockups, the answers Matteo approved).**
+
 - **Library.** 42 original line icons in 7 categories (lights, grip, camera and movement,
   people, audio and video, furniture, exteriors) plus 4 annotation tools (arrow, text, measure,
   area); generic types, no makes or models. One glyph per kind in canvas-core draws the library

@@ -49,6 +49,7 @@ from retries prompted by a notification failure.
 ## Notification workers
 
 The existing `worker` role (also started in `all` mode) registers three BullMQ schedulers:
+
 - `email:notifications`: checks every minute, grouping immediate mail for three minutes from
   the first eligible unread notification.
 - `email:digest`: checks every hour; daily preferences receive at most one digest per 24 hours.

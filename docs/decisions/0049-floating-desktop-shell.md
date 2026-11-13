@@ -7,6 +7,7 @@ a 48 px band and a 240 px column away from it, and the board sat in a rounded in
 approved mockup puts the chrome in floating panels over a board that runs edge to edge.
 
 **Decision.**
+
 - From 768 px up the page fills the window. The navigation is a floating panel (12 px inset,
   236 px wide); the header is two floating panels: where am I (project, view tabs, ⋯) at the
   left, people and actions (Versions, Export, Present, Comments, Share, notifications) at the

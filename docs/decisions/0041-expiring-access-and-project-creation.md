@@ -9,6 +9,7 @@ they are invited to. Guest links (decision 0013) already expire; roles of people
 account (decision 0011) did not.
 
 **Decision.**
+
 - **End dates.** `project_member.expires_at`, `board_grant.expires_at` and
   `invitation.access_expires_at` (copied to the membership or grant when the invitation is
   accepted or gives the role at once). Optional, in the future, at most 366 days ahead.

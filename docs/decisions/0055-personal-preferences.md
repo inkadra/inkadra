@@ -9,6 +9,7 @@ adds a date and time format, canvas defaults and the tools of the bottom bar, wh
 to find again on every device.
 
 **Decision.**
+
 - **One JSON record per account.** `user_preference.preferences` holds them, read and changed
   through `GET` and `PATCH /me/preferences`. The Zod schema `UserPreferences` in
   `packages/shared` names every field; the server merges a `PATCH` over what is stored and

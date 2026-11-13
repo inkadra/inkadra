@@ -6,6 +6,7 @@ Accepted, 2026-10.
 request and response, and the extension and app are developed before all endpoints exist.
 
 **Decision.**
+
 - Zod schemas in `packages/shared` are the source of truth. The server validates with them and
   clients import their types.
 - `openapi.json` is generated from them (`pnpm openapi`), committed, and checked in CI. `pnpm mock`

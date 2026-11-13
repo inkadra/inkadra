@@ -9,6 +9,7 @@ modifying the immutable uploaded asset or preventing an editor from restoring th
 picture later.
 
 **Decision.**
+
 - Document version 8 adds optional `crop` and `rotation` fields to `image` elements.
   `rotation` is a finite clockwise angle in degrees (`-360` to `360`, supporting 90° steps and
   fine straightening angles; omitted or `0` means unrotated). `crop` holds a normalized

@@ -9,6 +9,7 @@ follows which) also need curved connectors, so lines between neighbouring cards 
 through each other or through labels.
 
 **Decision.**
+
 - Document version 6 adds optional `path` to arrows: `straight` (the default when omitted) or
   `curved`. A curved arrow is a quadratic curve that bows to the left of the direction from
   `from` to `to`; the bow is a share of the arrow length chosen by renderers, not stored, so

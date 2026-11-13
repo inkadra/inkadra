@@ -9,6 +9,7 @@ so nothing is structured: search cannot tell a character from a note, exports an
 show contacts typed in a note, and storyboard frames name their cast in free text.
 
 **Decision.**
+
 - Document version 7 adds two element types, both plain cards (not containers):
   - `character`: `name`, optional `role` (in the story), `assetId` (photo or reference), `age`
     (as written), `description`, `actor`, `contact`, `notes`, `scenes`.

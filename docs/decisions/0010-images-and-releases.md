@@ -7,6 +7,7 @@ proxies we do not control. The image is the product they install, so it has to b
 locked down, verifiable, and proven to work behind the common proxies before it ships.
 
 **Decision.**
+
 - **Runtime.** Debian slim with Node 22, `tini` as PID 1, user `node` (uid 1000). npm, corepack
   and yarn are removed. Compose runs it with a read-only root filesystem, no capabilities and
   `no-new-privileges`; it writes only to `/data`, and `TMPDIR` points at `/data/tmp` because

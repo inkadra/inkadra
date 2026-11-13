@@ -10,6 +10,7 @@ needs its own timeline, sound and keyboard model. Both cost screen space in the 
 every storyboard, on phones most of all.
 
 **Decision.**
+
 - The Sequence and Animatic modes are removed with everything that only they used: the mode
   switch and its phone picker, the player, its timeline and sound controls, its Present
   button, the guest "Play animatic" button, styles, translations, shortcuts and tests. The

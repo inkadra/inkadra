@@ -9,6 +9,7 @@ crews tick shots on a phone with poor signal. Search and tags need to look acros
 of a project, which a Yjs document cannot answer on its own.
 
 **Decision.**
+
 - Board documents move to schema version 2, with three element types: `scene` (a container
   like a column, with number, INT/EXT, time of day, location and synopsis), `frame` (picture,
   shot data and pen strokes) and `arrow` (between two cards or free points, with a label).
