@@ -239,7 +239,9 @@ export function LargestFilesDialog({
                   {summary.projects.map((p) => (
                     <li key={p.id}>
                       <i style={{ background: swatch(p.color) }} aria-hidden="true" />
-                      <span className="space-files__name">{p.name}</span>
+                      <span className="space-files__name" title={p.name}>
+                        {p.name}
+                      </span>
                       <span>· {size(p.bytes)}</span>
                     </li>
                   ))}
@@ -355,7 +357,9 @@ function FileRow({
         where={
           <>
             <i className="space-file__dot" style={{ background: swatch(f.projectColor) }} />
-            <span>{f.projectName}</span>
+            <span className="space-file__project" title={f.projectName}>
+              {f.projectName}
+            </span>
             {f.kind && (
               <>
                 <span className="space-file__sep">·</span>

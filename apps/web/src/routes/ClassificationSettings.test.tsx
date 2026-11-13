@@ -242,9 +242,31 @@ it('offers Delete only on values nothing uses, after a confirmation', async () =
   expect(
     [...host.querySelectorAll<HTMLInputElement>('.catalogs__name')].map((i) => i.value),
   ).toEqual(['Short film', 'Commercial', 'Notte', 'Neve']);
+  // The focus goes to the next value, not back to the page (#707).
+  expect(document.activeElement).toBe(
+    host.querySelector(`[data-setting="classification:tags:${used.id}"] input`),
+  );
   // Used meanwhile: the server refuses with a reason the page explains.
   await act(async () => button('settings.save')?.click());
   expect(vi.mocked(api.put).mock.calls[0]?.[1]).toMatchObject({ tags: [used, archived] });
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('catalogs.inUse');
+  act(() => root.unmount());
+});
+
+it('after a delete focuses the previous value when the last goes, then Add (#707)', async () => {
+  const root = await mount();
+  await act(async () => toggle('catalogs.tags'));
+  const add = host.querySelector<HTMLButtonElement>('.catalogs__add');
+  // New values go at once, without asking.
+  await act(async () => add?.click());
+  await act(async () => add?.click());
+  const deletes = () => host.querySelectorAll<HTMLButtonElement>('button.catalogs__delete');
+  const names = () => host.querySelectorAll<HTMLInputElement>('.catalogs__name');
+  await act(async () => deletes()[1]?.click());
+  expect(names()).toHaveLength(1);
+  expect(document.activeElement).toBe(names()[0]);
+  await act(async () => deletes()[0]?.click());
+  expect(names()).toHaveLength(0);
+  expect(document.activeElement).toBe(add);
   act(() => root.unmount());
 });

@@ -87,13 +87,27 @@ export function ClassificationSettings() {
     setJustSaved(false);
     setDraft({ ...draft, [key]: options });
   };
+  // After a delete the focus goes to the next value, else the previous one, else Add (#707).
+  const refocus = useRef<string | null>(null);
   const remove = (key: CatalogKey, id: string) => {
-    if (draft)
-      update(
-        key,
-        draft[key].filter((o) => o.id !== id),
-      );
+    if (!draft) return;
+    const options = draft[key];
+    const index = options.findIndex((o) => o.id === id);
+    const near = options[index + 1] ?? options[index - 1];
+    refocus.current = near
+      ? `[data-setting="classification:${key}:${CSS.escape(near.id)}"] .catalogs__name`
+      : `[data-setting="classifications.${key}"] .catalogs__add`;
+    update(
+      key,
+      options.filter((o) => o.id !== id),
+    );
   };
+  // In an effect, so it runs after the confirmation dialog has closed and returned the focus.
+  useEffect(() => {
+    if (!refocus.current) return;
+    document.querySelector<HTMLElement>(refocus.current)?.focus();
+    refocus.current = null;
+  });
   /** A value not saved yet goes at once; a saved one only if nothing uses it, after asking. */
   const isNew = (key: CatalogKey, option: ClassificationOption) =>
     !saved?.[key].some((o) => o.id === option.id);
