@@ -17725,9 +17725,6 @@
         "security": [
           {
             "session": []
-          },
-          {
-            "bearer": []
           }
         ],
         "summary": "Administrator-only sum of original asset sizes; excludes derived files and database.",

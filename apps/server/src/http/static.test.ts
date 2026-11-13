@@ -115,10 +115,21 @@ describe('web app files', () => {
     expect(logs.join('')).toContain('/s/[redacted]');
     expect(logs.join('')).toContain('/api/v1/guest/by-token/[redacted]');
   });
+  it('sends no Referer from pages whose address carries a credential', async () => {
+    for (const path of ['/join/private-credential', '/reset-password?token=private-query']) {
+      const res = await app.inject(path);
+      expect(res.headers['referrer-policy']).toBe('no-referrer');
+    }
+  });
+
   it('redacts invitation, authentication, calendar and attachment credentials, including unmatched paths', async () => {
     for (const path of [
       '/join/private-credential',
       '/reset-password?token=private-query',
+      '/reset-password/?token=private-query',
+      '//join/private-credential',
+      '/JOIN/private-credential',
+      '/Reset-Password?token=private-query',
       '/api/v1/invitations/by-token/private-credential',
       '/api/v1/invitations/by-token/private-credential/claim',
       '/api/v1/invitations/by-token/private-credential/unknown',

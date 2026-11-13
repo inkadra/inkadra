@@ -110,22 +110,25 @@ export async function createApp(deps: AppDeps) {
           req(req: FastifyRequest) {
             // These paths contain bearer credentials; authentication and reset queries do too.
             // Keep those out of request logs, including unmatched subpaths.
+            // Matched without regard to case, doubled or trailing slashes: an odd spelling of
+            // such a path still carries the credential, even when no route answers it.
+            const at = req.url.replace(/\/{2,}/g, '/').toLowerCase();
             const url =
-              req.url.split('?')[0] === '/reset-password'
+              at.split('?')[0]?.replace(/\/$/, '') === '/reset-password'
                 ? '/reset-password'
-                : req.url.startsWith('/api/auth/')
+                : at.startsWith('/api/auth/')
                   ? '/api/auth/[redacted]'
-                  : req.url.startsWith('/join/')
+                  : at.startsWith('/join/')
                     ? '/join/[redacted]'
-                    : req.url.startsWith(`${API_PREFIX}/invitations/by-token/`)
+                    : at.startsWith(`${API_PREFIX}/invitations/by-token/`)
                       ? `${API_PREFIX}/invitations/by-token/[redacted]`
-                      : req.url.startsWith(`${API_PREFIX}/feedback/attachments/`)
+                      : at.startsWith(`${API_PREFIX}/feedback/attachments/`)
                         ? `${API_PREFIX}/feedback/attachments/[redacted]`
-                        : req.url.startsWith('/calendar/')
+                        : at.startsWith('/calendar/')
                           ? '/calendar/[redacted].ics'
-                          : req.url.startsWith(GUEST_PAGE_PATH)
+                          : at.startsWith(GUEST_PAGE_PATH)
                             ? `${GUEST_PAGE_PATH}[redacted]`
-                            : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
+                            : at.startsWith(`${API_PREFIX}/guest/by-token/`)
                               ? `${API_PREFIX}/guest/by-token/[redacted]`
                               : req.url;
             const client = req.headers['inkadra-client'];
@@ -171,9 +174,12 @@ export async function createApp(deps: AppDeps) {
     reply.header('x-content-type-options', 'nosniff');
     reply.header('x-frame-options', 'DENY');
     // The token of a share link is in the path of its guest page: it must not leak to the
-    // sites of link cards nor into search engines (decision 0013).
+    // sites of link cards nor into search engines (decision 0013). Invitation and password
+    // reset pages carry theirs the same way, and would send it as Referer with every request.
     if (
       req.url.startsWith(GUEST_PAGE_PATH) ||
+      req.url.startsWith('/join/') ||
+      req.url.startsWith('/reset-password') ||
       req.url.startsWith('/calendar/') ||
       req.url.startsWith(`${API_PREFIX}/feedback/attachments/`)
     ) {
