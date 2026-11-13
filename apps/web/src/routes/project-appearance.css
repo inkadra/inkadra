@@ -360,6 +360,14 @@
   line-height: 14px;
 }
 
+/* New project on desktop: the panel follows the active tab, so Symbol leaves no empty space
+   under the colours; the footer moves when switching to Emoji (#706). */
+@media (width >= 768px) {
+  .project-appearance__picker--inline .project-appearance__panels [role="tabpanel"][hidden] {
+    display: none;
+  }
+}
+
 /* Phones: 44 px targets, so the shared panel grows to fit the larger tiles. */
 @media (width < 768px) {
   /* Symbol sets the phone height; desktop keeps both panels in the shared grid cell. */

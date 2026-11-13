@@ -608,7 +608,8 @@ export function AppearancePicker({
       ) : (
         tabs
       )}
-      {/* Symbol sizes the shared panel; Emoji scrolls inside it without resizing the dialog. */}
+      {/* Symbol sizes the shared panel and Emoji scrolls inside it. Inline on desktop each tab
+          sizes it instead (#706). */}
       <div className="project-appearance__panels">
         <div
           role="tabpanel"
