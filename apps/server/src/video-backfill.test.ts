@@ -96,7 +96,9 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
       processAsset: async () => {},
       deleteFiles: async () => {},
       makeProxy: async (id, opts) => void queued.push({ id, ...opts }),
-      runVideoBackfill: async () => void (steps += 1),
+      runVideoBackfill: async () => {
+        steps += 1;
+      },
       regenerationsWaiting: async () => waiting,
       cancelRegenerations: async () => {},
     };

@@ -114,7 +114,7 @@ it('regenerates existing videos after asking, then shows the progress and stops'
     (b) => b.textContent === 'videoSettings.existing.regenerate',
   );
   await act(async () => open?.click());
-  const start = [...document.querySelectorAll('button')].find(
+  const start = [...host.querySelectorAll('button')].find(
     (b) => b.textContent === 'videoSettings.existing.start',
   );
   const running = view({
