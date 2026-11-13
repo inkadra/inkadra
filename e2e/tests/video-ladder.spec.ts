@@ -204,6 +204,11 @@ test('Settings → Video shows the encoder, the presets, the estimates and live 
     await expect(page.getByText('Intel Quick Sync').first()).toBeVisible();
     await expect(page.locator('input[name="video-quality"]')).toHaveCount(3);
     await shoot(page, `video-settings-${name}`);
+    // Avanzate, collapsed by default: the test again, live sessions and per-rung values.
+    await page.getByRole('button', { name: 'Mostra' }).click();
+    await expect(page.getByRole('button', { name: 'Rifai il test di prestazioni' })).toBeVisible();
+    await page.locator('[data-tour="video-advanced"]').scrollIntoViewIfNeeded();
+    await shoot(page, `video-settings-advanced-${name}`);
     running = true;
     await page.reload();
     await expect(page.locator('.video-run [role="progressbar"]')).toBeVisible();
