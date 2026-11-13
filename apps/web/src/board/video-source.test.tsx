@@ -145,6 +145,26 @@ it('attaches hls.js, follows a rung chosen by hand, and falls back to the file o
   );
 });
 
+it('keeps the playlist on Safari (native HLS) across a re-render', async () => {
+  // No MediaSource: hls.js says no, the video element plays the playlist itself.
+  const instances = fakeHls(false);
+  const canPlay = vi
+    .spyOn(HTMLMediaElement.prototype, 'canPlayType')
+    .mockImplementation((type) => (type === 'application/vnd.apple.mpegurl' ? 'maybe' : ''));
+  const rungs = [rung('480'), rung('720')];
+  const source = playbackSource(asset(rungs));
+  await act(async () => root.render(<Player source={source} choice="auto" rungs={rungs} />));
+  expect(instances).toHaveLength(0);
+  const video = host.querySelector('video') as HTMLVideoElement;
+  expect(video.getAttribute('src')).toBe(source.hls);
+  // A render with the same props (a parent updating): React leaves the attribute alone.
+  await act(async () =>
+    root.render(<Player source={{ ...source }} choice="auto" rungs={[...rungs]} />),
+  );
+  expect(video.getAttribute('src')).toBe(source.hls);
+  canPlay.mockRestore();
+});
+
 it('plays the original file when chosen', async () => {
   fakeHls();
   const rungs = [rung('480')];
