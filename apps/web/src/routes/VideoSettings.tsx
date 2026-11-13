@@ -16,6 +16,7 @@ import {
 import { Button, Checkbox, ChoiceTile, Dialog, DialogActions, Icon, Switch } from '@inkadra/ui';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { refetchVideosWithoutCopy } from '../board/assets.ts';
 import { api } from '../lib/api.ts';
 import { trackSave } from './settings-save.ts';
 import { Badge, Card, Row, Segmented, Summary, Tile } from './settings-ui.tsx';
@@ -290,9 +291,15 @@ function ExistingVideos({
               variant="primary"
               disabled={busy}
               onClick={() =>
-                void act(() =>
-                  api.post<VideoSettingsView>('/instance/video-settings/reprocess', { scope }),
-                )
+                void act(async () => {
+                  const next = await api.post<VideoSettingsView>(
+                    '/instance/video-settings/reprocess',
+                    { scope },
+                  );
+                  // Cards of this tab still hold the videos without copies as they were.
+                  refetchVideosWithoutCopy();
+                  return next;
+                })
               }
             >
               {t('videoSettings.existing.start')}
