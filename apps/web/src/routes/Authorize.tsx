@@ -42,16 +42,22 @@ export function Authorize() {
     !!request.codeChallenge &&
     request.codeChallengeMethod === 'S256';
 
-  const fresh = useFreshSignIn(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const { redirectTo } = await api.post<AppAuthorizationRedirect>('/app-authorizations', request);
-      window.location.assign(redirectTo);
-    } finally {
-      setBusy(false);
-    }
-  }, () => setError(t('authorize.failed')));
+  const fresh = useFreshSignIn(
+    async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        const { redirectTo } = await api.post<AppAuthorizationRedirect>(
+          '/app-authorizations',
+          request,
+        );
+        window.location.assign(redirectTo);
+      } finally {
+        setBusy(false);
+      }
+    },
+    () => setError(t('authorize.failed')),
+  );
 
   async function allow() {
     await fresh.run(null);

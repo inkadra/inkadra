@@ -7,7 +7,10 @@ import { SignInOptions } from './SignInOptions.tsx';
 import './login.css';
 
 /** Keep only the pending input, never credentials or a returned token, across provider redirects. */
-export function useFreshSignIn<T>(action: (input: T) => Promise<void>, fail: (err: unknown) => void) {
+export function useFreshSignIn<T>(
+  action: (input: T) => Promise<void>,
+  fail: (err: unknown) => void,
+) {
   const { t } = useTranslation();
   const { user } = useSession();
   const [pending, setPending] = useState<{ input: T; userId: string } | null>(null);
@@ -20,8 +23,12 @@ export function useFreshSignIn<T>(action: (input: T) => Promise<void>, fail: (er
     try {
       await latest.current.action(input);
     } catch (err) {
-      if (err instanceof RequestError && err.status === 403 &&
-        (err.details as { reason?: string } | undefined)?.reason === 'reauth_required' && user) {
+      if (
+        err instanceof RequestError &&
+        err.status === 403 &&
+        (err.details as { reason?: string } | undefined)?.reason === 'reauth_required' &&
+        user
+      ) {
         setPending({ input, userId: user.id });
       } else latest.current.fail(err);
     }
@@ -39,17 +46,18 @@ export function useFreshSignIn<T>(action: (input: T) => Promise<void>, fail: (er
     }
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: consume the browser draft only on mount
   useEffect(() => {
     const raw = sessionStorage.getItem(key);
     if (!raw) return;
     sessionStorage.removeItem(key);
     try {
       const saved = JSON.parse(raw);
-      if (saved.userId === user?.id && Date.now() - saved.at < 15 * 60_000)
-        void resume(saved);
-    } catch { /* Ignore an expired or malformed browser draft. */ }
+      if (saved.userId === user?.id && Date.now() - saved.at < 15 * 60_000) void resume(saved);
+    } catch {
+      /* Ignore an expired or malformed browser draft. */
+    }
     // Consume once on return; subsequent renders must not repeat a sensitive action.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only recovery
   }, []);
 
   useEffect(() => {
@@ -58,12 +66,24 @@ export function useFreshSignIn<T>(action: (input: T) => Promise<void>, fail: (er
 
   return {
     run,
-    challenge: <Dialog open={!!pending} title={t('auth.errors.reauthRequired')} onClose={() => {
-      sessionStorage.removeItem(key);
-      setPending(null);
-    }}>
-      {pending && <SignInOptions next={next} signUp={false} email={user?.email}
-        onSignedIn={() => resume(pending)} />}
-    </Dialog>,
+    challenge: (
+      <Dialog
+        open={!!pending}
+        title={t('auth.errors.reauthRequired')}
+        onClose={() => {
+          sessionStorage.removeItem(key);
+          setPending(null);
+        }}
+      >
+        {pending && (
+          <SignInOptions
+            next={next}
+            signUp={false}
+            email={user?.email}
+            onSignedIn={() => resume(pending)}
+          />
+        )}
+      </Dialog>
+    ),
   };
 }

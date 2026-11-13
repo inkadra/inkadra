@@ -1,4 +1,3 @@
-import { useFreshSignIn } from './useFreshSignIn.tsx';
 import type {
   AccountSession,
   CreatedPersonalToken,
@@ -60,6 +59,7 @@ import { MySpaceCard } from './StorageSpace.tsx';
 import { trackSave } from './settings-save.ts';
 import { isSettingsHome, settingsSection } from './settings-sections.ts';
 import { AutosaveText, Badge, Card, Row, Segmented, Tile, useIsPhone } from './settings-ui.tsx';
+import { useFreshSignIn } from './useFreshSignIn.tsx';
 import { VideoSettings } from './VideoSettings.tsx';
 import './projects.css';
 import { ProviderIcon } from './ProviderIcon.tsx';

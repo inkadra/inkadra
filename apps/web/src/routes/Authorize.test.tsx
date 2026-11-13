@@ -10,7 +10,11 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 vi.mock('../lib/session.tsx', () => ({
   useSession: () => ({
     user: { id: 'member', name: 'Member', email: 'member@example.com' },
-    instance: { name: 'Inkadra', publicUrl: window.location.origin, auth: { emailPassword: true, oidc: [] } },
+    instance: {
+      name: 'Inkadra',
+      publicUrl: window.location.origin,
+      auth: { emailPassword: true, oidc: [] },
+    },
   }),
 }));
 vi.mock('../lib/api.ts', async (original) => ({
@@ -54,7 +58,9 @@ it('reauthenticates an old session and preserves the complete app authorization 
   vi.mocked(api.post).mockResolvedValueOnce({ redirectTo: 'inkadra://callback?code=ok' });
   const form = document.body.querySelector('form');
   expect(form).not.toBeNull();
-  await act(async () => form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  await act(async () =>
+    form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
   expect(authApi.signIn).toHaveBeenCalledWith('member@example.com', '');
   expect(api.post).toHaveBeenCalledTimes(2);
   expect(vi.mocked(api.post).mock.calls[1]).toEqual(vi.mocked(api.post).mock.calls[0]);
