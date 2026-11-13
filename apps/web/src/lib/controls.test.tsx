@@ -335,3 +335,29 @@ it('uses the calendar when the browser falls back from date to an unvalidated te
     type.mockRestore();
   }
 });
+
+it('keeps a focused disabled day as the keyboard cursor without selecting the old value', async () => {
+  const onChange = vi.fn();
+  await act(async () =>
+    root.render(<DateField label="Due" value="2026-11-20" min="2026-11-16" onChange={onChange} />),
+  );
+  await act(async () => host.querySelector('input')?.click());
+  const day = host.querySelector<HTMLElement>('.ink-date__body [data-day="2026-11-15"]')!;
+  await act(async () =>
+    day.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })),
+  );
+  await act(async () => day.click());
+  await act(async () =>
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(onChange).not.toHaveBeenCalled();
+  expect(host.querySelector('.ink-date__layer')?.classList.contains('is-closing')).toBe(false);
+  await act(async () =>
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(document.activeElement?.getAttribute('data-day')).toBe('2026-11-16');
+});

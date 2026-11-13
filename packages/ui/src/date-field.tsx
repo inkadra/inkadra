@@ -183,12 +183,14 @@ export function DateField({
   });
 
   const gridKey = (event: KeyboardEvent) => {
+    // A pointer can focus a day that cannot be chosen: the keys act on the focused day.
+    const from = (event.target as HTMLElement).dataset.day ?? cursor;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      choose(cursor);
+      choose(from);
       return;
     }
-    const next = calendarKey(cursor, event.key);
+    const next = calendarKey(from, event.key);
     if (!next) return;
     event.preventDefault();
     focusCursor.current = true;
@@ -277,6 +279,10 @@ export function DateField({
                     s.selected && 'is-selected',
                     s.rangeEnd && 'is-end',
                   )}
+                  // The roving cursor follows a day focused by the pointer in this month.
+                  onFocus={() =>
+                    live && d !== cursor && d.slice(0, 7) === at.slice(0, 7) && setCursor(d)
+                  }
                   onClick={() => choose(d)}
                 >
                   {Number(d.slice(8))}
