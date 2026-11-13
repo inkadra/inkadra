@@ -405,7 +405,11 @@ function RungsProgress({
           <span
             key={r.name}
             className={
-              r.status === 'ready' ? 'fcard__rung is-done' : r.live ? 'fcard__rung is-live' : 'fcard__rung'
+              r.status === 'ready'
+                ? 'fcard__rung is-done'
+                : r.live
+                  ? 'fcard__rung is-live'
+                  : 'fcard__rung'
             }
           >
             <span>{rungLabel(r.name)}</span>
