@@ -103,11 +103,13 @@ function Trend({ status, actions }: { status: ServerStatus; actions: ServerActio
   const range = t(`server.chart.ranges.${status.range}`);
   const { cpu, memory, network, responses } = status.now;
   const cpuNow = cpu.cores ? (cpu.used / cpu.cores) * 100 : null;
+  const gpuNow = status.encoder && status.encoder.backend !== 'software' ? status.now.gpu ?? null : null;
+  const gpuValues = h.map((s) => s.gpu ?? null);
   const cpuValues = h.map((s) => s.cpu);
   const memValues = h.map((s) => s.memory);
   const lat = h.map((s) => s.p95);
   const pct = (v: number | null) => (v === null ? '—' : `${number(v, lang, 0)} %`);
-  const cpuMax = cpuScale([...cpuValues, cpuNow]);
+  const cpuMax = cpuScale([...cpuValues, cpuNow, ...(gpuNow !== null ? [...gpuValues, gpuNow] : [])]);
   const mem = memoryScale([...memValues, memory.used], memory.limit);
   const memPeak = Math.max(peak(memValues) ?? 0, memory.used);
   const memShare = memory.limit ? memory.used / memory.limit : null;
@@ -140,18 +142,19 @@ function Trend({ status, actions }: { status: ServerStatus; actions: ServerActio
           value={
             <>
               {cpuNow === null ? '—' : number(cpuNow, lang, 0)} <small>%</small>
+              {gpuNow !== null && <small> · {t('server.advanced.gpu')} {pct(gpuNow)}</small>}
             </>
           }
-          hint={t('server.advanced.cpuMeta', {
-            avg: pct(mean(cpuValues)),
-            peak: pct(peak(cpuValues)),
-          })}
+          hint={<>
+            {t('server.advanced.cpuMeta', { avg: pct(mean(cpuValues)), peak: pct(peak(cpuValues)) })}
+            {gpuNow !== null && <> · {t('server.advanced.gpuMeta', { peak: pct(peak(gpuValues)) })}</>}
+          </>}
         >
           <ServerChart
-            label={label(t('server.advanced.cpu'))}
+            label={label(gpuNow !== null ? `${t('server.advanced.cpu')} · ${t('server.advanced.gpu')}` : t('server.advanced.cpu'))}
             times={times}
             span={span}
-            series={[{ label: t('server.advanced.cpu'), tone: 'cpu', values: cpuValues }]}
+            series={[{ label: t('server.advanced.cpu'), tone: 'cpu', values: cpuValues }, ...(gpuNow !== null ? [{ label: t('server.advanced.gpu'), tone: 'memory' as const, values: gpuValues }] : [])]}
             max={cpuMax}
             ticks={axis(cpuMax)}
             format={(v) => `${number(v, lang, 0)} %`}

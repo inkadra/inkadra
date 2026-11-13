@@ -65,6 +65,18 @@ export const RANGES: Record<ServerRange, { tier: Tier; window: number; step: num
   '7d': { tier: 'm10', window: 7 * 86_400, step: 3600 },
 };
 
+/** Preserve a GPU reading from the worker when another role sampled the same container. */
+function addContainer(hosts: Map<string, Point>, process: string, point: Point) {
+  const host = hostOf(process);
+  const old = hosts.get(host);
+  hosts.set(host, old ? { ...old, g: old.g == null ? point.g ?? null : Math.max(old.g, point.g ?? 0) } : point);
+}
+
+const gpuOf = (containers: Point[]) => {
+  const values = containers.flatMap((p) => typeof p.g === 'number' ? [p.g] : []);
+  return values.length ? Math.min(100, sum(values)) : null;
+};
+
 const hostOf = (process: string) => process.slice(process.indexOf('@') + 1);
 const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -138,7 +150,7 @@ export function combine(
       }
       const hosts = new Map<string, Point>();
       for (const [process, p] of processes)
-        if (!hosts.has(hostOf(process))) hosts.set(hostOf(process), p);
+        addContainer(hosts, process, p);
       const containers = [...hosts.values()];
       const { cores } = capacity(containers);
       const known = (pick: (p: Point) => number | null) => {
@@ -154,6 +166,7 @@ export function combine(
       return {
         t: iso(t),
         cpu: cores > 0 ? Math.min(100, (sum(containers.map((p) => p.c)) / cores) * 100) : null,
+        gpu: gpuOf(containers),
         memory: Math.round(sum(containers.map((p) => p.m))),
         in: known((p) => p.rx),
         out: known((p) => p.tx),
@@ -526,13 +539,14 @@ export function liveNow(raw: Map<string, Point[]>, now: number): ServerLive['now
   const hosts = new Map<string, Point>();
   for (const [process, list] of raw) {
     const last = list.at(-1);
-    if (last && now - last.t < 60_000 && !hosts.has(hostOf(process)))
-      hosts.set(hostOf(process), last);
+    if (last && now - last.t < 60_000)
+      addContainer(hosts, process, last);
   }
   const containers = [...hosts.values()];
   const room = capacity(containers);
   const webRecent = combine(raw, now - 5 * 60_000, 300).at(-1);
   return {
+    gpu: gpuOf(containers),
     cpu: { used: sum(containers.map((p) => p.c)), cores: room.cores },
     memory: {
       used: Math.round(sum(containers.map((p) => p.m))),
@@ -695,6 +709,7 @@ export async function serverStatus(
     history,
     events,
     now: {
+      gpu: live.gpu,
       cpu: live.cpu,
       memory: live.memory,
       network: live.network

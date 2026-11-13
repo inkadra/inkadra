@@ -24,6 +24,8 @@ export interface Point {
   t: number;
   /** Cores the container used, and could use. */
   c: number;
+  /** Percent of the busiest container GPU engine; older samples lack it. */
+  g?: number | null;
   cc: number;
   m: number;
   ml: number | null;

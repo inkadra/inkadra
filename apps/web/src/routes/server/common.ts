@@ -45,6 +45,7 @@ export function mergeLive(status: ServerStatus, live: ServerLive): ServerStatus 
       .filter((s) => Date.parse(s.t) >= from)
       .sort((a, b) => a.t.localeCompare(b.t)),
     now: {
+      gpu: live.now.gpu ?? null,
       cpu: live.now.cpu,
       memory: live.now.memory,
       network: live.now.network

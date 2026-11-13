@@ -136,3 +136,5 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.
+
+| [0129](0129-container-gpu-use.md) | GPU use from container DRM fdinfo inside the CPU chart; absent without driver counters |

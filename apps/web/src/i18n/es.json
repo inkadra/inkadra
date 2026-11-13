@@ -6131,6 +6131,8 @@
       "today": "hoy ↓ {{in}} ↑ {{out}}",
       "storage": "Espacio",
       "cpuMeta": "media {{avg}} · máximo {{peak}}",
+      "gpu": "GPU",
+      "gpuMeta": "pico GPU {{peak}} · solo el contenedor",
       "memoryMeta": "máximo {{peak}}",
       "latency": "Tiempos de respuesta",
       "latencyMeta": "p95 · errores {{errors}}",

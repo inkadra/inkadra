@@ -444,3 +444,21 @@ it('merges the live values: newer points replace those of the same time, the win
   // Nor does one older than the full reading.
   expect(mergeLive(before, { ...live, checkedAt: t(-5) })).toBe(before);
 });
+
+
+it.each(['vaapi', 'software', null] as const)('shows GPU only with hardware encoding and a reading (%s)', async (backend) => {
+  const s = status();
+  vi.mocked(api.get).mockResolvedValue({ ...s, encoder: backend ? { backend, label: backend } : null, now: { ...s.now, gpu: 40 }, history: s.history.map((p) => ({ ...p, gpu: 60 })) });
+  await act(async () => updatePreferences({ serverView: 'advanced' }));
+  await render();
+  expect(host.textContent?.includes('server.advanced.gpu 40 %')).toBe(backend === 'vaapi');
+  expect(host.querySelectorAll('.server-cell--trend')).toHaveLength(4);
+  expect(host.querySelectorAll('.server-cell--trend')[0]?.querySelectorAll('.server-chart__line--memory').length).toBe(backend === 'vaapi' ? 1 : 0);
+});
+
+it('keeps the CPU card unchanged when GPU readings are absent', async () => {
+  vi.mocked(api.get).mockResolvedValue(status());
+  await act(async () => updatePreferences({ serverView: 'advanced' }));
+  await render();
+  expect(host.querySelectorAll('.server-cell--trend')[0]?.textContent).not.toContain('server.advanced.gpu');
+});

@@ -23,6 +23,7 @@ export const ServerSample = z
   .object({
     t: Timestamp,
     cpu: z.number().nullable().openapi({ description: 'Percent of the cores Inkadra may use.' }),
+    gpu: z.number().min(0).max(100).nullable().optional().openapi({ description: 'Percent of the busiest GPU engine used by Inkadra containers; absent without DRM fdinfo.' }),
     memory: z.number().int().nullable().openapi({ description: 'Bytes in use.' }),
     in: z.number().nullable().openapi({ description: 'Bytes per second received.' }),
     out: z.number().nullable().openapi({ description: 'Bytes per second sent.' }),
@@ -81,6 +82,7 @@ export type ServerService = z.infer<typeof ServerService>;
 
 export const ServerNow = z
   .object({
+    gpu: ServerSample.shape.gpu,
     cpu: z.object({
       used: z.number().openapi({ description: 'Cores in use.' }),
       cores: z.number().openapi({ description: 'Cores Inkadra may use (cgroup limit or host).' }),
@@ -323,6 +325,7 @@ export const ServerLive = z
         'in the full history, the others come after it.',
     }),
     now: z.object({
+      gpu: ServerNow.shape.gpu,
       cpu: ServerNow.shape.cpu,
       memory: ServerNow.shape.memory,
       network: z
