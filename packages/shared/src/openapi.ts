@@ -188,7 +188,7 @@ import {
   UserSearchQuery,
 } from './sharing.ts';
 import { MyTasks } from './tasks.ts';
-import { ProjectTransfer, ProjectTransfers } from './transfers.ts';
+import { ImportIdempotencyKey, ProjectTransfer, ProjectTransfers } from './transfers.ts';
 import {
   AccountSession,
   AppAuthorizationRedirect,
@@ -1276,10 +1276,37 @@ registry.registerPath({
     '(`application/zip`, with Content-Length, at most `IMPORT_MAX_SIZE`); the worker checks ' +
     'and reads it afterwards. One import at a time per person. Sessions and personal tokens. ' +
     'Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects.',
-  request: { body: { required: true, content: { 'application/zip': { schema: zipBody } } } },
+  description:
+    'Retry safely with `Idempotency-Key` (decision 0127, capability `idempotent-import`): the ' +
+    'key is checked after sign-in, the project-creation check, Content-Type and Content-Length ' +
+    'and before the one-import-at-a-time check and the archive, so a retry is answered without ' +
+    'reading the archive again. Without the header nothing changes.',
+  request: {
+    headers: z.object({
+      'Idempotency-Key': ImportIdempotencyKey.optional().openapi({
+        description:
+          'Remembered for seven days per person. A retry with the same key starts nothing and ' +
+          'answers 202 with the transfer of the first import as it is now, whatever its status ' +
+          '(`queued`, `running`, `ready`, `failed` including `cancelled`); 404 once that ' +
+          'transfer was removed; 409 when Content-Length differs from the first request. Two ' +
+          'requests with the same key received at once make one import: the later one ' +
+          'discards its archive and answers like a retry.',
+      }),
+    }),
+    body: { required: true, content: { 'application/zip': { schema: zipBody } } },
+  },
   responses: {
-    202: { description: 'Import queued', headers: transferLocation, ...json(ProjectTransfer) },
-    409: { description: 'Another import of the caller is still running', ...json(ApiError) },
+    202: {
+      description: 'Import queued, or the import this Idempotency-Key started',
+      headers: transferLocation,
+      ...json(ProjectTransfer),
+    },
+    409: {
+      description:
+        'Another import of the caller is still running, or Idempotency-Key was used with a ' +
+        'different Content-Length',
+      ...json(ApiError),
+    },
     411: { description: 'No Content-Length', ...json(ApiError) },
     413: { description: 'Larger than the instance accepts', ...json(ApiError) },
     415: { description: 'Not application/zip', ...json(ApiError) },
@@ -1293,6 +1320,21 @@ registry.registerPath({
   security: secured,
   summary: "The caller's exports and imports of the last seven days.",
   responses: { 200: { description: 'Transfers', ...json(ProjectTransfers) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/transfers/import-requests/{idempotencyKey}'),
+  tags: ['Transfers'],
+  security: secured,
+  summary:
+    "The caller's import started with this `Idempotency-Key` (decision 0127, capability " +
+    '`idempotent-import`), as it is now. Lets a client that lost the answer of ' +
+    '`POST /projects/import` find out whether it was accepted without sending the archive ' +
+    'again. 404 when the caller has no such import: never received (or still being ' +
+    'received), started by someone else, removed, or the key is older than seven days. A 404 ' +
+    'means a retry of the POST with the same key is safe. Sessions and personal tokens.',
+  request: { params: z.object({ idempotencyKey: ImportIdempotencyKey }) },
+  responses: { 200: { description: 'Transfer', ...json(ProjectTransfer) }, ...errors },
 });
 registry.registerPath({
   method: 'get',

@@ -97,5 +97,22 @@ export type ProjectTransfers = z.infer<typeof ProjectTransfers>;
  */
 export const TRANSFER_CANCEL_CAPABILITY = 'transfer-cancel';
 
+/**
+ * `Idempotency-Key` of `POST /projects/import` (decision 0127): the same form as the creations
+ * of decisions 0098 and 0103, 1–128 printable ASCII characters. Clients send a new UUID for each
+ * archive the person picks and keep it for every retry of that import.
+ */
+export const ImportIdempotencyKey = z
+  .string()
+  .regex(/^[\x21-\x7e]{1,128}$/)
+  .openapi({ example: '6f1c2b7e-3d4a-4f8e-9b1a-2c5d7e9f0a13' });
+
+/**
+ * Capability on `GET /instance/version` of servers that honour `Idempotency-Key` on
+ * `POST /projects/import` and answer `GET /transfers/import-requests/{idempotencyKey}`
+ * (decision 0127). Older servers ignore the header and import again.
+ */
+export const IDEMPOTENT_IMPORT_CAPABILITY = 'idempotent-import';
+
 /** Hours an export stays downloadable. */
 export const EXPORT_TTL_HOURS = 24;
