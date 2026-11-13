@@ -146,7 +146,14 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
         ...real.playback,
         renditions: [
           ...(real.playback?.renditions ?? []),
-          { ...real.playback?.renditions[1], name: '1080', status: 'processing', progress: 64, url: null, live: true },
+          {
+            ...real.playback?.renditions[1],
+            name: '1080',
+            status: 'processing',
+            progress: 64,
+            url: null,
+            live: true,
+          },
         ],
       },
     }),
