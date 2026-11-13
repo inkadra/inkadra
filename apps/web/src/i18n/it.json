@@ -1994,7 +1994,8 @@
       "autoAt": "Auto · {{quality}}",
       "now": "ora {{quality}}",
       "preparing": "in preparazione · {{percent}}%",
-      "original": "Originale"
+      "original": "Originale",
+      "live": "al volo"
     }
   },
   "search": {
@@ -5828,6 +5829,10 @@
           "2": {
             "title": "Solo per i nuovi",
             "text": "Rigenerale quando vuoi: le copie vecchie restano finché le nuove non sono pronte."
+          },
+          "3": {
+            "title": "Al volo",
+            "text": "Solo con la GPU: le risoluzioni non salvate si preparano mentre qualcuno guarda, entro quante sessioni regge la scheda."
           }
         }
       }
@@ -6601,6 +6606,32 @@
         "missing": "Solo quelli senza copie"
       },
       "start": "Rigenera"
+    },
+    "live": {
+      "title": "Riproduzione al volo",
+      "body": "Il server prepara una risoluzione mentre qualcuno guarda: i video si vedono appena caricati, e le risoluzioni «Solo al volo» non occupano spazio.",
+      "enabled": "Riproduzione al volo",
+      "enabledHelp": "Subito dopo il caricamento, e per le risoluzioni che non salvi su disco.",
+      "maxSessions": "Video al volo insieme",
+      "maxSessionsHelp": "Per tutto il server. Oltre, chi guarda riceve le copie già salvate.",
+      "perViewer": "Per persona o link",
+      "perViewerHelp": "Quanti video al volo può aprire insieme una persona, o gli ospiti di un link.",
+      "modeLabel": "{{rung}}: dove sta",
+      "modes": {
+        "stored": "Salva su disco",
+        "live": "Solo al volo"
+      },
+      "noSpace": "nessuno spazio",
+      "unavailable": "Non disponibile su questo server",
+      "off": "Spenta",
+      "reasons": {
+        "no-gpu": "Richiede la codifica hardware della GPU: questo server codifica con il processore.",
+        "too-slow": "GPU troppo lenta per il tempo reale (misurata all’avvio).",
+        "failed": "La misura all’avvio non è riuscita: dettagli nel log del server.",
+        "set-off": "Spenta dal server (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Misurato all’avvio: una sessione, {{speed}}× tempo reale.",
+      "measured_other": "Misurato all’avvio: {{count}} sessioni, {{speed}}× tempo reale."
     }
   }
 }

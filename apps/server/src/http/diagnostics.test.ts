@@ -124,7 +124,7 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
       id: 'video_encoding',
       status: 'warning',
       expected: 'VIDEO_PROXY_HWACCEL=qsv',
-      actual: 'Software (libx264)',
+      actual: 'Software (libx264) · live playback off: needs GPU hardware encoding',
     });
   });
 

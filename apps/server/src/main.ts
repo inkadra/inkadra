@@ -19,13 +19,17 @@ import { createDatabase, runMigrations } from './db/client.ts';
 import { startSandboxSweep } from './demo.ts';
 import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
+import type { LiveContext } from './http/hls.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
 import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.ts';
 import type { VideoEncoder } from './media/hwaccel.ts';
+import { detectVideoEncoder } from './media/hwaccel.ts';
+import { LiveSessions } from './media/live.ts';
 import { mapUserAgent } from './media/maps.ts';
 import { DEFAULT_VIDEO_QUALITY } from './media/quality.ts';
 import { sweepJobDirs } from './media/scratch.ts';
+import { mediaTools } from './media/tools.ts';
 import { checkHealth } from './monitor/health.ts';
 import { LatencyRecorder, startSampler } from './monitor/sampler.ts';
 import { type MonitorStore, memoryStore, monitorRedis, redisStore } from './monitor/store.ts';
@@ -40,6 +44,7 @@ import {
 import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
+import { cachedVideoSettings } from './video-settings.ts';
 
 const COMMANDS = [
   'web',
@@ -274,8 +279,43 @@ async function main() {
       notices = queuedNotices.notifier;
       closers.unshift(() => queuedNotices.close());
     }
+    // Live playback of video rungs runs where requests arrive (decision 0128).
+    let live: LiveContext | undefined;
+    if (config.VIDEO_PROXIES) {
+      const { ffmpeg } = await mediaTools();
+      const liveEncoder =
+        encoder ??
+        (ffmpeg
+          ? (
+              await detectVideoEncoder(ffmpeg, {
+                mode: config.VIDEO_PROXY_HWACCEL,
+                vaapiDevice: config.VIDEO_PROXY_VAAPI_DEVICE,
+              }).catch(() => null)
+            )?.encoder
+          : undefined);
+      // Live playback needs a hardware encoder (decision 0128): never libx264.
+      const hardware = liveEncoder && liveEncoder.backend !== 'software' ? liveEncoder : undefined;
+      if (hardware) {
+        const sessions = new LiveSessions({
+          storage,
+          tmpDir,
+          encoder: hardware,
+          proxies: media.proxies,
+          log,
+        });
+        await sessions.start();
+        closers.unshift(() => sessions.close());
+        live = {
+          sessions,
+          encoder: hardware,
+          proxies: media.proxies,
+          settings: cachedVideoSettings(db, config),
+        };
+      } else log.info('live video playback is off here: it needs GPU hardware encoding');
+    }
     const webDist = config.WEB_DIST ?? join(here, '..', 'web');
     const app = await createApp({
+      ...(live ? { live } : {}),
       config: { ...config, WEB_DIST: webDist },
       db,
       auth,

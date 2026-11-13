@@ -509,6 +509,18 @@ export const asset = pgTable(
     audioCodec: text('audio_codec'),
     frameRate: real('frame_rate'),
     /**
+     * What the probe of a video said beyond its codecs (decision 0128): HDR transfer, bits,
+     * pixel format, interlacing, rotation. Live playback reads it to tell whether the source
+     * can be encoded in real time. Null for older videos and other files.
+     */
+    mediaInfo: jsonb('media_info').$type<{
+      hdr: 'pq' | 'hlg' | null;
+      bits: number;
+      pixelFormat: string | null;
+      interlaced: boolean;
+      rotated: boolean;
+    }>(),
+    /**
      * The playable MP4 copy of a video browsers cannot play (decision 0048): null when none is
      * needed. Its file is the `proxy` row of `asset_variant`.
      */

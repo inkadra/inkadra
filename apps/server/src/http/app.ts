@@ -42,6 +42,7 @@ import { errorHandler, HttpError, sendError } from './errors.ts';
 import { registerExportSettingsRoutes } from './export-settings-routes.ts';
 import { registerFeedbackRoutes } from './feedback-routes.ts';
 import { registerGuestRoutes } from './guest-routes.ts';
+import type { LiveContext } from './hls.ts';
 import { registerInstanceAdminRoutes } from './instance-admin-routes.ts';
 import { registerLinkPreviews } from './link-previews.ts';
 import { registerMapPreviews } from './map-previews.ts';
@@ -62,6 +63,8 @@ import { registerUploads } from './uploads.ts';
 import { registerVersionRoutes } from './versions-routes.ts';
 
 export interface AppDeps {
+  /** Live playback of video rungs (decision 0128); absent where copies are off. */
+  live?: LiveContext;
   /** Tests only: fake GitHub HTTP server. */
   feedbackGitHubUrl?: string;
   config: Config;

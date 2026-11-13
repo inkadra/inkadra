@@ -9,6 +9,7 @@ import type { Database } from '../db/client.ts';
 import { readVideoEncoder } from '../media/encoder-setting.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import type { Storage } from '../storage.ts';
+import { liveStatus } from '../video-settings.ts';
 import { requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -142,11 +143,25 @@ export async function runChecks(
   if (encoder) {
     const forced = encoder.requested !== 'auto' && encoder.requested !== 'none';
     const missed = forced && encoder.backend === 'software';
+    // Live playback (decision 0128): whether it runs, and why not.
+    const live = await liveStatus(db, config).catch(() => null);
+    const liveText = !live
+      ? null
+      : live.available
+        ? `live playback: ${live.sessions} at once${live.speed ? `, ${live.speed.toFixed(1)}× real time` : ''}`
+        : `live playback off: ${
+            {
+              'no-gpu': 'needs GPU hardware encoding',
+              'too-slow': 'GPU too slow for real time',
+              failed: 'the measurement at start failed',
+              'set-off': 'VIDEO_LIVE_MAX_SESSIONS=0',
+            }[live.reason ?? 'failed']
+          }`;
     add(
       'video_encoding',
       missed ? 'warning' : 'ok',
       missed ? `VIDEO_PROXY_HWACCEL=${encoder.requested}` : null,
-      encoder.label,
+      [encoder.label, liveText].filter(Boolean).join(' · '),
     );
   }
 

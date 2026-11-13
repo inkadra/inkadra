@@ -160,6 +160,11 @@ const Env = z.object({
     .enum(['true', 'false'])
     .transform((v) => v === 'true')
     .optional(),
+  /**
+   * Live sessions at once, instead of the number the worker measures at start (decision
+   * 0128); 0 turns live playback off. Set, it locks the control in Settings → Video.
+   */
+  VIDEO_LIVE_MAX_SESSIONS: z.coerce.number().int().min(0).max(64).optional(),
   /** Encoder threads of one copy; it runs at a lower priority (nice 10) than the web role. */
   VIDEO_PROXY_THREADS: z.coerce.number().int().min(1).max(16).default(2),
   /**

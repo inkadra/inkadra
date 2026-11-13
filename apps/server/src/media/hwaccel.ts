@@ -113,16 +113,19 @@ export interface PipelineOptions {
   post?: string;
   /** HDR source: `post` tone maps it, from the source's own matrix. */
   hdr?: boolean;
+  /** Seconds the encode starts at, keeping source timestamps (live playback). */
+  from?: number;
 }
 
 /**
  * Keyframes every two seconds, by time (variable frame rates included), so every copy and
  * every rung can be cut and switched at the same instants; `-g` (ten seconds) is only a net.
  */
-export function keyframeArgs(fps: number | null) {
+export function keyframeArgs(fps: number | null, from = 0) {
   return [
     '-force_key_frames',
-    'expr:gte(t,n_forced*2)',
+    // From a seek, timestamps are the source's (-copyts): the grid stays on even seconds.
+    from > 0 ? `expr:gte(t,${from}+n_forced*2)` : 'expr:gte(t,n_forced*2)',
     '-g',
     String(Math.max(1, Math.round((fps ?? 25) * 10))),
   ];
@@ -159,7 +162,7 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
   const lowPower = encoder.lowPower ? ['-low_power', '1'] : [];
   const full = encoder.tuning !== 'basic';
   const device = encoder.device ?? DEFAULT_VAAPI_DEVICE;
-  const common = [...keyframeArgs(opts.fps), '-profile:v', 'high', ...BT709_TAGS];
+  const common = [...keyframeArgs(opts.fps, opts.from), '-profile:v', 'high', ...BT709_TAGS];
   switch (encoder.backend) {
     case 'nvenc':
       return {
@@ -299,8 +302,24 @@ export interface DetectIo {
     encoder: VideoEncoder,
     gpuDecode: boolean,
   ): Promise<string | null>;
-  /** A one-second H.264 clip made with libx264, for the test of the GPU decode; null if not. */
-  sample(ffmpeg: string): Promise<{ path: string; done: () => Promise<void> } | null>;
+  /**
+   * An H.264 clip of the generated test pattern made with libx264, for the test of the GPU
+   * decode (one second, 1280×720 by default) and the live benchmark; null if not.
+   */
+  sample(
+    ffmpeg: string,
+    size?: { width: number; height: number; seconds: number },
+  ): Promise<{ path: string; done: () => Promise<void> } | null>;
+  /**
+   * Runs the live benchmark (`args`, at a lower priority, killed past `timeoutMs`); resolves
+   * with ffmpeg's stderr when it worked, else null.
+   */
+  bench(
+    ffmpeg: string,
+    args: string[],
+    encoder: VideoEncoder,
+    timeoutMs: number,
+  ): Promise<string | null>;
   /** Whether the worker may open `path` for reading and writing. */
   canOpen(path: string): Promise<boolean>;
   /** Name of the first NVIDIA GPU (`nvidia-smi`), or null. */
@@ -341,7 +360,24 @@ export const defaultDetectIo: DetectIo = {
       return (e.stderr || e.message || 'failed').trim().slice(0, 300);
     }
   },
-  async sample(ffmpeg) {
+  async bench(ffmpeg, args, encoder, timeoutMs) {
+    const [file, argv] = await limitedCommand(ffmpeg, args, {
+      memoryBytes: encoderMemory(encoder, true),
+      nice: true,
+    });
+    try {
+      const { stderr } = await exec(file, argv, {
+        timeout: timeoutMs,
+        killSignal: 'SIGKILL',
+        env: toolEnv(),
+        maxBuffer: 4 * 1024 * 1024,
+      });
+      return String(stderr);
+    } catch {
+      return null;
+    }
+  },
+  async sample(ffmpeg, size = { width: 1280, height: 720, seconds: 1 }) {
     const dir = await mkdtemp(join(tmpdir(), 'inkadra-hwaccel-'));
     const path = join(dir, 'sample.mp4');
     const done = () => rm(dir, { recursive: true, force: true });
@@ -355,7 +391,7 @@ export const defaultDetectIo: DetectIo = {
           '-f',
           'lavfi',
           '-i',
-          'testsrc2=size=1280x720:rate=25:duration=1',
+          `testsrc2=size=${size.width}x${size.height}:rate=25:duration=${size.seconds}`,
           '-c:v',
           'libx264',
           '-preset',
@@ -476,6 +512,84 @@ export function av1TestArgs(encoder: VideoEncoder) {
     'null',
     '-',
   ];
+}
+
+// Live benchmark (decision 0128) ----------------------------------------------------------
+
+/** Speed a live session needs, × real time: half again over 1×, for seeks and other work. */
+export const LIVE_MARGIN = 1.5;
+export const LIVE_MAX_SESSIONS = 8;
+const BENCH_TIMEOUT_MS = 60_000;
+
+/**
+ * Live sessions at once a speed allows: one per 1.5× of the speed of one encode. On the N100 of
+ * the spike, one 1080p session ran at 5.35×: three sessions (measured 1.78× each), not four
+ * (1.33×, too close to real time).
+ */
+export const liveSessionsFor = (speed: number) =>
+  Math.max(0, Math.min(LIVE_MAX_SESSIONS, Math.floor(speed / LIVE_MARGIN)));
+
+/** The last `speed=…x` of ffmpeg's statistics, or null. */
+export function parseSpeed(stderr: string) {
+  const all = [...stderr.matchAll(/speed=\s*([\d.]+)x/g)];
+  const value = Number(all.at(-1)?.[1]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export type LiveMeasure =
+  | { sessions: number; speed: number; error: null }
+  | { sessions: 0; speed: number | null; error: string };
+
+/**
+ * Measures live playback on `encoder` once, when the worker starts: five seconds of 1080p H.264
+ * of the generated test pattern (no one's files), decoded, scaled and encoded on the GPU with
+ * the live settings (balanced 1080p, two-second keyframes), at a lower priority, killed after a
+ * minute. Never on libx264. A failure turns live playback off, with the reason.
+ */
+export async function measureLive(
+  ffmpeg: string,
+  encoder: VideoEncoder,
+  io: DetectIo = defaultDetectIo,
+): Promise<LiveMeasure> {
+  if (encoder.backend === 'software' || encoder.cpuDecode)
+    return { sessions: 0, speed: null, error: 'needs GPU decoding and encoding' };
+  const sample = await io.sample(ffmpeg, { width: 1920, height: 1080, seconds: 5 });
+  if (!sample) return { sessions: 0, speed: null, error: 'no sample clip' };
+  try {
+    const pipeline = videoPipeline(encoder, {
+      resolution: 1080,
+      rate: rungRate('balanced', 1080, 25),
+      quality: 'balanced',
+      fps: 25,
+      gpu: true,
+    });
+    const args = [
+      '-nostdin',
+      '-hide_banner',
+      '-stats',
+      ...pipeline.input,
+      '-i',
+      sample.path,
+      '-vf',
+      pipeline.filter,
+      ...pipeline.codec,
+      '-an',
+      '-f',
+      'null',
+      '-',
+    ];
+    const stderr = await io.bench(ffmpeg, args, encoder, BENCH_TIMEOUT_MS);
+    if (stderr === null)
+      return { sessions: 0, speed: null, error: 'benchmark failed or timed out' };
+    const speed = parseSpeed(stderr);
+    if (speed === null) return { sessions: 0, speed: null, error: 'no speed in the benchmark' };
+    const sessions = liveSessionsFor(speed);
+    return sessions > 0
+      ? { sessions, speed, error: null }
+      : { sessions: 0, speed, error: 'GPU too slow for real time' };
+  } finally {
+    await sample.done();
+  }
 }
 
 const VENDORS: Record<string, string> = { '0x8086': 'Intel', '0x1002': 'AMD', '0x10de': 'NVIDIA' };

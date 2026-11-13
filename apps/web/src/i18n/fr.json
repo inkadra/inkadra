@@ -1994,7 +1994,8 @@
       "autoAt": "Auto · {{quality}}",
       "now": "maintenant {{quality}}",
       "preparing": "en préparation · {{percent}} %",
-      "original": "Original"
+      "original": "Original",
+      "live": "à la volée"
     }
   },
   "search": {
@@ -5828,6 +5829,10 @@
           "2": {
             "title": "Seulement pour les nouvelles",
             "text": "Régénère-les quand tu veux : les anciennes copies restent jusqu’à ce que les nouvelles soient prêtes."
+          },
+          "3": {
+            "title": "À la volée",
+            "text": "Seulement avec un GPU : les résolutions non gardées sont préparées pendant qu’on regarde, dans la limite de ce que supporte la carte."
           }
         }
       }
@@ -6601,6 +6606,32 @@
         "missing": "Seulement celles sans copies"
       },
       "start": "Régénérer"
+    },
+    "live": {
+      "title": "Lecture à la volée",
+      "body": "Le serveur prépare une résolution pendant qu’on regarde : les vidéos se lisent dès l’envoi, et les résolutions « À la volée seulement » ne prennent pas de place.",
+      "enabled": "Lecture à la volée",
+      "enabledHelp": "Juste après l’envoi, et pour les résolutions que tu ne gardes pas sur le disque.",
+      "maxSessions": "Vidéos à la volée en même temps",
+      "maxSessionsHelp": "Pour tout le serveur. Au-delà, on reçoit les copies déjà enregistrées.",
+      "perViewer": "Par personne ou lien",
+      "perViewerHelp": "Combien de vidéos à la volée une personne, ou les invités d’un lien, peuvent ouvrir en même temps.",
+      "modeLabel": "{{rung}} : où elle est gardée",
+      "modes": {
+        "stored": "Garder sur le disque",
+        "live": "À la volée seulement"
+      },
+      "noSpace": "aucune place",
+      "unavailable": "Indisponible sur ce serveur",
+      "off": "Désactivée",
+      "reasons": {
+        "no-gpu": "Demande l’encodage matériel du GPU : ce serveur encode avec le processeur.",
+        "too-slow": "GPU trop lent pour le temps réel (mesuré au démarrage).",
+        "failed": "La mesure au démarrage a échoué : détails dans le journal du serveur.",
+        "set-off": "Désactivée par le serveur (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Mesuré au démarrage : une session, {{speed}}× temps réel.",
+      "measured_other": "Mesuré au démarrage : {{count}} sessions, {{speed}}× temps réel."
     }
   }
 }

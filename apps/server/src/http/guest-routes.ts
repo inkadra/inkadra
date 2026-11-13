@@ -18,6 +18,7 @@ import {
   ThumbnailSize,
   UpdateGuestSession,
   VariantQuery,
+  type VideoRung,
   z,
 } from '@inkadra/shared';
 import { verifyPassword } from 'better-auth/crypto';
@@ -80,7 +81,7 @@ import {
   linkStopped,
 } from './guest-context.ts';
 import { registerGuestReviewRoutes } from './guest-review.ts';
-import { renditionsOf, sendHls, toPlayback } from './hls.ts';
+import { type LiveContext, offeredLive, renditionsOf, sendHls, toPlayback } from './hls.ts';
 import { RateLimiter } from './link-previews.ts';
 import { createTileServer } from './map-tiles.ts';
 import type { PlanSheets } from './plan-sheet-routes.ts';
@@ -92,6 +93,8 @@ interface Deps {
   storage: Storage;
   docs: DocViews;
   notices?: BoardNotifier;
+  /** Live playback of video rungs (decision 0128). */
+  live?: LiveContext;
   sheets: PlanSheets;
 }
 
@@ -101,7 +104,7 @@ const BoardParams = z.object({ linkId: Id, boardId: Id });
 const ElementParams = BoardParams.extend({ elementId: ElementRef });
 const PlanParams = BoardParams.extend({ planId: ElementRef });
 const AssetParams = z.object({ linkId: Id, assetId: Id });
-const GuestHlsParams = z.object({ linkId: Id, assetId: Id, file: z.string().max(20) });
+const GuestHlsParams = z.object({ linkId: Id, assetId: Id, '*': z.string().max(40) });
 const VariantParams = AssetParams.extend({ size: ThumbnailSize });
 
 type GuestEvent =
@@ -288,6 +291,21 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       renditionsOf(db, ids),
     ]);
     const download = ctx.link.allowDownload;
+    // Rungs offered live, by video (decision 0128).
+    const live = new Map<string, VideoRung[]>();
+    if (deps.live)
+      for (const row of rows)
+        if (row.kind === 'video' && ctx.assets.shown.has(row.id))
+          live.set(
+            row.id,
+            (
+              await offeredLive(
+                deps.live,
+                row,
+                renditions.filter((r) => r.assetId === row.id),
+              )
+            ).names,
+          );
     return rows
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((row) => ({
@@ -330,6 +348,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
                 renditions.filter((r) => r.assetId === row.id),
                 `${assetPath(ctx.link.id, row.id)}/hls`,
                 download && row.proxyStatus === null,
+                live.get(row.id) ?? [],
               ),
             }
           : {}),
@@ -818,19 +837,32 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
 
     // The playlists and rungs of a video of the link (decision 0128): streamed whatever
     // `allowDownload` says, checked on every request.
-    scope.get(v1('/guest/links/:linkId/assets/:assetId/hls/:file'), async (req, reply) => {
-      const { linkId, assetId, file } = GuestHlsParams.parse(req.params);
+    scope.get(v1('/guest/links/:linkId/assets/:assetId/hls/*'), async (req, reply) => {
+      const { linkId, assetId, '*': file } = GuestHlsParams.parse(req.params);
       const ctx = await guests.requireGuest(req, reply, linkId);
       if (!ctx.assets.shown.has(assetId)) throw new HttpError('not_found', 'Asset not found.');
       const row = await projectAsset(ctx, assetId);
       if (row.kind !== 'video') throw new HttpError('not_found', 'Asset not found.');
-      return sendHls(req, reply, db, storage, row, file, {
-        notFound: () => {
-          throw new HttpError('not_found', 'Asset not found.');
+      return sendHls(
+        req,
+        reply,
+        db,
+        storage,
+        row,
+        file,
+        {
+          notFound: () => {
+            throw new HttpError('not_found', 'Asset not found.');
+          },
+          ranged: (key, size) => sendRanged(req, reply, storage, key, size),
+          fileHeaders: guestFileHeaders,
         },
-        ranged: (key, size) => sendRanged(req, reply, storage, key, size),
-        fileHeaders: guestFileHeaders,
-      });
+        // Guests share the per-viewer limit of their link; each has a session of their own.
+        deps.live && {
+          context: deps.live,
+          who: { id: `guest:${ctx.guest.id}`, group: `link:${ctx.link.id}` },
+        },
+      );
     });
 
     scope.get(v1('/guest/links/:linkId/assets/:assetId/waveform'), async (req, reply) => {

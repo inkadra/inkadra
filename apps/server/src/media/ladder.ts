@@ -145,6 +145,11 @@ export function ladderArgs(
   settings: ProxySettings,
   encoder: VideoEncoder = settings.encoder ?? SOFTWARE_ENCODER,
   container: string | null = null,
+  /**
+   * Live playback: start at `from` seconds keeping the source's timestamps, and write each
+   * output as `output` says (HLS segments) instead of a fragmented MP4.
+   */
+  live?: { from: number; output: (path: string) => string[] },
 ) {
   const n = outputs.length;
   const gpu = decodesOnGpu(encoder, info);
@@ -159,6 +164,7 @@ export function ladderArgs(
       gpu,
       ...(post ? { post } : {}),
       ...(hdr ? { hdr } : {}),
+      ...(live?.from ? { from: live.from } : {}),
     });
   });
   const split = outputs.map((_, i) => `[s${i}]`).join('');
@@ -182,6 +188,7 @@ export function ladderArgs(
     '-y',
     ...safeInput(container),
     ...(pipelines[0]?.input ?? []),
+    ...(live?.from ? ['-ss', live.from.toFixed(3), '-copyts'] : []),
     '-i',
     input,
     '-filter_complex',
@@ -204,11 +211,8 @@ export function ladderArgs(
       ...(sound ? ['-c:a', 'aac', '-b:a', `${AUDIO_KBPS}k`, '-ac', '2', '-ar', '48000'] : []),
       '-threads',
       String(settings.threads),
-      ...(settings.maxDurationS > 0 ? ['-t', String(settings.maxDurationS)] : []),
-      ...FRAGMENTED,
-      '-f',
-      'mp4',
-      o.path,
+      ...(settings.maxDurationS > 0 && !live ? ['-t', String(settings.maxDurationS)] : []),
+      ...(live ? live.output(o.path) : [...FRAGMENTED, '-f', 'mp4', o.path]),
     ]),
   ];
 }

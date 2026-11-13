@@ -1994,7 +1994,8 @@
       "autoAt": "Auto · {{quality}}",
       "now": "now {{quality}}",
       "preparing": "preparing · {{percent}}%",
-      "original": "Original"
+      "original": "Original",
+      "live": "live"
     }
   },
   "search": {
@@ -5828,6 +5829,10 @@
           "2": {
             "title": "Only for new videos",
             "text": "Regenerate them when you like: old copies stay until the new ones are ready."
+          },
+          "3": {
+            "title": "Live",
+            "text": "GPU only: resolutions not kept are prepared while someone watches, within the sessions the card can take."
           }
         }
       }
@@ -6601,6 +6606,32 @@
         "missing": "Only those without copies"
       },
       "start": "Regenerate"
+    },
+    "live": {
+      "title": "Live playback",
+      "body": "The server prepares a resolution while someone watches: videos play as soon as they are uploaded, and resolutions set to \"Live only\" take no space.",
+      "enabled": "Live playback",
+      "enabledHelp": "Right after an upload, and for resolutions you do not keep on disk.",
+      "maxSessions": "Live videos at once",
+      "maxSessionsHelp": "On the whole server. Past it, viewers get the copies already saved.",
+      "perViewer": "Per person or link",
+      "perViewerHelp": "How many live videos one person, or the guests of one link, can open at once.",
+      "modeLabel": "{{rung}}: where it is kept",
+      "modes": {
+        "stored": "Keep on disk",
+        "live": "Live only"
+      },
+      "noSpace": "no space",
+      "unavailable": "Not available on this server",
+      "off": "Off",
+      "reasons": {
+        "no-gpu": "Needs GPU hardware encoding: this server encodes on the processor.",
+        "too-slow": "GPU too slow for real time (measured at start).",
+        "failed": "The measurement at start failed: details in the server log.",
+        "set-off": "Turned off by the server (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Measured at start: one session, {{speed}}× real time.",
+      "measured_other": "Measured at start: {{count}} sessions, {{speed}}× real time."
     }
   }
 }

@@ -6,6 +6,8 @@ import {
   detectVideoEncoder,
   type EncoderTuning,
   type HwAccelMode,
+  type LiveMeasure,
+  measureLive,
   SOFTWARE_ENCODER,
   type VideoEncoder,
 } from './hwaccel.ts';
@@ -23,6 +25,14 @@ export interface SavedEncoder {
   tuning?: EncoderTuning;
   /** Codecs the card encodes (`h264`, `av1`): AV1 is shown, not used. */
   codecs?: string[];
+  /**
+   * Live playback measured at start (decision 0128): sessions at once (0: off), the speed of one
+   * 1080p encode (× real time), when, and why it is off.
+   */
+  liveSessions?: number;
+  liveSpeed?: number | null;
+  measuredAt?: string;
+  liveError?: string | null;
 }
 
 interface Log {
@@ -39,6 +49,7 @@ export async function chooseVideoEncoder(
   opts: { mode: HwAccelMode; vaapiDevice: string },
   log: Log,
   detect: typeof detectVideoEncoder = detectVideoEncoder,
+  measure: typeof measureLive = measureLive,
 ): Promise<VideoEncoder> {
   const { ffmpeg } = await mediaTools();
   if (!ffmpeg) {
@@ -65,6 +76,21 @@ export async function chooseVideoEncoder(
     ...(encoder.tuning ? { tuning: encoder.tuning } : {}),
     ...(encoder.codecs ? { codecs: encoder.codecs } : {}),
   };
+  // Live playback: measured on a hardware encoder only; libx264 never encodes live.
+  if (encoder.backend !== 'software') {
+    const live = await measure(ffmpeg, encoder).catch(
+      (err): LiveMeasure => ({ sessions: 0, speed: null, error: String(err) }),
+    );
+    Object.assign(value, {
+      liveSessions: live.sessions,
+      liveSpeed: live.speed,
+      measuredAt: new Date().toISOString(),
+      liveError: live.error,
+    });
+    if (live.error)
+      log.warn({ speed: live.speed, reason: live.error }, 'live video playback is off');
+    else log.info({ sessions: live.sessions, speed: live.speed }, 'live video playback measured');
+  }
   await db
     .insert(instanceSetting)
     .values({ key: KEY, value: { ...value } })
@@ -90,6 +116,14 @@ export async function readVideoEncoder(db: Pick<Database, 'select'>): Promise<Sa
     ...(value.tuning === 'full' || value.tuning === 'basic' ? { tuning: value.tuning } : {}),
     ...(Array.isArray(value.codecs)
       ? { codecs: value.codecs.filter((c): c is string => typeof c === 'string').slice(0, 4) }
+      : {}),
+    ...(typeof value.liveSessions === 'number'
+      ? {
+          liveSessions: Math.max(0, Math.min(8, Math.floor(value.liveSessions))),
+          liveSpeed: typeof value.liveSpeed === 'number' ? value.liveSpeed : null,
+          measuredAt: typeof value.measuredAt === 'string' ? value.measuredAt : '',
+          liveError: typeof value.liveError === 'string' ? value.liveError : null,
+        }
       : {}),
   };
 }

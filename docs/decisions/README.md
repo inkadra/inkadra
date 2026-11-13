@@ -132,7 +132,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0125](0125-cancel-a-transfer.md) | `POST /transfers/{id}/cancel` cancels a queued or running export or import and never removes a finished one: 409 `conflict` with the transfer as it is; the web keeps `DELETE` (`transfer-cancel`) |
 | [0126](0126-delete-unused-classification-values.md) | A classification value added on the instance and used nowhere can be deleted (`classification-delete`); uses come from the project table and the search index, a removal locks out new uses, and a late use brings the value back archived |
 | [0127](0127-idempotent-import.md) | `Idempotency-Key` on `POST /projects/import`: a retry answers 202 with the first import's transfer as it is now (404 once removed, 409 on another Content-Length), `GET /transfers/import-requests/{key}` finds it without resending the archive; seven days (`idempotent-import`) |
-| [0128](0128-video-renditions.md) | Playable video copies: quality presets (Bilanciata by default), an H.264 ladder of fragmented MP4 files played over byte-range HLS, HDR tone mapping, output checks; `Asset.playback` (`video-renditions`), a Video settings page, guests stream the copies |
+| [0128](0128-video-renditions.md) | Playable video copies: quality presets (Bilanciata by default), an H.264 ladder of fragmented MP4 files played over byte-range HLS, HDR tone mapping, output checks; `Asset.playback` (`video-renditions`), rungs encoded live while watched (`video-live`), a Video settings page, guests stream the copies |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.

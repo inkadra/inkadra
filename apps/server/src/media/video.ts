@@ -418,6 +418,16 @@ export function decodesOnGpu(encoder: VideoEncoder, info: VideoInfo) {
   );
 }
 
+/**
+ * Whether `encoder` can encode `info` in real time for live playback (decision 0128): only a
+ * hardware encoder, and only for a source the card decodes and scales itself (gpuDecodes, not
+ * rotated, not interlaced, not 4:2:2/4:4:4, not ProRes or DNx) and that needs no tone mapping on
+ * the CPU (HDR). Everything else waits for its stored rungs.
+ */
+export function liveDecodable(encoder: VideoEncoder | undefined, info: VideoInfo) {
+  return Boolean(encoder) && decodesOnGpu(encoder as VideoEncoder, info) && !info.hdr;
+}
+
 /** HDR (PQ or HLG) to SDR BT.709 with the Hable curve, dithered to 8 bit (decision 0128). */
 export const TONEMAP =
   'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,' +

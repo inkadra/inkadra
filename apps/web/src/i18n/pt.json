@@ -1994,7 +1994,8 @@
       "autoAt": "Auto · {{quality}}",
       "now": "agora {{quality}}",
       "preparing": "em preparação · {{percent}}%",
-      "original": "Original"
+      "original": "Original",
+      "live": "em tempo real"
     }
   },
   "search": {
@@ -5828,6 +5829,10 @@
           "2": {
             "title": "Só para os novos",
             "text": "Regenera-as quando quiseres: as cópias antigas ficam até as novas estarem prontas."
+          },
+          "3": {
+            "title": "Em tempo real",
+            "text": "Só com GPU: as resoluções que não guardas são preparadas enquanto alguém vê, dentro das sessões que a placa aguenta."
           }
         }
       }
@@ -6601,6 +6606,32 @@
         "missing": "Só os que não têm cópias"
       },
       "start": "Regenerar"
+    },
+    "live": {
+      "title": "Reprodução em tempo real",
+      "body": "O servidor prepara uma resolução enquanto alguém vê: os vídeos veem-se logo após o envio, e as resoluções «Só em tempo real» não ocupam espaço.",
+      "enabled": "Reprodução em tempo real",
+      "enabledHelp": "Logo após o envio, e para as resoluções que não guardas no disco.",
+      "maxSessions": "Vídeos em tempo real ao mesmo tempo",
+      "maxSessionsHelp": "Para todo o servidor. Acima disso, quem vê recebe as cópias já guardadas.",
+      "perViewer": "Por pessoa ou ligação",
+      "perViewerHelp": "Quantos vídeos em tempo real uma pessoa, ou os convidados de uma ligação, podem abrir ao mesmo tempo.",
+      "modeLabel": "{{rung}}: onde fica",
+      "modes": {
+        "stored": "Guardar no disco",
+        "live": "Só em tempo real"
+      },
+      "noSpace": "sem espaço",
+      "unavailable": "Indisponível neste servidor",
+      "off": "Desligada",
+      "reasons": {
+        "no-gpu": "Requer a codificação por hardware da GPU: este servidor codifica com o processador.",
+        "too-slow": "GPU demasiado lenta para tempo real (medida no arranque).",
+        "failed": "A medição no arranque falhou: detalhes no registo do servidor.",
+        "set-off": "Desligada pelo servidor (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Medido no arranque: uma sessão, {{speed}}× tempo real.",
+      "measured_other": "Medido no arranque: {{count}} sessões, {{speed}}× tempo real."
     }
   }
 }
