@@ -323,7 +323,8 @@ export class LiveSessions {
     if (file !== 'init') session.asked = n;
     const written = session.rung === rung ? await this.highest(session) : -1;
     const running = session.child !== null && session.rung === rung;
-    const inWindow = running && n >= session.start && n <= Math.max(written, session.start) + WINDOW;
+    const inWindow =
+      running && n >= session.start && n <= Math.max(written, session.start) + WINDOW;
     const name = file === 'init' ? 'init.mp4' : `seg-${n}.m4s`;
     if (file !== 'init' && session.rung === rung && (await exists(join(session.dir, name))))
       return join(session.dir, name);
@@ -492,7 +493,6 @@ export class LiveSessions {
       await utimes(session.dir, new Date(), new Date()).catch(() => {});
     }
   }
-
 }
 
 const exists = (path: string) =>

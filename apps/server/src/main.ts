@@ -19,18 +19,17 @@ import { createDatabase, runMigrations } from './db/client.ts';
 import { startSandboxSweep } from './demo.ts';
 import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
+import type { LiveContext } from './http/hls.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
 import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.ts';
 import type { VideoEncoder } from './media/hwaccel.ts';
-import { mapUserAgent } from './media/maps.ts';
-import { DEFAULT_VIDEO_QUALITY } from './media/quality.ts';
 import { detectVideoEncoder } from './media/hwaccel.ts';
 import { LiveSessions } from './media/live.ts';
-import { mediaTools } from './media/tools.ts';
-import type { LiveContext } from './http/hls.ts';
-import { cachedVideoSettings } from './video-settings.ts';
+import { mapUserAgent } from './media/maps.ts';
+import { DEFAULT_VIDEO_QUALITY } from './media/quality.ts';
 import { sweepJobDirs } from './media/scratch.ts';
+import { mediaTools } from './media/tools.ts';
 import { checkHealth } from './monitor/health.ts';
 import { LatencyRecorder, startSampler } from './monitor/sampler.ts';
 import { type MonitorStore, memoryStore, monitorRedis, redisStore } from './monitor/store.ts';
@@ -45,6 +44,7 @@ import {
 import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
+import { cachedVideoSettings } from './video-settings.ts';
 
 const COMMANDS = [
   'web',

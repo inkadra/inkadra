@@ -10,8 +10,8 @@ import { asc, eq, inArray } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Database } from '../db/client.ts';
 import { type asset, assetRendition } from '../db/schema.ts';
-import { generationOf } from '../media/ladder.ts';
 import type { VideoEncoder } from '../media/hwaccel.ts';
+import { generationOf } from '../media/ladder.ts';
 import {
   type LiveLimits,
   type LiveSessions,
@@ -99,14 +99,14 @@ export function toPlayback(
     original,
     renditions: [
       ...sorted.map((r) => ({
-      name: r.name,
-      status: r.status === 'ready' && !isReady(r) ? 'failed' : r.status,
-      progress: r.status === 'ready' ? 100 : r.progress,
-      width: r.width,
-      height: r.height,
-      bitrate: r.bitrate,
-      size: r.bytes,
-      url: isReady(r) ? `${base}/${r.name}.mp4?v=${generationOf(r.storageKey)}` : null,
+        name: r.name,
+        status: r.status === 'ready' && !isReady(r) ? 'failed' : r.status,
+        progress: r.status === 'ready' ? 100 : r.progress,
+        width: r.width,
+        height: r.height,
+        bitrate: r.bitrate,
+        size: r.bytes,
+        url: isReady(r) ? `${base}/${r.name}.mp4?v=${generationOf(r.storageKey)}` : null,
         ...(live.includes(r.name) ? { live: true } : {}),
       })),
       ...extra,
@@ -210,7 +210,9 @@ export async function sendHls(
   if (parsed.kind === 'master') {
     // Live rungs only within the limits: past them the viewer gets the stored rungs.
     const liveNames =
-      live && offered && offered.names.length > 0 &&
+      live &&
+      offered &&
+      offered.names.length > 0 &&
       live.context.sessions.reserve(live.who, row.id, offered.limits)
         ? offered.names
         : [];

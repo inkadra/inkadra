@@ -330,6 +330,13 @@
       "when": 1794569409760,
       "tag": "0046_asset_rendition",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794572226982,
+      "tag": "0047_asset_media_info",
+      "breakpoints": true
     }
   ]
 }

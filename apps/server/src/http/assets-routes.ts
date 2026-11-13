@@ -15,8 +15,8 @@ import {
   VariantParams,
   VariantQuery,
   VideoFrameQuery,
-  z,
   type VideoRung,
+  z,
 } from '@inkadra/shared';
 import { and, asc, eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -34,13 +34,13 @@ import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
 import {
+  type LiveContext,
   offeredLive,
   proxyRendition,
   type RenditionRow,
   renditionsOf,
   sendHls,
   toPlayback,
-  type LiveContext,
 } from './hls.ts';
 
 interface Deps {
@@ -251,11 +251,23 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { assetId, '*': file } = HlsParams.parse(req.params);
     const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
-    return sendHls(req, reply, db, storage, row, file, {
-      notFound: (r) => sendError(r, 'not_found', 'This video has no such copy.'),
-      ranged: (key, size) => sendRanged(req, reply, storage, key, size),
-      fileHeaders,
-    }, deps.live && { context: deps.live, who: { id: `user:${actor.id}`, group: `user:${actor.id}` } });
+    return sendHls(
+      req,
+      reply,
+      db,
+      storage,
+      row,
+      file,
+      {
+        notFound: (r) => sendError(r, 'not_found', 'This video has no such copy.'),
+        ranged: (key, size) => sendRanged(req, reply, storage, key, size),
+        fileHeaders,
+      },
+      deps.live && {
+        context: deps.live,
+        who: { id: `user:${actor.id}`, group: `user:${actor.id}` },
+      },
+    );
   });
 
   app.get(v1('/assets/:assetId/frame'), async (req, reply) => {

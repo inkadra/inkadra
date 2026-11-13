@@ -38,7 +38,13 @@ describe('live playback', () => {
     // ProRes 4K decodes on the CPU: 0.97× on an N100.
     expect(liveEligible(row({ ...uhd, videoCodec: 'prores' }), qsv)).toBe(false);
     // 4K HDR is tone mapped on the CPU: 0.59×.
-    const hdr = { hdr: 'hlg' as const, bits: 10, pixelFormat: 'yuv420p10le', interlaced: false, rotated: false };
+    const hdr = {
+      hdr: 'hlg' as const,
+      bits: 10,
+      pixelFormat: 'yuv420p10le',
+      interlaced: false,
+      rotated: false,
+    };
     expect(liveEligible(row({ ...uhd, videoCodec: 'hevc', mediaInfo: hdr }), qsv)).toBe(false);
     // Without a GPU, nothing past 1080.
     expect(liveEligible(row({ ...uhd, videoCodec: 'hevc' }), undefined)).toBe(false);
@@ -52,7 +58,10 @@ describe('live playback', () => {
       rungs: { '480': 'stored', '720': 'stored', '1080': 'live', '2160': 'off' },
     } as const;
     expect(liveRungs(row(), ['480', '720'], liveOnly, qsv)).toEqual(['1080']);
-    const off = { ...DEFAULT_VIDEO_SETTINGS, live: { ...DEFAULT_VIDEO_SETTINGS.live, enabled: false } };
+    const off = {
+      ...DEFAULT_VIDEO_SETTINGS,
+      live: { ...DEFAULT_VIDEO_SETTINGS.live, enabled: false },
+    };
     expect(liveRungs(row(), [], off, qsv)).toEqual([]);
   });
 
