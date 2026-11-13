@@ -20,7 +20,11 @@ vi.mock('../lib/session.tsx', () => ({
 vi.mock('../lib/api.ts', async (original) => ({
   ...(await original<typeof import('../lib/api.ts')>()),
   api: { post: vi.fn(), get: vi.fn(async () => ({ id: 'member' })) },
-  authApi: { signIn: vi.fn(async () => ({})), signOut: vi.fn(async () => {}) },
+  authApi: {
+    verifyTotp: vi.fn(async () => ({})),
+    signIn: vi.fn(async () => ({})),
+    signOut: vi.fn(async () => {}),
+  },
 }));
 const host = document.createElement('div');
 let root = createRoot(host);
@@ -117,4 +121,39 @@ it('retries the pending authorization after returning from the provider', async 
   expect(api.post).toHaveBeenCalledOnce();
   expect(assign).toHaveBeenCalledWith('inkadra://callback?code=ok');
   expect(sessionStorage.getItem(key)).toBeNull();
+});
+
+it('does not retry before the second factor is confirmed', async () => {
+  vi.mocked(api.post).mockRejectedValueOnce(
+    new RequestError(403, 'forbidden', '', { reason: 'reauth_required' }),
+  );
+  vi.mocked(authApi.signIn).mockResolvedValueOnce({ twoFactorRedirect: true });
+  const path =
+    '/authorize?client_id=mobile&redirect_uri=inkadra%3A%2F%2Fcallback&code_challenge=abc&code_challenge_method=S256';
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={[path]}>
+        <Authorize />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () =>
+    [...host.querySelectorAll('button')].find((b) => b.textContent === 'authorize.allow')?.click(),
+  );
+  await act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(host.textContent).toContain('auth.twoFactor.body');
+  expect(api.post).toHaveBeenCalledOnce();
+  vi.mocked(api.post).mockResolvedValueOnce({ redirectTo: 'inkadra://callback?code=ok' });
+  const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {});
+  await act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(authApi.verifyTotp).toHaveBeenCalledOnce();
+  expect(assign).toHaveBeenCalledWith('inkadra://callback?code=ok');
 });
