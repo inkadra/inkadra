@@ -213,15 +213,15 @@ it('lists Auto, the rungs (those being made disabled) and the original in the me
 });
 
 it('says no copy is coming when the levels offered live are never stored', async () => {
-  const liveOnly = { ...rung('1080', 'queued'), progress: null, live: true, liveOnly: true as const };
+  const liveOnly = {
+    ...rung('1080', 'queued'),
+    progress: null,
+    live: true,
+    liveOnly: true as const,
+  };
   await act(async () =>
     root.render(
-      <QualityMenu
-        asset={asset([liveOnly])}
-        choice="auto"
-        onChoose={() => {}}
-        playing={1080}
-      />,
+      <QualityMenu asset={asset([liveOnly])} choice="auto" onChoose={() => {}} playing={1080} />,
     ),
   );
   await act(async () => host.querySelector<HTMLButtonElement>('.viewer-quality__button')?.click());
