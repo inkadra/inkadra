@@ -1,3 +1,4 @@
+import { useFreshSignIn } from './useFreshSignIn.tsx';
 import type {
   AccountSession,
   CreatedPersonalToken,
@@ -1024,20 +1025,23 @@ function Tokens() {
     status.clear();
   };
 
+  const fresh = useFreshSignIn(async (name: string) => {
+    setOpen(true);
+    setName(name);
+    setCreated(await api.post<CreatedPersonalToken>('/me/tokens', { name: name.trim() }));
+    setName('');
+    await load();
+  }, status.fail);
+
   async function create(e: FormEvent) {
     e.preventDefault();
     status.clear();
-    try {
-      setCreated(await api.post<CreatedPersonalToken>('/me/tokens', { name: name.trim() }));
-      setName('');
-      await load();
-    } catch (err) {
-      status.fail(err);
-    }
+    await fresh.run(name);
   }
 
   return (
     <>
+      {fresh.challenge}
       <Card anchor="apps.clipper" title={t('settingsUi.apps.clipper')}>
         <ClipperRow connected={items?.some((tk) => tk.client === 'clipper') ?? false} />
       </Card>
