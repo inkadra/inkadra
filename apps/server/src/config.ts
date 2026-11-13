@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-const emptyToUndefined = (v: unknown) => (v === '' ? undefined : v);
-const optional = z.preprocess(emptyToUndefined, z.string().min(1).optional());
+const optional = z.string().min(1).optional();
 const list = z
   .string()
   .default('')
@@ -34,11 +33,10 @@ const Env = z.object({
     ])
     .default('https://relay.inkadra.com')
     .transform((u) => u.replace(/\/+$/, '')),
-  FEEDBACK_GITHUB_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  FEEDBACK_GITHUB_TOKEN: optional,
   INSTANCE_NAME: z.string().min(1).default('Inkadra'),
   AUTH_RATE_LIMITS: z.enum(['on', 'off']).default('on'),
-  /** Empty when unset: compose passes every variable, set or not. */
-  CSP_REPORT_URI: z.preprocess(emptyToUndefined, z.url().optional()),
+  CSP_REPORT_URI: z.url().optional(),
   CSP_ENFORCE: bool('false'),
   HSTS_ENABLED: bool('false'),
   OIDC_ALLOWED_DOMAINS: list,
@@ -55,17 +53,14 @@ const Env = z.object({
    * size such as `500GB`, in powers of 1000 as Settings shows sizes; 0 = no limit. Set, they
    * win over Settings → Storage and lock it there.
    */
-  STORAGE_LIMIT: z.preprocess(emptyToUndefined, z.string().transform(parseDecimalSize).optional()),
-  STORAGE_LIMIT_PER_USER: z.preprocess(
-    emptyToUndefined,
-    z.string().transform(parseDecimalSize).optional(),
-  ),
+  STORAGE_LIMIT: z.string().transform(parseDecimalSize).optional(),
+  STORAGE_LIMIT_PER_USER: z.string().transform(parseDecimalSize).optional(),
   /** Largest project archive an import accepts, compressed and uncompressed; 0 = no limit. */
   IMPORT_MAX_SIZE: z.string().default('20GB').transform(parseSize),
   /** Where files live: `local` (DATA_DIR/files) or any S3-compatible bucket. */
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   /** Empty for AWS; the MinIO, Garage or R2 address otherwise. */
-  S3_ENDPOINT: z.preprocess((v) => (v === '' ? undefined : v), z.url().optional()),
+  S3_ENDPOINT: z.url().optional(),
   S3_REGION: z.string().min(1).default('us-east-1'),
   S3_BUCKET: z.string().optional(),
   S3_ACCESS_KEY_ID: z.string().optional(),
@@ -182,13 +177,10 @@ const Env = z.object({
     )
     .default('https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
   /** Optional second source, fetched only by the server. */
-  MAP_SATELLITE_TILE_URL: z.preprocess(
-    emptyToUndefined,
-    z
-      .string()
-      .regex(/^https?:\/\/\S*\{z\}\S*\{x\}\S*\{y\}\S*$/)
-      .optional(),
-  ),
+  MAP_SATELLITE_TILE_URL: z
+    .string()
+    .regex(/^https?:\/\/\S*\{z\}\S*\{x\}\S*\{y\}\S*$/)
+    .optional(),
   MAP_SATELLITE_TILE_ATTRIBUTION: z.string().min(1).max(200).default('Satellite'),
   /** Credit of the tiles, shown on every map picture. */
   MAP_TILE_ATTRIBUTION: z.string().min(1).max(200).default('© OpenStreetMap contributors'),
@@ -196,7 +188,7 @@ const Env = z.object({
    * Address search for map cards: a Nominatim-compatible `/search` endpoint (for example
    * `https://nominatim.openstreetmap.org/search`). Unset: addresses are not looked up.
    */
-  MAP_GEOCODER_URL: z.preprocess(emptyToUndefined, z.url().optional()),
+  MAP_GEOCODER_URL: z.url().optional(),
   /**
    * Which peers may set X-Forwarded-For: `false`, or a comma-separated list of addresses,
    * CIDRs or the presets `loopback`, `linklocal`, `uniquelocal` (private networks, where a
@@ -216,7 +208,7 @@ const Env = z.object({
   /** One generic OpenID Connect provider (Authentik, Keycloak, Authelia, Pocket ID…). */
   OIDC_NAME: z.string().min(1).max(40).default('SSO'),
   /** The provider's `.well-known/openid-configuration` address. */
-  OIDC_DISCOVERY_URL: z.preprocess(emptyToUndefined, z.url().optional()),
+  OIDC_DISCOVERY_URL: z.url().optional(),
   OIDC_CLIENT_ID: optional,
   OIDC_CLIENT_SECRET: optional,
   OIDC_SCOPES: z.string().default('openid email profile'),
@@ -331,6 +323,17 @@ export function demoConfig(c: Config): Config {
   };
 }
 
+/**
+ * An empty variable is an unset one: compose.yaml hands the container every line of .env, so
+ * `OIDC_SCOPES=` must mean the default, not an empty value. FEEDBACK_RELAY_URL is the one
+ * where empty means something: no relay.
+ */
+function withoutEmpty(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(env).filter(([key, value]) => value !== '' || key === 'FEEDBACK_RELAY_URL'),
+  );
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = Env.superRefine((c, ctx) => {
     if (c.STORAGE_DRIVER === 's3' && !c.S3_BUCKET)
@@ -366,7 +369,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         path: ['TURNSTILE_SECRET'],
         message: 'Required with DEMO_MODE in production, with TURNSTILE_SITE_KEY',
       });
-  }).safeParse(env);
+  }).safeParse(withoutEmpty(env));
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid configuration:\n${lines.join('\n')}\nSee .env.example.`);
@@ -374,7 +377,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return demoConfig(parsed.data);
 }
 
-const version = process.env.INKADRA_VERSION ?? '0.1.0-dev';
+const version = process.env.INKADRA_VERSION || '0.1.0-dev';
 export const VERSION =
   version === 'edge' && process.env.INKADRA_REVISION
     ? `edge-${process.env.INKADRA_REVISION.slice(0, 7)}`

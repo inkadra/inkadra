@@ -60,7 +60,7 @@ type Command = (typeof COMMANDS)[number];
 
 const here = dirname(fileURLToPath(import.meta.url));
 // In the image the bundle sits in dist/ next to drizzle/; in development main.ts is in src/.
-const migrationsFolder = process.env.MIGRATIONS_DIR ?? join(here, '..', 'drizzle');
+const migrationsFolder = process.env.MIGRATIONS_DIR || join(here, '..', 'drizzle');
 
 async function main() {
   const command = (process.argv[2] ?? 'all') as Command;
