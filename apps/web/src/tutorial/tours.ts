@@ -414,7 +414,8 @@ export const TOURS: Tour[] = [
     group: 'tools',
     icon: 'search',
     offer: 'settings-search',
-    href: '/settings?section=account',
+    // The settings home: on a phone the search is there, not on a page.
+    href: '/settings',
     steps: [
       { anchor: 'settings-search', media: 'search', side: 'right' },
       { anchor: 'settings-search', media: 'search', side: 'right', keys: ['↑', '↓', '↵', 'Esc'] },
