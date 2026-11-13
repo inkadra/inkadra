@@ -564,6 +564,47 @@ export const assetVariant = pgTable(
   (t) => [primaryKey({ columns: [t.assetId, t.size] })],
 );
 
+/**
+ * One rung of the H.264 ladder of a video (decision 0128): a fragmented MP4 played on its own
+ * or through its byte-range HLS playlist. Copies made before the ladder stay `proxy` rows of
+ * `asset_variant`.
+ */
+export const assetRendition = pgTable(
+  'asset_rendition',
+  {
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => asset.id, { onDelete: 'cascade' }),
+    /** The rung by shorter side; its real height is `height` (never upscaled). */
+    name: text('name', { enum: ['480', '720', '1080', '2160'] }).notNull(),
+    status: text('status', { enum: ['queued', 'processing', 'ready', 'failed'] }).notNull(),
+    /** Percent done while `processing`. */
+    progress: integer('progress'),
+    width: integer('width'),
+    height: integer('height'),
+    /** RFC 6381 codecs of the file: `avc1.640028,mp4a.40.2`. */
+    codecs: text('codecs'),
+    /** Average bitrate of the file, bit/s. */
+    bitrate: integer('bitrate'),
+    /** Highest bitrate of one fragment, bit/s: `BANDWIDTH` in the master playlist. */
+    peakBitrate: integer('peak_bitrate'),
+    frameRate: real('frame_rate'),
+    bytes: bigint('bytes', { mode: 'number' }),
+    /** `variants/<assetId>/r<gen>-<name>.mp4`, written once; null until ready. */
+    storageKey: text('storage_key'),
+    /** The byte-range HLS media playlist of the file, with relative URIs. */
+    playlist: text('playlist'),
+    /** What made it: `h264/<preset>/<version>`; regeneration redoes rows of another recipe. */
+    recipe: text('recipe').notNull(),
+    /** `qsv`, `nvenc`, `vaapi`, `software`, `<backend>+cpu-decode`. */
+    encoder: text('encoder'),
+    /** Milliseconds the encode took: the speed the Video page estimates from. */
+    encodeMs: integer('encode_ms'),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.assetId, t.name] })],
+);
+
 // Review and sharing (docs/decisions/0013) -------------------------------------
 
 /**

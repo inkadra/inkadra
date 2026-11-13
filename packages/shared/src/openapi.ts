@@ -35,6 +35,12 @@ import {
   UpdateBoard,
 } from './boards.ts';
 import { CalendarFeed } from './calendar.ts';
+import {
+  StartVideoBackfill,
+  UpdateVideoSettings,
+  VideoRung,
+  VideoSettingsView,
+} from './video.ts';
 import { ClassificationCatalogs, ClassificationsQuery } from './classifications.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
@@ -1210,6 +1216,46 @@ registry.registerPath({
 });
 registry.registerPath({
   method: 'get',
+  path: v1('/instance/video-settings'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: playable video copies, with the encoder and the library.',
+  responses: { 200: { description: 'Settings', ...json(VideoSettingsView) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/instance/video-settings'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: change the quality, the rungs and live playback (0128).',
+  description:
+    'Applies to videos uploaded from now on; existing copies change only through a ' +
+    'regeneration. A setting fixed by the server environment cannot be changed (403).',
+  request: { body: { required: true, ...json(UpdateVideoSettings) } },
+  responses: { 200: { description: 'Saved', ...json(VideoSettingsView) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/video-settings/reprocess'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: make again the copies that are missing or made otherwise.',
+  description:
+    'A low-priority backfill: new uploads go first, the old copy stays until the new one is ' +
+    'ready. 409 while one runs.',
+  request: { body: { required: true, ...json(StartVideoBackfill) } },
+  responses: { 202: { description: 'Started', ...json(VideoSettingsView) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/instance/video-settings/reprocess'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: stop the regeneration; copies already made stay.',
+  responses: { 200: { description: 'Stopped', ...json(VideoSettingsView) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
   path: v1('/instance/members/{userId}/files'),
   tags: ['Instance'],
   security: secured,
@@ -2049,6 +2095,56 @@ registry.registerPath({
       description: 'Original video frame.',
       content: { 'image/png': { schema: z.string().openapi({ format: 'binary' }) } },
     },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/hls/master.m3u8'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'HLS master playlist of a video (`Asset.playback.hls`, decision 0128).',
+  description:
+    'Generated per request from the rungs that are ready, with BANDWIDTH (peak), ' +
+    'AVERAGE-BANDWIDTH, RESOLUTION, FRAME-RATE and CODECS; on servers with `video-live`, also ' +
+    'the rungs encoded while watched. URIs are relative. `Cache-Control: private, no-cache`. ' +
+    'Readable by every role that sees the asset; 404 while nothing plays.',
+  request: { params: idParam('assetId') },
+  responses: {
+    200: {
+      description: 'Playlist',
+      content: { 'application/vnd.apple.mpegurl': { schema: z.string() } },
+    },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/hls/{name}.m3u8'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Byte-range HLS media playlist of one ready rung (`480`, `720`, `1080`, `2160`).',
+  request: { params: z.object({ assetId: Id, name: VideoRung }) },
+  responses: {
+    200: {
+      description: 'Playlist',
+      content: { 'application/vnd.apple.mpegurl': { schema: z.string() } },
+    },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/hls/{name}.mp4'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'The fragmented MP4 of one ready rung (`AssetRendition.url`). Supports `Range`.',
+  description:
+    'Plays on its own as well. Immutable: its URL carries the generation (`?v=`) that made it.',
+  request: { params: z.object({ assetId: Id, name: VideoRung }) },
+  responses: {
+    200: { description: 'MP4 video', content: { 'video/mp4': { schema: z.string() } } },
+    206: { description: 'Part of the file' },
     ...errors,
   },
 });
@@ -2942,6 +3038,24 @@ registry.registerPath({
   responses: {
     200: { description: 'File' },
     206: { description: 'Part of the file' },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/assets/{assetId}/hls/{file}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'The HLS playlists and files of a video of the link (`GuestAsset.playback`).',
+  description:
+    'The same files as `/assets/{assetId}/hls/{file}` (`master.m3u8`, `{name}.m3u8`, ' +
+    '`{name}.mp4`), for videos shown on the boards of the link, whatever `allowDownload` ' +
+    'says (decision 0128): streaming a reduced copy is not downloading the original. Checked ' +
+    'on every request, `Cache-Control: private`.',
+  request: { params: z.object({ linkId: Id, assetId: Id, file: z.string() }) },
+  responses: {
+    200: { description: 'Playlist or video' },
+    206: { description: 'Part of the video' },
     ...guestErrors,
   },
 });

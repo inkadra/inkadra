@@ -41,4 +41,5 @@ export * from './transfer-words.ts';
 export * from './transfers.ts';
 export * from './users.ts';
 export * from './versions.ts';
+export * from './video.ts';
 export { youtubeVideoId } from './youtube.ts';
