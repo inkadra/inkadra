@@ -91,7 +91,7 @@ export function planImport(
     if (options.characterCards) {
       for (const who of scene.characters) {
         const name = cut(castName(who), 120);
-        const key = name.toLocaleLowerCase();
+        const key = name.toLowerCase();
         const entry = speakers.get(key) ?? { name, scenes: [] };
         entry.scenes.push(plan.scenes.length);
         speakers.set(key, entry);
@@ -120,8 +120,8 @@ function sceneTitle(scene: ScriptScene, prelude: string): string {
     .split(/\s+[-–—]\s+|\s*[–—]\s*/)
     .map((e) => e.trim())
     .filter((e) => e && !CONTINUITY.test(e));
-  const name = scene.location ? placeName(scene.location.toLocaleUpperCase()) : '';
-  const tail = extras.map((e) => placeName(e.toLocaleUpperCase())).join(', ');
+  const name = scene.location ? placeName(scene.location.toUpperCase()) : '';
+  const tail = extras.map((e) => placeName(e.toUpperCase())).join(', ');
   return name && tail ? `${name} (${tail})` : name || tail;
 }
 
@@ -189,10 +189,10 @@ function addCharacterCards(
 ) {
   const taken = new Set(
     listElements(doc).flatMap((el) =>
-      el.type === 'character' ? [el.name.trim().toLocaleLowerCase()] : [],
+      el.type === 'character' ? [el.name.trim().toLowerCase()] : [],
     ),
   );
-  const fresh = characters.filter((c) => !taken.has(c.name.toLocaleLowerCase()));
+  const fresh = characters.filter((c) => !taken.has(c.name.toLowerCase()));
   const left = scenes[0]?.x ?? 0;
   fresh.forEach((character, i) => {
     const numbers = [
@@ -259,13 +259,10 @@ function cue(block: Extract<ScriptBlock, { kind: 'dialogue' }>): string {
 
 /** MARA → Mara, DR. O'NEIL → Dr. O'Neil; names written in mixed case stay as they are. */
 export function castName(name: string): string {
-  if (name !== name.toLocaleUpperCase()) return name;
+  if (name !== name.toUpperCase()) return name;
   return name
-    .toLocaleLowerCase()
-    .replace(
-      /(^|[\s\-'’.])(\p{L})/gu,
-      (_, sep: string, ch: string) => sep + ch.toLocaleUpperCase(),
-    );
+    .toLowerCase()
+    .replace(/(^|[\s\-'’.])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
 /** Articles, prepositions and conjunctions of the interface languages, lower case in a name. */
@@ -284,10 +281,18 @@ const PARTICLES = new Set(
 
 /** FARO, SCALA A CHIOCCIOLA → Faro, Scala a Chiocciola: a scene name, no title-case "A". */
 export function placeName(name: string): string {
-  if (name !== name.toLocaleUpperCase()) return name;
-  // Not the first word of the name or of a part after a comma, nor the last.
-  return castName(name).replace(/(?<=[\p{L}\p{N}]\s+)\p{L}+(?=\s)/gu, (word) =>
-    PARTICLES.has(word.toLocaleLowerCase()) ? word.toLocaleLowerCase() : word,
+  if (name !== name.toUpperCase()) return name;
+  // Not the first word of the name or of a part after a comma, nor the last. No lookbehind
+  // (decision 0116): the character before the spaces is checked in the whole name. It is taken
+  // as a code point and tested without `$`: V8 14 (Node 26) fails `[\p{L}]$` on astral letters.
+  return castName(name).replace(
+    /(\s+)(\p{L}+)(?=\s)/gu,
+    (all, space: string, word: string, at: number, text: string) => {
+      const before = [...text.slice(Math.max(0, at - 2), at)].pop() ?? '';
+      return /[\p{L}\p{N}]/u.test(before) && PARTICLES.has(word.toLowerCase())
+        ? space + word.toLowerCase()
+        : all;
+    },
   );
 }
 

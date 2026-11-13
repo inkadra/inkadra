@@ -35,7 +35,7 @@ export type MatchOverrides = ReadonlyMap<number, string | null>;
 
 const fold = (s: string | undefined) =>
   (s ?? '')
-    .toLocaleLowerCase()
+    .toLowerCase()
     .replace(/[\p{P}\p{S}]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
