@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { beatStatus, repeating } from './health.ts';
 import { jobProblem, technicalText } from './problems.ts';
 import {
+  type GpuReading,
   gpuPercent,
   parseCpuMax,
   parseCpuStat,
@@ -498,10 +499,10 @@ drm-engine-capacity-video: 2
       parseDrmFdinfo('drm-driver: xe\ndrm-client-id: 1\ndrm-cycles-video: invalid'),
     ).toBeNull();
   });
-  it('sums surviving clients per engine, divides capacity, and ignores exited and new clients', () => {
+  it('sums clients per engine, divides capacity, drops exited clients and counts new ones from zero', () => {
     const before = reading(i915(1, 100e6), i915(2, 800e6));
-    const after = reading(i915(1, 900e6), i915(3, 2e9));
-    expect(gpuPercent(before, after, 1000)).toBe(40);
+    const after = reading(i915(1, 900e6), i915(3, 200e6));
+    expect(gpuPercent(before, after, 1000)).toBe(50);
     expect(gpuPercent(before, reading(i915(1, 50e6)), 1000)).toBe(0);
     expect(gpuPercent(null, after, 1000)).toBeNull();
     // Only a new client, or none at all: the GPU was idle, not unknown.
@@ -591,5 +592,28 @@ drm-engine-capacity-vcs: 2`;
       },
     );
     expect(point.g).toBe(40);
+    // A saturated i915 engine with GuC: the counter stood still, then jumped. Over the window it
+    // reads the true average, not 0 % now and 100 % next time.
+    const box = (gpu: GpuReading) => ({
+      cpuUsec: 0,
+      cores: 4,
+      memory: 0,
+      memoryLimit: 100,
+      rx: 0,
+      tx: 0,
+      machine: null,
+      hostCores: false,
+      hostMemory: false,
+      gpu,
+    });
+    const cpu = { user: 0, system: 0 };
+    const windowed = pointFrom(
+      21_000,
+      5000,
+      { container: box(reading(i915(1, 4e9))), cpu },
+      { container: box(reading(i915(1, 24e9))), cpu, rss: 0 },
+      { gpu: reading(i915(1, 0)), at: 1000 },
+    );
+    expect(windowed.g).toBe(60);
   });
 });

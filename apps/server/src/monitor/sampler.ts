@@ -1,7 +1,13 @@
 import { hostname } from 'node:os';
 import type { ServerRole } from '@inkadra/shared';
 import type { Logger } from 'pino';
-import { type ContainerReading, gpuPercent, readContainer, readGpu } from './resources.ts';
+import {
+  type ContainerReading,
+  type GpuReading,
+  gpuPercent,
+  readContainer,
+  readGpu,
+} from './resources.ts';
 import {
   type MonitorStore,
   type Point,
@@ -12,6 +18,13 @@ import {
 } from './store.ts';
 
 export const SAMPLE_MS = TIERS.raw.step * 1000;
+
+/**
+ * GPU use is measured over this window, not between two samples: on an N100 a saturated engine's
+ * counter advanced in bursts (likely i915 with GuC, which adds a context's time when it leaves the
+ * engine), so 5 s readings went ~97 % and ~3 % in turns.
+ */
+export const GPU_WINDOW_MS = 20_000;
 
 /**
  * Response times of the web role between two samples. Only JSON answers of the API count:
@@ -98,12 +111,13 @@ export function average(points: Point[], t: number): Point {
 const machineOf = (box: string | null | undefined, hc?: boolean, hm?: boolean) =>
   box ? { box, hc: hc ?? false, hm: hm ?? false } : {};
 
-/** A sample from two readings `ms` apart. */
+/** A sample from two readings `ms` apart; GPU use from an older reading when given. */
 export function pointFrom(
   t: number,
   ms: number,
   before: { container: ContainerReading; cpu: NodeJS.CpuUsage },
   after: { container: ContainerReading; cpu: NodeJS.CpuUsage; rss: number },
+  gpuSince?: { gpu: GpuReading | null | undefined; at: number },
 ): Point {
   const seconds = ms / 1000;
   const rate = (a: number | null, b: number | null) =>
@@ -112,7 +126,9 @@ export function pointFrom(
   const processUsec = after.cpu.user + after.cpu.system - (before.cpu.user + before.cpu.system);
   return {
     t,
-    g: gpuPercent(before.container.gpu, after.container.gpu, ms),
+    g: gpuSince
+      ? gpuPercent(gpuSince.gpu, after.container.gpu, t - gpuSince.at)
+      : gpuPercent(before.container.gpu, after.container.gpu, ms),
     c: Math.max(0, cpuUsec / 1e6 / seconds),
     cc: after.container.cores,
     m: after.container.memory,
@@ -142,6 +158,8 @@ export function startSampler(opts: {
   const key = processKey({ role: opts.role, host });
   const buckets = [new Bucket('m1'), new Bucket('m10')];
   let previous: { container: ContainerReading; cpu: NodeJS.CpuUsage; at: number } | null = null;
+  const interval = opts.intervalMs ?? SAMPLE_MS;
+  const gpuReadings: { gpu: GpuReading | null | undefined; at: number }[] = [];
   let failing = false;
 
   async function sample() {
@@ -152,7 +170,13 @@ export function startSampler(opts: {
     const rss = process.memoryUsage.rss();
     const presence = opts.presence?.();
     if (previous) {
-      const point = pointFrom(at, at - previous.at, previous, { container, cpu, rss });
+      const point = pointFrom(
+        at,
+        at - previous.at,
+        previous,
+        { container, cpu, rss },
+        gpuReadings[0],
+      );
       if (opts.latency) Object.assign(point, opts.latency.take());
       if (presence) point.people = new Set(presence.flatMap((b) => b.users)).size;
       await opts.store.push('raw', key, point);
@@ -173,6 +197,8 @@ export function startSampler(opts: {
       await opts.store.beat({ role: opts.role, host, startedAt, at, cpu: 0, memory: rss });
     }
     previous = { container, cpu, at };
+    gpuReadings.push({ gpu: container.gpu, at });
+    if (gpuReadings.length > Math.max(1, Math.round(GPU_WINDOW_MS / interval))) gpuReadings.shift();
   }
 
   const tick = () =>
@@ -187,7 +213,7 @@ export function startSampler(opts: {
       },
     );
   void tick();
-  const timer = setInterval(tick, opts.intervalMs ?? SAMPLE_MS);
+  const timer = setInterval(tick, interval);
   timer.unref();
   return { stop: () => clearInterval(timer), sample: tick };
 }
