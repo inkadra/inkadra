@@ -28,13 +28,15 @@ export function chartSpan(status: ServerStatus): ChartSpan {
 /** Videos converted and backups, when they happened. */
 export function markers(t: T, status: ServerStatus): ChartMarker[] {
   if (!status.history.length) return [];
-  return status.events.map((e) => ({
-    t: e.t,
-    label:
-      e.kind === 'videos'
-        ? t('server.chart.videos', { count: e.count })
-        : t(e.kind === 'backup' ? 'server.chart.backup' : 'server.chart.backupFailed'),
-  }));
+  const videos = (count: number) => t('server.chart.videos', { count });
+  return status.events.map((e) =>
+    e.kind === 'videos'
+      ? { t: e.t, label: videos(e.count), count: e.count, relabel: videos }
+      : {
+          t: e.t,
+          label: t(e.kind === 'backup' ? 'server.chart.backup' : 'server.chart.backupFailed'),
+        },
+  );
 }
 
 export const mbit = (bytes: number | null) => (bytes === null ? null : (bytes * 8) / 1e6);

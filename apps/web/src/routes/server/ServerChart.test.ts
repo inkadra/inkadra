@@ -45,6 +45,25 @@ it('keeps nearby event labels disjoint at phone and desktop widths', () => {
   }
 });
 
+it('joins nearby video labels into one with the counts added, and leaves out others', () => {
+  const videos = (count: number) => `${count} videos converted`;
+  const at = (t: number, count: number) => ({
+    t: new Date(t).toISOString(),
+    label: videos(count),
+    count,
+    relabel: videos,
+  });
+  const width = 390;
+  const xAt = (ms: number) => 46 + (ms / 100) * (width - 52);
+  const labels = markerLabels([at(10, 2), at(12, 4), at(90, 1)], xAt, 46, width - 6);
+  expect(labels.map((l) => l.marker.label)).toEqual(['6 videos converted', '1 videos converted']);
+  // A backup beside a video label is not a video: it is left out, the counts stay.
+  const backup = { t: new Date(11).toISOString(), label: 'Backup' };
+  expect(markerLabels([at(10, 2), backup], xAt, 46, width - 6).map((l) => l.marker.label)).toEqual([
+    '2 videos converted',
+  ]);
+});
+
 it('reserves room for the widest tick label', () => {
   expect(tickGutter(['0', '20 s'])).toBe(46);
   expect(tickGutter(['0', '500 ms', '1,500 Mb/s'])).toBe(textWidth('1,500 Mb/s') + 6);
