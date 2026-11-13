@@ -130,7 +130,10 @@ test('finds settings, people, values and reports, and opens the row of each', as
       'aria-activedescendant',
       (await listbox.getByRole('option').first().getAttribute('id')) as string,
     );
-    // Enter opens the person's row in Members, scrolled to, highlighted and focused.
+    // Enter opens the person's row in Members, scrolled to, highlighted and focused (by their
+    // email: a run before this one may have left another Antonino).
+    await search.fill(antonino.email);
+    await expect(listbox.getByRole('option').first()).toContainText('Antonino Russo');
     await search.press('Enter');
     await expect(page).toHaveURL(/\/settings\/team\?setting=member%3A/);
     const row = page.locator('[data-setting^="member:"]', { hasText: antonino.email });
@@ -191,10 +194,7 @@ test('finds settings, people, values and reports, and opens the row of each', as
           await theme(page, value);
           const field = page.getByRole('combobox', { name: 'Cerca nelle impostazioni' });
           await field.fill('anto');
-          await page
-            .getByRole('option', { name: /Antonino Russo/ })
-            .first()
-            .click();
+          await page.getByRole('option', { name: new RegExp(antonino.email) }).click();
           await expect(page.locator('.settings-found')).toHaveCount(1);
           await page.waitForTimeout(450);
           await page.screenshot({ path: `${shots}/${size}-opened-member-${value}.png` });
