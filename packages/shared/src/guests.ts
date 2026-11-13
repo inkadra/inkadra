@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { AssetPlayback } from './video.ts';
+
 import { AssetTrack, AssetVariant, ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
 import { ShotCatalogs } from './classifications.ts';
@@ -7,6 +7,7 @@ import { CommentCount, ElementRef } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
 import { GuestElementReview } from './reviews.ts';
 import { UserSummary } from './users.ts';
+import { AssetPlayback } from './video.ts';
 
 /**
  * Share links for people without an account (docs/decisions/0013). A guest never receives the

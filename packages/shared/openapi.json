@@ -3504,6 +3504,418 @@
         },
         "additionalProperties": false
       },
+      "VideoSettingsView": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/VideoSettings"
+          },
+          "locked": {
+            "type": "object",
+            "properties": {
+              "quality": {
+                "type": "boolean"
+              },
+              "rungs": {
+                "type": "boolean"
+              },
+              "live": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "quality",
+              "rungs",
+              "live"
+            ],
+            "description": "Set by the server environment (VIDEO_QUALITY, VIDEO_RENDITIONS, VIDEO_LIVE): read-only here."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "VIDEO_PROXIES and ffmpeg on the worker."
+          },
+          "encoder": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "backend": {
+                "type": "string",
+                "enum": [
+                  "nvenc",
+                  "qsv",
+                  "vaapi",
+                  "software"
+                ]
+              },
+              "tuning": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "full",
+                  "basic",
+                  null
+                ]
+              },
+              "av1": {
+                "type": "boolean",
+                "description": "The card encodes AV1: shown, not used."
+              },
+              "requested": {
+                "type": "string",
+                "description": "VIDEO_PROXY_HWACCEL."
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "label",
+              "backend",
+              "tuning",
+              "av1",
+              "requested",
+              "concurrency"
+            ],
+            "description": "Detected by the last worker to start; null without one."
+          },
+          "queue": {
+            "type": "object",
+            "properties": {
+              "queued": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "processing": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "queued",
+              "processing"
+            ]
+          },
+          "library": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoLibrary"
+            }
+          },
+          "copiesBytes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Space the copies take now."
+          },
+          "freeBytes": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Free space under DATA_DIR; null on S3."
+          },
+          "outdated": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Videos whose copies were made with other settings, or are missing."
+          },
+          "speed": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "Seconds of video encoded per second, from recent copies; null before any. Divides the minutes of `library` into the time a regeneration takes."
+          },
+          "backfill": {
+            "$ref": "#/components/schemas/VideoBackfill"
+          }
+        },
+        "required": [
+          "settings",
+          "locked",
+          "enabled",
+          "encoder",
+          "queue",
+          "library",
+          "copiesBytes",
+          "freeBytes",
+          "outdated",
+          "speed",
+          "backfill"
+        ]
+      },
+      "VideoSettings": {
+        "type": "object",
+        "properties": {
+          "quality": {
+            "type": "string",
+            "enum": [
+              "light",
+              "balanced",
+              "high"
+            ]
+          },
+          "rungs": {
+            "type": "object",
+            "properties": {
+              "480": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              },
+              "720": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              },
+              "1080": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              },
+              "2160": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              }
+            },
+            "description": "Every rung, by name. At least one is not `off`. `live` only when `live.enabled`."
+          },
+          "playable": {
+            "type": "string",
+            "enum": [
+              "heavy",
+              "always",
+              "never"
+            ],
+            "description": "Originals the browser already plays: copies only when heavy (shorter side over 1080, over 12 Mbit/s or over 60 fps), always, or never."
+          },
+          "live": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "maxSessions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 64,
+                "description": "Renditions encoded at once for viewers, on the whole instance."
+              },
+              "perViewer": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8,
+                "description": "At once for one person or one share link."
+              }
+            },
+            "required": [
+              "enabled",
+              "maxSessions",
+              "perViewer"
+            ],
+            "description": "Renditions made while someone watches: right after an upload, for `live` rungs, past the limits the player keeps to the stored ones."
+          }
+        },
+        "required": [
+          "quality",
+          "rungs",
+          "playable",
+          "live"
+        ]
+      },
+      "VideoLibrary": {
+        "type": "object",
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "480",
+              "720",
+              "1080",
+              "2160"
+            ]
+          },
+          "minutes": {
+            "type": "number",
+            "minimum": 0
+          },
+          "fastMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Of which above 30 fps."
+          },
+          "videos": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "side",
+          "minutes",
+          "fastMinutes",
+          "videos"
+        ]
+      },
+      "VideoBackfill": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "outdated"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "stopped",
+              "done"
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "done": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "total",
+          "done",
+          "startedAt"
+        ]
+      },
+      "UpdateVideoSettings": {
+        "type": "object",
+        "properties": {
+          "quality": {
+            "type": "string",
+            "enum": [
+              "light",
+              "balanced",
+              "high"
+            ]
+          },
+          "rungs": {
+            "type": "object",
+            "properties": {
+              "480": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              },
+              "720": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              },
+              "1080": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              },
+              "2160": {
+                "type": "string",
+                "enum": [
+                  "stored",
+                  "live",
+                  "off"
+                ]
+              }
+            }
+          },
+          "playable": {
+            "type": "string",
+            "enum": [
+              "heavy",
+              "always",
+              "never"
+            ],
+            "description": "Originals the browser already plays: copies only when heavy (shorter side over 1080, over 12 Mbit/s or over 60 fps), always, or never."
+          },
+          "live": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "maxSessions": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 64,
+                "description": "Renditions encoded at once for viewers, on the whole instance."
+              },
+              "perViewer": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8,
+                "description": "At once for one person or one share link."
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "StartVideoBackfill": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "outdated"
+            ]
+          }
+        },
+        "required": [
+          "scope"
+        ],
+        "additionalProperties": false
+      },
       "StorageFiles": {
         "type": "object",
         "properties": {
@@ -5530,6 +5942,38 @@
           "proxy": {
             "$ref": "#/components/schemas/AssetProxy"
           },
+          "playback": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "hls": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Same-origin path of the HLS master playlist (`/api/v1/assets/{assetId}/hls/master.m3u8?v=…`), once a rung is ready or can be encoded live; null before."
+              },
+              "original": {
+                "type": "boolean",
+                "description": "The original plays in the browser as it is: offer it as a choice."
+              },
+              "renditions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AssetRendition"
+                },
+                "description": "Smallest first; a rung larger than the source is never listed."
+              }
+            },
+            "required": [
+              "hls",
+              "original",
+              "renditions"
+            ],
+            "description": "Adaptive playback of a video (decision 0128): the HLS master playlist of its reduced copies and the state of each. Null for other files and for videos that play as they are; absent from servers without `video-renditions`. `proxy` keeps working for clients that do not read this."
+          },
           "waveformUrl": {
             "type": [
               "string",
@@ -5694,6 +6138,85 @@
           "size"
         ],
         "description": "Playable MP4 copy of a video in a format browsers do not play, or AAC copy of an audio file not every browser plays. Null for other files and for media that already play (H.264 MP4, WebM, MP3, AAC, WAV, FLAC): use `url` then."
+      },
+      "AssetRendition": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "480",
+              "720",
+              "1080",
+              "2160"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "ready",
+              "failed"
+            ]
+          },
+          "progress": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bitrate": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Average, bit/s, once ready."
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Bytes once ready."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Same-origin path of the fragmented MP4 of the rung, playable on its own with `Range`, once ready."
+          },
+          "live": {
+            "type": "boolean",
+            "description": "The master playlist offers this rung encoded while watched until it is ready, or for good when it is not stored. Only from servers with `video-live`."
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "progress",
+          "width",
+          "height",
+          "bitrate",
+          "size",
+          "url"
+        ]
       },
       "AssetVariant": {
         "type": "object",
@@ -10250,6 +10773,38 @@
               "null"
             ],
             "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/waveform`: the peaks of an audio card (`AudioWaveform`), else null."
+          },
+          "playback": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "hls": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Same-origin path of the HLS master playlist (`/api/v1/assets/{assetId}/hls/master.m3u8?v=…`), once a rung is ready or can be encoded live; null before."
+              },
+              "original": {
+                "type": "boolean",
+                "description": "The original plays in the browser as it is: offer it as a choice."
+              },
+              "renditions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AssetRendition"
+                },
+                "description": "Smallest first; a rung larger than the source is never listed."
+              }
+            },
+            "required": [
+              "hls",
+              "original",
+              "renditions"
+            ],
+            "description": "As `Asset.playback`, with paths under `/api/v1/guest/links/{linkId}/assets/{assetId}/hls/`: guests stream the reduced copies of a video whatever `allowDownload` says, as they hear audio (decision 0128). `original` is true only when the link allows downloads. Absent from servers without `video-renditions`."
           }
         },
         "required": [
@@ -16823,6 +17378,296 @@
         }
       }
     },
+    "/api/v1/instance/video-settings": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: playable video copies, with the encoder and the library.",
+        "responses": {
+          "200": {
+            "description": "Settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSettingsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: change the quality, the rungs and live playback (0128).",
+        "description": "Applies to videos uploaded from now on; existing copies change only through a regeneration. A setting fixed by the server environment cannot be changed (403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVideoSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSettingsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/video-settings/reprocess": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: make again the copies that are missing or made otherwise.",
+        "description": "A low-priority backfill: new uploads go first, the old copy stays until the new one is ready. 409 while one runs.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartVideoBackfill"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSettingsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only: stop the regeneration; copies already made stay.",
+        "responses": {
+          "200": {
+            "description": "Stopped",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoSettingsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/instance/members/{userId}/files": {
       "get": {
         "tags": [
@@ -22320,6 +23165,279 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}/hls/master.m3u8": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "HLS master playlist of a video (`Asset.playback.hls`, decision 0128).",
+        "description": "Generated per request from the rungs that are ready, with BANDWIDTH (peak), AVERAGE-BANDWIDTH, RESOLUTION, FRAME-RATE and CODECS; on servers with `video-live`, also the rungs encoded while watched. URIs are relative. `Cache-Control: private, no-cache`. Readable by every role that sees the asset; 404 while nothing plays.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Playlist",
+            "content": {
+              "application/vnd.apple.mpegurl": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/hls/{name}.m3u8": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Byte-range HLS media playlist of one ready rung (`480`, `720`, `1080`, `2160`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Playlist",
+            "content": {
+              "application/vnd.apple.mpegurl": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/hls/{name}.mp4": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The fragmented MP4 of one ready rung (`AssetRendition.url`). Supports `Range`.",
+        "description": "Plays on its own as well. Immutable: its URL carries the generation (`?v=`) that made it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MP4 video",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Part of the file"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/proxy": {
       "get": {
         "tags": [
@@ -27608,6 +28726,98 @@
           },
           "206": {
             "description": "Part of the file"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/assets/{assetId}/hls/{file}": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "The HLS playlists and files of a video of the link (`GuestAsset.playback`).",
+        "description": "The same files as `/assets/{assetId}/hls/{file}` (`master.m3u8`, `{name}.m3u8`, `{name}.mp4`), for videos shown on the boards of the link, whatever `allowDownload` says (decision 0128): streaming a reduced copy is not downloading the original. Checked on every request, `Cache-Control: private`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "file",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Playlist or video"
+          },
+          "206": {
+            "description": "Part of the video"
           },
           "400": {
             "description": "Invalid request",

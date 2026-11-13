@@ -35,12 +35,6 @@ import {
   UpdateBoard,
 } from './boards.ts';
 import { CalendarFeed } from './calendar.ts';
-import {
-  StartVideoBackfill,
-  UpdateVideoSettings,
-  VideoRung,
-  VideoSettingsView,
-} from './video.ts';
 import { ClassificationCatalogs, ClassificationsQuery } from './classifications.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
@@ -227,6 +221,7 @@ import {
   RestoredBoardVersion,
   UpdateBoardVersion,
 } from './versions.ts';
+import { StartVideoBackfill, UpdateVideoSettings, VideoRung, VideoSettingsView } from './video.ts';
 
 export const API_VERSION = '0.10.0';
 

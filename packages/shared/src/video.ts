@@ -159,11 +159,15 @@ export const VideoSettingsView = z
     outdated: z.int().min(0).openapi({
       description: 'Videos whose copies were made with other settings, or are missing.',
     }),
-    speed: z.number().positive().nullable().openapi({
-      description:
-        'Seconds of video encoded per second, from recent copies; null before any. Divides ' +
-        'the minutes of `library` into the time a regeneration takes.',
-    }),
+    speed: z
+      .number()
+      .positive()
+      .nullable()
+      .openapi({
+        description:
+          'Seconds of video encoded per second, from recent copies; null before any. Divides ' +
+          'the minutes of `library` into the time a regeneration takes.',
+      }),
     backfill: VideoBackfill.nullable(),
   })
   .openapi('VideoSettingsView');
@@ -185,27 +189,36 @@ export const AssetRendition = z
     height: z.int().nullable(),
     bitrate: z.int().nullable().openapi({ description: 'Average, bit/s, once ready.' }),
     size: z.number().int().min(0).nullable().openapi({ description: 'Bytes once ready.' }),
-    url: z.string().nullable().openapi({
-      description:
-        'Same-origin path of the fragmented MP4 of the rung, playable on its own with ' +
-        '`Range`, once ready.',
-    }),
-    live: z.boolean().optional().openapi({
-      description:
-        'The master playlist offers this rung encoded while watched until it is ready, or ' +
-        'for good when it is not stored. Only from servers with `video-live`.',
-    }),
+    url: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          'Same-origin path of the fragmented MP4 of the rung, playable on its own with ' +
+          '`Range`, once ready.',
+      }),
+    live: z
+      .boolean()
+      .optional()
+      .openapi({
+        description:
+          'The master playlist offers this rung encoded while watched until it is ready, or ' +
+          'for good when it is not stored. Only from servers with `video-live`.',
+      }),
   })
   .openapi('AssetRendition');
 export type AssetRendition = z.infer<typeof AssetRendition>;
 
 export const AssetPlayback = z
   .object({
-    hls: z.string().nullable().openapi({
-      description:
-        'Same-origin path of the HLS master playlist (`/api/v1/assets/{assetId}/hls/' +
-        'master.m3u8?v=…`), once a rung is ready or can be encoded live; null before.',
-    }),
+    hls: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          'Same-origin path of the HLS master playlist (`/api/v1/assets/{assetId}/hls/' +
+          'master.m3u8?v=…`), once a rung is ready or can be encoded live; null before.',
+      }),
     original: z.boolean().openapi({
       description: 'The original plays in the browser as it is: offer it as a choice.',
     }),
