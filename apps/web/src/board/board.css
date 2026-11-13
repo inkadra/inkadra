@@ -5178,7 +5178,10 @@ button.card__play {
       content: none;
     }
   }
-  :is(.canvas:has(.canvas__panel), :root:has(.comments-panel) .canvas) .canvas__tray {
+  :is(.canvas:has(.canvas__panel), :root:has(.comments-panel) .canvas) .canvas__tray,
+  /* Without the toggle the dock keeps no room for the tray, and uploads (280 px) would cover
+     the bar's end: they go above the bar. */
+  .canvas__tray:has(.uploads):not(:has(.unsorted)) {
     bottom: calc(12px + 54px + 8px);
   }
   .canvas__dock > .toolbar {
