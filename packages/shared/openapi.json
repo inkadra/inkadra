@@ -15230,6 +15230,19 @@
             "bearer": []
           }
         ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "required": false,
+            "name": "uses",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Instance-wide classification catalogs",
