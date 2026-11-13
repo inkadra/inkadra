@@ -53,7 +53,7 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
   };
   const request = (
     as: string | null,
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     payload?: unknown,
   ) =>

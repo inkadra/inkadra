@@ -151,30 +151,30 @@ export function registerCalendarRoutes(
     );
     const days =
       shooting && boards.length
-      ? await db
-          .select({
-            id: shootingDay.id,
-            boardId: shootingDay.boardId,
-            date: shootingDay.date,
-            callTime: shootingDay.callTime,
-            wrap: shootingDay.wrap,
-            location: shootingDay.location,
-            updatedAt: shootingDay.updatedAt,
-          })
-          .from(shootingDay)
-          .where(
-            and(
-              inArray(
-                shootingDay.boardId,
-                boards.map((r) => r.board.id),
+        ? await db
+            .select({
+              id: shootingDay.id,
+              boardId: shootingDay.boardId,
+              date: shootingDay.date,
+              callTime: shootingDay.callTime,
+              wrap: shootingDay.wrap,
+              location: shootingDay.location,
+              updatedAt: shootingDay.updatedAt,
+            })
+            .from(shootingDay)
+            .where(
+              and(
+                inArray(
+                  shootingDay.boardId,
+                  boards.map((r) => r.board.id),
+                ),
+                gte(shootingDay.date, from),
+                lte(shootingDay.date, to),
               ),
-              gte(shootingDay.date, from),
-              lte(shootingDay.date, to),
-            ),
-          )
-          .orderBy(asc(shootingDay.date), asc(shootingDay.id))
-          .limit(FEED_MAX_EVENTS)
-      : [];
+            )
+            .orderBy(asc(shootingDay.date), asc(shootingDay.id))
+            .limit(FEED_MAX_EVENTS)
+        : [];
     const texts = mailText(credential.user).calendar;
     // Cheap fingerprint of everything the body is built from: rows' timestamps, the window and the
     // credential. It is the validator, so a 304 never decodes a document.

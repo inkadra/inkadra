@@ -10,7 +10,9 @@ const modules = vi.hoisted(() => ({ off: [] as string[] }));
 vi.mock('../lib/modules.ts', async () => {
   const { offered } = await import('@inkadra/shared');
   return {
-    useModules: () => ({ offers: (part: 'calendar', name: string) => offered(modules.off, part, name) }),
+    useModules: () => ({
+      offers: (part: 'calendar', name: string) => offered(modules.off, part, name),
+    }),
   };
 });
 afterEach(() => {
