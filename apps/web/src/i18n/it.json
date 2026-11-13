@@ -6639,7 +6639,7 @@
       "measuredAt_one": "Ultima misura: una sessione, {{speed}}× tempo reale ({{time}}).",
       "measuredAt_other": "Ultima misura: {{count}} sessioni, {{speed}}× tempo reale ({{time}}).",
       "neverMeasured": "Nessuna misura ancora.",
-      "overMeasured": "Più del valore misurato ({{count}}): i video possono andare a scatti.",
+      "overMeasured": "Più del valore misurato ({{measured}}): i video possono andare a scatti.",
       "sessionsHelp": "Per tutto il server; 0 spegne la riproduzione al volo. Oltre, chi guarda riceve le copie già salvate.",
       "reset": "Ripristina",
       "custom": "personalizzato",

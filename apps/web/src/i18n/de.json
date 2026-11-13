@@ -6639,7 +6639,7 @@
       "measuredAt_one": "Zuletzt gemessen: eine Sitzung, {{speed}}× Echtzeit ({{time}}).",
       "measuredAt_other": "Zuletzt gemessen: {{count}} Sitzungen, {{speed}}× Echtzeit ({{time}}).",
       "neverMeasured": "Noch nicht gemessen.",
-      "overMeasured": "Mehr als gemessen ({{count}}): Videos können ruckeln.",
+      "overMeasured": "Mehr als gemessen ({{measured}}): Videos können ruckeln.",
       "sessionsHelp": "Für den ganzen Server; 0 schaltet die Live-Wiedergabe aus. Darüber hinaus erhalten Zuschauer die gespeicherten Kopien.",
       "reset": "Zurücksetzen",
       "custom": "angepasst",

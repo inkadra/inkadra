@@ -6639,7 +6639,7 @@
       "measuredAt_one": "Dernière mesure : une session, {{speed}}× temps réel ({{time}}).",
       "measuredAt_other": "Dernière mesure : {{count}} sessions, {{speed}}× temps réel ({{time}}).",
       "neverMeasured": "Pas encore mesuré.",
-      "overMeasured": "Plus que la valeur mesurée ({{count}}) : les vidéos peuvent saccader.",
+      "overMeasured": "Plus que la valeur mesurée ({{measured}}) : les vidéos peuvent saccader.",
       "sessionsHelp": "Pour tout le serveur ; 0 désactive la lecture à la volée. Au-delà, on reçoit les copies enregistrées.",
       "reset": "Rétablir",
       "custom": "personnalisé",

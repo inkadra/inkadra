@@ -242,7 +242,7 @@ it('keeps Advanced collapsed, then lets the admin raise live sessions over the m
   chooseSelect(host.querySelector('[data-tour="video-advanced"] [role="combobox"]'), '6');
   await act(async () => {});
   expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', { live: { maxSessions: 6 } });
-  expect(host.textContent).toContain('videoSettings.advanced.overMeasured:{"count":3}');
+  expect(host.textContent).toContain('videoSettings.advanced.overMeasured:{"measured":3}');
   // Ripristina goes back to the measured value.
   vi.mocked(api.patch).mockResolvedValue(view());
   const reset = [...host.querySelectorAll('button')].find(

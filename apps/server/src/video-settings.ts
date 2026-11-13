@@ -181,7 +181,7 @@ export async function saveVideoSettings(
   }
   const why = invalidCustom(quality, custom);
   if (why) throw new HttpError('bad_request', why);
-  const { maxSessions, ...liveRest } = patch.live ?? {};
+  const { maxSessions, ...liveRest }: NonNullable<UpdateVideoSettings['live']> = patch.live ?? {};
   const next: VideoSettings = {
     ...current,
     quality,

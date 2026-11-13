@@ -561,7 +561,7 @@ function AdvancedCard({
               label={t('videoSettings.live.maxSessions')}
               help={
                 measured !== null && sessions > measured
-                  ? t('videoSettings.advanced.overMeasured', { count: measured })
+                  ? t('videoSettings.advanced.overMeasured', { measured })
                   : t('videoSettings.advanced.sessionsHelp')
               }
               htmlFor={sessionsId}
@@ -573,7 +573,7 @@ function AdvancedCard({
                 disabled={status?.locked}
                 onChange={(v) => void patch({ live: { maxSessions: Number(v) } })}
               >
-                {Array.from({ length: VIDEO_LIVE_SESSIONS_MAX + 1 }, (_, n) => (
+                {Array.from({ length: VIDEO_LIVE_SESSIONS_MAX + 1 }, (_, i) => i).map((n) => (
                   <option key={n} value={String(n)}>
                     {n === 0 ? t('videoSettings.live.off') : n}
                   </option>

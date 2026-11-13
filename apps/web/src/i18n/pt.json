@@ -6639,7 +6639,7 @@
       "measuredAt_one": "Última medição: uma sessão, {{speed}}× tempo real ({{time}}).",
       "measuredAt_other": "Última medição: {{count}} sessões, {{speed}}× tempo real ({{time}}).",
       "neverMeasured": "Ainda sem medição.",
-      "overMeasured": "Mais do que o medido ({{count}}): os vídeos podem engasgar.",
+      "overMeasured": "Mais do que o medido ({{measured}}): os vídeos podem engasgar.",
       "sessionsHelp": "Para todo o servidor; 0 desliga a reprodução em tempo real. Acima disso, quem vê recebe as cópias guardadas.",
       "reset": "Repor",
       "custom": "personalizado",

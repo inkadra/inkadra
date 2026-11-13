@@ -6639,7 +6639,7 @@
       "measuredAt_one": "Última medición: una sesión, {{speed}}× tiempo real ({{time}}).",
       "measuredAt_other": "Última medición: {{count}} sesiones, {{speed}}× tiempo real ({{time}}).",
       "neverMeasured": "Aún sin medir.",
-      "overMeasured": "Más que lo medido ({{count}}): los vídeos pueden ir a saltos.",
+      "overMeasured": "Más que lo medido ({{measured}}): los vídeos pueden ir a saltos.",
       "sessionsHelp": "Para todo el servidor; 0 apaga la reproducción al vuelo. Por encima, quien mira recibe las copias guardadas.",
       "reset": "Restablecer",
       "custom": "personalizado",

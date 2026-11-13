@@ -6639,7 +6639,7 @@
       "measuredAt_one": "Last measured: one session, {{speed}}× real time ({{time}}).",
       "measuredAt_other": "Last measured: {{count}} sessions, {{speed}}× real time ({{time}}).",
       "neverMeasured": "Not measured yet.",
-      "overMeasured": "More than measured ({{count}}): videos may stutter.",
+      "overMeasured": "More than measured ({{measured}}): videos may stutter.",
       "sessionsHelp": "For the whole server; 0 turns live playback off. Beyond it, viewers get the stored copies.",
       "reset": "Reset",
       "custom": "custom",

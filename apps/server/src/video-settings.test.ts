@@ -25,7 +25,7 @@ describe('video settings', () => {
     const plain = await readVideoSettings(db(null), env);
     expect(plain.settings).toEqual({
       ...DEFAULT_VIDEO_SETTINGS,
-      live: { ...DEFAULT_VIDEO_SETTINGS.live, enabled: false, maxSessions: 1 },
+      live: { ...DEFAULT_VIDEO_SETTINGS.live, enabled: false, maxSessions: 0 },
     });
     expect(plain.live).toMatchObject({ available: false, reason: 'no-gpu', sessions: 0 });
     const stored = await readVideoSettings(
@@ -180,7 +180,10 @@ describe('performance test from the page', () => {
         }),
       }),
     };
-    return { fake: fake as never, use: (k: string) => void (key = k) };
+    return { fake: fake as never, use: (k: string) => {
+        key = k;
+      },
+    };
   };
 
   it('runs one at a time: a second request while one runs is refused with 409', async () => {

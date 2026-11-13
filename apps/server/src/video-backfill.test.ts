@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { asset, assetRendition, assetVariant, project } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
+import { recipesFor } from './media/ladder.ts';
 import {
   BACKFILL_BLOCK,
   countNeeding,
@@ -16,7 +17,7 @@ import {
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
-const RECIPE = 'h264/balanced/1';
+const RECIPE = recipesFor('balanced');
 
 describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
   const { db, sql: client } = createDatabase(url ?? 'postgres://unused', 2);
