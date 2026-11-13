@@ -178,6 +178,14 @@ export const ServerTranscode = z
     speed: z.number().nullable().openapi({ description: 'Times real time.' }),
     source: z.string().nullable().openapi({ description: 'Codec and lines, as `prores 2160p`.' }),
     target: z.string().nullable().openapi({ description: 'As `h264 1080p`.' }),
+    thumbnailUrl: z
+      .string()
+      .optional()
+      .openapi({
+        description:
+          'Same-origin path of the smallest thumbnail, `/api/v1/assets/{assetId}/variants/256`, ' +
+          'for a named file the worker made one for. Older servers omit it.',
+      }),
   })
   .openapi('ServerTranscode');
 export type ServerTranscode = z.infer<typeof ServerTranscode>;
