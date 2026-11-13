@@ -237,9 +237,9 @@ describe('searching the data', () => {
       sub: 'Archiviazione · 13.65 MB',
     });
     // «Santo» is a word of its own; «Carla Santo» does not start with «anto».
-    expect(searchData(DATA, TOURS, SETTINGS_PAGES, 'santo', t).results.map((r) => r.key)).toEqual(
-      ['member:u3'],
-    );
+    expect(searchData(DATA, TOURS, SETTINGS_PAGES, 'santo', t).results.map((r) => r.key)).toEqual([
+      'member:u3',
+    ]);
     expect(searchData(DATA, TOURS, SETTINGS_PAGES, 'spot', t).results[0]).toMatchObject({
       label: 'Spot',
       sub: 'Tipi di progetto',
@@ -247,9 +247,9 @@ describe('searching the data', () => {
     const tour = TOURS[0];
     if (!tour) throw new Error('no tours');
     const name = t(`tutorial.tours.${tour.id}.name`);
-    expect(
-      searchData(NO_DATA, TOURS, SETTINGS_PAGES, name, t).results.map((r) => r.key),
-    ).toContain(`tour:${tour.id}`);
+    expect(searchData(NO_DATA, TOURS, SETTINGS_PAGES, name, t).results.map((r) => r.key)).toContain(
+      `tour:${tour.id}`,
+    );
   });
 
   it('keeps 8 results per group and counts the others (#709)', async () => {
