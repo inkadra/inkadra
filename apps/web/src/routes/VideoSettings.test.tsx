@@ -100,9 +100,7 @@ it('locks what the environment sets, and says when copies are off', async () => 
   await show(view({ locked: { quality: true, rungs: true, live: false } }));
   expect(host.textContent).toContain('VIDEO_QUALITY');
   expect(host.textContent).toContain('VIDEO_RENDITIONS');
-  expect(
-    host.querySelector<HTMLInputElement>('input[name="video-quality"]')?.disabled,
-  ).toBe(true);
+  expect(host.querySelector<HTMLInputElement>('input[name="video-quality"]')?.disabled).toBe(true);
   await act(async () => root.unmount());
   root = createRoot(host);
   await show(view({ enabled: false, encoder: null }));

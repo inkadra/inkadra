@@ -144,7 +144,9 @@ export function VideoSettings() {
           encoder && (
             <>
               <Badge tone={hardware ? 'ok' : 'warn'}>
-                {hardware ? t('videoSettings.encoder.hardware') : t('videoSettings.encoder.cpuOnly')}
+                {hardware
+                  ? t('videoSettings.encoder.hardware')
+                  : t('videoSettings.encoder.cpuOnly')}
               </Badge>
               {encoder.av1 && <Badge tone="accent">{t('videoSettings.encoder.av1')}</Badge>}
             </>
@@ -260,11 +262,18 @@ export function VideoSettings() {
               const plus = (copies / e.mb) * 100;
               return (
                 <li key={e.key}>
-                  <span className="video-examples__src">{t(`videoSettings.examples.${e.key}`)}</span>
-                  <span className="video-examples__size">
-                    {t('videoSettings.examples.copies', { original: size(e.mb), copies: size(copies) })}
+                  <span className="video-examples__src">
+                    {t(`videoSettings.examples.${e.key}`)}
                   </span>
-                  <span className={plus > 100 ? 'video-examples__plus is-over' : 'video-examples__plus'}>
+                  <span className="video-examples__size">
+                    {t('videoSettings.examples.copies', {
+                      original: size(e.mb),
+                      copies: size(copies),
+                    })}
+                  </span>
+                  <span
+                    className={plus > 100 ? 'video-examples__plus is-over' : 'video-examples__plus'}
+                  >
                     +{number(plus, plus < 10 ? 1 : 0)}%
                   </span>
                 </li>
