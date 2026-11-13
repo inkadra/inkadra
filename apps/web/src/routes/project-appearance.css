@@ -55,12 +55,14 @@
   padding-right: 32px;
 }
 .project-appearance__form {
+  display: flex;
+  flex-direction: column;
+}
+.project-appearance__picker {
   --appearance-tile: 40px;
   --appearance-emoji: 30px;
   --appearance-swatch: 22px;
   --appearance-field: 34px;
-  display: flex;
-  flex-direction: column;
 }
 .project-appearance__preview {
   display: flex;
@@ -186,6 +188,18 @@
   font-size: 11.5px;
 }
 /* Nine swatches on one row at every width. */
+.project-appearance__color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.project-appearance__color-row .project-appearance__swatches {
+  flex: 1;
+}
+.project-appearance__color-name {
+  color: var(--ink-text-secondary);
+  font-size: 11.5px;
+}
 .project-appearance__swatches {
   display: flex;
   justify-content: space-between;
@@ -293,6 +307,59 @@
   background: var(--ink-surface-2);
 }
 
+/* New project: the label and the tabs on one line, twelve shapes in a row, the colour named. */
+.project-appearance__picker--inline {
+  --appearance-tile: 34px;
+  --appearance-emoji: 28px;
+  display: grid;
+  gap: 8px;
+}
+.project-appearance__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+}
+.project-appearance__label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.project-appearance__picker--inline .project-appearance__tabs {
+  margin-bottom: 0;
+}
+.project-appearance__picker--inline .project-appearance__tabs button {
+  flex: none;
+  min-height: 22px;
+  padding: 2px 12px;
+  font-size: 12px;
+}
+.project-appearance__picker--inline .project-appearance__choices {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 4px;
+}
+.project-appearance__picker--inline .project-appearance__color-label {
+  display: none;
+}
+.project-appearance__picker--inline .project-appearance__color-row .project-appearance__swatches {
+  flex: none;
+  gap: 6px;
+}
+.project-appearance__picker--inline .project-appearance__color-name {
+  margin-left: auto;
+}
+.project-appearance__picker--inline .project-appearance__emojis {
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+}
+.project-appearance__picker--inline .project-appearance__emojis button {
+  font-size: 16px;
+}
+.project-appearance__picker--inline .project-appearance__invalid {
+  bottom: -14px;
+  line-height: 14px;
+}
+
 /* Phones: 44 px targets, so the shared panel grows to fit the larger tiles. */
 @media (width < 768px) {
   /* Symbol sets the phone height; desktop keeps both panels in the shared grid cell. */
@@ -311,7 +378,7 @@
     width: 100vw;
     border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
   }
-  .project-appearance__form {
+  .project-appearance__picker {
     --appearance-tile: 44px;
     --appearance-emoji: 40px;
     --appearance-swatch: 26px;
@@ -322,6 +389,37 @@
   }
   .project-appearance__tabs button {
     min-height: 44px;
+  }
+  /* New project goes back to the dialog's layout: tabs under the label, six shapes a row. */
+  .project-appearance__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .project-appearance__picker--inline .project-appearance__tabs button {
+    flex: 1;
+    min-height: 44px;
+    font-size: inherit;
+  }
+  .project-appearance__picker--inline .project-appearance__choices {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .project-appearance__picker--inline .project-appearance__color-label {
+    display: flex;
+  }
+  .project-appearance__picker--inline .project-appearance__color-row .project-appearance__swatches {
+    flex: 1;
+    gap: 0;
+  }
+  .project-appearance__picker--inline .project-appearance__color-name {
+    display: none;
+  }
+  .project-appearance__picker--inline .project-appearance__emojis {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+  .project-appearance__picker--inline .project-appearance__emojis button {
+    font-size: 17px;
   }
   .project-appearance__close {
     top: 4px;

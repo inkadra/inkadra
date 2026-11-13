@@ -4058,6 +4058,7 @@
     "discard": "Annuler les modifications"
   },
   "appearance": {
+    "label": "Apparence",
     "title": "Apparence du projet",
     "options": "Options du projet : {{name}}",
     "symbol": "Symbole",
