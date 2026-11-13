@@ -82,7 +82,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     ? (boardId: string, elementId: string) => boardReader.element(boardId, elementId)
     : (boardId: string, elementId: string) => storedElement(db, boardId, elementId);
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const limiter = new RateLimiter(30, 60_000);
+  const limiter = new RateLimiter(30, 60_000, 'reviews-routes:limiter');
 
   app.get(v1('/boards/:boardId/reviews'), async (req) => {
     const actor = await requireActor(auth, req, db);
@@ -99,7 +99,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     const { boardId, elementId } = ElementParams.parse(req.params);
     const input = SetElementReview.parse(req.body);
     const access = await requireBoardRole(db, actor, boardId, 'commenter');
-    limiter.require(actor.id, 'Too many review writes: wait a minute.');
+    await limiter.require(actor.id, 'Too many review writes: wait a minute.');
     const card = await readElement(boardId, elementId);
     if (!card) throw new HttpError('not_found', 'Card not found.');
     const note = input.note ? input.note : null;

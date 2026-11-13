@@ -186,7 +186,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     config: deps.config,
   };
   // Each clip can fetch two addresses or store a large file.
-  const limiter = new RateLimiter(30, 60_000);
+  const limiter = new RateLimiter(30, 60_000, 'clip-routes:limiter');
   const imageMax =
     deps.uploadMaxSize > 0 ? Math.min(deps.uploadMaxSize, FETCHED_IMAGE_MAX) : FETCHED_IMAGE_MAX;
 
@@ -356,7 +356,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
       const boards = deps.boards;
       if (!boards)
         throw new HttpError('internal', 'Clips need the collaboration server: set REDIS_URL.');
-      limiter.require(actor.id, 'Too many clips: wait a minute.');
+      await limiter.require(actor.id, 'Too many clips: wait a minute.');
 
       const checked = new Map<string, ReturnType<typeof requireBoardRole>>();
       const check = (boardId: string) => {

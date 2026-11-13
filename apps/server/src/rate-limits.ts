@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { isIP } from 'node:net';
+import type { Logger } from 'pino';
+import { authSecurity } from './auth-security.ts';
+import type { Config } from './config.ts';
 import { HttpError } from './http/errors.ts';
 
 /** Whole seconds, at least one, until an hourly count window frees the slot taken at `oldest`. */
@@ -43,7 +47,7 @@ const EVICTION_SCAN = 64;
  * client filling the table can never lock out everyone else, and blocked keys keep their
  * budget unless an attacker pays for ten thousand blocked keys at once.
  */
-export class RateLimiter {
+class MemoryRateLimiter {
   protected hits = new Map<string, number[]>();
   constructor(
     protected readonly max: number,
@@ -127,7 +131,7 @@ export class RateLimiter {
 }
 
 /** Failed attempts plus in-flight reservations; successes return their reservation. */
-export class Failures extends RateLimiter {
+class MemoryFailures extends MemoryRateLimiter {
   private pending = new Map<string, number>();
   protected override inFlight(key: string) {
     return this.pending.has(key);
@@ -153,5 +157,101 @@ export class Failures extends RateLimiter {
     if (failed) recent.push(Date.now());
     if (recent.length || pending) this.store(key, recent);
     else this.hits.delete(key);
+  }
+}
+
+let shared: ReturnType<typeof authSecurity> | undefined;
+
+/** One instance namespace and connection per process, shared by every product limiter. */
+export async function configureRateLimits(config: Config, log?: Logger) {
+  shared?.close();
+  shared = config.REDIS_URL ? authSecurity(config, log) : undefined;
+  await shared?.ready();
+  const store = shared;
+  return () => {
+    store?.close();
+    if (shared === store) shared = undefined;
+  };
+}
+
+export class RateLimiter {
+  protected memory: MemoryRateLimiter;
+  protected retry = new Map<string, number>();
+  constructor(
+    protected readonly max: number,
+    protected readonly windowMs: number,
+    protected readonly scope = 'test',
+  ) {
+    this.memory = new MemoryRateLimiter(max, windowMs);
+  }
+  protected async budget(
+    key: string,
+    operation: 'check' | 'take' | 'refund' | 'fail',
+    token: string = randomUUID(),
+    sensitive = false,
+  ) {
+    if (!shared) throw new Error('No shared store');
+    try {
+      const result = await shared.sliding(
+        `${this.scope}:${key}`,
+        this.max,
+        this.windowMs,
+        operation,
+        token,
+      );
+      // Only the immediately following error response needs the retry time; keep memory bounded.
+      if (this.retry.size >= MAX_KEYS) this.retry.clear();
+      this.retry.set(key, result.retryAfter);
+      return result.allowed;
+    } catch {
+      shared.reportError();
+      // Match auth: ordinary traffic remains available, password checks fail closed.
+      return !sensitive;
+    }
+  }
+  retryAfterSeconds(key: string) {
+    return shared ? (this.retry.get(key) ?? 1) : this.memory.retryAfterSeconds(key);
+  }
+  async take(key: string) {
+    return shared ? this.budget(key, 'take') : this.memory.take(key);
+  }
+  async require(key: string, message: string) {
+    if (!(await this.take(key)))
+      throw new HttpError(
+        'rate_limited',
+        message,
+        undefined,
+        Math.max(1, this.retryAfterSeconds(key)),
+      );
+  }
+}
+
+export class Failures extends RateLimiter {
+  private failures: MemoryFailures;
+  private reservations = new Map<string, string[]>();
+  constructor(max: number, windowMs: number, scope = 'test') {
+    super(max, windowMs, scope);
+    this.failures = new MemoryFailures(max, windowMs);
+  }
+  override retryAfterSeconds(key: string) {
+    return shared ? super.retryAfterSeconds(key) : this.failures.retryAfterSeconds(key);
+  }
+  async blocked(key: string) {
+    return shared ? !(await this.budget(key, 'check', '', true)) : this.failures.blocked(key);
+  }
+  async begin(key: string) {
+    if (!shared) return this.failures.begin(key);
+    if (!this.reservations.has(key) && this.reservations.size >= MAX_KEYS) return false;
+    const token = randomUUID();
+    if (!(await this.budget(key, 'take', token, true))) return false;
+    this.reservations.set(key, [...(this.reservations.get(key) ?? []), token]);
+    return true;
+  }
+  async finish(key: string, failed: boolean) {
+    if (!shared) return this.failures.finish(key, failed);
+    const tokens = this.reservations.get(key);
+    const token = tokens?.shift();
+    if (!tokens?.length) this.reservations.delete(key);
+    if (token) await this.budget(key, failed ? 'fail' : 'refund', token, true);
   }
 }

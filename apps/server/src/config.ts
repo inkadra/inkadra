@@ -46,6 +46,18 @@ const Env = z.object({
   HOST: z.string().default('0.0.0.0'),
   PORT: z.coerce.number().int().default(3000),
   COLLAB_PORT: z.coerce.number().int().default(3001),
+  BOARD_MAX_STATE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(Number.MAX_SAFE_INTEGER)
+    .default(64 * 1024 * 1024),
+  BOARD_MAX_ELEMENTS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(Number.MAX_SAFE_INTEGER)
+    .default(20_000),
   DATA_DIR: z.string().default('/data'),
   WEB_DIST: z.string().optional(),
   /** Largest file an upload may have: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */

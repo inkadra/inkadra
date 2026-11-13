@@ -1912,7 +1912,9 @@
         "right": "Right"
       },
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
-      "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it."
+      "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it.",
+      "sizeLimit": "This board has reached its size limit. Additions were not saved; the board has been reloaded. You can delete content to make room.",
+      "sizeLimitReadOnly": "This board has reached its size limit and is read-only. Additions were not saved."
     },
     "sheet": {
       "edit": "Edit",
@@ -5302,6 +5304,10 @@
           "4": {
             "title": "The board’s views",
             "text": "Turn on this board’s moodboard from the ⋯ menu. A view that is off keeps its data."
+          },
+          "5": {
+            "title": "Board size limits",
+            "text": "If this board reaches its size limit, additions are refused and the confirmed board reloads. Delete content to make room; if it still does not fit, ask the administrator to raise the limit."
           }
         }
       },

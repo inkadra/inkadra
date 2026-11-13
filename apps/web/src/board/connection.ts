@@ -30,6 +30,7 @@ export interface BoardConnection {
   status: ConnectionStatus;
   readOnly: boolean;
   schemaTooNew?: boolean;
+  sizeLimited?: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
@@ -139,7 +140,12 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
   const userId = user?.id ?? '';
   const [conn, setConn] = useState<BoardConnection | null>(null);
 
+  const [reload, setReload] = useState(0);
+  const [limitedBoard, setLimitedBoard] = useState<string | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: A refusal must reopen the document even though its board id is unchanged.
   useEffect(() => {
+    let refused = false;
     const cacheKey = `${userId}:${boardId}`;
     const cached = cachedBoards.get(cacheKey);
     const doc = new Y.Doc();
@@ -170,6 +176,15 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       // The server says when the role changes between editing and reading (decision 0011).
       onStateless: ({ payload }) => {
         const msg = readBoardNotice(payload);
+        if (msg?.type === 'writeRefused' && msg.reason === 'frozen') {
+          setLimitedBoard(boardId);
+          // A rejected Yjs struct leaves a clock gap. Reopen from confirmed state before
+          // sending further edits; never cache the unaccepted additions.
+          if (!roleReadOnly && !refused) {
+            refused = true;
+            setReload((value) => value + 1);
+          }
+        }
         if (msg?.type === 'access') update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
       },
       onClose: ({ event }) => {
@@ -196,7 +211,8 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     });
     update({});
     return () => {
-      if (state.status === 'denied' || state.status === 'signedOut') cachedBoards.delete(cacheKey);
+      if (refused || state.status === 'denied' || state.status === 'signedOut')
+        cachedBoards.delete(cacheKey);
       else
         cachedBoards.set(cacheKey, { update: Y.encodeStateAsUpdate(doc), readOnly: roleReadOnly });
       stopSchema();
@@ -207,7 +223,7 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       doc.destroy();
       setConn(null);
     };
-  }, [boardId, trackBusy, userId]);
+  }, [boardId, trackBusy, userId, reload]);
 
-  return conn;
+  return conn ? { ...conn, sizeLimited: limitedBoard === boardId } : null;
 }

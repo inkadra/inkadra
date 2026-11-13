@@ -59,7 +59,9 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const auth = createAuth(config, db);
+  const limits = { stateBytes: 64 * 1024 * 1024, elements: 20_000, maxPayload: 16 * 1024 * 1024 };
   const collab = createCollabServer({
+    limits,
     db,
     auth,
     log,
@@ -168,6 +170,62 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       setTimeout(() => resolve(null), 4000);
     });
   }
+
+  it('loads an existing oversized board, refuses additions and persists deletions', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Existing large board' },
+    });
+    const id = created.json().rootBoardId as string;
+    const saved = new Y.Doc();
+    roots(saved).meta.set('schemaVersion', CURRENT_SCHEMA_VERSION);
+    const first = column('Keep');
+    const second = column('Delete');
+    addElement(saved, first);
+    addElement(saved, second);
+    const state = Y.encodeStateAsUpdate(saved);
+    await db.insert(boardDoc).values({
+      boardId: id,
+      state,
+      size: state.byteLength,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+    });
+    limits.elements = 1;
+    try {
+      const writer = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+      await writer.synced;
+      expect(roots(writer.doc).elements.size).toBe(2);
+      const notices: string[] = [];
+      writer.provider.on('stateless', ({ payload }: { payload: string }) => notices.push(payload));
+      addElement(writer.doc, column('Refused'));
+      await vi.waitFor(() =>
+        expect(notices).toContain(JSON.stringify({ type: 'writeRefused', reason: 'frozen' })),
+      );
+      const live = collab.hocuspocus.documents.get(boardDocName(id))!;
+      expect(roots(live).elements.size).toBe(2);
+      // Reopen from confirmed state, as the web client does on the refusal notice.
+      writer.close();
+      const clean = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+      await clean.synced;
+      roots(clean.doc).elements.delete(second.id);
+      await vi.waitFor(() => expect(roots(live).elements.size).toBe(1));
+      expect(roots(live).elements.has(first.id)).toBe(true);
+      clean.close();
+      collab.hocuspocus.flushPendingStores();
+      await vi.waitFor(async () => {
+        const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, id));
+        const persisted = new Y.Doc();
+        Y.applyUpdate(persisted, row!.state);
+        expect(roots(persisted).elements.size).toBe(1);
+        persisted.destroy();
+      });
+    } finally {
+      limits.elements = 20_000;
+      saved.destroy();
+    }
+  });
 
   it('syncs a board between two clients and stores it', async () => {
     const a = connect(as('owner'));

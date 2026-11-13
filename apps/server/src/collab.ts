@@ -113,6 +113,8 @@ export const ACCESS_RECHECK_MS = 30_000;
 export interface CollabLimits {
   /** Largest WebSocket message. */
   maxPayload: number;
+  /** Demo only: freeze all edits and skip storing oversized state. */
+  freeze?: boolean;
   /** Cards on one board. */
   elements: number;
   /** Size of a board's saved state. */
@@ -124,10 +126,39 @@ export interface CollabLimits {
  * would let one sandbox fill the memory or the database of a small server.
  */
 export const DEMO_COLLAB_LIMITS: CollabLimits = {
+  freeze: true,
   maxPayload: 1024 * 1024,
   elements: 500,
   stateBytes: 2 * 1024 * 1024,
 };
+
+/** Pure deletions always pass, including on boards saved before limits existed. */
+export function boardUpdateFits(
+  document: Y.Doc,
+  update: Uint8Array,
+  limits: CollabLimits,
+  upperBytes?: number,
+): boolean {
+  if (!addsItems(document, update)) return true;
+  const bytes = upperBytes ?? Y.encodeStateAsUpdate(document).byteLength;
+  const count = document.getMap('elements').size;
+  // Each new element needs at least one new struct. Avoid cloning ordinary small updates.
+  const meta = Y.parseUpdateMeta(update);
+  const structs = [...meta.to].reduce((n, [id, to]) => n + to - (meta.from.get(id) ?? 0), 0);
+  if (bytes + update.byteLength <= limits.stateBytes && count + structs <= limits.elements)
+    return true;
+  const candidate = new Y.Doc();
+  try {
+    Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
+    Y.applyUpdate(candidate, update);
+    return (
+      candidate.getMap('elements').size <= limits.elements &&
+      Y.encodeStateAsUpdate(candidate).byteLength <= limits.stateBytes
+    );
+  } finally {
+    candidate.destroy();
+  }
+}
 
 /** A board document written for a board row that no longer exists. */
 function boardGone(err: unknown): boolean {
@@ -147,7 +178,7 @@ export function createCollabServer(deps: {
   recheckMs?: number;
   /** Clock for automatic versions; tests move it forward. */
   now?: () => Date;
-  /** The demo's caps (DEMO_COLLAB_LIMITS); none elsewhere, where boards can grow large. */
+  /** Board caps; the demo additionally freezes all edits. */
   limits?: CollabLimits;
   /** Oldest client schema that may write (decision 0102); tests lower it. */
   minWriterSchema?: number;
@@ -439,6 +470,23 @@ export function createCollabServer(deps: {
 
     async beforeSync({ connection, document, context, type, payload }) {
       if (type !== 1 && type !== 2) return;
+      // A refused update only makes this message read-only. Re-evaluate on the next one,
+      // so deletions can still be applied without changing the person's editing role.
+      if (!limits?.freeze)
+        connection.readOnly =
+          !context.canEdit || context.supportedSchemaVersion < requiredSchema(context, document);
+      if (
+        !connection.readOnly &&
+        limits &&
+        !limits.freeze &&
+        !boardUpdateFits(document, payload, limits, grown.get(document))
+      ) {
+        connection.readOnly = true;
+        connection.sendStateless(
+          JSON.stringify({ type: 'writeRefused', reason: 'frozen' } satisfies WriteRefusedMessage),
+        );
+        return;
+      }
       // Hocuspocus answers a read-only connection without applying what it sent. When it sent
       // changes, say why, so a client can tell "update the app" from the rest (decision 0102).
       if (connection.readOnly) {
@@ -473,13 +521,15 @@ export function createCollabServer(deps: {
       }
       // Checked on every change a client makes, so a board never grows far past the caps in
       // memory before the next store; the store measures it again.
-      if (limits && from && !frozen.has(document)) {
+      if (limits?.freeze && from && !frozen.has(document)) {
         let bytes = (grown.get(document) ?? 0) + update.byteLength;
         if (bytes > limits.stateBytes) bytes = Y.encodeStateAsUpdate(document).byteLength;
         grown.set(document, bytes);
         if (bytes > limits.stateBytes || document.getMap('elements').size > limits.elements)
           freeze(document, context?.boardId);
       }
+      if (limits && !limits.freeze)
+        grown.set(document, (grown.get(document) ?? 0) + update.byteLength);
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
           (connection.context
@@ -518,7 +568,7 @@ export function createCollabServer(deps: {
       if (frozen.has(document)) return;
       const pending = new Map(pendingAssignments.get(document));
       const state = Y.encodeStateAsUpdate(document);
-      if (limits && state.byteLength > limits.stateBytes) {
+      if (limits?.freeze && state.byteLength > limits.stateBytes) {
         freeze(document, boardId);
         return;
       }

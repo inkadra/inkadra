@@ -1912,7 +1912,9 @@
         "right": "Direita"
       },
       "drawFailed": "Não foi possível salvar o traço. Tente novamente; se o problema continuar, recarregue o quadro.",
-      "updateApp": "Este quadro requer uma versão mais recente. Atualize o app para editá-lo; você pode continuar visualizando."
+      "updateApp": "Este quadro requer uma versão mais recente. Atualize o app para editá-lo; você pode continuar visualizando.",
+      "sizeLimit": "Esta board atingiu o limite de tamanho. As adições não foram guardadas; a board foi recarregada. Podes eliminar conteúdo para libertar espaço.",
+      "sizeLimitReadOnly": "Esta board atingiu o limite de tamanho e está em modo só de leitura. As adições não foram guardadas."
     },
     "sheet": {
       "edit": "Editar",
@@ -5302,6 +5304,10 @@
           "4": {
             "title": "As vistas do quadro",
             "text": "No menu ⋯ ligue a moodboard deste quadro. Uma vista desligada mantém os seus dados."
+          },
+          "5": {
+            "title": "Board size limits",
+            "text": "If this board reaches its size limit, additions are refused and the confirmed board reloads. Delete content to make room; if it still does not fit, ask the administrator to raise the limit."
           }
         }
       },
