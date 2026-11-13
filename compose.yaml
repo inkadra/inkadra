@@ -22,58 +22,16 @@ services:
       # Only this machine can reach the port: point your reverse proxy at it, or set
       # INKADRA_BIND=0.0.0.0 if the proxy runs on another host (see docs/self-hosting).
       - "${INKADRA_BIND:-127.0.0.1}:${INKADRA_PORT:-3000}:3000"
+    # Every line of .env reaches the container: set any setting of
+    # docs/self-hosting/configuration.md there. INKADRA_ENV_FILE points at another file, for
+    # `docker compose --env-file <file>`. The file must exist.
+    env_file: ${INKADRA_ENV_FILE:-.env}
+    # Computed or required here; these win over the same names in .env.
     environment:
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
       DATABASE_URL: postgres://inkadra:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/inkadra
       REDIS_URL: redis://valkey:6379
-      INSTANCE_NAME: ${INSTANCE_NAME:-Inkadra}
-      REGISTRATION: ${REGISTRATION:-invite}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      TRUST_PROXY: ${TRUST_PROXY:-loopback,linklocal,uniquelocal}
-      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
-      FEEDBACK_GITHUB_TOKEN: ${FEEDBACK_GITHUB_TOKEN:-}
-      # A single dash on purpose: an empty value must stay empty, it turns the relay off.
-      FEEDBACK_RELAY_URL: ${FEEDBACK_RELAY_URL-https://relay.inkadra.com}
-      UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
-      # Storage limits (decision 0081): empty leaves them to Settings → Storage.
-      STORAGE_LIMIT: ${STORAGE_LIMIT:-}
-      STORAGE_LIMIT_PER_USER: ${STORAGE_LIMIT_PER_USER:-}
-      HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
-      RAW_PREVIEWS: ${RAW_PREVIEWS:-true}
-      PDF_PREVIEWS: ${PDF_PREVIEWS:-true}
-      VIDEO_PROXIES: ${VIDEO_PROXIES:-true}
-      # Shooting days move to each project's Production board at start (decision 0123): true or false only
-      PRODUCTION_BOARD_MOVE: ${PRODUCTION_BOARD_MOVE:-true}
-      # Map pictures of map cards and GPX files (decision 0053)
-      MAPS: ${MAPS:-true}
-      MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
-      MAP_SATELLITE_TILE_URL: ${MAP_SATELLITE_TILE_URL:-}
-      MAP_SATELLITE_TILE_ATTRIBUTION: ${MAP_SATELLITE_TILE_ATTRIBUTION:-Satellite}
-      MAP_TILE_ATTRIBUTION: ${MAP_TILE_ATTRIBUTION:-© OpenStreetMap contributors}
-      MAP_GEOCODER_URL: ${MAP_GEOCODER_URL:-}
-      # Hardware encoding of playable copies: deploy/compose.vaapi.yaml, deploy/compose.nvidia.yaml
-      VIDEO_PROXY_HWACCEL: ${VIDEO_PROXY_HWACCEL:-auto}
-      VIDEO_PROXY_VAAPI_DEVICE: ${VIDEO_PROXY_VAAPI_DEVICE:-/dev/dri/renderD128}
-      # Sign-in with Google, an OIDC provider, email (see docs/self-hosting/sign-in.md)
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-}
-      OIDC_NAME: ${OIDC_NAME:-SSO}
-      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-}
-      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
-      OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
-      OIDC_TRUST_EMAIL: ${OIDC_TRUST_EMAIL:-false}
-      SMTP_URL: ${SMTP_URL:-}
-      MAIL_FROM: ${MAIL_FROM:-}
-      CLIPPER_EXTENSION_IDS: ${CLIPPER_EXTENSION_IDS:-}
-      OIDC_ALLOWED_DOMAINS: ${OIDC_ALLOWED_DOMAINS:-}
-      # Browser policies (see docs/self-hosting/configuration.md#browser-security-headers)
-      CSP_ENFORCE: ${CSP_ENFORCE:-false}
-      # CSP_REPORT_URI is not forwarded by default: 0.4.0 refuses an empty value. To collect
-      # reports, add `CSP_REPORT_URI: ${CSP_REPORT_URI}` here together with a value in .env.
-      HSTS_ENABLED: ${HSTS_ENABLED:-false}
     volumes:
       # A named volume by default. Set INKADRA_DATA to a host folder to keep uploads on a disk
       # or dataset of your choice: at startup it is given to uid 1000, the user Inkadra runs as.
