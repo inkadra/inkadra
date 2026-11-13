@@ -1831,6 +1831,7 @@ html[data-view-direction]::view-transition-new(board-view) {
 .moodboard__group-title button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .moodboard__group-title .ink-input {
   width: 240px;
@@ -2001,6 +2002,7 @@ button.moodboard__card {
 button.moodboard__card:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .moodboard__card img {
   display: block;
@@ -2232,6 +2234,7 @@ button.moodboard__card:focus-visible {
 .client-review__frame:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .client-review__frame-meta {
   display: flex;
@@ -2676,6 +2679,7 @@ button.moodboard__card:focus-visible {
 .story-panel__pick:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .story-panel__sheet {
   display: contents;
@@ -2884,6 +2888,7 @@ button.moodboard__card:focus-visible {
 .story-panel__link:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .story-rel {
   display: flex;
@@ -2929,6 +2934,7 @@ button.moodboard__card:focus-visible {
 .story-rel--edit:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .story-rel small {
   overflow-wrap: anywhere;
@@ -3124,6 +3130,7 @@ button.moodboard__card:focus-visible {
 .token-field__remove:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .token-field__input {
   flex: 1 0 80px;

@@ -285,6 +285,7 @@
 .guest-boards__item:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .guest-stars {
   display: inline-flex;

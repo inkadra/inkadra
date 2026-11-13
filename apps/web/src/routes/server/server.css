@@ -190,6 +190,7 @@
 .server-link:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 
 .server-name {
@@ -295,6 +296,7 @@
 .server-chart:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .server-chart svg {
   display: block;

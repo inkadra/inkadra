@@ -1090,6 +1090,10 @@ select {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
+/* The card wears the ring, not the title inside it. */
+.ink-cover-card__link:focus-visible {
+  box-shadow: none;
+}
 .ink-cover-card__cover {
   position: relative;
   display: flex;

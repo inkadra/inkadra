@@ -784,6 +784,7 @@
 .settings-clipper__store:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 :root[data-theme="dark"] .settings-clipper__badge--light,
 :root[data-theme="light"] .settings-clipper__badge--dark {
@@ -1293,6 +1294,10 @@
 }
 .toolbar-settings__check {
   margin-left: auto;
+}
+/* The tile wears the ring: none on its checkbox too. */
+.toolbar-settings__check.ink-choice:has(> input:focus-visible) {
+  box-shadow: none;
 }
 .toolbar-settings__icon {
   display: grid;

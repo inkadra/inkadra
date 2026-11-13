@@ -261,7 +261,7 @@ export const effects = {
   /**
    * Keyboard focus (#677): a solid 2px ring of the accent, 3:1 or more on every surface in both
    * themes (WCAG 1.4.11), kept 1px off the control so it shows on blue buttons too. A control
-   * that draws its own outline inside its edge (rows of a scrolling list) turns this one off.
+   * that draws its own 2px outline instead turns this one off, so it never shows two rings.
    * shortcut: resolved where :root sets it, so an .ink-paper island in the dark theme gets the
    * dark accent; give each colour block its own copy if a focusable control ever lives there.
    */

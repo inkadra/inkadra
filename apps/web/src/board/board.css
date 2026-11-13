@@ -655,6 +655,7 @@
 button.fcard__play:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 /* Fills the preview, whose overflow is hidden: the focus ring sits inside. */
 .fcard__video {
@@ -778,6 +779,7 @@ button.fcard__play:focus-visible {
 .fcard__scrub:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .fcard__scrub--wave {
   top: calc(50% - 30px);
@@ -847,6 +849,7 @@ button.fcard__audio-play:hover {
 button.fcard__audio-play:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .fcard__audio-play svg {
   fill: currentColor;
@@ -1097,6 +1100,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .colorpicker__hue:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .colorpicker__fields {
   display: grid;
@@ -1306,6 +1310,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .board-card__tab:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .board-card__body {
   flex: 1;
@@ -1836,6 +1841,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .mcard__explore:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .mcard__live {
   position: absolute;
@@ -2147,6 +2153,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .canvas__start-option:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .canvas__start-tile {
   display: grid;
@@ -2713,6 +2720,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .arrange-menu__chip:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 @media (pointer: coarse) {
   .arrange-menu__chip {
@@ -4326,6 +4334,7 @@ button.crumb--editable:focus-visible {
 .toolbar__btn:focus-visible {
   outline: 2px solid var(--ink-accent-soft-fg);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .toolbar__btn:hover {
   box-shadow: inset 0 0 0 1px var(--ink-border-default);

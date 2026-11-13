@@ -81,6 +81,7 @@
 }
 .project-group-head__toggle:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
+  box-shadow: none;
 }
 .project-group-head__count {
   color: var(--ink-text-muted);
@@ -126,6 +127,7 @@
 }
 .project-context-menu__swatches > button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
+  box-shadow: none;
 }
 .project-context-menu__separator {
   height: 1px;
