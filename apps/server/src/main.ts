@@ -293,21 +293,25 @@ async function main() {
               }).catch(() => null)
             )?.encoder
           : undefined);
-      const sessions = new LiveSessions({
-        storage,
-        tmpDir,
-        ...(liveEncoder ? { encoder: liveEncoder } : {}),
-        proxies: media.proxies,
-        log,
-      });
-      await sessions.start();
-      closers.unshift(() => sessions.close());
-      live = {
-        sessions,
-        ...(liveEncoder ? { encoder: liveEncoder } : {}),
-        proxies: media.proxies,
-        settings: cachedVideoSettings(db, config),
-      };
+      // Live playback needs a hardware encoder (decision 0128): never libx264.
+      const hardware = liveEncoder && liveEncoder.backend !== 'software' ? liveEncoder : undefined;
+      if (hardware) {
+        const sessions = new LiveSessions({
+          storage,
+          tmpDir,
+          encoder: hardware,
+          proxies: media.proxies,
+          log,
+        });
+        await sessions.start();
+        closers.unshift(() => sessions.close());
+        live = {
+          sessions,
+          encoder: hardware,
+          proxies: media.proxies,
+          settings: cachedVideoSettings(db, config),
+        };
+      } else log.info('live video playback is off here: it needs GPU hardware encoding');
     }
     const webDist = config.WEB_DIST ?? join(here, '..', 'web');
     const app = await createApp({

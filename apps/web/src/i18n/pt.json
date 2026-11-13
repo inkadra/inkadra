@@ -5824,7 +5824,7 @@
           },
           "3": {
             "title": "Em tempo real",
-            "text": "As resoluções que não guardas são preparadas enquanto alguém vê, dentro do limite que escolheres."
+            "text": "Só com GPU: as resoluções que não guardas são preparadas enquanto alguém vê, dentro das sessões que a placa aguenta."
           }
         }
       }
@@ -6613,7 +6613,17 @@
         "stored": "Guardar no disco",
         "live": "Só em tempo real"
       },
-      "noSpace": "sem espaço"
+      "noSpace": "sem espaço",
+      "unavailable": "Indisponível neste servidor",
+      "off": "Desligada",
+      "reasons": {
+        "no-gpu": "Requer a codificação por hardware da GPU: este servidor codifica com o processador.",
+        "too-slow": "GPU demasiado lenta para tempo real (medida no arranque).",
+        "failed": "A medição no arranque falhou: detalhes no registo do servidor.",
+        "set-off": "Desligada pelo servidor (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Medido no arranque: uma sessão, {{speed}}× tempo real.",
+      "measured_other": "Medido no arranque: {{count}} sessões, {{speed}}× tempo real."
     }
   }
 }

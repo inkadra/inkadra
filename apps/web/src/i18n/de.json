@@ -5824,7 +5824,7 @@
           },
           "3": {
             "title": "On the fly",
-            "text": "Nicht gespeicherte Auflösungen entstehen, während jemand zuschaut, im gewählten Rahmen."
+            "text": "Nur mit GPU: Nicht gespeicherte Auflösungen entstehen beim Zuschauen, so viele Sitzungen wie die Karte schafft."
           }
         }
       }
@@ -6613,7 +6613,17 @@
         "stored": "Auf der Platte speichern",
         "live": "Nur on the fly"
       },
-      "noSpace": "kein Platz"
+      "noSpace": "kein Platz",
+      "unavailable": "Auf diesem Server nicht verfügbar",
+      "off": "Aus",
+      "reasons": {
+        "no-gpu": "Braucht Hardware-Kodierung der GPU: Dieser Server kodiert mit dem Prozessor.",
+        "too-slow": "GPU zu langsam für Echtzeit (beim Start gemessen).",
+        "failed": "Die Messung beim Start ist fehlgeschlagen: Details im Server-Log.",
+        "set-off": "Vom Server abgeschaltet (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Beim Start gemessen: eine Sitzung, {{speed}}× Echtzeit.",
+      "measured_other": "Beim Start gemessen: {{count}} Sitzungen, {{speed}}× Echtzeit."
     }
   }
 }

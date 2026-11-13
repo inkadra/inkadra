@@ -17,6 +17,7 @@ import {
   VIDEO_RENDITIONS_CAPABILITY,
 } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
+import type { LiveContext } from './hls.ts';
 import type { FastifyInstance } from 'fastify';
 import { canCreateProjects } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
@@ -38,6 +39,8 @@ interface Deps {
   auth: Auth;
   mailer: Mailer;
   pingQueue?: () => Promise<boolean>;
+  /** Live playback of video rungs (decision 0128), where it runs. */
+  live?: LiveContext;
 }
 
 export const iso = (d: Date) => d.toISOString();
@@ -155,7 +158,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         CLASSIFICATION_DELETE_CAPABILITY,
         IDEMPOTENT_IMPORT_CAPABILITY,
         VIDEO_RENDITIONS_CAPABILITY,
-        VIDEO_LIVE_CAPABILITY,
+        // Only where live playback actually runs: a GPU fast enough, and turned on (0128).
+        ...(deps.live && (await deps.live.settings()).live.enabled ? [VIDEO_LIVE_CAPABILITY] : []),
       ],
     } satisfies InstanceVersion;
   });

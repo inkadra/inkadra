@@ -5824,7 +5824,7 @@
           },
           "3": {
             "title": "À la volée",
-            "text": "Les résolutions que tu ne gardes pas sont préparées pendant qu’on regarde, dans la limite choisie."
+            "text": "Seulement avec un GPU : les résolutions non gardées sont préparées pendant qu’on regarde, dans la limite de ce que supporte la carte."
           }
         }
       }
@@ -6613,7 +6613,17 @@
         "stored": "Garder sur le disque",
         "live": "À la volée seulement"
       },
-      "noSpace": "aucune place"
+      "noSpace": "aucune place",
+      "unavailable": "Indisponible sur ce serveur",
+      "off": "Désactivée",
+      "reasons": {
+        "no-gpu": "Demande l’encodage matériel du GPU : ce serveur encode avec le processeur.",
+        "too-slow": "GPU trop lent pour le temps réel (mesuré au démarrage).",
+        "failed": "La mesure au démarrage a échoué : détails dans le journal du serveur.",
+        "set-off": "Désactivée par le serveur (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Mesuré au démarrage : une session, {{speed}}× temps réel.",
+      "measured_other": "Mesuré au démarrage : {{count}} sessions, {{speed}}× temps réel."
     }
   }
 }

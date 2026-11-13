@@ -5824,7 +5824,7 @@
           },
           "3": {
             "title": "Live",
-            "text": "Resolutions you do not keep are prepared while someone watches, within the limit you choose."
+            "text": "GPU only: resolutions not kept are prepared while someone watches, within the sessions the card can take."
           }
         }
       }
@@ -6613,7 +6613,17 @@
         "stored": "Keep on disk",
         "live": "Live only"
       },
-      "noSpace": "no space"
+      "noSpace": "no space",
+      "unavailable": "Not available on this server",
+      "off": "Off",
+      "reasons": {
+        "no-gpu": "Needs GPU hardware encoding: this server encodes on the processor.",
+        "too-slow": "GPU too slow for real time (measured at start).",
+        "failed": "The measurement at start failed: details in the server log.",
+        "set-off": "Turned off by the server (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Measured at start: one session, {{speed}}× real time.",
+      "measured_other": "Measured at start: {{count}} sessions, {{speed}}× real time."
     }
   }
 }

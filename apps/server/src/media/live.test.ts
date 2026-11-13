@@ -31,23 +31,24 @@ describe('live playback', () => {
     expect(text.trimEnd().endsWith('#EXT-X-ENDLIST')).toBe(true);
   });
 
-  it('keeps sources the hardware cannot encode in real time for stored copies', () => {
-    expect(liveEligible(row(), undefined)).toBe(true);
+  it('encodes live only what the GPU decodes and encodes on its own (Matteo, 13 Nov)', () => {
     const uhd = { width: 3840, height: 2160 };
+    expect(liveEligible(row(), qsv)).toBe(true);
     expect(liveEligible(row({ ...uhd, videoCodec: 'hevc' }), qsv)).toBe(true);
-    // ProRes 4K decodes on the CPU: 0.97× on an N100.
+    // No GPU: never live, whatever the size.
+    expect(liveEligible(row(), undefined)).toBe(false);
+    expect(liveEligible(row(), { backend: 'software', label: '' })).toBe(false);
+    // The card cannot decode it (ProRes, 4:2:2), or the CPU would have to (rotated, interlaced,
+    // HDR tone mapping, a card left decoding on the CPU).
     expect(liveEligible(row({ ...uhd, videoCodec: 'prores' }), qsv)).toBe(false);
-    // 4K HDR is tone mapped on the CPU: 0.59×.
-    const hdr = {
-      hdr: 'hlg' as const,
-      bits: 10,
-      pixelFormat: 'yuv420p10le',
-      interlaced: false,
-      rotated: false,
-    };
-    expect(liveEligible(row({ ...uhd, videoCodec: 'hevc', mediaInfo: hdr }), qsv)).toBe(false);
-    // Without a GPU, nothing past 1080.
-    expect(liveEligible(row({ ...uhd, videoCodec: 'hevc' }), undefined)).toBe(false);
+    const media = (over: object) => ({
+      mediaInfo: { hdr: null, bits: 8, pixelFormat: 'yuv420p', interlaced: false, rotated: false, ...over },
+    });
+    expect(liveEligible(row(media({ pixelFormat: 'yuv422p10le', bits: 10 })), qsv)).toBe(false);
+    expect(liveEligible(row(media({ rotated: true })), qsv)).toBe(false);
+    expect(liveEligible(row(media({ interlaced: true })), qsv)).toBe(false);
+    expect(liveEligible(row({ videoCodec: 'hevc', ...media({ hdr: 'hlg', bits: 10, pixelFormat: 'yuv420p10le' }) }), qsv)).toBe(false);
+    expect(liveEligible(row(), { ...qsv, cpuDecode: true })).toBe(false);
     expect(liveEligible(row({ status: 'processing' }), qsv)).toBe(false);
   });
 

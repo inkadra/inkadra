@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   type DetectIo,
   detectVideoEncoder,
+  liveSessionsFor,
+  measureLive,
+  parseSpeed,
   encoderMemory,
   gpuDecodes,
   NVENC_GPU_MEMORY,
@@ -43,6 +46,7 @@ function io(
       },
     ),
     sample: vi.fn(async () => ({ path: '/tmp/sample.mp4', done: sampleDone })),
+    bench: vi.fn(async (): Promise<string | null> => null),
     canOpen: vi.fn(async () => true),
     nvidiaName: vi.fn(async () => 'NVIDIA GeForce RTX 3060'),
     vendor: vi.fn(async () => '0x8086'),
@@ -487,5 +491,62 @@ describe('detectVideoEncoder', () => {
     );
     expect(gpu).toEqual(expect.arrayContaining(['-hwaccel', 'vaapi', '-i', '/tmp/sample.mp4']));
     expect(gpu).not.toContain('lavfi');
+  });
+});
+
+describe('live benchmark (decision 0128)', () => {
+  it('allows one session per 1.5× of measured speed, as the N100 ran', () => {
+    // N100: one session at 5.35×; three ran at 1.78× each, four at 1.33×.
+    expect(liveSessionsFor(5.35)).toBe(3);
+    expect(liveSessionsFor(1.49)).toBe(0);
+    expect(liveSessionsFor(1.5)).toBe(1);
+    expect(liveSessionsFor(40)).toBe(8);
+  });
+
+  it('reads the last speed of ffmpeg statistics', () => {
+    expect(parseSpeed('frame= 10 speed=2.1x\rframe= 125 fps=130 speed=5.35x\n')).toBe(5.35);
+    expect(parseSpeed('speed=N/A')).toBeNull();
+  });
+
+  const bench = (stderr: string | null) => {
+    const mock = io({ works: ['qsv'] });
+    const calls: Array<{ args: string[]; timeout: number }> = [];
+    return {
+      mock: {
+        ...mock,
+        bench: async (_f: string, args: string[], _e: VideoEncoder, timeout: number) => {
+          calls.push({ args, timeout });
+          return stderr;
+        },
+      },
+      calls,
+    };
+  };
+  const qsv: VideoEncoder = { backend: 'qsv', device: '/dev/dri/renderD128', label: '' };
+
+  it('measures five seconds of 1080p decoded and encoded on the GPU', async () => {
+    const { mock, calls } = bench('frame=125 speed=5.35x');
+    expect(await measureLive('ffmpeg', qsv, mock)).toEqual({ sessions: 3, speed: 5.35, error: null });
+    expect(mock.sample).toHaveBeenCalledWith('ffmpeg', { width: 1920, height: 1080, seconds: 5 });
+    expect(calls[0]?.args).toEqual(expect.arrayContaining(['-hwaccel', 'vaapi', 'h264_qsv']));
+    expect(calls[0]?.timeout).toBe(60_000);
+    expect(mock.sampleDone).toHaveBeenCalled();
+  });
+
+  it('turns live playback off when the benchmark fails, times out or is too slow', async () => {
+    expect(await measureLive('ffmpeg', qsv, bench(null).mock)).toMatchObject({
+      sessions: 0,
+      error: 'benchmark failed or timed out',
+    });
+    expect(await measureLive('ffmpeg', qsv, bench('speed=1.2x').mock)).toEqual({
+      sessions: 0,
+      speed: 1.2,
+      error: 'GPU too slow for real time',
+    });
+    // libx264, or a card that cannot decode: never measured, never live.
+    const none = bench('speed=9x');
+    expect((await measureLive('ffmpeg', SOFTWARE_ENCODER, none.mock)).sessions).toBe(0);
+    expect((await measureLive('ffmpeg', { ...qsv, cpuDecode: true }, none.mock)).sessions).toBe(0);
+    expect(none.calls).toEqual([]);
   });
 });

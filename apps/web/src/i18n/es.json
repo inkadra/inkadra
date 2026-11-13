@@ -5824,7 +5824,7 @@
           },
           "3": {
             "title": "Al vuelo",
-            "text": "Las resoluciones que no guardas se preparan mientras alguien mira, dentro del límite que elijas."
+            "text": "Solo con GPU: las resoluciones que no guardas se preparan mientras alguien mira, dentro de las sesiones que admite la tarjeta."
           }
         }
       }
@@ -6613,7 +6613,17 @@
         "stored": "Guardar en disco",
         "live": "Solo al vuelo"
       },
-      "noSpace": "sin espacio"
+      "noSpace": "sin espacio",
+      "unavailable": "No disponible en este servidor",
+      "off": "Desactivada",
+      "reasons": {
+        "no-gpu": "Requiere la codificación por hardware de la GPU: este servidor codifica con el procesador.",
+        "too-slow": "GPU demasiado lenta para el tiempo real (medida al arrancar).",
+        "failed": "La medición al arrancar falló: detalles en el registro del servidor.",
+        "set-off": "Desactivada por el servidor (VIDEO_LIVE_MAX_SESSIONS=0)."
+      },
+      "measured_one": "Medido al arrancar: una sesión, {{speed}}× tiempo real.",
+      "measured_other": "Medido al arrancar: {{count}} sesiones, {{speed}}× tiempo real."
     }
   }
 }

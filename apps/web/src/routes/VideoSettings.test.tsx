@@ -4,6 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
+import { chooseSelect } from '../test/select.ts';
 import { copiesMbPerMinute, libraryMb, VideoSettings } from './VideoSettings.tsx';
 
 const t = (key: string, values?: Record<string, unknown>) =>
@@ -48,6 +49,14 @@ const view = (patch: Partial<VideoSettingsView> = {}): VideoSettingsView => ({
   outdated: 0,
   speed: null,
   backfill: null,
+  liveStatus: {
+    available: true,
+    reason: null,
+    sessions: 3,
+    speed: 5.35,
+    measuredAt: '2026-11-13T12:00:00.000Z',
+    locked: false,
+  },
   ...patch,
 });
 
@@ -171,4 +180,33 @@ it('turns live playback off, keeping the live-only resolutions on disk', async (
     live: { enabled: false },
     rungs: { '480': 'stored', '720': 'stored', '1080': 'stored', '2160': 'stored' },
   });
+});
+
+it('shows live playback as unavailable without a GPU, with the reason and no switch', async () => {
+  await show(
+    view({
+      settings: { ...DEFAULT_VIDEO_SETTINGS, live: { enabled: false, maxSessions: 1, perViewer: 1 } },
+      liveStatus: {
+        available: false,
+        reason: 'no-gpu',
+        sessions: 0,
+        speed: null,
+        measuredAt: null,
+        locked: false,
+      },
+    }),
+  );
+  expect(host.textContent).toContain('videoSettings.live.reasons.no-gpu');
+  expect(host.querySelector('input[role="switch"]')).toBeNull();
+});
+
+it('offers at most the sessions measured at start', async () => {
+  await show(view());
+  expect(host.textContent).toContain('videoSettings.live.measured:{"count":3,"speed":"5.4"}');
+  const trigger = host.querySelector('[role="combobox"]');
+  // Three is there, four is not: the admin can only lower the measured value.
+  vi.mocked(api.patch).mockResolvedValue(view());
+  chooseSelect(trigger, '2');
+  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', { live: { maxSessions: 2 } });
+  expect(() => chooseSelect(host.querySelector('[role="combobox"]'), '4')).toThrow(/missing/);
 });

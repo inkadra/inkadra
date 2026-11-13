@@ -298,8 +298,6 @@ function ExistingVideos({
   );
 }
 
-const SESSION_CHOICES = [1, 2, 3, 4, 6, 8];
-
 /**
  * "Riproduzione al volo" (decision 0128): rungs encoded while someone watches, right after an
  * upload and for those not kept on disk, within limits of sessions at once.
@@ -313,10 +311,38 @@ function LiveCard({
   save: (patch: UpdateVideoSettings) => Promise<void>;
   lock: (name: string) => ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { live } = view.settings;
   const maxId = useId();
   const perId = useId();
+  const status = view.liveStatus;
+  // Only on a GPU fast enough (decision 0128): otherwise the reason, and no switch.
+  if (!status?.available)
+    return (
+      <Card
+        anchor="video.live"
+        tour="video-live"
+        title={t('videoSettings.live.title')}
+        body={t('videoSettings.live.body')}
+      >
+        <Row
+          leading={<Tile icon="play" tone="neutral" />}
+          label={t('videoSettings.live.unavailable')}
+          help={t(`videoSettings.live.reasons.${status?.reason ?? 'no-gpu'}`)}
+        >
+          <Badge>{t('videoSettings.live.off')}</Badge>
+        </Row>
+      </Card>
+    );
+  const measured =
+    status.speed !== null && !status.locked
+      ? t('videoSettings.live.measured', {
+          count: status.sessions,
+          speed: new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(
+            status.speed,
+          ),
+        })
+      : null;
   const off = () => {
     // Rungs offered only live would be offered nowhere: they are kept on disk instead.
     const rungs = Object.fromEntries(
@@ -353,18 +379,23 @@ function LiveCard({
         <>
           <Row
             label={t('videoSettings.live.maxSessions')}
-            help={t('videoSettings.live.maxSessionsHelp')}
+            help={
+              <>
+                {t('videoSettings.live.maxSessionsHelp')}
+                {measured && <> {measured}</>}
+              </>
+            }
             htmlFor={maxId}
           >
             <Select
               id={maxId}
               className="ink-input space-limit__unit"
               value={String(live.maxSessions)}
+              disabled={status.locked}
               onChange={(v) => void save({ live: { maxSessions: Number(v) } })}
             >
-              {[...new Set([...SESSION_CHOICES, live.maxSessions])]
-                .sort((a, b) => a - b)
-                .map((n) => (
+              {/* Never more than measured: the admin can only lower it. */}
+              {Array.from({ length: status.sessions }, (_, i) => i + 1).map((n) => (
                   <option key={n} value={String(n)}>
                     {n}
                   </option>

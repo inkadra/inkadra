@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { ladderFor, VIDEO_RUNGS, type VideoRung, type VideoSettings } from '@inkadra/shared';
 import type { asset } from '../db/schema.ts';
 import { readAll, type Storage } from '../storage.ts';
-import { encoderMemory, gpuDecodes, SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
+import { encoderMemory, type VideoEncoder } from './hwaccel.ts';
 import { ladderArgs, renditionCodecs, rungSide, shortSide } from './ladder.ts';
 import { rungRate } from './quality.ts';
 import { privateInput } from './scratch.ts';
@@ -12,6 +12,7 @@ import { limitedCommand, toolEnv } from './tools.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   decodesOnGpu,
+  liveDecodable,
   mediaTools,
   type ProxySettings,
   sniffVideo,
@@ -82,19 +83,15 @@ export function rowInfo(row: AssetRow): VideoInfo {
 }
 
 /**
- * Whether this server can encode `row` in real time (decision 0128, measured on an Intel N100):
- * not a 4K source the CPU decodes (ProRes, DNx, 4:2:2: 0.97× with four threads), not a 4K HDR
- * source (tone mapping on the CPU: 0.59×), and without a GPU nothing past 1080.
+ * Whether this server can encode `row` in real time (decision 0128): a ready video with a
+ * duration that the GPU decodes and encodes on its own (liveDecodable). Measured on an Intel
+ * N100: ProRes UHD decoded on the CPU 0.97×, 4K HDR tone mapped on the CPU 0.59×.
  */
 export function liveEligible(row: AssetRow, encoder: VideoEncoder | undefined) {
   if (row.kind !== 'video' || row.status !== 'ready' || !row.durationMs) return false;
   const info = rowInfo(row);
-  const side = shortSide(info) ?? 0;
-  if (!side) return false;
-  if (side <= 1080) return true;
-  if (!encoder || encoder.backend === 'software') return false;
-  if (info.hdr) return false;
-  return gpuDecodes(info.videoCodec, info.pixelFormat ?? 'yuv420p');
+  if (!(shortSide(info) ?? 0)) return false;
+  return liveDecodable(encoder, info);
 }
 
 /**
@@ -151,8 +148,6 @@ interface Session {
   /** The local source and its sniffed container, once acquired. */
   source: string | null;
   container: string | null;
-  /** Encoders tried for the running rung: GPU, GPU with CPU decoding, libx264. */
-  attempt: number;
 }
 
 /** Who watches: one session per `id` and video; `group` shares the per-viewer limit. */
@@ -300,7 +295,6 @@ export class LiveSessions {
       release: null,
       source: null,
       container: null,
-      attempt: 0,
     });
     return true;
   }
@@ -329,7 +323,6 @@ export class LiveSessions {
     if (file !== 'init' && session.rung === rung && (await exists(join(session.dir, name))))
       return join(session.dir, name);
     if (!inWindow) {
-      session.attempt = 0;
       await this.run(session, row, rung, n);
     }
     // ffmpeg creates the init segment empty and fills it with the first segment: it is whole
@@ -355,7 +348,7 @@ export class LiveSessions {
     let stopped = 0;
     while (this.now() < until) {
       if (await exists(path)) return path;
-      // ffmpeg ended without it: give the next encoder of the chain a second to start.
+      // ffmpeg ended without it: a second of grace for the last writes, then give up.
       if (!session.child) {
         stopped = stopped || this.now();
         if (this.now() - stopped > 1500) return null;
@@ -386,16 +379,10 @@ export class LiveSessions {
     const container = session.container;
     const settings = { ...(this.deps.proxies ?? DEFAULT_PROXY_SETTINGS), maxDurationS: 0 };
     const info = rowInfo(row);
-    // The fallback chain of stored copies: the GPU, the GPU decoding on the CPU, libx264.
-    const first = this.deps.encoder ?? SOFTWARE_ENCODER;
-    const chain: VideoEncoder[] = [
-      first,
-      ...(first.backend !== 'software' && decodesOnGpu(first, info)
-        ? [{ ...first, cpuDecode: true }]
-        : []),
-      ...(first.backend !== 'software' ? [SOFTWARE_ENCODER] : []),
-    ];
-    const encoder = chain[Math.min(session.attempt, chain.length - 1)] ?? SOFTWARE_ENCODER;
+    // The GPU only: no CPU decoding, no libx264 (not real time). If it fails, the request
+    // answers 503 and the player keeps to the stored rungs or the original.
+    const encoder = this.deps.encoder;
+    if (!encoder || encoder.backend === 'software') return;
     const from = n * SEGMENT_S;
     const out = (path: string) => [
       '-avoid_negative_ts',
@@ -447,13 +434,6 @@ export class LiveSessions {
         { assetId: row.id, rung, code, encoder: encoder.backend, stderr: stderr.slice(0, 500) },
         'live encoding stopped',
       );
-      // Nothing written yet: the next encoder of the chain tries from the same segment.
-      void this.highest(session).then((written) => {
-        if (written >= n || session.attempt + 1 >= chain.length || !this.sessions.has(session.key))
-          return;
-        session.attempt += 1;
-        return this.run(session, row, rung, n);
-      });
     });
     session.child = child;
     session.rung = rung;

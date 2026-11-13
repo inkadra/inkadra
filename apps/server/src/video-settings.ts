@@ -6,6 +6,7 @@ import {
   VideoRung,
   VideoRungMode,
   VideoSettings,
+  type VideoLiveStatus,
   type VideoSettingsView,
   z,
 } from '@inkadra/shared';
@@ -35,7 +36,7 @@ const KEY = 'video';
 
 export type VideoEnv = Pick<
   Config,
-  'VIDEO_QUALITY' | 'VIDEO_RENDITIONS' | 'VIDEO_LIVE' | 'VIDEO_PROXIES'
+  'VIDEO_QUALITY' | 'VIDEO_RENDITIONS' | 'VIDEO_LIVE' | 'VIDEO_LIVE_MAX_SESSIONS' | 'VIDEO_PROXIES'
 >;
 
 /** The rungs VIDEO_RENDITIONS names as stored, every other off. */
@@ -46,30 +47,68 @@ export function envRungs(list: VideoRung[]): Record<VideoRung, VideoRungMode> {
 }
 
 /** The stored choices over the defaults, with the server environment winning where it is set. */
+/**
+ * Whether live playback can run here (decision 0128): only on the GPU the worker found, with
+ * the sessions it measured at start (or VIDEO_LIVE_MAX_SESSIONS) as the most there can be.
+ */
+export async function liveStatus(
+  db: Pick<Database, 'select'>,
+  env: Pick<VideoEnv, 'VIDEO_LIVE_MAX_SESSIONS'>,
+): Promise<VideoLiveStatus> {
+  const saved = await readVideoEncoder(db);
+  const locked = env.VIDEO_LIVE_MAX_SESSIONS !== undefined;
+  const hardware = saved !== null && saved.backend !== 'software';
+  const measured = hardware ? (saved.liveSessions ?? 0) : 0;
+  const sessions = hardware ? (locked ? (env.VIDEO_LIVE_MAX_SESSIONS as number) : measured) : 0;
+  const reason: VideoLiveStatus['reason'] = !hardware
+    ? 'no-gpu'
+    : locked && sessions === 0
+      ? 'set-off'
+      : sessions > 0
+        ? null
+        : saved.liveSpeed
+          ? 'too-slow'
+          : 'failed';
+  return {
+    available: sessions > 0,
+    reason,
+    sessions,
+    speed: hardware ? (saved.liveSpeed ?? null) : null,
+    measuredAt: hardware && saved.measuredAt ? saved.measuredAt : null,
+    locked,
+  };
+}
+
+/** The stored choices over the defaults, with the server environment winning where it is set. */
 export async function readVideoSettings(
   db: Pick<Database, 'select'>,
   env: VideoEnv,
-): Promise<{ settings: VideoSettings; locked: VideoSettingsView['locked'] }> {
+): Promise<{
+  settings: VideoSettings;
+  locked: VideoSettingsView['locked'];
+  live: VideoLiveStatus;
+}> {
   const [row] = await db.select().from(instanceSetting).where(eq(instanceSetting.key, KEY));
   const stored = Stored.safeParse(row?.value ?? {});
   const value = stored.success ? stored.data : {};
-  // Live sessions at once by default from the spike on an Intel N100: four 1080p sessions run
-  // at 1.33× real time, six at 0.88×; from 4K HEVC four at 0.87×. Three with a GPU, one without.
-  const saved = value.live?.maxSessions === undefined ? await readVideoEncoder(db) : null;
-  const defaultSessions = saved && saved.backend !== 'software' ? 3 : 1;
+  const live = await liveStatus(db, env);
   const settings: VideoSettings = {
     ...DEFAULT_VIDEO_SETTINGS,
     ...(value.quality ? { quality: value.quality } : {}),
     ...(value.playable ? { playable: value.playable } : {}),
     rungs: { ...DEFAULT_VIDEO_SETTINGS.rungs, ...value.rungs },
-    live: { ...DEFAULT_VIDEO_SETTINGS.live, maxSessions: defaultSessions, ...value.live },
+    live: { ...DEFAULT_VIDEO_SETTINGS.live, ...value.live },
   };
   if (env.VIDEO_QUALITY) settings.quality = env.VIDEO_QUALITY;
   if (env.VIDEO_RENDITIONS) settings.rungs = envRungs(env.VIDEO_RENDITIONS);
   if (env.VIDEO_LIVE !== undefined) settings.live = { ...settings.live, enabled: env.VIDEO_LIVE };
-  // A rung offered live with live playback off is not offered.
+  // The admin can only lower what was measured; no GPU (or too slow) means no live playback.
+  settings.live.maxSessions = Math.max(1, Math.min(value.live?.maxSessions ?? live.sessions, live.sessions));
+  settings.live.perViewer = Math.min(settings.live.perViewer, settings.live.maxSessions);
+  if (!live.available) settings.live.enabled = false;
+  // A rung set to live only, with live playback off, is kept on disk: it plays all the same.
   if (!settings.live.enabled)
-    for (const r of VIDEO_RUNGS) if (settings.rungs[r] === 'live') settings.rungs[r] = 'off';
+    for (const r of VIDEO_RUNGS) if (settings.rungs[r] === 'live') settings.rungs[r] = 'stored';
   return {
     settings,
     locked: {
@@ -77,6 +116,7 @@ export async function readVideoSettings(
       rungs: env.VIDEO_RENDITIONS !== undefined,
       live: env.VIDEO_LIVE !== undefined,
     },
+    live,
   };
 }
 
@@ -111,7 +151,14 @@ export async function saveVideoSettings(
   env: VideoEnv,
   patch: UpdateVideoSettings,
 ): Promise<VideoSettings> {
-  const { settings: current, locked } = await readVideoSettings(db, env);
+  const { settings: current, locked, live } = await readVideoSettings(db, env);
+  if (patch.live?.enabled && !live.available)
+    throw new HttpError('conflict', 'Live playback needs GPU hardware encoding fast enough for it.');
+  if (patch.live?.maxSessions !== undefined && patch.live.maxSessions > live.sessions)
+    throw new HttpError(
+      'bad_request',
+      `At most ${live.sessions} live sessions at once: what this server measured at start.`,
+    );
   if (
     (patch.quality !== undefined && locked.quality) ||
     (patch.rungs !== undefined && locked.rungs) ||
@@ -187,7 +234,7 @@ export async function videoSettingsView(
   config: VideoEnv & Pick<Config, 'VIDEO_PROXY_CONCURRENCY'>,
   extra: { freeBytes: number | null; recipe: (quality: VideoQuality) => string; jobs?: Jobs },
 ): Promise<VideoSettingsView> {
-  const { settings, locked } = await readVideoSettings(db, config);
+  const { settings, locked, live } = await readVideoSettings(db, config);
   const saved = await readVideoEncoder(db);
   const [counts] = await db.execute<{
     queued: string;
@@ -225,5 +272,6 @@ export async function videoSettingsView(
     outdated: await countNeeding(db, 'outdated', recipe),
     speed: counts?.speed ? Number(counts.speed) : null,
     backfill: await readBackfill(db, extra.jobs),
+    liveStatus: live,
   };
 }

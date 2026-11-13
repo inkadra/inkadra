@@ -298,6 +298,21 @@ describe('shortCopy', () => {
   });
 });
 
+describe('liveDecodable (decision 0128)', () => {
+  it('needs a hardware encoder and a source the card decodes, upright, progressive, SDR', () => {
+    const qsv = { backend: 'qsv' as const, label: '' };
+    const hevc = info({ videoCodec: 'hevc' });
+    expect(liveDecodable(qsv, hevc)).toBe(true);
+    expect(liveDecodable(undefined, hevc)).toBe(false);
+    expect(liveDecodable({ backend: 'software', label: '' }, hevc)).toBe(false);
+    expect(liveDecodable(qsv, { ...hevc, hdr: 'pq' })).toBe(false);
+    expect(liveDecodable(qsv, { ...hevc, rotated: true })).toBe(false);
+    expect(liveDecodable(qsv, info({ videoCodec: 'prores', pixelFormat: 'yuv422p10le' }))).toBe(
+      false,
+    );
+  });
+});
+
 describe('decodesOnGpu', () => {
   it('keeps rotated and interlaced sources off the card', () => {
     const nvenc = { backend: 'nvenc' as const, label: '' };

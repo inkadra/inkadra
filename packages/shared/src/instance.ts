@@ -118,7 +118,8 @@ export const DiagnosticId = z
       'file can be written to and removed from the configured storage. `video_encoding`: the ' +
       'encoder of playable video copies the last worker to start chose (`actual`), a warning ' +
       'when the hardware encoder VIDEO_PROXY_HWACCEL names did not work; absent without a ' +
-      'worker with ffmpeg.',
+      'worker with ffmpeg. `actual` also says whether live video playback runs (sessions and ' +
+      'speed measured at start) or why not (decision 0128).',
   });
 export type DiagnosticId = z.infer<typeof DiagnosticId>;
 

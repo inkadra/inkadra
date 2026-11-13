@@ -89,8 +89,31 @@ export const DEFAULT_VIDEO_SETTINGS: VideoSettings = {
   quality: 'balanced',
   rungs: { '480': 'stored', '720': 'stored', '1080': 'stored', '2160': 'off' },
   playable: 'heavy',
-  live: { enabled: true, maxSessions: 2, perViewer: 1 },
+  live: { enabled: true, maxSessions: 3, perViewer: 1 },
 };
+
+/**
+ * Whether live playback can run on this instance (decision 0128): only on a GPU, with the
+ * sessions the worker measured at start (or VIDEO_LIVE_MAX_SESSIONS), the most the admin can set.
+ */
+export const VideoLiveStatus = z
+  .object({
+    available: z.boolean(),
+    reason: z.enum(['no-gpu', 'too-slow', 'failed', 'set-off']).nullable().openapi({
+      description:
+        '`no-gpu`: no hardware encoder (libx264 never encodes live). `too-slow`: the GPU ' +
+        'measured under 1.5× real time. `failed`: the measurement failed (see the log). ' +
+        '`set-off`: VIDEO_LIVE_MAX_SESSIONS is 0.',
+    }),
+    sessions: z.int().min(0).openapi({ description: 'The cap: measured, or from the environment.' }),
+    speed: z.number().positive().nullable().openapi({
+      description: 'Speed of one 1080p live encode measured at start, × real time.',
+    }),
+    measuredAt: z.iso.datetime().nullable(),
+    locked: z.boolean().openapi({ description: 'VIDEO_LIVE_MAX_SESSIONS is set.' }),
+  })
+  .openapi('VideoLiveStatus');
+export type VideoLiveStatus = z.infer<typeof VideoLiveStatus>;
 
 export const UpdateVideoSettings = z
   .object({
@@ -169,6 +192,7 @@ export const VideoSettingsView = z
           'the minutes of `library` into the time a regeneration takes.',
       }),
     backfill: VideoBackfill.nullable(),
+    liveStatus: VideoLiveStatus.optional(),
   })
   .openapi('VideoSettingsView');
 export type VideoSettingsView = z.infer<typeof VideoSettingsView>;
