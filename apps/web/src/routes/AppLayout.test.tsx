@@ -31,10 +31,8 @@ vi.mock('../lib/api.ts', () => ({
   authApi: { signOut: vi.fn(async () => {}) },
   RequestError: class extends Error {},
 }));
-vi.mock('../board/board-previews.ts', async (actual) => {
-  const real = await actual<typeof import('../board/board-previews.ts')>();
-  return { ...real, resetBoardPreviews: vi.fn(real.resetBoardPreviews) };
-});
+const signOut = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('../lib/sign-out.ts', () => ({ signOut }));
 vi.mock('./InstanceSetup.tsx', () => ({
   useInstanceSetup: () => ({ checks: null, error: false }),
 }));
@@ -460,15 +458,14 @@ it.each([
   }
 });
 
-it('forgets the cached board previews on sign-out', async () => {
-  const { resetBoardPreviews } = await import('../board/board-previews.ts');
-  const { authApi } = await import('../lib/api.ts');
-  vi.mocked(resetBoardPreviews).mockClear();
-  const { button, unmount } = await mount('/projects');
+it('signs out through the shared path and says when it fails (#831)', async () => {
+  signOut.mockClear();
+  signOut.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+  const { host, button, unmount } = await mount('/projects');
   try {
     await act(async () => button('auth.signOut')?.click());
-    expect(authApi.signOut).toHaveBeenCalled();
-    expect(resetBoardPreviews).toHaveBeenCalledTimes(1);
+    expect(signOut).toHaveBeenCalledOnce();
+    expect(host.querySelector('.shell-alert')?.textContent).toBe('auth.signOutFailed');
   } finally {
     await unmount();
   }

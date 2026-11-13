@@ -42,7 +42,6 @@ import {
   useOutlet,
   useSearchParams,
 } from 'react-router';
-import { resetBoardPreviews } from '../board/board-previews.ts';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
 import { isMac } from '../board/shortcuts.ts';
@@ -63,11 +62,11 @@ import { DemoBar } from '../demo/DemoPill.tsx';
 import { FeedbackLauncher } from '../feedback/Feedback.tsx';
 import { FeedbackEntry } from '../feedback/FeedbackEntry.tsx';
 import { canCreateProjects } from '../lib/access.ts';
-import { authApi } from '../lib/api.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
 import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
+import { signOut } from '../lib/sign-out.ts';
 import { useTheme } from '../lib/theme.ts';
 import type { InboxFilter } from '../notifications/model.ts';
 import {
@@ -84,14 +83,18 @@ import { MobileNavigation } from './MobileNavigation.tsx';
 import { NewBoardDialog } from './NewBoardDialog.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { ProjectNavItem } from './ProjectAppearance.tsx';
-import { SidebarGroup, useDropTarget } from './ProjectGroups.tsx';
+import { GroupSaveError, SidebarGroup, useDropTarget } from './ProjectGroups.tsx';
 import { ImportProjectDialog } from './ProjectTransfer.tsx';
-import { groupProjects, moveToGroup, useProjectGroups } from './project-groups.ts';
+import {
+  groupProjects,
+  moveToGroup,
+  reportGroupError,
+  useProjectGroups,
+} from './project-groups.ts';
 import { onboardingTitle } from './project-setup.ts';
 import {
   getCachedProjects,
   refreshProjects,
-  setCachedProjects,
   subscribeProjects,
 } from './projects.ts';
 import { ProjectsContext } from './projects-context.ts';
@@ -215,7 +218,7 @@ function UnderlayNavigation({ open, children }: { open: boolean; children: React
 export function AppLayout({ home }: { home?: ReactNode }) {
   const setup = useInstanceSetup();
   const { t } = useTranslation();
-  const { user, instance, refresh } = useSession();
+  const { user, instance } = useSession();
   const { modulesOff } = usePreferences();
   const canCreate = canCreateProjects(user);
   const { theme, toggle } = useTheme();
@@ -234,7 +237,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const groups = useProjectGroups(!!user);
   const grouped = groupProjects(projects ?? [], groups, (p) => p);
   // Dropped on the Projects heading, a project leaves its group.
-  const looseDrop = useDropTarget('loose', (id) => void moveToGroup(id, null).catch(() => {}));
+  const looseDrop = useDropTarget('loose', (id) => void moveToGroup(id, null).catch(reportGroupError));
   // The group a project made from a group's menu goes into.
   const newProjectGroup = useRef<string | undefined>(undefined);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -383,12 +386,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     navigate(to);
   };
 
-  async function signOut() {
-    await authApi.signOut();
-    setCachedProjects(null);
-    resetBoardPreviews();
-    await refresh();
-  }
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   const openNewProject = (groupId?: string) => {
     if (!canCreate) return;
@@ -589,7 +587,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           />
         </div>
         {grouped.loose.map((p) =>
-          renderProject(p, (id) => void moveToGroup(id, null).catch(() => {})),
+          renderProject(p, (id) => void moveToGroup(id, null).catch(reportGroupError)),
         )}
         {grouped.groups.map(({ group, items }) => (
           <SidebarGroup
@@ -605,7 +603,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               .map((p, i, shown) =>
                 renderProject(p, (id, after) => {
                   const next = after ? shown.slice(i + 1).find((o) => o.id !== id) : p;
-                  void moveToGroup(id, group.id, next?.id).catch(() => {});
+                  void moveToGroup(id, group.id, next?.id).catch(reportGroupError);
                 }),
               )}
           </SidebarGroup>
@@ -627,6 +625,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         )}
       </div>
       <span className="ink-sidebar__spacer" />
+      <GroupSaveError />
+      {signOutFailed && (
+        <p role="alert" className="shell-alert">
+          {t('auth.signOutFailed')}
+        </p>
+      )}
       <div className="ink-sidebar__user">
         <button
           type="button"
@@ -655,7 +659,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             label={theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
             onClick={toggle}
           />
-          <IconButton icon="logout" label={t('auth.signOut')} onClick={signOut} />
+          <IconButton
+            icon="logout"
+            label={t('auth.signOut')}
+            onClick={() => {
+              setSignOutFailed(false);
+              signOut().catch(() => setSignOutFailed(true));
+            }}
+          />
         </span>
       </div>
     </Sidebar>
@@ -1016,7 +1027,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             const group = newProjectGroup.current;
             newProjectGroup.current = undefined;
             await refreshProjects();
-            if (group) await moveToGroup(p.id, group).catch(() => {});
+            if (group) await moveToGroup(p.id, group).catch(reportGroupError);
             navigate(`/p/${p.id}`);
           }}
         />

@@ -28,6 +28,7 @@
     "passwordHint": "Mindestens 10 Zeichen",
     "createAdmin": "Konto erstellen und anmelden",
     "signOut": "Abmelden",
+    "signOutFailed": "Abmelden fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.",
     "errors": {
       "reauthRequired": "Melde dich erneut an, um fortzufahren.",
       "invalid": "E-Mail oder Passwort falsch.",
@@ -218,6 +219,10 @@
     "title": "Etwas ist schiefgelaufen",
     "body": "Die Seite funktioniert nicht mehr. Bereits synchronisierte Änderungen sind sicher; lade neu, um dich wieder zu verbinden.",
     "retry": "Noch mal versuchen",
+    "unreachableTitle": "Server nicht erreichbar",
+    "unreachableBody": "Inkadra versucht es von selbst erneut. Prüfe die Verbindung oder warte einen Moment, falls der Server neu startet.",
+    "updateTitle": "Inkadra wurde aktualisiert",
+    "updateBody": "Lade die Seite neu, um die neue Version zu öffnen.",
     "copy": "Details kopieren",
     "copied": "Details kopiert",
     "id": "Fehler-ID {{id}}",

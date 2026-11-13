@@ -28,6 +28,7 @@
     "passwordHint": "Almeno 10 caratteri",
     "createAdmin": "Crea account e accedi",
     "signOut": "Esci",
+    "signOutFailed": "Impossibile uscire. Controlla la connessione e riprova.",
     "errors": {
       "reauthRequired": "Accedi di nuovo per continuare.",
       "invalid": "Email o password non corrette.",
@@ -218,6 +219,10 @@
     "title": "Qualcosa non ha funzionato",
     "body": "La pagina ha smesso di funzionare. Le modifiche già sincronizzate sono salve; ricarica per riconnetterti.",
     "retry": "Riprova",
+    "unreachableTitle": "Il server non risponde",
+    "unreachableBody": "Inkadra riprova da solo. Controlla la connessione, o attendi un momento se il server si sta riavviando.",
+    "updateTitle": "Inkadra è stato aggiornato",
+    "updateBody": "Ricarica la pagina per aprire la nuova versione.",
     "copy": "Copia dettagli",
     "copied": "Dettagli copiati",
     "id": "ID errore {{id}}",

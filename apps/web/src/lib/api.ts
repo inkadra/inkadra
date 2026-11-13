@@ -23,8 +23,10 @@ async function request<T>(path: string, init: RequestInit = {}, binary = false):
   });
   if (res.ok && binary) return new Uint8Array(await res.arrayBuffer()) as T;
   const text = await res.text();
-  const body = text
-    ? JSON.parse(text, (key, value) => {
+  let body: unknown = null;
+  try {
+    body = text
+      ? JSON.parse(text, (key, value) => {
         // Avatar records keep canonical absolute URLs, but browser traffic stays on its host.
         if (key === 'image' && typeof value === 'string') {
           try {
@@ -35,9 +37,13 @@ async function request<T>(path: string, init: RequestInit = {}, binary = false):
             /* Leave non-URL values to their existing consumers. */
           }
         }
-        return value;
-      })
-    : null;
+          return value;
+        })
+      : null;
+  } catch (err) {
+    // A proxy's HTML error page (502, 504, 413) still becomes a RequestError with its status.
+    if (res.ok) throw err;
+  }
   if (!res.ok) {
     // REST errors follow ApiError; Better Auth answers with { code, message }.
     const err = (body as ApiError | null)?.error ?? (body as { code?: string; message?: string });
