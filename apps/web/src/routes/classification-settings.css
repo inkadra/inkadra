@@ -227,7 +227,8 @@ span.catalogs__delete {
   .catalogs__row > .ink-btn {
     grid-area: 1 / 3;
   }
-  .catalogs__delete {
+  .catalogs__delete,
+  span.catalogs__delete {
     grid-area: 1 / 4;
     width: 36px;
     height: 44px;
