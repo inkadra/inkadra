@@ -282,5 +282,5 @@ it('closes the calendar with Escape and gives the focus back to the field', asyn
     ),
   );
   expect(document.activeElement).toBe(input);
-  expect(input.getAttribute('aria-expanded')).toBe('false');
+  expect(host.querySelector('.ink-date__layer')?.classList.contains('is-closing')).toBe(true);
 });

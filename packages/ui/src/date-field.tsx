@@ -201,6 +201,7 @@ export function DateField({
     if (v === 'months') {
       const year = at.slice(0, 4);
       return (
+        // biome-ignore lint/a11y/useSemanticElements: twelve buttons named by their year, not a form.
         <div className="ink-date__months" role="group" aria-label={year}>
           {Array.from({ length: 12 }, (_, i) => {
             const month = `${year}-${String(i + 1).padStart(2, '0')}`;
@@ -238,9 +239,10 @@ export function DateField({
         className="ink-date__grid"
         onKeyDown={live ? gridKey : undefined}
       >
-        {/* biome-ignore lint/a11y/useFocusableInteractive: header row of the grid. */}
+        {/* biome-ignore lint/a11y/useSemanticElements: the header row of a grid of buttons. */}
         <div role="row" className="ink-date__row">
           {days.slice(0, 7).map((d) => (
+            // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: a weekday heading; the days take focus.
             <span
               key={d}
               role="columnheader"
@@ -252,11 +254,12 @@ export function DateField({
           ))}
         </div>
         {[0, 1, 2, 3, 4, 5].map((week) => (
-          // biome-ignore lint/a11y/useFocusableInteractive: a row of the grid; its days take focus.
+          // biome-ignore lint/a11y/useSemanticElements: a week of the grid; its days take focus.
           <div key={week} role="row" className="ink-date__row">
             {days.slice(week * 7, week * 7 + 7).map((d) => {
               const s = dayState(d, { month: at, today, value, rangeStart, min, max });
               return (
+                // biome-ignore lint/a11y/useSemanticElements: the day is a button and a cell of the grid.
                 <button
                   key={d}
                   type="button"
@@ -302,7 +305,6 @@ export function DateField({
         className="ink-date__input"
         aria-label={label}
         aria-haspopup="dialog"
-        aria-expanded={phase === 'open'}
         aria-controls={mounted ? `${id}-calendar` : undefined}
         readOnly={props.readOnly || coarse}
         value={value}
