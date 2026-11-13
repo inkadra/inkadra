@@ -105,15 +105,17 @@ Your current `.env` keeps working; what changes, and what to do:
 - **The bundled proxies are the only peer Inkadra trusts for client addresses.** Caddy, Nginx
   and Traefik in `deploy/proxy` now run at a fixed address, `10.212.47.2`, on a fixed subnet
   `10.212.47.0/24` of the stack's network, and set `TRUST_PROXY` to that address unless `.env`
-  sets one. Compose recreates the network on `up -d`; if your version of Compose asks for it,
+  sets one. If your `.env` has a `TRUST_PROXY` line written for a bundled proxy, remove it or
+  change it to `10.212.47.2`: with the old address Inkadra no longer trusts the proxy, sees
+  every request as plain HTTP from one client and sends no HSTS. Compose recreates the network on `up -d`; if your version of Compose asks for it,
   run `docker compose down` (without `-v`) first. If the subnet is taken on your machine, choose
   another one in the proxy's compose file. Without a bundled proxy nothing changes, but set
   `TRUST_PROXY` to your proxy's address (see [TRUST_PROXY](configuration.md#trust_proxy)).
 - **The bundled Traefik no longer reads the Docker socket.** Its routes come from a file
   defined in `deploy/proxy/traefik/compose.yaml` (and `compose.split.yaml`), with the same rules
   as the old labels; labels you added to `inkadra` for it are ignored. The read timeout of the
-  HTTPS entry point is now 30 minutes instead of none: uploads are in pieces of at most 50 MiB,
-  but a project import must arrive within that time.
+  HTTPS entry point is now 12 hours instead of none: uploads are in pieces of at most 50 MiB,
+  but a project import is one request and must arrive within that time.
 
 ## Upgrading to 0.9
 

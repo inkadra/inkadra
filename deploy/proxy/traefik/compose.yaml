@@ -18,9 +18,9 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
-      # Uploads arrive in resumable pieces of at most 50 MiB, well within 30 minutes on a slow
-      # link; a project import is one request and must arrive within that time too.
-      - --entrypoints.websecure.transport.respondingtimeouts.readtimeout=30m
+      # Uploads arrive in resumable pieces of at most 50 MiB, but a project import is one
+      # request of up to IMPORT_MAX_SIZE (20 GB by default): 12 hours lets it arrive at 4 Mbit/s.
+      - --entrypoints.websecure.transport.respondingtimeouts.readtimeout=12h
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true

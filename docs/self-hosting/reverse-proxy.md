@@ -91,16 +91,16 @@ labels:
 ```
 
 Traefik v3 cuts requests that take longer than 60 seconds to read. Raise it on the HTTPS entry
-point, in the static configuration. Uploads arrive in resumable pieces of at most 50 MiB, so a
-finite value such as 30 minutes is enough for them even on a slow link; a project import is one
-request and must arrive within that time (the bundled Traefik uses `30m`):
+point, in the static configuration. Uploads arrive in resumable pieces of at most 50 MiB, but a
+project import is one request of up to `IMPORT_MAX_SIZE` (20 GB by default) and must arrive
+within that time: the bundled Traefik uses `12h`, enough for 20 GB at 4 Mbit/s:
 
 ```yaml
 entryPoints:
   websecure:
     transport:
       respondingTimeouts:
-        readTimeout: 30m
+        readTimeout: 12h
 ```
 
 WebSockets and `X-Forwarded-*` headers need nothing. For split mode, add a second router for
