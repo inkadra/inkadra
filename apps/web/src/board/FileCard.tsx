@@ -14,8 +14,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { AudioPlayer, useWaveform } from './AudioPlayer.tsx';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
-import { rungLabel } from './QualityMenu.tsx';
-import { type PlaybackSource, playbackSource, useVideoSource } from './video-source.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { useBoard } from './context.ts';
 import { FontSpecimen, ModelTile } from './FontSpecimen.tsx';
@@ -32,7 +30,9 @@ import { playInline, stopInline, useInlinePlaying, useInlineStops } from './inli
 import { MAP_ASPECT, MapCredit, TrackLine } from './MapCard.tsx';
 import { MapSurface, useExploring } from './MapExplore.tsx';
 import { formatClimb, formatDistance } from './maps.ts';
+import { rungLabel } from './QualityMenu.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
+import { type PlaybackSource, playbackSource, useVideoSource } from './video-source.ts';
 
 type FileElement = Extract<Element, { type: 'file' }>;
 
@@ -385,7 +385,10 @@ function RungsProgress({
       </span>
       <span className="fcard__rungs" aria-hidden="true">
         {rungs.map((r) => (
-          <span key={r.name} className={r.status === 'ready' ? 'fcard__rung is-done' : 'fcard__rung'}>
+          <span
+            key={r.name}
+            className={r.status === 'ready' ? 'fcard__rung is-done' : 'fcard__rung'}
+          >
             <span>{rungLabel(r.name)}</span>
             <span className="fcard__bar">
               <i style={{ width: `${r.status === 'ready' ? 100 : (r.progress ?? 0)}%` }} />
@@ -473,11 +476,13 @@ function VideoPreview({
   const source = playable.hls ?? playable.src;
   const proxy = asset.proxy;
   // A ladder plays as soon as its smallest rung is ready (decision 0128).
-  const preparing =
-    !playable.hls && (proxy?.status === 'queued' || proxy?.status === 'processing');
+  const preparing = !playable.hls && (proxy?.status === 'queued' || proxy?.status === 'processing');
   const percent = proxy?.status === 'processing' ? (proxy.progress ?? null) : null;
-  const rungs = [...(asset.playback?.renditions ?? [])].sort((a, b) => Number(a.name) - Number(b.name));
-  const making = rungs.find((r) => r.status === 'processing') ?? rungs.find((r) => r.status === 'queued');
+  const rungs = [...(asset.playback?.renditions ?? [])].sort(
+    (a, b) => Number(a.name) - Number(b.name),
+  );
+  const making =
+    rungs.find((r) => r.status === 'processing') ?? rungs.find((r) => r.status === 'queued');
   // A guest whose link allows no downloads gets a picture as the url (guest-assets.ts): nothing
   // to play on the card, and the viewer shows them that picture as before.
   const plays = !!source && !asset.variants.some((variant) => variant.url === source);
@@ -552,7 +557,11 @@ function VideoPreview({
           )}
           {!preparing && source && asset.durationMs !== null && asset.durationMs > 0 && (
             // Above the rungs while they are made, as in the mockup of decision 0128.
-            <span className={making && playable.hls ? 'card__duration card__duration--top' : 'card__duration'}>
+            <span
+              className={
+                making && playable.hls ? 'card__duration card__duration--top' : 'card__duration'
+              }
+            >
               {formatDuration(asset.durationMs)}
             </span>
           )}

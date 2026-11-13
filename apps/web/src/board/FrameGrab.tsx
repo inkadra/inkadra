@@ -2,7 +2,6 @@
 import { type Element, hiddenFromGuests, type VideoFrameSource } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
 import { Button, Icon, Select } from '@inkadra/ui';
-import { readyRungs } from './video-source.ts';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -24,6 +23,7 @@ import { isMac } from './shortcuts.ts';
 import type { BoardStore } from './store.ts';
 import { TabCaptureCrop } from './TabCaptureCrop.tsx';
 import { cancelUpload, startUpload, useUploads } from './uploads.ts';
+import { readyRungs } from './video-source.ts';
 import { isVideoLink, isYoutubeUrl, parseYoutubeStartTime } from './youtube.ts';
 
 export function FrameGrab({

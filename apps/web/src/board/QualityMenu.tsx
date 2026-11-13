@@ -41,7 +41,9 @@ export function QualityMenu({
   const rungs = [...(asset.playback?.renditions ?? [])]
     .filter((r) => r.status !== 'failed')
     .sort((a, b) => Number(b.name) - Number(a.name));
-  const auto = playing ? t('viewer.quality.autoAt', { quality: rungLabel(playing) }) : t('viewer.quality.auto');
+  const auto = playing
+    ? t('viewer.quality.autoAt', { quality: rungLabel(playing) })
+    : t('viewer.quality.auto');
   const original = asset.playback?.original === true;
   const mbps =
     asset.durationMs && asset.durationMs > 0
@@ -66,12 +68,7 @@ export function QualityMenu({
     setOpen(false);
     button.current?.focus();
   };
-  const item = (
-    value: QualityChoice,
-    text: string,
-    note?: string | null,
-    disabled = false,
-  ) => (
+  const item = (value: QualityChoice, text: string, note?: string | null, disabled = false) => (
     <button
       key={value}
       type="button"

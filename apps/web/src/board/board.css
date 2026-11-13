@@ -6080,7 +6080,7 @@ button.card__play {
   font-size: 11px;
   white-space: nowrap;
 }
-.viewer-quality__item[aria-checked='false'] > svg {
+.viewer-quality__item[aria-checked="false"] > svg {
   visibility: hidden;
 }
 @media (pointer: coarse) {

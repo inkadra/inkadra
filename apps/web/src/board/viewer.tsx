@@ -9,14 +9,6 @@ import { useClassifications } from '../lib/classifications.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { moveTabFocus } from '../lib/tabs.ts';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
-import { QualityMenu } from './QualityMenu.tsx';
-import {
-  NO_SOURCE,
-  playbackSource,
-  type QualityChoice,
-  useKeepPosition,
-  useVideoSource,
-} from './video-source.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { addPalette } from './colors.ts';
 import { GuestModeContext } from './context.ts';
@@ -30,12 +22,20 @@ import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
 import { isOffice, officeTable, SHEET_PREVIEW, tableable } from './office.ts';
 import { PdfReader } from './PdfReader.tsx';
+import { QualityMenu } from './QualityMenu.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
 import { ViewerImage } from './ViewerImage.tsx';
+import {
+  NO_SOURCE,
+  playbackSource,
+  type QualityChoice,
+  useKeepPosition,
+  useVideoSource,
+} from './video-source.ts';
 import {
   isVideoLink,
   isYoutubeUrl,

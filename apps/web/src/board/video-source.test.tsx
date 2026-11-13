@@ -109,7 +109,15 @@ function fakeHls(supported = true) {
   return instances;
 }
 
-function Player({ source, choice, rungs }: { source: PlaybackSource; choice: QualityChoice; rungs: AssetRendition[] }) {
+function Player({
+  source,
+  choice,
+  rungs,
+}: {
+  source: PlaybackSource;
+  choice: QualityChoice;
+  rungs: AssetRendition[];
+}) {
   const ref = useRef<HTMLVideoElement>(null);
   const played = useVideoSource(ref, source, choice, rungs);
   return (
@@ -132,7 +140,9 @@ it('attaches hls.js, follows a rung chosen by hand, and falls back to the file o
   expect(hls?.currentLevel).toBe(0);
   await act(async () => hls?.handlers.error?.('error', { fatal: true }));
   expect(hls?.destroyed).toBe(true);
-  expect(host.querySelector('video')?.getAttribute('src')).toBe('/api/v1/assets/a/hls/480.mp4?v=abcdef');
+  expect(host.querySelector('video')?.getAttribute('src')).toBe(
+    '/api/v1/assets/a/hls/480.mp4?v=abcdef',
+  );
 });
 
 it('plays the original file when chosen', async () => {
