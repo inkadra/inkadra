@@ -285,3 +285,25 @@ it('closes the calendar with Escape and gives the focus back to the field', asyn
   expect(document.activeElement).toBe(input);
   expect(host.querySelector('.ink-date__layer')?.classList.contains('is-closing')).toBe(true);
 });
+
+it('keeps the touch calendar trigger focusable without a native picker or keyboard', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+  try {
+    await act(async () =>
+      root.render(<DateField label="Due" value="2026-11-20" onChange={() => {}} />),
+    );
+    const input = host.querySelector('input') as HTMLInputElement;
+    expect(input.type).toBe('text');
+    expect(input.readOnly).toBe(true);
+    await act(async () => input.click());
+    expect(host.querySelector('.ink-date__panel')).not.toBeNull();
+    await act(async () =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      ),
+    );
+    expect(document.activeElement).toBe(input);
+  } finally {
+    media.mockRestore();
+  }
+});

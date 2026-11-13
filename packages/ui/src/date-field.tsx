@@ -296,7 +296,8 @@ export function DateField({
       <input
         {...props}
         ref={input}
-        type="date"
+        // Firefox cannot focus a readonly date input; touch uses a readonly text trigger.
+        type={coarse ? 'text' : 'date'}
         className="ink-date__input"
         aria-label={label}
         aria-haspopup="dialog"
