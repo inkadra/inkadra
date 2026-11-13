@@ -20,3 +20,17 @@ live in `shell-and-uploads.spec.ts` and run once.
 as a real outage or deploy would (`tests/pwa.spec.ts` relies on it). No other spec depends on
 it. The flag is experimental: after a Playwright upgrade, check that `pwa.spec.ts` still
 passes, and that its behaviour has not changed for the other specs.
+
+## Review screenshots
+
+Review captures go to `e2e/test-results/screenshots/` (already ignored by Git), never to
+`docs/screenshots/`. Playwright clears `test-results` at the start of a run; keep any captures
+you need privately before running it again. Documentation captures in `docs/screenshots/readme`
+and `docs/screenshots/guide` still come from `pnpm --filter @inkadra/e2e screenshots`.
+
+- Frame grab: `pnpm --filter @inkadra/e2e exec playwright test --config frame-grab.config.ts
+  --project chromium`, on the workstation with a unique `E2E_PORT`, disposable Postgres/Valkey
+  URLs and `CSP_ENFORCE=true`.
+- Choice controls: run `ui-controls.spec.ts` after `first-run.spec.ts`.
+- Select controls: set `SELECT_SCREENSHOTS=1` when running `storyboard.spec.ts` and
+  `pdf-export.spec.ts` after `first-run.spec.ts` on a fresh e2e instance.

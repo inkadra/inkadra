@@ -235,22 +235,22 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
   if (process.env.SELECT_SCREENSHOTS) {
-    await page.screenshot({ path: '../docs/screenshots/ui-select/export-dialog.png' });
+    await page.screenshot({ path: 'test-results/screenshots/ui-select/export-dialog.png' });
     const trigger = dialog.getByRole('combobox').first();
     await trigger.click();
-    await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-dark.png' });
+    await page.screenshot({ path: 'test-results/screenshots/ui-select/default-open-desktop-dark.png' });
     await page.keyboard.press('Escape');
     await page.evaluate(() => {
       document.documentElement.dataset.theme = 'light';
     });
     await trigger.click();
-    await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-light.png' });
+    await page.screenshot({ path: 'test-results/screenshots/ui-select/default-open-desktop-light.png' });
     await page.keyboard.press('Escape');
     await page.setViewportSize({ width: 390, height: 844 });
     await trigger.click();
     await expect(page.locator('.ink-select__panel')).toBeVisible();
     await page.screenshot({
-      path: '../docs/screenshots/ui-select/phone-bottom-sheet.png',
+      path: 'test-results/screenshots/ui-select/phone-bottom-sheet.png',
       animations: 'disabled',
     });
     await page.keyboard.press('Escape');
@@ -260,7 +260,7 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
     await trigger.click();
     await expect(page.locator('.ink-select__panel')).toBeVisible();
     await page.screenshot({
-      path: '../docs/screenshots/ui-select/phone-bottom-sheet-dark.png',
+      path: 'test-results/screenshots/ui-select/phone-bottom-sheet-dark.png',
       animations: 'disabled',
     });
     await page.keyboard.press('Escape');
