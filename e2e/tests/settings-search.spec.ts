@@ -139,13 +139,15 @@ test('finds settings, people, values and reports, and opens the row of each', as
     const value = listbox.getByRole('option', { name: /Spot pubblicitario/ });
     await expect(value).toContainText('Tipi di progetto');
     await value.click();
-    await expect(page.locator(`[data-setting="classification:projectTypes:${spot.id}"]`)).toHaveClass(
-      /settings-found/,
-    );
+    await expect(
+      page.locator(`[data-setting="classification:projectTypes:${spot.id}"]`),
+    ).toHaveClass(/settings-found/);
     await expect(page.locator(':focus')).toHaveValue('Spot pubblicitario');
 
     await search.fill('zzz nessun risultato');
-    await expect(page.getByRole('status').filter({ hasText: 'Nessuna impostazione trovata' })).toBeVisible();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Nessuna impostazione trovata' }),
+    ).toBeVisible();
 
     // A phone has the same search on the settings home, its results across the width.
     await page.setViewportSize({ width: 390, height: 844 });
@@ -181,7 +183,10 @@ test('finds settings, people, values and reports, and opens the row of each', as
           await theme(page, value);
           const field = page.getByRole('combobox', { name: 'Cerca nelle impostazioni' });
           await field.fill('anto');
-          await page.getByRole('option', { name: /Antonino Russo/ }).first().click();
+          await page
+            .getByRole('option', { name: /Antonino Russo/ })
+            .first()
+            .click();
           await expect(page.locator('.settings-found')).toHaveCount(1);
           await page.waitForTimeout(450);
           await page.screenshot({ path: `${shots}/${size}-opened-member-${value}.png` });
@@ -190,7 +195,8 @@ test('finds settings, people, values and reports, and opens the row of each', as
     }
   } finally {
     await page.context().close();
-    if (invitation.invitation) await call(cookie, 'DELETE', `/invitations/${invitation.invitation.id}`);
+    if (invitation.invitation)
+      await call(cookie, 'DELETE', `/invitations/${invitation.invitation.id}`);
     const now = (await (await call(cookie, 'GET', '/instance/classifications')).json()) as {
       revision: number;
     };
