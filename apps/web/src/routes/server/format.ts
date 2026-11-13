@@ -129,7 +129,8 @@ export type Health =
 export function healthOf(status: ServerStatus, checks: DiagnosticCheck[]): Health {
   const down = downServices(status.services)[0];
   if (down) return { level: 'bad', service: down };
-  if (storageVerdict(status.storage).key === 'almostFull') return { level: 'warn', reason: 'space' };
+  if (storageVerdict(status.storage).key === 'almostFull')
+    return { level: 'warn', reason: 'space' };
   if (status.backup.lastStatus === 'failed') return { level: 'warn', reason: 'backup' };
   const failing = checks.find((c) => c.status !== 'ok');
   if (failing) return { level: 'warn', reason: 'check', check: failing };

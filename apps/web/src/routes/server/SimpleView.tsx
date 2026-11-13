@@ -659,13 +659,19 @@ export function ProcessTable({ status }: { status: ServerStatus }) {
                   )}
                 </span>
               </th>
-              <td className={p.cpu === null ? 'server-table__n server-table__zero' : 'server-table__n'}>
+              <td
+                className={
+                  p.cpu === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                }
+              >
                 {p.cpu === null || !status.now.cpu.cores
                   ? '—'
                   : percent(p.cpu / status.now.cpu.cores, lang)}
               </td>
               <td
-                className={p.memory === null ? 'server-table__n server-table__zero' : 'server-table__n'}
+                className={
+                  p.memory === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                }
               >
                 {p.memory === null ? '—' : formatStorage(p.memory, lang)}
               </td>

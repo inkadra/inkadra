@@ -156,7 +156,14 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
   it('gives the live values from the monitor store, without the database aggregates', async () => {
     expect((await request('member', 'GET', '/instance/server/live')).statusCode).toBe(403);
     const now = Date.now();
-    await store.beat({ role: 'web', host: 'w1', startedAt: now - 60_000, at: now, cpu: 0, memory: 0 });
+    await store.beat({
+      role: 'web',
+      host: 'w1',
+      startedAt: now - 60_000,
+      at: now,
+      cpu: 0,
+      memory: 0,
+    });
     await store.push('raw', 'web@w1', {
       t: now - 1000,
       c: 1,

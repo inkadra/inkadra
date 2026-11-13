@@ -1,5 +1,5 @@
-import { expect, it } from 'vitest';
 import type { DiagnosticCheck, ServerProblem, ServerStatus } from '@inkadra/shared';
+import { expect, it } from 'vitest';
 import {
   cpuScale,
   diskCompresses,
@@ -97,7 +97,13 @@ const health = (patch: Partial<ServerStatus>, checks: DiagnosticCheck[] = []) =>
 
 it('turns orange when it works but something needs fixing, red when a service stopped', () => {
   expect(health({})).toEqual({ level: 'ok' });
-  const failed = { enabled: true, lastAt: null, lastStatus: 'failed' as const, size: null, nextAt: null };
+  const failed = {
+    enabled: true,
+    lastAt: null,
+    lastStatus: 'failed' as const,
+    size: null,
+    nextAt: null,
+  };
   expect(health({ backup: failed })).toEqual({ level: 'warn', reason: 'backup' });
   const check: DiagnosticCheck = { id: 'storage', status: 'warning', expected: null, actual: null };
   expect(health({}, [check])).toEqual({ level: 'warn', reason: 'check', check });

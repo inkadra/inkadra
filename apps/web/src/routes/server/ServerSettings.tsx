@@ -16,13 +16,7 @@ import { useSession } from '../../lib/session.tsx';
 import { probeWebSocket } from '../Diagnostics.tsx';
 import { trackSave } from '../settings-save.ts';
 import { AdvancedView } from './AdvancedView.tsx';
-import {
-  mergeLive,
-  peekProblem,
-  type ServerActions,
-  technicalSummary,
-  usePeek,
-} from './common.ts';
+import { mergeLive, peekProblem, type ServerActions, technicalSummary, usePeek } from './common.ts';
 import { SimpleView } from './SimpleView.tsx';
 import './server.css';
 

@@ -330,7 +330,11 @@ function Space({ status }: { status: ServerStatus }) {
           store.originals,
           t('server.advanced.space.originalsHint'),
         )}
-        {cell(t('server.advanced.space.copies'), store.copies, t('server.advanced.space.copiesHint'))}
+        {cell(
+          t('server.advanced.space.copies'),
+          store.copies,
+          t('server.advanced.space.copiesHint'),
+        )}
         {cell(
           t('server.advanced.space.previews'),
           store.previews,
@@ -338,7 +342,9 @@ function Space({ status }: { status: ServerStatus }) {
         )}
       </div>
       {diskCompresses(store) && (
-        <p className="settings-footnote server-card-foot">{t('server.meters.storage.compressed')}</p>
+        <p className="settings-footnote server-card-foot">
+          {t('server.meters.storage.compressed')}
+        </p>
       )}
     </Card>
   );

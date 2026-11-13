@@ -144,6 +144,7 @@ export function ServerChart({
         // The chart is one image for assistive technology; the arrow keys read its points.
         role="img"
         aria-label={label}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: the arrow keys read the chart's points
         tabIndex={0}
         onKeyDown={onKey}
         onBlur={() => setActive(null)}
@@ -153,38 +154,38 @@ export function ServerChart({
         {width > 0 && (
           <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
             {ticks.flatMap((tick) =>
-                (mirrored && tick ? [false, true] : [false]).map((below) => (
-                  <g key={`${tick}-${below}`}>
-                    <line
-                      className="server-chart__grid"
-                      x1={pad.left}
-                      x2={width - pad.right}
-                      y1={y(tick, below)}
-                      y2={y(tick, below)}
-                    />
-                    <text
-                      className="server-chart__tick"
-                      x={pad.left - 6}
-                      y={y(tick, below) + 4}
-                      textAnchor="end"
-                    >
-                      {format(tick)}
-                    </text>
-                  </g>
-                )),
-              )}
+              (mirrored && tick ? [false, true] : [false]).map((below) => (
+                <g key={`${tick}-${below}`}>
+                  <line
+                    className="server-chart__grid"
+                    x1={pad.left}
+                    x2={width - pad.right}
+                    y1={y(tick, below)}
+                    y2={y(tick, below)}
+                  />
+                  <text
+                    className="server-chart__tick"
+                    x={pad.left - 6}
+                    y={y(tick, below) + 4}
+                    textAnchor="end"
+                  >
+                    {format(tick)}
+                  </text>
+                </g>
+              )),
+            )}
             {xLabels.map((text, i) => (
-                <text
-                  // biome-ignore lint/suspicious/noArrayIndexKey: three fixed places, texts may repeat
-                  key={i}
-                  className="server-chart__tick"
-                  x={i === 0 ? pad.left : i === 1 ? pad.left + innerW / 2 : width - pad.right}
-                  y={height - 4}
-                  textAnchor={i === 0 ? 'start' : i === 1 ? 'middle' : 'end'}
-                >
-                  {text}
-                </text>
-              ))}
+              <text
+                // biome-ignore lint/suspicious/noArrayIndexKey: three fixed places, texts may repeat
+                key={i}
+                className="server-chart__tick"
+                x={i === 0 ? pad.left : i === 1 ? pad.left + innerW / 2 : width - pad.right}
+                y={height - 4}
+                textAnchor={i === 0 ? 'start' : i === 1 ? 'middle' : 'end'}
+              >
+                {text}
+              </text>
+            ))}
             {series.map((s) =>
               segments(s.values, at, span.step * 2.5, x, (v) => y(v, s.below)).map((points) => (
                 <g key={`${s.tone}-${points[0]}`}>
@@ -210,20 +211,20 @@ export function ServerChart({
               </g>
             )}
             {markers.map((m) => {
-                const mx = xAt(new Date(m.t).getTime());
-                return (
-                  <g key={`${m.t}-${m.label}`} className="server-chart__marker">
-                    <line x1={mx} x2={mx} y1={pad.top} y2={pad.top + innerH} />
-                    <text
-                      x={Math.min(mx + 4, width - 4)}
-                      y={pad.top + 10}
-                      textAnchor={mx > width - 120 ? 'end' : 'start'}
-                    >
-                      {m.label}
-                    </text>
-                  </g>
-                );
-              })}
+              const mx = xAt(new Date(m.t).getTime());
+              return (
+                <g key={`${m.t}-${m.label}`} className="server-chart__marker">
+                  <line x1={mx} x2={mx} y1={pad.top} y2={pad.top + innerH} />
+                  <text
+                    x={Math.min(mx + 4, width - 4)}
+                    y={pad.top + 10}
+                    textAnchor={mx > width - 120 ? 'end' : 'start'}
+                  >
+                    {m.label}
+                  </text>
+                </g>
+              );
+            })}
             {active !== null && (
               <g>
                 <line

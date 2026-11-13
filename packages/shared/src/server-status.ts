@@ -131,11 +131,13 @@ export const ServerBackup = z
     lastStatus: z.enum(['running', 'ready', 'failed']).nullable(),
     size: z.number().int().nullable(),
     nextAt: Timestamp.nullable(),
-    lastSuccessAt: Timestamp.nullable().optional().openapi({
-      description:
-        'When the last backup that succeeded finished; null without one. Older servers leave ' +
-        'it out.',
-    }),
+    lastSuccessAt: Timestamp.nullable()
+      .optional()
+      .openapi({
+        description:
+          'When the last backup that succeeded finished; null without one. Older servers leave ' +
+          'it out.',
+      }),
   })
   .openapi('ServerBackup');
 export type ServerBackup = z.infer<typeof ServerBackup>;
