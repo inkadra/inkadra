@@ -49,7 +49,7 @@ INKADRA_IMAGE=$image
 INKADRA_TAG=$tag
 ENV
 
-compose() { docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" "$@"; }
+compose() { INKADRA_ENV_FILE="$work/.env" docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" "$@"; }
 # The stack as it was (PostgreSQL 16 on the volume postgres-data) and as compose.yaml has it now.
 # The in-place upgrade goes on in the old layout, with the same files and the new version.
 old() { POSTGRES_MAJOR=$pg16 INKADRA_TAG=$from_tag compose -f "$root/compose.yaml" -f "$root/deploy/compose.postgres-old-layout.yaml" "$@"; }
