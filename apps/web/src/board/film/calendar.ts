@@ -377,3 +377,19 @@ export function moveDay<T extends { day: { id: string }; draft: ShootingDayInput
       .map((entry) => ({ entry, next: { ...entry.draft, date: from } })),
   ];
 }
+
+/**
+ * The free day of the week a block or a queued shot is dragged over: a block's drag target or
+ * the column under a queued shot, each a column key, which for a free day is its date. A whole
+ * day dragged by its heading never counts: it has no preview inside the column, and widening a
+ * column it only crosses would slide its real target away. The Day view never narrows a column.
+ */
+export function freeDayUnder(
+  view: 'day' | 'week',
+  columns: readonly { date: string; entry: unknown }[],
+  under: { block: string | null; shot: string | null | undefined },
+): string | null {
+  if (view !== 'week') return null;
+  const targets = [under.block, under.shot];
+  return columns.find((column) => !column.entry && targets.includes(column.date))?.date ?? null;
+}

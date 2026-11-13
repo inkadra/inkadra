@@ -6,6 +6,7 @@ import {
   clockString,
   drawnRange,
   duplicateBlock,
+  freeDayUnder,
   gapsBeforeFixed,
   insertDrawnBlock,
   layoutLanes,
@@ -310,4 +311,22 @@ it('shows on each card what the approved mockup shows at its height', () => {
   // Side by side, a card shows only its start time.
   expect(blockDetail('week', 90, false, 1).range).toBe(true);
   expect(blockDetail('week', 90, false, 2).range).toBe(false);
+});
+
+describe('freeDayUnder', () => {
+  const columns = [
+    { date: '2026-03-01', entry: { day: { id: 'd1' } } },
+    { date: '2026-03-02', entry: null },
+    { date: '2026-03-03', entry: null },
+  ];
+  it('finds the free day a block or a queued shot is dragged over', () => {
+    expect(freeDayUnder('week', columns, { block: '2026-03-02', shot: null })).toBe('2026-03-02');
+    expect(freeDayUnder('week', columns, { block: null, shot: '2026-03-03' })).toBe('2026-03-03');
+  });
+  it('leaves shooting days, other dates and the Day view alone', () => {
+    expect(freeDayUnder('week', columns, { block: 'd1', shot: '2026-03-01' })).toBeNull();
+    expect(freeDayUnder('week', columns, { block: '2026-04-01', shot: undefined })).toBeNull();
+    expect(freeDayUnder('week', columns, { block: null, shot: null })).toBeNull();
+    expect(freeDayUnder('day', columns, { block: '2026-03-02', shot: null })).toBeNull();
+  });
 });
