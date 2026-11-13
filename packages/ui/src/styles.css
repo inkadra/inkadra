@@ -209,7 +209,8 @@ select {
 .ink-date--set {
   color: var(--ink-text-primary);
 }
-.ink-date:focus-within {
+.ink-date:focus-within,
+.ink-date:has(> .ink-date__layer:popover-open) {
   border-color: var(--ink-accent-primary);
 }
 .ink-date__text {
