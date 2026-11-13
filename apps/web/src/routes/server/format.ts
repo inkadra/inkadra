@@ -68,6 +68,12 @@ export function number(value: number, locale: string, digits = 1): string {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value);
 }
 
+/** A response-time tick: "500 ms", then seconds ("20 s"), short enough for a phone. */
+export function responseTime(ms: number, locale: string): string {
+  if (ms === 0) return '0';
+  return ms < 1000 ? `${number(ms, locale, 0)} ms` : `${number(ms / 1000, locale)} s`;
+}
+
 /** "6 days", "4 hours", "12 minutes": the largest unit that fits. */
 export function duration(ms: number, locale: string, display: 'long' | 'short' = 'long'): string {
   const minutes = Math.max(0, Math.round(ms / 60_000));

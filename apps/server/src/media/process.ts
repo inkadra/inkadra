@@ -249,8 +249,8 @@ export async function processAsset(
         );
         await save(db, assetId, result.variants, {
           sha256: digest,
-          width: result.width,
-          height: result.height,
+          width: info?.width ?? result.width,
+          height: info?.height ?? result.height,
           durationMs,
           videoCodec: info?.videoCodec ?? null,
           audioCodec: info?.audioCodec ?? null,

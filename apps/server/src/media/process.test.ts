@@ -697,7 +697,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
   describe('videos', async () => {
     const tools = await mediaTools();
     // A 2 s, 640x360 clip with a red frame after 0.1 s, so the poster is not the first frame.
-    const clip = () => {
+    const clip = (size = '640x360') => {
       const out = join(root, `clip-${randomUUID()}.mp4`);
       execFileSync(tools.ffmpeg ?? 'ffmpeg', [
         '-v',
@@ -705,11 +705,11 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         '-f',
         'lavfi',
         '-i',
-        'color=c=black:s=640x360:r=24:d=0.1',
+        `color=c=black:s=${size}:r=24:d=0.1`,
         '-f',
         'lavfi',
         '-i',
-        'color=c=red:s=640x360:r=24:d=1.9',
+        `color=c=red:s=${size}:r=24:d=1.9`,
         '-filter_complex',
         '[0][1]concat=n=2:v=1',
         '-pix_fmt',
@@ -730,6 +730,16 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       expect(variants.map((v) => v.size)).toEqual(['256', '512']);
       expect(row?.palette?.[0]).toMatch(/^#[EF][0-9A-F]/);
     });
+
+    it.skipIf(!tools.ffmpeg || !tools.ffprobe)(
+      'keeps source dimensions when the poster is scaled',
+      async () => {
+        const id = await upload(clip('3840x2160'), 'video/mp4', '4k.mp4');
+        await processAsset(deps, id);
+        const { row } = await load(id);
+        expect(row).toMatchObject({ width: 3840, height: 2160 });
+      },
+    );
 
     it('never hands playlists to ffmpeg', async () => {
       const playlist = Buffer.from('#EXTM3U\n#EXTINF:1,\nfile:///etc/passwd\n');
@@ -775,10 +785,13 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         expect(variants.map((v) => v.size)).toEqual(['256']);
         expect(q.queued).toEqual([id]);
 
+        // Rows made before #745 took their size from the scaled poster: the copy corrects it.
+        await db.update(asset).set({ width: 32, height: 18 }).where(eq(asset.id, id));
         const progress: number[] = [];
         await runProxy(deps, id, (p) => void progress.push(p));
         ({ row, variants } = await load(id));
         expect(row).toMatchObject({ proxyStatus: 'ready', proxyProgress: 100 });
+        expect(row).toMatchObject({ width: 64, height: 36 });
         expect(progress.at(-1)).toBe(100);
         // The ladder (decision 0128): one rung for so small a source, never upscaled.
         const rungs = await db.select().from(assetRendition).where(eq(assetRendition.assetId, id));

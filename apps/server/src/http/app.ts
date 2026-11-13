@@ -18,7 +18,7 @@ import type { Database } from '../db/client.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, noMailer } from '../mailer.ts';
 import { recordProblem, requestProblem } from '../monitor/problems.ts';
-import type { LatencyRecorder } from '../monitor/sampler.ts';
+import { type LatencyRecorder, recordsLatency } from '../monitor/sampler.ts';
 import type { ServerDeps } from '../monitor/status.ts';
 import { type MonitorStore, memoryStore } from '../monitor/store.ts';
 import { rememberOrigin, requestIsSecure } from '../request-origin.ts';
@@ -177,7 +177,7 @@ export async function createApp(deps: AppDeps) {
     if (!monitor.latency || !req.url.startsWith(API_PREFIX)) return;
     // JSON answers only: a file takes as long as its size, not as the server.
     const type = String(reply.getHeader('content-type') ?? '');
-    if (reply.statusCode >= 500 || reply.statusCode === 204 || type.startsWith('application/json'))
+    if (recordsLatency(req.headers['content-type'] ?? '', type, reply.statusCode))
       monitor.latency.record(reply.elapsedTime, reply.statusCode);
   });
   app.addHook('onError', async (req, _reply, err) => {

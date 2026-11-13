@@ -119,6 +119,12 @@ async function transcode(
   if (!ffmpeg || !ffprobe) throw new Error('ffmpeg is not there any more');
   const out = join(dir, 'proxy.mp4');
   const info = await probeVideo(ffprobe, source, container);
+  // Refresh legacy rows whose dimensions came from the scaled poster.
+  if (row.kind === 'video' && info.width && info.height)
+    await db
+      .update(asset)
+      .set({ width: info.width, height: info.height })
+      .where(eq(asset.id, assetId));
   const plan = videoPlan(container, info, row.size, settings);
   if (plan.kind === 'ladder') {
     const result = await makeLadder(deps, row, container, source, dir, info, plan, onProgress, {

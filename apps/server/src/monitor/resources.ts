@@ -174,11 +174,11 @@ export async function readGpu(proc = '/proc'): Promise<GpuReading | null> {
  * The busiest engine. A client that exited between the readings is lost; one that opened in
  * between counts its whole time counter, which starts at zero when its file is opened.
  */
-export function gpuPercent(
+function gpuLoads(
   before: GpuReading | null | undefined,
   after: GpuReading | null | undefined,
   ms: number,
-): number | null {
+): Map<string, number> | null {
   if (!before || !after || ms <= 0) return null;
   const engines = new Map<string, number>();
   for (const [id, client] of after) {
@@ -197,5 +197,43 @@ export function gpuPercent(
       engines.set(key, (engines.get(key) ?? 0) + delta / elapsed / counter.capacity);
     }
   }
-  return engines.size ? Math.min(100, Math.max(...engines.values()) * 100) : 0;
+  return engines;
+}
+
+/** The busiest engine between two readings; new time counters count from zero. */
+export function gpuPercent(
+  before: GpuReading | null | undefined,
+  after: GpuReading | null | undefined,
+  ms: number,
+): number | null {
+  const loads = gpuLoads(before, after, ms);
+  return loads ? Math.min(100, Math.max(0, ...loads.values()) * 100) : null;
+}
+
+/** Keep measured engine time after a client closes, until its interval leaves the window. */
+export class GpuWindow {
+  private previous: { gpu: GpuReading | null | undefined; at: number } | null = null;
+  private intervals: { from: number; to: number; loads: Map<string, number> }[] = [];
+  constructor(private readonly windowMs: number) {}
+
+  sample(gpu: GpuReading | null | undefined, at: number): number | null {
+    const previous = this.previous;
+    this.previous = { gpu, at };
+    if (!previous) return null;
+    const loads = gpuLoads(previous.gpu, gpu, at - previous.at);
+    if (!loads) {
+      this.intervals = [];
+      return null;
+    }
+    this.intervals.push({ from: previous.at, to: at, loads });
+    const from = Math.max(at - this.windowMs, this.intervals[0]?.from ?? at);
+    this.intervals = this.intervals.filter((i) => i.to > from);
+    const engines = new Map<string, number>();
+    for (const interval of this.intervals) {
+      const ms = interval.to - Math.max(from, interval.from);
+      for (const [engine, load] of interval.loads)
+        engines.set(engine, (engines.get(engine) ?? 0) + load * ms);
+    }
+    return Math.min(100, (Math.max(0, ...engines.values()) / (at - from)) * 100);
+  }
 }

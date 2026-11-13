@@ -17,6 +17,7 @@ import {
   number,
   openProblems,
   percent,
+  responseTime,
 } from './format.ts';
 import { ServerChart } from './ServerChart.tsx';
 import {
@@ -249,7 +250,7 @@ function Trend({ status, actions }: { status: ServerStatus; actions: ServerActio
             series={[{ label: 'p95', tone: 'cpu', values: lat }]}
             max={latMax}
             ticks={axis(latMax)}
-            format={(v) => (v === 0 ? '0' : `${number(v, lang, 0)} ms`)}
+            format={(v) => responseTime(v, lang)}
             xLabels={labels}
           />
         </TrendCell>

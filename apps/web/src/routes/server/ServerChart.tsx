@@ -28,6 +28,35 @@ export interface ChartSpan {
 const PAD = { left: 46, right: 6, top: 8, bottom: 20 };
 
 /**
+ * Width of a chart text at 11px. shortcut: 7px per character is above the average glyph of the
+ * UI font, so it errs wide; measure the rendered text if a script with wider glyphs overlaps.
+ */
+export const textWidth = (text: string) => text.length * 7;
+
+/** Room left of the plot for the widest tick label, so none is cut (#745). */
+export const tickGutter = (labels: string[]) =>
+  Math.max(PAD.left, ...labels.map((s) => textWidth(s) + 6));
+
+/** Keep every event line, but label only non-overlapping boxes inside the plot. */
+export function markerLabels(
+  markers: ChartMarker[],
+  xAt: (ms: number) => number,
+  left: number,
+  right: number,
+) {
+  let end = left - 8;
+  return [...markers]
+    .sort((a, b) => Date.parse(a.t) - Date.parse(b.t))
+    .flatMap((marker) => {
+      const width = textWidth(marker.label);
+      const x = Math.max(left, Math.min(xAt(Date.parse(marker.t)) + 4, right - width));
+      if (width > right - left || x < end + 8) return [];
+      end = x + width;
+      return [{ marker, x, width }];
+    });
+}
+
+/**
  * Points of a series, split where values are missing or no sample came for a while (a stopped
  * server), so the line does not lie across a gap.
  */
@@ -99,7 +128,7 @@ export function ServerChart({
 
   const n = times.length;
   const at = times.map((t) => new Date(t).getTime());
-  const pad = PAD;
+  const pad = { ...PAD, left: tickGutter(ticks.map(format)) };
   const innerW = Math.max(1, width - pad.left - pad.right);
   const innerH = height - pad.top - pad.bottom;
   const zero = mirrored ? pad.top + innerH / 2 : pad.top + innerH;
@@ -215,16 +244,16 @@ export function ServerChart({
               return (
                 <g key={`${m.t}-${m.label}`} className="server-chart__marker">
                   <line x1={mx} x2={mx} y1={pad.top} y2={pad.top + innerH} />
-                  <text
-                    x={Math.min(mx + 4, width - 4)}
-                    y={pad.top + 10}
-                    textAnchor={mx > width - 120 ? 'end' : 'start'}
-                  >
-                    {m.label}
-                  </text>
                 </g>
               );
             })}
+            {markerLabels(markers, xAt, pad.left, width - pad.right).map(({ marker, x }) => (
+              <g key={`${marker.t}-${marker.label}`} className="server-chart__marker">
+                <text x={x} y={pad.top + 10}>
+                  {marker.label}
+                </text>
+              </g>
+            ))}
             {active !== null && (
               <g>
                 <line
