@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start with the state of the containers and the last lines of the logs:
+Check container status, logs and health:
 
 ```sh
 docker compose ps
@@ -9,7 +9,7 @@ curl -s http://127.0.0.1:3000/api/v1/health
 ```
 
 `/api/v1/health` answers `"status":"ok"` when the database and the job queue are reachable,
-and names the one that is not otherwise. Once you can sign in, **Settings → About → Diagnostics**
+and names the one that is not otherwise. Once you can sign in, **Settings → Server status**
 checks the network, the proxy and the services from the app.
 
 **`set AUTH_SECRET in .env`, or another `set … in .env`.** `docker compose` cannot find the value:
@@ -40,17 +40,19 @@ before PostgreSQL 18: see [Upgrades](upgrades.md#upgrading-to-postgresql-18).
 
 **Videos and PDFs show a generic card.** The [standard image](README.md#the-image) includes media tools. Check that
 [media previews](configuration.md#media-previews) are enabled and inspect worker logs for conversion
-errors. Files uploaded with an older image without media tools keep their generic card.
+errors. On 0.9.0 use `0.9.0-media`. Existing videos can have missing copies regenerated from
+**Settings → Video** on current `main`; this does not regenerate PDF thumbnails.
 
 **The report icon is missing, or a report waits.** Without a destination, reports are off and the
 icon is hidden: see [What leaves your server](README.md#what-leaves-your-server). **Settings → About →
 Reports** shows what is waiting and why: a waiting report reads _Waiting to be sent_, and its
 expanded row has **Try again**.
 
-**The page loads but sign-in fails or loops back to the login.** `PUBLIC_URL` does not match the
-address in the browser (scheme, host or port), or the proxy does not send
-`X-Forwarded-Proto: https`. Sessions use secure cookies that browsers only send to exactly that
-address over HTTPS.
+**The page loads but sign-in fails or loops back to the login.** Check that the proxy replaces
+forwarded host/protocol headers and that `TRUST_PROXY` accepts its actual peer address.
+HTTPS uses Secure host cookies; direct HTTP uses plain host-only cookies. Sign in separately
+on each hostname. Google and OIDC require the canonical `PUBLIC_URL`; password sign-in also
+works on [private HTTP addresses](configuration.md#direct-lan-and-tailscale-access).
 
 **Sign-in is refused for everyone at once, as if after too many attempts.** Inkadra sees every
 request coming from the proxy: `TRUST_PROXY` does not include the proxy's address. See
@@ -74,8 +76,8 @@ page in the proxy's style (not Inkadra's) gives it away.
 
 **The container is "unhealthy".** `docker inspect --format '{{json .State.Health}}' <container>`
 shows what the health check saw. For `web` and `all` it calls `/api/v1/health`, for `collab`
-the WebSocket server; `worker` is healthy while it runs.
+an HTTP check on the collaboration server's `/`; `worker` is healthy while it runs.
 
-Still stuck? Open an [issue](https://github.com/inkadra/inkadra/issues/new/choose) with the
+If these checks do not explain the problem, open an [issue](https://github.com/inkadra/inkadra/issues/new/choose) with the
 output of `docker compose ps`, the logs and your proxy configuration, with secrets and domains
 removed.

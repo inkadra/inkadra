@@ -11,12 +11,11 @@ Inkadra keeps three kinds of data:
 If Valkey's data is lost, the queues are rebuilt when the server starts: only jobs that were
 waiting to run are lost, and the sign-in counters start again.
 
-Files never change once uploaded: a new version is a new file. That makes them easy to copy
-and to back up incrementally.
+Uploaded files are immutable; back them up incrementally.
 
 ## A Docker volume (default)
 
-Nothing to set. Compose creates the `inkadra-data` volume and keeps it across upgrades.
+Compose creates the `inkadra-data` volume and keeps it across upgrades.
 `docker volume inspect inkadra_inkadra-data` shows where Docker stores it.
 
 ## A folder on the host
@@ -54,8 +53,7 @@ Avoid network shares (NFS, SMB) for `POSTGRES_DATA`: Postgres needs local disk s
 
 ## Data on different disks
 
-Files want a large disk, the database wants a fast one. Each kind of data can live on its own disk
-by giving it its own folder in `.env`, for example files on large hard disks and the rest on an SSD:
+Set a separate host folder for each kind of data in `.env`:
 
 ```sh
 INKADRA_DATA=/mnt/hdd/inkadra/data          # uploads, previews, nightly backups, upload parts
@@ -155,14 +153,12 @@ docker compose -f compose.yaml -f deploy/compose.rustfs.yaml up -d
 ```
 
 RustFS is not published on the host: only Inkadra talks to it. Its data is in the
-`rustfs-data` volume, or in `RUSTFS_DATA` (owned by uid 10001). MinIO's own server would work
-the same way, but MinIO no longer publishes container images.
+`rustfs-data` volume, or in `RUSTFS_DATA` (owned by uid 10001).
 
 ## Moving between local and S3
 
 Switching `STORAGE_DRIVER` does not move the files already uploaded, so pick the storage before
-you start real work. A command that moves files between drivers is planned for 1.0; meanwhile
-exporting projects and importing them on an instance with the other driver moves them one by
+you start real work. Exporting projects and importing them on an instance with the other driver moves them one by
 one.
 
 ## Space limits
@@ -174,21 +170,3 @@ new files are refused, nothing is deleted. To fix them for an instance you host 
 else, set `STORAGE_LIMIT` and `STORAGE_LIMIT_PER_USER` (see [Configuration](configuration.md)):
 the fields are then read-only in Settings. See
 [decision 0081](../decisions/0081-storage-limits.md).
-
-### Client asset ids
-
-A tus creation may add `clientAssetId` (a UUID, base64 like every value) to `Upload-Metadata`,
-next to `projectId`, optional `boardId`, `filename` and `filetype`. The asset id is then
-derived, not chosen: a UUIDv5 whose namespace is the uploader's user id and whose name is
-the lowercase `clientAssetId` (`clientAssetUploadId` in `@inkadra/shared`), so a client
-knows it offline and another account's identical `clientAssetId` is a different asset.
-
-Repeating the creation with the same metadata and `Upload-Length` is checked like a first
-creation and answers 201 with the same `Location`, `Inkadra-Asset-Id` and `Upload-Expires`,
-plus `Upload-Offset`; it never resets stored bytes. Resume with HEAD and PATCH. A finished
-upload answers with its full offset and is never processed again. The same `clientAssetId`
-for another project, name or length returns 409. Once the asset has been deleted (or the
-upload cancelled), the creation returns 409 with `error.details.reason` set to
-`client_asset_deleted`: make a new `clientAssetId`. After the purge of unfinished uploads,
-the same id starts again at offset zero. Without `clientAssetId`, the server picks a random
-id as before. See [decision 0097](../decisions/0097-client-asset-identifiers.md).
