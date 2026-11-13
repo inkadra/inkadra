@@ -2313,6 +2313,10 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
     overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
+  /* The scrolling row clips a ring drawn outside the button: draw it inside. */
+  .toolbar__tools .toolbar__btn:focus-visible {
+    outline-offset: -2px;
+  }
   /* A tool cut by the edge fades out instead, so the row reads as one that scrolls
      (chrome.tsx sets the attributes from the scroll position). */
   .toolbar__tools[data-more-end] {
