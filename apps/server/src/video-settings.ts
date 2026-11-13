@@ -3,10 +3,11 @@ import {
   type UpdateVideoSettings,
   VIDEO_RUNGS,
   type VideoQuality,
-  type VideoRung,
-  type VideoRungMode,
+  VideoRung,
+  VideoRungMode,
   VideoSettings,
   type VideoSettingsView,
+  z,
 } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { Config } from './config.ts';
@@ -18,6 +19,14 @@ import type { ProxySettings } from './media/video.ts';
 
 type Reader = Pick<Database, 'select' | 'execute'>;
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/** What may be stored: any part of the settings, each part checked. */
+const Stored = z.object({
+  quality: VideoSettings.shape.quality.optional().catch(undefined),
+  rungs: z.partialRecord(VideoRung, VideoRungMode).optional().catch(undefined),
+  playable: VideoSettings.shape.playable.optional().catch(undefined),
+  live: VideoSettings.shape.live.partial().optional().catch(undefined),
+});
 
 /** Key of the video settings in `instance_setting` (decision 0128). */
 const KEY = 'video';
@@ -40,11 +49,12 @@ export async function readVideoSettings(
   env: VideoEnv,
 ): Promise<{ settings: VideoSettings; locked: VideoSettingsView['locked'] }> {
   const [row] = await db.select().from(instanceSetting).where(eq(instanceSetting.key, KEY));
-  const stored = VideoSettings.partial().safeParse(row?.value ?? {});
+  const stored = Stored.safeParse(row?.value ?? {});
   const value = stored.success ? stored.data : {};
   const settings: VideoSettings = {
     ...DEFAULT_VIDEO_SETTINGS,
-    ...value,
+    ...(value.quality ? { quality: value.quality } : {}),
+    ...(value.playable ? { playable: value.playable } : {}),
     rungs: { ...DEFAULT_VIDEO_SETTINGS.rungs, ...value.rungs },
     live: { ...DEFAULT_VIDEO_SETTINGS.live, ...value.live },
   };
