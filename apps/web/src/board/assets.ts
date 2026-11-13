@@ -102,11 +102,21 @@ function suspended(): boolean {
   return navigator.onLine === false || document.visibilityState === 'hidden';
 }
 
-/** One poller per observed asset, even when several cards show the same file. */
-function startPolling(id: string) {
-  if (pollers.has(id) || !needsPolling(id)) return;
+/**
+ * One poller per observed asset, even when several cards show the same file. `once` asks at
+ * least once even about an asset that looks settled.
+ */
+function startPolling(id: string, once = false) {
+  if (pollers.has(id) || (!once && !needsPolling(id))) return;
+  let ask = once;
   const poller = createPoller({
-    run: () => (needsPolling(id) ? fetchOnce(id) : Promise.resolve({ kind: 'done' })),
+    run: () => {
+      if (!ask && !needsPolling(id)) return Promise.resolve({ kind: 'done' });
+      return fetchOnce(id).then((outcome) => {
+        if (outcome.kind !== 'retry') ask = false;
+        return outcome;
+      });
+    },
     interval: POLL_MS,
     max: 60_000,
     hidden: suspended,
@@ -143,12 +153,9 @@ export function refetchVideosWithoutCopy() {
       cache.delete(id);
       continue;
     }
-    void fetchOnce(id).then(() => {
-      if (!listeners.has(id)) return;
-      pollers.get(id)?.stop();
-      pollers.delete(id);
-      startPolling(id);
-    });
+    pollers.get(id)?.stop();
+    pollers.delete(id);
+    startPolling(id, true);
   }
 }
 
