@@ -461,7 +461,8 @@
       "glyphs_other": "{{count}} glifi",
       "polygons_one": "{{count}} poligono",
       "polygons_other": "{{count}} poligoni",
-      "unavailable": "Formato non supportato: copia riproducibile non disponibile."
+      "unavailable": "Formato non supportato: copia riproducibile non disponibile.",
+      "watchable": "Si può già guardare"
     },
     "voiceNote": {
       "label": "Nota vocale",
@@ -1977,7 +1978,16 @@
     "pdfPage": "{{name}}, pagina {{page}} di {{total}}",
     "pdfPrevious": "Pagina precedente",
     "pdfNext": "Pagina successiva",
-    "pdfPageNumber": "Pagina {{page}} di {{total}}"
+    "pdfPageNumber": "Pagina {{page}} di {{total}}",
+    "quality": {
+      "title": "Qualità",
+      "label": "Qualità: {{quality}}",
+      "auto": "Auto",
+      "autoAt": "Auto · {{quality}}",
+      "now": "ora {{quality}}",
+      "preparing": "in preparazione · {{percent}}%",
+      "original": "Originale"
+    }
   },
   "search": {
     "title": "Cerca",
@@ -5287,6 +5297,10 @@
           "2": {
             "title": "Anche i link",
             "text": "YouTube e Vimeo si guardano nella card."
+          },
+          "3": {
+            "title": "Qualità del video",
+            "text": "Nel viewer, «Qualità» sceglie la risoluzione; con Auto segue la connessione."
           }
         }
       },

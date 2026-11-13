@@ -2,6 +2,7 @@
 import { type Element, hiddenFromGuests, type VideoFrameSource } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
 import { Button, Icon, Select } from '@inkadra/ui';
+import { readyRungs } from './video-source.ts';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -245,7 +246,9 @@ export function FrameGrab({
       if (!player || !asset) throw new Error('missing-video');
       captureController.current = new AbortController();
       const captured = await captureVideoFrame(player, captureController.current.signal);
-      if (asset.proxy?.status === 'ready') {
+      // Not watching the original (a copy or a rung of the ladder, decision 0128): the still
+      // comes from the original on the server, at its own resolution.
+      if (asset.proxy?.status === 'ready' || readyRungs(asset).length > 0) {
         try {
           const bytes = await api.bytes(
             `/assets/${asset.id}/frame?time=${captured.timeSeconds}`,

@@ -162,6 +162,7 @@ export const TOURS: Tour[] = [
       { anchor: 'video', media: 'play', side: 'right' },
       { anchor: null, media: 'play' },
       { anchor: null, media: 'clip' },
+      { anchor: null, media: 'play' },
     ],
   },
   {

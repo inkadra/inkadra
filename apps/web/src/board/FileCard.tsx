@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { formatDuration } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import type { Asset } from '@inkadra/shared';
+import type { Asset, AssetRendition } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import {
   type CSSProperties,
@@ -14,6 +14,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { AudioPlayer, useWaveform } from './AudioPlayer.tsx';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
+import { rungLabel } from './QualityMenu.tsx';
+import { type PlaybackSource, playbackSource, useVideoSource } from './video-source.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { useBoard } from './context.ts';
 import { FontSpecimen, ModelTile } from './FontSpecimen.tsx';
@@ -357,15 +359,53 @@ function ReadyFileCard({
  * large board holds no video elements. A file the browser turns out not to read goes to the
  * viewer, which explains and offers the download.
  */
+/**
+ * The rungs of a ladder on a card (decision 0128): "Preparazione… 480p · 35%" before any is
+ * ready, "Si può già guardare · 1080p · 64%" once the card plays, a bar per rung.
+ */
+function RungsProgress({
+  rungs,
+  making,
+  watchable,
+}: {
+  rungs: AssetRendition[];
+  making: AssetRendition | undefined;
+  watchable: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <span className="fcard__prep fcard__prep--rungs" role="status">
+      <span className="fcard__prep-line">
+        <span>{watchable ? t('board.file.watchable') : t('board.file.preparing')}</span>
+        {making && (
+          <span className="num">
+            {rungLabel(making.name)} · {making.progress ?? 0}%
+          </span>
+        )}
+      </span>
+      <span className="fcard__rungs" aria-hidden="true">
+        {rungs.map((r) => (
+          <span key={r.name} className={r.status === 'ready' ? 'fcard__rung is-done' : 'fcard__rung'}>
+            <span>{rungLabel(r.name)}</span>
+            <span className="fcard__bar">
+              <i style={{ width: `${r.status === 'ready' ? 100 : (r.progress ?? 0)}%` }} />
+            </span>
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
 function CardVideo({
   element,
-  src,
+  source,
   poster,
   name,
   hadFocus,
 }: {
   element: FileElement;
-  src: string;
+  source: PlaybackSource;
   poster: string;
   name: string;
   hadFocus: RefObject<boolean>;
@@ -373,6 +413,12 @@ function CardVideo({
   const { t } = useTranslation();
   const { openElement } = useBoard();
   const video = useRef<HTMLVideoElement>(null);
+  // Auto on the card: the playlist where there is one, the plain file otherwise.
+  const { src, hls } = useVideoSource(video, source);
+  // hls.js attaches after the first play was asked: ask again once it feeds the video.
+  useEffect(() => {
+    if (hls) void video.current?.play()?.catch(() => {});
+  }, [hls]);
   const id = element.id;
   useInlineStops(id, video);
   // Playing here, not with autoPlay: StrictMode's second mount has to start it again. A layout
@@ -423,10 +469,15 @@ function VideoPreview({
   const { t } = useTranslation();
   const { openElement } = useBoard();
   const poster = asset.variants.length > 0 ? pickVariant(asset, pixels) : '';
-  const source = playbackUrl(asset);
+  const playable = playbackSource(asset);
+  const source = playable.hls ?? playable.src;
   const proxy = asset.proxy;
-  const preparing = proxy?.status === 'queued' || proxy?.status === 'processing';
+  // A ladder plays as soon as its smallest rung is ready (decision 0128).
+  const preparing =
+    !playable.hls && (proxy?.status === 'queued' || proxy?.status === 'processing');
   const percent = proxy?.status === 'processing' ? (proxy.progress ?? null) : null;
+  const rungs = [...(asset.playback?.renditions ?? [])].sort((a, b) => Number(a.name) - Number(b.name));
+  const making = rungs.find((r) => r.status === 'processing') ?? rungs.find((r) => r.status === 'queued');
   // A guest whose link allows no downloads gets a picture as the url (guest-assets.ts): nothing
   // to play on the card, and the viewer shows them that picture as before.
   const plays = !!source && !asset.variants.some((variant) => variant.url === source);
@@ -448,7 +499,7 @@ function VideoPreview({
       {playing && source ? (
         <CardVideo
           element={element}
-          src={source}
+          source={playable}
           poster={poster}
           name={asset.filename}
           hadFocus={hadFocus}
@@ -458,7 +509,9 @@ function VideoPreview({
           {poster && (
             <img className="fcard__img" src={poster} alt="" draggable={false} decoding="async" />
           )}
-          {preparing ? (
+          {preparing && rungs.length > 0 ? (
+            <RungsProgress rungs={rungs} making={making} watchable={false} />
+          ) : preparing ? (
             <span className="fcard__prep" role="status">
               <span>{t('board.file.preparing')}</span>
               <span className="fcard__bar" aria-hidden="true">
@@ -489,13 +542,19 @@ function VideoPreview({
               </button>
             )
           )}
+          {!preparing && making && playable.hls && (
+            <RungsProgress rungs={rungs} making={making} watchable />
+          )}
           {!preparing && state === 'ready' && !source && (
             <span className="fcard__prep" role="status">
               {t('board.file.unavailable')}
             </span>
           )}
           {!preparing && source && asset.durationMs !== null && asset.durationMs > 0 && (
-            <span className="card__duration">{formatDuration(asset.durationMs)}</span>
+            // Above the rungs while they are made, as in the mockup of decision 0128.
+            <span className={making && playable.hls ? 'card__duration card__duration--top' : 'card__duration'}>
+              {formatDuration(asset.durationMs)}
+            </span>
           )}
           {state === 'processing' && !poster && (
             <span className="fcard__state">{t('board.image.processing')}</span>

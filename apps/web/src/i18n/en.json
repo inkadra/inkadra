@@ -461,7 +461,8 @@
       "glyphs_other": "{{count}} glyphs",
       "polygons_one": "{{count}} polygon",
       "polygons_other": "{{count}} polygons",
-      "unavailable": "Unsupported format: no playable copy is available."
+      "unavailable": "Unsupported format: no playable copy is available.",
+      "watchable": "Ready to watch"
     },
     "voiceNote": {
       "label": "Voice note",
@@ -1977,7 +1978,16 @@
     "pdfPage": "{{name}}, page {{page}} of {{total}}",
     "pdfPrevious": "Previous page",
     "pdfNext": "Next page",
-    "pdfPageNumber": "Page {{page}} of {{total}}"
+    "pdfPageNumber": "Page {{page}} of {{total}}",
+    "quality": {
+      "title": "Quality",
+      "label": "Quality: {{quality}}",
+      "auto": "Auto",
+      "autoAt": "Auto · {{quality}}",
+      "now": "now {{quality}}",
+      "preparing": "preparing · {{percent}}%",
+      "original": "Original"
+    }
   },
   "search": {
     "title": "Search",
@@ -5287,6 +5297,10 @@
           "2": {
             "title": "Links too",
             "text": "YouTube and Vimeo play in the card."
+          },
+          "3": {
+            "title": "Video quality",
+            "text": "In the viewer, Quality picks the resolution; Auto follows the connection."
           }
         }
       },
