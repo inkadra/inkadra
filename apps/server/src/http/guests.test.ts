@@ -2061,7 +2061,11 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       })
       .returning();
     const V = clip?.id as string;
-    await deps.storage.write(`variants/${V}/rabcdef-480.mp4`, Buffer.from('fragmented'), 'video/mp4');
+    await deps.storage.write(
+      `variants/${V}/rabcdef-480.mp4`,
+      Buffer.from('fragmented'),
+      'video/mp4',
+    );
     await db.insert(assetRendition).values({
       assetId: V,
       name: '480',
@@ -2103,7 +2107,9 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(part.status).toBe(206);
     expect(part.text).toBe('fragm');
     // No other file, no rung that is not there, nothing without a session or for another asset.
-    expect((await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/file`))).status).toBe(404);
+    expect((await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/file`))).status).toBe(
+      404,
+    );
     expect(
       (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/hls/1080.mp4`))).status,
     ).toBe(404);
@@ -2112,8 +2118,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     ).toBe(404);
     expect((await call(null, 'GET', g(link, `/assets/${V}/hls/master.m3u8`))).status).toBe(401);
     expect(
-      (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/hls/master.m3u8`)))
-        .status,
+      (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/hls/master.m3u8`))).status,
     ).toBe(404);
   });
 

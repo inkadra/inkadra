@@ -64,7 +64,6 @@ import {
   sendRanged,
   sendWaveform,
 } from './assets-routes.ts';
-import { renditionsOf, sendHls, toPlayback } from './hls.ts';
 import { toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import {
@@ -81,6 +80,7 @@ import {
   linkStopped,
 } from './guest-context.ts';
 import { registerGuestReviewRoutes } from './guest-review.ts';
+import { renditionsOf, sendHls, toPlayback } from './hls.ts';
 import { RateLimiter } from './link-previews.ts';
 import { createTileServer } from './map-tiles.ts';
 import type { PlanSheets } from './plan-sheet-routes.ts';
