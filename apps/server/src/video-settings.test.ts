@@ -17,7 +17,11 @@ const env = { VIDEO_PROXIES: true } as const;
 
 describe('video settings', () => {
   it('reads the defaults, then the stored choices', async () => {
-    expect((await readVideoSettings(db(null), env)).settings).toEqual(DEFAULT_VIDEO_SETTINGS);
+    // Without a GPU found, one live session at a time (three with one, from the spike).
+    expect((await readVideoSettings(db(null), env)).settings).toEqual({
+      ...DEFAULT_VIDEO_SETTINGS,
+      live: { ...DEFAULT_VIDEO_SETTINGS.live, maxSessions: 1 },
+    });
     const stored = await readVideoSettings(
       db({ quality: 'high', rungs: { '2160': 'stored' } }),
       env,
