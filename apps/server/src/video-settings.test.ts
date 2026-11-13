@@ -180,7 +180,9 @@ describe('performance test from the page', () => {
         }),
       }),
     };
-    return { fake: fake as never, use: (k: string) => {
+    return {
+      fake: fake as never,
+      use: (k: string) => {
         key = k;
       },
     };
