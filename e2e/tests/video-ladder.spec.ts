@@ -157,26 +157,24 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
         ],
       },
     }),
-    // 1080p offered only live ("Solo al volo"): no copy is coming, so the card just plays.
+    // Every rung offered only live: no stored copy exists or is coming.
     liveOnly: (real: Asset) => ({
       ...real,
+      proxy: { status: 'skipped', progress: null, url: null },
       playback: {
         ...real.playback,
-        renditions: [
-          ...(real.playback?.renditions ?? []),
-          {
-            name: '1080',
-            status: 'queued',
-            progress: null,
-            width: null,
-            height: null,
-            bitrate: null,
-            size: null,
-            url: null,
-            live: true,
-            liveOnly: true,
-          },
-        ],
+        renditions: ['480', '720', '1080'].map((name) => ({
+          name,
+          status: 'queued',
+          progress: null,
+          width: null,
+          height: null,
+          bitrate: null,
+          size: null,
+          url: null,
+          live: true,
+          liveOnly: true,
+        })),
       },
     }),
     prores: (real: Asset) => ({
@@ -206,11 +204,16 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
       await expect(card.locator('.fcard__prep')).toHaveCount(0);
     } else await expect(card.locator('.fcard__prep')).toBeVisible();
     await shoot(page, `ladder-card-${name}`);
-    if (name === 'live') {
+    if (name === 'live' || name === 'liveOnly') {
       await card.locator('.fcard__footer').dblclick();
       await page.locator('.viewer-quality__button').click();
       await expect(page.locator('.viewer-quality__note')).toBeVisible();
-      await shoot(page, 'ladder-viewer-live');
+      if (name === 'liveOnly') {
+        await expect(page.locator('.viewer-quality__note')).toContainText(
+          'senza salvare una copia',
+        );
+      }
+      await shoot(page, `ladder-viewer-${name}`);
     }
     await page.unroute(`**/api/v1/assets/${assetId}`);
   }
