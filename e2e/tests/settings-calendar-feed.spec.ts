@@ -38,9 +38,9 @@ test('copy a private feed and revoke the previous link', async ({ page, context 
   const section = page.getByRole('region', { name: 'Calendario', exact: true });
   await expect(section.getByRole('button', { name: 'Rigenera…', exact: true })).toBeDisabled();
   releaseMetadata?.();
-  await expect(section.getByRole('button', { name: 'Copia', exact: true })).toBeEnabled();
+  await expect(section.getByRole('button', { name: 'Copia link', exact: true })).toBeEnabled();
   const old = await section.getByLabel('Link del tuo calendario').inputValue();
-  await section.getByRole('button', { name: 'Copia', exact: true }).click();
+  await section.getByRole('button', { name: 'Copia link', exact: true }).click();
   expect((await page.evaluate(() => navigator.clipboard.readText())) === old).toBe(true);
   await expect(page.getByRole('status').filter({ hasText: 'Link copiato' })).toBeVisible();
   const feed = await page.request.get(old);

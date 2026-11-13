@@ -112,6 +112,8 @@
 }
 .server-hint a {
   color: var(--ink-accent-soft-fg);
+  /* Not by colour alone: in dark the link and the grey text differ by 1.4:1 (#677). */
+  text-decoration: underline;
   text-underline-offset: 2px;
   white-space: nowrap;
 }
