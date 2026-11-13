@@ -13,8 +13,13 @@ export function createDatabase(url: string, max = 10) {
   return { db, sql };
 }
 
+/** Session lock key that serializes the start of every process on one database (#807). */
+const MIGRATION_LOCK = 10894;
+
 /**
- * Applies the migrations and the data steps only code can do. `productionBoards` runs the move
+ * Applies the migrations and the data steps only code can do. Processes starting together take
+ * turns on an advisory lock: Drizzle's migrator takes none, so two replicas would apply the same
+ * migrations at once and the second would fail with "already exists". `productionBoards` runs the move
  * of decision 0123 too: the server's start passes it (PRODUCTION_BOARD_MOVE), a backup restore
  * on a partial schema does not.
  */
@@ -25,6 +30,8 @@ export async function runMigrations(
 ) {
   const { db, sql } = createDatabase(url, 1);
   try {
+    // One connection (max 1): the session lock holds until sql.end() below.
+    await sql`select pg_advisory_lock(${MIGRATION_LOCK})`;
     await migrate(db, { migrationsFolder });
     // Data that only code can move: the old board cast links become crew rows (decision 0091).
     await mergeCastLinks(db);
