@@ -29,11 +29,24 @@ export const PROBLEMS_ID = 'server-problems';
 export const reducedMotion = () =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
-const scrollToProblems = () =>
-  document.getElementById(PROBLEMS_ID)?.scrollIntoView({
-    behavior: reducedMotion() ? 'auto' : 'smooth',
-    block: 'start',
-  });
+/**
+ * Scrolls the settings window's body only: `scrollIntoView` would also move the window inside
+ * the page. Elsewhere (tests, a page without the window) it falls back to `scrollIntoView`.
+ */
+export function scrollToItem(item: HTMLElement | null, block: 'start' | 'center') {
+  if (!item) return;
+  const behavior = reducedMotion() ? 'auto' : 'smooth';
+  const box = item.closest<HTMLElement>('.settings-window__body');
+  if (!box) {
+    item.scrollIntoView({ behavior, block });
+    return;
+  }
+  const offset = item.getBoundingClientRect().top - box.getBoundingClientRect().top;
+  const room = block === 'center' ? (box.clientHeight - item.offsetHeight) / 2 : 12;
+  box.scrollTo({ top: box.scrollTop + offset - Math.max(0, room), behavior });
+}
+
+const scrollToProblems = () => scrollToItem(document.getElementById(PROBLEMS_ID), 'start');
 
 /** The sentence and the button of the status card, from its verdict. */
 function verdict(

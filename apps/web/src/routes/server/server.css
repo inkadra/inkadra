@@ -570,8 +570,4 @@
     order: 1;
     margin-left: auto;
   }
-  .server-admins .settings-row__control {
-    margin-left: 44px;
-    width: auto;
-  }
 }

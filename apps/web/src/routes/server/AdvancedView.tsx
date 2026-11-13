@@ -26,7 +26,7 @@ import {
   ProcessTable,
   problemText,
   QueueTable,
-  reducedMotion,
+  scrollToItem,
   ShareBar,
   StatusCard,
 } from './SimpleView.tsx';
@@ -430,7 +430,7 @@ function ErrorLog({ status, actions }: { status: ServerStatus; actions: ServerAc
     if (!peeked) return;
     const item = items.current.get(peeked);
     if (!item) return;
-    item.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    scrollToItem(item, 'center');
     item.focus({ preventScroll: true });
   }, [peeked]);
   return (
