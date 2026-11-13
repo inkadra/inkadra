@@ -210,6 +210,7 @@ export async function probeVideo(
 /**
  * Writes one frame as PNG: a tenth of the way in (at most 5 s), which skips black leaders and
  * fades, or the first frame of very short clips. ffmpeg applies the rotation of phone videos.
+ * An HDR frame is tone mapped like the copies, or the poster comes out washed out.
  */
 export async function extractPoster(
   ffmpeg: string,
@@ -217,6 +218,7 @@ export async function extractPoster(
   out: string,
   durationMs: number | null,
   container: string | null,
+  hdr = false,
 ): Promise<void> {
   const at = durationMs ? Math.min(5, durationMs / 10_000) : 0;
   const grab = (seek: number) =>
@@ -236,7 +238,7 @@ export async function extractPoster(
         '1',
         '-an',
         '-vf',
-        "scale='min(2048,iw)':-2",
+        posterFilter(hdr),
         '-f',
         'image2',
         '-c:v',
@@ -256,6 +258,10 @@ export async function extractPoster(
   await grab(0);
   if ((await written()) === 0) throw new Error('ffmpeg wrote no poster frame');
 }
+
+/** The filter of a poster frame: at most 2048 wide, tone mapped to SDR when HDR. */
+export const posterFilter = (hdr: boolean) =>
+  `scale='min(2048,iw)':-2${hdr ? `,format=yuv420p10le,${TONEMAP}` : ''}`;
 
 // Playable copies (decision 0048) ---------------------------------------------------------
 

@@ -238,7 +238,7 @@ export async function processAsset(
           ? await probeVideo(tools.ffprobe, input, video).catch(() => null)
           : null;
         const durationMs = info?.durationMs ?? null;
-        await extractPoster(tools.ffmpeg, input, posterPath, durationMs, video);
+        await extractPoster(tools.ffmpeg, input, posterPath, durationMs, video, !!info?.hdr);
         const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
         const { status: proxyStatus, enqueue } = await proxyState(
           deps,
