@@ -226,3 +226,61 @@ it('forwards date bounds and keyboard handlers to the underlying date input', as
   );
   expect(onKeyDown).toHaveBeenCalledOnce();
 });
+
+it('opens Inkadra’s calendar instead of the native picker, and chooses with the keys', async () => {
+  const showPicker = vi.fn();
+  HTMLInputElement.prototype.showPicker = showPicker;
+  const onChange = vi.fn();
+  await act(async () =>
+    root.render(
+      <DateField
+        label="End of shoot"
+        value="2026-11-20"
+        rangeStart="2026-11-16"
+        min="2026-11-16"
+        onChange={onChange}
+      />,
+    ),
+  );
+  const input = host.querySelector<HTMLInputElement>('input[type="date"]') as HTMLInputElement;
+  await act(async () => input.click());
+  expect(showPicker).not.toHaveBeenCalled();
+  const grid = host.querySelector<HTMLElement>('[role="grid"]') as HTMLElement;
+  const day = (date: string) => host.querySelector<HTMLElement>(`.ink-date__body [data-day="${date}"]`);
+  expect(day('2026-11-20')?.className).toContain('is-end');
+  expect(day('2026-11-16')?.className).toContain('is-start');
+  expect(day('2026-11-18')?.className).toContain('is-in');
+  expect(day('2026-11-15')?.getAttribute('aria-disabled')).toBe('true');
+  expect(document.activeElement).toBe(day('2026-11-20'));
+  await act(async () =>
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })),
+  );
+  expect(document.activeElement).toBe(day('2026-11-21'));
+  // A disabled day cannot be chosen.
+  await act(async () => day('2026-11-15')?.click());
+  expect(onChange).not.toHaveBeenCalled();
+  await act(async () =>
+    (document.activeElement as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(onChange).toHaveBeenCalledWith('2026-11-21');
+  expect(document.activeElement).toBe(input);
+});
+
+it('closes the calendar with Escape and gives the focus back to the field', async () => {
+  await act(async () =>
+    root.render(<DateField label="Due" value="" required onChange={() => {}} />),
+  );
+  const input = host.querySelector<HTMLInputElement>('input[type="date"]') as HTMLInputElement;
+  await act(async () => input.click());
+  // A required date has nothing to clear.
+  expect(host.querySelector('.ink-date__foot')?.textContent).toBe('Today');
+  await act(async () =>
+    (document.activeElement as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(document.activeElement).toBe(input);
+  expect(input.getAttribute('aria-expanded')).toBe('false');
+});

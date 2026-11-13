@@ -32,7 +32,7 @@ export function expiryDate(iso: string, locale: string, now = new Date()) {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
-/** `yyyy-mm-dd` of a moment in local time, for `<input type="date">`. */
+/** `yyyy-mm-dd` of a moment in local time, for a `DateField`. */
 export function dateInputValue(at: Date) {
   return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
 }

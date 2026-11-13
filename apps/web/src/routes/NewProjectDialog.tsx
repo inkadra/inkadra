@@ -291,6 +291,7 @@ export function ProjectSetupForm({
                   clearLabel={t('onboarding.clearDate', { label: t('onboarding.end') })}
                   value={end}
                   min={start || undefined}
+                  rangeStart={start || undefined}
                   onChange={setEnd}
                 />
               </div>

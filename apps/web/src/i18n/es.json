@@ -202,6 +202,14 @@
     "discard": "Descartar",
     "keep": "Seguir editando"
   },
+  "dateField": {
+    "clear": "Borrar",
+    "today": "Hoy",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente"
+  },
   "notFound": {
     "title": "Página no encontrada",
     "back": "Volver al inicio"

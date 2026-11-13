@@ -230,12 +230,9 @@ select {
   opacity: 0;
   cursor: pointer;
 }
+/* The browser's own picker never opens: Inkadra's calendar takes its place. */
 .ink-date__input::-webkit-calendar-picker-indicator {
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  cursor: pointer;
+  display: none;
 }
 .ink-date__icon {
   display: grid;
@@ -1524,6 +1521,372 @@ select {
   letter-spacing: 0.06em;
   color: var(--ink-text-muted);
 }
+/* The date field's calendar: the Select's surface under the field (above it when there is no
+   room), a bottom sheet on phones. It fades and grows from the field, a new month slides in the
+   way it was reached over the one leaving, and the month grid fades in with a slight scale. */
+.ink-date__layer {
+  position: fixed;
+  inset: auto;
+  left: var(--ink-date-left);
+  top: var(--ink-date-top, auto);
+  bottom: var(--ink-date-bottom, auto);
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-primary);
+  overflow: visible;
+}
+.ink-date__layer.is-closing {
+  pointer-events: none;
+}
+.ink-date__panel {
+  box-sizing: border-box;
+  padding: 12px;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-muted);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-menu);
+  font-size: 13px;
+  transform-origin: top left;
+  transition-property: opacity, translate, scale;
+  transition-duration: var(--ink-dur-base);
+  transition-timing-function: var(--ink-ease-out);
+}
+.ink-date__layer[data-side="above"] .ink-date__panel {
+  transform-origin: bottom left;
+}
+.ink-date__layer.is-closing .ink-date__panel {
+  opacity: 0;
+  transition-duration: var(--ink-dur-fast);
+  transition-timing-function: var(--ink-ease-in);
+}
+@starting-style {
+  .ink-date__layer:popover-open .ink-date__panel {
+    opacity: 0;
+    translate: 0 -4px;
+    scale: 0.97;
+  }
+  .ink-date__layer[data-side="above"]:popover-open .ink-date__panel {
+    translate: 0 4px;
+  }
+}
+.ink-date__sheet-head {
+  display: none;
+}
+.ink-date__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.ink-date__heading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: none;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+.ink-date__heading svg {
+  color: var(--ink-text-muted);
+}
+.ink-date__nav {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: none;
+  color: var(--ink-text-icon);
+  cursor: pointer;
+}
+.ink-date__heading:hover,
+.ink-date__nav:hover {
+  background: var(--ink-surface-2);
+}
+.ink-date__stage {
+  position: relative;
+}
+.ink-date__leaving {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  animation: ink-date-out var(--ink-dur-base) var(--ink-ease-out) forwards;
+}
+.ink-date__body[data-step] {
+  animation: ink-date-in var(--ink-dur-base) var(--ink-ease-out) backwards;
+}
+[data-step="next"] {
+  --ink-date-dx: 8px;
+}
+[data-step="prev"] {
+  --ink-date-dx: -8px;
+}
+.ink-date__body[data-step="view"] {
+  --ink-date-scale: 0.96;
+}
+.ink-date__leaving[data-step="view"] {
+  --ink-date-scale: 1.04;
+}
+@keyframes ink-date-in {
+  from {
+    opacity: 0;
+    translate: var(--ink-date-dx, 0) 0;
+    scale: var(--ink-date-scale, 1);
+  }
+}
+@keyframes ink-date-out {
+  to {
+    opacity: 0;
+    translate: calc(var(--ink-date-dx, 0px) * -1) 0;
+    scale: var(--ink-date-scale, 1);
+  }
+}
+/* Rows without column gaps, so a range is one continuous band. */
+.ink-date__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ink-date__row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.ink-date__wd {
+  display: grid;
+  place-items: center;
+  height: 24px;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ink-date__day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: var(--ink-dur-fast);
+  transition-timing-function: var(--ink-ease-out);
+}
+.ink-date__day:hover {
+  background: var(--ink-surface-2);
+}
+.ink-date__day.is-out {
+  color: var(--ink-text-muted);
+  opacity: 0.55;
+}
+/* Today: accent, with a dot under the number that keeps clear of it. */
+.ink-date__day.is-today {
+  padding-bottom: 3px;
+  color: var(--ink-accent-primary);
+  font-weight: 600;
+}
+.ink-date__day.is-today::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ink-date__day.is-in {
+  border-radius: 0;
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.ink-date__day.is-start {
+  border-radius: var(--ink-radius-sm) 0 0 var(--ink-radius-sm);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  font-weight: 600;
+}
+.ink-date__day.is-selected {
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font-weight: 600;
+}
+.ink-date__day.is-selected:hover {
+  background: var(--ink-accent-button-hover);
+}
+/* The end of a range joins the band: square on the left, rounded on the right. */
+.ink-date__day.is-end {
+  border-radius: 0 var(--ink-radius-sm) var(--ink-radius-sm) 0;
+}
+.ink-date__day[aria-disabled="true"] {
+  color: var(--ink-text-muted);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.ink-date__day[aria-disabled="true"]:hover {
+  background: transparent;
+}
+.ink-date__months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.ink-date__month {
+  height: 40px;
+  text-transform: capitalize;
+}
+.ink-date__foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ink-border-muted);
+}
+.ink-date__quiet {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: none;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ink-date__quiet:hover {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}
+.ink-date__today {
+  margin-left: auto;
+  color: var(--ink-accent-primary);
+}
+.ink-date__today:disabled {
+  background: none;
+  color: var(--ink-text-muted);
+  cursor: default;
+}
+@media (max-width: 479px), (pointer: coarse) {
+  .ink-date__layer {
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    background: var(--ink-scrim);
+    transition: opacity var(--ink-dur-base) var(--ink-ease-out);
+  }
+  .ink-date__layer:popover-open {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .ink-date__layer.is-closing {
+    opacity: 0;
+    transition-duration: var(--ink-dur-fast);
+  }
+  .ink-date__panel {
+    padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
+    border-width: 1px 0 0;
+    border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
+    box-shadow: none;
+  }
+  @starting-style {
+    .ink-date__layer:popover-open {
+      opacity: 0;
+    }
+    .ink-date__layer:popover-open .ink-date__panel,
+    .ink-date__layer[data-side="above"]:popover-open .ink-date__panel {
+      translate: 0 24px;
+      scale: none;
+    }
+  }
+  .ink-date__sheet-head {
+    display: block;
+  }
+  .ink-date__handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: 2px;
+    background: var(--ink-border-strong);
+  }
+  .ink-date__title {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .ink-date__head {
+    margin-bottom: 4px;
+  }
+  .ink-date__heading {
+    font-size: 16px;
+  }
+  .ink-date__nav,
+  .ink-date__heading {
+    height: 44px;
+  }
+  .ink-date__nav {
+    width: 44px;
+  }
+  .ink-date__day,
+  .ink-date__month {
+    height: 44px;
+    font-size: 16px;
+  }
+  .ink-date__day.is-today::after {
+    bottom: 6px;
+  }
+  .ink-date__quiet {
+    height: 44px;
+    font-size: 15px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ink-date-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ink-date-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @starting-style {
+    .ink-date__layer:popover-open .ink-date__panel,
+    .ink-date__layer[data-side="above"]:popover-open .ink-date__panel {
+      translate: none;
+      scale: none;
+    }
+  }
+}
+
 /* Phones: a bottom sheet over a dimmed backdrop, titled with the field, closed by a tap outside. */
 @media (max-width: 479px), (pointer: coarse) {
   .ink-select__layer {

@@ -1505,6 +1505,13 @@ button.plan__badge:hover {
   outline-offset: -1px;
   box-shadow: none;
 }
+/* The date of a link: the shared date field at the height of the panel's other fields. */
+.ink-date.plan-date {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  font-size: inherit;
+}
 .plan-field--strong {
   font-weight: 600;
 }
