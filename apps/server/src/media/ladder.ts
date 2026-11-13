@@ -147,7 +147,7 @@ export function ladderArgs(
 ) {
   const n = outputs.length;
   const gpu = decodesOnGpu(encoder, info);
-  const { pre, post } = frameFilters(info);
+  const { pre, post, hdr } = frameFilters(info);
   const pipelines = outputs.map((o) => {
     const side = rungSide(info, settings, o.rung);
     return videoPipeline(encoder, {
@@ -157,6 +157,7 @@ export function ladderArgs(
       fps: info.frameRate,
       gpu,
       ...(post ? { post } : {}),
+      ...(hdr ? { hdr } : {}),
     });
   });
   const split = outputs.map((_, i) => `[s${i}]`).join('');
