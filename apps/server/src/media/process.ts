@@ -6,7 +6,7 @@ import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
 import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
-import { assetRendition, asset, assetVariant } from '../db/schema.ts';
+import { asset, assetRendition, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';

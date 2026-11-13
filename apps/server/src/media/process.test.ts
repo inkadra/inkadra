@@ -10,7 +10,7 @@ import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { assetRendition, asset, assetVariant, project } from '../db/schema.ts';
+import { asset, assetRendition, assetVariant, project } from '../db/schema.ts';
 import { requeueStuckProxies, STUCK_PROXY_MS } from '../queues.ts';
 import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
