@@ -251,6 +251,12 @@ const errors = {
   },
   403: { description: 'Not allowed', ...json(ApiError) },
   404: { description: 'Not found', ...json(ApiError) },
+  503: {
+    description:
+      'Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds ' +
+      '(code `unavailable`, capability `unavailable-errors`)',
+    ...json(ApiError),
+  },
 };
 registry.register('InvalidToken', InvalidToken);
 const secured: Array<Record<string, string[]>> = [{ session: [] }, { bearer: [] }];
@@ -1932,7 +1938,9 @@ registry.registerPath({
   path: v1('/invitations/{invitationId}/resend'),
   tags: ['Sharing'],
   security: secured,
-  summary: 'Send an email invitation again and push its expiry back.',
+  summary:
+    'Send an email invitation again and push its expiry back. When the email cannot be sent ' +
+    '(503 `unavailable`), the earlier link keeps working.',
   request: { params: idParam('invitationId') },
   responses: { 200: { description: 'Sent', ...json(Invitation) }, ...errors },
 });
