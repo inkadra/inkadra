@@ -5,6 +5,7 @@ const root = process
   .cwd()
   .replaceAll('\\', '/')
   .replace(/\/e2e$/, '');
+const port = process.env.E2E_VITE_PORT ?? '5179';
 for (const width of [1280, 390]) {
   for (const theme of ['light', 'dark']) {
     test(`map dialog active credit ${width} ${theme}`, async ({ page }, testInfo) => {
@@ -34,7 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
 </script></body></html>`,
         }),
       );
-      await page.goto('http://127.0.0.1:5179/__map-dialog');
+      await page.goto(`http://127.0.0.1:${port}/__map-dialog`);
       const dialog = page.getByRole('dialog', { name: 'Milano' });
       const standard = dialog.locator('.mcard__credit:not(.mcard__satellite-credit)');
       await expect(standard).toBeVisible();
