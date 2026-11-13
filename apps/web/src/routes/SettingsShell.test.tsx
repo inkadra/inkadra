@@ -78,7 +78,7 @@ it('hides admin pages from members', async () => {
   expect(host.querySelector('[aria-current="page"]')?.textContent).toBe('admin.account');
 });
 
-it('narrows the pages to those matching the search', async () => {
+it('shows the search results in place of the pages while the search has text', async () => {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={['/settings']}>
@@ -86,30 +86,26 @@ it('narrows the pages to those matching the search', async () => {
       </MemoryRouter>,
     ),
   );
-  const input = host.querySelector<HTMLInputElement>('input[type="search"]');
+  const input = host.querySelector<HTMLInputElement>('input[role="combobox"]');
   if (!input) throw new Error('Search field missing');
-  const type = (value: string) =>
-    act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-  // The keys stand in for translations here: "pages.reports" matches one title.
-  await type('PAGES.REPORTS');
-  expect([...host.querySelectorAll('.settings-nav__item')].map((a) => a.textContent)).toEqual([
-    'settingsUi.pages.reports',
-  ]);
-  expect(host.querySelectorAll('.settings-nav__group h3')).toHaveLength(1);
-  // A setting on a page finds the page and is named next to it (keys stand in here too).
-  await type('keywords.preferences');
-  expect([...host.querySelectorAll('.settings-nav__item')].map((a) => a.textContent)).toEqual([
-    'settingsUi.pages.appearancesettingsUi.keywords.preferences',
-  ]);
-  expect(host.querySelector('.settings-nav__match')?.textContent).toBe(
-    'settingsUi.keywords.preferences',
-  );
-  await type('nothing like this');
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'x');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(0);
   expect(host.querySelector('.settings-nav__empty')?.textContent).toBe('settingsUi.noResults');
+  // The keys stand in for translations here: "pages.reports" matches one title.
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      input,
+      'settingsUi.pages.reports',
+    );
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(
+    [...host.querySelectorAll('[role="option"] .settings-find__label')].map((o) => o.textContent),
+  ).toEqual(['settingsUi.pages.reports']);
+  expect(host.querySelector('footer')?.textContent).toContain('Inkadra 1.2.3');
 });
 
 it('reports autosave progress and failures in the header, and resets per page', async () => {

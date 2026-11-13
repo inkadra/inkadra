@@ -9,8 +9,11 @@ import {
 import { Button, Dialog, DialogActions, Icon, IconButton } from '@inkadra/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router';
 import { api, RequestError } from '../lib/api.ts';
 import { isRenamedDefault, setClassifications, shotOptionLabel } from '../lib/classifications.ts';
+import { anchorCatalog } from './settings-search.ts';
+import { ANCHOR_PARAM } from './settings-sections.ts';
 import './classification-settings.css';
 
 type CatalogKey = 'projectTypes' | 'tags' | ShotCatalogKey;
@@ -55,6 +58,14 @@ export function ClassificationSettings() {
   const [triedSaving, setTriedSaving] = useState(false);
   // The input that takes the focus once it renders: a value just added, or the first error.
   const focusId = useRef<string | null>(null);
+  // A value or catalog the settings search opened: its catalog opens so the row can be shown.
+  const { search, key: visit } = useLocation();
+  const found = anchorCatalog(new URLSearchParams(search).get(ANCHOR_PARAM));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `visit` reopens it on every opening.
+  useEffect(() => {
+    if (found && (ALL_KEYS as string[]).includes(found))
+      setOpen((open) => new Set(open).add(found as CatalogKey));
+  }, [found, visit]);
 
   const load = useCallback(async () => {
     setError(false);
@@ -185,7 +196,11 @@ export function ClassificationSettings() {
                     // The buttons line up: every row keeps the place of Delete once one has it.
                     const deleteSlot = options.some(deletable);
                     return (
-                      <section key={key} className="catalogs__card">
+                      <section
+                        key={key}
+                        className="catalogs__card"
+                        data-setting={`classifications.${key}`}
+                      >
                         <h3 className="catalogs__head">
                           <button
                             type="button"
@@ -242,6 +257,7 @@ export function ClassificationSettings() {
                                   return (
                                     <li key={option.id}>
                                       <div
+                                        data-setting={`classification:${key}:${option.id}`}
                                         className={`catalogs__row${option.archived ? ' is-archived' : ''}`}
                                       >
                                         <span className="catalogs__move">

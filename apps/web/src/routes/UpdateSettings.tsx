@@ -117,14 +117,19 @@ export function UpdateSettings() {
         }
       >
         <div className="settings-rows">
-          <Row label={t('updates.notify')} help={t('updates.notifyHelp')}>
+          <Row anchor="updates.notify" label={t('updates.notify')} help={t('updates.notifyHelp')}>
             <Switch
               aria-label={t('updates.notify')}
               checked={settings.updateCheck ?? true}
               onChange={(e) => change({ updateCheck: e.target.checked })}
             />
           </Row>
-          <Row label={t('updates.channel')} help={t('updates.channelHelp')} htmlFor={channelId}>
+          <Row
+            anchor="updates.channel"
+            label={t('updates.channel')}
+            help={t('updates.channelHelp')}
+            htmlFor={channelId}
+          >
             <Select
               id={channelId}
               value={settings.updateChannel ?? 'stable'}
@@ -136,6 +141,7 @@ export function UpdateSettings() {
             </Select>
           </Row>
           <Row
+            anchor="updates.releaseNews"
             label={t('settingsUi.notifications.releaseNews')}
             help={t('settingsUi.notifications.releaseNewsAdminHelp')}
           >
@@ -151,6 +157,7 @@ export function UpdateSettings() {
       {data.earlier.length > 0 && (
         <Card
           tour="updates-history"
+          anchor="updates.earlier"
           title={t('updates.earlier')}
           action={
             <a className="updates-link" href={RELEASES} target="_blank" rel="noopener noreferrer">
@@ -197,7 +204,7 @@ function NewVersion({
 }) {
   const { t } = useTranslation();
   return (
-    <Card title={t('settingsUi.updates.how')}>
+    <Card anchor="updates.how" title={t('settingsUi.updates.how')}>
       {news.highlights.length > 0 && (
         <ul className="settings-card__pad updates-news">
           {news.highlights.map((line) => (

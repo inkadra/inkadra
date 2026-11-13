@@ -77,7 +77,7 @@ export function CalendarSettings() {
     </Button>
   );
   return (
-    <Card title={t('calendar.title')}>
+    <Card anchor="apps.calendar" title={t('calendar.title')}>
       {error && (
         <p role="alert" className="settings-card__pad">
           {t(error === 'rotated' ? 'calendar.rotated' : 'calendar.error')}

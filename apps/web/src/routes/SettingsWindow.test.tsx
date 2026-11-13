@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
+import { act, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -141,4 +141,56 @@ it('restores the body scroll style on close', async () => {
   root = createRoot(host);
   expect(document.body.style.overflow).toBe('auto');
   document.body.style.overflow = '';
+});
+
+it('opens a page on the row a search result names: scrolled to, highlighted and focused', async () => {
+  const scrolled = vi.fn();
+  HTMLElement.prototype.scrollIntoView = scrolled;
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings?section=preferences&setting=preferences.theme']}>
+        <SettingsWindow setup={{ checks: null, error: false }} onClose={onClose} onBack={onBack}>
+          <div data-setting="preferences.language">
+            <input aria-label="language" />
+          </div>
+          <div data-setting="preferences.theme">
+            <button type="button">theme</button>
+          </div>
+        </SettingsWindow>
+      </MemoryRouter>,
+    ),
+  );
+  const row = host.querySelector<HTMLElement>('[data-setting="preferences.theme"]');
+  expect(row?.classList.contains('settings-found')).toBe(true);
+  expect(document.activeElement?.textContent).toBe('theme');
+  expect(scrolled).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' });
+  expect(host.querySelector('[data-setting="preferences.language"]')?.className).toBe('');
+});
+
+/** A row that appears once its page has loaded. */
+function Later() {
+  const [shown, show] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => show(true), 20);
+    return () => clearTimeout(timer);
+  }, []);
+  return shown ? <p data-setting="member:u1">Antonino</p> : null;
+}
+
+it('waits for a row that the page loads later, like a member', async () => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings/team?setting=member%3Au1']}>
+        <SettingsWindow setup={{ checks: null, error: false }} onClose={onClose} onBack={onBack}>
+          <Later />
+        </SettingsWindow>
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 60)));
+  const row = host.querySelector<HTMLElement>('[data-setting="member:u1"]');
+  expect(row?.classList.contains('settings-found')).toBe(true);
+  // Nothing in it takes the focus: the row itself does.
+  expect(document.activeElement).toBe(row);
 });

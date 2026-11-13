@@ -318,7 +318,7 @@ function HowItIs({ status }: { status: ServerStatus }) {
       ? t('server.meters.of', { total: formatStorage(store.total, lang) })
       : t('server.meters.storage.used');
   return (
-    <Card title={t('server.how.title')} tour="server-health">
+    <Card anchor="server.health" title={t('server.how.title')} tour="server-health">
       <div className="server-cells server-cells--3">
         <VerdictCell
           name={t('server.meters.storage.name')}
@@ -401,6 +401,7 @@ export function People({ status, advanced = false }: { status: ServerStatus; adv
   });
   return (
     <Card
+      anchor="server.people"
       title={t(advanced ? 'server.advanced.people' : 'server.people.title')}
       action={
         <span className="settings-card__meta">
@@ -497,6 +498,7 @@ function Problems({ status, checks, actions }: Props) {
   return (
     <section id={PROBLEMS_ID} className="server-anchor" data-tour="server-problems">
       <Card
+        anchor="server.problems"
         className="server-card-wrap"
         title={t('server.problems.title')}
         action={
@@ -581,7 +583,11 @@ export function Alerts({ status, actions }: { status: ServerStatus; actions: Ser
   return (
     <Card title={t('server.alerts.title')} tour="server-alerts">
       <div className="settings-rows">
-        <Row label={t('server.alerts.enabled')} help={t('server.alerts.enabledHelp')}>
+        <Row
+          anchor="server.alerts"
+          label={t('server.alerts.enabled')}
+          help={t('server.alerts.enabledHelp')}
+        >
           <Switch
             aria-label={t('server.alerts.enabled')}
             checked={status.alerts.enabled}
@@ -589,6 +595,7 @@ export function Alerts({ status, actions }: { status: ServerStatus; actions: Ser
           />
         </Row>
         <Row
+          anchor="server.alertsHow"
           label={t('server.alerts.how')}
           help={mail ? t('server.alerts.howHelp') : t('server.alerts.noEmail')}
         >
@@ -615,6 +622,7 @@ function ForAdmins({ status, checks }: { status: ServerStatus; checks: Diagnosti
     <Card>
       <div className="settings-rows">
         <Row
+          anchor="server.admin"
           className="server-admins"
           icon="key"
           label={t('server.admin.title')}

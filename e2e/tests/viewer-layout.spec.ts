@@ -436,27 +436,35 @@ test('settings search finds settings by their English names with the interface i
   page,
 }) => {
   const dialog = await openSettings(page, 1280, 800, false, 'it');
-  const search = dialog.getByRole('searchbox', { name: 'Cerca nelle impostazioni' });
-  for (const [word, title, setting] of [
-    ['theme', 'Aspetto e lingua', 'Tema'],
-    ['date format', 'Aspetto e lingua', 'Formato data'],
-    ['password', 'Account', 'Password'],
+  const search = dialog.getByRole('combobox', { name: 'Cerca nelle impostazioni' });
+  // Each setting is a result of its own, named in the interface language, over its page.
+  for (const [word, setting, title] of [
+    ['theme', 'Tema', 'Aspetto e lingua'],
+    ['date format', 'Formato data', 'Aspetto e lingua'],
+    ['password', 'Email e password', 'Account'],
   ] as const) {
     await search.fill(word);
-    const item = dialog.locator('.settings-nav__item').first();
-    await expect(item).toContainText(title);
-    await expect(item.locator('.settings-nav__match')).toHaveText(setting);
+    const option = dialog.getByRole('option').first();
+    await expect(option).toContainText(setting);
+    await expect(option).toContainText(title);
   }
+  await search.fill('theme');
+  await search.press('Enter');
+  await expect(
+    dialog.getByRole('heading', { name: 'Aspetto e lingua', exact: true }),
+  ).toBeVisible();
 });
 
-test('Escape closes the settings window at once, even with text in the search', async ({
-  page,
-}) => {
+test('Escape clears the settings search, then closes the window', async ({ page }) => {
   const dialog = await openSettings(page, 1280, 800);
   const closed = () =>
     page.evaluate(() => (window as unknown as { settingsClosed: number }).settingsClosed);
-  // Like the command palette and the global search: Escape closes, typed text or not.
-  await dialog.getByRole('searchbox', { name: 'Search settings' }).fill('password');
+  const search = dialog.getByRole('combobox', { name: 'Search settings' });
+  await search.fill('password');
+  await page.keyboard.press('Escape');
+  await expect(search).toHaveValue('');
+  await page.waitForTimeout(200);
+  expect(await closed()).toBe(0);
   await page.keyboard.press('Escape');
   await expect.poll(closed).toBe(1);
   await page.waitForTimeout(200);

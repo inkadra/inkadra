@@ -160,6 +160,7 @@ export function Team() {
           variant="primary"
           icon="plus"
           data-tour="users-invite"
+          data-setting="members.invite"
           onClick={() => setInviting(true)}
         >
           {t('settingsUi.members.invite')}
@@ -210,6 +211,7 @@ export function Team() {
         <Card
           className="team-card"
           tour="users"
+          anchor="members.list"
           title={t('admin.membersCount', { count: members.length })}
         >
           {filtered !== undefined && filtered.length > 0 && (
@@ -241,6 +243,7 @@ export function Team() {
                   return (
                     <tr
                       key={m.id}
+                      data-setting={`member:${m.id}`}
                       className={
                         m.deactivatedAt
                           ? 'settings-row team-member is-inactive'
@@ -339,13 +342,14 @@ export function Team() {
         </Card>
       )}
       {members !== null && (
-        <Card title={t('settingsUi.members.invitations')}>
+        <Card anchor="members.invitations" title={t('settingsUi.members.invitations')}>
           {invitations.length === 0 ? (
             <p className="settings-card__empty settings-muted">{t('admin.noInvitations')}</p>
           ) : (
             invitations.map((i) => (
               <Row
                 key={i.id}
+                anchor={`invite:${i.id}`}
                 className="team-pending"
                 icon={i.kind === 'email' ? 'mail' : 'link'}
                 label={i.email ?? t('admin.linkInvite')}

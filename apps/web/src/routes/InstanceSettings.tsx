@@ -88,6 +88,7 @@ function SetupChecklist({ setup }: { setup: Setup }) {
   const done = setup.checks?.filter((c) => c.ok).length ?? 0;
   return (
     <Card
+      anchor="instance.setup"
       title={t('settingsUi.general.setup')}
       action={
         setup.checks && (
@@ -242,7 +243,7 @@ function AccessPage() {
   const toggle = (patch: Partial<Settings>) => void save(patch).catch(() => {});
   return (
     <>
-      <Card title={t('settingsUi.registration.label')}>
+      <Card anchor="access.registration" title={t('settingsUi.registration.label')}>
         <Row
           label={t('admin.registration')}
           help={t(`settingsUi.registration.${settings.registration}`)}
@@ -255,6 +256,7 @@ function AccessPage() {
       </Card>
       <Card title={t('settingsUi.accessPage.members')}>
         <Row
+          anchor="access.projectCreation"
           label={t('projectCreation.settings.label')}
           help={t('settingsUi.accessPage.createHelp')}
           htmlFor="members-create-projects"
@@ -265,7 +267,7 @@ function AccessPage() {
             onChange={(e) => toggle({ membersCanCreateProjects: e.target.checked })}
           />
         </Row>
-        <Row label={t('calendar.admin')} help={t('calendar.adminHelp')}>
+        <Row anchor="access.calendar" label={t('calendar.admin')} help={t('calendar.adminHelp')}>
           <Switch
             aria-label={t('calendar.admin')}
             checked={settings.calendarFeedEnabled ?? true}
@@ -275,6 +277,7 @@ function AccessPage() {
       </Card>
       <Card title={t('settingsUi.accessPage.security')}>
         <Row
+          anchor="access.adminTwoFactor"
           icon="lock"
           label={t('admin.requireAdminTwoFactor')}
           help={t(
@@ -292,6 +295,7 @@ function AccessPage() {
         </Row>
       </Card>
       <Card
+        anchor="access.methods"
         title={t('settings.methods.title')}
         action={<Badge>{t('settingsUi.accessPage.readOnly')}</Badge>}
       >
@@ -314,6 +318,7 @@ function AccessPage() {
           </Row>
         ))}
         <Row
+          anchor="access.email"
           leading={<ProviderIcon id="smtp" />}
           label={t('settingsUi.access.email')}
           help={
@@ -348,6 +353,7 @@ function GeneralPage({ setup }: { setup: Setup }) {
     <>
       <Card title={t('settingsUi.about.identity')}>
         <Row
+          anchor="instance.name"
           label={t('admin.instanceName')}
           help={t('settingsUi.about.nameHelp')}
           htmlFor="instance-name"
@@ -360,10 +366,11 @@ function GeneralPage({ setup }: { setup: Setup }) {
             save={(name) => save({ name })}
           />
         </Row>
-        <Row label={t('settingsUi.about.url')}>
+        <Row anchor="instance.url" label={t('settingsUi.about.url')}>
           <code className="settings-env">{instance?.publicUrl}</code>
         </Row>
         <Row
+          anchor="instance.version"
           label={t('settingsUi.about.version')}
           help={update ? t('updates.navAvailable', { version: update.version }) : undefined}
         >

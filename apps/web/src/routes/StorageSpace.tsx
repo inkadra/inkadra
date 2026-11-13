@@ -100,7 +100,7 @@ export function MySpaceCard() {
           ? ['warn', t('storageSpace.left', { size: size(Math.max(0, limit - used)) })]
           : ['ok', t('storageSpace.room')];
   return (
-    <Card title={t('storageSpace.title')}>
+    <Card anchor="account.space" title={t('storageSpace.title')}>
       <Row
         className="space-row"
         label={`${size(used)} ${

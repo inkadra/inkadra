@@ -2,6 +2,7 @@
 import { type ClassificationCatalogs, DEFAULT_SHOT_CATALOGS } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
 import { api, RequestError } from '../lib/api.ts';
 import { ClassificationSettings } from './ClassificationSettings.tsx';
@@ -32,12 +33,18 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function mount() {
+async function mount(path = '/settings?section=classifications') {
   vi.mocked(api.get).mockResolvedValueOnce(structuredClone(catalogs));
   host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<ClassificationSettings />));
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={[path]}>
+        <ClassificationSettings />
+      </MemoryRouter>,
+    ),
+  );
   return root;
 }
 const button = (text: string) =>
@@ -63,6 +70,17 @@ it('shows five closed catalogs in two groups, each with a summary', async () => 
   expect(host.querySelectorAll('.catalogs__name')).toHaveLength(0);
   // Movement has ten values: six names and the rest as a number.
   expect(host.querySelectorAll('.catalogs__card')[4]?.textContent).toContain('+4');
+  act(() => root.unmount());
+});
+
+it('opens the catalog of a value the settings search opened, with its row anchored', async () => {
+  const root = await mount(
+    '/settings?section=classifications&setting=classification%3AprojectTypes%3Ab',
+  );
+  const anchored = host.querySelector('[data-setting="classification:projectTypes:b"]');
+  expect(anchored?.querySelector('input')?.value).toBe('Commercial');
+  // The other catalogs stay closed.
+  expect(host.querySelectorAll('.catalogs__name')).toHaveLength(2);
   act(() => root.unmount());
 });
 
@@ -142,7 +160,13 @@ it('restores archived defaults, leaving renamed ones and new values alone', asyn
   host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<ClassificationSettings />));
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings?section=classifications']}>
+        <ClassificationSettings />
+      </MemoryRouter>,
+    ),
+  );
   await act(async () => toggle('catalogs.shotAngles'));
   await act(async () => button('catalogs.restoreDefaults')?.click());
   const archived = [...host.querySelectorAll('.catalogs__row.is-archived input')].map(
@@ -160,7 +184,13 @@ it('names the frame-panel fallback when a list has no active value', async () =>
   host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<ClassificationSettings />));
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings?section=classifications']}>
+        <ClassificationSettings />
+      </MemoryRouter>,
+    ),
+  );
   expect(host.textContent).toContain('catalogs.emptyShots');
   act(() => root.unmount());
 });
@@ -185,7 +215,13 @@ it('offers Delete only on values nothing uses, after a confirmation', async () =
   host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<ClassificationSettings />));
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings?section=classifications']}>
+        <ClassificationSettings />
+      </MemoryRouter>,
+    ),
+  );
   await act(async () => toggle('catalogs.projectTypes'));
   await act(async () => toggle('catalogs.tags'));
   const rows = [...host.querySelectorAll('.catalogs__row')];
