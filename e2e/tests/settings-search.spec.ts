@@ -69,19 +69,27 @@ test('finds settings, people, values and reports, and opens the row of each', as
   const invitation = (await (
     await call(cookie, 'POST', '/invitations', { kind: 'email', email: invited })
   ).json()) as { invitation?: { id: string } };
-  const original = (await (await call(cookie, 'GET', '/instance/classifications')).json()) as {
-    revision: number;
-    projectTypes: { id: string; label: string; archived: boolean }[];
+  // Values are never removed, only archived: a value of an earlier run comes back.
+  const catalogs = async () =>
+    (await (await call(cookie, 'GET', '/instance/classifications')).json()) as {
+      revision: number;
+      projectTypes: { id: string; label: string; archived: boolean }[];
+    };
+  const spotLabel = 'Spot pubblicitario';
+  const setSpot = async (archived: boolean) => {
+    const now = await catalogs();
+    const known = now.projectTypes.find((o) => o.label === spotLabel);
+    const spot = { id: known?.id ?? randomUUID(), label: spotLabel, archived };
+    const saved = await call(cookie, 'PUT', '/instance/classifications', {
+      ...now,
+      projectTypes: known
+        ? now.projectTypes.map((o) => (o.id === spot.id ? spot : o))
+        : [...now.projectTypes, spot],
+    });
+    expect(saved.ok).toBe(true);
+    return spot;
   };
-  const spot = { id: `spot-${stamp}`, label: 'Spot pubblicitario', archived: false };
-  expect(
-    (
-      await call(cookie, 'PUT', '/instance/classifications', {
-        ...original,
-        projectTypes: [...original.projectTypes, spot],
-      })
-    ).ok,
-  ).toBe(true);
+  const spot = await setSpot(false);
   expect(
     (
       await call(cookie, 'PUT', '/feedback/settings', {
@@ -197,13 +205,7 @@ test('finds settings, people, values and reports, and opens the row of each', as
     await page.context().close();
     if (invitation.invitation)
       await call(cookie, 'DELETE', `/invitations/${invitation.invitation.id}`);
-    const now = (await (await call(cookie, 'GET', '/instance/classifications')).json()) as {
-      revision: number;
-    };
-    await call(cookie, 'PUT', '/instance/classifications', {
-      ...original,
-      revision: now.revision,
-    });
+    await setSpot(true);
     await call(cookie, 'PUT', '/feedback/settings', {
       destination: 'off',
       repository: null,
