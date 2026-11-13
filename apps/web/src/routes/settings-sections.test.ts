@@ -33,6 +33,7 @@ it('identifies all settings pages and localizes headings, descriptions and group
       'reports',
       'instance',
       'workspace',
+      'video',
       'backups',
       'server',
       'updates',
@@ -71,7 +72,8 @@ it('opens the page that took the content of a page that left in the redesign (01
   expect(SETTINGS_PAGES.map((p) => p.group)).toEqual([
     ...Array(7).fill('personal'),
     ...Array(4).fill('workspace'),
-    ...Array(5).fill('server'),
+    // Video joined the Server group (decision 0128): seventeen pages.
+    ...Array(6).fill('server'),
   ]);
   // One icon per page.
   expect(new Set(SETTINGS_PAGES.map((p) => p.icon)).size).toBe(SETTINGS_PAGES.length);
