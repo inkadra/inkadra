@@ -224,7 +224,9 @@ test('finds settings, people, values and reports, and opens the row of each', as
     await member.goto('/settings?section=account');
     const search = member.getByRole('combobox', { name: 'Cerca nelle impostazioni' });
     await search.fill('giulia');
-    await expect(member.getByRole('status')).toContainText('Nessuna impostazione trovata');
+    await expect(
+      member.getByRole('status').filter({ hasText: 'Nessuna impostazione trovata' }),
+    ).toBeVisible();
     await search.fill('tema');
     await expect(member.getByRole('option').first()).toContainText('Tema');
     await member.waitForTimeout(400);
