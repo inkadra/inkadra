@@ -13,7 +13,13 @@ import { backupsDir, restoreBackup, runBackup, startBackup } from './backup.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
-import { attachCollab, createCollabServer, DEMO_COLLAB_LIMITS } from './collab.ts';
+import {
+  attachCollab,
+  createCollabServer,
+  DEMO_COLLAB_LIMITS,
+  replayUnsavedBoards,
+  unsavedBoardsDir,
+} from './collab.ts';
 import { type Config, loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { startSandboxSweep } from './demo.ts';
@@ -220,7 +226,10 @@ async function main() {
       publicUrl: config.PUBLIC_URL,
       trustProxy: config.TRUST_PROXY,
       ...(limits ? { limits } : {}),
+      unsavedDir: unsavedBoardsDir(config.DATA_DIR),
     });
+    // Before any board opens: what the last shutdown could not store (#795).
+    await replayUnsavedBoards(db, unsavedBoardsDir(config.DATA_DIR), log);
     const server = collab;
     closers.unshift(() => server.destroy());
     const backfill = startIndexBackfill(db, log);
