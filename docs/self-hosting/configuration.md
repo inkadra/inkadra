@@ -331,10 +331,10 @@ Inkadra sends `Content-Security-Policy`, `Permissions-Policy`,
 `Cross-Origin-Opener-Policy: same-origin` and, over HTTPS, `Strict-Transport-Security` on its
 pages. Each of the two variables below is an off switch, for a setup that a header breaks:
 
-| Variable         | Default | Meaning                                                                                                                                                                     |
-| ---------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CSP_ENFORCE`    | `true`  | `true` enforces the policy; `false` sends it as `Content-Security-Policy-Report-Only`, so the browser only reports what it would block                                     |
-| `CSP_REPORT_URI` |         | Absolute address that receives violation reports, e.g. `https://reports.example.com/csp`                                                                                    |
+| Variable         | Default | Meaning                                                                                                                                                                                      |
+| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CSP_ENFORCE`    | `true`  | `true` enforces the policy; `false` sends it as `Content-Security-Policy-Report-Only`, so the browser only reports what it would block                                                       |
+| `CSP_REPORT_URI` |         | Absolute address that receives violation reports, e.g. `https://reports.example.com/csp`                                                                                                     |
 | `HSTS_ENABLED`   | `true`  | Sends `Strict-Transport-Security: max-age=31536000` when `PUBLIC_URL` is https, only on requests whose verified transport is HTTPS (never on a plain-HTTP LAN address). `false` turns it off |
 
 The policy allows the instance itself, its WebSocket, the S3 bucket when files are in S3,
