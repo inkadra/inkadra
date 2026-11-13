@@ -404,7 +404,9 @@ function RungsProgress({
         {rungs.map((r) => (
           <span
             key={r.name}
-            className={r.status === 'ready' ? 'fcard__rung is-done' : 'fcard__rung'}
+            className={
+              r.status === 'ready' ? 'fcard__rung is-done' : r.live ? 'fcard__rung is-live' : 'fcard__rung'
+            }
           >
             <span>{rungLabel(r.name)}</span>
             <span className="fcard__bar">

@@ -55,13 +55,16 @@
   font-size: 15px;
   font-weight: 600;
 }
-.video-settings .settings-row--stack {
-  flex-wrap: wrap;
-}
-.video-settings .settings-row--stack .settings-row__control {
-  justify-content: flex-start;
-  width: 100%;
-  max-width: none;
+/* On a phone a row puts its control under the text, as on the mockup. */
+@media (max-width: 620px) {
+  .video-settings .settings-row--stack {
+    flex-wrap: wrap;
+  }
+  .video-settings .settings-row--stack .settings-row__control {
+    justify-content: flex-start;
+    width: 100%;
+    max-width: none;
+  }
 }
 .video-note {
   margin: -8px 4px 0;

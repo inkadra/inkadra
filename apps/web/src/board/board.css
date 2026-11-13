@@ -705,6 +705,9 @@ button.fcard__play:focus-visible {
   justify-content: space-between;
   gap: 8px;
 }
+.fcard__rung.is-live .fcard__bar i {
+  background: var(--ink-tag-purple);
+}
 .fcard__prep-line--quiet {
   color: rgb(255 255 255 / 0.7);
 }
