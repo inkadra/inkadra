@@ -138,7 +138,8 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
       });
       cookies[who] = String(res.headers['set-cookie']).split(';')[0] ?? '';
     }
-  });
+    // A database of its own and every migration: slow when the whole suite runs at once.
+  }, 120_000);
   afterAll(async () => {
     await app?.close();
     await end?.();
