@@ -230,6 +230,8 @@ select {
   border: 0;
   opacity: 0;
   cursor: pointer;
+  /* iOS zooms into a focused field set smaller than 16px. */
+  font-size: 16px;
 }
 /* The browser's own picker never opens: Inkadra's calendar takes its place. */
 .ink-date__input::-webkit-calendar-picker-indicator {

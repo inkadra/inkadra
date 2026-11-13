@@ -294,7 +294,7 @@ it('keeps the touch calendar trigger focusable without a native picker or keyboa
     );
     const input = host.querySelector('input') as HTMLInputElement;
     expect(input.type).toBe('text');
-    expect(input.readOnly).toBe(true);
+    expect(input.getAttribute('inputmode')).toBe('none');
     await act(async () => input.click());
     expect(host.querySelector('.ink-date__panel')).not.toBeNull();
     await act(async () =>
@@ -328,7 +328,7 @@ it('uses the calendar when the browser falls back from date to an unvalidated te
   try {
     await act(async () => root.render(<DateField label="Due" value="" onChange={() => {}} />));
     const input = host.querySelector('input') as HTMLInputElement;
-    expect(input.readOnly).toBe(true);
+    expect(input.getAttribute('inputmode')).toBe('none');
     await act(async () => input.click());
     expect(host.querySelector('.ink-date__panel')).not.toBeNull();
   } finally {
@@ -361,6 +361,42 @@ it('chooses another month with roving keyboard focus', async () => {
   await act(async () => (document.activeElement as HTMLButtonElement).click());
   await key('Enter');
   expect(onChange).toHaveBeenCalledWith('2026-09-20');
+});
+
+it('keeps required and the bounds blocking a form behind the touch trigger', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+  try {
+    for (const [value, valid] of [
+      ['', false],
+      ['2026-11-15', false],
+      ['2026-11-21', false],
+      ['2026-11-20', true],
+    ] as const) {
+      await act(async () =>
+        root.render(
+          <form>
+            <DateField
+              label="Due"
+              name="due"
+              required
+              min="2026-11-16"
+              max="2026-11-20"
+              value={value}
+              onChange={() => {}}
+            />
+          </form>,
+        ),
+      );
+      const form = host.querySelector('form')!;
+      const input = host.querySelector<HTMLInputElement>('.ink-date__input')!;
+      expect(input.readOnly).toBe(false);
+      expect(input.getAttribute('inputmode')).toBe('none');
+      expect(form.checkValidity()).toBe(valid);
+      expect(new FormData(form).getAll('due')).toEqual([value]);
+    }
+  } finally {
+    media.mockRestore();
+  }
 });
 
 it('keeps a focused disabled day as the keyboard cursor without selecting the old value', async () => {

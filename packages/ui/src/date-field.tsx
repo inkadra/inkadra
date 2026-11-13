@@ -103,6 +103,8 @@ export function DateField({
   const today = localDate(new Date());
   const canClear = !props.required;
   const mounted = phase !== 'closed';
+  // The calendar is the only way in: the field takes no typing and opens no picker or keyboard.
+  const pickerOnly = coarse || !nativeDate;
 
   const show = () => {
     if (props.disabled || props.readOnly) return;
@@ -184,6 +186,23 @@ export function DateField({
       window.removeEventListener('scroll', position, true);
     };
   }, [mounted]);
+  // A text trigger checks no range: the bounds of a date input give the browser's own words.
+  useEffect(() => {
+    const el = input.current;
+    if (!el || !pickerOnly) return;
+    const out = !!value && dayState(value, { month: value, today: '', min, max }).disabled;
+    const probe = document.createElement('input');
+    probe.type = 'date';
+    probe.min = min ?? '';
+    probe.max = max ?? '';
+    probe.value = value;
+    el.setCustomValidity(
+      out
+        ? probe.validationMessage ||
+            [min, max].map((d) => (d ? format(lang, d, { dateStyle: 'medium' }) : '')).join(' – ')
+        : '',
+    );
+  }, [pickerOnly, value, min, max, lang]);
   useEffect(() => {
     if (phase !== 'open' || !focusCursor.current) return;
     focusCursor.current = false;
@@ -327,16 +346,17 @@ export function DateField({
       <input
         {...props}
         ref={input}
-        // Firefox cannot focus a readonly date input; touch uses a readonly text trigger.
+        // Firefox cannot focus a readonly date input; touch uses a text trigger without a keyboard.
+        // It stays editable for the browser so that required and the bounds still block a form.
         type={coarse ? 'text' : 'date'}
         className="ink-date__input"
         aria-label={label}
         aria-haspopup="dialog"
         aria-controls={mounted ? `${id}-calendar` : undefined}
         // shortcut: engines without date inputs use the calendar; typing needs a text parser.
-        readOnly={props.readOnly || coarse || !nativeDate}
+        inputMode={pickerOnly ? 'none' : props.inputMode}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => !pickerOnly && onChange(e.target.value)}
         onClick={(e) => {
           onClick?.(e);
           if (e.defaultPrevented) return;
