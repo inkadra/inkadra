@@ -2171,6 +2171,7 @@ button.moodboard__card:focus-visible {
 .moodboard__options button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 /* Phone: the title and the tools on one row, the filters on their own. */
 @media (max-width: 720px) {
@@ -2801,6 +2802,7 @@ button.moodboard__card:focus-visible {
 .story-section summary:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .story-section summary small {
   font-size: 11.5px;
@@ -3079,7 +3081,7 @@ button.moodboard__card:focus-visible {
 }
 .token-field:focus-within {
   border-color: var(--ink-accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 .token-field[data-disabled] {
   cursor: default;

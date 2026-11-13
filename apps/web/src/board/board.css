@@ -667,6 +667,7 @@ button.fcard__play:focus-visible {
 .fcard__video:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .fcard__play svg {
   fill: currentColor;
@@ -1864,6 +1865,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 .mcard__leaflet:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .mcard__leaflet .leaflet-bar {
   overflow: hidden;
@@ -2882,7 +2884,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 }
 /* The system's focus ring is a shadow, which the toggle's own shadows above replace. */
 .canvas .unsorted__toggle:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 .unsorted__thumbs {
   display: flex;
@@ -5945,6 +5947,7 @@ button.card__play {
 .card-sheet__row:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .card-sheet__reply {
   display: flex;

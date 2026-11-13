@@ -12,6 +12,7 @@
   --ink-tooltip-bg: #232327;
   --ink-tooltip-fg: #EDEDED;
   --ink-tooltip-border: #FFFFFF14;
+  --ink-focus-ring: 0 0 0 1px var(--ink-surface-1), 0 0 0 3px var(--ink-accent-primary);
   --ink-radius-xs: 4px;
   --ink-radius-sm: 8px;
   --ink-radius-md: 12px;

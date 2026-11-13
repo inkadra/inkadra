@@ -158,6 +158,7 @@
 .settings-nav__item:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .settings-nav__label {
   flex: 1;
@@ -714,6 +715,7 @@
 .settings-list__more:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .settings-list__text {
   display: flex;
@@ -734,6 +736,7 @@
 .settings-fold > summary:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .settings-fold__chevron {
   flex: none;

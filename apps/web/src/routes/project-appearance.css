@@ -244,7 +244,7 @@
 }
 .project-appearance__custom:focus-within {
   border-color: var(--ink-accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 .project-appearance__custom-glyph {
   flex: none;

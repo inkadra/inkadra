@@ -56,6 +56,20 @@ describe('tokens', () => {
       expect(ratio(theme['on-accent'], theme['accent-button'])).toBeGreaterThanOrEqual(4.5);
       expect(ratio(theme['on-accent'], theme['accent-button-hover'])).toBeGreaterThanOrEqual(4.5);
     }
+    for (const theme of [light, dark]) {
+      // The focus ring (effects['focus-ring'], #677): 3:1 on every surface it can sit on.
+      for (const background of [
+        'bg-app',
+        'bg-panel',
+        'surface-1',
+        'surface-2',
+        'surface-3',
+      ] as const)
+        expect(
+          ratio(theme['accent-primary'], theme[background]),
+          background,
+        ).toBeGreaterThanOrEqual(3);
+    }
     for (const background of ['bg-app', 'bg-panel', 'surface-1'] as const) {
       expect(ratio(light['text-muted'], light[background])).toBeGreaterThanOrEqual(4.5);
       expect(ratio(light['accent-primary'], light[background])).toBeGreaterThanOrEqual(4.5);

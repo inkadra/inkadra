@@ -32,7 +32,7 @@ select {
 
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 
 .ink-label {
@@ -376,7 +376,7 @@ select:disabled {
 }
 
 .modes__option:has(input:focus-visible) {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 
 .images__bulk {

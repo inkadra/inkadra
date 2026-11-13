@@ -1501,6 +1501,7 @@ button.plan__badge:hover {
 .plan-field:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -1px;
+  box-shadow: none;
 }
 .plan-field--strong {
   font-weight: 600;

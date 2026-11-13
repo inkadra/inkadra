@@ -258,4 +258,12 @@ export const effects = {
   'tooltip-bg': '#232327',
   'tooltip-fg': '#EDEDED',
   'tooltip-border': '#FFFFFF14',
+  /**
+   * Keyboard focus (#677): a solid 2px ring of the accent, 3:1 or more on every surface in both
+   * themes (WCAG 1.4.11), kept 1px off the control so it shows on blue buttons too. A control
+   * that draws its own outline inside its edge (rows of a scrolling list) turns this one off.
+   * shortcut: resolved where :root sets it, so an .ink-paper island in the dark theme gets the
+   * dark accent; give each colour block its own copy if a focusable control ever lives there.
+   */
+  'focus-ring': '0 0 0 1px var(--ink-surface-1), 0 0 0 3px var(--ink-accent-primary)',
 } as const;

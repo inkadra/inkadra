@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { dark, light } from '@inkadra/ui/tokens';
+import { dark, effects, light } from '@inkadra/ui/tokens';
 
 const vars = (tokens: Record<string, string>) =>
   Object.entries(tokens)
@@ -10,7 +10,7 @@ const vars = (tokens: Record<string, string>) =>
 export function applyTokens(): void {
   const style = document.createElement('style');
   style.textContent =
-    `:root{color-scheme:dark;${vars(dark)}}` +
+    `:root{color-scheme:dark;${vars(effects)}${vars(dark)}}` +
     `@media (prefers-color-scheme: light){:root{color-scheme:light;${vars(light)}}}`;
   document.head.prepend(style);
 }
