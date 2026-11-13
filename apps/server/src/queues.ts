@@ -30,7 +30,7 @@ import type { Database } from './db/client.ts';
 import { asset, clientAsset, creationRequest } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
-import { recipeFor } from './media/ladder.ts';
+import { recipesOf } from './media/ladder.ts';
 import { officeConverterInstalled } from './media/office.ts';
 import { type MediaDeps, markFailed, processAsset, proxySettings } from './media/process.ts';
 import { markProxyFailed, runProxy } from './media/proxy.ts';
@@ -54,6 +54,7 @@ import {
   type VersionWriter,
 } from './versions.ts';
 import { stepBackfill } from './video-backfill.ts';
+import { runBenchmark } from './video-settings.ts';
 
 /**
  * Background job queues. Producers live in the web process, consumers in `inkadra worker`.
@@ -95,6 +96,8 @@ export type JobPayloads = {
   'media-proxies:make': { assetId: string; regenerate?: boolean };
   /** The next block of a regeneration of video copies (decision 0128). */
   'maintenance:video-backfill': Record<string, never>;
+  /** Detection of the encoder and live benchmark asked from Settings → Video. */
+  'maintenance:video-benchmark': Record<string, never>;
   'office:convert': { assetId: string };
   'collab:read-element': { boardId: string; elementId: string; expiresAt: number };
   'collab:read-columns': { boardId: string; expiresAt: number };
@@ -160,6 +163,13 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
           ...(opts?.regenerate ? { priority: 10 } : {}),
           ...KEEP,
         },
+      );
+    },
+    async runVideoBenchmark() {
+      await maintenance.add(
+        'video-benchmark',
+        {},
+        { jobId: `video-benchmark-${Date.now()}`, ...KEEP },
       );
     },
     async runVideoBackfill(delayMs = 0) {
@@ -279,7 +289,7 @@ export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
 
 /** The recipe copies are made with now: the regeneration redoes the others. */
 const currentRecipe = async (deps: Pick<MediaDeps, 'db' | 'proxies' | 'videoEnv'>) =>
-  recipeFor((await proxySettings(deps)).quality);
+  recipesOf(await proxySettings(deps));
 
 /** A copy shown as queued or processing this long without a job is queued again. */
 export const STUCK_PROXY_MS = 15 * 60_000;
@@ -384,6 +394,11 @@ export async function startWorkers(
         const { keys } = job.data as JobPayloads['maintenance:delete-files'];
         await deps.storage.remove(keys);
         return { removed: keys.length };
+      }
+      if (job.name === 'video-benchmark') {
+        const measure = deps.benchmark;
+        await runBenchmark(deps.db, async () => measure?.());
+        return { measured: Boolean(measure) };
       }
       if (job.name === 'video-backfill') {
         const again = await stepBackfill(deps.db, queues.jobs, await currentRecipe(deps));
@@ -936,6 +951,9 @@ export function inlineJobs(
     },
     async regenerationsWaiting() {
       return regenerations;
+    },
+    async runVideoBenchmark() {
+      track(runBenchmark(deps.db, async () => deps.benchmark?.()));
     },
     async cancelRegenerations() {
       cancelled += 1;

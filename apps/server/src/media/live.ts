@@ -2,7 +2,13 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { mkdir, readdir, rm, stat, utimes } from 'node:fs/promises';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
-import { ladderFor, VIDEO_RUNGS, type VideoRung, type VideoSettings } from '@inkadra/shared';
+import {
+  ladderFor,
+  VIDEO_RUNGS,
+  type VideoNoLive,
+  type VideoRung,
+  type VideoSettings,
+} from '@inkadra/shared';
 import type { asset } from '../db/schema.ts';
 import { readAll, type Storage } from '../storage.ts';
 import { encoderMemory, type VideoEncoder } from './hwaccel.ts';
@@ -101,6 +107,24 @@ export function liveEligible(row: AssetRow, encoder: VideoEncoder | undefined) {
   const info = rowInfo(row);
   if (!(shortSide(info) ?? 0)) return false;
   return liveDecodable(encoder, info);
+}
+
+/**
+ * Why live playback, on and on a GPU here, never takes this video (decision 0128), or null.
+ * The same rules as liveDecodable, named for the card: "ProRes: niente al volo".
+ */
+export function liveBlocker(row: AssetRow, encoder: VideoEncoder | undefined): VideoNoLive | null {
+  if (!encoder || encoder.backend === 'software' || row.kind !== 'video') return null;
+  const info = rowInfo(row);
+  if (liveDecodable(encoder, info)) return null;
+  const codec = info.videoCodec ?? '';
+  if (codec === 'prores') return 'prores';
+  if (codec === 'dnxhd') return 'dnx';
+  if (info.hdr) return 'hdr';
+  if (info.interlaced) return 'interlaced';
+  if (/4[24]4|422/.test(info.pixelFormat ?? '')) return 'chroma';
+  if (info.rotated) return 'rotated';
+  return 'codec';
 }
 
 /**

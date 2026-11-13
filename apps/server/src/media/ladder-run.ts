@@ -11,7 +11,7 @@ import {
   ladderArgs,
   ladderMemory,
   newGeneration,
-  recipeOf,
+  recipesOf,
   renditionCodecs,
   renditionKey,
   rungMaxBytes,
@@ -69,10 +69,10 @@ export async function makeLadder(
   const { ffmpeg, ffprobe } = await mediaTools();
   if (!ffmpeg || !ffprobe) throw new Error('ffmpeg is not there any more');
   const assetId = row.id;
-  const recipe = recipeOf(settings);
+  const recipes = recipesOf(settings);
   const rows = await db.select().from(assetRendition).where(eq(assetRendition.assetId, assetId));
   const current = (name: VideoRung) =>
-    rows.find((r) => r.name === name && r.status === 'ready' && r.recipe === recipe);
+    rows.find((r) => r.name === name && r.status === 'ready' && r.recipe === recipes[name]);
   const todo = plan.rungs.filter((name) => !current(name));
   // A regeneration also takes away the rungs no longer chosen, row then file.
   if (opts.regenerate) {
@@ -96,10 +96,10 @@ export async function makeLadder(
     if (old?.status === 'ready') continue;
     await db
       .insert(assetRendition)
-      .values({ assetId, name, status: 'queued', progress: null, recipe })
+      .values({ assetId, name, status: 'queued', progress: null, recipe: recipes[name] })
       .onConflictDoUpdate({
         target: [assetRendition.assetId, assetRendition.name],
-        set: { status: 'queued', progress: null, recipe },
+        set: { status: 'queued', progress: null, recipe: recipes[name] },
       });
   }
   if (aggregate) await setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: 0 });
@@ -147,7 +147,7 @@ export async function makeLadder(
       for (const name of runRungs) {
         await storeRung(db, storage, row, info, name, join(dir, `${name}.mp4`), {
           generation,
-          recipe,
+          recipe: recipes[name],
           encoder: run.encoder,
           // One run makes all its rungs: each is charged its share of the time.
           encodeMs: Math.round(run.ms / runRungs.length),

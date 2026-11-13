@@ -182,7 +182,7 @@ function Menu() {
         rung('480'),
         rung('720'),
         rung('1080', 'processing'),
-        { ...rung('2160', 'queued'), live: true },
+        { ...rung('2160', 'processing'), live: true },
       ])}
       choice={choice}
       onChoose={setChoice}
@@ -200,12 +200,14 @@ it('lists Auto, the rungs (those being made disabled) and the original in the me
   expect(items.map((i) => [i.textContent, i.disabled])).toEqual([
     ['viewer.quality.autoviewer.quality.now:{"quality":"720p"}', false],
     // Offered live: it plays before its file is made.
-    ['4Kviewer.quality.live', false],
+    ['4Kviewer.quality.live · viewer.quality.liveCopy:{"percent":64}', false],
     ['1080pviewer.quality.preparing:{"percent":64}', true],
     ['720p', false],
     ['480p', false],
     ['viewer.quality.original4K · 100 Mbit/s', false],
   ]);
+  // What the "al volo" levels are, next to the menu.
+  expect(host.querySelector('.viewer-quality__note')?.textContent).toBe('viewer.quality.liveNote');
   await act(async () => items[4]?.click());
   expect(host.querySelector('.viewer-quality__button')?.textContent).toContain('480p');
 });

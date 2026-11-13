@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { ladderFor, type VideoRung } from '@inkadra/shared';
+import { ladderFor, VIDEO_RUNGS, type VideoRung } from '@inkadra/shared';
 import {
   encoderMemory,
   FFMPEG_MEMORY,
@@ -86,8 +86,41 @@ export function rungSide(info: VideoInfo, settings: ProxySettings, rung: VideoRu
 
 /** What made a rung: the codec, the preset and the version of the encoding table. */
 export const RECIPE_VERSION = 1;
-export const recipeFor = (quality: string) => `h264/${quality}/${RECIPE_VERSION}`;
-export const recipeOf = (settings: ProxySettings) => recipeFor(settings.quality);
+export type Recipes = Record<VideoRung, string>;
+
+/**
+ * What makes each rung: the preset and, where the admin set them (Advanced), the custom target,
+ * peak and quality value, so a regeneration finds copies made with other values.
+ */
+export function recipesFor(quality: string, custom: ProxySettings['custom'] = {}): Recipes {
+  return Object.fromEntries(
+    VIDEO_RUNGS.map((rung) => {
+      const c = custom?.[rung];
+      const own =
+        c && (c.target !== undefined || c.peak !== undefined || c.quality !== undefined)
+          ? `/t${c.target ?? ''}p${c.peak ?? ''}q${c.quality ?? ''}`
+          : '';
+      return [rung, `h264/${quality}/${RECIPE_VERSION}${own}`];
+    }),
+  ) as Recipes;
+}
+export const recipesOf = (settings: ProxySettings) => recipesFor(settings.quality, settings.custom);
+
+/** The rate of a rung, the preset's under the cap, with the values the admin set over it. */
+export function customRate(
+  settings: ProxySettings,
+  rung: VideoRung,
+  side: number,
+  fps: number | null,
+) {
+  const base = rungRate(settings.quality, side, fps, peakCap(settings));
+  const c = settings.custom?.[rung];
+  if (!c) return base;
+  const cap = peakCap(settings) ?? Number.POSITIVE_INFINITY;
+  const target = Math.min(c.target ?? base.target, cap);
+  const peak = Math.min(Math.max(target, c.peak ?? base.peak), cap);
+  return { target, peak, buffer: peak * 2 };
+}
 
 /** A new generation of files: six characters in their storage key and in their URLs. */
 export const newGeneration = () => randomBytes(6).toString('base64url').slice(0, 6);
@@ -156,9 +189,11 @@ export function ladderArgs(
   const { pre, post, hdr } = frameFilters(info);
   const pipelines = outputs.map((o) => {
     const side = rungSide(info, settings, o.rung);
+    const quality = settings.custom?.[o.rung]?.quality;
     return videoPipeline(encoder, {
       resolution: side,
-      rate: rungRate(settings.quality, side, info.frameRate, peakCap(settings)),
+      rate: customRate(settings, o.rung, side, info.frameRate),
+      ...(quality !== undefined ? { qualityValue: quality } : {}),
       quality: settings.quality,
       fps: info.frameRate,
       gpu,
@@ -229,7 +264,7 @@ const plannedSeconds = (info: VideoInfo, settings: ProxySettings) => {
 /** Largest file one rung may be: half again what its peak gives over the planned length. */
 export function rungMaxBytes(info: VideoInfo, settings: ProxySettings, rung: VideoRung) {
   const side = rungSide(info, settings, rung);
-  const peak = rungRate(settings.quality, side, info.frameRate, peakCap(settings)).peak;
+  const peak = customRate(settings, rung, side, info.frameRate).peak;
   return Math.ceil((plannedSeconds(info, settings) * (peak + 384_000) * 1.5) / 8) + 16 * 2 ** 20;
 }
 

@@ -16,6 +16,8 @@ export interface Jobs {
   cancelRegenerations?(): Promise<void>;
   /** Regenerations waiting in the queue. */
   regenerationsWaiting?(): Promise<number>;
+  /** Detects the encoder and measures live playback again, on the worker (decision 0128). */
+  runVideoBenchmark?(): Promise<void>;
   /** Whether the copy of an asset is waiting or running in the queue (decision 0128). */
   proxyQueued?(assetId: string): Promise<boolean>;
   /**

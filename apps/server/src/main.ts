@@ -170,6 +170,18 @@ async function main() {
     },
     // Settings → Video (decision 0128), read by every job.
     videoEnv: config,
+    // Advanced → "Rifai il test di prestazioni": detection and live benchmark again, saved for
+    // the page and Diagnostics. The encoder of copies stays the one found at start.
+    ...(encoder
+      ? {
+          benchmark: () =>
+            chooseVideoEncoder(
+              db,
+              { mode: config.VIDEO_PROXY_HWACCEL, vaapiDevice: config.VIDEO_PROXY_VAAPI_DEVICE },
+              log,
+            ),
+        }
+      : {}),
   };
   const transfers = transferDeps(config);
   const closers: Array<() => Promise<unknown>> = [

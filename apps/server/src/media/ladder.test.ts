@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { VideoEncoder } from './hwaccel.ts';
 import {
+  customRate,
   generationOf,
   isHeavy,
   ladderArgs,
+  recipesFor,
   renditionCodecs,
   renditionKey,
   videoPlan,
@@ -139,5 +141,38 @@ describe('renditions', () => {
     expect(renditionCodecs(1920, 1080, 25)).toBe('avc1.640028,mp4a.40.2');
     expect(renditionCodecs(1920, 1080, 50)).toBe('avc1.64002a,mp4a.40.2');
     expect(renditionCodecs(3840, 2160, 30)).toBe('avc1.640033,mp4a.40.2');
+  });
+});
+
+describe('recipes (decision 0128)', () => {
+  it('change with the custom values of a rung, and only for that rung', () => {
+    const plain = recipesFor('balanced');
+    expect(plain['720']).toBe('h264/balanced/1');
+    const custom = recipesFor('balanced', { '720': { target: 4_000_000, quality: 20 } });
+    expect(custom['720']).toBe('h264/balanced/1/t4000000pq20');
+    expect(custom['1080']).toBe(plain['1080']);
+  });
+
+  it('encode a rung with its custom rate and quality', () => {
+    const args = ladderArgs('/in', [{ rung: '720', path: '/o.mp4' }], info(), {
+      ...DEFAULT_PROXY_SETTINGS,
+      custom: { '720': { target: 4_000_000, peak: 5_000_000, quality: 18 } },
+    });
+    expect(args).toEqual(
+      expect.arrayContaining(['-crf', '18', '-maxrate', '5000000', '-bufsize', '10000000']),
+    );
+  });
+
+  it('keep custom values under VIDEO_PROXY_BITRATE', () => {
+    const capped = {
+      ...DEFAULT_PROXY_SETTINGS,
+      bitrate: '3M',
+      custom: { '720': { target: 4_000_000, peak: 6_000_000 } },
+    };
+    expect(customRate(capped, '720', 720, 25)).toEqual({
+      target: 3_000_000,
+      peak: 3_000_000,
+      buffer: 6_000_000,
+    });
   });
 });

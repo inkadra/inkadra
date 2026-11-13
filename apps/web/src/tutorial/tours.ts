@@ -513,6 +513,7 @@ export const TOURS: Tour[] = [
       { anchor: 'video-presets', media: 'play', side: 'top' },
       { anchor: 'video-existing', media: 'gear', side: 'top' },
       { anchor: 'video-live', media: 'play', side: 'top' },
+      { anchor: 'video-advanced', media: 'gear', side: 'top' },
     ],
   },
   {

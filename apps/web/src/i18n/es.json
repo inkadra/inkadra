@@ -470,7 +470,21 @@
       "polygons_one": "{{count}} polígono",
       "polygons_other": "{{count}} polígonos",
       "unavailable": "Formato no compatible: no hay copia reproducible disponible.",
-      "watchable": "Ya se puede ver"
+      "watchable": "Ya se puede ver",
+      "live": {
+        "liveNow": "al vuelo",
+        "liveNowText": "{{rung}} mientras se prepara la copia",
+        "noLive": "{{reason}}: nada al vuelo, se verá pronto",
+        "reasons": {
+          "prores": "ProRes",
+          "dnx": "DNx",
+          "chroma": "Vídeo 4:2:2",
+          "interlaced": "Vídeo entrelazado",
+          "hdr": "HDR",
+          "rotated": "Vídeo vertical",
+          "codec": "Este formato"
+        }
+      }
     },
     "voiceNote": {
       "label": "Nota de voz",
@@ -1995,7 +2009,9 @@
       "now": "ahora {{quality}}",
       "preparing": "preparando · {{percent}}%",
       "original": "Original",
-      "live": "al vuelo"
+      "live": "al vuelo",
+      "liveCopy": "copia al {{percent}} %",
+      "liveNote": "Las calidades «al vuelo» las convierte la tarjeta gráfica mientras miras; cuando la copia está lista se pasa a ella."
     }
   },
   "search": {
@@ -5833,6 +5849,10 @@
           "3": {
             "title": "Al vuelo",
             "text": "Solo con GPU: las resoluciones que no guardas se preparan mientras alguien mira, dentro de las sesiones que admite la tarjeta."
+          },
+          "4": {
+            "title": "Avanzado",
+            "text": "Para expertos: repite la prueba de la tarjeta, cambia las sesiones al vuelo y los valores de cada resolución. «Restablecer» vuelve a lo recomendado."
           }
         }
       }
@@ -6609,29 +6629,75 @@
     },
     "live": {
       "title": "Reproducción al vuelo",
-      "body": "El servidor prepara una resolución mientras alguien mira: los vídeos se ven en cuanto se suben, y las resoluciones «Solo al vuelo» no ocupan espacio.",
-      "enabled": "Reproducción al vuelo",
-      "enabledHelp": "Justo después de la subida, y para las resoluciones que no guardas en disco.",
-      "maxSessions": "Vídeos al vuelo a la vez",
-      "maxSessionsHelp": "Para todo el servidor. Por encima, quien mira recibe las copias ya guardadas.",
-      "perViewer": "Por persona o enlace",
-      "perViewerHelp": "Cuántos vídeos al vuelo puede abrir a la vez una persona, o los invitados de un enlace.",
+      "body": "Mientras se preparan las copias, o para las resoluciones que no guardas en disco, la tarjeta gráfica convierte el vídeo mientras lo ves.",
+      "enabled": "Convertir al vuelo",
       "modeLabel": "{{rung}}: dónde se guarda",
       "modes": {
-        "stored": "Guardar en disco",
+        "stored": "En disco",
         "live": "Solo al vuelo"
       },
-      "noSpace": "sin espacio",
-      "unavailable": "No disponible en este servidor",
-      "off": "Desactivada",
+      "noSpace": "sin espacio en disco",
+      "unavailable": "No disponible",
+      "off": "Apagada",
       "reasons": {
-        "no-gpu": "Requiere la codificación por hardware de la GPU: este servidor codifica con el procesador.",
+        "no-gpu": "Requiere la codificación por hardware de la tarjeta gráfica: en este servidor las copias las hace solo el procesador.",
         "too-slow": "GPU demasiado lenta para el tiempo real (medida al arrancar).",
         "failed": "La medición al arrancar falló: detalles en el registro del servidor.",
         "set-off": "Desactivada por el servidor (VIDEO_LIVE_MAX_SESSIONS=0)."
       },
-      "measured_one": "Medido al arrancar: una sesión, {{speed}}× tiempo real.",
-      "measured_other": "Medido al arrancar: {{count}} sesiones, {{speed}}× tiempo real."
+      "on": "Activa",
+      "upTo_one": "Hasta {{count}} persona a la vez. Por encima, quien mira recibe las copias listas o el original.",
+      "upTo_other": "Hasta {{count}} personas a la vez. Por encima, quien mira recibe las copias listas o el original.",
+      "zero": "Sesiones en 0 en los ajustes avanzados: al vuelo está apagado.",
+      "rungsHelp": "Para cada resolución: guardarla en disco, o hacerla solo cuando alguien la mira.",
+      "onDisk": "unos {{size}} MB/min en disco",
+      "onlyLive": "solo al vuelo",
+      "never": "Nunca van al vuelo y esperan las copias listas: ProRes, DNx, vídeo 4:2:2, entrelazado, HDR y los verticales que la tarjeta no aguanta en tiempo real."
+    },
+    "advanced": {
+      "title": "Avanzado",
+      "customised": "Personalizados",
+      "intro": "Para quien conoce la codificación de vídeo. Valores erróneos pueden dar copias granuladas, enormes o vídeos a saltos: «Restablecer» devuelve cada campo al valor recomendado.",
+      "benchmark": "Rendimiento de la tarjeta",
+      "benchmarkRunning": "Prueba de rendimiento en curso",
+      "benchmarkRunningHelp": "Unos 10 segundos. Las copias en preparación van más lentas un momento.",
+      "benchmarkBusy": "Probando…",
+      "rerun": "Repetir la prueba de rendimiento",
+      "measuredAtStart_one": "Medido al arrancar: {{count}} sesión al vuelo",
+      "measuredAtStart_other": "Medido al arrancar: {{count}} sesiones al vuelo",
+      "measuredNow_one": "Medido ahora: {{count}} sesión al vuelo",
+      "measuredNow_other": "Medido ahora: {{count}} sesiones al vuelo",
+      "speedAt": "{{speed}}× tiempo real en un 1080p · {{time}}",
+      "neverMeasured": "Aún sin medir",
+      "noGpu": "Sin prueba: al vuelo requiere la tarjeta gráfica",
+      "noGpuHelp": "Las copias las hace el procesador (libx264).",
+      "sessions": "Sesiones al vuelo",
+      "sessionsLabel": "Personas que pueden ver al vuelo a la vez",
+      "sessionsHelp": "Valor medido: {{measured}}. De 0 (apagado) a {{max}}.",
+      "overMeasured": "Más que lo medido: con mucha gente a la vez los vídeos pueden ir a saltos y la tarjeta ralentiza las copias en preparación.",
+      "rates": "Bitrate y calidad por resolución",
+      "ratesHelp": "Objetivo: la media. Pico: el máximo en escenas difíciles.",
+      "qualityHelp": "Calidad: {{name}}, más bajo es mejor.",
+      "qualityNames": {
+        "crf": "CRF de libx264",
+        "cq": "CQ de NVENC",
+        "qsv": "global_quality de Quick Sync",
+        "vaapi": "global_quality de VAAPI"
+      },
+      "rung": "Resolución",
+      "target": "Objetivo",
+      "peak": "Pico",
+      "notChosen": "no elegida",
+      "errors": {
+        "range": "De 200 a 80 000 kbit/s",
+        "belowTarget": "No por debajo del objetivo",
+        "quality": "De 0 a 51"
+      },
+      "reset": "Restablecer",
+      "custom": "personalizado",
+      "customPreset": "Personalizada",
+      "customNote": "Algunos valores se cambiaron en los ajustes avanzados.",
+      "resetAll": "Volver a los valores del nivel"
     }
   }
 }

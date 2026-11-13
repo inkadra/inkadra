@@ -1,6 +1,6 @@
 import type { Asset, VideoRung } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QualityChoice } from './video-source.ts';
 
@@ -68,7 +68,7 @@ export function QualityMenu({
     setOpen(false);
     button.current?.focus();
   };
-  const item = (value: QualityChoice, text: string, note?: string | null, disabled = false) => (
+  const item = (value: QualityChoice, text: string, note?: ReactNode, disabled = false) => (
     <button
       key={value}
       type="button"
@@ -139,11 +139,15 @@ export function QualityMenu({
             item(
               r.name as VideoRung,
               rungLabel(r.status === 'ready' ? (r.height ?? r.name) : r.name),
-              r.status === 'ready'
-                ? null
-                : r.live
-                  ? t('viewer.quality.live')
-                  : t('viewer.quality.preparing', { percent: r.progress ?? 0 }),
+              r.status === 'ready' ? null : r.live ? (
+                <>
+                  <span className="live-tag">{t('viewer.quality.live')}</span>
+                  {r.status === 'processing' &&
+                    ` · ${t('viewer.quality.liveCopy', { percent: r.progress ?? 0 })}`}
+                </>
+              ) : (
+                t('viewer.quality.preparing', { percent: r.progress ?? 0 })
+              ),
               // A rung offered live plays before its file is made (decision 0128).
               r.status !== 'ready' && !r.live,
             ),
@@ -155,6 +159,10 @@ export function QualityMenu({
             </>
           )}
         </div>
+      )}
+      {open && rungs.some((r) => r.live && r.status !== 'ready') && (
+        // Outside the menu (only items belong there): what the "al volo" levels are.
+        <p className="viewer-quality__note">{t('viewer.quality.liveNote')}</p>
       )}
     </div>
   );

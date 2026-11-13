@@ -14,7 +14,7 @@ import { readExif } from './exif.ts';
 import { readFileMetadata } from './file-metadata.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
-import { recipeOf, videoPlan } from './ladder.ts';
+import { recipesOf, videoPlan } from './ladder.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
 import {
@@ -61,6 +61,11 @@ export interface MediaDeps {
    * choices of that page over `proxies`.
    */
   videoEnv?: VideoEnv;
+  /**
+   * Detects the encoder and measures live playback again, as at start (Settings → Video →
+   * Advanced); where this process makes copies.
+   */
+  benchmark?: () => Promise<unknown>;
   /**
    * Queues the playable copy of a video. Without it (tests, tools) none is made and the asset
    * says `skipped`.
@@ -663,18 +668,14 @@ async function proxyState(
   if (plan.kind === 'skip' || !deps.enqueueProxy) return { status: 'skipped', enqueue: false };
   if (plan.kind === 'ladder') {
     // A second pass (a reprocess, an import) keeps rungs already made with these settings.
-    const recipe = recipeOf(await proxySettings(deps));
+    const recipes = recipesOf(await proxySettings(deps));
     const ready = await deps.db
-      .select({ name: assetRendition.name })
+      .select({ name: assetRendition.name, recipe: assetRendition.recipe })
       .from(assetRendition)
-      .where(
-        and(
-          eq(assetRendition.assetId, assetId),
-          eq(assetRendition.status, 'ready'),
-          eq(assetRendition.recipe, recipe),
-        ),
-      );
-    const done = plan.rungs.every((r) => ready.some((x) => x.name === r));
+      .where(and(eq(assetRendition.assetId, assetId), eq(assetRendition.status, 'ready')));
+    const done = plan.rungs.every((r) =>
+      ready.some((x) => x.name === r && x.recipe === recipes[r]),
+    );
     if (plan.original) return { status: null, enqueue: !done };
     return done ? { status: 'ready', enqueue: false } : { status: 'queued', enqueue: true };
   }

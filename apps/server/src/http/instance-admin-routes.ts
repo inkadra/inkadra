@@ -28,7 +28,7 @@ import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import type { Jobs } from '../jobs.ts';
-import { recipeFor } from '../media/ladder.ts';
+import { recipesFor } from '../media/ladder.ts';
 import { diskSpace, growthPerMonth } from '../monitor/health.ts';
 import {
   type Limits,
@@ -43,7 +43,12 @@ import {
 import { revokeTokens } from '../tokens.ts';
 import { CHECK_NOW_MS, checkForUpdates, readUpdates } from '../updates.ts';
 import { startBackfill, stopBackfill } from '../video-backfill.ts';
-import { readVideoSettings, saveVideoSettings, videoSettingsView } from '../video-settings.ts';
+import {
+  readVideoSettings,
+  saveVideoSettings,
+  startBenchmark,
+  videoSettingsView,
+} from '../video-settings.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -156,7 +161,7 @@ export function registerInstanceAdminRoutes(
   const videoView = async () =>
     videoSettingsView(db, config, {
       freeBytes: (await diskSpace(config))?.free ?? null,
-      recipe: recipeFor,
+      recipe: (settings) => recipesFor(settings.quality, settings.custom),
       jobs,
     });
   app.get(`${API_PREFIX}/instance/video-settings`, async (req, reply) => {
@@ -173,12 +178,19 @@ export function registerInstanceAdminRoutes(
     });
     return videoView();
   });
+  app.post(`${API_PREFIX}/instance/video-settings/benchmark`, async (req, reply) => {
+    await admin(req);
+    if (!jobs) throw new HttpError('conflict', 'This server makes no video copies.');
+    await startBenchmark(db, jobs);
+    reply.status(202);
+    return videoView();
+  });
   app.post(`${API_PREFIX}/instance/video-settings/reprocess`, async (req, reply) => {
     await admin(req);
     const { scope } = StartVideoBackfill.parse(req.body ?? {});
     const { settings } = await readVideoSettings(db, config);
     if (!jobs) throw new HttpError('conflict', 'This server makes no video copies.');
-    await startBackfill(db, jobs, scope, recipeFor(settings.quality));
+    await startBackfill(db, jobs, scope, recipesFor(settings.quality, settings.custom));
     reply.status(202);
     return videoView();
   });

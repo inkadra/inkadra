@@ -15,7 +15,10 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts'
 const shots = process.env.E2E_SHOTS;
 
 /** The parts of the API the test reads (`@inkadra/shared` is not a dependency of e2e). */
-type Asset = { playback?: { renditions: Array<{ name: string; status: string }> } | null };
+type Asset = {
+  playback?: { renditions: Array<{ name: string; status: string; [key: string]: unknown }> } | null;
+  [key: string]: unknown;
+};
 type VideoSettingsView = Record<string, unknown>;
 const admin = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 
@@ -133,6 +136,59 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
   await shoot(page, 'ladder-viewer-menu');
   await items.nth(2).click();
   await expect(quality).toContainText('480p');
+  await page.keyboard.press('Escape');
+
+  // Mockup v2: the same card while 1080p plays live, and a ProRes source live never takes.
+  const states = {
+    live: (real: Asset) => ({
+      ...real,
+      playback: {
+        ...real.playback,
+        renditions: [
+          ...(real.playback?.renditions ?? []),
+          {
+            ...real.playback?.renditions[1],
+            name: '1080',
+            status: 'processing',
+            progress: 64,
+            url: null,
+            live: true,
+          },
+        ],
+      },
+    }),
+    prores: (real: Asset) => ({
+      ...real,
+      proxy: { status: 'processing', progress: 35, url: null },
+      playback: {
+        hls: null,
+        original: false,
+        noLive: 'prores',
+        renditions: (real.playback?.renditions ?? []).map((r, i) => ({
+          ...r,
+          status: i === 0 ? 'processing' : 'queued',
+          progress: i === 0 ? 35 : 0,
+          url: null,
+        })),
+      },
+    }),
+  };
+  // The real asset once, then fixed answers: no request of the page waits on another.
+  const real = (await (await page.request.get(`/api/v1/assets/${assetId}`)).json()) as Asset;
+  for (const [name, change] of Object.entries(states)) {
+    const json = change(real);
+    await page.route(`**/api/v1/assets/${assetId}`, (route) => route.fulfill({ json }));
+    await page.goto(boardUrl);
+    await expect(card.locator('.fcard__prep')).toBeVisible();
+    await shoot(page, `ladder-card-${name}`);
+    if (name === 'live') {
+      await card.locator('.fcard__footer').dblclick();
+      await page.locator('.viewer-quality__button').click();
+      await expect(page.locator('.viewer-quality__note')).toBeVisible();
+      await shoot(page, 'ladder-viewer-live');
+    }
+    await page.unroute(`**/api/v1/assets/${assetId}`);
+  }
 });
 
 /** A fictional studio on an Intel N100, as on the approved mockup. */
@@ -157,6 +213,61 @@ const studio = (view: VideoSettingsView): VideoSettingsView => ({
   freeBytes: 412e9,
   outdated: 214,
   speed: null,
+  qualityParam: 'global_quality',
+  liveStatus: {
+    available: true,
+    reason: null,
+    sessions: 3,
+    measured: 3,
+    speed: 5.3,
+    measuredAt: new Date().toISOString(),
+    locked: false,
+  },
+  settings: {
+    ...(view.settings as Record<string, unknown>),
+    live: { enabled: true, maxSessions: 3, perViewer: 1 },
+  },
+});
+
+/** The same studio with values changed in Avanzate: 720p over the preset, five sessions. */
+const customised = (view: VideoSettingsView): VideoSettingsView => {
+  const base = studio(view);
+  return {
+    ...base,
+    settings: {
+      ...(base.settings as Record<string, unknown>),
+      rungs: { '480': 'stored', '720': 'stored', '1080': 'live', '2160': 'off' },
+      live: { enabled: true, maxSessions: 5, perViewer: 1 },
+      custom: { '720': { target: 3_200_000, quality: 22 } },
+    },
+  };
+};
+
+/** A server without a GPU: copies on the processor, no live playback. */
+const software = (view: VideoSettingsView): VideoSettingsView => ({
+  ...studio(view),
+  encoder: {
+    label: 'Software (libx264)',
+    backend: 'software',
+    tuning: 'full',
+    av1: false,
+    requested: 'auto',
+    concurrency: 1,
+  },
+  qualityParam: 'crf',
+  liveStatus: {
+    available: false,
+    reason: 'no-gpu',
+    sessions: 0,
+    measured: null,
+    speed: null,
+    measuredAt: null,
+    locked: false,
+  },
+  settings: {
+    ...(view.settings as Record<string, unknown>),
+    live: { enabled: false, maxSessions: 0, perViewer: 1 },
+  },
 });
 
 test('Settings → Video shows the encoder, the presets, the estimates and live playback', async ({
@@ -173,12 +284,13 @@ test('Settings → Video shows the encoder, the presets, the estimates and live 
   );
   const direct = await page.request.get('/api/v1/instance/video-settings');
   expect(direct.status(), await direct.text()).toBe(200);
+  // The real view once, then fixed answers: no request of the page waits on another.
+  const real = (await direct.json()) as VideoSettingsView;
   let running = false;
+  let look: (view: VideoSettingsView) => VideoSettingsView = studio;
   await page.route('**/api/v1/instance/video-settings*', async (route) => {
-    const real = await route.fetch();
-    const view = studio((await real.json()) as VideoSettingsView);
+    const view = look(real);
     await route.fulfill({
-      response: real,
       json: running
         ? {
             ...view,
@@ -199,11 +311,35 @@ test('Settings → Video shows the encoder, the presets, the estimates and live 
     [390, 3200, 'phone'],
   ] as const) {
     running = false;
+    look = studio;
     await page.setViewportSize({ width, height });
     await page.goto('/settings?section=video');
     await expect(page.getByText('Intel Quick Sync').first()).toBeVisible();
     await expect(page.locator('input[name="video-quality"]')).toHaveCount(3);
     await shoot(page, `video-settings-${name}`);
+    // Avanzate, collapsed by default: the test again, live sessions and per-rung values.
+    const advanced = page.locator('[data-tour="video-advanced"]');
+    await advanced.locator('summary').click();
+    await expect(page.getByRole('button', { name: 'Rifai il test di prestazioni' })).toBeVisible();
+    await page.locator('[data-tour="video-live"]').scrollIntoViewIfNeeded();
+    await shoot(page, `video-settings-live-advanced-${name}`);
+    // Values changed in Avanzate: Personalizzata under the presets, personalizzato in the table.
+    look = customised;
+    await page.reload();
+    await expect(page.getByText('Torna ai valori della preset')).toBeVisible();
+    await shoot(page, `video-settings-custom-${name}`);
+    await page.locator('[data-tour="video-advanced"] summary').click();
+    await expect(page.getByText('personalizzato').first()).toBeVisible();
+    await page.locator('[data-tour="video-live"]').scrollIntoViewIfNeeded();
+    await shoot(page, `video-settings-custom-advanced-${name}`);
+    // The software encoder: no live playback, no test, the table labelled CRF.
+    look = software;
+    await page.reload();
+    await page.locator('[data-tour="video-advanced"] summary').click();
+    await expect(page.getByText('Non disponibile').first()).toBeVisible();
+    await page.locator('[data-tour="video-live"]').scrollIntoViewIfNeeded();
+    await shoot(page, `video-settings-software-${name}`);
+    look = studio;
     running = true;
     await page.reload();
     await expect(page.locator('.video-run [role="progressbar"]')).toBeVisible();

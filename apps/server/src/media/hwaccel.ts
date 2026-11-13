@@ -115,6 +115,8 @@ export interface PipelineOptions {
   hdr?: boolean;
   /** Seconds the encode starts at, keeping source timestamps (live playback). */
   from?: number;
+  /** The quality value the admin set (CRF, CQ or global_quality) over the preset's. */
+  qualityValue?: number;
 }
 
 /**
@@ -157,7 +159,9 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
   // 10-bit frames scaled on the card, brought down for the CPU filters.
   const down = (format: string) => `:format=${format},hwdownload,format=p010le${post}`;
   const { target, peak, buffer } = opts.rate;
-  const q = QUALITY_VALUES[opts.quality];
+  const preset = QUALITY_VALUES[opts.quality];
+  const own = opts.qualityValue;
+  const q = own === undefined ? preset : { ...preset, crf: own, cq: own, globalQuality: own };
   const cap = ['-maxrate', String(peak), '-bufsize', String(buffer)];
   const lowPower = encoder.lowPower ? ['-low_power', '1'] : [];
   const full = encoder.tuning !== 'basic';

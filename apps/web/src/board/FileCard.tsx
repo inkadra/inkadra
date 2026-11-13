@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { formatDuration } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import type { Asset, AssetRendition } from '@inkadra/shared';
+import type { Asset, AssetRendition, VideoNoLive } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import {
   type CSSProperties,
@@ -367,10 +367,12 @@ function RungsProgress({
   rungs,
   making,
   watchable,
+  noLive,
 }: {
   rungs: AssetRendition[];
   making: AssetRendition | undefined;
   watchable: boolean;
+  noLive?: VideoNoLive;
 }) {
   const { t } = useTranslation();
   return (
@@ -383,11 +385,32 @@ function RungsProgress({
           </span>
         )}
       </span>
+      {watchable && making?.live && (
+        <span className="fcard__prep-line">
+          <span>
+            <span className="live-tag">{t('board.file.live.liveNow')}</span>{' '}
+            {t('board.file.live.liveNowText', { rung: rungLabel(making.name) })}
+          </span>
+        </span>
+      )}
+      {!watchable && noLive && (
+        <span className="fcard__prep-line fcard__prep-line--quiet">
+          <span>
+            {t('board.file.live.noLive', { reason: t(`board.file.live.reasons.${noLive}`) })}
+          </span>
+        </span>
+      )}
       <span className="fcard__rungs" aria-hidden="true">
         {rungs.map((r) => (
           <span
             key={r.name}
-            className={r.status === 'ready' ? 'fcard__rung is-done' : 'fcard__rung'}
+            className={
+              r.status === 'ready'
+                ? 'fcard__rung is-done'
+                : r.live
+                  ? 'fcard__rung is-live'
+                  : 'fcard__rung'
+            }
           >
             <span>{rungLabel(r.name)}</span>
             <span className="fcard__bar">
@@ -515,7 +538,12 @@ function VideoPreview({
             <img className="fcard__img" src={poster} alt="" draggable={false} decoding="async" />
           )}
           {preparing && rungs.length > 0 ? (
-            <RungsProgress rungs={rungs} making={making} watchable={false} />
+            <RungsProgress
+              rungs={rungs}
+              making={making}
+              watchable={false}
+              noLive={asset.playback?.noLive}
+            />
           ) : preparing ? (
             <span className="fcard__prep" role="status">
               <span>{t('board.file.preparing')}</span>

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
-import type { VideoRung } from '@inkadra/shared';
+import type { VideoRung, VideoRungCustom } from '@inkadra/shared';
 import {
   encoderMemory,
   FFMPEG_MEMORY,
@@ -276,6 +276,8 @@ export interface ProxySettings {
   rungs: VideoRung[];
   /** Originals the browser plays: the ladder only when heavy, always, or never. */
   playable: 'heavy' | 'always' | 'never';
+  /** Values the admin set over the preset, by rung (Advanced, decision 0128). */
+  custom?: Partial<Record<VideoRung, VideoRungCustom>>;
   /** Encoder threads of one copy. */
   threads: number;
   /** Detected when the worker starts (VIDEO_PROXY_HWACCEL); libx264 if unset. */

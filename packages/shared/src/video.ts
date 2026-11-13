@@ -50,6 +50,26 @@ export function ladderFor(chosen: readonly VideoRung[], side: number): VideoRung
   return [...below.filter((r) => Number(r) <= topSide * 0.8), top];
 }
 
+/** Bounds of the custom values of a rung (decision 0128), checked by the server. */
+export const VIDEO_BITRATE_MIN = 200_000;
+export const VIDEO_BITRATE_MAX = 80_000_000;
+export const VIDEO_QUALITY_MAX = 51;
+export const VIDEO_LIVE_SESSIONS_MAX = 16;
+
+/**
+ * Values an expert admin set for one rung instead of the preset's: target and peak bitrate
+ * (bit/s) and the quality value of the active encoder (CRF, CQ or global_quality).
+ */
+export const VideoRungCustom = z
+  .object({
+    target: z.int().min(VIDEO_BITRATE_MIN).max(VIDEO_BITRATE_MAX).optional(),
+    peak: z.int().min(VIDEO_BITRATE_MIN).max(VIDEO_BITRATE_MAX).optional(),
+    quality: z.int().min(0).max(VIDEO_QUALITY_MAX).optional(),
+  })
+  .strict()
+  .openapi('VideoRungCustom');
+export type VideoRungCustom = z.infer<typeof VideoRungCustom>;
+
 /** What becomes of each rung: made and kept, made while watched, or not offered. */
 export const VideoRungMode = z.enum(['stored', 'live', 'off']);
 export type VideoRungMode = z.infer<typeof VideoRungMode>;
@@ -69,9 +89,15 @@ export const VideoSettings = z
     live: z
       .object({
         enabled: z.boolean(),
-        maxSessions: z.int().min(1).max(64).openapi({
-          description: 'Renditions encoded at once for viewers, on the whole instance.',
-        }),
+        maxSessions: z
+          .int()
+          .min(0)
+          .max(VIDEO_LIVE_SESSIONS_MAX)
+          .openapi({
+            description:
+              'Renditions encoded at once for viewers, on the whole instance; 0 turns live ' +
+              'playback off. By default what the worker measured; the admin may set more.',
+          }),
         perViewer: z.int().min(1).max(8).openapi({
           description: 'At once for one person or one share link.',
         }),
@@ -81,6 +107,9 @@ export const VideoSettings = z
           'Renditions made while someone watches: right after an upload, for `live` rungs, ' +
           'past the limits the player keeps to the stored ones.',
       }),
+    custom: z.partialRecord(VideoRung, VideoRungCustom).optional().openapi({
+      description: 'Values set by hand over the preset, by rung (Advanced).',
+    }),
   })
   .openapi('VideoSettings');
 export type VideoSettings = z.infer<typeof VideoSettings>;
@@ -94,7 +123,7 @@ export const DEFAULT_VIDEO_SETTINGS: VideoSettings = {
 
 /**
  * Whether live playback can run on this instance (decision 0128): only on a GPU, with the
- * sessions the worker measured at start (or VIDEO_LIVE_MAX_SESSIONS), the most the admin can set.
+ * sessions the worker measured, the admin's own value, or VIDEO_LIVE_MAX_SESSIONS, which wins.
  */
 export const VideoLiveStatus = z
   .object({
@@ -112,6 +141,9 @@ export const VideoLiveStatus = z
       .int()
       .min(0)
       .openapi({ description: 'The cap: measured, or from the environment.' }),
+    measured: z.int().min(0).nullable().optional().openapi({
+      description: 'Sessions the last measurement allowed; the admin may set more.',
+    }),
     speed: z.number().positive().nullable().openapi({
       description: 'Speed of one 1080p live encode measured at start, × real time.',
     }),
@@ -126,7 +158,16 @@ export const UpdateVideoSettings = z
     quality: VideoQuality.optional(),
     rungs: z.record(VideoRung, VideoRungMode).optional(),
     playable: VideoSettings.shape.playable.optional(),
-    live: VideoSettings.shape.live.partial().optional(),
+    live: VideoSettings.shape.live
+      .partial()
+      .extend({
+        maxSessions: z.int().min(0).max(VIDEO_LIVE_SESSIONS_MAX).nullable().optional().openapi({
+          description: 'null: back to the value the worker measured.',
+        }),
+      })
+      .optional(),
+    /** A rung set to null, or a field left out, goes back to the preset. */
+    custom: z.partialRecord(VideoRung, VideoRungCustom.nullable()).optional(),
   })
   .strict()
   .openapi('UpdateVideoSettings');
@@ -199,6 +240,21 @@ export const VideoSettingsView = z
       }),
     backfill: VideoBackfill.nullable(),
     liveStatus: VideoLiveStatus.optional(),
+    /** A new measurement of the encoder and of live playback asked from the page. */
+    benchmark: z
+      .object({ running: z.boolean(), startedAt: z.iso.datetime().nullable() })
+      .optional(),
+    /**
+     * The values of each preset for each rung on the active encoder, for the Advanced fields:
+     * target and peak (bit/s, up to 30 fps) and the quality value, named by `qualityParam`.
+     */
+    presetValues: z
+      .record(
+        VideoQuality,
+        z.record(VideoRung, z.object({ target: z.int(), peak: z.int(), quality: z.int() })),
+      )
+      .optional(),
+    qualityParam: z.enum(['crf', 'cq', 'global_quality']).optional(),
   })
   .openapi('VideoSettingsView');
 export type VideoSettingsView = z.infer<typeof VideoSettingsView>;
@@ -239,6 +295,18 @@ export const AssetRendition = z
   .openapi('AssetRendition');
 export type AssetRendition = z.infer<typeof AssetRendition>;
 
+/** Why a source never plays live (decision 0128): what the graphics card cannot do alone. */
+export const VideoNoLive = z.enum([
+  'prores',
+  'dnx',
+  'chroma',
+  'interlaced',
+  'hdr',
+  'rotated',
+  'codec',
+]);
+export type VideoNoLive = z.infer<typeof VideoNoLive>;
+
 export const AssetPlayback = z
   .object({
     hls: z
@@ -254,6 +322,11 @@ export const AssetPlayback = z
     }),
     renditions: z.array(AssetRendition).openapi({
       description: 'Smallest first; a rung larger than the source is never listed.',
+    }),
+    noLive: VideoNoLive.optional().openapi({
+      description:
+        'Live playback runs on this server but never for this source (decision 0128): it ' +
+        'waits for its stored rungs. Only from servers with `video-live`.',
     }),
   })
   .openapi('AssetPlayback');

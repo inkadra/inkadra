@@ -4,8 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
-import { chooseSelect } from '../test/select.ts';
-import { copiesMbPerMinute, libraryMb, VideoSettings } from './VideoSettings.tsx';
+import { copiesMbPerMinute, libraryMb, rungProblems, VideoSettings } from './VideoSettings.tsx';
 
 const t = (key: string, values?: Record<string, unknown>) =>
   values ? `${key}:${JSON.stringify(values)}` : key;
@@ -23,6 +22,13 @@ afterEach(() => {
   act(() => root.unmount());
   root = createRoot(host);
   vi.clearAllMocks();
+});
+
+const rungValues = (quality: number) => ({
+  '480': { target: 1_200_000, peak: 1_800_000, quality },
+  '720': { target: 2_500_000, peak: 3_750_000, quality },
+  '1080': { target: 4_500_000, peak: 6_750_000, quality },
+  '2160': { target: 14_000_000, peak: 21_000_000, quality },
 });
 
 const view = (patch: Partial<VideoSettingsView> = {}): VideoSettingsView => ({
@@ -53,9 +59,17 @@ const view = (patch: Partial<VideoSettingsView> = {}): VideoSettingsView => ({
     available: true,
     reason: null,
     sessions: 3,
+    measured: 3,
     speed: 5.35,
     measuredAt: '2026-11-13T12:00:00.000Z',
     locked: false,
+  },
+  benchmark: { running: false, startedAt: null },
+  qualityParam: 'global_quality',
+  presetValues: {
+    light: rungValues(24),
+    balanced: rungValues(28),
+    high: rungValues(21),
   },
   ...patch,
 });
@@ -182,34 +196,182 @@ it('turns live playback off, keeping the live-only resolutions on disk', async (
   });
 });
 
-it('shows live playback as unavailable without a GPU, with the reason and no switch', async () => {
+const button = (text: string) =>
+  [...host.querySelectorAll('button')].find((b) => b.textContent === text);
+
+const software = (patch: Partial<VideoSettingsView> = {}) =>
+  view({
+    encoder: {
+      label: 'Software (libx264)',
+      backend: 'software',
+      tuning: 'full',
+      av1: false,
+      requested: 'auto',
+      concurrency: 1,
+    },
+    settings: { ...DEFAULT_VIDEO_SETTINGS, live: { enabled: false, maxSessions: 0, perViewer: 1 } },
+    qualityParam: 'crf',
+    liveStatus: {
+      available: false,
+      reason: 'no-gpu',
+      sessions: 0,
+      measured: null,
+      speed: null,
+      measuredAt: null,
+      locked: false,
+    },
+    ...patch,
+  });
+
+it('shows live playback as unavailable with the software encoder: switch off and disabled', async () => {
+  await show(software());
+  expect(host.textContent).toContain('videoSettings.live.unavailable');
+  expect(host.textContent).toContain('videoSettings.live.reasons.no-gpu');
+  const toggle = host.querySelector<HTMLInputElement>('input[role="switch"]');
+  expect(toggle?.checked).toBe(false);
+  expect(toggle?.disabled).toBe(true);
+  // Avanzate: no test and no sessions without a GPU, the table labelled CRF.
+  expect(host.textContent).toContain('videoSettings.advanced.noGpu');
+  expect(button('videoSettings.advanced.rerun')?.disabled).toBe(true);
+  expect(host.querySelector('#video-sessions')).toBeNull();
+  expect(host.querySelector('.video-rtable thead')?.textContent).toContain('CRF');
+});
+
+it('says live is off when the sessions are 0, and offers each chosen resolution live when on', async () => {
   await show(
     view({
       settings: {
         ...DEFAULT_VIDEO_SETTINGS,
-        live: { enabled: false, maxSessions: 1, perViewer: 1 },
-      },
-      liveStatus: {
-        available: false,
-        reason: 'no-gpu',
-        sessions: 0,
-        speed: null,
-        measuredAt: null,
-        locked: false,
+        live: { enabled: true, maxSessions: 0, perViewer: 1 },
       },
     }),
   );
-  expect(host.textContent).toContain('videoSettings.live.reasons.no-gpu');
-  expect(host.querySelector('input[role="switch"]')).toBeNull();
+  expect(host.textContent).toContain('videoSettings.live.zero');
+  expect(host.textContent).toContain('videoSettings.live.off');
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  await show(view());
+  expect(host.textContent).toContain('videoSettings.live.on');
+  expect(host.textContent).toContain('videoSettings.live.upTo:{"count":3}');
+  // 480, 720 and 1080 are chosen by default: one Su disco | Solo al volo each.
+  expect(host.querySelectorAll('input[name^="video-rung-mode-"][value="live"]')).toHaveLength(3);
+  vi.mocked(api.patch).mockResolvedValue(view());
+  await act(async () =>
+    host
+      .querySelector<HTMLInputElement>('input[name="video-rung-mode-1080"][value="live"]')
+      ?.click(),
+  );
+  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', {
+    rungs: { ...DEFAULT_VIDEO_SETTINGS.rungs, '1080': 'live' },
+  });
 });
 
-it('offers at most the sessions measured at start', async () => {
+it('tags a live-only resolution and leaves it out of the space estimates', async () => {
+  const rungs = { ...DEFAULT_VIDEO_SETTINGS.rungs, '1080': 'live' as const };
+  await show(view({ settings: { ...DEFAULT_VIDEO_SETTINGS, rungs } }));
+  expect(host.textContent).toContain('videoSettings.live.onlyLive');
+  const minute = host.querySelector('.video-totals dd')?.textContent ?? '';
+  expect(minute).toContain(String(Math.round(copiesMbPerMinute('balanced', ['480', '720']))));
+});
+
+it('keeps Avanzate collapsed, and lets the admin raise live sessions over the measurement', async () => {
   await show(view());
-  expect(host.textContent).toContain('videoSettings.live.measured:{"count":3,"speed":"5.4"}');
-  const trigger = host.querySelector('[role="combobox"]');
-  // Three is there, four is not: the admin can only lower the measured value.
+  const fold = host.querySelector<HTMLDetailsElement>('[data-tour="video-advanced"] details');
+  expect(fold?.open).toBe(false);
+  expect(host.textContent).toContain('videoSettings.advanced.measuredAtStart:{"count":3}');
+  const field = host.querySelector<HTMLInputElement>('#video-sessions');
+  vi.mocked(api.patch).mockResolvedValue(
+    view({
+      settings: {
+        ...DEFAULT_VIDEO_SETTINGS,
+        live: { enabled: true, maxSessions: 6, perViewer: 1 },
+      },
+    }),
+  );
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, '6');
+    field?.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => field?.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', { live: { maxSessions: 6 } });
+  expect(host.textContent).toContain('videoSettings.advanced.overMeasured');
+  expect(host.textContent).toContain('videoSettings.advanced.customised');
   vi.mocked(api.patch).mockResolvedValue(view());
-  chooseSelect(trigger, '2');
-  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', { live: { maxSessions: 2 } });
-  expect(() => chooseSelect(host.querySelector('[role="combobox"]'), '4')).toThrow(/missing/);
+  await act(async () => button('videoSettings.advanced.reset')?.click());
+  expect(api.patch).toHaveBeenLastCalledWith('/instance/video-settings', {
+    live: { maxSessions: null },
+  });
+});
+
+async function type(input: HTMLInputElement | null | undefined, text: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, text);
+    input?.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => input?.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+}
+
+it('saves a custom rung value in kbit/s, marks it personalizzato and resets it', async () => {
+  await show(view());
+  const target = host.querySelector<HTMLInputElement>('.video-rtable tbody input');
+  expect(target?.value).toBe('1200');
+  const custom = view({
+    settings: { ...DEFAULT_VIDEO_SETTINGS, custom: { '480': { target: 1_500_000 } } },
+  });
+  vi.mocked(api.patch).mockResolvedValue(custom);
+  await type(target, '1500');
+  expect(api.patch).toHaveBeenCalledWith('/instance/video-settings', {
+    custom: { '480': { target: 1_500_000 } },
+  });
+  expect(host.textContent).toContain('videoSettings.advanced.custom');
+  // Under the presets: Personalizzata, and a way back to the preset values.
+  expect(host.textContent).toContain('videoSettings.advanced.customNote');
+  vi.mocked(api.patch).mockResolvedValue(view());
+  await act(async () => button('videoSettings.advanced.reset')?.click());
+  expect(api.patch).toHaveBeenLastCalledWith('/instance/video-settings', {
+    custom: { '480': null },
+  });
+  vi.mocked(api.patch).mockResolvedValue(custom);
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  await show(custom);
+  await act(async () => button('videoSettings.advanced.resetAll')?.click());
+  expect(api.patch).toHaveBeenLastCalledWith('/instance/video-settings', {
+    custom: { '480': null, '720': null, '1080': null, '2160': null },
+  });
+});
+
+it('shows inline errors and saves nothing out of range', async () => {
+  await show(view());
+  const [target, peak, quality] = [
+    ...host.querySelectorAll<HTMLInputElement>('.video-rtable tbody tr:first-child input'),
+  ];
+  await type(target, '100');
+  expect(host.textContent).toContain('videoSettings.advanced.errors.range');
+  expect(target?.getAttribute('aria-invalid')).toBe('true');
+  await type(target, '2000');
+  await type(peak, '1900');
+  expect(host.textContent).toContain('videoSettings.advanced.errors.belowTarget');
+  await type(quality, '60');
+  expect(host.textContent).toContain('videoSettings.advanced.errors.quality');
+  expect(api.patch).not.toHaveBeenCalled();
+  expect(rungProblems(1200, 1800, 24)).toEqual({});
+});
+
+it('marks the resolutions that are not chosen', async () => {
+  await show(view());
+  expect(host.querySelectorAll('.video-rtable tr.is-off')).toHaveLength(1);
+  expect(host.textContent).toContain('videoSettings.advanced.notChosen');
+});
+
+it('runs the performance test again, shows its progress, then the new measurement', async () => {
+  await show(view());
+  vi.mocked(api.post).mockResolvedValue(
+    view({ benchmark: { running: true, startedAt: new Date().toISOString() } }),
+  );
+  await act(async () => button('videoSettings.advanced.rerun')?.click());
+  expect(api.post).toHaveBeenCalledWith('/instance/video-settings/benchmark', {});
+  expect(host.textContent).toContain('videoSettings.advanced.benchmarkRunning');
+  expect(button('videoSettings.advanced.benchmarkBusy')?.disabled).toBe(true);
+  expect(host.querySelector('.video-bench [role="progressbar"]')).not.toBeNull();
 });

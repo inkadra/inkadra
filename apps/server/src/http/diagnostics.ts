@@ -9,7 +9,7 @@ import type { Database } from '../db/client.ts';
 import { readVideoEncoder } from '../media/encoder-setting.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import type { Storage } from '../storage.ts';
-import { liveStatus } from '../video-settings.ts';
+import { readVideoSettings } from '../video-settings.ts';
 import { requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -144,7 +144,9 @@ export async function runChecks(
     const forced = encoder.requested !== 'auto' && encoder.requested !== 'none';
     const missed = forced && encoder.backend === 'software';
     // Live playback (decision 0128): whether it runs, and why not.
-    const live = await liveStatus(db, config).catch(() => null);
+    const live = await readVideoSettings(db, config)
+      .then((read) => read.live)
+      .catch(() => null);
     const liveText = !live
       ? null
       : live.available
