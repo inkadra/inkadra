@@ -16,7 +16,7 @@ import { encoderMemory, type VideoEncoder } from './hwaccel.ts';
 import { ladderArgs, renditionCodecs, rungSide, shortSide } from './ladder.ts';
 import { rungRate } from './quality.ts';
 import { privateInput } from './scratch.ts';
-import { limitedCommand, toolEnv } from './tools.ts';
+import { ffmpegError, keepTail, limitedCommand, toolEnv } from './tools.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   decodesOnGpu,
@@ -543,14 +543,14 @@ export class LiveSessions {
     let stderr = '';
     child.stderr?.setEncoding('utf8');
     child.stderr?.on('data', (chunk: string) => {
-      if (stderr.length < 2000) stderr += chunk;
+      stderr = keepTail(stderr, chunk);
     });
     child.on('close', (code) => {
       if (session.child !== child) return;
       session.child = null;
       if (code === 0 || code === null) return;
       this.deps.log?.warn(
-        { assetId: row.id, rung, code, encoder: encoder.backend, stderr: stderr.slice(0, 500) },
+        { assetId: row.id, rung, code, encoder: encoder.backend, stderr: ffmpegError(stderr) },
         'live encoding stopped',
       );
     });

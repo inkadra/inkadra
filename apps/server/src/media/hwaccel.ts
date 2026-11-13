@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 import { QUALITY_VALUES, type RungRate, rungRate, type VideoQuality } from './quality.ts';
-import { limitedCommand, toolEnv } from './tools.ts';
+import { ffmpegError, limitedCommand, toolEnv } from './tools.ts';
 
 const exec = promisify(execFile);
 
@@ -361,7 +361,7 @@ export const defaultDetectIo: DetectIo = {
       return null;
     } catch (err) {
       const e = err as { stderr?: string; message?: string };
-      return (e.stderr || e.message || 'failed').trim().slice(0, 300);
+      return ffmpegError(e.stderr || e.message || 'failed', 300);
     }
   },
   async bench(ffmpeg, args, encoder, timeoutMs) {
