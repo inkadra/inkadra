@@ -29,8 +29,8 @@ you need privately before running it again. Documentation captures in `docs/scre
 and `docs/screenshots/guide` still come from `pnpm --filter @inkadra/e2e screenshots`.
 
 - Frame grab: `pnpm --filter @inkadra/e2e exec playwright test --config frame-grab.config.ts
-  --project chromium`, on the workstation with a unique `E2E_PORT`, disposable Postgres/Valkey
-  URLs and `CSP_ENFORCE=true`.
+  --project chromium`, with a unique `E2E_PORT`, disposable Postgres/Valkey URLs and
+  `CSP_ENFORCE=true`.
 - Choice controls: run `ui-controls.spec.ts` after `first-run.spec.ts`.
 - Select controls: set `SELECT_SCREENSHOTS=1` when running `storyboard.spec.ts` and
   `pdf-export.spec.ts` after `first-run.spec.ts` on a fresh e2e instance.
