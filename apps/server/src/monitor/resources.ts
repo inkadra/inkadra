@@ -170,7 +170,10 @@ export async function readGpu(proc = '/proc'): Promise<GpuReading | null> {
   return clients;
 }
 
-/** The busiest engine, summing only clients that survive both readings. */
+/**
+ * The busiest engine. A client that exited between the readings is lost; one that opened in
+ * between counts its whole time counter, which starts at zero when its file is opened.
+ */
 export function gpuPercent(
   before: GpuReading | null | undefined,
   after: GpuReading | null | undefined,
@@ -180,15 +183,16 @@ export function gpuPercent(
   const engines = new Map<string, number>();
   for (const [id, client] of after) {
     const old = before.get(id);
-    if (!old) continue;
     for (const [name, counter] of Object.entries(client.engines)) {
-      const prev = old.engines[name];
-      if (!prev || (prev.total === null) !== (counter.total === null)) continue;
-      const elapsed = counter.total === null ? ms * 1e6 : counter.total - (prev.total ?? 0);
+      const prev = old?.engines[name];
+      // xe cycle totals are a GPU clock, not zero at open: a new client has no baseline.
+      if (!prev && counter.total !== null) continue;
+      if (prev && (prev.total === null) !== (counter.total === null)) continue;
+      const elapsed = counter.total === null ? ms * 1e6 : counter.total - (prev?.total ?? 0);
       if (elapsed <= 0) continue;
       // Drivers may briefly report a smaller busy counter: keep the previous high-water mark.
-      const delta = Math.max(0, counter.busy - prev.busy);
-      counter.busy = Math.max(counter.busy, prev.busy);
+      const delta = Math.max(0, counter.busy - (prev?.busy ?? 0));
+      counter.busy = Math.max(counter.busy, prev?.busy ?? 0);
       const key = `${client.device}/${name}`;
       engines.set(key, (engines.get(key) ?? 0) + delta / elapsed / counter.capacity);
     }
