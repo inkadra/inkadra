@@ -5,6 +5,8 @@ const root = process
   .cwd()
   .replaceAll('\\', '/')
   .replace(/\/e2e$/, '');
+// The Vite server of this run (playwright.config.ts starts it on E2E_VITE_PORT).
+const vite = `http://127.0.0.1:${process.env.E2E_VITE_PORT ?? '5179'}`;
 const fixture = (
   scenario: string,
 ) => `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module">
@@ -92,7 +94,7 @@ for (const [width, height] of [
       await page.route('**/__shot', (route) =>
         route.fulfill({ body: fixture('yt'), contentType: 'text/html' }),
       );
-      await page.goto('http://127.0.0.1:5179/__shot');
+      await page.goto(`${vite}/__shot`);
       const iframe = await page.locator('.viewer__iframe').boundingBox();
       const thumbs = await page.locator('.viewer__thumbnails').boundingBox();
       const title = await page.locator('.viewer__stage-title').boundingBox();
@@ -167,7 +169,7 @@ for (const [width, height] of [
           body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="gray"/></svg>',
         }),
       );
-      await page.goto('http://127.0.0.1:5179/__shot');
+      await page.goto(`${vite}/__shot`);
       const media = page.locator('.viewer__media');
       await expect(media).toHaveCount(1);
       await expect
@@ -243,7 +245,7 @@ async function openShell(page: Page) {
   await page.route('**/__shot', (route) =>
     route.fulfill({ body: fixture('shell'), contentType: 'text/html' }),
   );
-  await page.goto('http://127.0.0.1:5179/__shot');
+  await page.goto(`${vite}/__shot`);
   const inbox = page.locator('.ink-sidebar').getByRole('button', { name: 'Inbox', exact: true });
   await expect(inbox).toBeVisible();
   return inbox;
@@ -294,7 +296,7 @@ for (const width of [390, 1280]) {
     await page.route('**/__shot', (route) =>
       route.fulfill({ body: fixture('appearance'), contentType: 'text/html' }),
     );
-    await page.goto('http://127.0.0.1:5179/__shot');
+    await page.goto(`${vite}/__shot`);
     const dialog = page.locator('.project-appearance .ink-dialog');
     await expect(dialog).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
@@ -371,7 +373,7 @@ for (const [width, height] of [
     await page.route('**/__shot', (route) =>
       route.fulfill({ body: fixture('image'), contentType: 'text/html' }),
     );
-    await page.goto('http://127.0.0.1:5179/__shot');
+    await page.goto(`${vite}/__shot`);
     const inside = () =>
       page.locator('.viewer').evaluate((el) => el.contains(document.activeElement));
     await expect.poll(inside).toBe(true);
@@ -392,7 +394,7 @@ test('PWA update notification remains above the viewer', async ({ page }) => {
   await page.route('**/__shot', (route) =>
     route.fulfill({ body: fixture('image'), contentType: 'text/html' }),
   );
-  await page.goto('http://127.0.0.1:5179/__shot');
+  await page.goto(`${vite}/__shot`);
   await expect(page.locator('.viewer')).toBeVisible();
   expect(
     await page.evaluate(() => {
@@ -426,7 +428,7 @@ async function openSettings(
   // A phone's "desktop site" ignores the viewport tag and lays the page out 980 px wide.
   const body = fixture('settings').replace(desktopSite ? /<meta name="viewport"[^>]*>/ : '', '');
   await page.route('**/__shot', (route) => route.fulfill({ body, contentType: 'text/html' }));
-  await page.goto('http://127.0.0.1:5179/__shot');
+  await page.goto(`${vite}/__shot`);
   const dialog = page.locator('dialog.settings-window');
   await expect(dialog.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
   return dialog;
