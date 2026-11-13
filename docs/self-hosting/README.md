@@ -168,10 +168,10 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 
 `ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`, in two variants:
 
-| Variant  | Tag example    | Contents                                                                                                                                   |
-| -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Standard | `edge`         | ffmpeg, exiftool, poppler and hardware encoding drivers: video posters and playable copies, audio waveforms, camera RAW and PDF thumbnails |
-| Office   | `edge-office`  | Standard plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                           |
+| Variant  | Tag example   | Contents                                                                                                                                   |
+| -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Standard | `edge`        | ffmpeg, exiftool, poppler and hardware encoding drivers: video posters and playable copies, audio waveforms, camera RAW and PDF thumbnails |
+| Office   | `edge-office` | Standard plus LibreOffice, for the **worker role only**: [Office previews](office.md), optional and experimental                           |
 
 ### Tags
 
@@ -342,14 +342,14 @@ data folder first, for example with `docker compose cp`.
 
 Inkadra sends no telemetry. It talks to other servers only for what is listed here.
 
-| What                                                                        | Goes to                                                               | When                                                                   | To turn it off                                                 |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| **Reports**: the text, screenshots, videos, files and logs someone selected | The Inkadra developers, through a relay on Cloudflare (details below) | Only when someone sends a report, after its preview. **On by default** | **Settings → Reports**, or `FEEDBACK_RELAY_URL=` empty |
-| Map tile requests, with this instance's address in the user agent           | `tile.openstreetmap.org`, or your `MAP_TILE_URL`                      | When someone adds or explores a map or a GPX file                      | `MAPS=false`, or your own tile server                          |
-| Requests for the pages behind pasted links, and their preview images        | That site; YouTube and Vimeo for their videos                         | When someone pastes a link or clips a page                             | No setting                                                     |
-| Address lookups                                                             | Your `MAP_GEOCODER_URL`                                               | When someone types an address in a map card                            | Off unless you set it                                          |
-| A request for the list of Inkadra releases, with no data about this server  | `api.github.com`                                                      | Every 6 hours, and on **Check now**. **On by default**                 | **Settings → Updates** → Tell me when a new version is out     |
-| Sign-in, email and files                                                    | Your Google or OIDC provider, your mail server, your S3 bucket        | Only if you configure them                                             | Leave them empty                                               |
+| What                                                                        | Goes to                                                               | When                                                                   | To turn it off                                             |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Reports**: the text, screenshots, videos, files and logs someone selected | The Inkadra developers, through a relay on Cloudflare (details below) | Only when someone sends a report, after its preview. **On by default** | **Settings → Reports**, or `FEEDBACK_RELAY_URL=` empty     |
+| Map tile requests, with this instance's address in the user agent           | `tile.openstreetmap.org`, or your `MAP_TILE_URL`                      | When someone adds or explores a map or a GPX file                      | `MAPS=false`, or your own tile server                      |
+| Requests for the pages behind pasted links, and their preview images        | That site; YouTube and Vimeo for their videos                         | When someone pastes a link or clips a page                             | No setting                                                 |
+| Address lookups                                                             | Your `MAP_GEOCODER_URL`                                               | When someone types an address in a map card                            | Off unless you set it                                      |
+| A request for the list of Inkadra releases, with no data about this server  | `api.github.com`                                                      | Every 6 hours, and on **Check now**. **On by default**                 | **Settings → Updates** → Tell me when a new version is out |
+| Sign-in, email and files                                                    | Your Google or OIDC provider, your mail server, your S3 bucket        | Only if you configure them                                             | Leave them empty                                           |
 
 People's browsers load YouTube (from `youtube-nocookie.com`), Vimeo or Instagram players only when
 someone plays a link card, and Google profile pictures for accounts that sign in with Google.

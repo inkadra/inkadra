@@ -20,22 +20,22 @@ services:
 
 ## Server
 
-| Variable        | Default                          | Meaning                                                                                          |
-| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                            |
-| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path         |
-| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out            |
-| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                                       |
-| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab` |
-| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                            |
-| `REGISTRATION`  | `invite`                         | `invite`: invitation required; `open`: anyone; `closed`: no new accounts, even with an invitation                                    |
-| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                              |
-| `PORT`          | `3000`                           | Port of the web server                                                                           |
-| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                  |
-| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                            |
-| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                            |
-| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                             |
-| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                             |
+| Variable        | Default                          | Meaning                                                                                           |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                             |
+| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path          |
+| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out             |
+| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                                        |
+| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`  |
+| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                             |
+| `REGISTRATION`  | `invite`                         | `invite`: invitation required; `open`: anyone; `closed`: no new accounts, even with an invitation |
+| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                               |
+| `PORT`          | `3000`                           | Port of the web server                                                                            |
+| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                   |
+| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                             |
+| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                             |
+| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                              |
+| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                              |
 
 `INSTANCE_NAME` and `REGISTRATION` are installation defaults; saved administrator choices
 in Settings override them.
@@ -43,10 +43,10 @@ in Settings override them.
 `TZ` sets the container time zone used for scheduled backups (UTC unless configured). It is
 not forwarded by default. The image bundles Node 26.13; the host does not need Node.
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `PRODUCTION_BOARD_MOVE` | `true` | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main) |
-| `OFFICE_PREVIEWS` | off | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md) |
+| Variable                | Default | Meaning                                                                                                               |
+| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `PRODUCTION_BOARD_MOVE` | `true`  | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main) |
+| `OFFICE_PREVIEWS`       | off     | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md)          |
 
 Upload and import size units below use powers of 1024 (`1GB` = 1 GiB). Storage quota units
 use powers of 1000. Boolean settings accept `true` or `false` unless stated otherwise.
@@ -56,9 +56,9 @@ use powers of 1000. Boolean settings accept `true` or `false` unless stated othe
 | Variable                 | Default     | Meaning                                                                                                                                                      |
 | ------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `STORAGE_DRIVER`         | `local`     | `local`: files in the data volume. `s3`: files in a bucket. See [Storage](storage.md)                                                                        |
-| `S3_ENDPOINT`            | AWS         | Address of an S3-compatible service, e.g. `https://s3.example.com`                                                                        |
+| `S3_ENDPOINT`            | AWS         | Address of an S3-compatible service, e.g. `https://s3.example.com`                                                                                           |
 | `S3_REGION`              | `us-east-1` | Region of the bucket                                                                                                                                         |
-| `S3_BUCKET`              |             | Required with `STORAGE_DRIVER=s3`. Bucket name                                                                                                                                                  |
+| `S3_BUCKET`              |             | Required with `STORAGE_DRIVER=s3`. Bucket name                                                                                                               |
 | `S3_ACCESS_KEY_ID`       |             | Access key                                                                                                                                                   |
 | `S3_SECRET_ACCESS_KEY`   |             | Secret key                                                                                                                                                   |
 | `S3_FORCE_PATH_STYLE`    | `false`     | `true` for MinIO, RustFS, Garage and most self-hosted stores                                                                                                 |
@@ -74,12 +74,12 @@ use powers of 1000. Boolean settings accept `true` or `false` unless stated othe
 sign-in providers, email, reports, maps and heavy media previews. It is not a normal team
 installation. See [demo configuration](../demo.md) before enabling it.
 
-| Variable | Default | Allowed values |
-| --- | --- | --- |
-| `DEMO_TTL` | `1h` | Seconds or an integer with `s`, `m`, `h`; at least one minute |
-| `DEMO_STORAGE` | `100MB` | Space per sandbox, decimal units |
-| `DEMO_MAX_SANDBOXES` | `50` | Integer 1–10000 |
-| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET` | unset | Set both together; required in production demo mode |
+| Variable                                 | Default | Allowed values                                                |
+| ---------------------------------------- | ------- | ------------------------------------------------------------- |
+| `DEMO_TTL`                               | `1h`    | Seconds or an integer with `s`, `m`, `h`; at least one minute |
+| `DEMO_STORAGE`                           | `100MB` | Space per sandbox, decimal units                              |
+| `DEMO_MAX_SANDBOXES`                     | `50`    | Integer 1–10000                                               |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET` | unset   | Set both together; required in production demo mode           |
 
 ## Media previews
 
@@ -98,26 +98,26 @@ outdated copies. Existing copies stay available until replacements are ready.
 These four overrides are unset by default. Add them to each role's `environment` in Compose;
 setting them locks the corresponding control in Settings.
 
-| Variable | Allowed values | Meaning |
-| --- | --- | --- |
-| `VIDEO_QUALITY` | `light`, `balanced`, `high` | Quality preset |
-| `VIDEO_RENDITIONS` | Comma-separated `480`, `720`, `1080`, `2160` | Resolutions to store; all others are off |
-| `VIDEO_LIVE` | `true`, `false` | Allow encoding while watched, if hardware supports it |
-| `VIDEO_LIVE_MAX_SESSIONS` | Integer 0–64 | Override the measured session capacity; `0` disables live encoding |
+| Variable                  | Allowed values                               | Meaning                                                            |
+| ------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| `VIDEO_QUALITY`           | `light`, `balanced`, `high`                  | Quality preset                                                     |
+| `VIDEO_RENDITIONS`        | Comma-separated `480`, `720`, `1080`, `2160` | Resolutions to store; all others are off                           |
+| `VIDEO_LIVE`              | `true`, `false`                              | Allow encoding while watched, if hardware supports it              |
+| `VIDEO_LIVE_MAX_SESSIONS` | Integer 0–64                                 | Override the measured session capacity; `0` disables live encoding |
 
-| Variable                      | Default               | Meaning                                                                                                                                                                                                               |
-| ----------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RAW_PREVIEWS`                | `true`                | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded                                                                                                     |
-| `PDF_PREVIEWS`                | `true`                | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                                                                                                                            |
-| `VIDEO_PROXIES`               | `true`                | Enable playable copies of unsupported or heavy videos. `false` disables creation                                                                                                 |
-| `VIDEO_PROXY_MAX_DURATION`    | `7200`                | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                                                                                |
-| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `0`                   | Largest video that gets a playable copy, as bytes or with a unit; `0` (the default) for no limit: the duration limit and the free-space check remain                                                                  |
-| `VIDEO_PROXY_RESOLUTION`      | unset (`1080`), 144–2160        | Largest shorter side of a copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                                                                             |
-| `VIDEO_PROXY_BITRATE`         | unset                 | Cap on the peak video bitrate of every copy (`5M`, `2500k`). Unset, the quality preset sets the rate by size and frame rate: about 46 MB per minute for 1080p (decision 0128)                                         |
-| `VIDEO_PROXY_CONCURRENCY`     | `1`, `2` with a GPU   | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores. Unset, it is `2` when a hardware encoder was found |
-| `VIDEO_PROXY_THREADS`         | `2` (1–16)                   | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                                                                             |
-| `VIDEO_PROXY_HWACCEL`         | `auto`                | Hardware encoding of the copies: `auto`, `nvenc`, `qsv`, `vaapi` or `none` (libx264 only). See [Hardware video encoding](#hardware-video-encoding)                                                                    |
-| `VIDEO_PROXY_VAAPI_DEVICE`    | `/dev/dri/renderD128` | Render node used by `qsv` and `vaapi`                                                                                                                                                                                 |
+| Variable                      | Default                  | Meaning                                                                                                                                                                                                               |
+| ----------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RAW_PREVIEWS`                | `true`                   | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded                                                                                                     |
+| `PDF_PREVIEWS`                | `true`                   | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                                                                                                                            |
+| `VIDEO_PROXIES`               | `true`                   | Enable playable copies of unsupported or heavy videos. `false` disables creation                                                                                                                                      |
+| `VIDEO_PROXY_MAX_DURATION`    | `7200`                   | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                                                                                |
+| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `0`                      | Largest video that gets a playable copy, as bytes or with a unit; `0` (the default) for no limit: the duration limit and the free-space check remain                                                                  |
+| `VIDEO_PROXY_RESOLUTION`      | unset (`1080`), 144–2160 | Largest shorter side of a copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                                                                             |
+| `VIDEO_PROXY_BITRATE`         | unset                    | Cap on the peak video bitrate of every copy (`5M`, `2500k`). Unset, the quality preset sets the rate by size and frame rate: about 46 MB per minute for 1080p (decision 0128)                                         |
+| `VIDEO_PROXY_CONCURRENCY`     | `1`, `2` with a GPU      | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores. Unset, it is `2` when a hardware encoder was found |
+| `VIDEO_PROXY_THREADS`         | `2` (1–16)               | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                                                                             |
+| `VIDEO_PROXY_HWACCEL`         | `auto`                   | Hardware encoding of the copies: `auto`, `nvenc`, `qsv`, `vaapi` or `none` (libx264 only). See [Hardware video encoding](#hardware-video-encoding)                                                                    |
+| `VIDEO_PROXY_VAAPI_DEVICE`    | `/dev/dri/renderD128`    | Render node used by `qsv` and `vaapi`                                                                                                                                                                                 |
 
 For custom images or non-Docker installs, tools are discovered on `PATH`. Override individual
 paths with `FFMPEG_PATH`, `FFPROBE_PATH`, `EXIFTOOL_PATH`, `PDFTOPPM_PATH`, `PDFINFO_PATH`,

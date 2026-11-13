@@ -9,7 +9,7 @@ All JSON is UTF-8; timestamps are ISO 8601 with offset; ids are UUIDs of the exp
 | Entry                            | Content                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------- |
 | `manifest.json`                  | `format: "inkadra-project"`, `formatVersion`, app version, date, counts          |
-| `project.json`                   | Name, icon, type, time zone, shooting dates, archived                                       |
+| `project.json`                   | Name, icon, type, time zone, shooting dates, archived                            |
 | `people.json`                    | Id and name of every author and mentioned person (never emails)                  |
 | `boards.json`                    | Board tree: id, parent (null for root), kind, views, title, icon, schema version |
 | `boards/<boardId>/document.yjs`  | The board's Yjs document, one full update (`Y.encodeStateAsUpdate`)              |
@@ -17,7 +17,7 @@ All JSON is UTF-8; timestamps are ISO 8601 with offset; ids are UUIDs of the exp
 | `versions.json`                  | Named versions: id, board, name, schema version, author, date                    |
 | `versions/<versionId>.yjs`       | The document of a named version                                                  |
 | `assets.json`                    | Files: id, kind, MIME type, name, size, SHA-256, author                          |
-| `files/<assetId>`                | The original file, byte for byte (no generated previews or playable copies)                                                 |
+| `files/<assetId>`                | The original file, byte for byte (no generated previews or playable copies)      |
 | `comments.json`                  | Comments and replies (board or card, pin, resolved, edited, deleted)             |
 | `reviews.json`                   | The team's review status of each card and its history                            |
 | `schedule.json`                  | Shooting days with their blocks                                                  |

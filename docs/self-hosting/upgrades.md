@@ -125,10 +125,10 @@ and tokens.
 There are two ways. Both are run by CI on every change (`scripts/test-postgres-upgrade.sh`,
 from seeded data on 16 to the app running on 18), so the commands below are the tested ones.
 
-| Way                                      | Good for                                                                      |
-| ---------------------------------------- | ----------------------------------------------------------------------------- |
-| [Dump and restore](#dump-and-restore)    | The default. Uses a new volume and preserves the old database |
-| [In place](#in-place-with-pgautoupgrade) | A large database, where a dump takes too long. Changes the old volume         |
+| Way                                      | Good for                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| [Dump and restore](#dump-and-restore)    | The default. Uses a new volume and preserves the old database         |
+| [In place](#in-place-with-pgautoupgrade) | A large database, where a dump takes too long. Changes the old volume |
 
 You need Docker Compose 2.24.4 or newer for the files in `deploy/` (`docker compose version`).
 Check which PostgreSQL you run now with
