@@ -889,6 +889,7 @@
 .sheet__dial:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .sheet__phone-own-time {
   display: block;

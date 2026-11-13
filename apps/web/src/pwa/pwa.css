@@ -44,6 +44,7 @@
 .pwa-update button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 
 /* Phones: across the width, clear of the home indicator and above the bottom bar if there is

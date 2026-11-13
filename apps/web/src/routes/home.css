@@ -96,6 +96,7 @@
 .home__more:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
   border-radius: var(--ink-radius-xs);
 }
 .home__status {
@@ -527,6 +528,7 @@
 .home__project:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .home__preview-glyph > span {
   transform: scale(1.75);

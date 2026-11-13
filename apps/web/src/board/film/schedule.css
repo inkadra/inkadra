@@ -237,6 +237,7 @@
 .schedule__range-button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .schedule__popover .schedule__month {
   width: 220px;
@@ -604,6 +605,7 @@
 .schedule__head-hit:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .schedule__head > :not(.schedule__head-hit) {
   position: relative;
@@ -623,6 +625,7 @@
 .schedule__conflict-tag:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 /* A free day of the week: weekday and number, centred. */
 .schedule__head.is-narrow {
@@ -990,6 +993,7 @@
 .schedule__block-select:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
+  box-shadow: none;
 }
 .schedule__block.is-selected {
   z-index: 2;
@@ -1395,6 +1399,7 @@ fieldset.schedule__field > legend {
 .schedule__chip:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .schedule__check {
   display: flex;
@@ -1671,6 +1676,7 @@ fieldset.schedule__field > legend {
   .schedule__summary-main:focus-visible {
     outline: 2px solid var(--ink-accent-primary);
     outline-offset: 2px;
+    box-shadow: none;
   }
   .schedule__summary-card {
     display: flex;
@@ -1801,6 +1807,7 @@ fieldset.schedule__field > legend {
   .schedule__row:focus-visible {
     outline: 2px solid var(--ink-accent-primary);
     outline-offset: 2px;
+    box-shadow: none;
   }
   .schedule__row > .schedule__block-time {
     flex: none;
@@ -1861,6 +1868,7 @@ fieldset.schedule__field > legend {
 .schedule__edge-button:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 
 @media (768px <= width < 1400px) {
@@ -2028,6 +2036,7 @@ fieldset.schedule__field > legend {
 .day-calls__more > summary:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .day-calls__more > .day-calls__row {
   margin: 0 8px;

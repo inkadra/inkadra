@@ -75,6 +75,7 @@
 .troupe__row:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .troupe__row.is-selected {
   background: var(--ink-accent-soft-bg);
@@ -251,6 +252,7 @@
 .troupe__person:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 
 /* Mockup details: chips in the role column, quiet empty cells, link cards in the inspector. */

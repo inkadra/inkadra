@@ -54,7 +54,7 @@ select {
    ring off (the search field, for one). The choice ring lives with the other .ink-choice rules. */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 
 .ink-mono {
@@ -268,7 +268,7 @@ select {
 .ink-input:focus {
   outline: none;
   border-color: var(--ink-accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 .ink-input[aria-invalid="true"] {
   border-color: var(--ink-status-danger);
@@ -998,6 +998,7 @@ select {
 .ink-row:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .ink-row__text {
   display: grid;
@@ -1088,6 +1089,10 @@ select {
 .ink-cover-card:has(.ink-cover-card__link:focus-visible) {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+}
+/* The card wears the ring, not the title inside it. */
+.ink-cover-card__link:focus-visible {
+  box-shadow: none;
 }
 .ink-cover-card__cover {
   position: relative;
@@ -1712,7 +1717,7 @@ select {
 }
 .ink-choice:has(> input:focus-visible) {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 .ink-choice > input:focus-visible {
   box-shadow: none;
@@ -1933,7 +1938,7 @@ select {
   color: var(--ink-text-primary);
 }
 .ink-tile:has(> .ink-tile__input:focus-visible) {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 .ink-tile:has(> .ink-tile__input:disabled) {
   opacity: 0.5;

@@ -133,6 +133,7 @@
 .notifications-filter-tab:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .notifications-filter-tab.is-active {
   background: var(--ink-surface-2);
@@ -863,6 +864,7 @@
 .swipe-row__action:focus-visible {
   outline: 2px solid var(--ink-on-accent);
   outline-offset: -4px;
+  box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .swipe-row__front {

@@ -120,6 +120,7 @@
 .review-card:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .comment-pin {
   position: absolute;
@@ -392,6 +393,7 @@ button.review-link:hover:not(:disabled) {
 .comment-thread:focus {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .comment-item {
   display: flex;
@@ -615,6 +617,7 @@ button.review-link:hover:not(:disabled) {
 .comment-bubble:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 /* The bubbles stand in for the count badge of the cards. */
 body[data-comments-on-board] .card-review__count {
@@ -711,6 +714,7 @@ body[data-comments-on-board="off"] .comment-pin {
 .reaction-chip:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .reaction-pick {
   font-size: 13px;
@@ -762,6 +766,7 @@ body[data-comments-on-board="off"] .comment-pin {
 .comment-thread__more:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+  box-shadow: none;
 }
 .comment-thread[data-unread] {
   background: var(--ink-surface-1);

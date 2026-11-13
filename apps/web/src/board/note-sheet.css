@@ -253,6 +253,7 @@
 .note-phone-menu__item:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: -2px;
+  box-shadow: none;
 }
 .note-phone-bar__tool:disabled {
   opacity: 0.5;

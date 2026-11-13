@@ -253,7 +253,7 @@
   background: var(--ink-accent-soft-bg);
 }
 .export__radio:has(input:focus-visible) {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+  box-shadow: var(--ink-focus-ring);
 }
 .export__radio > .ink-choice {
   margin-top: 1px;
