@@ -175,7 +175,7 @@ function isCue(line: string): boolean {
     name.length > 0 &&
     name.length <= 60 &&
     /\p{L}/u.test(name) &&
-    name === name.toLocaleUpperCase() &&
+    name === name.toUpperCase() &&
     !/[:!?]$/.test(name) &&
     !TRANSITION.test(name)
   );

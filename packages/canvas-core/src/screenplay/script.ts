@@ -173,7 +173,7 @@ export function finishScript(
     const own = new Map<string, string>();
     for (const b of scene.blocks) {
       if (b.kind !== 'dialogue' || !b.character) continue;
-      const key = b.character.toLocaleUpperCase();
+      const key = b.character.toUpperCase();
       if (!own.has(key)) own.set(key, b.character);
       if (!all.has(key)) all.set(key, b.character);
     }

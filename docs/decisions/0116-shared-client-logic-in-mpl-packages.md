@@ -303,6 +303,8 @@ web's chunks hold the same code as before: the import plan, which the project se
 start, does not bring the readers and the matching with it. Stays in the web: reading a browser `File` (`readScreenplay`, `detectScreenplay`), the
 PDF's text layer with pdf.js in a worker (`pdf.ts`, `pdf.worker.ts`), creating the storyboard
 board and queueing its seed (`new-storyboard.ts`), and the dialog and the revision list as React.
+The screenplay code changes case with `toUpperCase` and `toLowerCase`, never the device's locale
+(a Turkish device read TIM as Tım), and no regex lookbehind.
 
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
