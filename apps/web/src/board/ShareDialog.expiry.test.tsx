@@ -162,3 +162,25 @@ it('closes only the picker on Escape and returns focus to its button', async () 
   expect(row?.querySelector('fieldset')).toBeNull();
   expect(document.activeElement).toBe(button);
 });
+
+it('opens the expiry calendar on Enter without saving access', async () => {
+  HTMLElement.prototype.showPopover = vi.fn();
+  HTMLElement.prototype.hidePopover = vi.fn();
+  const row = rowOf('Luca Neri');
+  await act(async () => row?.querySelector<HTMLButtonElement>('.share__expiry-btn')?.click());
+  const input = row?.querySelector<HTMLInputElement>('input[type="date"]');
+  await act(async () =>
+    input?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(row?.querySelector('.ink-date__panel')).not.toBeNull();
+  expect(api.put).not.toHaveBeenCalled();
+  await act(async () =>
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(document.activeElement).toBe(input);
+  expect(row?.querySelector('fieldset')).not.toBeNull();
+});

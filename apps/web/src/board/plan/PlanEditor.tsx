@@ -176,7 +176,7 @@ export function PlanEditor(props: PlanEditorProps) {
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
-    if (target?.closest('.menu, [role="listbox"], .plan-scenes, dialog')) return;
+    if (target?.closest('.menu, [role="listbox"], .plan-scenes, dialog, [popover]')) return;
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
     // Whatever the editor does not use never reaches the board behind it.
     e.stopImmediatePropagation();
