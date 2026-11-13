@@ -85,7 +85,9 @@ it('keeps at least one resolution', async () => {
     },
   });
   await show(one);
-  const boxes = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+  const boxes = [
+    ...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:not([role="switch"])'),
+  ];
   expect(boxes.map((b) => b.checked)).toEqual([false, true, false, false]);
   await act(async () => boxes[1]?.click());
   expect(api.patch).not.toHaveBeenCalled();
