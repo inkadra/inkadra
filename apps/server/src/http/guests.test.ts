@@ -2106,9 +2106,10 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     );
     expect(part.status).toBe(206);
     expect(part.text).toBe('fragm');
-    // No other file, no rung that is not there, nothing without a session or for another asset.
+    // The original stays refused without downloads; no rung that is not there, nothing without a
+    // session or for another asset.
     expect((await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/file`))).status).toBe(
-      404,
+      403,
     );
     expect(
       (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${V}/hls/1080.mp4`))).status,
