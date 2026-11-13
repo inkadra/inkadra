@@ -5,10 +5,12 @@ import { type Browser, chromium, type Page } from '@playwright/test';
 import { signIn } from '../tests/perf/seed.ts';
 
 /**
- * Screenshots of Settings → Server (#514), simple and advanced, desktop and phone, dark and
- * light. The page reads a week of history that an instance started for the screenshots does
- * not have, so its status comes from a fictional studio below (`demo`); one more shot per view
- * (`*-live-*`) shows what this instance itself reports.
+ * Screenshots of Settings → Server (#514), simple and advanced, at 2560×1600, 1280×800 and on a
+ * 390 px phone, dark and light. The page reads a week of history that an instance started for
+ * the screenshots does not have, so its status and its live values come from a fictional
+ * studio below (`demo`, `live`); then the orange states (a failed backup, a disk almost full),
+ * the memory near its limit, a problem opened in Advanced from Simple, and frames of the live
+ * refresh. One more shot per view (`*-real-*`) shows what this instance itself reports.
  *
  *   SHOTS_BASE_URL=http://localhost:3514 pnpm --filter @inkadra/e2e exec tsx scripts/screenshots-server.ts
  */
@@ -34,14 +36,16 @@ async function call(cookie: string, method: string, path: string, body?: unknown
 }
 
 const RANGES = {
-  '15m': { window: 900, step: 10 },
+  '15m': { window: 900, step: 5 },
   '1h': { window: 3600, step: 20 },
   '24h': { window: 86_400, step: 480 },
   '7d': { window: 604_800, step: 3600 },
 } as const;
 
+type Variant = 'ok' | 'backup' | 'disk' | 'memory';
+
 /** A fictional studio's server: steady with a busy spell, as on the approved mockup. */
-function demo(range: keyof typeof RANGES, now: number) {
+function demo(range: keyof typeof RANGES, now: number, variant: Variant = 'ok') {
   let seed = 11;
   const rnd = () => {
     seed = (seed * 16807) % 2147483647;
@@ -57,16 +61,20 @@ function demo(range: keyof typeof RANGES, now: number) {
     });
   };
   const busy = (i: number) => i > n * 0.62 && i < n * 0.82;
-  const cpu = walk(30, 12, 4, 80).map((v, i) => (busy(i) ? Math.min(92, v + 28) : v));
-  const mem = walk(1.8e9, 0.1e9, 1.2e9, 3.2e9);
-  const rx = walk(1.8e6, 1e6, 0.1e6, 7e6);
-  const tx = walk(0.5e6, 0.4e6, 0.05e6, 2.5e6);
-  const p95 = walk(110, 30, 60, 380).map((v, i) => (busy(i) ? v + 110 : v));
+  const cpu = walk(3, 2, 0.3, 7).map((v, i) => (busy(i) ? v + 4 : v));
+  const mem =
+    variant === 'memory' ? walk(1.5e9, 0.05e9, 1.4e9, 1.68e9) : walk(3.0e8, 0.2e8, 2.4e8, 4.9e8);
+  const rx = walk(2.5e4, 1.5e4, 5e3, 1.2e5);
+  const tx = walk(1.5e3, 1e3, 0, 2e4);
+  const p95 = walk(300, 40, 200, 420).map((v, i) => (busy(i) ? v + 90 : v));
   const t = (i: number) => new Date(now - (n - 1 - i) * step * 1000).toISOString();
   const iso = (ms: number) => new Date(now - ms).toISOString();
   const night = new Date(now);
   night.setHours(3, 0, 0, 0);
   const next = new Date(night.getTime() + 86_400_000);
+  const lastNight = new Date(night.getTime() - 86_400_000 + 20 * 3_600_000 + 49 * 60_000);
+  const backupFailed = variant === 'backup';
+  const diskFull = variant === 'disk';
   const ok = (id: string, detail: string | null = null) => ({
     id,
     status: 'ok',
@@ -92,8 +100,9 @@ function demo(range: keyof typeof RANGES, now: number) {
     })),
     events: [{ t: t(Math.round(n * 0.64)), kind: 'videos', count: 3 }],
     now: {
-      cpu: { used: 1.36, cores: 4 },
-      memory: { used: 1.9e9, limit: 4e9 },
+      cpu: { used: 0.36, cores: 4 },
+      memory:
+        variant === 'memory' ? { used: 1.62e9, limit: 2e9 } : { used: 2.98e8, limit: 33.39e9 },
       network: { in: 2.25e6, out: 0.5e6, todayIn: 21e9, todayOut: 6e9 },
       responses: { p95: 120, errors: 0.001 },
     },
@@ -137,21 +146,21 @@ function demo(range: keyof typeof RANGES, now: number) {
     storage: {
       driver: 'local',
       location: '/data',
-      total: 931e9,
-      free: 519e9,
-      used: 412e9,
-      originals: 318e9,
-      copies: 71e9,
-      previews: 23e9,
+      ...(diskFull
+        ? { total: 500e9, free: 34.8e9, used: 465.2e9, monthsLeft: 0.5 }
+        : { total: 931e9, free: 519e9, used: 412e9, monthsLeft: 8.1 }),
+      originals: 418e9,
+      copies: 31e9,
+      previews: 9e9,
       growthPerMonth: 64e9,
-      monthsLeft: 8.1,
     },
     backup: {
       enabled: true,
-      lastAt: night.toISOString(),
-      lastStatus: 'ready',
-      size: 2.4e9,
+      lastAt: (backupFailed ? lastNight : night).toISOString(),
+      lastStatus: backupFailed ? 'failed' : 'ready',
+      size: backupFailed ? null : 2.4e9,
       nextAt: next.toISOString(),
+      lastSuccessAt: (backupFailed ? new Date(lastNight.getTime() - 86_400_000) : night).toISOString(),
     },
     database: { version: 'PostgreSQL 18.1', size: 1.1e9, connections: 14 },
     encoder: { backend: 'vaapi', label: 'VAAPI (Intel)' },
@@ -244,6 +253,28 @@ function demo(range: keyof typeof RANGES, now: number) {
       'video_encoding',
     ].map((id) => ({ id, status: 'ok', expected: null, actual: null })),
     problems: [
+      ...(backupFailed || diskFull
+        ? [
+            {
+              id: backupFailed ? 'backup_failed:nightly' : 'disk_full:/data',
+              kind: backupFailed ? 'backup_failed' : 'disk_full',
+              severity: 'error',
+              role: 'worker',
+              firstAt: (backupFailed ? lastNight : new Date(now - 3_600_000)).toISOString(),
+              lastAt: (backupFailed ? lastNight : new Date(now - 600_000)).toISOString(),
+              count: 1,
+              seen: false,
+              retry: false,
+              technical: backupFailed
+                ? 'worker · maintenance · backup\nError: pg_dump exited with code 1: could not write to output file'
+                : 'web · storage · /data\n34.8 GB free of 500 GB',
+              checkId: null,
+              service: null,
+              file: null,
+              board: null,
+            },
+          ]
+        : []),
       {
         id: 'video_failed:0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a40',
         kind: 'video_failed',
@@ -251,11 +282,11 @@ function demo(range: keyof typeof RANGES, now: number) {
         role: 'worker',
         firstAt: iso(40 * 60_000),
         lastAt: iso(40 * 60_000),
-        count: 1,
+        count: 2,
         seen: false,
         retry: true,
         technical:
-          'worker · media-proxies · make\nError: ffmpeg exited with code 1: Invalid data found when processing input',
+          'worker · media-proxies · make\nError: ffmpeg exited with code 1: moov atom not found',
         checkId: null,
         service: null,
         file: 'DJI_0412.MP4',
@@ -282,17 +313,52 @@ function demo(range: keyof typeof RANGES, now: number) {
   };
 }
 
-async function open(browser: Browser, cookie: string, theme: 'dark' | 'light', phone: boolean) {
+/** What the page asks every 2.5 s: the values of now and the newest points, moving. */
+function live(range: keyof typeof RANGES, now: number, variant: Variant) {
+  const full = demo(range, now, variant);
+  const wave = Math.sin(now / 4000);
+  const step = RANGES[range].step * 1000;
+  const last = Math.floor(now / step) * step;
+  const point = (t: number, k: number) => ({
+    ...(full.history.at(-1) as (typeof full.history)[number]),
+    t: new Date(t).toISOString(),
+    cpu: 9 + 6 * Math.sin(t / 7000 + k),
+    p95: 340 + 60 * Math.sin(t / 5000 + k),
+  });
+  return {
+    checkedAt: new Date(now).toISOString(),
+    range,
+    step: RANGES[range].step,
+    history: [point(last - step, 1), point(last, 0)],
+    now: {
+      cpu: { used: 0.36 + 0.3 * wave, cores: 4 },
+      memory: { ...full.now.memory, used: Math.round(full.now.memory.used * (1 + 0.04 * wave)) },
+      network: { in: 2.5e4 * (1.2 + wave), out: 1.2e3 * (1.2 - wave) },
+      p95: Math.round(373 + 40 * wave),
+    },
+  };
+}
+
+type Size = 'large' | 'desktop' | 'phone';
+const SIZES: Record<Size, { width: number; height: number }> = {
+  large: { width: 2560, height: 1600 },
+  desktop: { width: 1280, height: 800 },
+  phone: { width: 390, height: 844 },
+};
+
+async function open(browser: Browser, cookie: string, theme: 'dark' | 'light', size: Size, video?: string) {
+  const phone = size === 'phone';
   const ctx = await browser.newContext({
     baseURL: base,
-    viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 860 },
-    deviceScaleFactor: 2,
+    viewport: SIZES[size],
+    deviceScaleFactor: size === 'large' ? 1 : 2,
     isMobile: phone,
     hasTouch: phone,
     locale: 'it-IT',
     timezoneId: 'Europe/Rome',
     colorScheme: theme,
     reducedMotion: 'reduce',
+    ...(video ? { recordVideo: { dir: video, size: SIZES[size] } } : {}),
   });
   await ctx.addCookies(
     cookie.split('; ').map((c) => {
@@ -303,18 +369,36 @@ async function open(browser: Browser, cookie: string, theme: 'dark' | 'light', p
   return ctx;
 }
 
-/** The window at its real size, then the whole page with the window grown to its content. */
-async function shots(page: Page, name: string) {
+/** The status and the live values of the fictional studio, in one of its states. */
+async function mock(page: Page, variant: Variant) {
+  await page.route(/\/api\/v1\/instance\/server\?range=/, (route) => {
+    const range = new URL(route.request().url()).searchParams.get('range') as keyof typeof RANGES;
+    return route.fulfill({ json: demo(range, Date.now(), variant) });
+  });
+  await page.route(/\/api\/v1\/instance\/server\/live\?range=/, (route) => {
+    const range = new URL(route.request().url()).searchParams.get('range') as keyof typeof RANGES;
+    return route.fulfill({ json: live(range, Date.now(), variant) });
+  });
+}
+
+async function settle(page: Page) {
   await page.locator('.settings-window__body').waitFor();
+  await page.locator('.server-status').waitFor();
   await page.waitForTimeout(800);
   await page.mouse.move(0, 0);
+}
+
+/** The window at its real size, then the whole page with the window grown to its content. */
+async function shots(page: Page, name: string, whole = true) {
+  await settle(page);
   await page.screenshot({ path: join(out, `${name}.png`) });
   console.log(`${name}.png`);
+  if (!whole) return;
   // The window keeps one height and scrolls inside: grow it to its content for a whole view.
   const body = page.locator('.settings-window__body');
   const height = await body.evaluate((el) => el.scrollHeight + 57);
-  const size = page.viewportSize() ?? { width: 1280, height: 860 };
-  await page.setViewportSize({ width: size.width, height: height + 48 });
+  const size = page.viewportSize() ?? { width: 1280, height: 800 };
+  await page.setViewportSize({ width: size.width, height: Math.max(size.height, height + 48) });
   await page.addStyleTag({
     content: `.settings-window{height:${height}px!important;max-height:none!important}`,
   });
@@ -324,9 +408,10 @@ async function shots(page: Page, name: string) {
 }
 
 async function main() {
-  const browser = await chromium.launch(
-    process.env.SHOTS_CHANNEL ? { channel: process.env.SHOTS_CHANNEL } : {},
-  );
+  const browser = await chromium.launch({
+    ...(process.env.SHOTS_CHANNEL ? { channel: process.env.SHOTS_CHANNEL } : {}),
+    args: (process.env.SHOTS_ARGS ?? '').split(' ').filter(Boolean),
+  });
   const cookie = await signIn(base, account);
   // No tutorial pill or welcome over the page.
   await call(cookie, 'PATCH', '/me/preferences', {
@@ -334,28 +419,92 @@ async function main() {
     tutorialsSeen: ['welcome', 'server'],
   });
   mkdirSync(out, { recursive: true });
-  for (const view of ['simple', 'advanced'] as const) {
-    await call(cookie, 'PATCH', '/me/preferences', { serverView: view });
+  const view = async (serverView: 'simple' | 'advanced') =>
+    call(cookie, 'PATCH', '/me/preferences', { serverView });
+  const page = async (
+    theme: 'dark' | 'light',
+    size: Size,
+    variant: Variant = 'ok',
+    video?: string,
+  ) => {
+    const ctx = await open(browser, cookie, theme, size, video);
+    const p = await ctx.newPage();
+    await mock(p, variant);
+    await p.goto('/settings?section=server');
+    return { ctx, p };
+  };
+  const only = process.env.SHOTS_ONLY;
+  for (const v of ['simple', 'advanced'] as const) {
+    await view(v);
+    if (!only || only === 'views')
+      for (const theme of ['dark', 'light'] as const)
+        for (const size of ['large', 'desktop', 'phone'] as const) {
+          const { ctx, p } = await page(theme, size);
+          await shots(p, `server-${v}-${size}-${theme}`, size !== 'large');
+          await ctx.close();
+        }
+    // Orange: the backup of last night failed; the disk almost full.
+    if (!only || only === 'states')
+      for (const theme of ['dark', 'light'] as const) {
+        const { ctx, p } = await page(theme, 'desktop', 'backup');
+        await shots(p, `server-${v}-orange-backup-${theme}`);
+        await ctx.close();
+        const disk = await page(theme, v === 'simple' ? 'phone' : 'desktop', 'disk');
+        await shots(disk.p, `server-${v}-orange-disk-${theme}`);
+        await disk.ctx.close();
+      }
+  }
+  await view('advanced');
+  if (!only || only === 'states')
+    for (const theme of ['dark', 'light'] as const) {
+      const { ctx, p } = await page(theme, 'desktop', 'memory');
+      await settle(p);
+      await p.locator('[data-tour="server-health"]').screenshot({
+        path: join(out, `server-advanced-memory-limit-${theme}.png`),
+      });
+      console.log(`server-advanced-memory-limit-${theme}.png`);
+      await ctx.close();
+    }
+  // From Simple, a problem opened in the error log of Advanced; the account keeps Simple.
+  await view('simple');
+  if (!only || only === 'states')
     for (const theme of ['dark', 'light'] as const)
-      for (const phone of [false, true]) {
-        const ctx = await open(browser, cookie, theme, phone);
-        const page = await ctx.newPage();
-        await page.route(/\/api\/v1\/instance\/server\?range=/, (route) => {
-          const range = new URL(route.request().url()).searchParams.get(
-            'range',
-          ) as keyof typeof RANGES;
-          return route.fulfill({ json: demo(range, Date.now()) });
-        });
-        await page.goto('/settings?section=server');
-        await shots(page, `server-${view}-${phone ? 'phone' : 'desktop'}-${theme}`);
+      for (const size of ['desktop', 'phone'] as const) {
+        const { ctx, p } = await page(theme, size, 'backup');
+        await settle(p);
+        await p.getByRole('button', { name: /Dettagli tecnici in Avanzata: Un video/ }).click();
+        await p.locator('.server-log__found').waitFor();
+        await p.waitForTimeout(600);
+        await p.mouse.move(0, 0);
+        await p.screenshot({ path: join(out, `server-deeplink-${size}-${theme}.png`) });
+        console.log(`server-deeplink-${size}-${theme}.png`);
         await ctx.close();
       }
-    const ctx = await open(browser, cookie, 'dark', false);
-    const page = await ctx.newPage();
-    await page.goto('/settings?section=server');
-    await shots(page, `server-${view}-live-desktop-dark`);
+  // The live refresh: frames 3 s apart and a short video of Advanced.
+  await view('advanced');
+  if (!only || only === 'live') {
+    const videos = join(out, 'video');
+    const { ctx, p } = await page('dark', 'desktop', 'ok', videos);
+    await settle(p);
+    for (let i = 0; i < 5; i++) {
+      await p.locator('[data-tour="server-health"]').screenshot({
+        path: join(out, `server-live-frame-${i + 1}.png`),
+      });
+      console.log(`server-live-frame-${i + 1}.png`);
+      await p.waitForTimeout(3000);
+    }
     await ctx.close();
   }
+  for (const v of ['simple', 'advanced'] as const) {
+    if (only) break;
+    await view(v);
+    const ctx = await open(browser, cookie, 'dark', 'desktop');
+    const p = await ctx.newPage();
+    await p.goto('/settings?section=server');
+    await shots(p, `server-${v}-real-desktop-dark`, false);
+    await ctx.close();
+  }
+  await view('simple');
   await browser.close();
 }
 
