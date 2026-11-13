@@ -943,7 +943,10 @@ registry.registerPath({
   request: { body: json(ClassificationCatalogs) },
   responses: {
     200: {
-      description: 'Administrator update; revision prevents lost edits; IDs cannot be removed',
+      description:
+        'Administrator update; revision prevents lost edits. An ID may be removed only when the ' +
+        'value was added on this instance and nothing uses it (capability `classification-delete`); ' +
+        'otherwise 409 with details.reason `classification_in_use` or 400.',
       ...json(ClassificationCatalogs),
     },
     ...errors,

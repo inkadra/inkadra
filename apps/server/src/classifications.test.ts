@@ -95,4 +95,24 @@ describe('shared classification catalogs', () => {
     expect(() => validateProjectType(next.projectTypes, 'unknown')).toThrow();
     expect(() => validateProjectType(next.projectTypes, null)).not.toThrow();
   });
+  it('lets a value added here leave the catalog, never a default, and never takes its id again', () => {
+    const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const draft = copy();
+    draft.tags.push({ id, label: 'Night', archived: true });
+    const current = validateCatalogUpdate(copy(), draft);
+    const removed = structuredClone(current);
+    removed.tags = [];
+    // Whether it is used is checked when saving, under the lock (saveCatalogs).
+    expect(validateCatalogUpdate(current, removed).tags).toEqual([]);
+    const back = structuredClone(removed);
+    back.revision = current.revision;
+    back.tags.push({ id, label: 'Night', archived: false });
+    expect(() => validateCatalogUpdate(current, { ...back, tags: [] }, new Set([id]))).not.toThrow();
+    expect(() => validateCatalogUpdate(copy(), { ...copy(), tags: back.tags }, new Set([id]))).toThrow(
+      'deleted value',
+    );
+    const defaults = copy();
+    defaults.shotMovements.shift();
+    expect(() => validateCatalogUpdate(copy(), defaults)).toThrow('Archive');
+  });
 });

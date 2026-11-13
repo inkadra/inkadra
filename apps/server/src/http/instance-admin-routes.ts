@@ -12,7 +12,14 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { live } from '../access.ts';
 import type { Auth } from '../auth.ts';
-import { readClassifications, validateCatalogUpdate } from '../classifications.ts';
+import {
+  deletedIds,
+  lockUses,
+  readClassifications,
+  saveCatalogs,
+  validateCatalogUpdate,
+  withUses,
+} from '../classifications.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
@@ -43,24 +50,26 @@ export function registerInstanceAdminRoutes(
     return actor;
   };
   app.get(`${API_PREFIX}/instance/classifications`, async (req) => {
-    await requireActor(auth, req, db);
-    return readClassifications(db);
+    const actor = await requireActor(auth, req, db);
+    // Counts only for administrators: they say where private projects use a value (0126).
+    const catalogs = await readClassifications(db);
+    return actor.role === 'admin' ? withUses(db, catalogs) : catalogs;
   });
   app.put(`${API_PREFIX}/instance/classifications`, async (req) => {
     const actor = await admin(req);
     const next = ClassificationCatalogs.parse(req.body);
-    return db.transaction(async (tx) => {
+    const saved = await db.transaction(async (tx) => {
+      // A removal counts uses: no write that adds one may run meanwhile (decision 0126).
+      await lockUses(tx, 'exclusive');
       await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       const [currentAdmin] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (currentAdmin?.role !== 'admin' || currentAdmin.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
-      const value = validateCatalogUpdate(await readClassifications(tx), next);
-      await tx
-        .insert(instanceSetting)
-        .values({ key: 'classifications', value })
-        .onConflictDoUpdate({ target: instanceSetting.key, set: { value, updatedAt: new Date() } });
-      return value;
+      const current = await readClassifications(tx);
+      const value = validateCatalogUpdate(current, next, await deletedIds(tx));
+      return saveCatalogs(tx, current, value);
     });
+    return withUses(db, saved);
   });
   app.get(`${API_PREFIX}/instance/settings`, async (req) => {
     await admin(req);

@@ -37,7 +37,7 @@ import type { PgInsertValue, PgTable } from 'drizzle-orm/pg-core';
 import { generateKeyBetween } from 'fractional-indexing';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
-import { readClassifications } from '../classifications.ts';
+import { readClassifications, reviveUsed } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import {
   asset,
@@ -373,6 +373,8 @@ export async function importProject(
         createdBy: userId,
       });
       await tx.insert(projectMember).values({ projectId, userId, role: 'owner' });
+      // A type removed here since the export comes back, archived (decision 0126).
+      await reviveUsed(tx, { projectTypes: meta.type ? [meta.type] : [] });
 
       await insertBatches(
         tx,

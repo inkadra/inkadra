@@ -259,7 +259,8 @@ draft, so a comment reaches a guest only when you choose so each time.
 Administrators set the instance's lists in **Settings → Classifications**: project types, tags, and
 for storyboards shot size, angle and movement. They apply to every project. Rename a value and it
 changes on every frame that uses it. Archive one and it leaves the menus but stays on the frames that
-have it. **Other…** in a frame's menu still takes free text, and **Reactivate default values** brings
+have it. A value you added that nothing uses yet can be deleted instead; a used one shows how many
+times it is used and can only be archived. **Other…** in a frame's menu still takes free text, and **Reactivate default values** brings
 back the archived defaults of the three storyboard lists. A default keeps its translation until it is
 renamed.
 

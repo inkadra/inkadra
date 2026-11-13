@@ -21,3 +21,5 @@ them in Settings → Classifications, next to project types and tags.
 - **Search** indexes the stored value, as it did: a preset name is not searchable, typed text is.
 
 Clients older than this change show the UUID of a new value as free text until they update.
+
+Amended by [0126](0126-delete-unused-classification-values.md): a value added on the instance that no frame uses can be deleted; the defaults and used values stay archive-only.
