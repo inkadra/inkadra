@@ -25,8 +25,8 @@ Settings → Video after restoring; they are not automatically rebuilt.
 `files.jsonl` lists non-pending assets, non-proxy variants and unexpired feedback attachments
 from the same snapshot. Size and checksum can be null; variant sizes are not recorded. Files are
 not inside the backup: back up the data volume or the bucket as it is (files never change once
-written). Restore into an empty database with `node /app/dist/main.js backup restore <file>`, using a
-version whose migration history contains the backup's history as a prefix. Restore checks file
+written). Restore into an empty database with
+`docker compose run --rm inkadra backup restore <file>`, using a version whose migration history contains the backup's history as a prefix. Restore checks file
 existence and known sizes, not checksums. Keep `.env` too: encrypted secrets require the
 original `AUTH_SECRET`. See [Restoring](../self-hosting/README.md#restoring).
 

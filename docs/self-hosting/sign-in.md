@@ -122,9 +122,9 @@ Without it the `/authorize` page refuses the request: only the redirect address
 
 ## Administrator enrollment policy
 
-The `requireAdminTwoFactor` administration setting defaults to false. When enabled,
-administrators without two-step verification can read their identity and enroll through
-Better Auth, but cannot use product APIs, administrator APIs, tokens or collaboration.
+**Require two-step verification for administrators**, in **Settings → Access and permissions**,
+is off by default. When it is on, administrators without two-step verification can read their
+identity and enroll through Better Auth, but cannot use product APIs, administrator APIs, tokens or collaboration.
 They see an enrollment banner instead of the workspace. Keep backup codes for recovery. Accounts without a credential password enroll using their
 authenticated provider session; accounts with a password must confirm it. Bootstrap stays available on an empty instance; an existing
 policy applies to the first administrator immediately after signup.

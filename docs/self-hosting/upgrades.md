@@ -358,7 +358,7 @@ made: stop everything, empty the volume and unpack `postgres-data-16.tgz` into i
 - **"Require two-factor for administrators"** is a new setting, off on existing installations.
   Only an administrator with verified two-factor can turn it on. Before you do, keep the recovery
   codes and the emergency command that turns it off from the server
-  ([details](sign-in.md#two-factor-authentication)):
+  ([details](sign-in.md#administrator-enrollment-policy)):
 
   ```sh
   docker compose exec inkadra node /app/dist/main.js admin-2fa off
