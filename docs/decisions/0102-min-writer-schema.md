@@ -61,6 +61,7 @@ when the server accepts it, or shows it to the person; it never deletes it silen
 of today keeps its unsent edits as before and shows the update notice.
 
 **Where it is applied.**
+
 - The collaboration server takes `MIN_WRITER_SCHEMA` (a test can lower it). At authentication,
   at the periodic access recheck and on every change, a client may write when its
   `schemaVersion` is at least the current schema, or at least `MIN_WRITER_SCHEMA` and it declared

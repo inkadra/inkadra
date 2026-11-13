@@ -13,6 +13,7 @@ in the worker, by tools of the `-media` image, with time and memory limits, neve
 browser.
 
 **Decision.**
+
 - **Which videos.** After the poster, the worker probes the video with ffprobe. The original
   plays as it is, and nothing is made, when it is H.264 (8-bit 4:2:0) with AAC, MP3 or no sound
   in an MP4, or VP8, VP9 or AV1 with Opus, Vorbis or no sound in a WebM. Every other video
@@ -75,6 +76,7 @@ browser.
   now.
 
 **Camera RAW.**
+
 - CR2, CR3, NEF, ARW, DNG, RAF, ORF and RW2 are recognised by their first bytes; NEF, ARW and
   DNG are plain TIFF inside, so they also need their extension or declared type, and a TIFF
   photo is never taken for one. Uploads with a vague type get the RAW type from the extension
@@ -93,6 +95,7 @@ browser.
   `RAW_IMAGE_TYPES` in `@inkadra/shared` lists the types for the cards to come.
 
 **PDF.**
+
 - A file whose first bytes hold `%PDF-` gets the `application/pdf` type, its page count from
   poppler's `pdfinfo`, and page 1 rendered by `pdftoppm` (`poppler-utils` in the `-media`
   image) within its crop box, 2048 pixels on its longer side, as the source of the usual

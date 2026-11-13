@@ -12,6 +12,7 @@ what they offer is caching strategies we do not want, and their generated worker
 to read in a review.
 
 **Decision.**
+
 - The worker is under a hundred lines of our own code (`apps/web/src/pwa/sw.ts`); which requests
   it answers is one pure function (`routing.ts`) with its own tests. A small Vite plugin
   (`apps/web/pwa/plugin.ts`) builds it into `/sw.js` with the list of the build's files, and

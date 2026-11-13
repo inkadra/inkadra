@@ -11,6 +11,7 @@ without sound, durations are guessed. Clients receiving a share link want to wat
 not flip through cards.
 
 **Decision.**
+
 - Document version 9 adds `meta.animaticAudio`: `{ assetId, volume }`, one optional sound
   track per storyboard. The file is an ordinary `audio` asset of the board's project, uploaded
   as any other file; the track starts with the first frame of the storyboard and is not

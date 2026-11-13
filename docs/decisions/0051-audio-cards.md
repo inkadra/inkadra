@@ -8,6 +8,7 @@ were generic file cards with a flat bar: no shape to scrub by, and an Ogg or Web
 does not play in every browser.
 
 **Decision.**
+
 - **Which files.** An upload is audio by its declared type, or by its extension when the type
   is vague (MP3, M4A, AAC, WAV, FLAC, Ogg, Opus, AIFF, CAF). The worker sniffs the container
   from the first bytes and opens it with ffprobe and ffmpeg limited to the audio demuxers

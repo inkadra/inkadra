@@ -1,10 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Words } from '@inkadra/shared';
 import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { localeBackend, withManyForms } from './backend.ts';
 import en from './en.json';
-import i18n, { detect, LOCALES } from './index.ts';
+import i18n, { detect, i18nReady, LOCALES } from './index.ts';
 import itMessages from './it.json';
 
 function keys(obj: object, prefix = ''): string[] {
@@ -234,4 +235,12 @@ describe('translations', () => {
       'Verranno creati 2 board e 2 inviti',
     );
   });
+});
+
+it('keeps optional translator options and intentionally empty particles', async () => {
+  await i18nReady;
+  const words: Words = i18n.t;
+  const options: Record<string, unknown> | undefined = undefined;
+  expect(words('board.added.feminine', options)).toBe('');
+  expect(words('board.added.feminine', { lng: 'en' })).toBe('');
 });

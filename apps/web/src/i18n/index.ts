@@ -4,6 +4,15 @@ import { localeBackend } from './backend.ts';
 import en from './en.json';
 import { LOCALES, type Locale } from './locales.ts';
 
+// Keep the existing dynamic-key translator contract when forwarding optional options.
+// i18next 27 makes interpolation checks strict by default.
+declare module 'i18next' {
+  interface CustomTypeOptions {
+    strictInterpolationChecks: false;
+    returnEmptyString: true;
+  }
+}
+
 export { LOCALES, type Locale };
 
 /** The first language of the browser that the app speaks; English otherwise. */
@@ -37,6 +46,8 @@ export const i18nReady = i18n
     fallbackLng: 'en',
     interpolation: { escapeValue: false },
     returnNull: false,
+    // Empty grammatical particles (board.added.feminine) deliberately render nothing.
+    returnEmptyString: true,
     // main.tsx waits for i18nReady, and nothing around the app could show a suspended language.
     react: { useSuspense: false },
   });

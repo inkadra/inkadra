@@ -8,6 +8,7 @@ asset and durable provenance. Captions and director's notes remain editable text
 reliably encode the source. External player iframes cannot be captured by a same-origin canvas.
 
 **Decision.**
+
 - Document version 5 adds optional `source` to image and frame elements. An `uploaded-video`
   source holds the original asset UUID and finite, nonnegative `timeSeconds` (fractional seconds
   preserve the presentation timestamp). A `link-thumbnail` source holds an HTTP(S) reference URL

@@ -8,6 +8,7 @@ Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/
 (it needs an Inkadra server at 0.9 or later), or build it yourself as described below.
 
 What it does:
+
 - **Toolbar button**: saves the current page as a link card, with a board (recent boards
   first, then projects and their sub-boards, or search), a column, a note and tags. Text selected in the page's main frame fills the empty note (up to the API's
   2,000 characters); pages that refuse scripts leave it empty. The tab title is kept on link cards.

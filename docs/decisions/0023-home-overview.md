@@ -8,6 +8,7 @@ shooting day, the day's call. Boards are listed per project and shooting days pe
 `updatedAt` changes on renames and moves only; document edits move `board_doc.updated_at`.
 
 **Decision.**
+
 - `GET /me/recent-boards` lists boards of projects that are not archived, ordered by
   `editedAt`, the later of the board's and its document's change. Candidates are boards of
   the person's projects and the subtrees of their grants; the role shown comes from the same

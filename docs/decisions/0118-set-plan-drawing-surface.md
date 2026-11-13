@@ -46,6 +46,7 @@ frame, which measures them (decision 0116).
 board's `Viewport`; `PlanSurface.tsx` in the web): the whole area, the dots of the plan's grid all
 over it, no frame and no scroll bars. It moves as the board does (`Canvas.tsx`), so the two
 surfaces of the app behave alike:
+
 - with the Select tool, a mouse dragged on empty space draws the selection box (Shift adds to the
   selection), and a click there lets go of it; Space held, the middle button, a scroll (Shift
   turns it sideways) or two fingers pan;
@@ -66,6 +67,7 @@ surfaces of the app behave alike:
   left), as the mockup draws it, next to the length of each side.
 
 **What a click picks** (`planItemsAt`, `nextPlanItemAt`):
+
 - the item drawn on top, except that a light comes before the modifiers on its front, so a click
   on a light picks the light; its modifiers are in Properties ("On this light") and Elements;
 - a measure still yields to the icons its ends sit on (0104);

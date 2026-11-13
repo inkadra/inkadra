@@ -9,6 +9,7 @@ restore the board did not confirm in time). Decision 0003 fixes the list of `err
 and installed clients already compare `code` with `conflict` and `internal`.
 
 **Decision.**
+
 - `error.code` keeps its fixed list and keeps the value it had for these answers. The new
   information goes in `error.details` as `{ reason }`, as `GuestDenied` already does for guests:
   `BoardVersionConflict` (`named_versions_limit`, `newer_schema`) on 409s about versions, and

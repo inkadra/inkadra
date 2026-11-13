@@ -251,6 +251,7 @@ Step by step in [Sign-in](sign-in.md). Every variable is optional.
 | `CLIPPER_EXTENSION_IDS`  |                        | Ids of self-built browser clippers allowed to sign in. The official one always is |
 
 Allowed domains are checked on every sign-in, also for people who already have an account:
+
 - **Google** checks the `hd` claim, the Workspace domain Google itself vouches for. A personal
   `@gmail.com` account has no `hd`, so with `GOOGLE_ALLOWED_DOMAINS` set it cannot sign in,
   even if it was linked before.
@@ -276,6 +277,7 @@ The value is `false`, or a comma-separated list of addresses, CIDR ranges and th
 every private network, which works for a proxy on the same machine or in the same Docker
 network. It is a starting point, not the safest setting: anything else on those networks could
 claim any client address. Once the proxy works, narrow it to **the proxy's own address**:
+
 - a proxy in the same Docker network: its single container IP, e.g.
   `TRUST_PROXY=172.18.0.10`. Pin it with `ipv4_address: 172.18.0.10` in compose
   (and configure network IPAM for that address);
@@ -292,6 +294,7 @@ Never use `true`: it trusts everyone, so any client could choose its address.
 Inkadra limits sign-in, sign-up, password reset, email links and two-factor attempts per
 client network, per account and per email recipient. The counters live in Valkey (`REDIS_URL`),
 so they hold across restarts and across containers in split mode.
+
 - **`REDIS_URL` is required in production by every role**, `web` included: without it the
   server does not start. `compose.yaml` sets it to the bundled Valkey.
 - If Valkey is unreachable, the endpoints above answer `503` instead of letting attempts through;
@@ -435,7 +438,6 @@ sooner, with no risk of a duplicate. If the destination changes, queued reports 
 "Inbox only", and never go to the repository chosen before.
 Offline drafts are never sent in the background: text stays in the browser and leaves only after
 the preview and a manual send. Videos stay in tab memory.
-
 
 ### Reports to the Inkadra developers
 

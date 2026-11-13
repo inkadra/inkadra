@@ -8,6 +8,7 @@ even when the instance is invite-only; the browser clipper and the mobile app ne
 in without cookies; and people editing the same board need to see each other.
 
 **Decision.**
+
 - **Roles.** `owner` > `editor` > `commenter` > `viewer`, on the project (`project_member`)
   and on boards (`board_grant`). The effective role on a board is the one of the **nearest**
   grant for that person on the board or one of its ancestors, else the project role, else

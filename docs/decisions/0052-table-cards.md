@@ -8,6 +8,7 @@ what to shoot, with a map link. The shot list and the schedule are tables, but t
 frames and shooting days. People paste these grids from Google Sheets, Excel or Numbers.
 
 **Decision.**
+
 - Document version 11 adds the `table` element, a plain card (not a container):
   - `columns`: 1 to 20 `{ id, width? }`; `width` is in world units, and columns without one share
     what the card leaves (at least 80 each, then the card scrolls sideways).
