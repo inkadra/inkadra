@@ -246,7 +246,8 @@ it('opens Inkadra’s calendar instead of the native picker, and chooses with th
   await act(async () => input.click());
   expect(showPicker).not.toHaveBeenCalled();
   const grid = host.querySelector<HTMLElement>('[role="grid"]') as HTMLElement;
-  const day = (date: string) => host.querySelector<HTMLElement>(`.ink-date__body [data-day="${date}"]`);
+  const day = (date: string) =>
+    host.querySelector<HTMLElement>(`.ink-date__body [data-day="${date}"]`);
   expect(day('2026-11-20')?.className).toContain('is-end');
   expect(day('2026-11-16')?.className).toContain('is-start');
   expect(day('2026-11-18')?.className).toContain('is-in');

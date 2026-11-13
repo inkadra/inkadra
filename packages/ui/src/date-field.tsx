@@ -10,14 +10,7 @@ import {
   useState,
 } from 'react';
 import { swallowOutsidePress } from './components.tsx';
-import {
-  addMonths,
-  calendarKey,
-  clampDate,
-  dayState,
-  localDate,
-  monthGrid,
-} from './date-grid.ts';
+import { addMonths, calendarKey, clampDate, dayState, localDate, monthGrid } from './date-grid.ts';
 import { Icon } from './icons.tsx';
 
 const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
@@ -43,7 +36,8 @@ export const DateFieldTextsContext = createContext<DateFieldTexts>({
 type View = 'days' | 'months';
 type Step = 'prev' | 'next' | 'view';
 /** Which month (or year, in the month grid) a view shows: a new one animates in. */
-const pageOf = (view: View, date: string) => (view === 'days' ? date.slice(0, 7) : date.slice(0, 4));
+const pageOf = (view: View, date: string) =>
+  view === 'days' ? date.slice(0, 7) : date.slice(0, 4);
 const format = (lang: string | undefined, date: string, options: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(lang, { ...options, timeZone: 'UTC' }).format(
     new Date(`${date}T00:00:00Z`),
@@ -147,8 +141,7 @@ export function DateField({
       const rect = box.getBoundingClientRect();
       const width = el.offsetWidth;
       const height = el.offsetHeight;
-      const below =
-        rect.bottom + 6 + height <= window.innerHeight - 8 || rect.top - 6 - height < 8;
+      const below = rect.bottom + 6 + height <= window.innerHeight - 8 || rect.top - 6 - height < 8;
       el.dataset.side = below ? 'below' : 'above';
       el.style.setProperty(
         '--ink-date-left',
@@ -291,7 +284,9 @@ export function DateField({
     );
   };
 
-  const shown = value ? format(lang, value, { day: 'numeric', month: 'short', year: 'numeric' }) : label;
+  const shown = value
+    ? format(lang, value, { day: 'numeric', month: 'short', year: 'numeric' })
+    : label;
   const toggle = () => (phase === 'open' ? close() : show());
   return (
     <div ref={field} className={cx('ink-date', value && 'ink-date--set', className)}>
@@ -408,7 +403,12 @@ export function DateField({
             </div>
             <div className="ink-date__stage">
               {leaving && (
-                <div className="ink-date__leaving" data-step={leaving.step} aria-hidden="true" inert>
+                <div
+                  className="ink-date__leaving"
+                  data-step={leaving.step}
+                  aria-hidden="true"
+                  inert
+                >
                   {body(leaving.view, leaving.cursor, false)}
                 </div>
               )}

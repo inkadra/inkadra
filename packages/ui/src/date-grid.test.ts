@@ -38,19 +38,46 @@ describe('date grid', () => {
   });
 
   it('draws a range from its start to the value', () => {
-    const c = { month: '2026-11-01', today: '2026-11-13', value: '2026-11-20', rangeStart: '2026-11-16', min: '2026-11-16' };
-    expect(dayState('2026-11-16', c)).toMatchObject({ rangeStart: true, inRange: false, selected: false });
-    expect(dayState('2026-11-18', c)).toMatchObject({ inRange: true, rangeStart: false, rangeEnd: false });
+    const c = {
+      month: '2026-11-01',
+      today: '2026-11-13',
+      value: '2026-11-20',
+      rangeStart: '2026-11-16',
+      min: '2026-11-16',
+    };
+    expect(dayState('2026-11-16', c)).toMatchObject({
+      rangeStart: true,
+      inRange: false,
+      selected: false,
+    });
+    expect(dayState('2026-11-18', c)).toMatchObject({
+      inRange: true,
+      rangeStart: false,
+      rangeEnd: false,
+    });
     // The end is the selected day, joined to the band.
-    expect(dayState('2026-11-20', c)).toMatchObject({ selected: true, rangeEnd: true, inRange: false });
+    expect(dayState('2026-11-20', c)).toMatchObject({
+      selected: true,
+      rangeEnd: true,
+      inRange: false,
+    });
     expect(dayState('2026-11-21', c)).toMatchObject({ inRange: false, rangeEnd: false });
     expect(dayState('2026-11-13', c)).toMatchObject({ today: true, disabled: true });
     expect(dayState('2026-10-31', c).outside).toBe(true);
   });
 
   it('keeps a single day whole when there is no range', () => {
-    const lone = { month: '2026-11-01', today: '2026-11-13', value: '2026-11-16', rangeStart: '2026-11-16' };
-    expect(dayState('2026-11-16', lone)).toMatchObject({ selected: true, rangeStart: false, rangeEnd: false });
+    const lone = {
+      month: '2026-11-01',
+      today: '2026-11-13',
+      value: '2026-11-16',
+      rangeStart: '2026-11-16',
+    };
+    expect(dayState('2026-11-16', lone)).toMatchObject({
+      selected: true,
+      rangeStart: false,
+      rangeEnd: false,
+    });
     const before = { ...lone, value: '2026-11-10' };
     expect(dayState('2026-11-10', before)).toMatchObject({ selected: true, rangeEnd: false });
     expect(dayState('2026-11-12', before).inRange).toBe(false);
