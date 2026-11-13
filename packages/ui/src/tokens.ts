@@ -266,4 +266,6 @@ export const effects = {
    * dark accent; give each colour block its own copy if a focusable control ever lives there.
    */
   'focus-ring': '0 0 0 1px var(--ink-surface-1), 0 0 0 3px var(--ink-accent-primary)',
+  /** The same ring inside the edge, for full-width rows that a card or list clips. */
+  'focus-ring-inset': 'inset 0 0 0 2px var(--ink-accent-primary)',
 } as const;

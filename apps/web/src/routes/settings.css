@@ -1083,6 +1083,10 @@
   color: inherit;
   text-decoration: none;
 }
+/* The list clips the outer ring on its sides. */
+.settings-home__item:focus-visible {
+  box-shadow: var(--ink-focus-ring-inset);
+}
 .settings-home__item > svg,
 .settings-home__me > svg {
   flex: none;
