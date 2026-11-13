@@ -138,3 +138,4 @@ A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they w
 and accepted records are not renumbered.
 
 | [0129](0129-container-gpu-use.md) | GPU use from container DRM fdinfo inside the CPU chart; absent without driver counters |
+| [0131](0131-compose-env-file.md) | `compose.yaml` reads `.env` with `env_file`; the server reads empty variables as unset |

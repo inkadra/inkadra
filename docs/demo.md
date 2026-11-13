@@ -102,6 +102,9 @@ Valkey sit on a network that reaches nothing outside. `cloudflared` is pinned to
    TURNSTILE_SECRET=…
    ```
 
+   Every line of `.env` reaches the Inkadra container. `deploy/compose.demo.yaml` blanks
+   `CLOUDFLARE_TUNNEL_TOKEN` there, so only `cloudflared` has the token.
+
 4. Start it:
 
    ```sh

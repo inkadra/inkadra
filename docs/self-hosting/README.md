@@ -139,7 +139,8 @@ docker compose -f compose.yaml -f deploy/compose.split.yaml config > stack.yaml
 
 `config` writes the values of `.env` into `stack.yaml`, secrets included: keep that file private,
 or run it with an `.env` that has placeholders and fill them in the manager's environment
-editor. On TrueNAS, keep the data on a dataset: see [Storage](storage.md#a-folder-on-the-host).
+editor. Pasting `compose.yaml` itself needs a `.env` file next to it, or `INKADRA_ENV_FILE`
+naming the file where the manager keeps the variables (`stack.env` in Portainer). On TrueNAS, keep the data on a dataset: see [Storage](storage.md#a-folder-on-the-host).
 
 ## Installing as an app
 
