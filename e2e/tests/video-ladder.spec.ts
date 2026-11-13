@@ -120,7 +120,8 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
     .toBe(true);
   await shoot(page, 'ladder-card');
 
-  await card.dblclick();
+  await card.locator('.fcard__footer').dblclick();
+  await expect(page.getByRole('dialog').locator('video')).toBeVisible();
   const quality = page.locator('.viewer-quality__button');
   await expect(quality).toBeVisible();
   await quality.click();
@@ -169,6 +170,8 @@ test('Settings → Video shows the encoder, the presets, the estimates and live 
       return { name: part.slice(0, at), value: part.slice(at + 1), url: baseURL as string };
     }),
   );
+  const direct = await page.request.get('/api/v1/instance/video-settings');
+  expect(direct.status(), await direct.text()).toBe(200);
   let running = false;
   await page.route('**/api/v1/instance/video-settings*', async (route) => {
     const real = await route.fetch();
