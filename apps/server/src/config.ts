@@ -132,6 +132,28 @@ const Env = z.object({
     .string()
     .regex(/^\/dev\/[\w./-]+$/, 'Use a device path such as /dev/dri/renderD128')
     .default('/dev/dri/renderD128'),
+  /**
+   * Quality preset of playable copies (decision 0128): `light`, `balanced` or `high`. Set, it
+   * wins over Settings → Video and locks the choice there.
+   */
+  VIDEO_QUALITY: z.enum(['light', 'balanced', 'high']).optional(),
+  /**
+   * Rungs of the video ladder made and stored, by shorter side: `480,720,1080`. Set, it wins
+   * over Settings → Video and locks the choice there.
+   */
+  VIDEO_RENDITIONS: z
+    .string()
+    .regex(/^\s*(480|720|1080|2160)(\s*,\s*(480|720|1080|2160))*\s*$/, 'Use rungs such as 480,720,1080')
+    .transform((v) => [...new Set(v.split(',').map((r) => r.trim()))] as Array<'480' | '720' | '1080' | '2160'>)
+    .optional(),
+  /**
+   * Renditions encoded while someone watches (decision 0128). Set, it wins over Settings →
+   * Video and locks the switch there.
+   */
+  VIDEO_LIVE: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
   /** Encoder threads of one copy; it runs at a lower priority (nice 10) than the web role. */
   VIDEO_PROXY_THREADS: z.coerce.number().int().min(1).max(16).default(2),
   /**

@@ -7,7 +7,9 @@ import { asset, assetVariant } from '../db/schema.ts';
 import { proxyKey, readAll, type Storage } from '../storage.ts';
 import { SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
 import { videoPlan } from './ladder.ts';
+import type { VideoEnv } from '../video-settings.ts';
 import { makeLadder } from './ladder-run.ts';
+import { proxySettings } from './process.ts';
 import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
   copiesVideo,
@@ -30,6 +32,8 @@ export interface ProxyDeps {
   storage: Storage;
   tmpDir: string;
   proxies?: ProxySettings;
+  /** The environment of Settings → Video: every job reads that page's choices (0128). */
+  videoEnv?: VideoEnv;
   log?: { warn: (fields: Record<string, unknown>, message: string) => void };
 }
 
@@ -50,10 +54,12 @@ export const setProxy = (
  * made is kept, since originals never change. `onProgress` gets the percent done.
  */
 export async function runProxy(
-  deps: ProxyDeps,
+  given: ProxyDeps,
   assetId: string,
   onProgress?: (percent: number) => void | Promise<void>,
 ) {
+  // Read once per job: changing the preset needs no restart of the worker.
+  const deps = { ...given, proxies: await proxySettings(given) };
   const { db, storage } = deps;
   const settings = deps.proxies ?? DEFAULT_PROXY_SETTINGS;
   const [row] = await db.select().from(asset).where(eq(asset.id, assetId));

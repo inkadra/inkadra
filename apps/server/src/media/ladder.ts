@@ -86,7 +86,8 @@ export function rungSide(info: VideoInfo, settings: ProxySettings, rung: VideoRu
 
 /** What made a rung: the codec, the preset and the version of the encoding table. */
 export const RECIPE_VERSION = 1;
-export const recipeOf = (settings: ProxySettings) => `h264/${settings.quality}/${RECIPE_VERSION}`;
+export const recipeFor = (quality: string) => `h264/${quality}/${RECIPE_VERSION}`;
+export const recipeOf = (settings: ProxySettings) => recipeFor(settings.quality);
 
 /** A new generation of files: six characters in their storage key and in their URLs. */
 export const newGeneration = () => randomBytes(6).toString('base64url').slice(0, 6);

@@ -7,6 +7,7 @@ import {
   UpdateInstanceMember,
   UpdateInstanceSettings,
   UpdateStorageLimits,
+  UpdateVideoSettings,
   z,
 } from '@inkadra/shared';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
@@ -37,6 +38,8 @@ import {
   usedBytes,
 } from '../storage-limits.ts';
 import { revokeTokens } from '../tokens.ts';
+import { saveVideoSettings, videoSettingsView } from '../video-settings.ts';
+import { recipeFor } from '../media/ladder.ts';
 import { CHECK_NOW_MS, checkForUpdates, readUpdates } from '../updates.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -145,6 +148,26 @@ export function registerInstanceAdminRoutes(
         throw new HttpError('forbidden', 'Administrators only.');
       return storageLimits(await saveLimits(tx, config, patch));
     });
+  });
+  // Playable video copies (decision 0128).
+  const videoView = async () =>
+    videoSettingsView(db, config, {
+      freeBytes: (await diskSpace(config))?.free ?? null,
+      recipe: recipeFor,
+    });
+  app.get(`${API_PREFIX}/instance/video-settings`, async (req, reply) => {
+    await admin(req);
+    reply.header('cache-control', 'private, no-store');
+    return videoView();
+  });
+  app.patch(`${API_PREFIX}/instance/video-settings`, async (req) => {
+    await admin(req);
+    const patch = UpdateVideoSettings.parse(req.body ?? {});
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(10893)`);
+      await saveVideoSettings(tx, config, patch);
+    });
+    return videoView();
   });
   app.get(`${API_PREFIX}/instance/members/:userId/files`, async (req, reply) => {
     const actor = await admin(req);
