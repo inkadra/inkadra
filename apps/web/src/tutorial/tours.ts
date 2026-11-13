@@ -501,6 +501,19 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'videoCopies',
+    group: 'admin',
+    icon: 'play',
+    admin: true,
+    offer: 'video-presets',
+    href: '/settings?section=video',
+    steps: [
+      { anchor: 'video-encoder', media: 'gear', side: 'bottom' },
+      { anchor: 'video-presets', media: 'play', side: 'top' },
+      { anchor: null, media: 'gear' },
+    ],
+  },
+  {
     id: 'users',
     group: 'admin',
     icon: 'user',

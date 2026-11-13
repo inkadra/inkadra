@@ -1,0 +1,152 @@
+/* Settings → Server → Video (decision 0128), built from the tokens of settings.css. */
+.video-settings {
+  display: contents;
+}
+.video-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+}
+.video-presets .ink-tile {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+.video-preset__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.video-preset__desc {
+  min-height: 34px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.video-preset__size {
+  margin-top: 4px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.video-preset__size small,
+.video-totals dd small {
+  color: var(--ink-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.video-preset__hour {
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.video-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.video-totals dt {
+  color: var(--ink-text-muted);
+  font-size: 11px;
+}
+.video-totals dd {
+  margin: 2px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.video-settings .settings-row--stack {
+  flex-wrap: wrap;
+}
+.video-settings .settings-row--stack .settings-row__control {
+  justify-content: flex-start;
+  width: 100%;
+  max-width: none;
+}
+.video-note {
+  margin: -8px 4px 0;
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+.video-examples {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.video-examples li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-size: 12px;
+}
+.video-examples__src {
+  color: var(--ink-text-primary);
+}
+.video-examples__size {
+  color: var(--ink-text-secondary);
+  text-align: right;
+}
+.video-examples__plus {
+  min-width: 62px;
+  color: var(--ink-text-muted);
+  text-align: right;
+}
+.video-examples__plus.is-over {
+  color: var(--ink-tag-orange);
+}
+.video-meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-2);
+}
+.video-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink-accent-primary);
+  transition: width var(--ink-dur-slow) var(--ink-ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .video-meter i {
+    transition: none;
+  }
+}
+.video-run {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.video-run__line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+@media (width < 768px) {
+  .video-presets,
+  .video-totals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .video-totals {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .video-preset__desc {
+    min-height: 0;
+  }
+  .video-examples li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .video-examples__src {
+    grid-column: 1 / -1;
+  }
+  .video-examples__size {
+    text-align: left;
+  }
+}

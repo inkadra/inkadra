@@ -163,6 +163,8 @@ async function main() {
       threads: config.VIDEO_PROXY_THREADS,
       ...(encoder ? { encoder } : {}),
     },
+    // Settings → Video (decision 0128), read by every job.
+    videoEnv: config,
   };
   const transfers = transferDeps(config);
   const closers: Array<() => Promise<unknown>> = [

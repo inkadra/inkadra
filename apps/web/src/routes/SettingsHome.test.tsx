@@ -79,7 +79,7 @@ it('shows grouped rows with current values, inline theme and sign out', async ()
     'settingsUi.groups.workspace',
     'settingsUi.groups.server',
   ]);
-  expect(host.querySelectorAll('.settings-home__item')).toHaveLength(15);
+  expect(host.querySelectorAll('.settings-home__item')).toHaveLength(16);
   await act(async () => {
     host.querySelector<HTMLInputElement>('.ink-segmented input[value="light"]')?.click();
   });

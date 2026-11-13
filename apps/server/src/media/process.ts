@@ -8,6 +8,7 @@ import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetRendition, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
+import { applyVideoSettings, readVideoSettings, type VideoEnv } from '../video-settings.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
 import { readFileMetadata } from './file-metadata.ts';
@@ -55,6 +56,11 @@ export interface MediaDeps {
   maps?: MapSettings;
   /** Playable copies of videos browsers cannot play (decision 0048); on with defaults if unset. */
   proxies?: ProxySettings;
+  /**
+   * The environment of Settings → Video (decision 0128): when given, every job reads the
+   * choices of that page over `proxies`.
+   */
+  videoEnv?: VideoEnv;
   /**
    * Queues the playable copy of a video. Without it (tests, tools) none is made and the asset
    * says `skipped`.
@@ -643,12 +649,12 @@ async function proxyState(
   size: number,
 ): Promise<{ status: (typeof asset.$inferInsert)['proxyStatus']; enqueue: boolean }> {
   if (!info) return { status: null, enqueue: false };
-  const plan = videoPlan(container, info, size, deps.proxies ?? DEFAULT_PROXY_SETTINGS);
+  const plan = videoPlan(container, info, size, await proxySettings(deps));
   if (plan.kind === 'none') return { status: null, enqueue: false };
   if (plan.kind === 'skip' || !deps.enqueueProxy) return { status: 'skipped', enqueue: false };
   if (plan.kind === 'ladder') {
     // A second pass (a reprocess, an import) keeps rungs already made with these settings.
-    const recipe = recipeOf(deps.proxies ?? DEFAULT_PROXY_SETTINGS);
+    const recipe = recipeOf(await proxySettings(deps));
     const ready = await deps.db
       .select({ name: assetRendition.name })
       .from(assetRendition)
@@ -668,6 +674,13 @@ async function proxyState(
     .from(assetVariant)
     .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
   return made ? { status: 'ready', enqueue: false } : { status: 'queued', enqueue: true };
+}
+
+/** The copies settings of this job: the instance's, with the choices of Settings → Video. */
+export async function proxySettings(deps: Pick<MediaDeps, 'db' | 'proxies' | 'videoEnv'>) {
+  const base = deps.proxies ?? DEFAULT_PROXY_SETTINGS;
+  if (!deps.videoEnv) return base;
+  return applyVideoSettings(base, (await readVideoSettings(deps.db, deps.videoEnv)).settings);
 }
 
 /** WebP thumbnails and dominant colours of a picture, upright. */

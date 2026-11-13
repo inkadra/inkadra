@@ -59,6 +59,7 @@ import { MySpaceCard } from './StorageSpace.tsx';
 import { trackSave } from './settings-save.ts';
 import { isSettingsHome, settingsSection } from './settings-sections.ts';
 import { AutosaveText, Badge, Card, Row, Segmented, Tile, useIsPhone } from './settings-ui.tsx';
+import { VideoSettings } from './VideoSettings.tsx';
 import './projects.css';
 import { ProviderIcon } from './ProviderIcon.tsx';
 import './settings.css';
@@ -112,6 +113,8 @@ export function Settings() {
         );
       case 'classifications':
         return <ClassificationSettings />;
+      case 'video':
+        return <VideoSettings />;
       default:
         return <InstanceSettings section={page.id} setup={setup} />;
     }

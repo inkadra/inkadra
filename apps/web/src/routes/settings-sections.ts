@@ -50,6 +50,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
   page('reports', 'workspace', 'report', 'settingsUi.pages.reports'),
   page('instance', 'server', 'home', 'settingsUi.pages.general'),
   page('workspace', 'server', 'disk', 'admin.storage', 'settingsUi.leads.storage'),
+  page('video', 'server', 'film', 'settingsUi.pages.video'),
   page('backups', 'server', 'clock', 'backups.title'),
   page('server', 'server', 'tiles', 'settingsUi.pages.server'),
   page('updates', 'server', 'upload', 'settingsUi.pages.updates'),
@@ -151,6 +152,14 @@ export const SETTINGS: SettingEntry[] = [
   s('workspace.usage', 'settingsUi.storage.usage', ['settingsUi.storage.by.project']),
   // Its rows are `workspace.byUser:<user id>`: the search finds each person's space too.
   s('workspace.byUser', 'admin.storageCharts.byUser', ['settingsUi.storage.by.user']),
+  s('video.encoder', 'videoSettings.encoding.encoder', [], ['NVENC', 'Quick Sync', 'VAAPI', 'AV1']),
+  s('video.quality', 'videoSettings.quality.title', [
+    'videoSettings.quality.light',
+    'videoSettings.quality.balanced',
+    'videoSettings.quality.high',
+  ]),
+  s('video.renditions', 'videoSettings.rungs.title', [], ['480p', '720p', '1080p', '4K']),
+  s('video.playable', 'videoSettings.playable.label', ['videoSettings.examples.title']),
   s('backups.now', 'backups.now'),
   s('backups.nightly', 'backups.nightly'),
   s('backups.time', 'backups.time'),
