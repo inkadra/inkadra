@@ -22,20 +22,28 @@ const apps: ReturnType<typeof Fastify>[] = [];
 afterEach(async () => {
   for (const app of apps.splice(0)) await app.close();
 });
+/** What the fake database holds under `instance_setting`. */
+let value: unknown;
 function setup() {
-  let value: unknown;
+  value = undefined;
   const db = {
     select: () => ({
       from: (table: unknown) => ({
-        where: async () =>
-          table === instanceSetting
-            ? value
-              ? [{ value }]
-              : []
-            : [{ role: 'admin', deactivatedAt: null }],
+        where: () =>
+          Object.assign(
+            Promise.resolve(
+              table === instanceSetting
+                ? value
+                  ? [{ value }]
+                  : []
+                : [{ role: 'admin', deactivatedAt: null }],
+            ),
+            // Uses of project types: none in this fake database.
+            { groupBy: async () => [] },
+          ),
       }),
     }),
-    execute: async () => {},
+    execute: async () => [],
     insert: () => ({
       values: (row: { value: unknown }) => ({
         onConflictDoUpdate: async () => {
@@ -64,6 +72,20 @@ describe('classification HTTP permissions and persistence', () => {
         await app.inject({ url: '/api/v1/instance/classifications', headers: { role: 'member' } })
       ).json(),
     ).toEqual(DEFAULT_CLASSIFICATIONS);
+    // Administrators also read how often each value is used (decision 0126).
+    const read = (
+      await app.inject({
+        url: '/api/v1/instance/classifications?uses=true',
+        headers: { role: 'admin' },
+      })
+    ).json();
+    expect(read.projectTypes[0].uses).toBe(0);
+    expect(
+      (
+        await app.inject({ url: '/api/v1/instance/classifications', headers: { role: 'admin' } })
+      ).json(),
+    ).toEqual(DEFAULT_CLASSIFICATIONS);
+    expect(read.shotSizes[0]).not.toHaveProperty('uses');
     expect(
       (
         await app.inject({
@@ -92,9 +114,11 @@ describe('classification HTTP permissions and persistence', () => {
     const saved = await app.inject(request);
     expect(saved.statusCode).toBe(200);
     expect(saved.json().revision).toBe(1);
-    expect((await app.inject({ url: request.url, headers: { role: 'member' } })).json()).toEqual(
-      saved.json(),
-    );
+    expect(
+      (await app.inject({ url: `${request.url}?uses=true`, headers: { role: 'admin' } })).json(),
+    ).toEqual(saved.json());
+    // The count is never stored.
+    expect((value as { projectTypes: object[] }).projectTypes[0]).not.toHaveProperty('uses');
     expect((await app.inject(request)).statusCode).toBe(409);
     const removed = saved.json();
     removed.projectTypes.shift();

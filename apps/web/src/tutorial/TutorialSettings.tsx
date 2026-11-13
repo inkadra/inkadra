@@ -46,6 +46,7 @@ export function TutorialSettings() {
       <button
         key={tour.id}
         type="button"
+        data-setting={`tour:${tour.id}`}
         className={`tour-tile${done ? '' : ' is-unseen'}`}
         aria-label={t('tutorial.settings.playNamed', { name })}
         aria-describedby={`${stateId}-${tour.id}`}
@@ -76,6 +77,7 @@ export function TutorialSettings() {
   return (
     <>
       <Summary
+        anchor="tutorials.welcome"
         tone="accent"
         icon="play"
         live
@@ -137,6 +139,7 @@ export function TutorialSettings() {
       ))}
       <Card title={t('tutorial.settings.prefs')}>
         <Row
+          anchor="tutorials.hints"
           label={t('tutorial.settings.hints')}
           help={t('tutorial.settings.hintsHelp')}
           htmlFor={hintsId}
@@ -149,7 +152,11 @@ export function TutorialSettings() {
             }
           />
         </Row>
-        <Row label={t('tutorial.settings.reset')} help={t('tutorial.settings.resetHelp')}>
+        <Row
+          anchor="tutorials.reset"
+          label={t('tutorial.settings.reset')}
+          help={t('tutorial.settings.resetHelp')}
+        >
           <Button onClick={resetSeen}>{t('tutorial.settings.resetAction')}</Button>
         </Row>
       </Card>

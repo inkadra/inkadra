@@ -190,6 +190,7 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
     <>
       <Summary
         tour="storage-used"
+        anchor="workspace.used"
         tone={tone === 'danger' ? 'danger' : tone === 'warn' ? 'warn' : 'ok'}
         icon="archive"
         title={[
@@ -226,6 +227,7 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
         }
       />
       <Card
+        anchor="workspace.limits"
         title={t('storageLimits.title')}
         tour="storage-limits"
         action={
@@ -247,17 +249,26 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
           </p>
         )}
         <div className="settings-rows">
-          <Row label={t('storageLimits.total')} help={t('storageLimits.totalHelp')}>
+          <Row
+            anchor="workspace.total"
+            label={t('storageLimits.total')}
+            help={t('storageLimits.totalHelp')}
+          >
             <span className="space-limit">
               {limitRow('total', totalId, limits.total, limits.locked.total)}
             </span>
           </Row>
-          <Row label={t('storageLimits.perUser')} help={t('storageLimits.perUserHelp')}>
+          <Row
+            anchor="workspace.perUser"
+            label={t('storageLimits.perUser')}
+            help={t('storageLimits.perUserHelp')}
+          >
             <span className="space-limit">
               {limitRow('perUser', perUserId, limits.perUser, limits.locked.perUser)}
             </span>
           </Row>
           <Row
+            anchor="workspace.largestFile"
             label={t('storageLimits.largestFile')}
             help={
               <>
@@ -271,7 +282,12 @@ export function StorageLimitsCards({ usage }: { usage: StorageUsage | null }) {
                 : t('storageLimits.none')}
             </span>
           </Row>
-          <Row label={t('storageLimits.warn')} help={t('storageLimits.warnHelp')} htmlFor={warnId}>
+          <Row
+            anchor="workspace.warn"
+            label={t('storageLimits.warn')}
+            help={t('storageLimits.warnHelp')}
+            htmlFor={warnId}
+          >
             <Select
               id={warnId}
               className="ink-input space-limit__unit"

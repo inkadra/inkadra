@@ -9,6 +9,12 @@ export const ClassificationOption = z.object({
   archived: z.boolean(),
   /** Original free-text tag, kept forever so existing Yjs documents need no rewrite. */
   legacy: z.string().max(40).optional(),
+  /**
+   * How many projects (types) or board elements (tags, storyboard values) use the value: for
+   * administrators, on `GET ?uses=true` and on save; absent where it cannot be counted
+   * (decision 0126). Ignored in a request body.
+   */
+  uses: z.int().min(0).optional(),
 });
 export type ClassificationOption = z.infer<typeof ClassificationOption>;
 const defaults = (codes: readonly string[], labels: readonly string[]) =>
@@ -70,6 +76,10 @@ export const ClassificationCatalogs = ShotCatalogs.extend({
   tags: z.array(ClassificationOption).max(500),
 }).openapi('ClassificationCatalogs');
 export type ClassificationCatalogs = z.infer<typeof ClassificationCatalogs>;
+export const ClassificationsQuery = z.object({
+  /** `true`: an administrator also gets `uses` on each value (decision 0126). */
+  uses: z.enum(['true']).optional(),
+});
 export const DEFAULT_CLASSIFICATIONS: ClassificationCatalogs = {
   revision: 0,
   projectTypes: [
@@ -82,8 +92,17 @@ export const DEFAULT_CLASSIFICATIONS: ClassificationCatalogs = {
   tags: [],
   ...DEFAULT_SHOT_CATALOGS,
 };
+/**
+ * Servers that advertise it let an administrator remove a value that nothing uses
+ * (decision 0126): a save without that id. Older servers reject any removal.
+ */
+export const CLASSIFICATION_DELETE_CAPABILITY = 'classification-delete';
 /** The id of a value added to a catalog; the id of a default value is a readable code. */
 export const CATALOG_UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
+/** A value that may be removed: added on this instance (decision 0126) and used nowhere. */
+export function canDeleteClassification(option: ClassificationOption) {
+  return CATALOG_UUID.test(option.id) && option.uses === 0;
+}
 export function classificationOption(options: readonly ClassificationOption[], value: string) {
   const key = value.trim().toLowerCase();
   return options.find((o) => o.id.toLowerCase() === key || o.legacy === key);

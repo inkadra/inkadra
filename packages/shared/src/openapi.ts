@@ -35,7 +35,7 @@ import {
   UpdateBoard,
 } from './boards.ts';
 import { CalendarFeed } from './calendar.ts';
-import { ClassificationCatalogs } from './classifications.ts';
+import { ClassificationCatalogs, ClassificationsQuery } from './classifications.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
   CommentCounts,
@@ -170,6 +170,7 @@ import {
 import {
   RetriedProblems,
   ServerAlerts,
+  ServerLive,
   ServerStatus,
   ServerStatusQuery,
   UpdateServerAlerts,
@@ -930,6 +931,7 @@ registry.registerPath({
   path: v1('/instance/classifications'),
   tags: ['Instance'],
   security: secured,
+  request: { query: ClassificationsQuery },
   responses: {
     200: { description: 'Instance-wide classification catalogs', ...json(ClassificationCatalogs) },
     ...errors,
@@ -943,7 +945,10 @@ registry.registerPath({
   request: { body: json(ClassificationCatalogs) },
   responses: {
     200: {
-      description: 'Administrator update; revision prevents lost edits; IDs cannot be removed',
+      description:
+        'Administrator update; revision prevents lost edits. An ID may be removed only when the ' +
+        'value was added on this instance and nothing uses it (capability `classification-delete`); ' +
+        'otherwise 409 with details.reason `classification_in_use` or 400.',
       ...json(ClassificationCatalogs),
     },
     ...errors,
@@ -1440,6 +1445,18 @@ registry.registerPath({
     'jobs, people on boards, problems of the last 7 days and alert settings.',
   request: { query: ServerStatusQuery },
   responses: { 200: { description: 'Server status', ...json(ServerStatus) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/server/live'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: the values of now and the newest history points ' +
+    'of `range`, from the monitor store alone, cheap enough to ask every few seconds. Only on ' +
+    'servers that advertise the capability `server-live`.',
+  request: { query: ServerStatusQuery },
+  responses: { 200: { description: 'Live values', ...json(ServerLive) }, ...errors },
 });
 registry.registerPath({
   method: 'patch',

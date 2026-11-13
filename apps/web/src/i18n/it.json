@@ -3675,6 +3675,7 @@
       "toolbar": "Scegli quali strumenti di «Altro» vedi nella barra in basso. Gli altri restano in «Altro» (⋯) e nella palette dei comandi.",
       "tutorials": "Rivedi i giri guidati, scegli se proporli e chiedi aiuto.",
       "server": "Come sta il server: risorse, servizi, lavori, problemi e avvisi.",
+      "serverSimple": "Come sta il server, in parole semplici: spazio, backup, velocità e problemi da guardare.",
       "updates": "La versione in uso, le novità e un avviso quando ne esce una nuova. Inkadra non si aggiorna da solo: l’aggiornamento lo fai tu, sul server.",
       "modules": "Scegli le parti di Inkadra che usi. Un modulo spento sparisce dai tuoi menu, dalla barra, dalle notifiche e dai tutorial. Vale solo per te e non cancella niente: quello che esiste resta visibile, e se lo riaccendi ritrovi tutto.",
       "board": "Come si comportano le tue board e quali strumenti hai nella barra in basso. Vale solo per te, su ogni dispositivo.",
@@ -3809,23 +3810,15 @@
     },
     "search": "Cerca nelle impostazioni",
     "noResults": "Nessuna impostazione trovata",
-    "keywords": {
-      "account": "Nome, Email, Foto profilo, Password, Verifica in due passaggi (2FA), Codici di riserva, Metodi di accesso, Sessioni, Dispositivi, Elimina account, Il tuo spazio, File più grandi",
-      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua, Formato data, Formato ora",
-      "board": "Griglia a punti, Aggancia alla griglia, Doppio clic crea una nota, Mantieni la board attorno al contenuto, Pulsanti Annulla e Ripeti, Continua a riprodurre i video fuori schermo, Barra degli strumenti, Strumenti, Altro, Colonna, Titolo di sezione, Colore, Tabella, Nota vocale, Mappa, Inquadratura, Pianta del set, Ripristina la barra predefinita",
-      "notifications": "Notifiche email, Menzioni, Risposte, Revisioni, Riepilogo giornaliero, Inbox, Commenti sulle tue card",
-      "apps": "Link del tuo calendario, Estensione per il browser, Inkadra Clipper per Chrome, App e token",
-      "tutorials": "Giro di benvenuto, Suggerimenti alla prima apertura, Ricomincia da capo, Segnala un problema",
-      "members": "Invita membri, Inviti, Link di invito, Ruolo, Amministratori, Disattiva account, Riattiva account, Persone, Spazio, Limite di spazio",
-      "access": "Nuovi account, Registrazione aperta, Solo su invito, Registrazione chiusa, Richiedi la verifica in due passaggi agli amministratori, I membri possono creare progetti, Feed del calendario, Google, OIDC, Single sign-on (SSO), Link di accesso via email, Email e password, SMTP, Invio email",
-      "classifications": "Tipi di progetto, Tag, Cataloghi, Campo, Angolazione, Movimento",
-      "reports": "Segnalazioni, Invia agli sviluppatori di Inkadra, Destinazione, Repository, Token GitHub, Gli ospiti possono segnalare, Conservazione degli allegati, Segnalazioni ricevute",
-      "instance": "Nome dell’istanza, Indirizzo pubblico, Versione, Configurazione",
-      "workspace": "Spazio usato, File caricati, Archiviazione, Limiti di spazio, Spazio per persona, Avvisa a",
-      "backups": "Backup, Esegui backup ora, Ripristino, Conservazione, Backup notturno",
-      "server": "Processore, Memoria, Spazio, Servizi, Problemi, Avvisi, Diagnostica, Video",
-      "updates": "Versione, Controlla ora, Avvisami quando esce una nuova versione, Quali versioni, Anteprime, Versioni precedenti, Novità di Inkadra",
-      "modules": "Moduli, Storyboard, Produzione, Moodboard, Revisione clienti, Pianta del set, Spegni, Accendi"
+    "find": {
+      "people": "Persone",
+      "settings": "Impostazioni",
+      "tours": "Tour",
+      "invite": "Invito in attesa",
+      "results": "Risultati della ricerca",
+      "move": "scegli",
+      "open": "apri",
+      "enter": "Invio"
     },
     "close": "Chiudi impostazioni",
     "dangerZone": "Zona sensibile",
@@ -4055,7 +4048,15 @@
     "archivedCount_other": "{{count}} archiviati",
     "empty": "Ancora nessun valore.",
     "unsaved": "Modifiche non salvate",
-    "discard": "Annulla modifiche"
+    "discard": "Annulla modifiche",
+    "uses_one": "Usato {{count}} volta",
+    "uses_other": "Usato {{count}} volte",
+    "deleteLabel": "Elimina {{name}}",
+    "delete": "Elimina",
+    "deleteTitle": "Eliminare «{{name}}»?",
+    "deleteBody": "Non è mai stato usato: nessun progetto, card o frame lo perde. Sparisce dalla lista quando salvi.",
+    "inUseTitle": "Un valore è stato usato nel frattempo",
+    "inUse": "Qualcuno ha appena usato un valore che stai eliminando, quindi non è stato salvato nulla. Ricarica: potrai archiviarlo."
   },
   "appearance": {
     "label": "Aspetto",
@@ -5586,8 +5587,8 @@
             "text": "Il nuovo nome cambia su ogni frame che lo usa."
           },
           "2": {
-            "title": "Archivia",
-            "text": "Esce dai menu ma resta sui frame che lo hanno."
+            "title": "Archivia o elimina",
+            "text": "Un valore archiviato esce dai menu ma resta dove è usato. Uno mai usato si può eliminare."
           }
         }
       },
@@ -5630,17 +5631,21 @@
         "steps": {
           "0": {
             "title": "A colpo d’occhio",
-            "text": "Una frase dice se il server sta bene."
+            "text": "Una frase dice se il server sta bene: verde, arancione se c’è da sistemare, rosso se qualcosa è fermo."
           },
           "1": {
             "title": "Semplice o avanzata",
             "text": "Parole semplici, oppure grafici e numeri per ogni parte."
           },
           "2": {
+            "title": "Come sta",
+            "text": "Spazio, backup e velocità in parole semplici; in Avanzata le curve, aggiornate ogni pochi secondi."
+          },
+          "3": {
             "title": "I problemi",
             "text": "Riprova, segna come visto o invia agli sviluppatori."
           },
-          "3": {
+          "4": {
             "title": "Gli avvisi",
             "text": "Ti avvisa se qualcosa non va."
           }
@@ -5787,7 +5792,6 @@
     "health": {
       "ok": "Tutto funziona",
       "bad": "Qualcosa non va",
-      "uptime": "Acceso da {{time}}",
       "backup": {
         "ready": "ultimo backup {{when}}, riuscito",
         "failed": "ultimo backup {{when}}, non riuscito",
@@ -5808,25 +5812,17 @@
         "worker": "I nuovi video restano in attesa; il resto funziona.",
         "database": "Inkadra non riesce a leggere né a salvare.",
         "queue": "I lavori in background sono fermi."
+      },
+      "warn": "Funziona, ma c’è una cosa da sistemare",
+      "checks": "Controlli {{ok}} su {{total}} ok",
+      "reasons": {
+        "space": "Lo spazio sta per finire: restano {{free}}. Libera spazio o aggiungi un disco prima che i caricamenti si fermino.",
+        "backup": "Il backup di {{when}} non è riuscito. I dati sono al sicuro, ma conviene controllare prima del prossimo backup.",
+        "check": "Un controllo della configurazione non è passato: {{check}}."
       }
     },
     "meters": {
-      "label": "Risorse adesso",
       "of": "su {{total}}",
-      "cpu": {
-        "name": "Processore",
-        "hint": "Quanto sta lavorando il server",
-        "ok": "Tranquillo",
-        "busy": "Impegnato",
-        "high": "Al limite"
-      },
-      "memory": {
-        "name": "Memoria",
-        "hint": "Memoria usata dai programmi di Inkadra",
-        "ok": "Tranquilla",
-        "busy": "Impegnata",
-        "high": "Al limite"
-      },
       "storage": {
         "name": "Spazio",
         "years": "Basta per anni",
@@ -5841,12 +5837,9 @@
         "compressed": "Lo spazio usato è minore perché il disco comprime i file."
       },
       "network": {
-        "name": "Internet",
-        "normal": "Normale",
         "unknown": "Non misurato",
         "in": "ricevuti",
-        "out": "inviati",
-        "hint": "↓ file ricevuti · ↑ file inviati a chi guarda le board"
+        "out": "inviati"
       },
       "speed": {
         "name": "Velocità",
@@ -5868,18 +5861,6 @@
       }
     },
     "services": {
-      "title": "Servizi",
-      "allOk": "tutti rispondono",
-      "someDown_one": "1 non risponde",
-      "someDown_other": "{{count}} non rispondono",
-      "lastSignal": "ultimo segnale {{time}}",
-      "names": {
-        "web": "Sito e accesso",
-        "collab": "Lavoro insieme dal vivo",
-        "worker": "Preparazione di video e anteprime",
-        "database": "Database e coda dei lavori",
-        "configuration": "Configurazione"
-      },
       "long": {
         "web": "Il sito",
         "collab": "Il lavoro insieme dal vivo",
@@ -5893,13 +5874,7 @@
         "warning": "Lento a rispondere",
         "down": "Non risponde",
         "off": "Non usato"
-      },
-      "configuration": "Indirizzo pubblico, HTTPS, proxy, cartella dati, archivio file, codifica video",
-      "checksPassed_one": "1 controllo superato",
-      "checksPassed_other": "{{count}} controlli superati",
-      "checksFailing_one": "1 da sistemare",
-      "checksFailing_other": "{{count}} da sistemare",
-      "checks": "I controlli della configurazione"
+      }
     },
     "roles": {
       "web": "web",
@@ -5909,11 +5884,6 @@
     },
     "chart": {
       "title": "Andamento",
-      "metric": "Cosa mostrare",
-      "period": "Periodo",
-      "cpu": "Processore",
-      "memory": "Memoria",
-      "network": "Internet",
       "received": "Ricevuti",
       "sent": "Inviati",
       "ranges": {
@@ -5944,11 +5914,8 @@
     },
     "videos": {
       "title": "Video in preparazione",
-      "lead": "Inkadra crea una copia leggera di ogni video, così si guarda bene anche da telefono.",
-      "meta": "{{waiting}} in attesa · {{ready}} pronti oggi",
       "empty": "Nessun video in preparazione.",
-      "hidden": "Un video di un progetto di cui non fai parte",
-      "progress": "{{percent}} · ancora circa {{time}}"
+      "hidden": "Un video di un progetto di cui non fai parte"
     },
     "people": {
       "title": "Chi è collegato adesso",
@@ -5971,7 +5938,6 @@
       "empty": "Nessun problema negli ultimi 7 giorni.",
       "times_one": "1 volta",
       "times_other": "{{count}} volte",
-      "technical": "Dettagli tecnici",
       "retry": "Riprova",
       "seen": "Segna come visto",
       "actionError": "Non sono riuscito a farlo. Riprova fra poco.",
@@ -6027,7 +5993,11 @@
           "title": "Qualcosa non ha funzionato",
           "text": "I dettagli tecnici dicono cosa."
         }
-      }
+      },
+      "technicalIn": "Dettagli tecnici in Avanzata",
+      "technicalInNamed": "Dettagli tecnici in Avanzata: {{title}}",
+      "retryNamed": "Riprova: {{title}}",
+      "seenNamed": "Segna come visto: {{title}}"
     },
     "alerts": {
       "title": "Avvisi",
@@ -6040,30 +6010,10 @@
       "email": "Notifiche ed email"
     },
     "details": {
-      "title": "Dettagli tecnici",
-      "lead": "Per chi gestisce il server: processi, code dei lavori, database, versione",
-      "version": "Versione",
-      "encoding": "Codifica video",
-      "encoder": {
-        "none": "Non attiva",
-        "software": "Software (processore)",
-        "hardware": "Hardware ({{label}})"
-      },
-      "database": "Database",
-      "connections_one": "1 connessione",
-      "connections_other": "{{count}} connessioni",
-      "responses": "Risposte",
-      "responsesValue": "p95 {{p95}} · errori {{errors}} nell’ultima ora",
-      "files": "Archivio file",
-      "driver": {
-        "local": "Disco locale",
-        "s3": "Bucket S3"
-      },
       "copy": "Copia i dati tecnici",
       "process": "Processo",
       "cpu": "Processore",
       "memory": "Memoria",
-      "uptime": "Acceso da",
       "signal": "Segnale",
       "queue": "Coda dei lavori",
       "waiting": "In attesa",
@@ -6083,10 +6033,6 @@
       "uptime": "Acceso da",
       "processes": "Processi",
       "video": "Video",
-      "checks": "Controlli",
-      "checksValue": "{{ok}} su {{total}} ok",
-      "p95": "Risposta p95",
-      "backup": "Backup",
       "range": "Periodo",
       "ranges": {
         "15m": "15 min",
@@ -6094,29 +6040,18 @@
         "24h": "24 h",
         "7d": "7 g"
       },
-      "summary": "Riepilogo",
       "cpu": "CPU",
       "cores_one": "1 core",
       "cores_other": "{{count}} core",
       "memory": "Memoria",
       "limit": "limite {{size}}",
       "network": "Rete",
-      "container": "container",
       "today": "oggi ↓ {{in}} ↑ {{out}}",
       "storage": "Spazio",
-      "storageSplit": "originali {{originals}} · copie {{copies}} · anteprime {{previews}}",
       "cpuMeta": "media {{avg}} · picco {{peak}}",
-      "cpuCap_one": "% di 1 core, tutti i processi",
-      "cpuCap_other": "% dei {{count}} core, tutti i processi",
       "memoryMeta": "picco {{peak}}",
-      "memoryCap": "In uso sul limite di {{limit}}",
       "latency": "Tempi di risposta",
       "latencyMeta": "p95 · errori {{errors}}",
-      "latencyCap": "Millisecondi per richiesta: il 95 % delle richieste è più veloce di così",
-      "networkTitle": "Rete",
-      "networkMeta": "solo il traffico del container Inkadra",
-      "in": "In entrata (sopra)",
-      "out": "In uscita (sotto)",
       "transcodes": "Trascodifiche",
       "transcodesMeta": "{{active}} attive · {{waiting}} in coda",
       "speed": "{{speed}}× tempo reale",
@@ -6132,7 +6067,44 @@
       "retryAll": "Riprova i falliti",
       "seenAll": "Segna tutti come visti",
       "error": "Errore",
-      "warning": "Avviso"
+      "warning": "Avviso",
+      "updated": "aggiornato {{time}}",
+      "ofLimit": "{{share}} del limite",
+      "limitLine": "limite",
+      "latencyHint": "il 95 % delle richieste è più veloce di così",
+      "networkOnly": "solo il container",
+      "space": {
+        "used": "Usato",
+        "of": "su {{total}} · {{share}}",
+        "originals": "Originali",
+        "originalsHint": "i file caricati",
+        "copies": "Copie",
+        "copiesHint": "video leggeri da guardare",
+        "previews": "Anteprime",
+        "previewsHint": "miniature"
+      }
+    },
+    "simple": {
+      "connected": "Collegati adesso",
+      "onBoards": "su {{boards}}",
+      "waiting": "{{n}} in attesa"
+    },
+    "how": {
+      "title": "Come sta",
+      "space": {
+        "bar": "Spazio usato",
+        "left": "Restano {{free}}. Libera spazio o aggiungi un disco prima che i caricamenti si fermino",
+        "mostlyOriginals": "Quasi tutto è dei file caricati.",
+        "beforeCompression": "Quasi tutto è dei file caricati ({{size}} prima della compressione del disco)."
+      },
+      "backup": {
+        "lastSuccess": "Ultimo riuscito: {{when}}"
+      }
+    },
+    "admin": {
+      "title": "Per chi gestisce il server",
+      "lead": "Grafici nel tempo, processi, code dei lavori e registro errori sono nella vista Avanzata.",
+      "open": "Apri Avanzata"
     }
   },
   "updates": {

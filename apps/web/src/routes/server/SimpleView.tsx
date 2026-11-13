@@ -1,550 +1,392 @@
-import type {
-  DiagnosticCheck,
-  ServerProblem,
-  ServerRange,
-  ServerService,
-  ServerStatus,
-} from '@inkadra/shared';
+import type { DiagnosticCheck, ServerProblem, ServerStatus } from '@inkadra/shared';
 import { Avatar, Button, Icon, Select, Switch } from '@inkadra/ui';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { updatePreferences } from '../../lib/preferences.ts';
 import { useSession } from '../../lib/session.tsx';
 import { formatStorage } from '../StorageCharts.tsx';
-import { Badge, Card, Row, Summary, Tile } from '../settings-ui.tsx';
-import { HistoryChart } from './charts.tsx';
-import { type ServerActions, technicalSummary, useWhen } from './common.ts';
+import { Card, Row, Summary } from '../settings-ui.tsx';
+import { peekProblem, type ServerActions, technicalSummary, useWhen } from './common.ts';
 import {
-  bits,
   diskCompresses,
-  downServices,
   duration,
-  loadVerdict,
+  type Health,
+  healthOf,
   number,
   openProblems,
   percent,
+  sortedProblems,
   speedVerdict,
   storageVerdict,
 } from './format.ts';
 
 type Props = { status: ServerStatus; checks: DiagnosticCheck[]; actions: ServerActions };
 
-/** Ids of what an administrator scrolls to from the summary. */
+/** Ids of what an administrator scrolls to from the status card. */
 export const PROBLEMS_ID = 'server-problems';
 
-const scrollToProblems = () =>
-  document.getElementById(PROBLEMS_ID)?.scrollIntoView({
-    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    block: 'start',
-  });
+export const reducedMotion = () =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
-/** Configuration from the checks of the server and of this browser. */
-export function configStatus(checks: DiagnosticCheck[]): ServerService['status'] {
-  return checks.some((c) => c.status === 'error')
-    ? 'down'
-    : checks.some((c) => c.status === 'warning')
-      ? 'warning'
-      : 'ok';
+/**
+ * Scrolls the settings window's body only: `scrollIntoView` would also move the window inside
+ * the page. Elsewhere (tests, a page without the window) it falls back to `scrollIntoView`.
+ */
+export function scrollToItem(item: HTMLElement | null, block: 'start' | 'center') {
+  if (!item) return;
+  const behavior = reducedMotion() ? 'auto' : 'smooth';
+  const box = item.closest<HTMLElement>('.settings-window__body');
+  if (!box) {
+    item.scrollIntoView({ behavior, block });
+    return;
+  }
+  const offset = item.getBoundingClientRect().top - box.getBoundingClientRect().top;
+  const room = block === 'center' ? (box.clientHeight - item.offsetHeight) / 2 : 12;
+  box.scrollTo({ top: box.scrollTop + offset - Math.max(0, room), behavior });
 }
 
-/** "Everything works" or what is wrong, with uptime, last backup and open problems (#514). */
-function Health({ status }: { status: ServerStatus }) {
+const scrollToProblems = () => scrollToItem(document.getElementById(PROBLEMS_ID), 'start');
+
+/** The sentence and the button of the status card, from its verdict. */
+function verdict(
+  t: (key: string, values?: Record<string, unknown>) => string,
+  health: Health,
+  status: ServerStatus,
+  checks: DiagnosticCheck[],
+  when: (iso: string, now?: number) => string,
+  lang: string,
+) {
+  const now = new Date(status.checkedAt).getTime();
+  const open = openProblems(status.problems).length;
+  if (health.level === 'bad') {
+    const service = t(`server.services.long.${health.service.id}`);
+    const since = health.service.since
+      ? duration(now - new Date(health.service.since).getTime(), lang)
+      : null;
+    return {
+      tone: 'danger' as const,
+      icon: 'warning' as const,
+      title: t('server.health.bad'),
+      text: `${
+        since
+          ? t('server.health.downSince', { service, time: since })
+          : t('server.health.down', { service })
+      } ${t(`server.health.effects.${health.service.id}`)}`,
+      action: t('server.health.whatToDo'),
+    };
+  }
+  if (health.level === 'warn')
+    return {
+      tone: 'warn' as const,
+      icon: 'warning' as const,
+      title: t('server.health.warn'),
+      text:
+        health.reason === 'space'
+          ? t('server.health.reasons.space', {
+              free: formatStorage(status.storage.free ?? 0, lang),
+            })
+          : health.reason === 'backup'
+            ? t('server.health.reasons.backup', {
+                when: status.backup.lastAt ? when(status.backup.lastAt, now) : '—',
+              })
+            : t('server.health.reasons.check', {
+                check: t(`diagnostics.checks.${health.check?.id}.title`),
+              }),
+      action: t('server.health.whatToDo'),
+    };
+  const b = status.backup;
+  return {
+    tone: 'ok' as const,
+    icon: 'check' as const,
+    title: t('server.health.ok'),
+    text: [
+      t('server.health.checks', {
+        ok: checks.filter((c) => c.status === 'ok').length,
+        total: checks.length,
+      }),
+      b.lastAt
+        ? t(`server.health.backup.${b.lastStatus ?? 'none'}`, { when: when(b.lastAt, now) })
+        : t('server.health.backup.none'),
+      open ? t('server.health.problems', { count: open }) : t('server.health.noProblems'),
+    ].join(' · '),
+    action: open > 0 ? t('server.health.seeProblem', { count: open }) : null,
+  };
+}
+
+/**
+ * The card on top of both views: the verdict in one sentence (green, orange or red), then four
+ * facts in equal cells; the last two differ by view.
+ */
+export function StatusCard({
+  status,
+  checks,
+  advanced = false,
+}: {
+  status: ServerStatus;
+  checks: DiagnosticCheck[];
+  advanced?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const when = useWhen();
-  const down = downServices(status.services);
-  const open = openProblems(status.problems).length;
+  const lang = i18n.language;
+  const health = healthOf(status, checks);
+  const v = verdict(t, health, status, checks, when, lang);
   const now = new Date(status.checkedAt).getTime();
-  const first = down[0];
-  let section: ReactNode;
-  if (first) {
-    const since = first.since
-      ? duration(now - new Date(first.since).getTime(), i18n.language)
-      : null;
-    section = (
-      <Summary
-        tour="server"
-        tone="danger"
-        icon="warning"
-        title={t('server.health.bad')}
-        text={`${
-          since
-            ? t('server.health.downSince', {
-                service: t(`server.services.long.${first.id}`),
-                time: since,
-              })
-            : t('server.health.down', { service: t(`server.services.long.${first.id}`) })
-        } ${t(`server.health.effects.${first.id}`)}`}
-        action={<Button onClick={scrollToProblems}>{t('server.health.whatToDo')}</Button>}
-      />
-    );
-  } else {
-    const backup = status.backup.lastAt
-      ? t(`server.health.backup.${status.backup.lastStatus ?? 'none'}`, {
-          when: when(status.backup.lastAt, now),
-        })
-      : t('server.health.backup.none');
-    section = (
-      <Summary
-        tour="server"
-        tone="ok"
-        icon="check"
-        title={t('server.health.ok')}
-        text={[
-          status.startedAt &&
-            t('server.health.uptime', {
-              time: duration(now - new Date(status.startedAt).getTime(), i18n.language),
-            }),
-          backup,
-          open ? t('server.health.problems', { count: open }) : t('server.health.noProblems'),
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-        action={
-          open > 0 && (
-            <Button onClick={scrollToProblems}>
-              {t('server.health.seeProblem', { count: open })}
-            </Button>
-          )
-        }
-      />
-    );
-  }
+  const uptime = status.startedAt
+    ? duration(now - new Date(status.startedAt).getTime(), lang, advanced ? 'short' : 'long')
+    : '—';
+  const fact = (label: string, value: ReactNode) => (
+    <div className="server-cell">
+      <dt className="server-cell__label">{label}</dt>
+      <dd className="server-cell__fact">{value}</dd>
+    </div>
+  );
+  const p = status.presence;
+  const v2 = status.transcodes;
   return (
-    <>
+    <section className="settings-block server-status" data-tour="server">
       {/* Read out when the verdict changes, not at every reading as the uptime grows. */}
       <p className="ink-sr-only" aria-live="polite">
-        {first
-          ? t('server.health.down', { service: t(`server.services.long.${first.id}`) })
-          : t('server.health.ok')}
+        {v.title}
       </p>
-      {section}
-    </>
+      <div className="settings-card">
+        <Summary
+          tone={v.tone}
+          icon={v.icon}
+          title={v.title}
+          text={v.text}
+          action={v.action && <Button onClick={scrollToProblems}>{v.action}</Button>}
+        />
+        <dl className="server-cells">
+          {fact(t('server.advanced.version'), status.version)}
+          {fact(t('server.advanced.uptime'), uptime)}
+          {advanced ? (
+            <>
+              {fact(
+                t('server.advanced.processes'),
+                [...new Set(status.processes.map((x) => t(`server.roles.${x.role}`)))].join(
+                  ' · ',
+                ) || '—',
+              )}
+              {fact(
+                t('server.advanced.video'),
+                status.encoder ? status.encoder.backend.toUpperCase() : '—',
+              )}
+            </>
+          ) : (
+            <>
+              {fact(
+                t('server.simple.connected'),
+                <>
+                  {t('server.people.people', { count: p.people })}
+                  {p.boards.length > 0 && (
+                    <small>
+                      {' '}
+                      {t('server.simple.onBoards', {
+                        boards: t('server.people.boards', { count: p.boards.length }),
+                      })}
+                    </small>
+                  )}
+                </>,
+              )}
+              {fact(
+                t('server.videos.title'),
+                <>
+                  {v2.active.length}
+                  {v2.waiting > 0 && (
+                    <small> · {t('server.simple.waiting', { n: v2.waiting })}</small>
+                  )}
+                </>,
+              )}
+            </>
+          )}
+        </dl>
+      </div>
+    </section>
   );
 }
 
-function Meter({
+/** A cell with a name, a verdict as dot, colour and word, a value and a line. */
+export function VerdictCell({
   name,
   verdict,
   warn,
   value,
-  bar,
-  tone = 'cpu',
-  hint,
+  children,
 }: {
   name: string;
   verdict: string | null;
   warn?: boolean;
   value: ReactNode;
-  bar?: number | null;
-  tone?: 'cpu' | 'memory' | 'ok';
-  hint: ReactNode;
+  children?: ReactNode;
 }) {
   return (
-    <div className="server-meter">
-      <div className="server-meter__top">
-        <span className="server-meter__name">{name}</span>
+    <div className="server-cell">
+      <div className="server-cell__head">
+        <span className="server-cell__name">{name}</span>
         {verdict && (
           <span className={warn ? 'server-verdict server-verdict--warn' : 'server-verdict'}>
             {verdict}
           </span>
         )}
       </div>
-      <div className="server-meter__value">{value}</div>
-      {bar !== undefined && bar !== null && (
-        <span className="server-bar" aria-hidden="true">
-          <span
-            className={`server-bar__fill server-bar__fill--${tone}`}
-            style={{ width: `${Math.min(100, Math.max(0, bar * 100))}%` }}
-          />
-        </span>
-      )}
-      <div className="server-meter__hint">{hint}</div>
+      <div className="server-value">{value}</div>
+      {children}
     </div>
   );
 }
 
-function Meters({ status }: { status: ServerStatus }) {
+/** A thin bar of a share, read out with its words. */
+export function ShareBar({
+  share,
+  label,
+  text,
+  warn,
+}: {
+  share: number;
+  label: string;
+  text: string;
+  warn?: boolean;
+}) {
+  const value = Math.min(100, Math.max(0, share * 100));
+  return (
+    <span
+      className={warn ? 'server-bar server-bar--warn' : 'server-bar'}
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(value)}
+      aria-valuetext={text}
+    >
+      <span className="server-bar__fill" style={{ width: `${value}%` }} />
+    </span>
+  );
+}
+
+/** Three questions: is there room, are the data safe, is it fast. */
+function HowItIs({ status }: { status: ServerStatus }) {
   const { t, i18n } = useTranslation();
   const when = useWhen();
   const lang = i18n.language;
-  const { cpu, memory, network, responses } = status.now;
-  const cpuShare = cpu.cores ? cpu.used / cpu.cores : 0;
-  const memShare = memory.limit ? memory.used / memory.limit : 0;
   const store = status.storage;
   const space = storageVerdict(store);
-  const speed = speedVerdict(responses.p95);
+  const speed = speedVerdict(status.now.responses.p95);
   const now = new Date(status.checkedAt).getTime();
   const b = status.backup;
   const backupKey = !b.lastStatus ? (b.enabled ? 'none' : 'off') : b.lastStatus;
+  const files = store.originals + store.copies + store.previews;
+  const mostlyOriginals = files > 0 && store.originals / files >= 0.8;
+  const full = space.key === 'almostFull';
+  let spaceHint: ReactNode;
+  if (store.total === null) {
+    spaceHint = [
+      t('server.meters.storage.s3Hint'),
+      store.growthPerMonth
+        ? t('server.meters.storage.growth', { size: formatStorage(store.growthPerMonth, lang) })
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+  } else if (full) {
+    spaceHint = (
+      <>
+        {t('server.how.space.left', { free: formatStorage(store.free ?? 0, lang) })} ·{' '}
+        <Link to="/settings?section=workspace" replace>
+          {t('storageLimits.title')}
+        </Link>
+      </>
+    );
+  } else if (mostlyOriginals) {
+    spaceHint = diskCompresses(store)
+      ? t('server.how.space.beforeCompression', { size: formatStorage(store.originals, lang) })
+      : t('server.how.space.mostlyOriginals');
+  } else {
+    spaceHint = [
+      t('server.meters.storage.split', {
+        originals: formatStorage(store.originals, lang),
+        derived: formatStorage(store.copies + store.previews, lang),
+      }),
+      diskCompresses(store) ? t('server.meters.storage.compressed') : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
+  const of =
+    store.total !== null
+      ? t('server.meters.of', { total: formatStorage(store.total, lang) })
+      : t('server.meters.storage.used');
   return (
-    <Card title={t('server.meters.label')}>
-      <div className="server-meters">
-        <Meter
-          name={t('server.meters.cpu.name')}
-          verdict={t(`server.meters.cpu.${loadVerdict(cpuShare)}`)}
-          warn={loadVerdict(cpuShare) === 'high'}
-          value={
-            <>
-              {number(cpuShare * 100, lang, 0)}
-              <small> %</small>
-            </>
-          }
-          bar={cpuShare}
-          hint={t('server.meters.cpu.hint')}
-        />
-        <Meter
-          name={t('server.meters.memory.name')}
-          verdict={t(`server.meters.memory.${loadVerdict(memShare)}`)}
-          warn={loadVerdict(memShare) === 'high'}
-          value={
-            <>
-              {formatStorage(memory.used, lang)}
-              {memory.limit && (
-                <small>
-                  {' '}
-                  {t('server.meters.of', { total: formatStorage(memory.limit, lang) })}
-                </small>
-              )}
-            </>
-          }
-          bar={memory.limit ? memShare : null}
-          tone="memory"
-          hint={t('server.meters.memory.hint')}
-        />
-        {store.total !== null ? (
-          <Meter
-            name={t('server.meters.storage.name')}
-            verdict={
-              space.key === 'unknown'
+    <Card anchor="server.health" title={t('server.how.title')} tour="server-health">
+      <div className="server-cells server-cells--3">
+        <VerdictCell
+          name={t('server.meters.storage.name')}
+          verdict={
+            store.total === null
+              ? t('server.meters.storage.bucket')
+              : space.key === 'unknown'
                 ? null
                 : t(`server.meters.storage.${space.key}`, { count: space.months ?? 0 })
-            }
-            warn={space.key === 'almostFull'}
-            value={
-              <>
-                {formatStorage(store.used, lang)}
-                <small> {t('server.meters.of', { total: formatStorage(store.total, lang) })}</small>
-              </>
-            }
-            bar={store.used / store.total}
-            hint={
-              <>
-                {t('server.meters.storage.split', {
-                  originals: formatStorage(store.originals, lang),
-                  derived: formatStorage(store.copies + store.previews, lang),
-                })}
-                {diskCompresses(store) && (
-                  <>
-                    <br />
-                    {t('server.meters.storage.compressed')}
-                  </>
-                )}
-              </>
-            }
-          />
-        ) : (
-          <Meter
-            name={t('server.meters.storage.name')}
-            verdict={t('server.meters.storage.bucket')}
-            value={
-              <>
-                {formatStorage(store.used, lang)}
-                <small> {t('server.meters.storage.used')}</small>
-              </>
-            }
-            hint={[
-              t('server.meters.storage.s3Hint'),
-              store.growthPerMonth
-                ? t('server.meters.storage.growth', {
-                    size: formatStorage(store.growthPerMonth, lang),
-                  })
-                : null,
+          }
+          warn={full}
+          value={
+            <>
+              {formatStorage(store.used, lang)} <small>{of}</small>
+            </>
+          }
+        >
+          {store.total !== null && store.total > 0 && (
+            <ShareBar
+              share={store.used / store.total}
+              label={t('server.how.space.bar')}
+              text={`${formatStorage(store.used, lang)} ${of}`}
+              warn={full}
+            />
+          )}
+          <div className="server-hint">{spaceHint}</div>
+        </VerdictCell>
+        <VerdictCell
+          name={t('server.meters.backup.name')}
+          verdict={t(`server.meters.backup.${backupKey}`)}
+          warn={backupKey === 'failed' || backupKey === 'none'}
+          value={<span className="server-value--text">{b.lastAt ? when(b.lastAt, now) : '—'}</span>}
+        >
+          <div className="server-hint">
+            {[
+              b.lastStatus === 'failed' && b.lastSuccessAt
+                ? t('server.how.backup.lastSuccess', { when: when(b.lastSuccessAt, now) })
+                : b.size !== null
+                  ? formatStorage(b.size, lang)
+                  : null,
+              b.nextAt ? t('server.meters.backup.next', { when: when(b.nextAt, now) }) : null,
             ]
               .filter(Boolean)
-              .join(' ')}
-          />
-        )}
-        <Meter
-          name={t('server.meters.network.name')}
-          verdict={network ? t('server.meters.network.normal') : t('server.meters.network.unknown')}
-          value={
-            network ? (
-              <>
-                <span aria-hidden="true">↓</span>
-                <span className="ink-sr-only">{t('server.meters.network.in')}</span>{' '}
-                {bits(network.in, lang)} <span aria-hidden="true">↑</span>
-                <span className="ink-sr-only">{t('server.meters.network.out')}</span>{' '}
-                {bits(network.out, lang)}
-              </>
-            ) : (
-              '—'
-            )
-          }
-          hint={t('server.meters.network.hint')}
-        />
-        <Meter
+              .map((part) => `${part} · `)
+              .join('')}
+            <Link to="/settings?section=backups" replace>
+              {t('backups.title')}
+            </Link>
+          </div>
+        </VerdictCell>
+        <VerdictCell
           name={t('server.meters.speed.name')}
           verdict={t(`server.meters.speed.${speed}`)}
           warn={speed === 'verySlow'}
           value={
-            responses.p95 === null ? (
+            status.now.responses.p95 === null ? (
               '—'
             ) : (
               <>
-                {number(responses.p95 / 1000, lang, 2)}
-                <small> {t('server.meters.speed.unit')}</small>
+                {number(status.now.responses.p95 / 1000, lang, 2)}{' '}
+                <small>{t('server.meters.speed.unit')}</small>
               </>
             )
           }
-          bar={responses.p95 === null ? null : Math.min(1, responses.p95 / 1000)}
-          tone="ok"
-          hint={t('server.meters.speed.hint')}
-        />
-        <Meter
-          name={t('server.meters.backup.name')}
-          verdict={t(`server.meters.backup.${backupKey}`)}
-          warn={backupKey === 'failed' || backupKey === 'none'}
-          value={
-            <span className="server-meter__value--text">
-              {b.lastAt ? when(b.lastAt, now) : '—'}
-            </span>
-          }
-          hint={
-            <>
-              {[
-                b.size !== null ? formatStorage(b.size, lang) : null,
-                b.nextAt ? t('server.meters.backup.next', { when: when(b.nextAt, now) }) : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-              {(b.size !== null || b.nextAt) && ' · '}
-              <Link to="/settings?section=backups" replace>
-                {t('backups.title')}
-              </Link>
-            </>
-          }
-        />
+        >
+          <div className="server-hint">{t('server.meters.speed.hint')}</div>
+        </VerdictCell>
       </div>
-    </Card>
-  );
-}
-
-const SERVICE_ICONS = {
-  web: 'page',
-  collab: 'people',
-  worker: 'film',
-  database: 'archive',
-  configuration: 'todo',
-} as const;
-const SERVICE_TONES = { ok: 'ok', warning: 'warn', down: 'danger', off: 'neutral' } as const;
-
-/** One service: what it is, its detail, and its state as a badge. */
-function ServiceRow({
-  id,
-  ok,
-  name,
-  detail,
-  state,
-}: {
-  id: keyof typeof SERVICE_ICONS;
-  ok: 'ok' | 'warning' | 'down' | 'off';
-  name: string;
-  detail: ReactNode;
-  state: ReactNode;
-}) {
-  return (
-    <li className="server-service">
-      <Tile
-        icon={SERVICE_ICONS[id]}
-        tone={ok === 'ok' || ok === 'off' ? 'neutral' : SERVICE_TONES[ok]}
-      />
-      <div className="settings-list__text">
-        <span className="settings-row__label">{name}</span>
-        <span className="settings-row__help">{detail}</span>
-      </div>
-      <Badge tone={SERVICE_TONES[ok]}>{state}</Badge>
-    </li>
-  );
-}
-
-function Services({ status, checks }: { status: ServerStatus; checks: DiagnosticCheck[] }) {
-  const { t, i18n } = useTranslation();
-  const now = new Date(status.checkedAt).getTime();
-  const service = (id: ServerService['id']) => status.services.find((s) => s.id === id);
-  const db = service('database');
-  const queue = service('queue');
-  const config = configStatus(checks);
-  const failing = checks.filter((c) => c.status !== 'ok').length;
-  const rows: Array<{
-    id: 'web' | 'collab' | 'worker';
-    ok: ServerService['status'];
-    detail: ReactNode;
-  }> = (['web', 'collab', 'worker'] as const).map((id) => {
-    const s = service(id);
-    const signal = s?.since
-      ? t('server.services.lastSignal', {
-          time: new Intl.RelativeTimeFormat(i18n.language, {
-            numeric: 'auto',
-            style: 'short',
-          }).format(Math.min(0, Math.round((new Date(s.since).getTime() - now) / 1000)), 'second'),
-        })
-      : null;
-    return {
-      id,
-      ok: s?.status ?? 'off',
-      detail: [t(`server.roles.${id}`), id !== 'web' && signal].filter(Boolean).join(' · '),
-    };
-  });
-  const dbOk: ServerService['status'] =
-    db?.status === 'down' || queue?.status === 'down' ? 'down' : 'ok';
-  const down = downServices(status.services).length;
-  return (
-    <Card
-      title={t('server.services.title')}
-      action={
-        <span className="settings-card__meta">
-          {down ? t('server.services.someDown', { count: down }) : t('server.services.allOk')}
-        </span>
-      }
-    >
-      <ul className="settings-list">
-        {rows.map((r) => (
-          <ServiceRow
-            key={r.id}
-            id={r.id}
-            ok={r.ok}
-            name={t(`server.services.names.${r.id}`)}
-            detail={r.detail}
-            state={t(`server.services.status.${r.ok}`)}
-          />
-        ))}
-        <ServiceRow
-          id="database"
-          ok={dbOk}
-          name={t('server.services.names.database')}
-          detail={[db?.detail, queue?.detail].filter(Boolean).join(' · ') || '—'}
-          state={t(`server.services.status.${dbOk}`)}
-        />
-        <ServiceRow
-          id="configuration"
-          ok={config}
-          name={t('server.services.names.configuration')}
-          detail={t('server.services.configuration')}
-          state={
-            failing
-              ? t('server.services.checksFailing', { count: failing })
-              : t('server.services.checksPassed', { count: checks.length })
-          }
-        />
-      </ul>
-      <details className="server-tech">
-        <summary>{t('server.services.checks')}</summary>
-        <ul className="settings-list">
-          {checks.map((c) => (
-            <li key={c.id}>
-              <div className="settings-list__text">
-                <span className="settings-row__label">{t(`diagnostics.checks.${c.id}.title`)}</span>
-                {c.status !== 'ok' && (
-                  <span className="settings-row__help">{t(`diagnostics.checks.${c.id}.fix`)}</span>
-                )}
-                {(c.expected || c.actual) && (
-                  <code className="settings-env">
-                    {[
-                      c.expected && `${t('diagnostics.expected')}: ${c.expected}`,
-                      c.actual && `${t('diagnostics.actual')}: ${c.actual}`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </code>
-                )}
-              </div>
-              <span
-                className={`server-service__state server-service__state--${c.status === 'error' ? 'down' : c.status}`}
-              >
-                {t(`diagnostics.status.${c.status}`)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </details>
-    </Card>
-  );
-}
-
-const SIMPLE_RANGES: ServerRange[] = ['1h', '24h', '7d'];
-
-function Trend({ status, actions }: { status: ServerStatus; actions: ServerActions }) {
-  const { t } = useTranslation();
-  return (
-    <Card title={t('server.chart.title')}>
-      <HistoryChart
-        status={status}
-        period={
-          <Select
-            className="server-select"
-            aria-label={t('server.chart.period')}
-            value={SIMPLE_RANGES.includes(actions.range) ? actions.range : '1h'}
-            onChange={(v) => actions.setRange(v as ServerRange)}
-            options={SIMPLE_RANGES.map((r) => ({ value: r, label: t(`server.chart.ranges.${r}`) }))}
-          />
-        }
-      />
-    </Card>
-  );
-}
-
-function Videos({ status }: { status: ServerStatus }) {
-  const { t, i18n } = useTranslation();
-  const v = status.transcodes;
-  return (
-    <Card
-      title={t('server.videos.title')}
-      body={t('server.videos.lead')}
-      action={
-        <span className="settings-card__meta">
-          {t('server.videos.meta', { waiting: v.waiting, ready: v.readyToday })}
-        </span>
-      }
-    >
-      {v.active.length === 0 ? (
-        <p className="settings-card__empty settings-muted">{t('server.videos.empty')}</p>
-      ) : (
-        <ul className="settings-list">
-          {v.active.map((job) => {
-            const name = job.name ?? t('server.videos.hidden');
-            return (
-              <li key={job.assetId}>
-                <div className="settings-list__text">
-                  <span className={job.name ? 'server-name' : 'server-name server-name--hidden'}>
-                    {name}
-                  </span>
-                  <span className="settings-row__help">
-                    {job.secondsLeft !== null
-                      ? t('server.videos.progress', {
-                          percent: percent(job.progress / 100, i18n.language),
-                          time: duration(job.secondsLeft * 1000, i18n.language),
-                        })
-                      : percent(job.progress / 100, i18n.language)}
-                  </span>
-                  <span
-                    className="server-bar"
-                    role="progressbar"
-                    aria-label={name}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={job.progress}
-                  >
-                    <span
-                      className="server-bar__fill server-bar__fill--cpu"
-                      style={{ width: `${job.progress}%` }}
-                    />
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </Card>
   );
 }
@@ -559,6 +401,7 @@ export function People({ status, advanced = false }: { status: ServerStatus; adv
   });
   return (
     <Card
+      anchor="server.people"
       title={t(advanced ? 'server.advanced.people' : 'server.people.title')}
       action={
         <span className="settings-card__meta">
@@ -649,19 +492,20 @@ const KINDS = new Set([
   'config_check',
 ]);
 
-function Problems({ status, actions }: { status: ServerStatus; actions: ServerActions }) {
+function Problems({ status, checks, actions }: Props) {
   const { t } = useTranslation();
-  const when = useWhen();
-  const open = openProblems(status.problems);
-  const now = new Date(status.checkedAt).getTime();
+  const open = sortedProblems(status.problems, healthOf(status, checks));
   return (
     <section id={PROBLEMS_ID} className="server-anchor" data-tour="server-problems">
       <Card
+        anchor="server.problems"
         className="server-card-wrap"
         title={t('server.problems.title')}
         action={
           <span className="server-card-actions">
-            <span className="settings-card__meta">{t('server.problems.period')}</span>
+            <span className="settings-card__meta server-hide-phone">
+              {t('server.problems.period')}
+            </span>
             <Button onClick={actions.sendToDevelopers}>{t('server.problems.send')}</Button>
           </span>
         }
@@ -694,19 +538,30 @@ function Problems({ status, actions }: { status: ServerStatus; actions: ServerAc
                     <span className="settings-row__help">
                       {[text.where, text.text].filter(Boolean).join(' ')}
                     </span>
-                    <details className="server-tech">
-                      <summary>{t('server.problems.technical')}</summary>
-                      <code className="server-code">{`${p.role} · ${when(p.lastAt, now)}\n${p.technical}`}</code>
-                    </details>
+                    <button
+                      type="button"
+                      className="server-link server-problem__more"
+                      aria-label={t('server.problems.technicalInNamed', { title: text.title })}
+                      onClick={() => peekProblem(p.id)}
+                    >
+                      {t('server.problems.technicalIn')}
+                    </button>
                   </div>
                   {p.kind !== 'config_check' && (
                     <span className="server-problem__actions">
                       {p.retry && (
-                        <Button onClick={() => void actions.retry(p)}>
+                        <Button
+                          aria-label={t('server.problems.retryNamed', { title: text.title })}
+                          onClick={() => void actions.retry(p)}
+                        >
                           {t('server.problems.retry')}
                         </Button>
                       )}
-                      <Button variant="ghost" onClick={() => void actions.seen(p)}>
+                      <Button
+                        variant="ghost"
+                        aria-label={t('server.problems.seenNamed', { title: text.title })}
+                        onClick={() => void actions.seen(p)}
+                      >
                         {t('server.problems.seen')}
                       </Button>
                     </span>
@@ -728,7 +583,11 @@ export function Alerts({ status, actions }: { status: ServerStatus; actions: Ser
   return (
     <Card title={t('server.alerts.title')} tour="server-alerts">
       <div className="settings-rows">
-        <Row label={t('server.alerts.enabled')} help={t('server.alerts.enabledHelp')}>
+        <Row
+          anchor="server.alerts"
+          label={t('server.alerts.enabled')}
+          help={t('server.alerts.enabledHelp')}
+        >
           <Switch
             aria-label={t('server.alerts.enabled')}
             checked={status.alerts.enabled}
@@ -736,6 +595,7 @@ export function Alerts({ status, actions }: { status: ServerStatus; actions: Ser
           />
         </Row>
         <Row
+          anchor="server.alertsHow"
           label={t('server.alerts.how')}
           help={mail ? t('server.alerts.howHelp') : t('server.alerts.noEmail')}
         >
@@ -755,93 +615,37 @@ export function Alerts({ status, actions }: { status: ServerStatus; actions: Ser
   );
 }
 
-function TechnicalDetails({ status, checks }: { status: ServerStatus; checks: DiagnosticCheck[] }) {
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language;
-  const p95 = status.now.responses.p95;
-  const errors = status.now.responses.errors;
-  const encoder = status.encoder;
+/** The door to the Advanced view, and the details someone non-technical sends on. */
+function ForAdmins({ status, checks }: { status: ServerStatus; checks: DiagnosticCheck[] }) {
+  const { t } = useTranslation();
   return (
     <Card>
-      <details className="settings-fold server-more">
-        <summary className="settings-row">
-          <Tile icon="key" />
-          <span className="settings-row__text">
-            <span className="settings-row__label">{t('server.details.title')}</span>
-            <span className="settings-row__help">{t('server.details.lead')}</span>
-          </span>
-          <Icon name="chevronRight" size={14} className="settings-fold__chevron" />
-        </summary>
-        <div className="server-more__body">
-          <dl className="server-kv">
-            <dt>{t('server.details.version')}</dt>
-            <dd>
-              {status.version}
-              {status.image && (
-                <>
-                  {' · '}
-                  <code className="settings-env">{`ghcr.io/inkadra/inkadra:${status.version}${status.image === 'standard' ? '' : `-${status.image}`}`}</code>
-                </>
-              )}
-            </dd>
-            <dt>{t('server.details.encoding')}</dt>
-            <dd>
-              {!encoder
-                ? t('server.details.encoder.none')
-                : encoder.backend === 'software'
-                  ? t('server.details.encoder.software')
-                  : t('server.details.encoder.hardware', { label: encoder.label })}
-            </dd>
-            <dt>{t('server.details.database')}</dt>
-            <dd>
-              {[
-                status.database.version,
-                status.database.size !== null ? formatStorage(status.database.size, lang) : null,
-                status.database.connections !== null
-                  ? t('server.details.connections', { count: status.database.connections })
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(' · ') || '—'}
-            </dd>
-            <dt>{t('server.details.responses')}</dt>
-            <dd>
-              {p95 === null
-                ? '—'
-                : t('server.details.responsesValue', {
-                    p95: `${number(p95, lang, 0)} ms`,
-                    errors: percent(errors ?? 0, lang, 1),
-                  })}
-            </dd>
-            <dt>{t('server.details.files')}</dt>
-            <dd>
-              {t(`server.details.driver.${status.storage.driver}`)} ·{' '}
-              <code className="settings-env">{status.storage.location}</code>
-            </dd>
-          </dl>
-          <ProcessTable status={status} />
-          <QueueTable status={status} />
-          <div>
-            <Button
-              icon="copy"
-              onClick={() => void navigator.clipboard?.writeText(technicalSummary(status, checks))}
-            >
-              {t('server.details.copy')}
-            </Button>
-          </div>
-        </div>
-      </details>
+      <div className="settings-rows">
+        <Row
+          anchor="server.admin"
+          className="server-admins"
+          icon="key"
+          label={t('server.admin.title')}
+          help={t('server.admin.lead')}
+        >
+          <Button
+            icon="copy"
+            onClick={() => void navigator.clipboard?.writeText(technicalSummary(status, checks))}
+          >
+            {t('server.details.copy')}
+          </Button>
+          <Button
+            onClick={() => void updatePreferences({ serverView: 'advanced' }).catch(() => {})}
+          >
+            {t('server.admin.open')}
+          </Button>
+        </Row>
+      </div>
     </Card>
   );
 }
 
-export function ProcessTable({
-  status,
-  advanced = false,
-}: {
-  status: ServerStatus;
-  advanced?: boolean;
-}) {
+export function ProcessTable({ status }: { status: ServerStatus }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const now = new Date(status.checkedAt).getTime();
@@ -858,7 +662,7 @@ export function ProcessTable({
               {t('server.details.memory')}
             </th>
             <th scope="col" className="server-table__n">
-              {advanced ? t('server.details.signal') : t('server.details.uptime')}
+              {t('server.details.signal')}
             </th>
           </tr>
         </thead>
@@ -876,31 +680,37 @@ export function ProcessTable({
                   )}
                 </span>
               </th>
-              <td className="server-table__n">
+              <td
+                className={
+                  p.cpu === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                }
+              >
                 {p.cpu === null || !status.now.cpu.cores
                   ? '—'
                   : percent(p.cpu / status.now.cpu.cores, lang)}
               </td>
-              <td className="server-table__n">
+              <td
+                className={
+                  p.memory === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                }
+              >
                 {p.memory === null ? '—' : formatStorage(p.memory, lang)}
               </td>
               <td className="server-table__n">
-                {advanced
-                  ? new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: 'short' }).format(
-                      Math.min(0, Math.round((new Date(p.lastSeenAt).getTime() - now) / 1000)),
-                      'second',
-                    )
-                  : duration(now - new Date(p.startedAt).getTime(), lang, 'short')}
+                {new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: 'short' }).format(
+                  Math.min(0, Math.round((new Date(p.lastSeenAt).getTime() - now) / 1000)),
+                  'second',
+                )}
               </td>
             </tr>
           ))}
-          {advanced && status.database.version && (
+          {status.database.version && (
             <tr>
               <th scope="row">
                 <span className="server-dot server-dot--ok" aria-hidden="true" />
                 {status.database.version}
               </th>
-              <td className="server-table__n">—</td>
+              <td className="server-table__n server-table__zero">—</td>
               <td className="server-table__n">
                 {status.database.size !== null ? formatStorage(status.database.size, lang) : '—'}
               </td>
@@ -916,6 +726,19 @@ export function ProcessTable({
 export function QueueTable({ status }: { status: ServerStatus }) {
   const { t } = useTranslation();
   if (!status.queues.length) return null;
+  const cell = (n: number, fail = false) => (
+    <td
+      className={
+        n === 0
+          ? 'server-table__n server-table__zero'
+          : fail
+            ? 'server-table__n server-table__fail'
+            : 'server-table__n'
+      }
+    >
+      {n}
+    </td>
+  );
   return (
     <div className="server-table-wrap">
       <table className="server-table">
@@ -937,13 +760,9 @@ export function QueueTable({ status }: { status: ServerStatus }) {
           {status.queues.map((q) => (
             <tr key={q.id}>
               <th scope="row">{t(`server.details.queues.${q.id}`)}</th>
-              <td className="server-table__n">{q.waiting}</td>
-              <td className="server-table__n">{q.active}</td>
-              <td
-                className={q.failed24h ? 'server-table__n server-table__fail' : 'server-table__n'}
-              >
-                {q.failed24h}
-              </td>
+              {cell(q.waiting)}
+              {cell(q.active)}
+              {cell(q.failed24h, true)}
             </tr>
           ))}
         </tbody>
@@ -955,15 +774,11 @@ export function QueueTable({ status }: { status: ServerStatus }) {
 export function SimpleView({ status, checks, actions }: Props) {
   return (
     <>
-      <Health status={status} />
-      <Meters status={status} />
-      <Services status={status} checks={checks} />
-      <Trend status={status} actions={actions} />
-      <Videos status={status} />
-      <People status={status} />
-      <Problems status={status} actions={actions} />
+      <StatusCard status={status} checks={checks} />
+      <HowItIs status={status} />
+      <Problems status={status} checks={checks} actions={actions} />
       <Alerts status={status} actions={actions} />
-      <TechnicalDetails status={status} checks={checks} />
+      <ForAdmins status={status} checks={checks} />
     </>
   );
 }

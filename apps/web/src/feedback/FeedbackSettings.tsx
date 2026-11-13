@@ -37,6 +37,7 @@ export function FeedbackRow() {
   const on = !!status?.enabled;
   return (
     <Row
+      anchor="tutorials.report"
       icon="report"
       tone="warn"
       label={t('feedback.title')}
@@ -89,7 +90,7 @@ function ReportList({
         <p className="settings-card__empty settings-muted">{t('feedback.emptyInbox')}</p>
       )}
       {reports.map((r) => (
-        <div key={r.id} className="feedback-reports__item">
+        <div key={r.id} className="feedback-reports__item" data-setting={`report:${r.id}`}>
           <details>
             <summary className="settings-row">
               <Tile icon="report" tone={r.delivery === 'inbox' ? 'accent' : 'warn'} />
@@ -258,7 +259,7 @@ export function FeedbackSettings() {
   }
   if (!settings)
     return error ? (
-      <Card title={t('feedback.settingsTitle')}>
+      <Card anchor="reports.settings" title={t('feedback.settingsTitle')}>
         <p role="alert" className="settings-card__empty">
           {error}
         </p>
@@ -328,6 +329,7 @@ export function FeedbackSettings() {
             </div>
           )}
           <Row
+            anchor="reports.destination"
             label={t('feedback.destination')}
             help={
               relay ? (
@@ -372,6 +374,7 @@ export function FeedbackSettings() {
           <div className="settings-rows">
             {github && (
               <Row
+                anchor="reports.repository"
                 label={t('feedback.repository')}
                 help={t('feedback.repositoryHelp')}
                 htmlFor="feedback-repository"
@@ -387,6 +390,7 @@ export function FeedbackSettings() {
             )}
             {github && (
               <Row
+                anchor="reports.token"
                 label={t('feedback.token')}
                 help={t(
                   settings.tokenConfigured ? 'feedback.tokenHelp' : 'feedback.tokenMissingHelp',
@@ -421,7 +425,11 @@ export function FeedbackSettings() {
         </div>
       </Card>
       <Card title={t('settingsUi.reports.rules')}>
-        <Row label={t('feedback.allowGuests')} help={t('feedback.allowGuestsHelp')}>
+        <Row
+          anchor="reports.allowGuests"
+          label={t('feedback.allowGuests')}
+          help={t('feedback.allowGuestsHelp')}
+        >
           <Switch
             aria-label={t('feedback.allowGuests')}
             checked={settings.guests}
@@ -429,6 +437,7 @@ export function FeedbackSettings() {
           />
         </Row>
         <Row
+          anchor="reports.retention"
           label={t('feedback.retention')}
           help={t(relay ? 'feedback.relayRetentionHelp' : 'feedback.retentionHelp')}
         >
@@ -449,6 +458,7 @@ export function FeedbackSettings() {
         </Row>
       </Card>
       <Card
+        anchor="reports.received"
         title={t('feedback.received')}
         body={t('feedback.receivedLead')}
         action={

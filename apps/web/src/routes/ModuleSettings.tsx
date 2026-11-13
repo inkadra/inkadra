@@ -16,6 +16,7 @@ export function ModuleSettings() {
     <Card tour="modules">
       <div className="settings-rows">
         <Row
+          anchor="modules.board"
           leading={
             <span className="settings-tile" style={kindStyle('board')} aria-hidden="true">
               <Icon name="board" size={16} />
@@ -32,6 +33,7 @@ export function ModuleSettings() {
           return (
             <Row
               key={id}
+              anchor={`modules.${id}`}
               leading={
                 <span className="settings-tile" style={MODULE_GLYPHS[id].style} aria-hidden="true">
                   <Icon name={MODULE_GLYPHS[id].icon} size={16} />

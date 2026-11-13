@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { ServerStatus } from '@inkadra/shared';
+import { ServerLive, ServerStatus } from '@inkadra/shared';
 import type { Queue } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
@@ -7,7 +7,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, board, boardElementIndex, boardGrant, notification, user } from '../db/schema.ts';
+import {
+  asset,
+  board,
+  boardElementIndex,
+  boardGrant,
+  instanceBackup,
+  notification,
+  user,
+} from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
 import { sendServerAlert } from '../monitor/alerts.ts';
 import { checkHealth } from '../monitor/health.ts';
@@ -143,6 +151,58 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
     expect(hidden).toMatchObject({ title: null, projectName: null, count: 1, people: [] });
     expect(JSON.stringify(status)).not.toContain('Secret film');
     expect(status.services.find((s) => s.id === 'collab')?.status).toBe('ok');
+  });
+
+  it('gives the live values from the monitor store, without the database aggregates', async () => {
+    expect((await request('member', 'GET', '/instance/server/live')).statusCode).toBe(403);
+    const now = Date.now();
+    await store.beat({
+      role: 'web',
+      host: 'w1',
+      startedAt: now - 60_000,
+      at: now,
+      cpu: 0,
+      memory: 0,
+    });
+    await store.push('raw', 'web@w1', {
+      t: now - 1000,
+      c: 1,
+      cc: 2,
+      m: 5e8,
+      ml: 2e9,
+      rx: 10,
+      tx: 20,
+      pc: 0.5,
+      pm: 1e8,
+      p95: 42,
+      req: 4,
+      err: 0,
+    });
+    // Signing in reads the session; nothing runs raw SQL as the full status does.
+    const execute = vi.spyOn(db, 'execute');
+    try {
+      const response = await request('admin', 'GET', '/instance/server/live?range=15m');
+      expect(response.statusCode).toBe(200);
+      const live = ServerLive.parse(response.json());
+      expect(live).toMatchObject({ range: '15m', step: 5 });
+      expect(live.now.p95).toBe(42);
+      expect(live.history.length).toBeGreaterThan(0);
+      expect(execute).not.toHaveBeenCalled();
+    } finally {
+      execute.mockRestore();
+    }
+  });
+
+  it('tells when the last backup that succeeded ended, after one that failed', async () => {
+    const ended = new Date(Date.now() - 86_400_000);
+    await db.insert(instanceBackup).values([
+      { trigger: 'scheduled', status: 'ready', startedAt: ended, finishedAt: ended },
+      { trigger: 'scheduled', status: 'failed', startedAt: new Date(), finishedAt: new Date() },
+    ]);
+    const status = ServerStatus.parse((await request('admin', 'GET', '/instance/server')).json());
+    expect(status.backup.lastStatus).toBe('failed');
+    expect(status.backup.lastSuccessAt).toBe(ended.toISOString());
+    await db.delete(instanceBackup);
   });
 
   it('marks problems seen, and refuses to run again what is gone', async () => {

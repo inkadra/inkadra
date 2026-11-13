@@ -15,6 +15,7 @@ import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { SaveStatus, SettingsNav } from './SettingsShell.tsx';
 import { ServerViewToggle } from './server/ServerSettings.tsx';
+import { useRevealAnchor } from './settings-anchor.ts';
 import { autosaves, isSettingsHome, settingsSection } from './settings-sections.ts';
 import { useIsPhone } from './settings-ui.tsx';
 import './settings.css';
@@ -66,6 +67,7 @@ export function SettingsWindow({
   const members = useMemberCount(user?.role === 'admin');
   const list = phone && isSettingsHome(pathname, search);
   const page = settingsSection(pathname, search);
+  useRevealAnchor(ref);
 
   // Layout effect: the dialog must close while still in the document for the browser to hand
   // focus back to whatever opened it; the explicit focus covers browsers that do not.

@@ -5,7 +5,7 @@ import { DiagnosticCheck } from './instance.ts';
 /**
  * The Server page of the settings (#514): health, resources, jobs, problems and alerts of the
  * instance, for administrators only. Every role (web, collab, worker) samples its own container
- * every 10 s; the history keeps 7 days, coarser for the longer ranges. Texts are not part of
+ * every 5 s; the history keeps 7 days, coarser for the longer ranges. Texts are not part of
  * the payload: clients translate kinds and statuses. Nothing here carries board content.
  */
 
@@ -131,6 +131,13 @@ export const ServerBackup = z
     lastStatus: z.enum(['running', 'ready', 'failed']).nullable(),
     size: z.number().int().nullable(),
     nextAt: Timestamp.nullable(),
+    lastSuccessAt: Timestamp.nullable()
+      .optional()
+      .openapi({
+        description:
+          'When the last backup that succeeded finished; null without one. Older servers leave ' +
+          'it out.',
+      }),
   })
   .openapi('ServerBackup');
 export type ServerBackup = z.infer<typeof ServerBackup>;
@@ -298,6 +305,35 @@ export const ServerStatus = z
   })
   .openapi('ServerStatus');
 export type ServerStatus = z.infer<typeof ServerStatus>;
+
+/**
+ * Capability on `GET /instance/version` of servers that answer `GET /instance/server/live`: the
+ * values of now and the newest history points, read from the monitor store alone (no database).
+ */
+export const SERVER_LIVE_CAPABILITY = 'server-live';
+
+export const ServerLive = z
+  .object({
+    checkedAt: Timestamp,
+    range: ServerRange,
+    step: z.number().int().openapi({ description: 'Seconds between history points.' }),
+    history: z.array(ServerSample).openapi({
+      description:
+        'The newest points of `range`, at its step: a point replaces the one of the same `t` ' +
+        'in the full history, the others come after it.',
+    }),
+    now: z.object({
+      cpu: ServerNow.shape.cpu,
+      memory: ServerNow.shape.memory,
+      network: z
+        .object({ in: z.number(), out: z.number() })
+        .nullable()
+        .openapi({ description: 'Bytes per second; today’s totals stay in the full status.' }),
+      p95: z.number().nullable().openapi({ description: 'Milliseconds, the last 5 minutes.' }),
+    }),
+  })
+  .openapi('ServerLive');
+export type ServerLive = z.infer<typeof ServerLive>;
 
 export const RetriedProblems = z.object({ retried: z.number().int() }).openapi('RetriedProblems');
 export type RetriedProblems = z.infer<typeof RetriedProblems>;

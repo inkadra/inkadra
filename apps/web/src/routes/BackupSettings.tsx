@@ -95,6 +95,7 @@ export function BackupSettings() {
     <>
       <Summary
         tour="backups"
+        anchor="backups.now"
         live
         tone={!last ? 'accent' : last.status === 'failed' ? 'warn' : 'ok'}
         icon={!last ? 'clock' : last.status === 'failed' ? 'warning' : 'check'}
@@ -137,6 +138,7 @@ export function BackupSettings() {
       <Card title={t('settingsUi.backups.schedule')}>
         <div className="settings-rows">
           <Row
+            anchor="backups.nightly"
             label={t('backups.nightly')}
             help={
               settings.enabled && data.nextRunAt
@@ -151,6 +153,7 @@ export function BackupSettings() {
             />
           </Row>
           <Row
+            anchor="backups.time"
             label={t('backups.time')}
             help={t('backups.timeZone', { zone: data.timeZone })}
             htmlFor={timeId}
@@ -168,7 +171,12 @@ export function BackupSettings() {
               }}
             />
           </Row>
-          <Row label={t('backups.keep')} help={t('backups.keepHelp')} htmlFor={retentionId}>
+          <Row
+            anchor="backups.keep"
+            label={t('backups.keep')}
+            help={t('backups.keepHelp')}
+            htmlFor={retentionId}
+          >
             <Select
               id={retentionId}
               className="ink-input"
@@ -190,7 +198,7 @@ export function BackupSettings() {
         )}
       </Card>
 
-      <Card tour="backups-history" title={t('backups.history')}>
+      <Card tour="backups-history" anchor="backups.history" title={t('backups.history')}>
         {data.items.length === 0 ? (
           <p className="backup-settings__empty">{t('backups.none')}</p>
         ) : (

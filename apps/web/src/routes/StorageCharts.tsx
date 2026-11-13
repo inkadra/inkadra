@@ -200,12 +200,13 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
         </dl>
       </Card>
       {usage.originalBytes === 0 ? (
-        <Card title={t('settingsUi.storage.usage')}>
+        <Card anchor="workspace.usage" title={t('settingsUi.storage.usage')}>
           <p className="settings-card__empty">{t('admin.storageEmpty')}</p>
         </Card>
       ) : (
         shown && (
           <Card
+            anchor="workspace.usage"
             title={t('settingsUi.storage.usage')}
             className="storage-chart"
             action={
