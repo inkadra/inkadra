@@ -152,6 +152,13 @@
 .server-swatch--out {
   background: var(--ink-tag-orange);
 }
+.server-swatch--cpu {
+  background: var(--ink-accent-primary);
+}
+/* The GPU line uses the `memory` tone of the chart. */
+.server-swatch--gpu {
+  background: var(--ink-tag-purple);
+}
 
 .server-bar {
   display: block;

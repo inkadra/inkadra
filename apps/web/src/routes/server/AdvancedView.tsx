@@ -146,11 +146,14 @@ function Trend({ status, actions }: { status: ServerStatus; actions: ServerActio
           meta={t('server.advanced.cores', { count: Math.round(cpu.cores * 10) / 10 })}
           value={
             <>
+              {/* With the GPU line beside it, each value carries the colour of its line. */}
+              {gpuNow !== null && <i className="server-swatch server-swatch--cpu" />}
               {cpuNow === null ? '—' : number(cpuNow, lang, 0)} <small>%</small>
               {gpuNow !== null && (
                 <small>
                   {' '}
-                  · {t('server.advanced.gpu')} {pct(gpuNow)}
+                  · <i className="server-swatch server-swatch--gpu" />
+                  {t('server.advanced.gpu')} {pct(gpuNow)}
                 </small>
               )}
             </>
