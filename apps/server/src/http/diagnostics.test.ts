@@ -153,5 +153,4 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
     expect(res.statusCode).toBe(403);
     expect(res.json()).toMatchObject({ error: { code: 'forbidden' } });
   });
-
 });
