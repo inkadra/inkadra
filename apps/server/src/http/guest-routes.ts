@@ -843,18 +843,26 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       if (!ctx.assets.shown.has(assetId)) throw new HttpError('not_found', 'Asset not found.');
       const row = await projectAsset(ctx, assetId);
       if (row.kind !== 'video') throw new HttpError('not_found', 'Asset not found.');
-      return sendHls(req, reply, db, storage, row, file, {
-        notFound: () => {
-          throw new HttpError('not_found', 'Asset not found.');
+      return sendHls(
+        req,
+        reply,
+        db,
+        storage,
+        row,
+        file,
+        {
+          notFound: () => {
+            throw new HttpError('not_found', 'Asset not found.');
+          },
+          ranged: (key, size) => sendRanged(req, reply, storage, key, size),
+          fileHeaders: guestFileHeaders,
         },
-        ranged: (key, size) => sendRanged(req, reply, storage, key, size),
-        fileHeaders: guestFileHeaders,
-      },
-      // Guests share the per-viewer limit of their link; each has a session of their own.
-      deps.live && {
-        context: deps.live,
-        who: { id: `guest:${ctx.guest.id}`, group: `link:${ctx.link.id}` },
-      });
+        // Guests share the per-viewer limit of their link; each has a session of their own.
+        deps.live && {
+          context: deps.live,
+          who: { id: `guest:${ctx.guest.id}`, group: `link:${ctx.link.id}` },
+        },
+      );
     });
 
     scope.get(v1('/guest/links/:linkId/assets/:assetId/waveform'), async (req, reply) => {
