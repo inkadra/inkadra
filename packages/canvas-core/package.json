@@ -12,8 +12,11 @@
     "./plan-words/de": "./src/plan-words-de.ts",
     "./plan-words/fr": "./src/plan-words-fr.ts",
     "./plan-words/pt": "./src/plan-words-pt.ts",
+    "./screenplay": "./src/screenplay/index.ts",
     "./fixtures/plan-sheet": "./src/plan-sheet.fixture.ts",
-    "./fixtures/plan-words": "./src/plan-words.fixture.ts"
+    "./fixtures/plan-words": "./src/plan-words.fixture.ts",
+    "./fixtures/last-train.fdx": "./src/screenplay/fixtures/last-train.fdx",
+    "./fixtures/last-train.fountain": "./src/screenplay/fixtures/last-train.fountain"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

@@ -1,11 +1,6 @@
-import {
-  addScenes,
-  keysAt,
-  type NewScene,
-  type SceneElement,
-  updateElements,
-} from '@inkadra/canvas-core';
 import type * as Y from 'yjs';
+import { keysAt, updateElements } from '../board.ts';
+import { addScenes, type NewScene, type SceneElement } from '../film.ts';
 
 /**
  * A new draft of the script laid over the storyboard made from an older one (decision 0082).

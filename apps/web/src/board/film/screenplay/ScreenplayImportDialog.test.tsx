@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import fountain from './fixtures/last-train.fountain?raw';
+import fountain from '@inkadra/canvas-core/fixtures/last-train.fountain?raw';
 import { ScreenplayImportDialog } from './ScreenplayImportDialog.tsx';
 
 const translations = vi.hoisted(() => ({

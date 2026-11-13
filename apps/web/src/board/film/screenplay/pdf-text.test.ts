@@ -2,8 +2,11 @@
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { expect, it } from 'vitest';
 import { buildScriptPdf } from './fixtures/script-pdf.ts';
-import { parseFountain } from './fountain.ts';
-import { type PdfPage, pdfPagesToFountain } from './pdf-text.ts';
+import {
+  type PdfPage,
+  parseFountain,
+  pdfPagesToFountain,
+} from '@inkadra/canvas-core/screenplay';
 
 /** The text layer as the import worker reads it, with pdf.js itself. */
 async function pagesOf(bytes: Uint8Array): Promise<PdfPage[]> {

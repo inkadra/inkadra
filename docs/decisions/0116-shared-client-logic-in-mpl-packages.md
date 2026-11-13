@@ -276,6 +276,31 @@ there although the sheet prints no "Day N" yet. Tested both ways as the plan's w
 package test prints the sheet in all six languages with these words alone, failing on any key
 they lack.
 
+For the mobile app to update a storyboard from a revised screenplay as the web does (decision
+0082), the screenplay's reading and its matching moved to `packages/canvas-core`, in
+`src/screenplay/`, imported by path (`@inkadra/canvas-core/screenplay`) and not through the
+package's index, so a client that reads no scripts loads none of it. The script model
+(`script.ts`: `Script`, `ScriptScene`, `ScriptBlock`, `DialogueLine`, `ScriptError`,
+`MAX_SCRIPT_BYTES`, `HEADING`, `parseHeading`, `splitCue`, `clean`, `finishScript`); the readers
+(`parseFountain`, `parseFdx`, and `parseScreenplay`, `SCRIPT_EXTENSIONS`, `looksLikeScreenplay`);
+the text of a PDF's pages as Fountain (`pdfPagesToFountain` with `PdfPage`, `PdfItem`); the
+import plan (`plan.ts`: `planImport`, `defaultOptions`, `sceneNumbers`, `castName`,
+`placeName`, `applyImport`, `ImportOptions`, `ImportPlan`, `FramesMode`, `FRAME_CAPS`,
+`FrameCap`, `MAX_IMPORT_SCENES`, `MAX_IMPORT_FRAMES`); and the revision (`revision.ts`:
+`matchRevision`, `similarity`, `revisionCounts`, `applyRevision`, `RevisionRow`,
+`RevisionStatus`, `RevisionOptions`, `MatchOverrides`, `SCENE_FIELDS`, `SceneField`). The
+writers (`applyImport`, `applyRevision`) take the document and an origin; the client keeps the
+undo steps. Final Draft files were read with the browser's `DOMParser`, which Node and Hermes do
+not have: the package reads them with a small strict XML reader of its own (`xml.ts`, not
+exported), and `fixtures/fdx-corpus.json` holds 49 files, sound and broken, with what the web
+read from each on `main` in Chromium before the move; a package test fails when the reader
+gives anything else. The fixtures `last-train.fdx` and `last-train.fountain` moved with the tests
+and are exported by path (`@inkadra/canvas-core/fixtures/last-train.fdx`). The web's `script.ts`,
+`plan.ts`, `revision.ts` and `parse.ts` re-export the moved names, so their callers did not
+change. Stays in the web: reading a browser `File` (`readScreenplay`, `detectScreenplay`), the
+PDF's text layer with pdf.js in a worker (`pdf.ts`, `pdf.worker.ts`), creating the storyboard
+board and queueing its seed (`new-storyboard.ts`), and the dialog and the revision list as React.
+
 The web stylesheet still writes the card measures as numbers: a web test fails when one differs
 from the package (shortcut: reading them from CSS variables, as 0108 does for the shell, would
 touch many rules; do it when the board stylesheet is next reworked).

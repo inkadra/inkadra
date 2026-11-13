@@ -1,8 +1,8 @@
-// @vitest-environment happy-dom
-import { addScene, listElements, storyboardOf } from '@inkadra/canvas-core';
+import { roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { BoardStore, LOCAL } from '../../store.ts';
+import { listElements } from '../board.ts';
+import { addScene, storyboardOf } from '../film.ts';
 import fdx from './fixtures/last-train.fdx?raw';
 import fountain from './fixtures/last-train.fountain?raw';
 import { parseScreenplay } from './parse.ts';
@@ -18,6 +18,11 @@ import {
 import { parseHeading } from './script.ts';
 
 const line = (names: string[]) => `Characters: ${names.join(', ')}`;
+
+/** The board's undo as the web keeps it (`BoardStore.undo`): local writes, 400 ms steps. */
+const LOCAL = Symbol('local');
+const undoOf = (doc: Y.Doc) =>
+  new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set([LOCAL]), captureTimeout: 400 });
 const script = parseScreenplay('last-train.fountain', fountain);
 
 describe('planImport', () => {
@@ -131,9 +136,9 @@ describe('planImport', () => {
 describe('applyImport', () => {
   it('appends scenes and frames after the existing ones, undone in one step', () => {
     const doc = new Y.Doc();
-    const store = new BoardStore(doc);
+    const undo = undoOf(doc);
     addScene(doc, { number: '7', title: 'Before' }, { userId: 'u', origin: LOCAL });
-    store.undo.stopCapturing();
+    undo.stopCapturing();
     const fdxScript = parseScreenplay('last-train.fdx', fdx);
     const plan = planImport(
       fdxScript,
@@ -148,7 +153,7 @@ describe('applyImport', () => {
       'CLOSE ON THE DEPARTURES BOARD',
     ]);
     expect(groups[1]?.scene?.x).toBeGreaterThan(groups[0]?.scene?.x ?? 0);
-    store.undo.undo();
+    undo.undo();
     expect(storyboardOf(listElements(doc)).map((g) => g.scene?.title)).toEqual(['Before']);
   });
 
@@ -171,7 +176,7 @@ describe('character cards from the screenplay', () => {
 
   it('creates the cards with scene numbers, skips names already on the board, one undo', () => {
     const doc = new Y.Doc();
-    const store = new BoardStore(doc);
+    const undo = undoOf(doc);
     const plan = planImport(script, { ...defaultOptions(script), characterCards: true }, line);
     applyImport(doc, plan, { userId: 'u1', origin: LOCAL });
     const cards = listElements(doc).filter((e) => e.type === 'character');
@@ -184,9 +189,9 @@ describe('character cards from the screenplay', () => {
         for (const n of card.scenes ?? []) expect(numbers.has(n)).toBe(true);
     applyImport(doc, plan, { userId: 'u1', origin: LOCAL });
     expect(listElements(doc).filter((e) => e.type === 'character')).toHaveLength(2);
-    store.undo.undo();
-    store.undo.undo();
+    undo.undo();
+    undo.undo();
     expect(listElements(doc)).toEqual([]);
-    store.destroy();
+    undo.destroy();
   });
 });

@@ -1,4 +1,4 @@
-import type { SceneElement } from '@inkadra/canvas-core';
+import type { SceneElement } from '../film.ts';
 
 /**
  * A screenplay read from a Fountain or Final Draft file, reduced to what a storyboard uses.

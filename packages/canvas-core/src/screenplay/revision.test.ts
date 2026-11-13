@@ -1,15 +1,14 @@
-// @vitest-environment happy-dom
-import {
-  addScenes,
-  listElements,
-  type NewScene,
-  type SceneElement,
-  storyboardOf,
-} from '@inkadra/canvas-core';
+import { roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { BoardStore, LOCAL } from '../../store.ts';
+import { listElements } from '../board.ts';
+import { addScenes, type NewScene, type SceneElement, storyboardOf } from '../film.ts';
 import { applyRevision, matchRevision, revisionCounts, similarity } from './revision.ts';
+
+/** The board's undo as the web keeps it (`BoardStore.undo`): local writes, 400 ms steps. */
+const LOCAL = Symbol('local');
+const undoOf = (doc: Y.Doc) =>
+  new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set([LOCAL]), captureTimeout: 400 });
 
 const opts = { userId: 'u', origin: LOCAL };
 const frames = (n: number) => Array.from({ length: n }, (_, i) => ({ action: `Beat ${i + 1}` }));
@@ -113,11 +112,11 @@ const DRAFT_3: NewScene[] = [
 
 function board() {
   const doc = new Y.Doc();
-  const store = new BoardStore(doc);
+  const undo = undoOf(doc);
   addScenes(doc, DRAFT_2, opts);
-  store.undo.stopCapturing();
+  undo.stopCapturing();
   const scenes = () => storyboardOf(listElements(doc)).flatMap((g) => (g.scene ? [g.scene] : []));
-  return { doc, store, scenes };
+  return { doc, undo, scenes };
 }
 
 const brief = (rows: ReturnType<typeof matchRevision>, scenes: SceneElement[]) =>
@@ -178,7 +177,7 @@ describe('matchRevision', () => {
 
 describe('applyRevision', () => {
   it('updates scenes, inserts new ones in place and marks omitted, frames untouched, one undo', () => {
-    const { doc, store, scenes } = board();
+    const { doc, undo, scenes } = board();
     const framesBefore = listElements(doc).filter((e) => e.type === 'frame');
     const rows = matchRevision(DRAFT_3, scenes());
     const options = { details: true, omit: true };
@@ -208,12 +207,12 @@ describe('applyRevision', () => {
     for (const frame of framesBefore)
       expect(listElements(doc).find((e) => e.id === frame.id)).toEqual(frame);
 
-    store.undo.undo();
+    undo.undo();
     expect(scenes().map((s) => [s.number, s.omitted ?? false])).toEqual(
       DRAFT_2.map((s) => [s.number, false]),
     );
     expect(listElements(doc).filter((e) => e.type === 'frame')).toHaveLength(framesBefore.length);
-    store.destroy();
+    undo.destroy();
   });
 
   it('leaves details and omitted scenes alone when those options are off', () => {

@@ -1,12 +1,6 @@
-import {
-  addScenes,
-  createElement,
-  DEFAULT_WIDTH,
-  frameLetter,
-  listElements,
-  type NewScene,
-} from '@inkadra/canvas-core';
 import type * as Y from 'yjs';
+import { createElement, DEFAULT_WIDTH, listElements } from '../board.ts';
+import { addScenes, frameLetter, type NewScene } from '../film.ts';
 import type { Script, ScriptBlock, ScriptScene } from './script.ts';
 
 /** How many frames each scene gets: none, one, or one per action paragraph. */
