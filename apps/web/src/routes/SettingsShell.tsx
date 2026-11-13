@@ -1,15 +1,15 @@
 import { Icon } from '@inkadra/ui';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { useSession } from '../lib/session.tsx';
 import { usePendingUpdate } from '../lib/updates.ts';
+import { SettingsSearch } from './SettingsSearch.tsx';
 import { useServerView } from './server/ServerSettings.tsx';
 import { resetSaveState, type SaveState, useSaveState } from './settings-save.ts';
 import {
   CHECK_PAGES,
   GROUP_TITLES,
-  matchSettings,
   SETTINGS_PAGES,
   type SettingsGroup,
   type SettingsPage,
@@ -26,11 +26,10 @@ export function setupAttention(setup: Setup, page: string): boolean {
 }
 
 /**
- * The settings window's own navigation: a search that narrows the pages, by title or by a
- * setting on them (which is then named), then the pages the person may open, grouped. Moving
- * between pages replaces the history entry, so the browser's Back closes the window instead of
- * walking through every page visited. Escape closes the window even with text in the search,
- * like the command palette and the global search, instead of the browser clearing the field.
+ * The settings window's own navigation: the settings search (its results take the place of the
+ * pages while it has text), then the pages the person may open, grouped. Moving between pages
+ * replaces the history entry, so the browser's Back closes the window instead of walking
+ * through every page visited.
  */
 export function SettingsNav({
   setup,
@@ -41,46 +40,24 @@ export function SettingsNav({
   members?: number | null;
   onClose?: () => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user, instance, version } = useSession();
   const { pathname, search } = useLocation();
-  const [query, setQuery] = useState('');
   const current = settingsSection(pathname, search).id;
   const update = usePendingUpdate();
-  const matches = matchSettings(
-    SETTINGS_PAGES.filter((p) => !p.admin || user?.role === 'admin'),
-    query,
-    t,
-    i18n.languages,
-  );
-  const groups = [...new Set(matches.map((m) => m.page.group))] as SettingsGroup[];
+  const pages = SETTINGS_PAGES.filter((p) => !p.admin || user?.role === 'admin');
+  const groups = [...new Set(pages.map((p) => p.group))] as SettingsGroup[];
   return (
     <nav className="settings-nav" aria-label={t('nav.settings')}>
-      <label className="settings-nav__search">
-        <Icon name="search" size={14} />
-        <input
-          className="ink-input"
-          type="search"
-          aria-label={t('settingsUi.search')}
-          placeholder={t('settingsUi.search')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== 'Escape' || !onClose) return;
-            // A search field clears itself on Escape and swallows it; the window should close.
-            e.preventDefault();
-            onClose();
-          }}
-        />
-      </label>
-      <div className="settings-nav__groups">
-        {groups.map((group) => (
-          <div key={group} className="settings-nav__group">
-            <h3>{t(GROUP_TITLES[group])}</h3>
-            <ul>
-              {matches
-                .filter((m) => m.page.group === group)
-                .map(({ page: p, setting }) => (
+      <SettingsSearch onClose={onClose}>
+        <div className="settings-nav__groups">
+          {groups.map((group) => (
+            <div key={group} className="settings-nav__group">
+              <h3>{t(GROUP_TITLES[group])}</h3>
+              <ul>
+                {pages
+                  .filter((p) => p.group === group)
+                  .map((p) => (
                   <li key={p.id}>
                     <Link
                       to={p.href}
@@ -99,22 +76,17 @@ export function SettingsNav({
                     >
                       <Icon name={p.icon} size={16} />
                       <span className="settings-nav__label">{t(p.title)}</span>
-                      {setting && <span className="settings-nav__match">{setting}</span>}
                       {p.id === 'members' && members != null && (
                         <span className="settings-nav__count">{members}</span>
                       )}
                     </Link>
                   </li>
                 ))}
-            </ul>
-          </div>
-        ))}
-        {matches.length === 0 && (
-          <p className="settings-nav__empty" role="status">
-            {t('settingsUi.noResults')}
-          </p>
-        )}
-      </div>
+              </ul>
+            </div>
+          ))}
+        </div>
+      </SettingsSearch>
       <footer className="settings-nav__footer">
         <span>
           Inkadra {version}

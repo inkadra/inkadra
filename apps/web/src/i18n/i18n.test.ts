@@ -52,14 +52,6 @@ describe.each(LOCALES.filter((locale) => locale !== 'it'))('the %s catalogue', (
     );
     expect(empty).toEqual([]);
   });
-
-  it('lists as many settings in each search keyword list, since search goes by position', () => {
-    const count = (text = '') => text.split(',').length;
-    const differ = Object.keys(reference)
-      .filter((key) => key.startsWith('settingsUi.keywords.'))
-      .filter((key) => count(messages[key]) !== count(reference[key]));
-    expect(differ).toEqual([]);
-  });
 });
 
 describe('choosing a language', () => {

@@ -1017,7 +1017,7 @@ export function EmailNotifications({
   const fromOff = prefs?.email === 'off' ? { email: 'immediate' as const } : {};
   return (
     <>
-      <Card title={t('settingsUi.notifications.what')}>
+      <Card anchor="notifications.what" title={t('settingsUi.notifications.what')}>
         <table className="notification-matrix" aria-busy={prefs === null}>
           <thead>
             <tr>
@@ -1078,6 +1078,7 @@ export function EmailNotifications({
       <Card title={t('settingsUi.notifications.email')}>
         <div className="settings-rows">
           <Row
+            anchor="notifications.frequency"
             label={t('settingsUi.notifications.frequency')}
             help={t('settingsUi.notifications.frequencyHelp')}
           >
@@ -1096,6 +1097,7 @@ export function EmailNotifications({
           </Row>
           {releaseNewsAvailable && (
             <Row
+              anchor="notifications.releaseNews"
               label={t('settingsUi.notifications.releaseNews')}
               help={t('settingsUi.notifications.releaseNewsHelp')}
             >

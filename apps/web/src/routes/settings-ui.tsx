@@ -16,6 +16,7 @@ export function Card({
   children,
   className,
   tour,
+  anchor,
 }: {
   title?: ReactNode;
   body?: ReactNode;
@@ -25,6 +26,8 @@ export function Card({
   className?: string;
   /** `data-tour` anchor of a tutorial step (#502). */
   tour?: string;
+  /** `data-setting` anchor the settings search opens (an id of `SETTINGS`). */
+  anchor?: string;
 }) {
   const id = useId();
   return (
@@ -32,6 +35,7 @@ export function Card({
       className={['settings-block', className].filter(Boolean).join(' ')}
       aria-labelledby={title ? id : undefined}
       data-tour={tour}
+      data-setting={anchor}
     >
       {(title || action) && (
         <header className="settings-block__head">
@@ -84,6 +88,7 @@ export function Row({
   children,
   htmlFor,
   className,
+  anchor,
 }: {
   label: ReactNode;
   help?: ReactNode;
@@ -94,9 +99,11 @@ export function Row({
   children?: ReactNode;
   htmlFor?: string;
   className?: string;
+  /** `data-setting` anchor the settings search opens (an id of `SETTINGS`). */
+  anchor?: string;
 }) {
   return (
-    <div className={className ? `settings-row ${className}` : 'settings-row'}>
+    <div className={className ? `settings-row ${className}` : 'settings-row'} data-setting={anchor}>
       {leading ?? (icon && <Tile icon={icon} tone={tone} />)}
       <div className="settings-row__text">
         {htmlFor ? (
@@ -125,6 +132,7 @@ export function Summary({
   action,
   meter,
   tour,
+  anchor,
   live,
 }: {
   tone: 'ok' | 'warn' | 'danger' | 'accent';
@@ -134,11 +142,17 @@ export function Summary({
   action?: ReactNode;
   meter?: ReactNode;
   tour?: string;
+  /** `data-setting` anchor the settings search opens (an id of `SETTINGS`). */
+  anchor?: string;
   /** Read the title out when it changes. */
   live?: boolean;
 }) {
   return (
-    <section className={`settings-summary settings-summary--${tone}`} data-tour={tour}>
+    <section
+      className={`settings-summary settings-summary--${tone}`}
+      data-tour={tour}
+      data-setting={anchor}
+    >
       <span className="settings-summary__icon" aria-hidden="true">
         <Icon name={icon} size={20} />
       </span>

@@ -9,6 +9,7 @@ import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { usePendingUpdate } from '../lib/updates.ts';
 import { useInstanceSettings, useStorageUsage } from './InstanceSettings.tsx';
 import { setCachedProjects } from './projects.ts';
+import { SettingsSearch } from './SettingsSearch.tsx';
 import { setupAttention } from './SettingsShell.tsx';
 import { formatStorage } from './StorageCharts.tsx';
 import { GROUP_TITLES, SETTINGS_PAGES, type SettingsGroup } from './settings-sections.ts';
@@ -125,7 +126,10 @@ function AdminGroups({ setup }: { setup: Setup }) {
   );
 }
 
-/** Phone settings: the Profile tab, as grouped rows like the native apps. */
+/**
+ * Phone settings: the Profile tab, as grouped rows like the native apps, under the same search
+ * as the window's navigation; its results take the whole width in place of the rows.
+ */
 export function SettingsHome({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
   const { user, refresh, version } = useSession();
@@ -149,6 +153,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
   const admin = user?.role === 'admin';
   return (
     <div className="settings-home">
+      <SettingsSearch replace={false}>
       <Link to={href('account')} className="settings-home__me">
         <Avatar name={user?.name ?? ''} image={user?.image} size={44} />
         <span className="settings-home__label">
@@ -188,6 +193,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
         {t('auth.signOut')}
       </button>
       <p className="settings-home__version">Inkadra {version} · AGPL-3.0</p>
+      </SettingsSearch>
     </div>
   );
 }

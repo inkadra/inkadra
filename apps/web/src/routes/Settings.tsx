@@ -187,7 +187,11 @@ export function Preferences() {
     <>
       <Card title={t('settingsUi.preferences.appearance')}>
         <div className="settings-rows">
-          <Row label={t('admin.theme')} help={t('settingsUi.preferences.themeHelp')}>
+          <Row
+            anchor="preferences.theme"
+            label={t('admin.theme')}
+            help={t('settingsUi.preferences.themeHelp')}
+          >
             <Segmented
               label={t('admin.theme')}
               value={preference}
@@ -199,6 +203,7 @@ export function Preferences() {
             />
           </Row>
           <Row
+            anchor="preferences.language"
             label={t('settings.profile.language')}
             help={t('settingsUi.preferences.languageHelp')}
             htmlFor={languageId}
@@ -221,6 +226,7 @@ export function Preferences() {
       <Card title={t('settingsUi.preferences.dateTime')}>
         <div className="settings-rows">
           <Row
+            anchor="preferences.dateFormat"
             label={t('settingsUi.preferences.dateFormat')}
             help={t('settingsUi.preferences.dateFormatHelp')}
             htmlFor={dateId}
@@ -253,6 +259,7 @@ export function Preferences() {
             />
           </Row>
           <Row
+            anchor="preferences.timeFormat"
             label={t('settingsUi.preferences.timeFormat')}
             help={t('settingsUi.preferences.timeFormatHelp')}
           >
@@ -285,7 +292,8 @@ export function CanvasSettings() {
     label: string,
     help: string,
   ) => (
-    <Row label={label} help={help}>
+    // Their ids in the search registry are the preference keys (`board.dotGrid`…).
+    <Row anchor={`board.${key}`} label={label} help={help}>
       <Switch
         aria-label={label}
         checked={prefs[key]}
@@ -322,6 +330,7 @@ export function CanvasSettings() {
           t('settingsUi.preferences.undoButtonsHelp'),
         )}
         <Row
+          anchor="board.keepPlaying"
           label={
             <>
               {t('settingsUi.preferences.keepPlaying')}
@@ -368,7 +377,11 @@ export function ToolbarSettings() {
   const save = (toolbar: string[] | null) =>
     void trackSave(updatePreferences({ toolbar })).catch(() => {});
   return (
-    <Card title={t('settingsUi.pages.toolbar')} body={t('settingsUi.leads.toolbar')}>
+    <Card
+      anchor="board.toolbar"
+      title={t('settingsUi.pages.toolbar')}
+      body={t('settingsUi.leads.toolbar')}
+    >
       <div className="settings-card__pad toolbar-settings">
         <span className="toolbar-settings__label">{t('settingsUi.toolbar.always')}</span>
         <div className="toolbar-settings__tiles">
@@ -418,7 +431,7 @@ export function ToolbarSettings() {
           </span>
         </div>
       </Row>
-      <Row label={t('settingsUi.toolbar.reset')}>
+      <Row anchor="board.toolbarReset" label={t('settingsUi.toolbar.reset')}>
         <Button disabled={prefs.toolbar === null} onClick={() => save(null)}>
           {t('settingsUi.toolbar.resetAction')}
         </Button>
@@ -487,6 +500,7 @@ function Profile() {
     <Card title={t('settings.profile.title')}>
       <div className="settings-rows">
         <Row
+          anchor="account.photo"
           leading={<Avatar name={user?.name ?? ''} image={user?.image} size={32} />}
           label={t('settingsUi.account.photo')}
           help={t('settings.profile.avatarHelp')}
@@ -514,7 +528,12 @@ function Profile() {
             </Button>
           )}
         </Row>
-        <Row label={t('auth.name')} help={t('settingsUi.account.nameHelp')} htmlFor={nameId}>
+        <Row
+          anchor="account.name"
+          label={t('auth.name')}
+          help={t('settingsUi.account.nameHelp')}
+          htmlFor={nameId}
+        >
           <AutosaveText
             id={nameId}
             label={t('auth.name')}
@@ -526,7 +545,7 @@ function Profile() {
             }}
           />
         </Row>
-        <Row label={t('auth.email')} help={t('settingsUi.account.emailHelp')}>
+        <Row anchor="account.email" label={t('auth.email')} help={t('settingsUi.account.emailHelp')}>
           <span className="settings-value">{user?.email}</span>
         </Row>
       </div>
@@ -563,10 +582,11 @@ function SignInMethods({
   const twoFactor = user?.twoFactorEnabled ?? false;
 
   return (
-    <Card title={t('settings.methods.title')}>
+    <Card anchor="account.methods" title={t('settings.methods.title')}>
       <div className="settings-rows">
         {hasPassword && (
           <Row
+            anchor="account.password"
             leading={<ProviderIcon id="password" />}
             label={t('admin.password')}
             help={t('settings.password.body')}
@@ -609,6 +629,7 @@ function SignInMethods({
           </Row>
         ))}
         <Row
+          anchor="account.twoFactor"
           icon="lock"
           label={t('settings.twoFactor.title')}
           help={
@@ -902,6 +923,7 @@ function Sessions() {
 
   return (
     <Card
+      anchor="account.sessions"
       title={t('settings.sessions.title')}
       body={t('settings.sessions.body')}
       action={
@@ -1006,10 +1028,11 @@ function Tokens() {
 
   return (
     <>
-      <Card title={t('settingsUi.apps.clipper')}>
+      <Card anchor="apps.clipper" title={t('settingsUi.apps.clipper')}>
         <ClipperRow connected={items?.some((tk) => tk.client === 'clipper') ?? false} />
       </Card>
       <Card
+        anchor="apps.tokens"
         title={t('settings.tokens.title')}
         body={t('settings.tokens.body')}
         action={
@@ -1189,7 +1212,11 @@ function DeleteAccount({ hasPassword }: { hasPassword: boolean }) {
   return (
     <Card danger title={t('settingsUi.dangerZone')}>
       <div className="settings-rows">
-        <Row label={t('settings.delete.title')} help={t('settings.delete.body')}>
+        <Row
+          anchor="account.delete"
+          label={t('settings.delete.title')}
+          help={t('settings.delete.body')}
+        >
           <Button variant="danger" onClick={() => setOpen(true)}>
             {t('settings.delete.open')}
           </Button>

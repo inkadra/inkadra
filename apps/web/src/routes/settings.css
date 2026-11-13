@@ -166,15 +166,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.settings-nav__match {
-  flex: 0 1 auto;
-  max-width: 55%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  color: var(--ink-text-muted);
-}
 .settings-nav__count {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -203,6 +194,139 @@
   align-items: center;
   gap: 6px;
   color: var(--ink-accent-soft-fg);
+}
+/* Settings search results (combobox): groups of options, each a label over its page. */
+.settings-find__group + .settings-find__group {
+  margin-top: 6px;
+}
+.settings-find__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 14px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.settings-find__heading span + span {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.settings-find__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--ink-radius-sm);
+  background: none;
+  color: var(--ink-text-nav);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-find__item[aria-selected="true"] {
+  border-color: var(--ink-border-default);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+}
+.settings-find__icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: var(--ink-text-muted);
+}
+.settings-find__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.settings-find__label,
+.settings-find__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-find__label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.settings-find__sub {
+  font-size: 11.5px;
+  color: var(--ink-text-muted);
+}
+.settings-find__mark {
+  background: none;
+  color: var(--ink-accent-soft-fg);
+  font-weight: 600;
+}
+.settings-find__keys {
+  display: flex;
+  gap: 12px;
+  margin: 14px 8px 4px;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.settings-find__keys .ink-kc {
+  margin-right: 2px;
+}
+/* Phones: the same search on the settings home, its results full width. */
+.settings-home > .settings-nav__search {
+  margin: 0 0 12px;
+}
+.settings-home > .settings-nav__search input {
+  font-size: 15px;
+}
+.settings-home > .settings-find {
+  padding: 0;
+}
+.settings-home .settings-find__item {
+  min-height: 48px;
+  padding: 8px 10px;
+}
+.settings-home .settings-find__label {
+  font-size: 15px;
+}
+.settings-home .settings-find__sub {
+  font-size: 12.5px;
+}
+
+/* The row a search result opened: highlighted for a moment, behind its content (opacity only). */
+@keyframes settings-found {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.settings-found {
+  position: relative;
+  isolation: isolate;
+}
+.settings-found::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ink-accent-soft-bg);
+  box-shadow: inset 2px 0 0 var(--ink-accent-primary);
+  pointer-events: none;
+  animation: settings-found 2400ms var(--ink-ease-out) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-found::after {
+    animation: none;
+  }
 }
 .settings-nav__empty {
   margin: 14px 8px;
