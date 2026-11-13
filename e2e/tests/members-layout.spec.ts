@@ -165,6 +165,25 @@ test('each member is one row of aligned columns; on a phone the controls wrap un
       expect(c.row.height).toBeLessThan(80);
     }
     expect(await overflow()).toBeLessThanOrEqual(0);
+    // On a large screen the window is larger and the extra width goes to who the person is.
+    const sizes = () =>
+      page.evaluate(() => {
+        const box = (selector: string) =>
+          document.querySelector(selector)?.getBoundingClientRect() ?? new DOMRect();
+        return {
+          window: box('dialog.settings-window'),
+          who: box('.team-member .team-col--who').width,
+        };
+      });
+    // A laptop keeps a 24px gutter at the sides.
+    expect((await sizes()).window.width).toBe(1232);
+    await page.setViewportSize({ width: 2560, height: 1600 });
+    const wide = await sizes();
+    expect(wide.window.width).toBe(1320);
+    expect(wide.window.height).toBe(1040);
+    // About 200px in the earlier 680px column.
+    expect(wide.who).toBeGreaterThan(300);
+    await page.setViewportSize({ width: 1280, height: 900 });
     await shoot(page, 'members-desktop');
     if (shots) {
       await nearRow.getByRole('combobox', { name: `Può creare progetti: ${near.name}` }).click();
