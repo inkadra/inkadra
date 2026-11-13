@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { addMonths, calendarKey, clampDate, dayState, monthGrid } from './date-grid.ts';
+import { addMonths, calendarKey, clampDate, dayState, monthGrid, monthKey } from './date-grid.ts';
 
 describe('date grid', () => {
   it('shows six weeks from the Monday before the first', () => {
@@ -16,6 +16,19 @@ describe('date grid', () => {
     expect(addMonths('2026-12-15', 1)).toBe('2027-01-15');
     expect(addMonths('2026-01-15', -1)).toBe('2025-12-15');
     expect(addMonths('2026-11-13', -12)).toBe('2025-11-13');
+  });
+
+  it('moves the month cursor by month, row and year', () => {
+    const at = '2026-11-30'; // November: the middle of the row Oct–Dec
+    expect(monthKey(at, 'ArrowLeft')).toBe('2026-10-30');
+    expect(monthKey(at, 'ArrowRight')).toBe('2026-12-30');
+    expect(monthKey(at, 'ArrowUp')).toBe('2026-08-30');
+    expect(monthKey(at, 'ArrowDown')).toBe('2027-02-28');
+    expect(monthKey(at, 'PageUp')).toBe('2025-11-30');
+    expect(monthKey(at, 'PageDown')).toBe('2027-11-30');
+    expect(monthKey(at, 'Home')).toBe('2026-10-30');
+    expect(monthKey(at, 'End')).toBe('2026-12-30');
+    expect(monthKey(at, 'Enter')).toBeNull();
   });
 
   it('moves the cursor with the keys', () => {

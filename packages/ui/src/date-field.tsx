@@ -10,7 +10,15 @@ import {
   useState,
 } from 'react';
 import { swallowOutsidePress } from './components.tsx';
-import { addMonths, calendarKey, clampDate, dayState, localDate, monthGrid } from './date-grid.ts';
+import {
+  addMonths,
+  calendarKey,
+  clampDate,
+  dayState,
+  localDate,
+  monthGrid,
+  monthKey,
+} from './date-grid.ts';
 import { Icon } from './icons.tsx';
 
 const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
@@ -196,13 +204,25 @@ export function DateField({
     focusCursor.current = true;
     navigate(next);
   };
+  const monthGridKey = (event: KeyboardEvent) => {
+    const next = monthKey(cursor, event.key);
+    if (!next) return;
+    event.preventDefault();
+    focusCursor.current = true;
+    navigate(next);
+  };
 
   const body = (v: View, at: string, live: boolean) => {
     if (v === 'months') {
       const year = at.slice(0, 4);
       return (
         // biome-ignore lint/a11y/useSemanticElements: twelve buttons named by their year, not a form.
-        <div className="ink-date__months" role="group" aria-label={year}>
+        <div
+          className="ink-date__months"
+          role="group"
+          aria-label={year}
+          onKeyDown={live ? monthGridKey : undefined}
+        >
           {Array.from({ length: 12 }, (_, i) => {
             const month = `${year}-${String(i + 1).padStart(2, '0')}`;
             const current = month === at.slice(0, 7);

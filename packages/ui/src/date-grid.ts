@@ -68,6 +68,27 @@ export function calendarKey(date: string, key: string): string | null {
   }
 }
 
+/**
+ * Where a key moves the cursor of the month grid (three months a row): arrows by a month or a row,
+ * Page Up and Page Down by a year, Home and End to the ends of the row. Null for any other key.
+ */
+export function monthKey(date: string, key: string): string | null {
+  const column = (Number(date.slice(5, 7)) - 1) % 3;
+  const step = (
+    {
+      ArrowLeft: -1,
+      ArrowRight: 1,
+      ArrowUp: -3,
+      ArrowDown: 3,
+      PageUp: -12,
+      PageDown: 12,
+      Home: -column,
+      End: 2 - column,
+    } as Record<string, number | undefined>
+  )[key];
+  return step === undefined ? null : addMonths(date, step);
+}
+
 export interface DayContext {
   /** Any day of the month on show. */
   month: string;

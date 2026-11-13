@@ -336,6 +336,33 @@ it('uses the calendar when the browser falls back from date to an unvalidated te
   }
 });
 
+it('chooses another month with roving keyboard focus', async () => {
+  const onChange = vi.fn();
+  await act(async () =>
+    root.render(<DateField label="Due" value="2026-11-20" onChange={onChange} />),
+  );
+  await act(async () => host.querySelector('input')?.click());
+  await act(async () => host.querySelector<HTMLButtonElement>('.ink-date__heading')?.click());
+  const key = async (key: string) =>
+    act(async () => {
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      );
+    });
+  const month = host.querySelector<HTMLElement>(
+    '.ink-date__body .ink-date__months [tabindex="0"]',
+  )!;
+  await act(async () => month.focus());
+  // Three months a row: November's row starts in October, July is above it, September ends it.
+  await key('Home');
+  await key('ArrowUp');
+  await key('End');
+  expect(document.activeElement?.textContent).toMatch(/Sep|set/i);
+  await act(async () => (document.activeElement as HTMLButtonElement).click());
+  await key('Enter');
+  expect(onChange).toHaveBeenCalledWith('2026-09-20');
+});
+
 it('keeps a focused disabled day as the keyboard cursor without selecting the old value', async () => {
   const onChange = vi.fn();
   await act(async () =>
