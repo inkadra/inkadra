@@ -648,7 +648,7 @@ async function proxyState(
   if (plan.kind === 'skip' || !deps.enqueueProxy) return { status: 'skipped', enqueue: false };
   if (plan.kind === 'ladder') {
     // A second pass (a reprocess, an import) keeps rungs already made with these settings.
-    const recipe = recipeOf(await proxySettings(deps));
+    const recipe = recipeOf(deps.proxies ?? DEFAULT_PROXY_SETTINGS);
     const ready = await deps.db
       .select({ name: assetRendition.name })
       .from(assetRendition)
