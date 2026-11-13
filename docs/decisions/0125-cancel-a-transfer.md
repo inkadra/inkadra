@@ -20,15 +20,17 @@ the transfer moves to `failed` (`cancelled`) only if it is still `queued` or `ru
 removes a row or an archive.
 
 - **200** with the `ProjectTransfer` as it is now (`failed`, `cancelled`). The row stays in
-  `GET /transfers`, as after a DELETE of a running transfer. A queued transfer never starts, and a
-  queued import's uploaded archive is removed at once. A running one stops at the worker's next
-  progress step, in whatever process runs it: its progress update (or the heartbeat, once a
-  minute) matches no `running` row and the worker throws `Cancelled`. A cancelled export removes
-  its incomplete archive. An import cancelled before its database transaction removes the files
-  it already wrote to storage and leaves no project. The transaction itself is not interrupted:
-  an import whose cancel lands during or after it keeps the new project, its owner can open it
-  from the project list, but the transfer stays `failed` (`cancelled`) without its `projectId`
-  and no "import ready" notification is sent.
+  `GET /transfers`, as after a DELETE of a running transfer. A queued transfer never starts, and
+  a queued import's uploaded archive is removed at once. A running one stops at the worker's
+  next progress step, in whatever process runs it: its progress update matches no `running` row
+  (or the once-a-minute heartbeat finds none and flags it) and the worker throws `Cancelled`. A
+  cancelled export removes its incomplete archive. An import cancelled before its database
+  transaction removes the files it already wrote to storage and leaves no project. The
+  transaction itself is not interrupted: an import whose cancel lands during or after it keeps
+  the new project, its owner can open it from the project list, but the transfer stays `failed`
+  (`cancelled`) without its `projectId` and no "import ready" notification is sent. So for an
+  import, a 200 does not guarantee that no project was created: a client that needs to know
+  checks `GET /api/v1/projects` for the imported project.
 - **409** `conflict` when the transfer is already `ready` or `failed` (for any reason). `details`
   is the `ProjectTransfer` as it is now, so the client can show the finished export or the
   failure without another request. Nothing changes.
