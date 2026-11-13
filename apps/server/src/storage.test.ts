@@ -108,3 +108,13 @@ it('removes only the keys it is given; Office derivatives are listed for Office 
   expect(await storage.size(`variants/${id}/office-manifest.json`)).toBeNull();
   expect(await storage.size(`variants/${id}/office-page-50.webp`)).toBeNull();
 });
+
+it('local storage keeps two writes of one key apart', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'inkadra-storage-'));
+  const storage = localStorage(root);
+  const key = variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13', '256');
+  const bodies = ['a'.repeat(1 << 20), 'b'.repeat(1 << 20)];
+  await Promise.all(bodies.map((body) => storage.write(key, Buffer.from(body), 'image/webp')));
+  expect(bodies).toContain((await readAll(await storage.read(key))).toString());
+  expect(readdirSync(dirname(join(root, key)))).toEqual([basename(key)]);
+});

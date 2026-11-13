@@ -28,10 +28,18 @@ export async function runMigrations(
   migrationsFolder: string,
   opts: { productionBoards?: boolean; log?: Parameters<typeof moveToProductionBoards>[1] } = {},
 ) {
-  const { db, sql } = createDatabase(url, 1);
+  // One connection (max 1) that is never recycled: the session lock holds until sql.end() below.
+  const sql = postgres(url, { max: 1, max_lifetime: null, onnotice: () => {} });
+  const db = drizzle(sql, { schema, casing: 'snake_case' });
   try {
-    // One connection (max 1): the session lock holds until sql.end() below.
-    await sql`select pg_advisory_lock(${MIGRATION_LOCK})`;
+    const [free] = await sql`select pg_try_advisory_lock(${MIGRATION_LOCK}) as locked`;
+    if (!free?.locked) {
+      opts.log?.info(
+        { lock: MIGRATION_LOCK },
+        'another process is migrating the database: waiting',
+      );
+      await sql`select pg_advisory_lock(${MIGRATION_LOCK})`;
+    }
     await migrate(db, { migrationsFolder });
     // Data that only code can move: the old board cast links become crew rows (decision 0091).
     await mergeCastLinks(db);

@@ -18,6 +18,9 @@ services:
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}
     command: all
     restart: unless-stopped
+    # Time to save open boards at shutdown (a board the database cannot take within a few seconds
+    # is kept on disk instead); Docker's default 10 s kills the process sooner on a slow database.
+    stop_grace_period: 30s
     ports:
       # Only this machine can reach the port: point your reverse proxy at it, or set
       # INKADRA_BIND=0.0.0.0 if the proxy runs on another host (see docs/self-hosting).

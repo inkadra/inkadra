@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { EXPORT_TTL_HOURS, type ProjectTransfer } from '@inkadra/shared';
-import { and, eq, inArray, lt, or, type SQL } from 'drizzle-orm';
+import { and, eq, inArray, lt, or, type SQL, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { atLeast, projectRole } from '../access.ts';
 import type { Database } from '../db/client.ts';
@@ -87,7 +87,11 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
           eq(projectTransfer.status, 'queued'),
           and(
             eq(projectTransfer.status, 'running'),
-            lt(projectTransfer.updatedAt, new Date(Date.now() - TAKEOVER_MS)),
+            // The database's clock, not this host's: workers on other hosts may drift.
+            lt(
+              projectTransfer.updatedAt,
+              sql`now() - make_interval(secs => ${TAKEOVER_MS / 1000})`,
+            ),
           ),
         ),
       ),
@@ -108,7 +112,7 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
   const touch = async (value: number) => {
     const updated = await db
       .update(projectTransfer)
-      .set({ progress: value })
+      .set({ progress: value, updatedAt: sql`now()` })
       .where(ours)
       .returning({ id: projectTransfer.id });
     return updated.length > 0;
@@ -146,7 +150,16 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
       if (!done) throw new Cancelled();
       await notify(db, row.userId, 'export_ready', row.projectId);
     } else {
-      const result = await importProject(deps, file, row.userId, progress);
+      // Checked again inside the import's transaction, with the row locked: a run that lost its
+      // row while reading the archive must not create a second project.
+      const result = await importProject(deps, file, row.userId, progress, async (tx) => {
+        const [mine] = await tx
+          .select({ id: projectTransfer.id })
+          .from(projectTransfer)
+          .where(ours)
+          .for('update');
+        if (!mine) throw new Cancelled();
+      });
       await rm(file, { force: true });
       const done = await finish(db, ours, {
         projectId: result.projectId,

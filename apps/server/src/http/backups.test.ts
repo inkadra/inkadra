@@ -509,6 +509,12 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
   it('leaves a backup to the run that still beats for it, and takes over a silent one (#810)', async () => {
     const row = await startBackup(db, 'manual', null);
     const id = row?.id as string;
+    // Beaten by a run without a run id (an older version still running): skipped too.
+    await db
+      .update(instanceBackup)
+      .set({ heartbeatAt: sql`now() + interval '1 second'` })
+      .where(eq(instanceBackup.id, id));
+    expect(await runBackup(backupDeps(), id)).toBeNull();
     // Claimed by a live run elsewhere: a job delivered again skips it.
     await db
       .update(instanceBackup)

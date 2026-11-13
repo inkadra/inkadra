@@ -24,7 +24,12 @@ import * as Y from 'yjs';
 import { createAuth } from './auth.ts';
 import { directBoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
 import { directBoardWriter } from './board-writer.ts';
-import { attachCollab, createCollabServer, replayUnsavedBoards } from './collab.ts';
+import {
+  attachCollab,
+  createCollabServer,
+  replayUnsavedBoards,
+  SHUTDOWN_STORE_MS,
+} from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { boardDoc, boardElementIndex, notification, projectMember } from './db/schema.ts';
@@ -254,16 +259,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     const name = boardDocName(flakyBoard);
     // The board_doc write fails while `down` is set, as when Postgres restarts.
     let down = true;
-    const flaky = new Proxy(db, {
-      get(target, key) {
-        if (key === 'insert' && down)
-          return () => {
-            throw new Error('database down');
-          };
-        const value = Reflect.get(target, key);
-        return typeof value === 'function' ? value.bind(target) : value;
-      },
-    });
+    const flaky = failingInserts(db, () => down);
     const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
     const other = createCollabServer({
       db: flaky,
@@ -311,6 +307,41 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       errors.mockRestore();
       await other.destroy();
     }
+  });
+
+  it('keeps a board on disk when its store hangs at shutdown', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Hung database' },
+    });
+    const hungBoard: string = created.json().rootBoardId;
+    const name = boardDocName(hungBoard);
+    let hung = false;
+    // A database that stopped answering: the store's transaction never settles.
+    const stuck = new Proxy(db, {
+      get(target, key) {
+        if (key === 'transaction' && hung) return () => new Promise(() => {});
+        const value = Reflect.get(target, key);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const other = createCollabServer({
+      db: stuck,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      unsavedDir: dir,
+    });
+    const connection = await other.hocuspocus.openDirectConnection(name);
+    hung = true;
+    await connection.transact((doc) => addElement(doc, column('Hung')));
+    const started = Date.now();
+    await other.destroy();
+    expect(Date.now() - started).toBeLessThan(SHUTDOWN_STORE_MS + 3000);
+    expect(readdirSync(dir)).toEqual([`${hungBoard}.yupdate`]);
   });
 
   it.each([
@@ -912,3 +943,23 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     );
   }
 });
+
+/** `db` whose inserts throw while `down()` holds, inside transactions too. */
+function failingInserts<T extends object>(target: T, down: () => boolean): T {
+  return new Proxy(target, {
+    get(t, key) {
+      if (key === 'insert' && down())
+        return () => {
+          throw new Error('database down');
+        };
+      if (key === 'transaction')
+        return (fn: (tx: object) => unknown, ...rest: unknown[]) =>
+          (t as { transaction: (...a: unknown[]) => unknown }).transaction(
+            (tx: object) => fn(failingInserts(tx, down)),
+            ...rest,
+          );
+      const value = Reflect.get(t, key);
+      return typeof value === 'function' ? value.bind(t) : value;
+    },
+  });
+}

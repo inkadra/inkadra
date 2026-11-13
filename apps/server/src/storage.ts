@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
@@ -128,7 +129,8 @@ export function localStorage(root: string): Storage {
       const target = path(key);
       await mkdir(dirname(target), { recursive: true });
       // Keys are cached forever: a crash mid-write must never leave a truncated file at the key.
-      const partial = `${target}.partial`;
+      // Each write has its own partial file, so two writes of one key never mix.
+      const partial = `${target}.${randomUUID()}.partial`;
       try {
         await writeFile(partial, body);
         await rename(partial, target);
@@ -139,7 +141,7 @@ export function localStorage(root: string): Storage {
     async writeStream(key, body) {
       const target = path(key);
       await mkdir(dirname(target), { recursive: true });
-      const partial = `${target}.partial`;
+      const partial = `${target}.${randomUUID()}.partial`;
       try {
         await pipeline(body, createWriteStream(partial));
         await rename(partial, target);

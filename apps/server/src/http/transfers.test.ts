@@ -32,6 +32,7 @@ import {
   notification,
   project,
   projectExportSettings,
+  projectMember,
   projectTransfer,
   shareGuest,
   shareLink,
@@ -1082,6 +1083,33 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       await work(id, {});
       expect(await read(id)).toMatchObject({ status: 'ready' });
       expect(await exists(id)).toBe(true);
+    });
+
+    it('an import whose row was taken over creates no project (#810)', async () => {
+      const archive = await exportRow();
+      await work(archive, {});
+      const importer = await signUp(source.app, 'fenced-importer');
+      const [row] = await source.db
+        .insert(projectTransfer)
+        .values({ kind: 'import', userId: importer.id, projectName: '' })
+        .returning();
+      const id = row?.id as string;
+      await copyFile(transferFile(source.deps.root, archive), transferFile(source.deps.root, id));
+      const other = randomUUID();
+      // Another worker claims the row while this run reads the archive.
+      const db = Object.create(source.db) as Database;
+      db.transaction = (async (...args: Parameters<Database['transaction']>) => {
+        await source.db
+          .update(projectTransfer)
+          .set({ runId: other })
+          .where(eq(projectTransfer.id, id));
+        return source.db.transaction(...args);
+      }) as Database['transaction'];
+      await work(id, { db });
+      expect(await read(id)).toMatchObject({ status: 'running', runId: other });
+      expect(
+        await source.db.select().from(projectMember).where(eq(projectMember.userId, importer.id)),
+      ).toEqual([]);
     });
 
     it('a run whose row was taken over never finishes it nor touches its archive (#810)', async () => {

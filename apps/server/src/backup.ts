@@ -272,7 +272,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   const heartbeat = setInterval(
     () => {
       db.update(instanceBackup)
-        .set({ heartbeatAt: new Date() })
+        .set({ heartbeatAt: sql`now()` })
         .where(ours)
         .catch(() => {});
       watch().catch(() => {});
@@ -286,14 +286,22 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
     // run still beats for.
     const [claimed] = await db
       .update(instanceBackup)
-      .set({ runId, heartbeatAt: new Date() })
+      .set({ runId, heartbeatAt: sql`now()` })
       .where(
         and(
           eq(instanceBackup.id, id),
           eq(instanceBackup.status, 'running'),
           or(
-            isNull(instanceBackup.runId),
-            lt(instanceBackup.heartbeatAt, new Date(Date.now() - TAKEOVER_MS)),
+            // Never beaten: created and not claimed yet (a run of an older version beats too).
+            and(
+              isNull(instanceBackup.runId),
+              eq(instanceBackup.heartbeatAt, instanceBackup.startedAt),
+            ),
+            // The database's clock, not this host's: workers on other hosts may drift.
+            lt(
+              instanceBackup.heartbeatAt,
+              sql`now() - make_interval(secs => ${TAKEOVER_MS / 1000})`,
+            ),
           ),
         ),
       )

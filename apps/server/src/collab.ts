@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import type { Server as HttpServer, IncomingMessage } from 'node:http';
 import { join } from 'node:path';
@@ -136,6 +137,22 @@ export const DEMO_COLLAB_LIMITS: CollabLimits = {
 const STORE_RETRY_FIRST_MS = 1000;
 const STORE_RETRY_MAX_MS = 60_000;
 const UNSAVED_SUFFIX = '.yupdate';
+/** A board store that takes longer fails and is retried (#795). */
+const STORE_TIMEOUT_MS = 15_000;
+/**
+ * At shutdown a store gets this long before the board is kept on disk instead: well inside
+ * Docker's stop grace period (`stop_grace_period` in the compose files).
+ */
+export const SHUTDOWN_STORE_MS = 3000;
+
+/** Rejects when the work takes longer than `ms`; the work itself goes on. */
+function within<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`no answer in ${ms} ms`)), ms);
+  });
+  return Promise.race([work, late]).finally(() => clearTimeout(timer));
+}
 
 /** Where boards that could not be stored at shutdown wait for the next start (#795). */
 export const unsavedBoardsDir = (dataDir: string) => join(dataDir, 'unsaved-boards');
@@ -159,7 +176,8 @@ export async function replayUnsavedBoards(db: Database, dir: string, log: Logger
     return [];
   });
   for (const name of names) {
-    const boardId = name.endsWith(UNSAVED_SUFFIX) ? name.slice(0, -UNSAVED_SUFFIX.length) : null;
+    // `<boardId>.yupdate`, or `<boardId>.<time>.yupdate` when the first one was unreadable.
+    const boardId = name.endsWith(UNSAVED_SUFFIX) ? name.split('.')[0] : null;
     if (!boardId || parseBoardDocName(boardDocName(boardId)) !== boardId) continue;
     const file = join(dir, name);
     try {
@@ -411,11 +429,26 @@ export function createCollabServer(deps: {
       await mkdir(deps.unsavedDir, { recursive: true });
       const update = Y.encodeStateAsUpdate(document);
       // A file left by an earlier shutdown that could not be replayed yet: keep both.
-      const before = await readFile(file).catch(() => null);
-      const partial = `${file}.partial`;
-      await writeFile(partial, before ? Y.mergeUpdates([before, update]) : update);
-      await rename(partial, file);
-      log.warn({ boardId, file }, 'board not stored at shutdown: kept on disk for the next start');
+      let target = file;
+      let before: Uint8Array | null = null;
+      try {
+        before = await readFile(file);
+      } catch (err) {
+        // An unreadable earlier file is left as it is: these edits go to a file of their own.
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
+          target = join(deps.unsavedDir, `${boardId}.${Date.now()}${UNSAVED_SUFFIX}`);
+      }
+      const partial = `${target}.${randomUUID()}.partial`;
+      try {
+        await writeFile(partial, before ? Y.mergeUpdates([before, update]) : update);
+        await rename(partial, target);
+      } finally {
+        await rm(partial, { force: true });
+      }
+      log.warn(
+        { boardId, file: target },
+        'board not stored at shutdown: kept on disk for the next start',
+      );
     } catch (err) {
       log.error({ err, boardId }, 'board not stored at shutdown: its latest edits are lost');
     }
@@ -645,13 +678,18 @@ export function createCollabServer(deps: {
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
       const elementCount = document.getMap('elements').size;
       try {
-        await db
-          .insert(boardDoc)
-          .values({ boardId, state, schemaVersion, size: state.byteLength })
-          .onConflictDoUpdate({
-            target: boardDoc.boardId,
-            set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
-          });
+        const write = db.transaction(async (tx) => {
+          // A database that stopped answering fails the store (retried) instead of holding it.
+          await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
+          await tx
+            .insert(boardDoc)
+            .values({ boardId, state, schemaVersion, size: state.byteLength })
+            .onConflictDoUpdate({
+              target: boardDoc.boardId,
+              set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
+            });
+        });
+        await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
       } catch (err) {
         // The board was deleted for good (its project, or emptied from the trash) while open:
         // there is nothing to keep it for. Returning lets Hocuspocus unload the document.
@@ -737,7 +775,20 @@ export function createCollabServer(deps: {
         void hocuspocus.storeDocumentHooks(payload.document, payload, true);
       else stored(document);
     }
-    return destroy();
+    // A store stuck on a database that stopped answering holds its board's save lock, so the
+    // shutdown would wait for SIGKILL: past the grace time every board still open goes to disk
+    // (a board stored meanwhile is merged twice at the next start, which changes nothing).
+    const closed = destroy();
+    try {
+      await within(closed, SHUTDOWN_STORE_MS + 1000);
+    } catch {
+      await Promise.all(
+        [...hocuspocus.documents].map(([name, document]) => {
+          const boardId = parseBoardDocName(name);
+          return boardId ? spill(boardId, document) : undefined;
+        }),
+      );
+    }
   };
   const shouldUnload = hocuspocus.shouldUnloadDocument.bind(hocuspocus);
   hocuspocus.shouldUnloadDocument = (document) =>

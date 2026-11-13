@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
@@ -443,6 +443,16 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
       log,
     });
     log.info(report, 'backup restored');
+    // Boards a shutdown kept on disk belong to the database just replaced: set aside, not
+    // replayed into the restored one (moved, never deleted).
+    const unsaved = unsavedBoardsDir(config.DATA_DIR);
+    const aside = `${unsaved}-before-restore-${Date.now()}`;
+    await rename(unsaved, aside).then(
+      () => log.warn({ dir: aside }, 'boards kept on disk before the restore set aside'),
+      (err: NodeJS.ErrnoException) => {
+        if (err.code !== 'ENOENT') throw err;
+      },
+    );
     if (report.files.missing > 0)
       log.warn(
         { missing: report.files.missing, examples: report.files.examples },
