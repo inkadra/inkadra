@@ -3,6 +3,7 @@ import type {
   FeedbackReport,
   InstanceMember,
   Invitation,
+  StorageUsage,
 } from '@inkadra/shared';
 import { Avatar, Icon, KeyCap } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
@@ -61,11 +62,13 @@ function loadData(userId: string): Promise<SettingsData> {
         .get<{ items: FeedbackReport[] }>('/feedback/reports')
         .then((r) => r.items)
         .catch(() => []),
-    ]).then(([members, invitations, classifications, reports]) => ({
+      api.get<StorageUsage>('/instance/storage').catch(() => null),
+    ]).then(([members, invitations, classifications, reports, storage]) => ({
       members,
       invitations,
       classifications,
       reports,
+      storage,
     }));
     loaded.set(userId, data);
   }
@@ -136,15 +139,16 @@ export function SettingsSearch({
 
   const searching = query.trim() !== '';
   const pages = SETTINGS_PAGES.filter((p) => !p.admin || admin);
+  const fromData = searchData(
+    admin ? data : NO_DATA,
+    toursFor(admin, !!instance?.demo, modulesOff),
+    pages,
+    query,
+    t,
+  );
   const found = [
     ...searchSettings(pages, query, t, i18n.languages, i18n.language),
-    ...searchData(
-      admin ? data : NO_DATA,
-      toursFor(admin, !!instance?.demo, modulesOff),
-      pages,
-      query,
-      t,
-    ),
+    ...fromData.results,
   ];
   const results = RESULT_GROUPS.flatMap((group) => found.filter((r) => r.group === group));
   const current = Math.min(active, results.length - 1);
@@ -161,7 +165,7 @@ export function SettingsSearch({
 
   return (
     <>
-      <label className="settings-nav__search">
+      <label className="settings-nav__search" data-tour="settings-search">
         <Icon name="search" size={14} />
         <input
           className="ink-input"
@@ -208,6 +212,7 @@ export function SettingsSearch({
               {RESULT_GROUPS.map((group) => {
                 const items = results.filter((r) => r.group === group);
                 const where = GROUP_PAGES[group];
+                const more = fromData.more[group];
                 return (
                   items.length > 0 && (
                     // biome-ignore lint/a11y/useSemanticElements: a listbox may only own options and ARIA groups.
@@ -215,6 +220,7 @@ export function SettingsSearch({
                       key={group}
                       role="group"
                       aria-label={t(GROUP_LABELS[group])}
+                      aria-describedby={more ? `${listId}-${group}-more` : undefined}
                       className="settings-find__group"
                     >
                       <p aria-hidden="true" className="settings-find__heading">
@@ -254,6 +260,16 @@ export function SettingsSearch({
                           </button>
                         );
                       })}
+                      {more && (
+                        // A listbox owns only options: the count describes the group instead.
+                        <p
+                          id={`${listId}-${group}-more`}
+                          aria-hidden="true"
+                          className="settings-find__more"
+                        >
+                          {t('settingsUi.find.more', { count: more })}
+                        </p>
+                      )}
                     </div>
                   )
                 );

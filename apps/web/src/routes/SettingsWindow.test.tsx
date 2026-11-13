@@ -194,3 +194,39 @@ it('waits for a row that the page loads later, like a member', async () => {
   // Nothing in it takes the focus: the row itself does.
   expect(document.activeElement).toBe(row);
 });
+
+/** A card above the row that loads after it, like Storage's limits. */
+function Above() {
+  const [shown, show] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => show(true), 20);
+    return () => clearTimeout(timer);
+  }, []);
+  return shown ? <p>limits</p> : null;
+}
+
+it('keeps the row in view while cards above it load, until the person scrolls', async () => {
+  const scrolled = vi.fn();
+  HTMLElement.prototype.scrollIntoView = scrolled;
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings?section=workspace&setting=workspace.byUser%3Au1']}>
+        <SettingsWindow setup={{ checks: null, error: false }} onClose={onClose} onBack={onBack}>
+          <Above />
+          <p data-setting="workspace.byUser:u1">Antonino</p>
+        </SettingsWindow>
+      </MemoryRouter>,
+    ),
+  );
+  const before = scrolled.mock.calls.length;
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 60)));
+  // The card that came in above scrolled it back into view.
+  expect(scrolled.mock.calls.length).toBeGreaterThan(before);
+  expect(scrolled).toHaveBeenLastCalledWith({ block: 'center' });
+  const settled = scrolled.mock.calls.length;
+  host.querySelector('dialog')?.dispatchEvent(new Event('wheel', { bubbles: true }));
+  await act(async () => {
+    host.querySelector('[data-setting="workspace.byUser:u1"]')?.before(document.createElement('p'));
+  });
+  expect(scrolled.mock.calls.length).toBe(settled);
+});

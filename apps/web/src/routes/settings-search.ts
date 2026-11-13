@@ -3,11 +3,13 @@ import type {
   FeedbackReport,
   InstanceMember,
   Invitation,
+  StorageUsage,
 } from '@inkadra/shared';
 import { SHOT_CATALOG_KEYS, type ShotCatalogKey, shotOptionLabel } from '@inkadra/shared';
 import type { IconName } from '@inkadra/ui';
 import { formatDateTime } from '../lib/datetime.ts';
 import type { Tour } from '../tutorial/tours.ts';
+import { formatStorage } from './StorageCharts.tsx';
 import {
   anchorHref,
   GROUP_TITLES,
@@ -16,8 +18,8 @@ import {
   settingPage,
 } from './settings-sections.ts';
 
-/** Looks up a translation, in the interface language or in the one given. */
-export type SettingsTranslate = (key: string, options?: { lng: string }) => string;
+/** Looks up a translation, in the interface language or in the one given (`lng`). */
+export type SettingsTranslate = (key: string, options?: Record<string, string>) => string;
 
 /**
  * Lower case without accents or typographic apostrophes, so "verifica" finds "Verifica" and
@@ -153,6 +155,8 @@ export interface SettingsData {
   invitations: Invitation[];
   classifications: ClassificationCatalogs | null;
   reports: FeedbackReport[];
+  /** Storage use, for the space each person takes (null when it could not load). */
+  storage: StorageUsage | null;
 }
 
 export const NO_DATA: SettingsData = {
@@ -160,16 +164,27 @@ export const NO_DATA: SettingsData = {
   invitations: [],
   classifications: null,
   reports: [],
+  storage: null,
 };
 
-/** shortcut: each data group shows its first 8 results; a "show all" can come when asked. */
+/**
+ * shortcut: each data group shows its first 8 results and counts the rest ("and N more", so the
+ * person types more); a "show all" can come when asked.
+ */
 const PER_GROUP = 8;
+
+/** What a data search found, and how many more each capped group left out. */
+export interface DataResults {
+  results: SettingsResult[];
+  more: Partial<Record<ResultGroup, number>>;
+}
 
 type CatalogKey = 'projectTypes' | 'tags' | ShotCatalogKey;
 const CATALOG_KEYS: CatalogKey[] = ['projectTypes', 'tags', ...SHOT_CATALOG_KEYS];
 
 /**
- * The people, invitations, classification values, received reports and tours a search finds.
+ * The people, invitations, classification values, received reports, space per person and tours
+ * a search finds.
  * `data` holds only what the person may see (the caller loads nothing admin-only for members);
  * `pages` decides which pages a result may open, so nothing leads to a page they cannot open.
  */
@@ -179,12 +194,15 @@ export function searchData(
   pages: SettingsPage[],
   query: string,
   t: SettingsTranslate,
-): SettingsResult[] {
-  if (!query.trim()) return [];
-  const page = (id: string) => pages.find((p) => p.id === id);
+): DataResults {
   const results: SettingsResult[] = [];
-  const add = (group: ResultGroup, found: SettingsResult[]) =>
+  const more: DataResults['more'] = {};
+  if (!query.trim()) return { results, more };
+  const page = (id: string) => pages.find((p) => p.id === id);
+  const add = (group: ResultGroup, found: SettingsResult[]) => {
     results.push(...found.sort(byRank).slice(0, PER_GROUP));
+    if (found.length > PER_GROUP) more[group] = (more[group] ?? 0) + found.length - PER_GROUP;
+  };
   const members = page('members');
   if (members)
     add('people', [
@@ -273,6 +291,27 @@ export function searchData(
             ];
       }),
     );
+  const storage = page('workspace');
+  if (storage && data.storage?.byUser)
+    add(
+      'settings',
+      data.storage.byUser.flatMap((row): SettingsResult[] => {
+        const rank = row.userId && row.name ? rankTexts([row.name], query) : null;
+        return rank === null || !row.userId || !row.name
+          ? []
+          : [
+              {
+                key: `usage:${row.userId}`,
+                group: 'settings',
+                label: t('settingsUi.find.usage', { name: row.name }),
+                sub: `${t(storage.title)} · ${formatStorage(row.bytes + (row.derivedBytes ?? 0), language())}`,
+                href: anchorHref(storage, `workspace.byUser:${row.userId}`),
+                icon: storage.icon,
+                rank,
+              },
+            ];
+      }),
+    );
   const help = page('tutorials');
   if (help)
     add(
@@ -295,8 +334,11 @@ export function searchData(
             ];
       }),
     );
-  return results;
+  return { results, more };
 }
+
+/** The interface language, which i18n/index.ts keeps on the page (as formatDateTime reads it). */
+const language = () => (typeof document !== 'undefined' && document.documentElement.lang) || 'en';
 
 /** The catalog a classification anchor (`classification:<key>:<id>` or `classifications.<key>`) is in. */
 export function anchorCatalog(anchor: string | null): string | null {

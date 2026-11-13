@@ -3818,7 +3818,10 @@
       "results": "Search results",
       "move": "choose",
       "open": "open",
-      "enter": "Enter"
+      "enter": "Enter",
+      "usage": "Usage per person: {{name}}",
+      "more_one": "and 1 more: type more to find it",
+      "more_other": "and {{count}} more: type more to find them"
     },
     "close": "Close settings",
     "dangerZone": "Danger zone",
@@ -5771,6 +5774,19 @@
           "1": {
             "title": "Nothing is lost",
             "text": "What exists stays visible and opens. Turn the module back on and everything is there."
+          }
+        }
+      },
+      "settingsSearch": {
+        "name": "Search settings",
+        "steps": {
+          "0": {
+            "title": "Find any setting",
+            "text": "Type a word: you find each setting, and as an administrator also people, invitations, classifications, reports and space used."
+          },
+          "1": {
+            "title": "Straight to the row",
+            "text": "Move with ↑↓ and open with Enter: the page scrolls to the row and highlights it. Esc clears the text."
           }
         }
       }

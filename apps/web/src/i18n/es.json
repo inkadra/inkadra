@@ -3818,7 +3818,10 @@
       "results": "Resultados de la búsqueda",
       "move": "elegir",
       "open": "abrir",
-      "enter": "Intro"
+      "enter": "Intro",
+      "usage": "Uso por persona: {{name}}",
+      "more_one": "y 1 más: escribe más para encontrarlo",
+      "more_other": "y {{count}} más: escribe más para encontrarlos"
     },
     "close": "Cerrar ajustes",
     "dangerZone": "Zona de peligro",
@@ -5771,6 +5774,19 @@
           "1": {
             "title": "No se pierde nada",
             "text": "Lo que existe sigue visible y se abre. Vuelve a encender el módulo y está todo."
+          }
+        }
+      },
+      "settingsSearch": {
+        "name": "Buscar en los ajustes",
+        "steps": {
+          "0": {
+            "title": "Encuentra cualquier ajuste",
+            "text": "Escribe una palabra: encuentras cada ajuste y, si administras, también personas, invitaciones, clasificaciones, informes y espacio usado."
+          },
+          "1": {
+            "title": "Directo a la fila",
+            "text": "Muévete con ↑↓ y abre con Intro: la página se desplaza hasta la fila y la resalta. Esc borra el texto."
           }
         }
       }

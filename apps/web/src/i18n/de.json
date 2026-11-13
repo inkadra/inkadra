@@ -3818,7 +3818,10 @@
       "results": "Suchergebnisse",
       "move": "auswählen",
       "open": "öffnen",
-      "enter": "Eingabe"
+      "enter": "Eingabe",
+      "usage": "Nutzung pro Person: {{name}}",
+      "more_one": "und 1 weiterer: tippe mehr, um ihn zu finden",
+      "more_other": "und {{count}} weitere: tippe mehr, um sie zu finden"
     },
     "close": "Einstellungen schließen",
     "dangerZone": "Gefahrenzone",
@@ -5771,6 +5774,19 @@
           "1": {
             "title": "Nichts geht verloren",
             "text": "Was existiert, bleibt sichtbar und lässt sich öffnen. Schalte das Modul wieder ein, und alles ist da."
+          }
+        }
+      },
+      "settingsSearch": {
+        "name": "Einstellungen durchsuchen",
+        "steps": {
+          "0": {
+            "title": "Jede Einstellung finden",
+            "text": "Tippe ein Wort: du findest jede einzelne Einstellung und als Admin auch Personen, Einladungen, Klassifizierungen, Meldungen und belegten Speicher."
+          },
+          "1": {
+            "title": "Direkt zur Zeile",
+            "text": "Mit ↑↓ wählen, mit Enter öffnen: die Seite scrollt zur Zeile und hebt sie hervor. Esc löscht den Text."
           }
         }
       }
