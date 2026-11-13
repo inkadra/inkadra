@@ -193,3 +193,23 @@ it('shows each person as an avatar ringed in their colour, and files with no acc
     'var(--ink-border-strong)',
   ]);
 });
+
+it('opens on the per-person breakdown when the search names a person’s row (#708)', async () => {
+  const usage: StorageUsage = {
+    originalBytes: 4000,
+    byType: [{ type: 'images', bytes: 4000 }],
+    byProject: [{ projectId: 'p', name: 'Shoot', scope: 'project', bytes: 4000 }],
+    byUser: [{ userId: 'u', name: 'Paola Rossi', bytes: 4000 }],
+  };
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/settings?section=workspace&setting=workspace.byUser%3Au']}>
+        <StorageCharts usage={usage} />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector('caption')?.textContent).toContain('admin.storageCharts.byUser');
+  expect(host.querySelector('tr[data-setting="workspace.byUser:u"]')?.textContent).toContain(
+    'Paola Rossi',
+  );
+});

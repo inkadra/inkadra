@@ -148,10 +148,9 @@ export const SETTINGS: SettingEntry[] = [
   s('workspace.perUser', 'storageLimits.perUser'),
   s('workspace.largestFile', 'storageLimits.largestFile'),
   s('workspace.warn', 'storageLimits.warn'),
-  s('workspace.usage', 'settingsUi.storage.usage', [
-    'settingsUi.storage.by.project',
-    'settingsUi.storage.by.user',
-  ]),
+  s('workspace.usage', 'settingsUi.storage.usage', ['settingsUi.storage.by.project']),
+  // Its rows are `workspace.byUser:<user id>`: the search finds each person's space too.
+  s('workspace.byUser', 'admin.storageCharts.byUser', ['settingsUi.storage.by.user']),
   s('backups.now', 'backups.now'),
   s('backups.nightly', 'backups.nightly'),
   s('backups.time', 'backups.time'),

@@ -409,6 +409,18 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    // The search in the settings sidebar, and on the phone's settings home (#700).
+    id: 'settingsSearch',
+    group: 'tools',
+    icon: 'search',
+    offer: 'settings-search',
+    href: '/settings?section=account',
+    steps: [
+      { anchor: 'settings-search', media: 'search', side: 'right' },
+      { anchor: 'settings-search', media: 'search', side: 'right', keys: ['↑', '↓', '↵', 'Esc'] },
+    ],
+  },
+  {
     id: 'classifications',
     group: 'admin',
     icon: 'tag',

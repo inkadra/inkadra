@@ -5,6 +5,7 @@ import type {
   FeedbackReport,
   InstanceMember,
   Invitation,
+  StorageUsage,
 } from '@inkadra/shared';
 import i18next from 'i18next';
 import { describe, expect, it } from 'vitest';
@@ -203,12 +204,22 @@ const DATA = {
       createdAt: '2026-11-03T10:00:00.000Z',
     } as FeedbackReport,
   ],
+  storage: {
+    originalBytes: 20_000_000,
+    byProject: [],
+    byType: [],
+    byUser: [
+      { userId: 'u1', name: 'Antonino Russo', bytes: 13_000_000, derivedBytes: 650_000 },
+      { userId: null, name: null, bytes: 7_000_000 },
+    ],
+  } as unknown as StorageUsage,
 };
 
 describe('searching the data', () => {
   it('finds people, invitations, values, reports and tours, each opening its row', async () => {
     const t = await translator('it');
-    const found = searchData(DATA, TOURS, SETTINGS_PAGES, 'anto', t);
+    const { results: found, more } = searchData(DATA, TOURS, SETTINGS_PAGES, 'anto', t);
+    expect(more).toEqual({});
     expect(found.map((r) => [r.group, r.key, r.href])).toEqual([
       ['people', 'member:u1', '/settings/team?setting=member%3Au1'],
       ['people', 'invite:i1', '/settings/team?setting=invite%3Ai1'],
@@ -218,28 +229,52 @@ describe('searching the data', () => {
         '/settings?section=classifications&setting=classification%3Atags%3Aant',
       ],
       ['reports', 'report:r1', '/settings?section=reports&setting=report%3Ar1'],
+      [
+        'settings',
+        'usage:u1',
+        '/settings?section=workspace&setting=workspace.byUser%3Au1',
+      ],
     ]);
+    // Usage per person (#708): the space with its previews, on Storage.
+    expect(found.find((r) => r.key === 'usage:u1')).toMatchObject({
+      label: 'Utilizzo per persona: Antonino Russo',
+      sub: 'Archiviazione · 13.65 MB',
+    });
     // «Santo» is a word of its own; «Carla Santo» does not start with «anto».
-    expect(searchData(DATA, TOURS, SETTINGS_PAGES, 'santo', t).map((r) => r.key)).toEqual([
-      'member:u3',
-    ]);
-    expect(searchData(DATA, TOURS, SETTINGS_PAGES, 'spot', t)[0]).toMatchObject({
+    expect(searchData(DATA, TOURS, SETTINGS_PAGES, 'santo', t).results.map((r) => r.key)).toEqual(
+      ['member:u3'],
+    );
+    expect(searchData(DATA, TOURS, SETTINGS_PAGES, 'spot', t).results[0]).toMatchObject({
       label: 'Spot',
       sub: 'Tipi di progetto',
     });
     const tour = TOURS[0];
     if (!tour) throw new Error('no tours');
     const name = t(`tutorial.tours.${tour.id}.name`);
-    expect(searchData(NO_DATA, TOURS, SETTINGS_PAGES, name, t).map((r) => r.key)).toContain(
-      `tour:${tour.id}`,
+    expect(
+      searchData(NO_DATA, TOURS, SETTINGS_PAGES, name, t).results.map((r) => r.key),
+    ).toContain(`tour:${tour.id}`);
+  });
+
+  it('keeps 8 results per group and counts the others (#709)', async () => {
+    const t = await translator('it');
+    const many = Array.from({ length: 11 }, (_, i) => member(`m${i}`, `Anna ${i}`, `a${i}@x.it`));
+    const { results, more } = searchData(
+      { ...DATA, members: many },
+      TOURS,
+      SETTINGS_PAGES,
+      'anna',
+      t,
     );
+    expect(results.filter((r) => r.group === 'people')).toHaveLength(8);
+    expect(more).toEqual({ people: 3 });
   });
 
   it('shows members nothing that only administrators may see, even if it was loaded', async () => {
     const t = await translator('it');
     const memberPages = SETTINGS_PAGES.filter((p) => !p.admin);
-    const found = searchData(DATA, TOURS, memberPages, 'anto', t);
+    const found = searchData(DATA, TOURS, memberPages, 'anto', t).results;
     expect(found.filter((r) => r.group !== 'tours')).toEqual([]);
-    expect(searchData(DATA, TOURS, memberPages, 'spot', t)).toEqual([]);
+    expect(searchData(DATA, TOURS, memberPages, 'spot', t).results).toEqual([]);
   });
 });

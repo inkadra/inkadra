@@ -3818,7 +3818,10 @@
       "results": "Résultats de la recherche",
       "move": "choisir",
       "open": "ouvrir",
-      "enter": "Entrée"
+      "enter": "Entrée",
+      "usage": "Utilisation par personne : {{name}}",
+      "more_one": "et 1 autre : tapez plus pour le trouver",
+      "more_other": "et {{count}} autres : tapez plus pour les trouver"
     },
     "close": "Fermer les paramètres",
     "dangerZone": "Zone sensible",
@@ -5771,6 +5774,19 @@
           "1": {
             "title": "Rien ne se perd",
             "text": "Ce qui existe reste visible et s’ouvre. Réactivez le module et tout est là."
+          }
+        }
+      },
+      "settingsSearch": {
+        "name": "Rechercher dans les réglages",
+        "steps": {
+          "0": {
+            "title": "Trouvez n’importe quel réglage",
+            "text": "Tapez un mot : vous trouvez chaque réglage et, si vous administrez, aussi les personnes, invitations, classifications, signalements et l’espace utilisé."
+          },
+          "1": {
+            "title": "Droit à la ligne",
+            "text": "Déplacez-vous avec ↑↓ et ouvrez avec Entrée : la page défile jusqu’à la ligne et la met en évidence. Échap efface le texte."
           }
         }
       }

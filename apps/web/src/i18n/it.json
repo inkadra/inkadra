@@ -3818,7 +3818,10 @@
       "results": "Risultati della ricerca",
       "move": "scegli",
       "open": "apri",
-      "enter": "Invio"
+      "enter": "Invio",
+      "usage": "Utilizzo per persona: {{name}}",
+      "more_one": "e un altro: scrivi di più per trovarlo",
+      "more_other": "e altri {{count}}: scrivi di più per trovarli"
     },
     "close": "Chiudi impostazioni",
     "dangerZone": "Zona sensibile",
@@ -5771,6 +5774,19 @@
           "1": {
             "title": "Non si perde niente",
             "text": "Quello che esiste resta visibile e si apre. Riaccendi il modulo e ritrovi tutto."
+          }
+        }
+      },
+      "settingsSearch": {
+        "name": "Cerca nelle impostazioni",
+        "steps": {
+          "0": {
+            "title": "Trova ogni impostazione",
+            "text": "Scrivi una parola: trovi le singole impostazioni, e se amministri anche persone, inviti, classificazioni, segnalazioni e spazio usato."
+          },
+          "1": {
+            "title": "Dritto alla riga",
+            "text": "Muoviti con ↑↓ e apri con Invio: la pagina scorre fino alla riga e la evidenzia. Esc cancella il testo."
           }
         }
       }

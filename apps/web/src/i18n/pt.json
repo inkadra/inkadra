@@ -3818,7 +3818,10 @@
       "results": "Resultados da pesquisa",
       "move": "escolher",
       "open": "abrir",
-      "enter": "Enter"
+      "enter": "Enter",
+      "usage": "Uso por pessoa: {{name}}",
+      "more_one": "e mais 1: escreva mais para encontrá-lo",
+      "more_other": "e mais {{count}}: escreva mais para encontrá-los"
     },
     "close": "Fechar configurações",
     "dangerZone": "Zona de perigo",
@@ -5771,6 +5774,19 @@
           "1": {
             "title": "Nada se perde",
             "text": "O que existe continua visível e abre-se. Volte a ligar o módulo e está tudo lá."
+          }
+        }
+      },
+      "settingsSearch": {
+        "name": "Pesquisar nas definições",
+        "steps": {
+          "0": {
+            "title": "Encontre qualquer definição",
+            "text": "Escreva uma palavra: encontra cada definição e, se administrar, também pessoas, convites, classificações, relatórios e espaço usado."
+          },
+          "1": {
+            "title": "Direto à linha",
+            "text": "Mova-se com ↑↓ e abra com Enter: a página desloca-se até à linha e realça-a. Esc apaga o texto."
           }
         }
       }

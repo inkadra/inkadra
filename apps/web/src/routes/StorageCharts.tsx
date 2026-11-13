@@ -1,8 +1,9 @@
 import type { StorageUsage } from '@inkadra/shared';
 import { Avatar, glyphColor, Icon } from '@inkadra/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import { ANCHOR_PARAM } from './settings-sections.ts';
 import { Card, Row, Segmented } from './settings-ui.tsx';
 import './storage-charts.css';
 
@@ -44,13 +45,26 @@ type Rows = Array<{
   person?: { image?: string | null } | null;
 }>;
 
-/** One breakdown: a stacked bar, then one row per category with its bar, size and share. */
-function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: number }) {
+/**
+ * One breakdown: a stacked bar, then one row per category with its bar, size and share. With an
+ * `anchor`, the search opens it and each of its rows (`<anchor>:<row id>`).
+ */
+function Breakdown({
+  title,
+  rows,
+  total,
+  anchor,
+}: {
+  title: string;
+  rows: Rows;
+  total: number;
+  anchor?: string;
+}) {
   const { t, i18n } = useTranslation();
   const sorted = [...rows].sort((a, b) => b.bytes - a.bytes);
   const width = (bytes: number) => `${total ? (bytes / total) * 100 : 0}%`;
   return (
-    <div className="settings-card__pad storage-chart__body">
+    <div className="settings-card__pad storage-chart__body" data-setting={anchor}>
       <div className="storage-chart__stack" aria-hidden="true">
         {sorted.map((row, i) => (
           <span
@@ -87,7 +101,7 @@ function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: n
               </span>
             );
             return (
-              <tr key={row.id}>
+              <tr key={row.id} data-setting={anchor && `${anchor}:${row.id}`}>
                 <th scope="row">
                   {row.person === undefined ? (
                     <>
@@ -133,6 +147,13 @@ function Breakdown({ title, rows, total }: { title: string; rows: Rows; total: n
 export function StorageCharts({ usage }: { usage: StorageUsage }) {
   const { t, i18n } = useTranslation();
   const [view, setView] = useState<View>('project');
+  // A search result for a person's space opens the breakdown per person.
+  const { search, key } = useLocation();
+  const anchor = new URLSearchParams(search).get(ANCHOR_PARAM);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` reruns it for the same address.
+  useEffect(() => {
+    if (anchor?.startsWith('workspace.byUser')) setView('user');
+  }, [anchor, key]);
   const projects = usage.byProject.filter((p) => p.scope === 'project').length;
   const top = [...usage.byType].sort((a, b) => b.bytes - a.bytes)[0];
   const breakdowns: Partial<Record<View, { title: string; total: number; rows: Rows }>> = {
@@ -221,7 +242,16 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
               />
             }
           >
-            <Breakdown title={shown.title} total={shown.total} rows={shown.rows} />
+            {view === 'user' ? (
+              <Breakdown
+                anchor="workspace.byUser"
+                title={shown.title}
+                total={shown.total}
+                rows={shown.rows}
+              />
+            ) : (
+              <Breakdown title={shown.title} total={shown.total} rows={shown.rows} />
+            )}
             {view === 'user' && (
               <Row label={t('admin.members')} help={t('admin.storageCharts.attributionUser')}>
                 <Link className="ink-btn ink-btn--secondary" to="/settings/team" replace>

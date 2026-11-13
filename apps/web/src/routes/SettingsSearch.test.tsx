@@ -9,14 +9,21 @@ const session = vi.hoisted(() => ({
   user: { id: 'me', role: 'admin' },
   instance: { demo: false },
 }));
+const people = vi.hoisted(() => ({
+  members: [{ id: 'u1', name: 'Antonino', email: 'a@example.com', role: 'member' }],
+}));
 const get = vi.hoisted(() =>
   vi.fn(async (path: string) => {
-    if (path === '/instance/members')
-      return {
-        items: [{ id: 'u1', name: 'Antonino', email: 'a@example.com', role: 'member' }],
-      };
+    if (path === '/instance/members') return { items: people.members };
     if (path === '/invitations') return { items: [] };
     if (path === '/feedback/reports') return { items: [] };
+    if (path === '/instance/storage')
+      return {
+        originalBytes: 5000,
+        byProject: [],
+        byType: [],
+        byUser: [{ userId: 'u1', name: 'Antonino', bytes: 5000 }],
+      };
     return null;
   }),
 );
@@ -34,8 +41,10 @@ function Where() {
 const host = document.createElement('div');
 document.body.append(host);
 let root = createRoot(host);
+const ANTONINO = people.members;
 afterEach(async () => {
   session.user.role = 'admin';
+  people.members = ANTONINO;
   get.mockClear();
   forgetSettingsData();
   await act(async () => root.unmount());
@@ -117,7 +126,8 @@ it('is a combobox: arrows move, Enter opens the row, Escape clears then closes',
 it('finds people for administrators, loading the data once', async () => {
   const { type, options } = await render();
   await type('anto');
-  expect(options()).toEqual(['Antonino']);
+  // The person, then the space they use (#708), which opens Storage on their row.
+  expect(options()).toEqual(['Antonino', 'settingsUi.find.usage']);
   expect(host.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe(
     'settingsUi.find.people',
   );
@@ -125,10 +135,11 @@ it('finds people for administrators, loading the data once', async () => {
     '/feedback/reports',
     '/instance/classifications',
     '/instance/members',
+    '/instance/storage',
     '/invitations',
   ]);
   await type('antonin');
-  expect(get).toHaveBeenCalledTimes(4);
+  expect(get).toHaveBeenCalledTimes(5);
   // A new text never shows, nor opens with Enter, a result of the text before it: the data
   // is matched at once, only its loading waits for the typing to stop.
   const input = host.querySelector<HTMLInputElement>('input[role="combobox"]') as HTMLInputElement;
@@ -140,6 +151,25 @@ it('finds people for administrators, loading the data once', async () => {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
   expect(options()).toEqual([]);
+});
+
+it('says how many more a capped group leaves out, as the group description (#709)', async () => {
+  people.members = Array.from({ length: 11 }, (_, i) => ({
+    id: `u${i}`,
+    name: `Anna ${i}`,
+    email: `anna${i}@example.com`,
+    role: 'member',
+  }));
+  const { type, options } = await render();
+  await type('anna');
+  expect(options()).toHaveLength(8);
+  const group = host.querySelector('[role="group"]');
+  const more = host.querySelector('.settings-find__more');
+  expect(more?.textContent).toBe('settingsUi.find.more');
+  expect(group?.getAttribute('aria-describedby')).toBe(more?.id);
+  // Typing more narrows it: no count when everything fits.
+  await type('anna 1');
+  expect(host.querySelector('.settings-find__more')).toBeNull();
 });
 
 it('never loads or shows admin-only data to members', async () => {
