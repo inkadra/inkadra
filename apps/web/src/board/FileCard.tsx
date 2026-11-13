@@ -633,13 +633,13 @@ export function AudioPreview({
   asset,
   state,
   width,
-  uploading,
+  uploading = false,
 }: {
   id: string;
   asset: Asset;
   state: 'ready' | 'processing' | 'failed';
   width: number;
-  uploading: boolean;
+  uploading?: boolean;
 }) {
   const { t } = useTranslation();
   const peaks = useWaveform(state === 'ready' ? asset.waveformUrl : null);
