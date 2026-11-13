@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
+import type { VideoRung } from '@inkadra/shared';
 import {
   encoderMemory,
   FFMPEG_MEMORY,
@@ -271,6 +272,10 @@ export interface ProxySettings {
   quality: VideoQuality;
   /** Cap on the peak video bitrate, as ffmpeg reads it (VIDEO_PROXY_BITRATE); null: the preset's. */
   bitrate: string | null;
+  /** Rungs of the ladder made and stored (decision 0128), smallest first. */
+  rungs: VideoRung[];
+  /** Originals the browser plays: the ladder only when heavy, always, or never. */
+  playable: 'heavy' | 'always' | 'never';
   /** Encoder threads of one copy. */
   threads: number;
   /** Detected when the worker starts (VIDEO_PROXY_HWACCEL); libx264 if unset. */
@@ -284,6 +289,8 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
   resolution: 1080,
   quality: DEFAULT_VIDEO_QUALITY,
   bitrate: null,
+  rungs: ['480', '720', '1080'],
+  playable: 'heavy',
   threads: 2,
 };
 
@@ -330,12 +337,15 @@ export function proxyPlan(
     const plays = PLAYABLE_AUDIO[container]?.includes(info.audioCodec ?? '') ?? false;
     if (!info.audioCodec || plays) return 'none';
   } else if (!info.videoCodec || webPlayable(container, info)) return 'none';
-  if (!settings.enabled) return 'skip';
-  if (settings.maxSourceBytes > 0 && sourceBytes > settings.maxSourceBytes) return 'skip';
-  if (settings.maxDurationS > 0 && (info.durationMs ?? 0) > settings.maxDurationS * 1000)
-    return 'skip';
-  // A video with no duration is still copied: `-t`, `-fs` and the timeout use the caps.
-  return 'make';
+  // A video with no duration is still copied: `-t` and the timeout use the caps.
+  return withinLimits(info, sourceBytes, settings) ? 'make' : 'skip';
+}
+
+/** Copies are on, and the source is within the size and duration limits of the instance. */
+export function withinLimits(info: VideoInfo, sourceBytes: number, settings: ProxySettings) {
+  if (!settings.enabled) return false;
+  if (settings.maxSourceBytes > 0 && sourceBytes > settings.maxSourceBytes) return false;
+  return !(settings.maxDurationS > 0 && (info.durationMs ?? 0) > settings.maxDurationS * 1000);
 }
 
 /** Seconds a copy is planned for: the duration, else the limit of the instance or 4 hours. */
@@ -374,7 +384,8 @@ export function copiesVideo(info: VideoInfo, settings: ProxySettings, sourceByte
   if (!plainH264(info) || short > settings.resolution) return false;
   if ((info.frameRate ?? 0) > 60) return false;
   const rate = sourceBitrate(info, sourceBytes);
-  return rate !== null && rate <= rungRate('high', short, info.frameRate).peak;
+  // Below the smallest rung, the rate of the smallest rung: a tiny clip is not "heavy".
+  return rate !== null && rate <= rungRate('high', Math.max(short, 480), info.frameRate).peak;
 }
 
 /**
@@ -585,16 +596,41 @@ export async function makeProxy(
   },
 ): Promise<void> {
   const encoder = opts.encoder ?? settings.encoder ?? SOFTWARE_ENCODER;
-  const [file, argv] = await limitedCommand(
+  await runEncode(
     ffmpeg,
     proxyArgs(input, output, info, settings, opts.sourceBytes, encoder, opts.container ?? null),
+    info,
     {
+      ...opts,
       memoryBytes: proxyMemory(info, settings, encoder, opts.sourceBytes),
-      // Above -fs: ffmpeg stops cleanly at its own limit, the kernel only past it.
+      // The kernel's limit: a copy past what its peak rate allows is killed, never cut short.
       fileBytes: proxyMaxBytes(info, settings, opts.sourceBytes) + 64 * 1024 * 1024,
-      nice: true,
     },
   );
+}
+
+/**
+ * Runs one encode of ffmpeg (`args` with `-progress pipe:1`), at a lower priority and under the
+ * caps given, calling `onProgress` with the percent done of `info`. Killed past `timeoutMs`
+ * with ProxyTimeout, or when it stops progressing for `stallMs` (a failed, retried attempt).
+ */
+export async function runEncode(
+  ffmpeg: string,
+  args: string[],
+  info: VideoInfo,
+  opts: {
+    timeoutMs: number;
+    memoryBytes: number;
+    fileBytes: number;
+    onProgress?: (percent: number) => void;
+    stallMs?: number;
+  },
+): Promise<void> {
+  const [file, argv] = await limitedCommand(ffmpeg, args, {
+    memoryBytes: opts.memoryBytes,
+    fileBytes: opts.fileBytes,
+    nice: true,
+  });
   await new Promise<void>((resolve, reject) => {
     const child = spawn(file, argv, { env: toolEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';

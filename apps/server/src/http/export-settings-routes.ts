@@ -34,6 +34,7 @@ import { iso } from './api-routes.ts';
 import { toAsset } from './assets-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { renditionFiles } from './hls.ts';
 
 interface Deps {
   db: Database;
@@ -179,9 +180,11 @@ async function dropUnusedLogo(tx: Tx, projectId: string, assetId: string): Promi
     .select({ key: assetVariant.storageKey, size: assetVariant.size })
     .from(assetVariant)
     .where(eq(assetVariant.assetId, assetId));
+  const renditions = await renditionFiles(tx, [assetId]);
   await tx.delete(asset).where(eq(asset.id, assetId));
   return [
     file.storageKey,
+    ...renditions,
     ...variants.flatMap((v) => [v.key, animatedVariantKey(assetId, v.size)]),
   ];
 }

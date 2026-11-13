@@ -59,6 +59,7 @@ import { storageUsage } from '../storage-usage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { renditionFiles } from './hls.ts';
 import { idempotentCreation } from './idempotency.ts';
 
 interface Deps {
@@ -231,8 +232,11 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         userImage: user.image,
         // shortcut: thumbnails written before `bytes` existed and animated copies count as 0;
         // add them if the figure proves too low, by measuring the files once.
+        // The video rungs too (decision 0128): in the instance total and its breakdown, never
+        // in the per-person limits (storage-limits.ts).
         derivedBytes: sql<string>`sum((select coalesce(sum(v.bytes), 0) from asset_variant v
-          where v.asset_id = ${asset.id}))`,
+          where v.asset_id = ${asset.id}) + (select coalesce(sum(r.bytes), 0)
+          from asset_rendition r where r.asset_id = ${asset.id}))`,
       })
       .from(asset)
       .leftJoin(project, eq(project.id, asset.projectId))
@@ -701,6 +705,10 @@ export async function projectFiles(
   return [
     ...originals.map((r) => r.key),
     ...officeFiles(originals),
+    ...(await renditionFiles(
+      tx,
+      originals.map((r) => r.id),
+    )),
     ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
   ];
 }

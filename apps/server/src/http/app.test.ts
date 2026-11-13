@@ -118,6 +118,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'server-live',
         'classification-delete',
         'idempotent-import',
+        'video-renditions',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();

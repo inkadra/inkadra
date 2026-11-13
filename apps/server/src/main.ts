@@ -3,6 +3,7 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { VideoRung } from '@inkadra/shared';
 import pino, { type Logger } from 'pino';
 import { startInlineExpirySweep } from './access-expiry.ts';
 import { disableAdminTwoFactor } from './admin-two-factor.ts';
@@ -157,6 +158,8 @@ async function main() {
       resolution: config.VIDEO_PROXY_RESOLUTION ?? 1080,
       quality: DEFAULT_VIDEO_QUALITY,
       bitrate: config.VIDEO_PROXY_BITRATE ?? null,
+      rungs: ['480', '720', '1080'] as VideoRung[],
+      playable: 'heavy' as const,
       threads: config.VIDEO_PROXY_THREADS,
       ...(encoder ? { encoder } : {}),
     },

@@ -6,6 +6,8 @@ import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
 import { proxyKey, readAll, type Storage } from '../storage.ts';
 import { SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
+import { videoPlan } from './ladder.ts';
+import { makeLadder } from './ladder-run.ts';
 import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
   copiesVideo,
@@ -18,7 +20,6 @@ import {
   ProxyTimeout,
   probeVideo,
   proxyMaxBytes,
-  proxyPlan,
   shortCopy,
   sniffAudio,
   sniffVideo,
@@ -33,9 +34,9 @@ export interface ProxyDeps {
 }
 
 /** How often progress is written to the row while ffmpeg runs. */
-const PROGRESS_EVERY_MS = 2000;
+export const PROGRESS_EVERY_MS = 2000;
 
-const setProxy = (
+export const setProxy = (
   db: Database,
   assetId: string,
   fields: Pick<typeof asset.$inferInsert, 'proxyStatus' | 'proxyProgress'>,
@@ -109,13 +110,15 @@ async function transcode(
   if (!ffmpeg || !ffprobe) throw new Error('ffmpeg is not there any more');
   const out = join(dir, 'proxy.mp4');
   const info = await probeVideo(ffprobe, source, container);
-  const plan = proxyPlan(container, info, row.size, settings);
-  if (plan !== 'make') {
+  const plan = videoPlan(container, info, row.size, settings);
+  if (plan.kind === 'ladder')
+    return makeLadder(deps, row, container, source, dir, info, plan, onProgress);
+  if (plan.kind === 'none' || plan.kind === 'skip') {
     await setProxy(db, assetId, {
-      proxyStatus: plan === 'skip' ? 'skipped' : null,
+      proxyStatus: plan.kind === 'skip' ? 'skipped' : null,
       proxyProgress: null,
     });
-    return { skipped: plan };
+    return { skipped: plan.kind };
   }
   await ensureFreeSpace(dir, proxyMaxBytes(info, settings, row.size), 'the playable copy');
   await setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: 0 });

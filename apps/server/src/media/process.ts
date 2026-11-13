@@ -6,13 +6,14 @@ import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
 import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
-import { asset, assetVariant } from '../db/schema.ts';
+import { asset, assetRendition, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
 import { readFileMetadata } from './file-metadata.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
+import { recipeOf, videoPlan } from './ladder.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
 import {
@@ -35,7 +36,6 @@ import {
   mediaTools,
   type ProxySettings,
   probeVideo,
-  proxyPlan,
   sniffAudio,
   sniffVideo,
   type VideoInfo,
@@ -229,7 +229,13 @@ export async function processAsset(
         const durationMs = info?.durationMs ?? null;
         await extractPoster(tools.ffmpeg, input, posterPath, durationMs, video);
         const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
-        const proxyStatus = await proxyState(deps, assetId, video, info, row.size);
+        const { status: proxyStatus, enqueue } = await proxyState(
+          deps,
+          assetId,
+          video,
+          info,
+          row.size,
+        );
         await save(db, assetId, result.variants, {
           sha256: digest,
           width: result.width,
@@ -244,7 +250,7 @@ export async function processAsset(
           status: 'ready',
           animated: false,
         });
-        if (proxyStatus === 'queued') await deps.enqueueProxy?.(assetId);
+        if (enqueue) await deps.enqueueProxy?.(assetId);
         return { variants: result.variants.length, proxy: proxyStatus };
       }
 
@@ -601,7 +607,13 @@ async function processAudio(
           bytes: data.length,
         });
       }
-      const proxyStatus = await proxyState(deps, row.id, container, info, row.size);
+      const { status: proxyStatus, enqueue } = await proxyState(
+        deps,
+        row.id,
+        container,
+        info,
+        row.size,
+      );
       await save(db, row.id, variants, {
         ...plain,
         durationMs,
@@ -609,7 +621,7 @@ async function processAudio(
         proxyStatus,
         proxyProgress: proxyStatus === 'ready' ? 100 : null,
       });
-      if (proxyStatus === 'queued') await deps.enqueueProxy?.(row.id);
+      if (enqueue) await deps.enqueueProxy?.(row.id);
       return { variants: variants.length, proxy: proxyStatus };
     } finally {
       await copy.done();
@@ -620,7 +632,8 @@ async function processAudio(
 /**
  * Where the playable copy of a video stands before the poster is saved: `queued` when one is
  * to be made (the caller queues it), `ready` when an earlier run made it, `skipped` when the
- * instance does not make it, null when the original plays as it is.
+ * instance does not make it, null when the original plays as it is. A heavy original that
+ * plays still gets the ladder (decision 0128): its status stays null, `enqueue` is true.
  */
 async function proxyState(
   deps: MediaDeps,
@@ -628,16 +641,33 @@ async function proxyState(
   container: string,
   info: VideoInfo | null,
   size: number,
-): Promise<(typeof asset.$inferInsert)['proxyStatus']> {
-  if (!info) return null;
-  const plan = proxyPlan(container, info, size, deps.proxies ?? DEFAULT_PROXY_SETTINGS);
-  if (plan === 'none') return null;
-  if (plan === 'skip' || !deps.enqueueProxy) return 'skipped';
+): Promise<{ status: (typeof asset.$inferInsert)['proxyStatus']; enqueue: boolean }> {
+  if (!info) return { status: null, enqueue: false };
+  const plan = videoPlan(container, info, size, deps.proxies ?? DEFAULT_PROXY_SETTINGS);
+  if (plan.kind === 'none') return { status: null, enqueue: false };
+  if (plan.kind === 'skip' || !deps.enqueueProxy) return { status: 'skipped', enqueue: false };
+  if (plan.kind === 'ladder') {
+    // A second pass (a reprocess, an import) keeps rungs already made with these settings.
+    const recipe = recipeOf(deps.proxies ?? DEFAULT_PROXY_SETTINGS);
+    const ready = await deps.db
+      .select({ name: assetRendition.name })
+      .from(assetRendition)
+      .where(
+        and(
+          eq(assetRendition.assetId, assetId),
+          eq(assetRendition.status, 'ready'),
+          eq(assetRendition.recipe, recipe),
+        ),
+      );
+    const done = plan.rungs.every((r) => ready.some((x) => x.name === r));
+    if (plan.original) return { status: null, enqueue: !done };
+    return done ? { status: 'ready', enqueue: false } : { status: 'queued', enqueue: true };
+  }
   const [made] = await deps.db
     .select({ size: assetVariant.size })
     .from(assetVariant)
     .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
-  return made ? 'ready' : 'queued';
+  return made ? { status: 'ready', enqueue: false } : { status: 'queued', enqueue: true };
 }
 
 /** WebP thumbnails and dominant colours of a picture, upright. */
