@@ -295,6 +295,10 @@ export const AssetRendition = z
   .openapi('AssetRendition');
 export type AssetRendition = z.infer<typeof AssetRendition>;
 
+/** Why a source never plays live (decision 0128): what the graphics card cannot do alone. */
+export const VideoNoLive = z.enum(['prores', 'dnx', 'chroma', 'interlaced', 'hdr', 'rotated', 'codec']);
+export type VideoNoLive = z.infer<typeof VideoNoLive>;
+
 export const AssetPlayback = z
   .object({
     hls: z
@@ -310,6 +314,11 @@ export const AssetPlayback = z
     }),
     renditions: z.array(AssetRendition).openapi({
       description: 'Smallest first; a rung larger than the source is never listed.',
+    }),
+    noLive: VideoNoLive.optional().openapi({
+      description:
+        'Live playback runs on this server but never for this source (decision 0128): it ' +
+        'waits for its stored rungs. Only from servers with `video-live`.',
     }),
   })
   .openapi('AssetPlayback');

@@ -2,11 +2,15 @@ import {
   ladderFor,
   type UpdateVideoSettings,
   VIDEO_AUDIO_KBPS,
+  VIDEO_BITRATE_MAX,
+  VIDEO_BITRATE_MIN,
   VIDEO_LIVE_SESSIONS_MAX,
+  VIDEO_QUALITY_MAX,
   VIDEO_RUNGS,
   VIDEO_TARGET_KBPS,
   type VideoQuality,
   type VideoRung,
+  type VideoRungCustom,
   type VideoSettingsView,
 } from '@inkadra/shared';
 import {
@@ -16,11 +20,9 @@ import {
   Dialog,
   DialogActions,
   Icon,
-  Select,
   Switch,
-  TextField,
 } from '@inkadra/ui';
-import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { trackSave } from './settings-save.ts';
@@ -311,142 +313,327 @@ function ExistingVideos({
 }
 
 /**
- * "Riproduzione al volo" (decision 0128): rungs encoded while someone watches, right after an
- * upload and for those not kept on disk, within limits of sessions at once.
+ * "Riproduzione al volo" (decision 0128, mockup v2): rungs the graphics card encodes while
+ * someone watches, right after an upload and for those not kept on disk.
  */
 function LiveCard({
   view,
   save,
   lock,
+  number,
 }: {
   view: VideoSettingsView;
   save: (patch: UpdateVideoSettings) => Promise<void>;
   lock: (name: string) => ReactNode;
+  number: (n: number, digits?: number) => string;
 }) {
-  const { t, i18n } = useTranslation();
-  const { live } = view.settings;
-  const perId = useId();
+  const { t } = useTranslation();
+  const { live, rungs, quality, custom } = view.settings;
   const status = view.liveStatus;
-  // Only on a GPU fast enough (decision 0128): otherwise the reason, and no switch.
-  if (!status?.available)
-    return (
-      <Card
-        anchor="video.live"
-        tour="video-live"
-        title={t('videoSettings.live.title')}
-        body={t('videoSettings.live.body')}
-      >
-        <Row
-          leading={<Tile icon="play" tone="neutral" />}
-          label={t('videoSettings.live.unavailable')}
-          help={t(`videoSettings.live.reasons.${status?.reason ?? 'no-gpu'}`)}
-        >
-          <Badge>{t('videoSettings.live.off')}</Badge>
-        </Row>
-      </Card>
-    );
+  const available = status?.available === true;
+  const on = available && live.enabled && live.maxSessions > 0;
+  const chosen = VIDEO_RUNGS.filter((r) => rungs[r] !== 'off');
   const off = () => {
     // Rungs offered only live would be offered nowhere: they are kept on disk instead.
-    const rungs = Object.fromEntries(
-      VIDEO_RUNGS.map((r) => [
-        r,
-        view.settings.rungs[r] === 'live' ? 'stored' : view.settings.rungs[r],
-      ]),
+    const next = Object.fromEntries(
+      VIDEO_RUNGS.map((r) => [r, rungs[r] === 'live' ? 'stored' : rungs[r]]),
     ) as UpdateVideoSettings['rungs'];
-    void save({ live: { enabled: false }, rungs });
+    void save({ live: { enabled: false }, rungs: next });
   };
+  const help = !available
+    ? t(`videoSettings.live.reasons.${status?.reason ?? 'no-gpu'}`)
+    : live.maxSessions === 0
+      ? t('videoSettings.live.zero')
+      : t('videoSettings.live.upTo', { count: live.maxSessions });
   return (
     <Card
       anchor="video.live"
       tour="video-live"
       title={t('videoSettings.live.title')}
       body={t('videoSettings.live.body')}
-      action={view.locked.live && lock('VIDEO_LIVE')}
+      action={
+        <>
+          {view.locked.live && lock('VIDEO_LIVE')}
+          <Badge tone={!available ? 'warn' : on ? 'ok' : 'neutral'}>
+            {!available
+              ? t('videoSettings.live.unavailable')
+              : on
+                ? t('videoSettings.live.on')
+                : t('videoSettings.live.off')}
+          </Badge>
+        </>
+      }
     >
       <Row
-        leading={<Tile icon="play" tone="teal" />}
+        className="settings-row--stack"
+        leading={<Tile icon="play" tone="purple" />}
         label={<span id="video-live-label">{t('videoSettings.live.enabled')}</span>}
-        help={t('videoSettings.live.enabledHelp')}
+        help={<span id="video-live-help">{help}</span>}
       >
         <Switch
-          checked={live.enabled}
-          disabled={view.locked.live}
+          checked={available && live.enabled}
+          disabled={!available || view.locked.live}
           aria-labelledby="video-live-label"
+          aria-describedby="video-live-help"
           onChange={(e) =>
             e.currentTarget.checked ? void save({ live: { enabled: true } }) : off()
           }
         />
       </Row>
-      {live.enabled && (
-        <>
-          <Row
-            label={t('videoSettings.live.perViewer')}
-            help={t('videoSettings.live.perViewerHelp')}
-            htmlFor={perId}
-          >
-            <Select
-              id={perId}
-              className="ink-input space-limit__unit"
-              value={String(live.perViewer)}
-              onChange={(v) => void save({ live: { perViewer: Number(v) } })}
+      {on && (
+        <div className="settings-card__pad video-live__rungs">
+          <p className="settings-row__help">{t('videoSettings.live.rungsHelp')}</p>
+          {chosen.map((r) => (
+            <Row
+              key={r}
+              className="video-live__rung"
+              label={<span id={`video-live-${r}`}>{t(`videoSettings.rungs.${r}`)}</span>}
+              help={
+                rungs[r] === 'live'
+                  ? t('videoSettings.live.noSpace')
+                  : t('videoSettings.live.onDisk', {
+                      size: number(
+                        mbPerMinute(quality, r, false, custom),
+                        r === '2160' ? 0 : 1,
+                      ),
+                    })
+              }
             >
-              {[1, 2, 3, 4]
-                .filter((n) => n <= Math.max(1, live.maxSessions))
-                .map((n) => (
-                  <option key={n} value={String(n)}>
-                    {n}
-                  </option>
-                ))}
-            </Select>
-          </Row>
-        </>
+              <Segmented
+                label={t('videoSettings.live.modeLabel', { rung: t(`videoSettings.rungs.${r}`) })}
+                name={`video-rung-mode-${r}`}
+                value={rungs[r] === 'live' ? 'live' : 'stored'}
+                disabled={view.locked.rungs}
+                options={(['stored', 'live'] as const).map((value) => ({
+                  value,
+                  label: t(`videoSettings.live.modes.${value}`),
+                }))}
+                onChange={(mode) => void save({ rungs: { ...rungs, [r]: mode } })}
+              />
+            </Row>
+          ))}
+        </div>
+      )}
+      <div className="settings-card__pad">
+        <p className="settings-row__help video-live__never">{t('videoSettings.live.never')}</p>
+      </div>
+    </Card>
+  );
+}
+
+type RungField = 'target' | 'peak' | 'quality';
+const KBIT_MIN = VIDEO_BITRATE_MIN / 1000;
+const KBIT_MAX = VIDEO_BITRATE_MAX / 1000;
+
+/** The problems of one row of the table, as the server would find them (decision 0128). */
+export function rungProblems(target: number, peak: number, quality: number) {
+  const out: Partial<Record<RungField, 'range' | 'belowTarget' | 'quality'>> = {};
+  const inRange = (n: number) => Number.isFinite(n) && n >= KBIT_MIN && n <= KBIT_MAX;
+  if (!inRange(target)) out.target = 'range';
+  if (!inRange(peak)) out.peak = 'range';
+  else if (inRange(target) && peak < target) out.peak = 'belowTarget';
+  if (!(Number.isInteger(quality) && quality >= 0 && quality <= VIDEO_QUALITY_MAX))
+    out.quality = 'quality';
+  return out;
+}
+
+/** One rung of "Bitrate e qualità per risoluzione": kbit/s and the encoder's quality value. */
+function RungValues({
+  rung,
+  chosen,
+  preset,
+  own,
+  qualityLabel,
+  onSave,
+}: {
+  rung: VideoRung;
+  chosen: boolean;
+  preset: { target: number; peak: number; quality: number };
+  own: VideoRungCustom | undefined;
+  qualityLabel: string;
+  onSave: (value: VideoRungCustom | null) => void;
+}) {
+  const { t } = useTranslation();
+  const value = {
+    target: (own?.target ?? preset.target) / 1000,
+    peak: (own?.peak ?? preset.peak) / 1000,
+    quality: own?.quality ?? preset.quality,
+  };
+  const [draft, setDraft] = useState(() => ({
+    target: String(value.target),
+    peak: String(value.peak),
+    quality: String(value.quality),
+  }));
+  const key = `${value.target}/${value.peak}/${value.quality}`;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new saved value resets the fields
+  useEffect(() => {
+    setDraft({
+      target: String(value.target),
+      peak: String(value.peak),
+      quality: String(value.quality),
+    });
+  }, [key]);
+  const read = (s: string) => (s.trim() === '' ? Number.NaN : Number(s.replace(',', '.')));
+  const n = { target: read(draft.target), peak: read(draft.peak), quality: read(draft.quality) };
+  const problems = rungProblems(n.target, n.peak, n.quality);
+  const commit = () => {
+    if (Object.keys(problems).length > 0) return;
+    if (n.target === value.target && n.peak === value.peak && n.quality === value.quality) return;
+    // Only what differs from the preset is kept: the rest follows the preset.
+    const next: VideoRungCustom = {};
+    const target = Math.round(n.target * 1000);
+    const peak = Math.round(n.peak * 1000);
+    if (target !== preset.target) next.target = target;
+    if (peak !== preset.peak) next.peak = peak;
+    if (n.quality !== preset.quality) next.quality = n.quality;
+    onSave(Object.keys(next).length > 0 ? next : null);
+  };
+  const changed = own !== undefined && Object.keys(own).length > 0;
+  const name = t(`videoSettings.rungs.${rung}`);
+  const cell = (field: RungField, label: string, unit?: string) => {
+    const problem = problems[field];
+    const errorId = `video-rung-${rung}-${field}-error`;
+    return (
+      <td data-l={label}>
+        <span className="video-rtable__field">
+          <input
+            className="ink-input"
+            type="number"
+            inputMode="numeric"
+            step={1}
+            value={draft[field]}
+            aria-label={`${label} ${name}`}
+            aria-invalid={problem ? true : undefined}
+            aria-describedby={problem ? errorId : undefined}
+            onChange={(e) => {
+              const text = e.currentTarget.value;
+              setDraft((d) => ({ ...d, [field]: text }));
+            }}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit();
+            }}
+          />
+          {unit && <span className="video-rtable__unit">{unit}</span>}
+        </span>
+        {problem && (
+          <span id={errorId} className="video-rtable__error">
+            {t(`videoSettings.advanced.errors.${problem}`)}
+          </span>
+        )}
+      </td>
+    );
+  };
+  return (
+    <tr className={chosen ? undefined : 'is-off'}>
+      <td className="video-rtable__rung">
+        {name}
+        {changed && <Badge tone="accent">{t('videoSettings.advanced.custom')}</Badge>}
+        {!chosen && (
+          <span className="settings-row__help"> {t('videoSettings.advanced.notChosen')}</span>
+        )}
+      </td>
+      {cell('target', t('videoSettings.advanced.target'), 'kbit/s')}
+      {cell('peak', t('videoSettings.advanced.peak'), 'kbit/s')}
+      {cell('quality', qualityLabel)}
+      <td>
+        {changed && (
+          <button type="button" className="video-link" onClick={() => onSave(null)}>
+            {t('videoSettings.advanced.reset')}
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/** The live sessions of Avanzate: 0 (off) to 16, over the measurement with a warning. */
+function SessionsField({
+  view,
+  patch,
+}: {
+  view: VideoSettingsView;
+  patch: (body: UpdateVideoSettings) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const status = view.liveStatus;
+  const measured = status?.measured ?? null;
+  const sessions = view.settings.live.maxSessions;
+  const [draft, setDraft] = useState(String(sessions));
+  useEffect(() => setDraft(String(sessions)), [sessions]);
+  const commit = () => {
+    const n = Math.round(Number(draft));
+    if (draft.trim() === '' || !Number.isFinite(n)) return setDraft(String(sessions));
+    const next = Math.max(0, Math.min(VIDEO_LIVE_SESSIONS_MAX, n));
+    setDraft(String(next));
+    if (next === sessions) return;
+    void patch({ live: { maxSessions: next === measured ? null : next } });
+  };
+  return (
+    <Card title={t('videoSettings.advanced.sessions')}>
+      <Row
+        className="settings-row--stack"
+        label={t('videoSettings.advanced.sessionsLabel')}
+        help={t('videoSettings.advanced.sessionsHelp', {
+          measured: measured ?? '–',
+          max: VIDEO_LIVE_SESSIONS_MAX,
+        })}
+        htmlFor="video-sessions"
+      >
+        <input
+          id="video-sessions"
+          className="ink-input video-advanced__number"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={VIDEO_LIVE_SESSIONS_MAX}
+          step={1}
+          value={draft}
+          disabled={status?.locked}
+          onChange={(e) => setDraft(e.currentTarget.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+          }}
+        />
+        {status?.locked ? (
+          <span className="space-chip">
+            <Icon name="lock" size={12} />
+            <code>VIDEO_LIVE_MAX_SESSIONS</code>
+          </span>
+        ) : (
+          measured !== null &&
+          sessions !== measured && (
+            <button
+              type="button"
+              className="video-link"
+              onClick={() => void patch({ live: { maxSessions: null } })}
+            >
+              {t('videoSettings.advanced.reset')}
+            </button>
+          )
+        )}
+      </Row>
+      {measured !== null && sessions > measured && (
+        <div className="settings-card__pad">
+          <p className="video-advanced__warn" role="status">
+            <Icon name="warning" size={14} />
+            <span>{t('videoSettings.advanced.overMeasured')}</span>
+          </p>
+        </div>
       )}
     </Card>
   );
 }
 
-/** A number field of Advanced, saved when it is left or Enter is pressed. */
-function NumberField({
-  label,
-  value,
-  unit,
-  step,
-  onCommit,
-}: {
-  label: string;
-  value: number;
-  unit?: string;
-  step: number;
-  onCommit: (value: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => setDraft(String(value)), [value]);
-  const commit = () => {
-    const n = Number(draft.replace(',', '.'));
-    if (!Number.isFinite(n) || draft.trim() === '') setDraft(String(value));
-    else if (n !== value) onCommit(n);
-  };
-  return (
-    <TextField
-      label={unit ? `${label} (${unit})` : label}
-      className="video-advanced__field"
-      type="number"
-      inputMode="decimal"
-      step={step}
-      value={draft}
-      onChange={(e) => setDraft(e.currentTarget.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') commit();
-      }}
-    />
-  );
-}
+/** About how long the performance test takes (decision 0128): five seconds of 1080p and the setup. */
+const BENCHMARK_MS = 10_000;
 
 /**
- * "Avanzate" (decision 0128), collapsed by default, for expert admins: the performance test
- * again, live sessions over or under the measurement, and the target, peak and quality value of
- * each rung over the preset. No ffmpeg arguments and no backend: VIDEO_PROXY_HWACCEL forces one.
+ * "Avanzate" (decision 0128, mockup v2), collapsed by default, for expert admins: the
+ * performance test again, live sessions over or under the measurement, and the target, peak
+ * and quality value of each rung over the preset. No ffmpeg arguments and no backend choice:
+ * VIDEO_PROXY_HWACCEL forces one.
  */
 function AdvancedCard({
   view,
@@ -456,23 +643,35 @@ function AdvancedCard({
   setView: (view: VideoSettingsView) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const bodyId = useId();
-  const sessionsId = useId();
   const { settings } = view;
   const status = view.liveStatus;
+  const gpu = view.encoder !== null && view.encoder.backend !== 'software';
   const presets = view.presetValues?.[settings.quality];
   const param = view.qualityParam ?? 'crf';
-  const mbit = (bits: number) => Math.round(bits / 10_000) / 100;
-  const fmt = (n: number, digits = 1) =>
-    new Intl.NumberFormat(i18n.language, { maximumFractionDigits: digits }).format(n);
+  const qualityName =
+    param === 'crf'
+      ? 'crf'
+      : param === 'cq'
+        ? 'cq'
+        : view.encoder?.backend === 'vaapi'
+          ? 'vaapi'
+          : 'qsv';
+  const qualityLabel = param === 'global_quality' ? 'global_quality' : param.toUpperCase();
+  const running = view.benchmark?.running === true;
+  // "Misurato adesso" once a test asked from this page has ended.
+  const [fresh, setFresh] = useState(false);
+  const wasRunning = useRef(running);
+  useEffect(() => {
+    if (wasRunning.current && !running) setFresh(true);
+    wasRunning.current = running;
+  }, [running]);
   const patch = async (body: UpdateVideoSettings) => {
     setProblem(null);
     try {
       setView(await trackSave(api.patch<VideoSettingsView>('/instance/video-settings', body)));
     } catch (err) {
-      // The server checks every value: its reason is shown under the fields.
+      // The server checks every value: its reason is shown under the table.
       setProblem(err instanceof Error && err.message ? err.message : t('auth.errors.generic'));
     }
   };
@@ -484,177 +683,136 @@ function AdvancedCard({
       setProblem(err instanceof Error && err.message ? err.message : t('auth.errors.generic'));
     }
   };
-  const setField = (
-    rung: VideoRung,
-    field: 'target' | 'peak' | 'quality',
-    value: number | null,
-  ) => {
-    const preset = presets?.[rung];
-    const next = { ...settings.custom?.[rung] };
-    if (value === null || (preset && preset[field] === value)) delete next[field];
-    else next[field] = value;
-    void patch({ custom: { [rung]: Object.keys(next).length ? next : null } });
-  };
-  const measuredText =
-    status?.measured !== null && status?.measured !== undefined && status.measuredAt
-      ? t('videoSettings.advanced.measuredAt', {
-          count: status.measured,
-          speed: status.speed ? fmt(status.speed) : '–',
-          time: new Date(status.measuredAt).toLocaleString(i18n.language, {
-            dateStyle: 'short',
-            timeStyle: 'short',
-          }),
-        })
-      : t('videoSettings.advanced.neverMeasured');
-  const running = view.benchmark?.running === true;
   const measured = status?.measured ?? null;
-  const sessions = settings.live.maxSessions;
+  const customised =
+    Object.keys(settings.custom ?? {}).length > 0 ||
+    (measured !== null && !status?.locked && settings.live.maxSessions !== measured);
+  const elapsed = view.benchmark?.startedAt
+    ? Date.now() - new Date(view.benchmark.startedAt).getTime()
+    : 0;
+  const percent = Math.max(5, Math.min(95, Math.round((elapsed / BENCHMARK_MS) * 100)));
+  const benchTitle = !gpu
+    ? t('videoSettings.advanced.noGpu')
+    : running
+      ? t('videoSettings.advanced.benchmarkRunning')
+      : measured === null
+        ? t('videoSettings.advanced.neverMeasured')
+        : t(fresh ? 'videoSettings.advanced.measuredNow' : 'videoSettings.advanced.measuredAtStart', {
+            count: measured,
+          });
+  const benchHelp = !gpu
+    ? t('videoSettings.advanced.noGpuHelp')
+    : running
+      ? t('videoSettings.advanced.benchmarkRunningHelp')
+      : status?.speed && status.measuredAt
+        ? t('videoSettings.advanced.speedAt', {
+            speed: new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(
+              status.speed,
+            ),
+            time: new Date(status.measuredAt).toLocaleString(i18n.language, {
+              dateStyle: 'short',
+              timeStyle: 'short',
+            }),
+          })
+        : null;
   return (
-    <Card
-      anchor="video.advanced"
-      tour="video-advanced"
-      title={t('videoSettings.advanced.title')}
-      action={
-        <Button
-          variant="ghost"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} />
-          {open ? t('videoSettings.advanced.hide') : t('videoSettings.advanced.show')}
-        </Button>
-      }
+    <section
+      className="settings-block video-advanced"
+      aria-label={t('videoSettings.advanced.title')}
+      data-tour="video-advanced"
+      data-setting="video.advanced"
     >
-      {open ? (
-        <div id={bodyId}>
-          <Row
-            className="settings-row--stack"
-            leading={<Tile icon="clock" />}
-            label={t('videoSettings.advanced.benchmark')}
-            help={running ? t('videoSettings.advanced.benchmarkRunning') : measuredText}
-          >
-            <Button
-              variant="secondary"
-              disabled={running || !view.enabled}
-              onClick={() => void benchmark()}
-            >
-              {running
-                ? t('videoSettings.advanced.benchmarkBusy')
-                : t('videoSettings.advanced.rerun')}
-            </Button>
-          </Row>
-          {running && (
-            <div className="settings-card__pad">
-              <div
-                className="video-meter is-indeterminate"
-                role="progressbar"
-                aria-label={t('videoSettings.advanced.benchmark')}
-              >
-                <i />
-              </div>
-            </div>
-          )}
-          {status?.reason !== 'no-gpu' && (
-            <Row
-              className="settings-row--stack"
-              label={t('videoSettings.live.maxSessions')}
-              help={
-                measured !== null && sessions > measured
-                  ? t('videoSettings.advanced.overMeasured', { measured })
-                  : t('videoSettings.advanced.sessionsHelp')
-              }
-              htmlFor={sessionsId}
-            >
-              <Select
-                id={sessionsId}
-                className="ink-input space-limit__unit"
-                value={String(sessions)}
-                disabled={status?.locked}
-                onChange={(v) => void patch({ live: { maxSessions: Number(v) } })}
-              >
-                {Array.from({ length: VIDEO_LIVE_SESSIONS_MAX + 1 }, (_, i) => i).map((n) => (
-                  <option key={n} value={String(n)}>
-                    {n === 0 ? t('videoSettings.live.off') : n}
-                  </option>
-                ))}
-              </Select>
-              {status?.locked && (
-                <span className="space-chip">
-                  <Icon name="lock" size={12} />
-                  <code>VIDEO_LIVE_MAX_SESSIONS</code>
+      <details className="settings-fold video-advanced__fold">
+        <summary className="settings-row">
+          <Tile icon="settings" />
+          <span className="settings-row__text">
+            <span className="settings-row__label">
+              {t('videoSettings.advanced.title')}{' '}
+              {customised && <Badge tone="accent">{t('videoSettings.advanced.customised')}</Badge>}
+            </span>
+          </span>
+          <Icon name="chevronRight" size={14} className="settings-fold__chevron" />
+        </summary>
+        <div className="video-advanced__body">
+          <p className="video-advanced__intro">{t('videoSettings.advanced.intro')}</p>
+
+          <Card title={t('videoSettings.advanced.benchmark')}>
+            <div className="settings-card__pad video-bench">
+              <div className="video-bench__text">
+                <span className="settings-row__label" aria-live="polite">
+                  {benchTitle}
                 </span>
-              )}
-              {!status?.locked && measured !== null && sessions !== measured && (
-                <Button variant="ghost" onClick={() => void patch({ live: { maxSessions: null } })}>
-                  {t('videoSettings.advanced.reset')}
-                </Button>
-              )}
-            </Row>
-          )}
-          {presets &&
-            VIDEO_RUNGS.map((rung) => {
-              const own = settings.custom?.[rung];
-              const value = (field: 'target' | 'peak' | 'quality') =>
-                own?.[field] ?? presets[rung][field];
-              return (
-                <Row
-                  key={rung}
-                  className="settings-row--stack"
-                  label={
-                    <>
-                      {t(`videoSettings.rungs.${rung}`)}{' '}
-                      {own && <Badge tone="accent">{t('videoSettings.advanced.custom')}</Badge>}
-                    </>
-                  }
-                  help={t('videoSettings.advanced.rungHelp')}
+                {benchHelp && <span className="settings-row__help num">{benchHelp}</span>}
+              </div>
+              <Button
+                variant="secondary"
+                disabled={!gpu || running || !view.enabled}
+                onClick={() => void benchmark()}
+              >
+                {running ? t('videoSettings.advanced.benchmarkBusy') : t('videoSettings.advanced.rerun')}
+              </Button>
+              {running && (
+                <div
+                  className="video-meter video-bench__meter"
+                  role="progressbar"
+                  aria-label={t('videoSettings.advanced.benchmark')}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent}
                 >
-                  <div className="video-advanced__fields">
-                    <NumberField
-                      label={t('videoSettings.advanced.target')}
-                      unit="Mbit/s"
-                      step={0.1}
-                      value={mbit(value('target'))}
-                      onCommit={(n) => setField(rung, 'target', Math.round(n * 1e6))}
-                    />
-                    <NumberField
-                      label={t('videoSettings.advanced.peak')}
-                      unit="Mbit/s"
-                      step={0.1}
-                      value={mbit(value('peak'))}
-                      onCommit={(n) => setField(rung, 'peak', Math.round(n * 1e6))}
-                    />
-                    <NumberField
-                      label={param === 'global_quality' ? 'global_quality' : param.toUpperCase()}
-                      step={1}
-                      value={value('quality')}
-                      onCommit={(n) => setField(rung, 'quality', Math.round(n))}
-                    />
-                    {own && (
-                      <Button
-                        variant="ghost"
-                        onClick={() => void patch({ custom: { [rung]: null } })}
-                      >
-                        {t('videoSettings.advanced.reset')}
-                      </Button>
-                    )}
-                  </div>
-                </Row>
-              );
-            })}
+                  <i style={{ width: `${percent}%` }} />
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {gpu && status?.reason !== 'no-gpu' && <SessionsField view={view} patch={patch} />}
+
+          {presets && (
+            <Card
+              title={t('videoSettings.advanced.rates')}
+              body={`${t('videoSettings.advanced.ratesHelp')} ${t('videoSettings.advanced.qualityHelp', {
+                name: t(`videoSettings.advanced.qualityNames.${qualityName}`),
+              })}`}
+            >
+              <div className="settings-card__pad">
+                <table className="video-rtable">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('videoSettings.advanced.rung')}</th>
+                      <th scope="col">{t('videoSettings.advanced.target')}</th>
+                      <th scope="col">{t('videoSettings.advanced.peak')}</th>
+                      <th scope="col">{qualityLabel}</th>
+                      <th scope="col">
+                        <span className="ink-sr-only">{t('videoSettings.advanced.reset')}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {VIDEO_RUNGS.map((rung) => (
+                      <RungValues
+                        key={rung}
+                        rung={rung}
+                        chosen={settings.rungs[rung] !== 'off'}
+                        preset={presets[rung]}
+                        own={settings.custom?.[rung]}
+                        qualityLabel={qualityLabel}
+                        onSave={(value) => void patch({ custom: { [rung]: value } })}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
           {problem && (
-            <p className="settings-card__pad video-advanced__problem" role="alert">
+            <p className="video-advanced__problem" role="alert">
               {problem}
             </p>
           )}
         </div>
-      ) : (
-        <Row
-          label={t('videoSettings.advanced.collapsed')}
-          help={t('videoSettings.advanced.collapsedHelp')}
-        />
-      )}
-    </Card>
+      </details>
+    </section>
   );
 }
 
@@ -753,9 +911,6 @@ export function VideoSettings() {
               <span className="video-preset__name">
                 {t(`videoSettings.quality.${q}`)}
                 {q === 'balanced' && <Badge>{t('videoSettings.quality.recommended')}</Badge>}
-                {customised && q === settings.quality && (
-                  <Badge tone="accent">{t('videoSettings.advanced.customPreset')}</Badge>
-                )}
               </span>
               <span className="video-preset__desc">{t(`videoSettings.quality.${q}Help`)}</span>
               <span className="video-preset__size num">
@@ -790,8 +945,23 @@ export function VideoSettings() {
           ))}
         </div>
       </Card>
-
-      <AdvancedCard view={view} setView={setView} />
+      {customised && (
+        <p className="video-note video-custom-note">
+          <Badge tone="accent">{t('videoSettings.advanced.customPreset')}</Badge>{' '}
+          {t('videoSettings.advanced.customNote')}{' '}
+          <button
+            type="button"
+            className="video-link"
+            onClick={() =>
+              void save({
+                custom: Object.fromEntries(VIDEO_RUNGS.map((r) => [r, null])) as UpdateVideoSettings['custom'],
+              })
+            }
+          >
+            {t('videoSettings.advanced.resetAll')}
+          </button>
+        </p>
+      )}
 
       <Card
         anchor="video.renditions"
@@ -812,29 +982,18 @@ export function VideoSettings() {
             label={<span id={`video-rung-${r}`}>{t(`videoSettings.rungs.${r}`)}</span>}
             help={t(`videoSettings.rungs.${r}Help`)}
           >
-            {settings.live.enabled && settings.rungs[r] !== 'off' && (
-              <Segmented
-                label={t('videoSettings.live.modeLabel', { rung: t(`videoSettings.rungs.${r}`) })}
-                name={`video-rung-mode-${r}`}
-                value={settings.rungs[r] === 'live' ? 'live' : 'stored'}
-                disabled={locked.rungs}
-                options={(['stored', 'live'] as const).map((value) => ({
-                  value,
-                  label: t(`videoSettings.live.modes.${value}`),
-                }))}
-                onChange={(mode) => setRung(r, mode)}
-              />
+            {settings.rungs[r] === 'live' ? (
+              <span className="live-tag">{t('videoSettings.live.onlyLive')}</span>
+            ) : (
+              <span className="settings-value num">
+                {t('videoSettings.mbPerMinuteAbout', {
+                  size: number(
+                    mbPerMinute(settings.quality, r, false, custom),
+                    r === '2160' ? 0 : 1,
+                  ),
+                })}
+              </span>
             )}
-            <span className="settings-value num">
-              {settings.rungs[r] === 'live'
-                ? t('videoSettings.live.noSpace')
-                : t('videoSettings.mbPerMinuteAbout', {
-                    size: number(
-                      mbPerMinute(settings.quality, r, false, custom),
-                      r === '2160' ? 0 : 1,
-                    ),
-                  })}
-            </span>
           </Row>
         ))}
         <div className="settings-card__pad">
@@ -915,9 +1074,11 @@ export function VideoSettings() {
         </Row>
       </Card>
 
-      <LiveCard view={view} save={save} lock={lock} />
-
       <ExistingVideos view={view} setView={setView} number={number} />
+
+      <LiveCard view={view} save={save} lock={lock} number={number} />
+
+      <AdvancedCard view={view} setView={setView} />
 
       <Card
         title={t('videoSettings.encoding.title')}

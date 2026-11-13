@@ -18,6 +18,7 @@ import {
   ThumbnailSize,
   UpdateGuestSession,
   VariantQuery,
+  type VideoNoLive,
   type VideoRung,
   z,
 } from '@inkadra/shared';
@@ -292,19 +293,17 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     ]);
     const download = ctx.link.allowDownload;
     // Rungs offered live, by video (decision 0128).
-    const live = new Map<string, VideoRung[]>();
+    const live = new Map<string, { names: VideoRung[]; noLive: VideoNoLive | null }>();
     if (deps.live)
       for (const row of rows)
         if (row.kind === 'video' && ctx.assets.shown.has(row.id))
           live.set(
             row.id,
-            (
-              await offeredLive(
-                deps.live,
-                row,
-                renditions.filter((r) => r.assetId === row.id),
-              )
-            ).names,
+            await offeredLive(
+              deps.live,
+              row,
+              renditions.filter((r) => r.assetId === row.id),
+            ),
           );
     return rows
       .sort((a, b) => a.id.localeCompare(b.id))
@@ -348,7 +347,8 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
                 renditions.filter((r) => r.assetId === row.id),
                 `${assetPath(ctx.link.id, row.id)}/hls`,
                 download && row.proxyStatus === null,
-                live.get(row.id) ?? [],
+                live.get(row.id)?.names ?? [],
+                live.get(row.id)?.noLive ?? null,
               ),
             }
           : {}),

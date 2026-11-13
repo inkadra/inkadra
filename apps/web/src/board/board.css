@@ -705,6 +705,9 @@ button.fcard__play:focus-visible {
   justify-content: space-between;
   gap: 8px;
 }
+.fcard__prep-line--quiet {
+  color: rgb(255 255 255 / 0.7);
+}
 .fcard__rungs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
@@ -6074,6 +6077,28 @@ button.card__play {
   /* Under its button, not over it: `.menu` places popovers on their own elsewhere. */
   position: static;
   min-width: 210px;
+}
+.viewer-quality__note {
+  max-width: 240px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+/* "al volo" (decision 0128): a level the graphics card encodes while someone watches. */
+.live-tag {
+  display: inline-flex;
+  padding: 0 5px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-tag-purple-bg);
+  color: var(--ink-tag-purple);
+  font-size: 10px;
+  font-weight: 600;
 }
 .viewer-quality__item small {
   margin-left: auto;

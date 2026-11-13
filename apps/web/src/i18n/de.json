@@ -462,7 +462,21 @@
       "polygons_one": "{{count}} Polygon",
       "polygons_other": "{{count}} Polygone",
       "unavailable": "Format nicht unterstützt: Keine abspielbare Kopie verfügbar.",
-      "watchable": "Schon ansehbar"
+      "watchable": "Schon ansehbar",
+      "live": {
+        "liveNow": "live",
+        "liveNowText": "{{rung}}, während die Kopie entsteht",
+        "noLive": "{{reason}}: nicht live, bald ansehbar",
+        "reasons": {
+          "prores": "ProRes",
+          "dnx": "DNx",
+          "chroma": "4:2:2-Video",
+          "interlaced": "Zeilensprungvideo",
+          "hdr": "HDR",
+          "rotated": "Hochkantvideo",
+          "codec": "Dieses Format"
+        }
+      }
     },
     "voiceNote": {
       "label": "Sprachnotiz",
@@ -1987,7 +2001,9 @@
       "now": "jetzt {{quality}}",
       "preparing": "wird vorbereitet · {{percent}}%",
       "original": "Original",
-      "live": "on the fly"
+      "live": "on the fly",
+      "liveCopy": "Kopie bei {{percent}} %",
+      "liveNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um; ist die Kopie fertig, wird zu ihr gewechselt."
     }
   },
   "search": {
@@ -5828,7 +5844,7 @@
           },
           "4": {
             "title": "Erweitert",
-            "text": "Für Fachleute: GPU erneut testen und die Werte jeder Auflösung ändern. Zurücksetzen kehrt zur Stufe zurück."
+            "text": "Für Fachleute: Kartentest wiederholen, Live-Sitzungen und die Werte jeder Auflösung ändern. «Zurücksetzen» kehrt zum empfohlenen Wert zurück."
           }
         }
       }
@@ -6604,49 +6620,76 @@
       "start": "Neu erstellen"
     },
     "live": {
-      "title": "Wiedergabe on the fly",
-      "body": "Der Server bereitet eine Auflösung vor, während jemand zuschaut: Videos laufen gleich nach dem Hochladen, und Auflösungen „Nur on the fly“ brauchen keinen Platz.",
-      "enabled": "Wiedergabe on the fly",
-      "enabledHelp": "Gleich nach dem Hochladen und für Auflösungen, die du nicht speicherst.",
-      "maxSessions": "Videos on the fly gleichzeitig",
-      "perViewer": "Pro Person oder Link",
-      "perViewerHelp": "Wie viele Videos on the fly eine Person oder die Gäste eines Links gleichzeitig öffnen können.",
+      "title": "Live-Wiedergabe",
+      "body": "Während die Kopien entstehen, oder für Auflösungen, die du nicht speicherst, wandelt die Grafikkarte das Video beim Ansehen um.",
+      "enabled": "Live umwandeln",
       "modeLabel": "{{rung}}: wo sie liegt",
       "modes": {
-        "stored": "Auf der Platte speichern",
-        "live": "Nur on the fly"
+        "stored": "Auf Festplatte",
+        "live": "Nur live"
       },
-      "noSpace": "kein Platz",
-      "unavailable": "Auf diesem Server nicht verfügbar",
+      "noSpace": "kein Speicherplatz",
+      "unavailable": "Nicht verfügbar",
       "off": "Aus",
       "reasons": {
-        "no-gpu": "Braucht Hardware-Kodierung der GPU: Dieser Server kodiert mit dem Prozessor.",
+        "no-gpu": "Erfordert Hardwarekodierung auf der Grafikkarte: Auf diesem Server erstellt nur der Prozessor die Kopien.",
         "too-slow": "GPU zu langsam für Echtzeit (beim Start gemessen).",
         "failed": "Die Messung beim Start ist fehlgeschlagen: Details im Server-Log.",
         "set-off": "Vom Server abgeschaltet (VIDEO_LIVE_MAX_SESSIONS=0)."
-      }
+      },
+      "on": "Aktiv",
+      "upTo_one": "Bis zu {{count}} Person gleichzeitig. Darüber hinaus erhalten Zuschauer die fertigen Kopien oder das Original.",
+      "upTo_other": "Bis zu {{count}} Personen gleichzeitig. Darüber hinaus erhalten Zuschauer die fertigen Kopien oder das Original.",
+      "zero": "Sitzungen in den erweiterten Einstellungen auf 0 gesetzt: Live ist aus.",
+      "rungsHelp": "Für jede Auflösung: auf der Festplatte behalten oder nur beim Ansehen erstellen.",
+      "onDisk": "etwa {{size}} MB/min auf der Festplatte",
+      "onlyLive": "nur live",
+      "never": "Nie live, sie warten auf die fertigen Kopien: ProRes, DNx, 4:2:2-Video, Zeilensprung, HDR und Hochkantvideos, die die Karte nicht in Echtzeit schafft."
     },
     "advanced": {
       "title": "Erweitert",
-      "show": "Anzeigen",
-      "hide": "Ausblenden",
-      "collapsed": "Für alle, die sich mit Videokodierung auskennen",
-      "collapsedHelp": "Leistungstest, Live-Sitzungen und die Werte jeder Auflösung.",
-      "benchmark": "Leistungstest",
-      "benchmarkRunning": "Test läuft: 5 Sekunden Testvideo werden auf der GPU kodiert.",
+      "customised": "Angepasst",
+      "intro": "Für alle, die sich mit Videokodierung auskennen. Falsche Werte können körnige oder riesige Kopien oder ruckelnde Videos ergeben: «Zurücksetzen» stellt jedes Feld auf den empfohlenen Wert.",
+      "benchmark": "Leistung der Grafikkarte",
+      "benchmarkRunning": "Leistungstest läuft",
+      "benchmarkRunningHelp": "Etwa 10 Sekunden. Kopien in Arbeit werden kurz langsamer.",
       "benchmarkBusy": "Test läuft…",
       "rerun": "Leistungstest wiederholen",
-      "measuredAt_one": "Zuletzt gemessen: eine Sitzung, {{speed}}× Echtzeit ({{time}}).",
-      "measuredAt_other": "Zuletzt gemessen: {{count}} Sitzungen, {{speed}}× Echtzeit ({{time}}).",
-      "neverMeasured": "Noch nicht gemessen.",
-      "overMeasured": "Mehr als gemessen ({{measured}}): Videos können ruckeln.",
-      "sessionsHelp": "Für den ganzen Server; 0 schaltet die Live-Wiedergabe aus. Darüber hinaus erhalten Zuschauer die gespeicherten Kopien.",
+      "measuredAtStart_one": "Beim Start gemessen: {{count}} Live-Sitzung",
+      "measuredAtStart_other": "Beim Start gemessen: {{count}} Live-Sitzungen",
+      "measuredNow_one": "Gerade gemessen: {{count}} Live-Sitzung",
+      "measuredNow_other": "Gerade gemessen: {{count}} Live-Sitzungen",
+      "speedAt": "{{speed}}× Echtzeit bei 1080p · {{time}}",
+      "neverMeasured": "Noch nicht gemessen",
+      "noGpu": "Kein Test: Live braucht die Grafikkarte",
+      "noGpuHelp": "Die Kopien erstellt der Prozessor (libx264).",
+      "sessions": "Live-Sitzungen",
+      "sessionsLabel": "Personen, die gleichzeitig live ansehen können",
+      "sessionsHelp": "Gemessener Wert: {{measured}}. Von 0 (aus) bis {{max}}.",
+      "overMeasured": "Mehr als gemessen: Bei vielen Personen gleichzeitig können Videos ruckeln, und die Karte verlangsamt Kopien in Arbeit.",
+      "rates": "Bitrate und Qualität pro Auflösung",
+      "ratesHelp": "Ziel: der Durchschnitt. Spitze: das Maximum in schwierigen Szenen.",
+      "qualityHelp": "Qualität: {{name}}, niedriger ist besser.",
+      "qualityNames": {
+        "crf": "CRF von libx264",
+        "cq": "CQ von NVENC",
+        "qsv": "global_quality von Quick Sync",
+        "vaapi": "global_quality von VAAPI"
+      },
+      "rung": "Auflösung",
+      "target": "Ziel",
+      "peak": "Spitze",
+      "notChosen": "nicht gewählt",
+      "errors": {
+        "range": "Von 200 bis 80.000 kbit/s",
+        "belowTarget": "Nicht unter dem Ziel",
+        "quality": "Von 0 bis 51"
+      },
       "reset": "Zurücksetzen",
       "custom": "angepasst",
       "customPreset": "Angepasst",
-      "rungHelp": "Sie starten bei der gewählten Stufe und gelten für neue und neu erstellte Kopien.",
-      "target": "Durchschnittliche Bitrate",
-      "peak": "Spitzenbitrate"
+      "customNote": "Einige Werte wurden in den erweiterten Einstellungen geändert.",
+      "resetAll": "Zurück zu den Werten der Stufe"
     }
   }
 }

@@ -15,6 +15,7 @@ import {
   VariantParams,
   VariantQuery,
   VideoFrameQuery,
+  type VideoNoLive,
   type VideoRung,
   z,
 } from '@inkadra/shared';
@@ -123,6 +124,7 @@ export function toAsset(
   variants: VariantRow[],
   renditions?: RenditionRow[],
   live: VideoRung[] = [],
+  noLive: VideoNoLive | null = null,
 ): Asset {
   return {
     id: row.id,
@@ -142,7 +144,7 @@ export function toAsset(
     proxy: toProxy(row, variants, renditions),
     // Only where the caller read the rungs: other lists leave the field out.
     ...(renditions && row.kind === 'video'
-      ? { playback: toPlayback(renditions, hlsBase(row.id), row.proxyStatus === null, live) }
+      ? { playback: toPlayback(renditions, hlsBase(row.id), row.proxyStatus === null, live, noLive) }
       : {}),
     waveformUrl:
       row.status === 'ready' && variants.some((v) => v.size === 'waveform')
@@ -243,7 +245,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     const renditions = row.kind === 'video' ? await renditionsOf(db, [row.id]) : [];
     const live =
       deps.live && row.kind === 'video' ? await offeredLive(deps.live, row, renditions) : null;
-    return toAsset(row, variants, renditions, live?.names ?? []);
+    return toAsset(row, variants, renditions, live?.names ?? [], live?.noLive ?? null);
   });
 
   // The adaptive playback of a video (decision 0128), for every role that sees its card.

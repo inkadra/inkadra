@@ -9,7 +9,14 @@ import { describe, expect, it } from 'vitest';
 import type { asset } from '../db/schema.ts';
 import type { Storage } from '../storage.ts';
 import type { VideoEncoder } from './hwaccel.ts';
-import { LiveSessions, liveEligible, livePlaylist, liveRungs, liveVariant } from './live.ts';
+import {
+  LiveSessions,
+  liveBlocker,
+  liveEligible,
+  livePlaylist,
+  liveRungs,
+  liveVariant,
+} from './live.ts';
 import { DEFAULT_PROXY_SETTINGS } from './video.ts';
 
 const row = (over: Partial<typeof asset.$inferSelect> = {}) =>
@@ -29,6 +36,26 @@ const row = (over: Partial<typeof asset.$inferSelect> = {}) =>
 const qsv: VideoEncoder = { backend: 'qsv', label: '' };
 
 describe('live playback', () => {
+  it('names why a source never plays live, for the card', () => {
+    const media = (over: object) => ({
+      mediaInfo: { hdr: null, bits: 8, pixelFormat: 'yuv420p', interlaced: false, rotated: false, ...over },
+    });
+    expect(liveBlocker(row(), qsv)).toBeNull();
+    // Nothing to say without a GPU: live playback does not run at all.
+    expect(liveBlocker(row({ videoCodec: 'prores' }), undefined)).toBeNull();
+    expect(liveBlocker(row({ videoCodec: 'prores' }), qsv)).toBe('prores');
+    expect(liveBlocker(row({ videoCodec: 'dnxhd' }), qsv)).toBe('dnx');
+    expect(liveBlocker(row(media({ pixelFormat: 'yuv422p10le', bits: 10 })), qsv)).toBe('chroma');
+    expect(liveBlocker(row(media({ interlaced: true })), qsv)).toBe('interlaced');
+    expect(liveBlocker(row(media({ rotated: true })), qsv)).toBe('rotated');
+    expect(
+      liveBlocker(
+        row({ videoCodec: 'hevc', ...media({ hdr: 'hlg', bits: 10, pixelFormat: 'yuv420p10le' }) }),
+        qsv,
+      ),
+    ).toBe('hdr');
+  });
+
   it('lists two-second segments from the duration alone', () => {
     const text = livePlaylist(9_000, '720');
     expect(text).toContain('#EXT-X-TARGETDURATION:2');

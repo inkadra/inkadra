@@ -3,6 +3,7 @@ import { createReadStream } from 'node:fs';
 import {
   type AssetPlayback,
   VIDEO_RUNGS,
+  type VideoNoLive,
   type VideoRung,
   type VideoSettings,
 } from '@inkadra/shared';
@@ -16,6 +17,7 @@ import {
   type LiveLimits,
   type LiveSessions,
   type LiveViewer,
+  liveBlocker,
   livePlaylist,
   liveRungs,
   liveVariant,
@@ -73,6 +75,8 @@ export function toPlayback(
   original: boolean,
   /** Rungs offered live (decision 0128): playable at once, before or instead of a file. */
   live: VideoRung[] = [],
+  /** Why this source never plays live, on a server where live playback runs. */
+  noLive: VideoNoLive | null = null,
 ): AssetPlayback | null {
   if (rows.length === 0 && live.length === 0) return null;
   const sorted = [...rows].sort(order);
@@ -97,6 +101,7 @@ export function toPlayback(
         ? `${base}/master.m3u8?v=${version(sorted)}${live.length ? '-l' : ''}`
         : null,
     original,
+    ...(noLive ? { noLive } : {}),
     renditions: [
       ...sorted.map((r) => ({
         name: r.name,
@@ -283,9 +288,11 @@ export async function offeredLive(
   const settings = await context.settings();
   const ready = rows.filter(isReady).map((r) => r.name);
   const names = liveRungs(row, ready, settings, context.encoder);
+  const on = settings.live.enabled && settings.live.maxSessions > 0;
+  const noLive = on ? liveBlocker(row, context.encoder) : null;
   const limits: LiveLimits = {
     maxSessions: settings.live.maxSessions,
     perViewer: settings.live.perViewer,
   };
-  return { names, limits };
+  return { names, limits, noLive };
 }

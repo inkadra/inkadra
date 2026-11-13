@@ -462,7 +462,21 @@
       "polygons_one": "{{count}} polygone",
       "polygons_other": "{{count}} polygones",
       "unavailable": "Format non pris en charge : aucune copie lisible disponible.",
-      "watchable": "Déjà visible"
+      "watchable": "Déjà visible",
+      "live": {
+        "liveNow": "à la volée",
+        "liveNowText": "{{rung}} pendant la préparation de la copie",
+        "noLive": "{{reason}} : pas à la volée, visible bientôt",
+        "reasons": {
+          "prores": "ProRes",
+          "dnx": "DNx",
+          "chroma": "Vidéo 4:2:2",
+          "interlaced": "Vidéo entrelacée",
+          "hdr": "HDR",
+          "rotated": "Vidéo verticale",
+          "codec": "Ce format"
+        }
+      }
     },
     "voiceNote": {
       "label": "Note vocale",
@@ -1987,7 +2001,9 @@
       "now": "maintenant {{quality}}",
       "preparing": "en préparation · {{percent}} %",
       "original": "Original",
-      "live": "à la volée"
+      "live": "à la volée",
+      "liveCopy": "copie à {{percent}} %",
+      "liveNote": "Les qualités «à la volée» sont converties par la carte graphique pendant que vous regardez ; quand la copie est prête, on passe à elle."
     }
   },
   "search": {
@@ -5828,7 +5844,7 @@
           },
           "4": {
             "title": "Avancé",
-            "text": "Pour les experts : refaites le test du GPU et changez les valeurs de chaque résolution. Rétablir revient au niveau."
+            "text": "Pour les experts : refaites le test de la carte, changez les sessions à la volée et les valeurs de chaque résolution. «Rétablir» revient au conseillé."
           }
         }
       }
@@ -6605,48 +6621,75 @@
     },
     "live": {
       "title": "Lecture à la volée",
-      "body": "Le serveur prépare une résolution pendant qu’on regarde : les vidéos se lisent dès l’envoi, et les résolutions « À la volée seulement » ne prennent pas de place.",
-      "enabled": "Lecture à la volée",
-      "enabledHelp": "Juste après l’envoi, et pour les résolutions que tu ne gardes pas sur le disque.",
-      "maxSessions": "Vidéos à la volée en même temps",
-      "perViewer": "Par personne ou lien",
-      "perViewerHelp": "Combien de vidéos à la volée une personne, ou les invités d’un lien, peuvent ouvrir en même temps.",
+      "body": "Pendant la préparation des copies, ou pour les résolutions que vous ne gardez pas sur disque, la carte graphique convertit la vidéo pendant que vous la regardez.",
+      "enabled": "Convertir à la volée",
       "modeLabel": "{{rung}} : où elle est gardée",
       "modes": {
-        "stored": "Garder sur le disque",
+        "stored": "Sur disque",
         "live": "À la volée seulement"
       },
-      "noSpace": "aucune place",
-      "unavailable": "Indisponible sur ce serveur",
+      "noSpace": "aucun espace disque",
+      "unavailable": "Indisponible",
       "off": "Désactivée",
       "reasons": {
-        "no-gpu": "Demande l’encodage matériel du GPU : ce serveur encode avec le processeur.",
+        "no-gpu": "Nécessite l’encodage matériel de la carte graphique : sur ce serveur, seul le processeur fait les copies.",
         "too-slow": "GPU trop lent pour le temps réel (mesuré au démarrage).",
         "failed": "La mesure au démarrage a échoué : détails dans le journal du serveur.",
         "set-off": "Désactivée par le serveur (VIDEO_LIVE_MAX_SESSIONS=0)."
-      }
+      },
+      "on": "Active",
+      "upTo_one": "Jusqu’à {{count}} personne à la fois. Au-delà, on reçoit les copies prêtes ou l’original.",
+      "upTo_other": "Jusqu’à {{count}} personnes à la fois. Au-delà, on reçoit les copies prêtes ou l’original.",
+      "zero": "Sessions réglées sur 0 dans les paramètres avancés : la lecture à la volée est désactivée.",
+      "rungsHelp": "Pour chaque résolution : la garder sur disque, ou la faire seulement quand quelqu’un regarde.",
+      "onDisk": "environ {{size}} Mo/min sur disque",
+      "onlyLive": "à la volée seulement",
+      "never": "Jamais à la volée, ils attendent les copies prêtes : ProRes, DNx, vidéo 4:2:2, entrelacée, HDR, et les vidéos verticales que la carte ne suit pas en temps réel."
     },
     "advanced": {
       "title": "Avancé",
-      "show": "Afficher",
-      "hide": "Masquer",
-      "collapsed": "Pour qui connaît l’encodage vidéo",
-      "collapsedHelp": "Test de performances, sessions à la volée et valeurs de chaque résolution.",
-      "benchmark": "Test de performances",
-      "benchmarkRunning": "Test en cours : encodage de 5 secondes de vidéo d’essai sur le GPU.",
+      "customised": "Personnalisés",
+      "intro": "Pour qui connaît l’encodage vidéo. De mauvaises valeurs peuvent donner des copies granuleuses, énormes ou des vidéos saccadées : «Rétablir» remet chaque champ à la valeur conseillée.",
+      "benchmark": "Performances de la carte",
+      "benchmarkRunning": "Test de performances en cours",
+      "benchmarkRunningHelp": "Environ 10 secondes. Les copies en préparation ralentissent un instant.",
       "benchmarkBusy": "Test en cours…",
       "rerun": "Refaire le test de performances",
-      "measuredAt_one": "Dernière mesure : une session, {{speed}}× temps réel ({{time}}).",
-      "measuredAt_other": "Dernière mesure : {{count}} sessions, {{speed}}× temps réel ({{time}}).",
-      "neverMeasured": "Pas encore mesuré.",
-      "overMeasured": "Plus que la valeur mesurée ({{measured}}) : les vidéos peuvent saccader.",
-      "sessionsHelp": "Pour tout le serveur ; 0 désactive la lecture à la volée. Au-delà, on reçoit les copies enregistrées.",
+      "measuredAtStart_one": "Mesuré au démarrage : {{count}} session à la volée",
+      "measuredAtStart_other": "Mesuré au démarrage : {{count}} sessions à la volée",
+      "measuredNow_one": "Mesuré à l’instant : {{count}} session à la volée",
+      "measuredNow_other": "Mesuré à l’instant : {{count}} sessions à la volée",
+      "speedAt": "{{speed}}× le temps réel sur un 1080p · {{time}}",
+      "neverMeasured": "Pas encore mesuré",
+      "noGpu": "Pas de test : la lecture à la volée exige la carte graphique",
+      "noGpuHelp": "Les copies sont faites par le processeur (libx264).",
+      "sessions": "Sessions à la volée",
+      "sessionsLabel": "Personnes pouvant regarder à la volée en même temps",
+      "sessionsHelp": "Valeur mesurée : {{measured}}. De 0 (désactivé) à {{max}}.",
+      "overMeasured": "Plus que la valeur mesurée : avec beaucoup de monde, les vidéos peuvent saccader et la carte ralentit les copies en préparation.",
+      "rates": "Débit et qualité par résolution",
+      "ratesHelp": "Objectif : la moyenne. Pointe : le maximum dans les scènes difficiles.",
+      "qualityHelp": "Qualité : {{name}}, plus bas est meilleur.",
+      "qualityNames": {
+        "crf": "CRF de libx264",
+        "cq": "CQ de NVENC",
+        "qsv": "global_quality de Quick Sync",
+        "vaapi": "global_quality de VAAPI"
+      },
+      "rung": "Résolution",
+      "target": "Objectif",
+      "peak": "Pointe",
+      "notChosen": "non choisie",
+      "errors": {
+        "range": "De 200 à 80 000 kbit/s",
+        "belowTarget": "Pas sous l’objectif",
+        "quality": "De 0 à 51"
+      },
       "reset": "Rétablir",
       "custom": "personnalisé",
       "customPreset": "Personnalisée",
-      "rungHelp": "Ils partent du niveau choisi et valent pour les copies nouvelles et régénérées.",
-      "target": "Débit moyen",
-      "peak": "Débit de pointe"
+      "customNote": "Certaines valeurs ont été changées dans les paramètres avancés.",
+      "resetAll": "Revenir aux valeurs du niveau"
     }
   }
 }

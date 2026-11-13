@@ -462,7 +462,21 @@
       "polygons_one": "{{count}} poligono",
       "polygons_other": "{{count}} poligoni",
       "unavailable": "Formato non supportato: copia riproducibile non disponibile.",
-      "watchable": "Si può già guardare"
+      "watchable": "Si può già guardare",
+      "live": {
+        "liveNow": "al volo",
+        "liveNowText": "{{rung}} mentre la copia si prepara",
+        "noLive": "{{reason}}: niente al volo, si guarda tra poco",
+        "reasons": {
+          "prores": "ProRes",
+          "dnx": "DNx",
+          "chroma": "Video 4:2:2",
+          "interlaced": "Video interlacciato",
+          "hdr": "HDR",
+          "rotated": "Video verticale",
+          "codec": "Questo formato"
+        }
+      }
     },
     "voiceNote": {
       "label": "Nota vocale",
@@ -1987,7 +2001,9 @@
       "now": "ora {{quality}}",
       "preparing": "in preparazione · {{percent}}%",
       "original": "Originale",
-      "live": "al volo"
+      "live": "al volo",
+      "liveCopy": "copia al {{percent}}%",
+      "liveNote": "Le qualità «al volo» le converte la scheda grafica mentre guardi; quando la copia è pronta si passa a quella."
     }
   },
   "search": {
@@ -5828,7 +5844,7 @@
           },
           "4": {
             "title": "Avanzate",
-            "text": "Per esperti: rifai il test della GPU e cambia i valori di ogni risoluzione. Ripristina torna al livello."
+            "text": "Per esperti: rifai il test della scheda, cambia le sessioni al volo e i valori di ogni risoluzione. «Ripristina» torna al consigliato."
           }
         }
       }
@@ -6605,48 +6621,75 @@
     },
     "live": {
       "title": "Riproduzione al volo",
-      "body": "Il server prepara una risoluzione mentre qualcuno guarda: i video si vedono appena caricati, e le risoluzioni «Solo al volo» non occupano spazio.",
-      "enabled": "Riproduzione al volo",
-      "enabledHelp": "Subito dopo il caricamento, e per le risoluzioni che non salvi su disco.",
-      "maxSessions": "Video al volo insieme",
-      "perViewer": "Per persona o link",
-      "perViewerHelp": "Quanti video al volo può aprire insieme una persona, o gli ospiti di un link.",
+      "body": "Mentre le copie si preparano, o per le risoluzioni che non tieni su disco, la scheda grafica converte il video mentre lo guardi.",
+      "enabled": "Converti al volo",
       "modeLabel": "{{rung}}: dove sta",
       "modes": {
-        "stored": "Salva su disco",
+        "stored": "Su disco",
         "live": "Solo al volo"
       },
-      "noSpace": "nessuno spazio",
-      "unavailable": "Non disponibile su questo server",
+      "noSpace": "nessuno spazio su disco",
+      "unavailable": "Non disponibile",
       "off": "Spenta",
       "reasons": {
-        "no-gpu": "Richiede la codifica hardware della GPU: questo server codifica con il processore.",
+        "no-gpu": "Richiede la codifica hardware della scheda grafica: su questo server le copie si fanno solo con il processore.",
         "too-slow": "GPU troppo lenta per il tempo reale (misurata all’avvio).",
         "failed": "La misura all’avvio non è riuscita: dettagli nel log del server.",
         "set-off": "Spenta dal server (VIDEO_LIVE_MAX_SESSIONS=0)."
-      }
+      },
+      "on": "Attiva",
+      "upTo_one": "Fino a {{count}} persona insieme. Oltre, chi guarda riceve le copie pronte o l'originale.",
+      "upTo_other": "Fino a {{count}} persone insieme. Oltre, chi guarda riceve le copie pronte o l'originale.",
+      "zero": "Sessioni impostate a 0 nelle impostazioni avanzate: al volo è spento.",
+      "rungsHelp": "Per ogni risoluzione: tenerla su disco, o farla solo quando qualcuno la guarda.",
+      "onDisk": "circa {{size}} MB/min su disco",
+      "onlyLive": "solo al volo",
+      "never": "Non vanno mai al volo, e aspettano le copie pronte: ProRes, DNx, video 4:2:2, interlacciati, HDR, e i verticali che la scheda non regge in tempo reale."
     },
     "advanced": {
       "title": "Avanzate",
-      "show": "Mostra",
-      "hide": "Nascondi",
-      "collapsed": "Per chi conosce la codifica video",
-      "collapsedHelp": "Test di prestazioni, sessioni al volo e valori di ogni risoluzione.",
-      "benchmark": "Test di prestazioni",
-      "benchmarkRunning": "Test in corso: codifica di 5 secondi di prova sulla GPU.",
+      "customised": "Personalizzate",
+      "intro": "Per chi conosce la codifica video. Valori sbagliati possono dare copie sgranate, enormi o video a scatti: ogni campo si riporta al valore consigliato con «Ripristina».",
+      "benchmark": "Prestazioni della scheda",
+      "benchmarkRunning": "Test di prestazioni in corso",
+      "benchmarkRunningHelp": "Circa 10 secondi. Le copie in preparazione rallentano per un momento.",
       "benchmarkBusy": "Test in corso…",
       "rerun": "Rifai il test di prestazioni",
-      "measuredAt_one": "Ultima misura: una sessione, {{speed}}× tempo reale ({{time}}).",
-      "measuredAt_other": "Ultima misura: {{count}} sessioni, {{speed}}× tempo reale ({{time}}).",
-      "neverMeasured": "Nessuna misura ancora.",
-      "overMeasured": "Più del valore misurato ({{measured}}): i video possono andare a scatti.",
-      "sessionsHelp": "Per tutto il server; 0 spegne la riproduzione al volo. Oltre, chi guarda riceve le copie già salvate.",
+      "measuredAtStart_one": "Misurato all'avvio: {{count}} sessione al volo",
+      "measuredAtStart_other": "Misurato all'avvio: {{count}} sessioni al volo",
+      "measuredNow_one": "Misurato adesso: {{count}} sessione al volo",
+      "measuredNow_other": "Misurato adesso: {{count}} sessioni al volo",
+      "speedAt": "{{speed}}× il tempo reale su un 1080p · {{time}}",
+      "neverMeasured": "Nessuna misura ancora",
+      "noGpu": "Nessun test: al volo richiede la scheda grafica",
+      "noGpuHelp": "Le copie si fanno con il processore (libx264).",
+      "sessions": "Sessioni al volo",
+      "sessionsLabel": "Persone che possono guardare al volo insieme",
+      "sessionsHelp": "Valore misurato: {{measured}}. Da 0 (spento) a {{max}}.",
+      "overMeasured": "Più del valore misurato: con molte persone insieme i video possono andare a scatti, e la scheda rallenta le copie in preparazione.",
+      "rates": "Bitrate e qualità per risoluzione",
+      "ratesHelp": "Obiettivo: la media. Picco: il massimo nelle scene difficili.",
+      "qualityHelp": "Qualità: {{name}}, più basso è meglio.",
+      "qualityNames": {
+        "crf": "CRF di libx264",
+        "cq": "CQ di NVENC",
+        "qsv": "global_quality di Quick Sync",
+        "vaapi": "global_quality di VAAPI"
+      },
+      "rung": "Risoluzione",
+      "target": "Obiettivo",
+      "peak": "Picco",
+      "notChosen": "non scelta",
+      "errors": {
+        "range": "Da 200 a 80 000 kbit/s",
+        "belowTarget": "Non sotto l’obiettivo",
+        "quality": "Da 0 a 51"
+      },
       "reset": "Ripristina",
       "custom": "personalizzato",
       "customPreset": "Personalizzata",
-      "rungHelp": "Partono dal livello scelto. Valgono per le nuove copie e per quelle rigenerate.",
-      "target": "Bitrate medio",
-      "peak": "Bitrate di picco"
+      "customNote": "Alcuni valori sono cambiati nelle impostazioni avanzate.",
+      "resetAll": "Torna ai valori della preset"
     }
   }
 }

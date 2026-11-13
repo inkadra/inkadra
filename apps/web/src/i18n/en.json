@@ -462,7 +462,21 @@
       "polygons_one": "{{count}} polygon",
       "polygons_other": "{{count}} polygons",
       "unavailable": "Unsupported format: no playable copy is available.",
-      "watchable": "Ready to watch"
+      "watchable": "Ready to watch",
+      "live": {
+        "liveNow": "live",
+        "liveNowText": "{{rung}} while the copy is made",
+        "noLive": "{{reason}}: not live, ready to watch soon",
+        "reasons": {
+          "prores": "ProRes",
+          "dnx": "DNx",
+          "chroma": "4:2:2 video",
+          "interlaced": "Interlaced video",
+          "hdr": "HDR",
+          "rotated": "Vertical video",
+          "codec": "This format"
+        }
+      }
     },
     "voiceNote": {
       "label": "Voice note",
@@ -1987,7 +2001,9 @@
       "now": "now {{quality}}",
       "preparing": "preparing · {{percent}}%",
       "original": "Original",
-      "live": "live"
+      "live": "live",
+      "liveCopy": "copy at {{percent}}%",
+      "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it."
     }
   },
   "search": {
@@ -5828,7 +5844,7 @@
           },
           "4": {
             "title": "Advanced",
-            "text": "For experts: test the GPU again and change the values of each resolution. Reset goes back to the preset."
+            "text": "For experts: run the card test again, change live sessions and the values of each resolution. «Reset» goes back to the recommended value."
           }
         }
       }
@@ -6605,48 +6621,75 @@
     },
     "live": {
       "title": "Live playback",
-      "body": "The server prepares a resolution while someone watches: videos play as soon as they are uploaded, and resolutions set to \"Live only\" take no space.",
-      "enabled": "Live playback",
-      "enabledHelp": "Right after an upload, and for resolutions you do not keep on disk.",
-      "maxSessions": "Live videos at once",
-      "perViewer": "Per person or link",
-      "perViewerHelp": "How many live videos one person, or the guests of one link, can open at once.",
+      "body": "While the copies are made, or for resolutions you do not keep on disk, the graphics card converts the video as you watch.",
+      "enabled": "Convert live",
       "modeLabel": "{{rung}}: where it is kept",
       "modes": {
-        "stored": "Keep on disk",
+        "stored": "On disk",
         "live": "Live only"
       },
-      "noSpace": "no space",
-      "unavailable": "Not available on this server",
+      "noSpace": "no disk space",
+      "unavailable": "Not available",
       "off": "Off",
       "reasons": {
-        "no-gpu": "Needs GPU hardware encoding: this server encodes on the processor.",
+        "no-gpu": "Needs hardware encoding on the graphics card: on this server copies are made by the processor only.",
         "too-slow": "GPU too slow for real time (measured at start).",
         "failed": "The measurement at start failed: details in the server log.",
         "set-off": "Turned off by the server (VIDEO_LIVE_MAX_SESSIONS=0)."
-      }
+      },
+      "on": "On",
+      "upTo_one": "Up to {{count}} person at once. Beyond that, viewers get the ready copies or the original.",
+      "upTo_other": "Up to {{count}} people at once. Beyond that, viewers get the ready copies or the original.",
+      "zero": "Sessions set to 0 in the advanced settings: live playback is off.",
+      "rungsHelp": "For each resolution: keep it on disk, or make it only when someone watches.",
+      "onDisk": "about {{size}} MB/min on disk",
+      "onlyLive": "live only",
+      "never": "Never live, they wait for the ready copies: ProRes, DNx, 4:2:2 video, interlaced, HDR, and vertical videos the card cannot handle in real time."
     },
     "advanced": {
       "title": "Advanced",
-      "show": "Show",
-      "hide": "Hide",
-      "collapsed": "For people who know video encoding",
-      "collapsedHelp": "Performance test, live sessions and the values of each resolution.",
-      "benchmark": "Performance test",
-      "benchmarkRunning": "Test running: encoding 5 seconds of sample video on the GPU.",
+      "customised": "Customised",
+      "intro": "For people who know video encoding. Wrong values can give grainy or huge copies, or stuttering video: «Reset» brings each field back to the recommended value.",
+      "benchmark": "Graphics card performance",
+      "benchmarkRunning": "Performance test running",
+      "benchmarkRunningHelp": "About 10 seconds. Copies being made slow down for a moment.",
       "benchmarkBusy": "Testing…",
       "rerun": "Run the performance test again",
-      "measuredAt_one": "Last measured: one session, {{speed}}× real time ({{time}}).",
-      "measuredAt_other": "Last measured: {{count}} sessions, {{speed}}× real time ({{time}}).",
-      "neverMeasured": "Not measured yet.",
-      "overMeasured": "More than measured ({{measured}}): videos may stutter.",
-      "sessionsHelp": "For the whole server; 0 turns live playback off. Beyond it, viewers get the stored copies.",
+      "measuredAtStart_one": "Measured at start: {{count}} live session",
+      "measuredAtStart_other": "Measured at start: {{count}} live sessions",
+      "measuredNow_one": "Measured just now: {{count}} live session",
+      "measuredNow_other": "Measured just now: {{count}} live sessions",
+      "speedAt": "{{speed}}× real time on a 1080p · {{time}}",
+      "neverMeasured": "Not measured yet",
+      "noGpu": "No test: live playback needs the graphics card",
+      "noGpuHelp": "Copies are made by the processor (libx264).",
+      "sessions": "Live sessions",
+      "sessionsLabel": "People who can watch live at once",
+      "sessionsHelp": "Measured value: {{measured}}. From 0 (off) to {{max}}.",
+      "overMeasured": "More than measured: with many people at once videos may stutter, and the card slows down copies being made.",
+      "rates": "Bitrate and quality per resolution",
+      "ratesHelp": "Target: the average. Peak: the most in difficult scenes.",
+      "qualityHelp": "Quality: {{name}}, lower is better.",
+      "qualityNames": {
+        "crf": "libx264 CRF",
+        "cq": "NVENC CQ",
+        "qsv": "Quick Sync global_quality",
+        "vaapi": "VAAPI global_quality"
+      },
+      "rung": "Resolution",
+      "target": "Target",
+      "peak": "Peak",
+      "notChosen": "not chosen",
+      "errors": {
+        "range": "From 200 to 80,000 kbit/s",
+        "belowTarget": "Not below the target",
+        "quality": "From 0 to 51"
+      },
       "reset": "Reset",
       "custom": "custom",
       "customPreset": "Custom",
-      "rungHelp": "They start from the chosen preset. They apply to new and regenerated copies.",
-      "target": "Average bitrate",
-      "peak": "Peak bitrate"
+      "customNote": "Some values were changed in the advanced settings.",
+      "resetAll": "Back to the preset values"
     }
   }
 }

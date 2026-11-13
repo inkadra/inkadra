@@ -161,7 +161,7 @@ export const SETTINGS: SettingEntry[] = [
   s('video.renditions', 'videoSettings.rungs.title', [], ['480p', '720p', '1080p', '4K']),
   s('video.playable', 'videoSettings.playable.label', ['videoSettings.examples.title']),
   s('video.live', 'videoSettings.live.title', [
-    'videoSettings.live.maxSessions',
+    'videoSettings.live.enabled',
     'videoSettings.live.modes.live',
   ]),
   s('video.existing', 'videoSettings.existing.title', ['videoSettings.existing.regenerate']),
@@ -170,6 +170,7 @@ export const SETTINGS: SettingEntry[] = [
     'videoSettings.advanced.title',
     [
       'videoSettings.advanced.rerun',
+    'videoSettings.advanced.sessions',
       'videoSettings.advanced.target',
       'videoSettings.advanced.peak',
     ],

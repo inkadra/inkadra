@@ -462,7 +462,21 @@
       "polygons_one": "{{count}} polígono",
       "polygons_other": "{{count}} polígonos",
       "unavailable": "Formato não compatível: nenhuma cópia reproduzível disponível.",
-      "watchable": "Já se pode ver"
+      "watchable": "Já se pode ver",
+      "live": {
+        "liveNow": "em tempo real",
+        "liveNowText": "{{rung}} enquanto a cópia é preparada",
+        "noLive": "{{reason}}: nada em tempo real, vê-se em breve",
+        "reasons": {
+          "prores": "ProRes",
+          "dnx": "DNx",
+          "chroma": "Vídeo 4:2:2",
+          "interlaced": "Vídeo entrelaçado",
+          "hdr": "HDR",
+          "rotated": "Vídeo vertical",
+          "codec": "Este formato"
+        }
+      }
     },
     "voiceNote": {
       "label": "Nota de voz",
@@ -1987,7 +2001,9 @@
       "now": "agora {{quality}}",
       "preparing": "em preparação · {{percent}}%",
       "original": "Original",
-      "live": "em tempo real"
+      "live": "em tempo real",
+      "liveCopy": "cópia a {{percent}}%",
+      "liveNote": "As qualidades «em tempo real» são convertidas pela placa gráfica enquanto vê; quando a cópia está pronta, passa-se para ela."
     }
   },
   "search": {
@@ -5828,7 +5844,7 @@
           },
           "4": {
             "title": "Avançado",
-            "text": "Para especialistas: repita o teste da GPU e altere os valores de cada resolução. Repor volta ao nível."
+            "text": "Para especialistas: repita o teste da placa, altere as sessões em tempo real e os valores de cada resolução. «Repor» volta ao recomendado."
           }
         }
       }
@@ -6605,48 +6621,75 @@
     },
     "live": {
       "title": "Reprodução em tempo real",
-      "body": "O servidor prepara uma resolução enquanto alguém vê: os vídeos veem-se logo após o envio, e as resoluções «Só em tempo real» não ocupam espaço.",
-      "enabled": "Reprodução em tempo real",
-      "enabledHelp": "Logo após o envio, e para as resoluções que não guardas no disco.",
-      "maxSessions": "Vídeos em tempo real ao mesmo tempo",
-      "perViewer": "Por pessoa ou ligação",
-      "perViewerHelp": "Quantos vídeos em tempo real uma pessoa, ou os convidados de uma ligação, podem abrir ao mesmo tempo.",
+      "body": "Enquanto as cópias são preparadas, ou para as resoluções que não guarda em disco, a placa gráfica converte o vídeo enquanto o vê.",
+      "enabled": "Converter em tempo real",
       "modeLabel": "{{rung}}: onde fica",
       "modes": {
-        "stored": "Guardar no disco",
+        "stored": "Em disco",
         "live": "Só em tempo real"
       },
-      "noSpace": "sem espaço",
-      "unavailable": "Indisponível neste servidor",
+      "noSpace": "sem espaço em disco",
+      "unavailable": "Indisponível",
       "off": "Desligada",
       "reasons": {
-        "no-gpu": "Requer a codificação por hardware da GPU: este servidor codifica com o processador.",
+        "no-gpu": "Requer a codificação por hardware da placa gráfica: neste servidor as cópias são feitas só pelo processador.",
         "too-slow": "GPU demasiado lenta para tempo real (medida no arranque).",
         "failed": "A medição no arranque falhou: detalhes no registo do servidor.",
         "set-off": "Desligada pelo servidor (VIDEO_LIVE_MAX_SESSIONS=0)."
-      }
+      },
+      "on": "Ativa",
+      "upTo_one": "Até {{count}} pessoa ao mesmo tempo. Acima disso, quem vê recebe as cópias prontas ou o original.",
+      "upTo_other": "Até {{count}} pessoas ao mesmo tempo. Acima disso, quem vê recebe as cópias prontas ou o original.",
+      "zero": "Sessões definidas a 0 nas definições avançadas: o tempo real está desligado.",
+      "rungsHelp": "Para cada resolução: guardá-la em disco, ou fazê-la só quando alguém a vê.",
+      "onDisk": "cerca de {{size}} MB/min em disco",
+      "onlyLive": "só em tempo real",
+      "never": "Nunca em tempo real, esperam pelas cópias prontas: ProRes, DNx, vídeo 4:2:2, entrelaçado, HDR e os verticais que a placa não aguenta em tempo real."
     },
     "advanced": {
       "title": "Avançado",
-      "show": "Mostrar",
-      "hide": "Ocultar",
-      "collapsed": "Para quem conhece codificação de vídeo",
-      "collapsedHelp": "Teste de desempenho, sessões em tempo real e valores de cada resolução.",
-      "benchmark": "Teste de desempenho",
-      "benchmarkRunning": "Teste em curso: a codificar 5 segundos de vídeo de teste na GPU.",
+      "customised": "Personalizados",
+      "intro": "Para quem conhece codificação de vídeo. Valores errados podem dar cópias granuladas, enormes ou vídeos aos soluços: «Repor» devolve cada campo ao valor recomendado.",
+      "benchmark": "Desempenho da placa",
+      "benchmarkRunning": "Teste de desempenho em curso",
+      "benchmarkRunningHelp": "Cerca de 10 segundos. As cópias em preparação abrandam por um momento.",
       "benchmarkBusy": "A testar…",
       "rerun": "Repetir o teste de desempenho",
-      "measuredAt_one": "Última medição: uma sessão, {{speed}}× tempo real ({{time}}).",
-      "measuredAt_other": "Última medição: {{count}} sessões, {{speed}}× tempo real ({{time}}).",
-      "neverMeasured": "Ainda sem medição.",
-      "overMeasured": "Mais do que o medido ({{measured}}): os vídeos podem engasgar.",
-      "sessionsHelp": "Para todo o servidor; 0 desliga a reprodução em tempo real. Acima disso, quem vê recebe as cópias guardadas.",
+      "measuredAtStart_one": "Medido no arranque: {{count}} sessão em tempo real",
+      "measuredAtStart_other": "Medido no arranque: {{count}} sessões em tempo real",
+      "measuredNow_one": "Medido agora: {{count}} sessão em tempo real",
+      "measuredNow_other": "Medido agora: {{count}} sessões em tempo real",
+      "speedAt": "{{speed}}× tempo real num 1080p · {{time}}",
+      "neverMeasured": "Ainda sem medição",
+      "noGpu": "Sem teste: o tempo real requer a placa gráfica",
+      "noGpuHelp": "As cópias são feitas pelo processador (libx264).",
+      "sessions": "Sessões em tempo real",
+      "sessionsLabel": "Pessoas que podem ver em tempo real ao mesmo tempo",
+      "sessionsHelp": "Valor medido: {{measured}}. De 0 (desligado) a {{max}}.",
+      "overMeasured": "Mais do que o medido: com muitas pessoas ao mesmo tempo os vídeos podem engasgar, e a placa abranda as cópias em preparação.",
+      "rates": "Bitrate e qualidade por resolução",
+      "ratesHelp": "Objetivo: a média. Pico: o máximo nas cenas difíceis.",
+      "qualityHelp": "Qualidade: {{name}}, mais baixo é melhor.",
+      "qualityNames": {
+        "crf": "CRF do libx264",
+        "cq": "CQ do NVENC",
+        "qsv": "global_quality do Quick Sync",
+        "vaapi": "global_quality do VAAPI"
+      },
+      "rung": "Resolução",
+      "target": "Objetivo",
+      "peak": "Pico",
+      "notChosen": "não escolhida",
+      "errors": {
+        "range": "De 200 a 80 000 kbit/s",
+        "belowTarget": "Não abaixo do objetivo",
+        "quality": "De 0 a 51"
+      },
       "reset": "Repor",
       "custom": "personalizado",
       "customPreset": "Personalizada",
-      "rungHelp": "Partem do nível escolhido e valem para cópias novas e regeneradas.",
-      "target": "Bitrate médio",
-      "peak": "Bitrate de pico"
+      "customNote": "Alguns valores foram alterados nas definições avançadas.",
+      "resetAll": "Voltar aos valores do nível"
     }
   }
 }

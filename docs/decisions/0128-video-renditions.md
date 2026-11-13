@@ -193,8 +193,10 @@ rung live). Capability **`video-live`**; clients need nothing more than `playbac
   read in place. Ranged reads through ffmpeg were not used: ffmpeg would need the HTTP protocol,
   which `safeInput` forbids on purpose.
 - The probe facts the source rule needs are kept in `asset.media_info`.
-- Settings → Video: "Riproduzione al volo" (on/off, per person or link) and, per
-  resolution, "Salva su disco" or "Solo al volo". Live rungs take no space in the estimates.
+- Settings → Video (mockup v2, approved 13 Nov): "Riproduzione al volo" after "Video esistenti",
+  with Attiva / Spenta / Non disponibile, "Converti al volo" (disabled with the reason on the
+  software encoder; "off" when the sessions are 0), the fixed list of what never goes live and,
+  per chosen resolution, "Salva su disco" or "Solo al volo". Live rungs take no space in the estimates.
 
 ### Data and API
 
@@ -241,18 +243,29 @@ tiles with "circa N MB al minuto", rungs with their estimate and totals for this
 the playable-originals choice, "Video esistenti" with the estimate and a Rigenera action, the
 encoder details.
 
-**Avanzate** (collapsed, under the presets, for expert admins; only `packages/ui` controls):
+Per person or link stays 1 by default and is set through the API only (`live.perViewer`): the
+approved mockup has no control for it. `Asset.playback.noLive` (`prores`, `dnx`, `chroma`,
+`interlaced`, `hdr`, `rotated`, `codec`) says why a source never plays live on a server where
+live playback runs, so the card can show "ProRes: niente al volo, si guarda tra poco"; the
+Quality menu tags live levels "al volo" ("1080p · al volo · copia al 64%") with a note on what
+they are, and a card playing one says "al volo 1080p mentre la copia si prepara".
+
+**Avanzate** (a fold collapsed by default after "Riproduzione al volo", badge "Personalizzate";
+only `packages/ui` controls and tokens):
 
 - "Rifai il test di prestazioni" queues encoder detection and the live measurement on the
-  worker (job `video-benchmark`, stale after 10 minutes); the button shows the run, then the new
-  result and its time. The running worker keeps the encoder it chose at start; the new
+  worker (job `video-benchmark`, stale after 10 minutes); the button shows the run with a meter
+  (about ten seconds), then "Misurato adesso" with the new result and its time; disabled
+  without a GPU. The running worker keeps the encoder it chose at start; the new
   measurement changes the saved values and the live cap.
-- Videos at once for live playback, as above.
-- Per rung (480/720/1080/2160): target bitrate, peak bitrate and the quality value, labelled by
+- "Sessioni al volo": a number from 0 to 16, as above; hidden without a GPU.
+- A table per rung (480/720/1080/2160, those not chosen dimmed): target and peak in kbit/s and
+  the quality value, labelled by
   the parameter of the active backend (CRF on libx264, CQ on NVENC, global_quality on QSV and
   VAAPI). Fields start from the preset; an edited one is marked "personalizzato" with
-  "Ripristina", and the preset tiles show "Personalizzata". The server checks 200 kbit/s to
-  80 Mbit/s, peak at least the target, quality 0 to 51, with a clear message. Values are kept in
+  "Ripristina", and a line under the presets says "Personalizzata". The page checks as the server does and
+  says it under the field ("Da 200 a 80 000 kbit/s", "Non sotto l'obiettivo", "Da 0 a 51"); under
+  the presets "Torna ai valori della preset" drops every custom value. Values are kept in
   `instance_setting` `video` (`custom`); estimates use them, and the rung recipe gets
   `/t<target>p<peak>q<quality>`, so "Rigenera" finds the copies made with other values. Custom
   values apply as given at any frame rate, still under `VIDEO_PROXY_BITRATE` when it is set. No free ffmpeg

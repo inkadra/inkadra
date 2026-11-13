@@ -54,6 +54,9 @@ describe('toPlayback', () => {
     const waiting = toPlayback([row('480', { status: 'queued', storageKey: null })], '/x', true);
     expect(waiting?.hls).toBeNull();
     expect(waiting?.original).toBe(true);
+    // A source live playback never takes says why, for the card.
+    expect(toPlayback([row('480', { status: 'queued', storageKey: null })], '/x', false, [], 'prores')?.noLive).toBe('prores');
+    expect(waiting?.noLive).toBeUndefined();
   });
 });
 

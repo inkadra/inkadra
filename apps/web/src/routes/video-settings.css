@@ -150,35 +150,198 @@
     text-align: left;
   }
 }
-.video-advanced__fields {
+.live-tag {
+  display: inline-flex;
+  padding: 0 5px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-tag-purple-bg);
+  color: var(--ink-tag-purple);
+  font-size: 10px;
+  font-weight: 600;
+}
+.video-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-accent-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.video-link:hover {
+  text-decoration: underline;
+}
+.video-link:focus-visible {
+  border-radius: var(--ink-radius-xs);
+  box-shadow: var(--ink-focus-ring);
+  outline: none;
+}
+.video-custom-note {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.video-live__rungs {
+  display: grid;
   gap: 8px;
-  align-items: flex-end;
 }
-.video-advanced__field {
-  width: 130px;
+.video-live__rungs > p,
+.video-live__never {
+  margin: 0;
 }
-.video-advanced__problem {
-  color: var(--ink-status-danger, var(--ink-tag-red));
+.video-live__rung {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Avanzate (decision 0128): a fold of its own, collapsed by default. */
+.video-advanced__fold > summary {
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.video-advanced__fold[open] > summary {
+  border-radius: var(--ink-radius-md) var(--ink-radius-md) 0 0;
+}
+.video-advanced__body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 14px;
+  border: 1px solid var(--ink-border-default);
+  border-top: 0;
+  border-radius: 0 0 var(--ink-radius-md) var(--ink-radius-md);
+  background: var(--ink-bg-panel);
+}
+.video-advanced__body .settings-block__head,
+.video-advanced__body .settings-block__body {
+  margin-left: 0;
+}
+.video-advanced__intro {
+  margin: 0;
+  color: var(--ink-text-secondary);
   font-size: 12px;
 }
-.video-meter.is-indeterminate i {
-  width: 30%;
-  animation: video-meter-slide 1.4s var(--ink-ease-out) infinite;
+.video-advanced__number {
+  width: 76px;
+  text-align: right;
 }
-@keyframes video-meter-slide {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(340%);
-  }
+.video-advanced__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-tag-orange);
+  font-size: 12px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .video-meter.is-indeterminate i {
+.video-bench {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.video-bench__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+}
+.video-bench__meter {
+  width: 100%;
+}
+.video-rtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.video-rtable th {
+  padding: 6px;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+}
+.video-rtable td {
+  padding: 6px;
+  border-top: 1px solid var(--ink-border-muted);
+  text-align: right;
+  vertical-align: middle;
+}
+.video-rtable th:first-child,
+.video-rtable td:first-child {
+  text-align: left;
+}
+.video-rtable__rung {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.video-rtable__rung .settings-badge {
+  margin-left: 4px;
+}
+.video-rtable tr.is-off td {
+  opacity: 0.45;
+}
+.video-rtable .ink-input {
+  width: 76px;
+  height: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.video-rtable__unit {
+  margin-left: 3px;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+}
+.video-rtable__error {
+  display: block;
+  color: var(--ink-danger-fg);
+  font-size: 11px;
+}
+@media (max-width: 620px) {
+  .video-rtable thead {
+    display: none;
+  }
+  .video-rtable,
+  .video-rtable tbody,
+  .video-rtable tr,
+  .video-rtable td {
+    display: block;
     width: 100%;
-    animation: none;
-    opacity: 0.5;
   }
+  .video-rtable tr {
+    padding: 8px 0;
+    border-top: 1px solid var(--ink-border-muted);
+  }
+  .video-rtable td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 3px 0;
+    border: 0;
+    text-align: left;
+  }
+  .video-rtable td[data-l]::before {
+    content: attr(data-l);
+    color: var(--ink-text-muted);
+    font-size: 12px;
+  }
+  .video-rtable .ink-input {
+    width: 96px;
+    height: 36px;
+  }
+  .video-rtable__error {
+    width: 100%;
+    text-align: right;
+  }
+}
+.video-advanced__problem {
+  margin: 0;
+  color: var(--ink-status-danger, var(--ink-tag-red));
+  font-size: 12px;
 }
