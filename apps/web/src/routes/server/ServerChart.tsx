@@ -16,6 +16,9 @@ export interface ChartMarker {
   /** When it happened (ISO). */
   t: string;
   label: string;
+  /** Events that add up (videos converted): a label too close to the one before joins it. */
+  count?: number;
+  relabel?: (count: number) => string;
 }
 
 /** The window the chart spans, in ms, and how far apart its points are. */
@@ -37,23 +40,40 @@ export const textWidth = (text: string) => text.length * 7;
 export const tickGutter = (labels: string[]) =>
   Math.max(PAD.left, ...labels.map((s) => textWidth(s) + 6));
 
-/** Keep every event line, but label only non-overlapping boxes inside the plot. */
+/**
+ * Keep every event line, but label only non-overlapping boxes inside the plot. A label too close
+ * to the one before joins it when both count the same thing ("6 videos converted"), else it is
+ * left out.
+ */
 export function markerLabels(
   markers: ChartMarker[],
   xAt: (ms: number) => number,
   left: number,
   right: number,
 ) {
-  let end = left - 8;
-  return [...markers]
-    .sort((a, b) => Date.parse(a.t) - Date.parse(b.t))
-    .flatMap((marker) => {
-      const width = textWidth(marker.label);
-      const x = Math.max(left, Math.min(xAt(Date.parse(marker.t)) + 4, right - width));
-      if (width > right - left || x < end + 8) return [];
-      end = x + width;
-      return [{ marker, x, width }];
-    });
+  const place = (marker: ChartMarker, at: number) => {
+    const width = textWidth(marker.label);
+    return { marker, x: Math.max(left, Math.min(at + 4, right - width)), width, at };
+  };
+  const labels: Array<ReturnType<typeof place>> = [];
+  for (const marker of [...markers].sort((a, b) => Date.parse(a.t) - Date.parse(b.t))) {
+    const label = place(marker, xAt(Date.parse(marker.t)));
+    if (label.width > right - left) continue;
+    const prev = labels.at(-1);
+    if (prev && label.x < prev.x + prev.width + 8) {
+      const { count, relabel } = prev.marker;
+      if (count === undefined || !relabel || marker.relabel !== relabel) continue;
+      const total = count + (marker.count ?? 0);
+      const joined = place({ ...prev.marker, label: relabel(total), count: total }, prev.at);
+      const before = labels.at(-2);
+      if (joined.width > right - left || (before && joined.x < before.x + before.width + 8))
+        continue;
+      labels[labels.length - 1] = joined;
+      continue;
+    }
+    labels.push(label);
+  }
+  return labels.map(({ marker, x, width }) => ({ marker, x, width }));
 }
 
 /**
