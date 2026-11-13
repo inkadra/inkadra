@@ -4058,6 +4058,7 @@
     "discard": "Discard"
   },
   "appearance": {
+    "label": "Appearance",
     "title": "Project appearance",
     "options": "Project options: {{name}}",
     "symbol": "Symbol",

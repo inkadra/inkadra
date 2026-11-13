@@ -4058,6 +4058,7 @@
     "discard": "Verwerfen"
   },
   "appearance": {
+    "label": "Aussehen",
     "title": "Projekt-Darstellung",
     "options": "Projektoptionen: {{name}}",
     "symbol": "Symbol",

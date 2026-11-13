@@ -1,4 +1,5 @@
 import {
+  defaultProjectIcon,
   type InvitationResult,
   type Person,
   type Project,
@@ -25,6 +26,7 @@ import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { PeoplePicker } from '../people/PeoplePicker.tsx';
+import { AppearancePicker, AppearanceTile, useAppearance } from './ProjectAppearance.tsx';
 import './projects.css';
 
 /**
@@ -34,6 +36,16 @@ import './projects.css';
 function deviceZone(): string | undefined {
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return ProjectTimeZone.safeParse(zone).success ? zone : undefined;
+}
+
+/**
+ * The icon a project gets today when created without one: the server's default for a random
+ * id, which reads the id's last six hex digits. Random bits stand in for the id, since
+ * `crypto.randomUUID` needs a secure context and an instance can be served over plain HTTP.
+ */
+export function proposedProjectIcon() {
+  const bits = crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
+  return defaultProjectIcon(bits.toString(16).padStart(8, '0'));
 }
 
 interface Invite {
@@ -104,6 +116,8 @@ export function ProjectSetupForm({
   const { instance } = useSession();
   const detailsId = useId();
   const [name, setName] = useState('');
+  const [proposed] = useState(proposedProjectIcon);
+  const appearance = useAppearance(proposed);
   const [type, setType] = useState<ProjectType | ''>('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
@@ -128,7 +142,7 @@ export function ProjectSetupForm({
   }, [busy, onBusyChange]);
   const locked = busy || !!progress.current.project;
   const dirty =
-    !created && !locked && !!(name.trim() || start || end || email.trim() || invites.length);
+    !created && !locked && !!(name.trim() || appearance.changed || start || end || email.trim() || invites.length);
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
@@ -186,7 +200,7 @@ export function ProjectSetupForm({
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim() || dateError || busy) return;
+    if (!name.trim() || dateError || !appearance.valid || busy) return;
     if (pending) {
       const list = [...invites, pending];
       setInvites(list);
@@ -199,6 +213,7 @@ export function ProjectSetupForm({
       const p = progress.current;
       p.project ??= await api.post<Project>('/projects', {
         name,
+        icon: appearance.payload,
         type: type || null,
         shootingStart: start || null,
         shootingEnd: end || null,
@@ -214,15 +229,23 @@ export function ProjectSetupForm({
   return (
     <form className="project-setup" onSubmit={submit}>
       <fieldset disabled={locked || !!created} className="project-setup__fields">
-        <TextField
-          className="project-setup__name"
-          label={t('project.name')}
-          placeholder={t('project.name')}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoFocus
-          maxLength={120}
-          required
+        <div className="project-setup__identity">
+          <AppearanceTile appearance={appearance.shown} />
+          <TextField
+            className="project-setup__name"
+            label={t('project.name')}
+            placeholder={t('project.name')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            maxLength={120}
+            required
+          />
+        </div>
+        <AppearancePicker
+          state={appearance}
+          idPrefix={`${detailsId}appearance`}
+          label={t('appearance.label')}
         />
         <div className="project-setup__details">
           <button
@@ -393,7 +416,8 @@ export function ProjectSetupForm({
             {t('projectsPage.open')}
           </Button>
         ) : (
-          <Button type="submit" variant="primary" disabled={busy || !name.trim() || dateError}>
+          <Button type="submit" variant="primary" disabled={busy || !name.trim() || dateError || !appearance.valid}
+          >
             {error && project
               ? t('projectsPage.retry')
               : inviteCount

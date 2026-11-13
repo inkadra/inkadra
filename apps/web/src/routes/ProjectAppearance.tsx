@@ -480,6 +480,264 @@ export const PROJECT_EMOJIS = [
 type AppearanceTab = 'symbol' | 'emoji';
 const TABS: AppearanceTab[] = ['symbol', 'emoji'];
 
+/**
+ * What the appearance picker edits: the chosen icon, the open tab and the typed emoji, with
+ * the icon to save (`payload`), whether it is valid and whether it differs from `initial`.
+ */
+export function useAppearance(initial: Appearance) {
+  const [icon, setIcon] = useState<Appearance>({ ...initial });
+  const [tab, setTab] = useState<AppearanceTab>(initial.emoji ? 'emoji' : 'symbol');
+  // What is typed in the field: an emoji from the grid shows as a choice there, not as text.
+  const [typed, setTyped] = useState(
+    initial.emoji && !PROJECT_EMOJIS.includes(initial.emoji) ? initial.emoji : '',
+  );
+  const payload = { ...icon, emoji: tab === 'symbol' ? null : icon.emoji };
+  const valid = ProjectIcon.safeParse(payload).success && (tab !== 'emoji' || !!icon.emoji?.trim());
+  // Text that is not one emoji stays in the field, with its error: only a valid emoji is shown.
+  const shown = valid ? payload : { ...payload, emoji: null };
+  const changed =
+    payload.shape !== initial.shape ||
+    payload.color !== initial.color ||
+    (payload.emoji ?? null) !== (initial.emoji ?? null);
+  const reset = (next: Appearance) => {
+    setIcon(next);
+    setTyped('');
+    setTab('symbol');
+  };
+  return { icon, setIcon, tab, setTab, typed, setTyped, payload, valid, shown, changed, reset };
+}
+type AppearanceState = ReturnType<typeof useAppearance>;
+
+/** The 44 px tile that previews an appearance: the colour's tint, neutral for an emoji. */
+export function AppearanceTile({ appearance }: { appearance: Appearance }) {
+  return (
+    <div
+      className="project-appearance__tile"
+      aria-hidden="true"
+      style={
+        {
+          '--project-bg':
+            appearance.emoji || appearance.color === 'neutral'
+              ? 'var(--ink-surface-3)'
+              : `var(--ink-tag-${appearance.color}-bg)`,
+        } as CSSProperties
+      }
+    >
+      <ProjectGlyph {...appearance} />
+    </div>
+  );
+}
+
+/**
+ * Symbol/Emoji tabs over one shared panel: shapes and colours, or the emoji grid and a field.
+ * With `label` it is the compact row of New project: the label and the tabs on one line, the
+ * twelve shapes in one row and the colour's name beside the swatches.
+ */
+export function AppearancePicker({
+  state,
+  idPrefix,
+  disabled,
+  label,
+}: {
+  state: AppearanceState;
+  /** Makes the tab and panel ids unique on the page. */
+  idPrefix: string;
+  disabled?: boolean;
+  label?: string;
+}) {
+  const { t } = useTranslation();
+  const { icon, setIcon, tab, setTab, typed, setTyped, valid, shown } = state;
+  const labelId = `${idPrefix}-label`;
+  const colorName = t(`appearance.colors.${icon.color}`);
+  const tabs = (
+    <div
+      className="project-appearance__tabs"
+      role="tablist"
+      aria-label={label ? undefined : t('appearance.title')}
+      aria-labelledby={label ? labelId : undefined}
+    >
+      {TABS.map((value, index) => (
+        <button
+          type="button"
+          key={value}
+          role="tab"
+          id={`${idPrefix}-tab-${value}`}
+          aria-selected={tab === value}
+          aria-controls={`${idPrefix}-panel-${value}`}
+          tabIndex={tab === value ? 0 : -1}
+          disabled={disabled}
+          onClick={() => setTab(value)}
+          onKeyDown={(event) => {
+            if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+              event.preventDefault();
+              const step = event.key === 'ArrowLeft' ? -1 : 1;
+              const next =
+                event.key === 'Home'
+                  ? TABS[0]
+                  : event.key === 'End'
+                    ? TABS.at(-1)
+                    : TABS[(index + step + TABS.length) % TABS.length];
+              if (!next) return;
+              setTab(next);
+              document.getElementById(`${idPrefix}-tab-${next}`)?.focus();
+            }
+          }}
+        >
+          {t(`appearance.${value}`)}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div
+      className={`project-appearance__picker${label ? ' project-appearance__picker--inline' : ''}`}
+      style={
+        {
+          '--appearance-validation': `${label ? tokens.space[4] : tokens.space[6]}px`,
+        } as CSSProperties
+      }
+    >
+      {label ? (
+        <div className="project-appearance__head">
+          <span id={labelId} className="project-appearance__label">
+            {label}
+          </span>
+          {tabs}
+        </div>
+      ) : (
+        tabs
+      )}
+      {/* Symbol sizes the shared panel; Emoji scrolls inside it without resizing the dialog. */}
+      <div className="project-appearance__panels">
+        <div
+          role="tabpanel"
+          inert={tab !== 'symbol'}
+          id={`${idPrefix}-panel-symbol`}
+          aria-labelledby={`${idPrefix}-tab-symbol`}
+          hidden={tab !== 'symbol'}
+        >
+          <div
+            className="project-appearance__choices"
+            role="radiogroup"
+            aria-label={t('appearance.symbol')}
+            onKeyDown={radioKeys}
+          >
+            {ProjectIcon.shape.shape.options.map((shape) => (
+              <button
+                type="button"
+                role="radio"
+                aria-label={t(`appearance.shapes.${shape}`)}
+                title={t(`appearance.shapes.${shape}`)}
+                aria-checked={icon.shape === shape}
+                tabIndex={icon.shape === shape ? 0 : -1}
+                disabled={disabled}
+                key={shape}
+                onClick={() => setIcon({ ...icon, shape })}
+              >
+                <ProjectGlyph shape={shape} color={icon.color} />
+              </button>
+            ))}
+          </div>
+          <div className="project-appearance__color-label">
+            <span>{t('appearance.color')}</span>
+            <span>{colorName}</span>
+          </div>
+          <div className="project-appearance__color-row">
+            <div
+              className="project-appearance__swatches"
+              role="radiogroup"
+              aria-label={t('appearance.color')}
+              onKeyDown={radioKeys}
+            >
+              {COLOR_ORDER.map((color) => (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-label={t(`appearance.colors.${color}`)}
+                  aria-checked={icon.color === color}
+                  tabIndex={icon.color === color ? 0 : -1}
+                  disabled={disabled}
+                  key={color}
+                  style={{ '--swatch': screenAccent(color) } as CSSProperties}
+                  onClick={() => setIcon({ ...icon, color })}
+                />
+              ))}
+            </div>
+            {label && (
+              <span className="project-appearance__color-name" aria-hidden="true">
+                {colorName}
+              </span>
+            )}
+          </div>
+        </div>
+        <div
+          role="tabpanel"
+          className="project-appearance__emoji-panel"
+          inert={tab !== 'emoji'}
+          id={`${idPrefix}-panel-emoji`}
+          aria-labelledby={`${idPrefix}-tab-emoji`}
+          hidden={tab !== 'emoji'}
+        >
+          <div
+            className="project-appearance__emojis"
+            role="radiogroup"
+            aria-label={t('appearance.emoji')}
+            onKeyDown={radioKeys}
+          >
+            {PROJECT_EMOJIS.map((emoji, index) => (
+              <button
+                type="button"
+                role="radio"
+                aria-label={emoji}
+                aria-checked={icon.emoji === emoji}
+                tabIndex={
+                  icon.emoji === emoji ||
+                  (!PROJECT_EMOJIS.includes(icon.emoji ?? '') && index === 0)
+                    ? 0
+                    : -1
+                }
+                disabled={disabled}
+                key={emoji}
+                onClick={() => {
+                  setIcon({ ...icon, emoji });
+                  setTyped('');
+                }}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+          <label className="project-appearance__custom">
+            <span aria-hidden="true" className="project-appearance__custom-glyph">
+              {shown.emoji || '·'}
+            </span>
+            <input
+              className="project-appearance__custom-input"
+              aria-label={t('appearance.pasteEmoji')}
+              placeholder={t('appearance.pasteEmoji')}
+              disabled={disabled}
+              value={typed}
+              maxLength={32}
+              autoComplete="off"
+              onChange={(event) => {
+                const value = event.target.value;
+                setTyped(value);
+                setIcon({ ...icon, emoji: value.trim() || null });
+              }}
+            />
+          </label>
+        </div>
+        {/* Outside the tab panels, on a line kept free for it: showing it moves nothing. */}
+        {tab === 'emoji' && !!icon.emoji?.trim() && !valid && (
+          <p className="project-appearance__message project-appearance__invalid" role="alert">
+            {t('appearance.invalid')}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProjectAppearanceDialog({
   project,
   onClose,
@@ -496,12 +754,8 @@ export function ProjectAppearanceDialog({
   board?: { save: (icon: Appearance | null) => Promise<unknown> };
 }) {
   const { t } = useTranslation();
-  const [icon, setIcon] = useState<Appearance>({ ...project.icon });
-  const [tab, setTab] = useState<AppearanceTab>(project.icon.emoji ? 'emoji' : 'symbol');
-  // What is typed in the field: an emoji from the grid shows as a choice there, not as text.
-  const [typed, setTyped] = useState(
-    project.icon.emoji && !PROJECT_EMOJIS.includes(project.icon.emoji) ? project.icon.emoji : '',
-  );
+  const appearance = useAppearance(project.icon);
+  const { payload, valid } = appearance;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const allowed = canEditProjectAppearance(project);
@@ -512,14 +766,7 @@ export function ProjectAppearanceDialog({
       ?.focus();
   }, []);
   const disabled = busy || !allowed;
-  const payload = { ...icon, emoji: tab === 'symbol' ? null : icon.emoji };
-  const valid = ProjectIcon.safeParse(payload).success && (tab !== 'emoji' || !!icon.emoji?.trim());
-  const dirty =
-    allowed &&
-    !busy &&
-    (payload.shape !== project.icon.shape ||
-      payload.color !== project.icon.color ||
-      (payload.emoji ?? null) !== (project.icon.emoji ?? null));
+  const dirty = allowed && !busy && appearance.changed;
   async function save(reset = false) {
     if (!allowed || (!valid && !reset) || busy) return;
     setBusy(true);
@@ -537,8 +784,6 @@ export function ProjectAppearanceDialog({
       setBusy(false);
     }
   }
-  // Text that is not one emoji stays in the field, with its error: only a valid emoji is shown.
-  const shown = valid ? payload : { ...payload, emoji: null };
   return (
     <div className="phone-sheet project-appearance">
       <Dialog
@@ -553,7 +798,6 @@ export function ProjectAppearanceDialog({
       >
         <form
           className="project-appearance__form"
-          style={{ '--appearance-validation': `${tokens.space[6]}px` } as CSSProperties}
           onSubmit={(event) => {
             event.preventDefault();
             void save();
@@ -569,180 +813,13 @@ export function ProjectAppearanceDialog({
             ×
           </button>
           <div className="project-appearance__preview">
-            <div
-              className="project-appearance__tile"
-              style={
-                {
-                  '--project-bg':
-                    shown.emoji || icon.color === 'neutral'
-                      ? 'var(--ink-surface-3)'
-                      : `var(--ink-tag-${icon.color}-bg)`,
-                } as CSSProperties
-              }
-            >
-              <ProjectGlyph {...shown} />
-            </div>
+            <AppearanceTile appearance={appearance.shown} />
             <div className="project-appearance__name">
               <strong>{project.name}</strong>
               <small>{t(board ? 'appearance.boardPreview' : 'appearance.sidebarPreview')}</small>
             </div>
           </div>
-          <div
-            className="project-appearance__tabs"
-            role="tablist"
-            aria-label={t('appearance.title')}
-          >
-            {TABS.map((value, index) => (
-              <button
-                type="button"
-                key={value}
-                role="tab"
-                id={`appearance-tab-${value}`}
-                aria-selected={tab === value}
-                aria-controls={`appearance-panel-${value}`}
-                tabIndex={tab === value ? 0 : -1}
-                disabled={disabled}
-                onClick={() => setTab(value)}
-                onKeyDown={(event) => {
-                  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-                    event.preventDefault();
-                    const step = event.key === 'ArrowLeft' ? -1 : 1;
-                    const next =
-                      event.key === 'Home'
-                        ? TABS[0]
-                        : event.key === 'End'
-                          ? TABS.at(-1)
-                          : TABS[(index + step + TABS.length) % TABS.length];
-                    if (!next) return;
-                    setTab(next);
-                    document.getElementById(`appearance-tab-${next}`)?.focus();
-                  }
-                }}
-              >
-                {t(`appearance.${value}`)}
-              </button>
-            ))}
-          </div>
-          {/* Symbol sizes the shared panel; Emoji scrolls inside it without resizing the dialog. */}
-          <div className="project-appearance__panels">
-            <div
-              role="tabpanel"
-              inert={tab !== 'symbol'}
-              id="appearance-panel-symbol"
-              aria-labelledby="appearance-tab-symbol"
-              hidden={tab !== 'symbol'}
-            >
-              <div
-                className="project-appearance__choices"
-                role="radiogroup"
-                aria-label={t('appearance.symbol')}
-                onKeyDown={radioKeys}
-              >
-                {ProjectIcon.shape.shape.options.map((shape) => (
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-label={t(`appearance.shapes.${shape}`)}
-                    title={t(`appearance.shapes.${shape}`)}
-                    aria-checked={icon.shape === shape}
-                    tabIndex={icon.shape === shape ? 0 : -1}
-                    disabled={disabled}
-                    key={shape}
-                    onClick={() => setIcon({ ...icon, shape })}
-                  >
-                    <ProjectGlyph shape={shape} color={icon.color} />
-                  </button>
-                ))}
-              </div>
-              <div className="project-appearance__color-label">
-                <span>{t('appearance.color')}</span>
-                <span>{t(`appearance.colors.${icon.color}`)}</span>
-              </div>
-              <div
-                className="project-appearance__swatches"
-                role="radiogroup"
-                aria-label={t('appearance.color')}
-                onKeyDown={radioKeys}
-              >
-                {COLOR_ORDER.map((color) => (
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-label={t(`appearance.colors.${color}`)}
-                    aria-checked={icon.color === color}
-                    tabIndex={icon.color === color ? 0 : -1}
-                    disabled={disabled}
-                    key={color}
-                    style={{ '--swatch': screenAccent(color) } as CSSProperties}
-                    onClick={() => setIcon({ ...icon, color })}
-                  />
-                ))}
-              </div>
-            </div>
-            <div
-              role="tabpanel"
-              className="project-appearance__emoji-panel"
-              inert={tab !== 'emoji'}
-              id="appearance-panel-emoji"
-              aria-labelledby="appearance-tab-emoji"
-              hidden={tab !== 'emoji'}
-            >
-              <div
-                className="project-appearance__emojis"
-                role="radiogroup"
-                aria-label={t('appearance.emoji')}
-                onKeyDown={radioKeys}
-              >
-                {PROJECT_EMOJIS.map((emoji, index) => (
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-label={emoji}
-                    aria-checked={icon.emoji === emoji}
-                    tabIndex={
-                      icon.emoji === emoji ||
-                      (!PROJECT_EMOJIS.includes(icon.emoji ?? '') && index === 0)
-                        ? 0
-                        : -1
-                    }
-                    disabled={disabled}
-                    key={emoji}
-                    onClick={() => {
-                      setIcon({ ...icon, emoji });
-                      setTyped('');
-                    }}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-              <label className="project-appearance__custom">
-                <span aria-hidden="true" className="project-appearance__custom-glyph">
-                  {shown.emoji || '·'}
-                </span>
-                <input
-                  className="project-appearance__custom-input"
-                  aria-label={t('appearance.pasteEmoji')}
-                  placeholder={t('appearance.pasteEmoji')}
-                  disabled={disabled}
-                  value={typed}
-                  maxLength={32}
-                  autoComplete="off"
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setTyped(value);
-                    setIcon({ ...icon, emoji: value.trim() || null });
-                  }}
-                />
-              </label>
-            </div>
-            {/* Outside the tab panels, on a line kept free for it: showing it moves nothing. */}
-            {tab === 'emoji' && !!icon.emoji?.trim() && !valid && (
-              <p className="project-appearance__message project-appearance__invalid" role="alert">
-                {t('appearance.invalid')}
-              </p>
-            )}
-          </div>
+          <AppearancePicker state={appearance} idPrefix="appearance" disabled={disabled} />
           {error && (
             <p className="project-appearance__message" role="alert">
               {t('appearance.error')}
@@ -759,9 +836,7 @@ export function ProjectAppearanceDialog({
                   void save(true);
                   return;
                 }
-                setIcon(defaultProjectIcon(project.id));
-                setTyped('');
-                setTab('symbol');
+                appearance.reset(defaultProjectIcon(project.id));
               }}
             >
               {t('appearance.reset')}

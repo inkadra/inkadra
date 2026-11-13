@@ -4058,6 +4058,7 @@
     "discard": "Descartar"
   },
   "appearance": {
+    "label": "Aspecto",
     "title": "Apariencia del proyecto",
     "options": "Opciones del proyecto: {{name}}",
     "symbol": "Símbolo",

@@ -229,6 +229,15 @@
   font-weight: 500;
   color: var(--ink-text-secondary);
 }
+.project-setup__identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.project-setup__name {
+  flex: 1;
+  min-width: 0;
+}
 .project-setup__name .ink-field__label {
   position: absolute;
   width: 1px;

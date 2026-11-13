@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { DEFAULT_CLASSIFICATIONS, type Project } from '@inkadra/shared';
+import { DEFAULT_CLASSIFICATIONS, defaultProjectIcon, type Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -31,14 +31,24 @@ let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const close = vi.fn();
 const created = vi.fn();
+const dirty = vi.fn();
+/** The server's default for a project id ending in …abcdef, what Create got before the picker. */
+const serverDefault = defaultProjectIcon('9b2f3c4d-1e2f-4a3b-8c4d-00ffffabcdef');
+let random: { mockRestore: () => void };
 beforeEach(async () => {
   vi.clearAllMocks();
+  random = vi.spyOn(crypto, 'getRandomValues').mockImplementation(<T,>(array: T) => {
+    (array as Uint32Array)[0] = 0x00abcdef;
+    return array;
+  });
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => root.render(<ProjectSetupForm onClose={close} onCreated={created} />));
+  await act(async () => root.render(<ProjectSetupForm onClose={close} onCreated={created} onDirtyChange={dirty} />),
+  );
 });
 afterEach(() => {
+  random.mockRestore();
   act(() => root.unmount());
   host.remove();
 });
@@ -98,6 +108,7 @@ it('creates metadata and opens the real project', async () => {
   );
   expect(api.post).toHaveBeenCalledWith('/projects', {
     name: 'Last Run',
+    icon: serverDefault,
     type: 'short_film',
     shootingStart: '2026-11-02',
     shootingEnd: null,
@@ -233,4 +244,22 @@ it('offers configured active project types using stable identifiers', async () =
   );
   expect(api.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ type: custom.id }));
   await act(async () => setClassifications(structuredClone(DEFAULT_CLASSIFICATIONS)));
+});
+
+it('proposes the icon a project got without one, and sends the one chosen', async () => {
+  expect(host.querySelector('[role="radio"][aria-checked="true"]')?.getAttribute('aria-label')).toBe(
+    `appearance.shapes.${serverDefault.shape}`,
+  );
+  const choose = (label: string) =>
+    act(async () => host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click());
+  await choose('appearance.shapes.clapperboard');
+  await choose('appearance.colors.red');
+  expect(dirty).toHaveBeenLastCalledWith(true);
+  await blank();
+  vi.mocked(api.post).mockResolvedValueOnce({ id: 'p', rootBoardId: 'root' } as Project);
+  await submit();
+  expect(api.post).toHaveBeenCalledWith(
+    '/projects',
+    expect.objectContaining({ icon: { shape: 'clapperboard', color: 'red', emoji: null } }),
+  );
 });
