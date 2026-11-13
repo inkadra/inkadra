@@ -438,7 +438,7 @@ export const TOURS: Tour[] = [
   {
     id: 'backups',
     group: 'admin',
-    icon: 'archive',
+    icon: 'clock',
     admin: true,
     offer: 'backups',
     href: '/settings?section=backups',
