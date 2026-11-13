@@ -239,7 +239,7 @@ describe('translations', () => {
 
 it('keeps optional translator options and intentionally empty particles', async () => {
   await i18nReady;
-  const words: Words = i18n.t;
+  const words: Words = i18n.getFixedT('en');
   const options: Record<string, unknown> | undefined = undefined;
   expect(words('board.added.feminine', options)).toBe('');
   expect(words('board.added.feminine', { lng: 'en' })).toBe('');
