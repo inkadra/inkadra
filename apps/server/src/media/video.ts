@@ -17,7 +17,7 @@ import {
   rungRate,
   type VideoQuality,
 } from './quality.ts';
-import { limitedCommand, runTool, toolEnv } from './tools.ts';
+import { ffmpegError, keepTail, limitedCommand, runTool, toolEnv } from './tools.ts';
 
 export { type MediaTools, mediaTools, resetMediaTools } from './tools.ts';
 
@@ -690,7 +690,7 @@ export async function runEncode(
     });
     child.stderr.setEncoding('utf8');
     child.stderr.on('data', (chunk: string) => {
-      if (stderr.length < 4000) stderr += chunk;
+      stderr = keepTail(stderr, chunk);
     });
     child.on('error', (err) => {
       stop();
@@ -710,7 +710,7 @@ export async function runEncode(
       else
         reject(
           new Error(
-            `ffmpeg could not make the playable copy (${signal ?? `exit ${code}`}): ${stderr.trim().slice(0, 500)}`,
+            `ffmpeg could not make the playable copy (${signal ?? `exit ${code}`}): ${ffmpegError(stderr)}`,
           ),
         );
     });

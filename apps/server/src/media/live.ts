@@ -16,7 +16,7 @@ import { encoderMemory, type VideoEncoder } from './hwaccel.ts';
 import { ladderArgs, renditionCodecs, rungSide, shortSide } from './ladder.ts';
 import { rungRate } from './quality.ts';
 import { privateInput } from './scratch.ts';
-import { limitedCommand, toolEnv } from './tools.ts';
+import { ffmpegError, keepTail, limitedCommand, toolEnv } from './tools.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   decodesOnGpu,
@@ -163,6 +163,34 @@ export function liveVariant(row: AssetRow, rung: VideoRung, settings: ProxySetti
     codecs: renditionCodecs(width, height, info.frameRate),
   };
 }
+
+/**
+ * The HLS output of a live session: fMP4 segments of SEGMENT_S seconds from `n`, in `dir`.
+ * The init segment is a bare name: ffmpeg writes it next to the playlist, after the playlist's
+ * last '/'. An absolute path there doubles the folder and fails with ENOENT (exit 254); a
+ * Windows path has no '/', so the playlist is given with forward slashes.
+ */
+export const liveOutput = (dir: string, n: number) => (path: string) => [
+  '-avoid_negative_ts',
+  'disabled',
+  '-f',
+  'hls',
+  '-hls_time',
+  String(SEGMENT_S),
+  '-hls_segment_type',
+  'fmp4',
+  '-hls_flags',
+  'temp_file+independent_segments',
+  '-hls_playlist_type',
+  'event',
+  '-hls_fmp4_init_filename',
+  'init.mp4',
+  '-hls_segment_filename',
+  join(dir, 'seg-%d.m4s'),
+  '-start_number',
+  String(n),
+  path.replaceAll('\\', '/'),
+];
 
 interface Session {
   key: string;
@@ -499,28 +527,7 @@ export class LiveSessions {
     const encoder = this.deps.encoder;
     if (!encoder || encoder.backend === 'software') return;
     const from = n * SEGMENT_S;
-    const out = (path: string) => [
-      '-avoid_negative_ts',
-      'disabled',
-      '-f',
-      'hls',
-      '-hls_time',
-      String(SEGMENT_S),
-      '-hls_segment_type',
-      'fmp4',
-      '-hls_flags',
-      'temp_file+independent_segments',
-      '-hls_playlist_type',
-      'event',
-      // Absolute, as the segments: a bare name lands in the working folder of the process.
-      '-hls_fmp4_init_filename',
-      join(session.dir, 'init.mp4'),
-      '-hls_segment_filename',
-      join(session.dir, 'seg-%d.m4s'),
-      '-start_number',
-      String(n),
-      path,
-    ];
+    const out = liveOutput(session.dir, n);
     const args = ladderArgs(
       input,
       [{ rung, path: join(session.dir, 'live.m3u8') }],
@@ -543,14 +550,14 @@ export class LiveSessions {
     let stderr = '';
     child.stderr?.setEncoding('utf8');
     child.stderr?.on('data', (chunk: string) => {
-      if (stderr.length < 2000) stderr += chunk;
+      stderr = keepTail(stderr, chunk);
     });
     child.on('close', (code) => {
       if (session.child !== child) return;
       session.child = null;
       if (code === 0 || code === null) return;
       this.deps.log?.warn(
-        { assetId: row.id, rung, code, encoder: encoder.backend, stderr: stderr.slice(0, 500) },
+        { assetId: row.id, rung, code, encoder: encoder.backend, stderr: ffmpegError(stderr) },
         'live encoding stopped',
       );
     });

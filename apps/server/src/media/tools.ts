@@ -135,3 +135,19 @@ export async function runTool(bin: string, args: string[], limits: RunLimits) {
   }
   return (await run).stdout;
 }
+
+/**
+ * What ffmpeg said before it failed: its last lines, without the "libva info:" lines that
+ * Intel drivers print first and that used to fill the whole message.
+ */
+export function ffmpegError(stderr: string, max = 500): string {
+  const kept = stderr
+    .split('\n')
+    .filter((line) => !line.startsWith('libva info:'))
+    .join('\n')
+    .trim();
+  return kept.length > max ? `…${kept.slice(-max)}` : kept;
+}
+
+/** Keeps the end of a growing stderr: the error comes last. */
+export const keepTail = (stderr: string, chunk: string, max = 8000) => (stderr + chunk).slice(-max);
