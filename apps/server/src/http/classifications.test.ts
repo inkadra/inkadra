@@ -22,8 +22,10 @@ const apps: ReturnType<typeof Fastify>[] = [];
 afterEach(async () => {
   for (const app of apps.splice(0)) await app.close();
 });
+/** What the fake database holds under `instance_setting`. */
+let value: unknown;
 function setup() {
-  let value: unknown;
+  value = undefined;
   const db = {
     select: () => ({
       from: (table: unknown) => ({
