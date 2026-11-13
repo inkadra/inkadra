@@ -138,11 +138,14 @@ export function QualityMenu({
           {rungs.map((r) =>
             item(
               r.name as VideoRung,
-              rungLabel(r.height ?? r.name),
+              rungLabel(r.status === 'ready' ? (r.height ?? r.name) : r.name),
               r.status === 'ready'
                 ? null
-                : t('viewer.quality.preparing', { percent: r.progress ?? 0 }),
-              r.status !== 'ready',
+                : r.live
+                  ? t('viewer.quality.live')
+                  : t('viewer.quality.preparing', { percent: r.progress ?? 0 }),
+              // A rung offered live plays before its file is made (decision 0128).
+              r.status !== 'ready' && !r.live,
             ),
           )}
           {original && (

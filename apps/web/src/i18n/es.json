@@ -1986,7 +1986,8 @@
       "autoAt": "Auto · {{quality}}",
       "now": "ahora {{quality}}",
       "preparing": "preparando · {{percent}}%",
-      "original": "Original"
+      "original": "Original",
+      "live": "al vuelo"
     }
   },
   "search": {
@@ -5820,6 +5821,10 @@
           "2": {
             "title": "Solo para los nuevos",
             "text": "Regéneralas cuando quieras: las copias viejas se quedan hasta que las nuevas estén listas."
+          },
+          "3": {
+            "title": "Al vuelo",
+            "text": "Las resoluciones que no guardas se preparan mientras alguien mira, dentro del límite que elijas."
           }
         }
       }
@@ -6593,6 +6598,22 @@
         "missing": "Solo los que no tienen copias"
       },
       "start": "Regenerar"
+    },
+    "live": {
+      "title": "Reproducción al vuelo",
+      "body": "El servidor prepara una resolución mientras alguien mira: los vídeos se ven en cuanto se suben, y las resoluciones «Solo al vuelo» no ocupan espacio.",
+      "enabled": "Reproducción al vuelo",
+      "enabledHelp": "Justo después de la subida, y para las resoluciones que no guardas en disco.",
+      "maxSessions": "Vídeos al vuelo a la vez",
+      "maxSessionsHelp": "Para todo el servidor. Por encima, quien mira recibe las copias ya guardadas.",
+      "perViewer": "Por persona o enlace",
+      "perViewerHelp": "Cuántos vídeos al vuelo puede abrir a la vez una persona, o los invitados de un enlace.",
+      "modeLabel": "{{rung}}: dónde se guarda",
+      "modes": {
+        "stored": "Guardar en disco",
+        "live": "Solo al vuelo"
+      },
+      "noSpace": "sin espacio"
     }
   }
 }

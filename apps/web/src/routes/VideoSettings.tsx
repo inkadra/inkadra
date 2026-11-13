@@ -9,8 +9,17 @@ import {
   type VideoRung,
   type VideoSettingsView,
 } from '@inkadra/shared';
-import { Button, Checkbox, ChoiceTile, Dialog, DialogActions, Icon } from '@inkadra/ui';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  Button,
+  Checkbox,
+  ChoiceTile,
+  Dialog,
+  DialogActions,
+  Icon,
+  Select,
+  Switch,
+} from '@inkadra/ui';
+import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { trackSave } from './settings-save.ts';
@@ -289,6 +298,102 @@ function ExistingVideos({
   );
 }
 
+const SESSION_CHOICES = [1, 2, 3, 4, 6, 8];
+
+/**
+ * "Riproduzione al volo" (decision 0128): rungs encoded while someone watches, right after an
+ * upload and for those not kept on disk, within limits of sessions at once.
+ */
+function LiveCard({
+  view,
+  save,
+  lock,
+}: {
+  view: VideoSettingsView;
+  save: (patch: UpdateVideoSettings) => Promise<void>;
+  lock: (name: string) => ReactNode;
+}) {
+  const { t } = useTranslation();
+  const { live } = view.settings;
+  const maxId = useId();
+  const perId = useId();
+  const off = () => {
+    // Rungs offered only live would be offered nowhere: they are kept on disk instead.
+    const rungs = Object.fromEntries(
+      VIDEO_RUNGS.map((r) => [r, view.settings.rungs[r] === 'live' ? 'stored' : view.settings.rungs[r]]),
+    ) as UpdateVideoSettings['rungs'];
+    void save({ live: { enabled: false }, rungs });
+  };
+  return (
+    <Card
+      anchor="video.live"
+      tour="video-live"
+      title={t('videoSettings.live.title')}
+      body={t('videoSettings.live.body')}
+      action={view.locked.live && lock('VIDEO_LIVE')}
+    >
+      <Row
+        leading={<Tile icon="play" tone="teal" />}
+        label={<span id="video-live-label">{t('videoSettings.live.enabled')}</span>}
+        help={t('videoSettings.live.enabledHelp')}
+      >
+        <Switch
+          checked={live.enabled}
+          disabled={view.locked.live}
+          aria-labelledby="video-live-label"
+          onChange={(e) =>
+            e.currentTarget.checked ? void save({ live: { enabled: true } }) : off()
+          }
+        />
+      </Row>
+      {live.enabled && (
+        <>
+          <Row
+            label={t('videoSettings.live.maxSessions')}
+            help={t('videoSettings.live.maxSessionsHelp')}
+            htmlFor={maxId}
+          >
+            <Select
+              id={maxId}
+              className="ink-input space-limit__unit"
+              value={String(live.maxSessions)}
+              onChange={(v) => void save({ live: { maxSessions: Number(v) } })}
+            >
+              {[...new Set([...SESSION_CHOICES, live.maxSessions])]
+                .sort((a, b) => a - b)
+                .map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n}
+                  </option>
+                ))}
+            </Select>
+          </Row>
+          <Row
+            label={t('videoSettings.live.perViewer')}
+            help={t('videoSettings.live.perViewerHelp')}
+            htmlFor={perId}
+          >
+            <Select
+              id={perId}
+              className="ink-input space-limit__unit"
+              value={String(live.perViewer)}
+              onChange={(v) => void save({ live: { perViewer: Number(v) } })}
+            >
+              {[1, 2, 3, 4]
+                .filter((n) => n <= live.maxSessions)
+                .map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n}
+                  </option>
+                ))}
+            </Select>
+          </Row>
+        </>
+      )}
+    </Card>
+  );
+}
+
 /** Settings → Server → Video (decision 0128). */
 export function VideoSettings() {
   const { t, i18n } = useTranslation();
@@ -303,7 +408,8 @@ export function VideoSettings() {
   const size = (mb: number) =>
     mb >= 1000 ? `${number(mb / 1000, 1)} GB` : `${number(Math.round(mb))} MB`;
   const { settings, locked, encoder } = view;
-  const chosen = VIDEO_RUNGS.filter((r) => settings.rungs[r] !== 'off');
+  // Space counts only the rungs kept on disk: live ones take none.
+  const chosen = VIDEO_RUNGS.filter((r) => settings.rungs[r] === 'stored');
   const perMinute = copiesMbPerMinute(settings.quality, chosen);
   const all = libraryMb(view, settings.quality, chosen);
   const videos = view.library.reduce((sum, r) => sum + r.videos, 0);
@@ -315,8 +421,8 @@ export function VideoSettings() {
       <code>{name}</code>
     </span>
   );
-  const setRung = (rung: VideoRung, on: boolean) => {
-    const next = { ...settings.rungs, [rung]: on ? 'stored' : 'off' } as const;
+  const setRung = (rung: VideoRung, mode: 'stored' | 'live' | 'off') => {
+    const next = { ...settings.rungs, [rung]: mode };
     // At least one resolution stays chosen.
     if (VIDEO_RUNGS.every((r) => next[r] === 'off')) return;
     void save({ rungs: next });
@@ -410,16 +516,31 @@ export function VideoSettings() {
                 checked={settings.rungs[r] !== 'off'}
                 disabled={locked.rungs}
                 aria-labelledby={`video-rung-${r}`}
-                onChange={(e) => setRung(r, e.currentTarget.checked)}
+                onChange={(e) => setRung(r, e.currentTarget.checked ? 'stored' : 'off')}
               />
             }
             label={<span id={`video-rung-${r}`}>{t(`videoSettings.rungs.${r}`)}</span>}
             help={t(`videoSettings.rungs.${r}Help`)}
           >
+            {settings.live.enabled && settings.rungs[r] !== 'off' && (
+              <Segmented
+                label={t('videoSettings.live.modeLabel', { rung: t(`videoSettings.rungs.${r}`) })}
+                name={`video-rung-mode-${r}`}
+                value={settings.rungs[r] === 'live' ? 'live' : 'stored'}
+                disabled={locked.rungs}
+                options={(['stored', 'live'] as const).map((value) => ({
+                  value,
+                  label: t(`videoSettings.live.modes.${value}`),
+                }))}
+                onChange={(mode) => setRung(r, mode)}
+              />
+            )}
             <span className="settings-value num">
-              {t('videoSettings.mbPerMinuteAbout', {
-                size: number(rungMbPerMinute(settings.quality, r), r === '2160' ? 0 : 1),
-              })}
+              {settings.rungs[r] === 'live'
+                ? t('videoSettings.live.noSpace')
+                : t('videoSettings.mbPerMinuteAbout', {
+                    size: number(rungMbPerMinute(settings.quality, r), r === '2160' ? 0 : 1),
+                  })}
             </span>
           </Row>
         ))}
@@ -500,6 +621,8 @@ export function VideoSettings() {
           />
         </Row>
       </Card>
+
+      <LiveCard view={view} save={save} lock={lock} />
 
       <ExistingVideos view={view} setView={setView} number={number} />
 
