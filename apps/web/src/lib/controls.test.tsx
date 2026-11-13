@@ -399,6 +399,28 @@ it('keeps required and the bounds blocking a form behind the touch trigger', asy
   }
 });
 
+it('consumes Escape on the open trigger inside a parent dialog', async () => {
+  const parentKey = vi.fn();
+  await act(async () =>
+    root.render(
+      <dialog open onKeyDown={parentKey}>
+        <DateField label="Due" value="2026-11-20" onChange={() => {}} />
+      </dialog>,
+    ),
+  );
+  const input = host.querySelector('input')!;
+  await act(async () => input.click());
+  await act(async () => input.focus());
+  await act(async () =>
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(parentKey).not.toHaveBeenCalled();
+  expect(host.querySelector('.ink-date__layer')?.classList.contains('is-closing')).toBe(true);
+  expect(host.querySelector('dialog')?.open).toBe(true);
+});
+
 it('keeps a focused disabled day as the keyboard cursor without selecting the old value', async () => {
   const onChange = vi.fn();
   await act(async () =>

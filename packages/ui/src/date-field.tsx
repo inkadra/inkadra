@@ -366,7 +366,12 @@ export function DateField({
         onKeyDown={(e) => {
           onKeyDown?.(e);
           if (e.defaultPrevented) return;
-          if (e.key === 'Enter' || e.key === ' ' || (e.altKey && e.key === 'ArrowDown')) {
+          if (e.key === 'Escape' && phase === 'open') {
+            // Back on the field from the calendar: Escape closes it, not a dialog around it.
+            e.preventDefault();
+            e.stopPropagation();
+            close();
+          } else if (e.key === 'Enter' || e.key === ' ' || (e.altKey && e.key === 'ArrowDown')) {
             e.preventDefault();
             show();
           }
