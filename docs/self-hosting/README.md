@@ -412,3 +412,8 @@ plugin can serve precompressed files, but the web build does not produce those f
 Already encoded responses, media, ranged requests, downloadable files and API streams keep their
 original encoding. Collaboration and WebSocket connections are unaffected. A proxy may compress
 other text responses; it should preserve `Vary: Accept-Encoding` and existing `Content-Encoding`.
+
+Inkadra is free and developed in the open; if it is useful to you, a donation on
+[Ko-fi](https://ko-fi.com/teovader) helps keep it going. Tell us how your installation went and
+what was unclear in this guide in [GitHub Discussions](https://github.com/inkadra/inkadra/discussions)
+or an [issue](https://github.com/inkadra/inkadra/issues/new/choose).

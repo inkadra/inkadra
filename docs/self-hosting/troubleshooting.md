@@ -78,6 +78,5 @@ page in the proxy's style (not Inkadra's) gives it away.
 shows what the health check saw. For `web` and `all` it calls `/api/v1/health`, for `collab`
 an HTTP check on the collaboration server's `/`; `worker` is healthy while it runs.
 
-If these checks do not explain the problem, open an [issue](https://github.com/inkadra/inkadra/issues/new/choose) with the
-output of `docker compose ps`, the logs and your proxy configuration, with secrets and domains
-removed.
+Problem not listed here? Open a [discussion](https://github.com/inkadra/inkadra/discussions)
+with the relevant log lines, with secrets and private addresses removed.

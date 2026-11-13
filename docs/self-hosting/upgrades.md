@@ -449,3 +449,8 @@ tag. CI runs in full (tests, end-to-end, the reverse proxy examples, a vulnerabi
 the image), builds amd64 and arm64 on native runners without build cache, publishes `X.Y.Z`,
 `X.Y` and `latest`, and attaches the deployment files to the release. Versions with a suffix
 (`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
+
+Inkadra is free and developed in the open; if it is useful to you, a donation on
+[Ko-fi](https://ko-fi.com/teovader) helps keep it going. Tell us how your upgrade went and
+what was unclear in this guide in [GitHub Discussions](https://github.com/inkadra/inkadra/discussions)
+or an [issue](https://github.com/inkadra/inkadra/issues/new/choose).
