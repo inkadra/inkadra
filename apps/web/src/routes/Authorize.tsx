@@ -3,8 +3,9 @@ import { Avatar, Button, Logo, Wordmark } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useSearchParams } from 'react-router';
-import { api, authApi, RequestError } from '../lib/api.ts';
+import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { useFreshSignIn } from './useFreshSignIn.tsx';
 import './login.css';
 
 const CLIENTS: AppClient[] = ['clipper', 'mobile'];
@@ -41,6 +42,27 @@ export function Authorize() {
     !!request.codeChallenge &&
     request.codeChallengeMethod === 'S256';
 
+  const fresh = useFreshSignIn(
+    async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        const { redirectTo } = await api.post<AppAuthorizationRedirect>(
+          '/app-authorizations',
+          request,
+        );
+        window.location.assign(redirectTo);
+      } finally {
+        setBusy(false);
+      }
+    },
+    () => setError(t('authorize.failed')),
+  );
+
+  async function allow() {
+    await fresh.run(null);
+  }
+
   if (!user)
     return (
       <Navigate
@@ -48,32 +70,6 @@ export function Authorize() {
         replace
       />
     );
-
-  async function allow() {
-    setBusy(true);
-    setError(null);
-    try {
-      const { redirectTo } = await api.post<AppAuthorizationRedirect>(
-        '/app-authorizations',
-        request,
-      );
-      window.location.assign(redirectTo);
-    } catch (err) {
-      if (
-        err instanceof RequestError &&
-        (err.details as { reason?: string })?.reason === 'reauth_required'
-      ) {
-        setError(t('auth.errors.reauthRequired'));
-        await authApi.signOut();
-        window.location.assign(
-          `/login?next=${encodeURIComponent(location.pathname + location.search)}`,
-        );
-        return;
-      }
-      setError(t('authorize.failed'));
-      setBusy(false);
-    }
-  }
 
   // The server checks the address and adds `error=access_denied`; if it refuses, nobody
   // is waiting for an answer and the page only says that no access was given.
@@ -96,6 +92,7 @@ export function Authorize() {
 
   return (
     <div className="login">
+      {fresh.challenge}
       <div className="login__dots" aria-hidden="true" />
       <main className="login__card">
         <div className="login__brand">

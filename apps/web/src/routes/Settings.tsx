@@ -59,6 +59,7 @@ import { MySpaceCard } from './StorageSpace.tsx';
 import { trackSave } from './settings-save.ts';
 import { isSettingsHome, settingsSection } from './settings-sections.ts';
 import { AutosaveText, Badge, Card, Row, Segmented, Tile, useIsPhone } from './settings-ui.tsx';
+import { useFreshSignIn } from './useFreshSignIn.tsx';
 import { VideoSettings } from './VideoSettings.tsx';
 import './projects.css';
 import { ProviderIcon } from './ProviderIcon.tsx';
@@ -1024,20 +1025,23 @@ function Tokens() {
     status.clear();
   };
 
+  const fresh = useFreshSignIn(async (name: string) => {
+    setOpen(true);
+    setName(name);
+    setCreated(await api.post<CreatedPersonalToken>('/me/tokens', { name: name.trim() }));
+    setName('');
+    await load();
+  }, status.fail);
+
   async function create(e: FormEvent) {
     e.preventDefault();
     status.clear();
-    try {
-      setCreated(await api.post<CreatedPersonalToken>('/me/tokens', { name: name.trim() }));
-      setName('');
-      await load();
-    } catch (err) {
-      status.fail(err);
-    }
+    await fresh.run(name);
   }
 
   return (
     <>
+      {fresh.challenge}
       <Card anchor="apps.clipper" title={t('settingsUi.apps.clipper')}>
         <ClipperRow connected={items?.some((tk) => tk.client === 'clipper') ?? false} />
       </Card>
@@ -1046,7 +1050,7 @@ function Tokens() {
         title={t('settings.tokens.title')}
         body={t('settings.tokens.body')}
         action={
-          <Button variant="ghost" icon="plus" onClick={() => setOpen(true)}>
+          <Button data-tour="apps-tokens" variant="ghost" icon="plus" onClick={() => setOpen(true)}>
             {t('settingsUi.account.newToken')}
           </Button>
         }

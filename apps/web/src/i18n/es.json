@@ -5188,6 +5188,19 @@
       "role2": "Invitar"
     },
     "tours": {
+      "appsTokens": {
+        "name": "Apps and tokens",
+        "steps": {
+          "0": {
+            "title": "Create a token",
+            "text": "Name a token for the app you want to connect. Copy it once it is created."
+          },
+          "1": {
+            "title": "Confirm your identity",
+            "text": "If your sign-in is too old, confirm with your password or provider. Inkadra then retries without losing the token name."
+          }
+        }
+      },
       "welcome": {
         "steps": {
           "0": {

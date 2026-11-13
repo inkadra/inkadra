@@ -136,8 +136,8 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   await signIn(page, member);
   await expect(page.getByRole('heading', { name: /Nora$/ })).toBeVisible();
   await page.goto('/settings?section=tutorials');
-  // Welcome and Storyboard seen, of the welcome and the 24 tours of a member.
-  await expect(page.getByText('2 di 25 visti')).toBeVisible();
+  // Welcome and Storyboard seen, of the welcome and the 25 tours of a member.
+  await expect(page.getByText('2 di 26 visti')).toBeVisible();
   await page.getByRole('button', { name: 'Riproduci Storyboard' }).click();
   // Far from a storyboard the steps are cards, never a blank screen.
   const tour = page.locator('dialog.tour');
