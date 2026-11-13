@@ -84,6 +84,14 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
     expect(check(direct, 'public_url_matches_request')?.status).toBe('warning');
   });
 
+  it('limits how often it runs before setup', async () => {
+    // Its own address, so the other checks of this file keep theirs.
+    const codes: number[] = [];
+    for (let i = 0; i < 12; i++)
+      codes.push((await get({ 'x-forwarded-for': '203.0.113.99' })).statusCode);
+    expect(codes).toContain(429);
+  });
+
   it('needs an administrator once the first account exists', async () => {
     const signUp = await app.inject({
       method: 'POST',
@@ -120,6 +128,19 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
     });
   });
 
+  it('does not limit an administrator who reloads the app (#681)', async () => {
+    const signIn = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      headers: { origin: config.PUBLIC_URL, ...viaProxy },
+      payload: { email: 'admin@example.com', password: 'correct-horse-battery' },
+    });
+    const codes: number[] = [];
+    for (let i = 0; i < 12; i++)
+      codes.push((await get({ ...viaProxy, cookie: cookieOf(signIn) })).statusCode);
+    expect(codes).toEqual(Array(12).fill(200));
+  });
+
   it('refuses members who are not administrators', async () => {
     const signUp = await app.inject({
       method: 'POST',
@@ -133,9 +154,4 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
     expect(res.json()).toMatchObject({ error: { code: 'forbidden' } });
   });
 
-  it('limits how often it runs', async () => {
-    const codes: number[] = [];
-    for (let i = 0; i < 12; i++) codes.push((await get()).statusCode);
-    expect(codes).toContain(429);
-  });
 });
