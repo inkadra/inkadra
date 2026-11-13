@@ -3663,7 +3663,8 @@
       "apps": "App collegate",
       "help": "Aiuto e tutorial",
       "reports": "Segnalazioni",
-      "general": "Generale"
+      "general": "Generale",
+      "video": "Video"
     },
     "leads": {
       "account": "Il tuo profilo e come accedi.",
@@ -3681,7 +3682,8 @@
       "board": "Come si comportano le tue board e quali strumenti hai nella barra in basso. Vale solo per te, su ogni dispositivo.",
       "apps": "Quello che si collega al tuo account da fuori: calendario, estensione del browser, token.",
       "instance": "Il nome dell’istanza e quanto manca per finire la configurazione.",
-      "reports": "Dove vanno le segnalazioni che le persone inviano da «Segnala un problema», e quelle ricevute."
+      "reports": "Dove vanno le segnalazioni che le persone inviano da «Segnala un problema», e quelle ricevute.",
+      "video": "Inkadra prepara copie più leggere dei video, in più risoluzioni: chi guarda riceve quella adatta alla sua connessione. Gli originali non vengono mai toccati."
     },
     "autosave": {
       "idle": "Salvataggio automatico",
@@ -5789,6 +5791,23 @@
             "text": "Muoviti con ↑↓ e apri con Invio: la pagina scorre fino alla riga e la evidenzia. Esc cancella il testo."
           }
         }
+      },
+      "videoCopies": {
+        "name": "Copie dei video",
+        "steps": {
+          "0": {
+            "title": "Chi codifica",
+            "text": "La scheda grafica o il processore: lo trova il server all’avvio."
+          },
+          "1": {
+            "title": "Qualità e spazio",
+            "text": "Tre livelli, con i MB al minuto per le risoluzioni scelte."
+          },
+          "2": {
+            "title": "Solo per i nuovi",
+            "text": "I video già caricati tengono le loro copie finché non le rigeneri."
+          }
+        }
       }
     }
   },
@@ -6462,5 +6481,75 @@
     "storyboardLink_other": "Giornate di ripresa: {{count}} · Apri Produzione",
     "storyboardMissing": "Piano riprese e Troupe ora sono in Produzione · Aggiungila",
     "storyboardWaiting": "Piano riprese e Troupe ora sono in Produzione · Chiedi a chi può modificare il progetto di aggiungerla"
+  },
+  "videoSettings": {
+    "encoder": {
+      "off": "Copie dei video spente",
+      "offText": "Il server non prepara copie: VIDEO_PROXIES è spento o il worker non ha ffmpeg.",
+      "cpu": "Solo processore",
+      "cpuText": "Nessuna scheda grafica utilizzabile · una copia alla volta · più lento",
+      "gpuText_one": "La scheda grafica prepara le copie · una alla volta",
+      "gpuText_other": "La scheda grafica prepara le copie · {{count}} alla volta",
+      "hardware": "Codifica hardware",
+      "cpuOnly": "Solo CPU",
+      "av1": "AV1 disponibile"
+    },
+    "quality": {
+      "title": "Qualità delle copie",
+      "body": "Vale per i video caricati da ora in poi. Le stime sono per le risoluzioni scelte qui sotto.",
+      "light": "Leggera",
+      "balanced": "Bilanciata",
+      "high": "Alta",
+      "lightHelp": "Occupa poco. Va bene per riferimenti e montati di lavoro.",
+      "balancedHelp": "Immagine pulita anche con grana e movimento.",
+      "highHelp": "Per la revisione del girato e la correzione colore.",
+      "recommended": "Consigliata"
+    },
+    "mbPerMinute": "MB al minuto",
+    "gbPerHour": "circa {{size}} GB all'ora",
+    "mbPerMinuteAbout": "circa {{size}} MB/min",
+    "about": "circa",
+    "rungs": {
+      "title": "Risoluzioni",
+      "480": "480p",
+      "720": "720p",
+      "1080": "1080p",
+      "2160": "2160p (4K)",
+      "480Help": "Per le connessioni lente e i dati del telefono.",
+      "720Help": "HD: la qualità delle card sulla board.",
+      "1080Help": "Full HD, a schermo intero.",
+      "2160Help": "Solo per gli originali in 4K. Occupa molto.",
+      "note": "Un video non viene mai ingrandito: un originale in 720p riceve solo 480p e 720p."
+    },
+    "totals": {
+      "minute": "Un minuto di video",
+      "hour": "Un'ora di video",
+      "library_one": "Il tuo video ({{duration}})",
+      "library_other": "I tuoi {{count}} video ({{duration}})",
+      "duration": "{{hours}} h {{minutes}} min"
+    },
+    "examples": {
+      "title": "Un minuto di originale, e le sue copie",
+      "prores": "ProRes 422 HQ · 4K",
+      "mirrorless": "H.264 da mirrorless · 4K, 100 Mbit/s",
+      "iphone4k": "iPhone · 4K",
+      "iphoneHd": "iPhone · 1080p",
+      "copies": "{{original}} → copie {{copies}}"
+    },
+    "playable": {
+      "label": "Video che il browser riproduce già",
+      "help": "Un MP4 in 4K si riproduce, ma su una connessione lenta si blocca.",
+      "heavy": "Copie solo se pesanti",
+      "always": "Sempre",
+      "never": "Mai"
+    },
+    "encoding": {
+      "title": "Codifica",
+      "detected": "Rilevata all'avvio",
+      "encoder": "Encoder",
+      "format": "Formato",
+      "h264": "H.264: si riproduce su ogni browser e telefono.",
+      "av1": "Questa scheda sa codificare anche AV1; Inkadra non lo usa ancora."
+    }
   }
 }

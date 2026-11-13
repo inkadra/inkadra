@@ -56,6 +56,7 @@ import { ModuleSettings } from './ModuleSettings.tsx';
 import { SettingsHome } from './SettingsHome.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
 import { MySpaceCard } from './StorageSpace.tsx';
+import { VideoSettings } from './VideoSettings.tsx';
 import { trackSave } from './settings-save.ts';
 import { isSettingsHome, settingsSection } from './settings-sections.ts';
 import { AutosaveText, Badge, Card, Row, Segmented, Tile, useIsPhone } from './settings-ui.tsx';
@@ -112,6 +113,8 @@ export function Settings() {
         );
       case 'classifications':
         return <ClassificationSettings />;
+      case 'video':
+        return <VideoSettings />;
       default:
         return <InstanceSettings section={page.id} setup={setup} />;
     }
