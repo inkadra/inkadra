@@ -121,7 +121,6 @@ test('finds settings, people, values and reports, and opens the row of each', as
     await search.fill('anto');
     const listbox = page.getByRole('listbox', { name: 'Risultati della ricerca' });
     await expect(listbox.getByRole('option', { name: /Antonino Russo/ }).first()).toBeVisible();
-    await expect(listbox.getByRole('group', { name: 'Persone' })).toContainText(invited);
     await expect(listbox.getByRole('group', { name: 'Segnalazioni ricevute' })).toContainText(
       'La board si blocca',
     );
@@ -130,6 +129,9 @@ test('finds settings, people, values and reports, and opens the row of each', as
       'aria-activedescendant',
       (await listbox.getByRole('option').first().getAttribute('id')) as string,
     );
+    // The invitation waiting for an answer is a person too.
+    await search.fill(invited);
+    await expect(listbox.getByRole('group', { name: 'Persone' })).toContainText('Invito in attesa');
     // Enter opens the person's row in Members, scrolled to, highlighted and focused (by their
     // email: a run before this one may have left another Antonino).
     await search.fill(antonino.email);
