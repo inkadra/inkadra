@@ -25,7 +25,7 @@ export class LatencyRecorder {
   record(ms: number, status: number) {
     this.requests += 1;
     if (status >= 500) this.errors += 1;
-    // shortcut: past 10 000 answers in 10 s the rest only count; a reservoir would keep them fair.
+    // shortcut: past 10 000 answers in 5 s the rest only count; a reservoir would keep them fair.
     if (this.times.length < 10_000) this.times.push(ms);
   }
 
@@ -41,7 +41,7 @@ export class LatencyRecorder {
 }
 
 /** Averages of the raw samples for the coarser tiers; the slowest p95, the sum of requests. */
-class Bucket {
+export class Bucket {
   private points: Point[] = [];
   constructor(
     readonly tier: Tier,
@@ -124,7 +124,7 @@ export function pointFrom(
 }
 
 /**
- * Every 10 s: a sample of this process and its container, pushed to the three tiers, and a
+ * Every 5 s: a sample of this process and its container, pushed to the three tiers, and a
  * heartbeat that tells the web role this role is alive (#514).
  */
 export function startSampler(opts: {

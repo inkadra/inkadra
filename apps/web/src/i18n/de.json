@@ -5630,17 +5630,21 @@
         "steps": {
           "0": {
             "title": "Auf einen Blick",
-            "text": "Ein Satz sagt, ob es dem Server gut geht."
+            "text": "Ein Satz sagt, ob es dem Server gut geht: grün, orange, wenn etwas zu beheben ist, rot, wenn etwas steht."
           },
           "1": {
             "title": "Einfach oder erweitert",
             "text": "Klare Worte oder Diagramme und Zahlen für jeden Teil."
           },
           "2": {
+            "title": "Wie es läuft",
+            "text": "Speicherplatz, Sicherung und Tempo in klaren Worten; unter Erweitert die Verläufe, alle paar Sekunden aktualisiert."
+          },
+          "3": {
             "title": "Probleme",
             "text": "Wiederholen, als gesehen markieren oder an die Entwickler senden."
           },
-          "3": {
+          "4": {
             "title": "Warnungen",
             "text": "Sagt dir, wenn etwas nicht stimmt."
           }
@@ -5787,7 +5791,6 @@
     "health": {
       "ok": "Alles funktioniert",
       "bad": "Etwas stimmt nicht",
-      "uptime": "Läuft seit {{time}}",
       "backup": {
         "ready": "letzte Sicherung {{when}}, erfolgreich",
         "failed": "letzte Sicherung {{when}}, fehlgeschlagen",
@@ -5808,25 +5811,17 @@
         "worker": "Neue Videos bleiben in der Warteschlange; der Rest funktioniert.",
         "database": "Inkadra kann nichts lesen oder speichern.",
         "queue": "Hintergrundaufträge stehen still."
+      },
+      "warn": "Es funktioniert, aber etwas muss behoben werden",
+      "checks": "Prüfungen {{ok}} von {{total}} ok",
+      "reasons": {
+        "space": "Der Speicherplatz geht zu Ende: {{free}} übrig. Gib Platz frei oder füge eine Festplatte hinzu, bevor Uploads stoppen.",
+        "backup": "Die Sicherung von {{when}} ist fehlgeschlagen. Deine Daten sind sicher, prüfe aber vor der nächsten Sicherung.",
+        "check": "Eine Prüfung der Konfiguration ist nicht bestanden: {{check}}."
       }
     },
     "meters": {
-      "label": "Ressourcen jetzt",
       "of": "von {{total}}",
-      "cpu": {
-        "name": "Prozessor",
-        "hint": "Wie viel der Server gerade arbeitet",
-        "ok": "Ruhig",
-        "busy": "Beschäftigt",
-        "high": "Am Limit"
-      },
-      "memory": {
-        "name": "Arbeitsspeicher",
-        "hint": "Speicher, den die Programme von Inkadra nutzen",
-        "ok": "Ruhig",
-        "busy": "Beschäftigt",
-        "high": "Am Limit"
-      },
       "storage": {
         "name": "Speicherplatz",
         "years": "Reicht für Jahre",
@@ -5841,12 +5836,9 @@
         "compressed": "Es wird weniger Platz belegt, weil die Festplatte die Dateien komprimiert."
       },
       "network": {
-        "name": "Internet",
-        "normal": "Normal",
         "unknown": "Nicht gemessen",
         "in": "empfangen",
-        "out": "gesendet",
-        "hint": "↓ empfangene Dateien · ↑ an Board-Betrachter gesendete Dateien"
+        "out": "gesendet"
       },
       "speed": {
         "name": "Geschwindigkeit",
@@ -5868,18 +5860,6 @@
       }
     },
     "services": {
-      "title": "Dienste",
-      "allOk": "alle antworten",
-      "someDown_one": "1 antwortet nicht",
-      "someDown_other": "{{count}} antworten nicht",
-      "lastSignal": "letztes Signal {{time}}",
-      "names": {
-        "web": "Website und Anmeldung",
-        "collab": "Live-Zusammenarbeit",
-        "worker": "Aufbereitung von Videos und Vorschauen",
-        "database": "Datenbank und Auftragswarteschlange",
-        "configuration": "Konfiguration"
-      },
       "long": {
         "web": "Die Website",
         "collab": "Die Live-Zusammenarbeit",
@@ -5893,13 +5873,7 @@
         "warning": "Antwortet langsam",
         "down": "Antwortet nicht",
         "off": "Nicht genutzt"
-      },
-      "configuration": "Öffentliche Adresse, HTTPS, Proxy, Datenordner, Dateispeicher, Videokodierung",
-      "checksPassed_one": "1 Prüfung bestanden",
-      "checksPassed_other": "{{count}} Prüfungen bestanden",
-      "checksFailing_one": "1 zu beheben",
-      "checksFailing_other": "{{count}} zu beheben",
-      "checks": "Prüfungen der Konfiguration"
+      }
     },
     "roles": {
       "web": "web",
@@ -5909,11 +5883,6 @@
     },
     "chart": {
       "title": "Verlauf",
-      "metric": "Was anzeigen",
-      "period": "Zeitraum",
-      "cpu": "Prozessor",
-      "memory": "Arbeitsspeicher",
-      "network": "Internet",
       "received": "Empfangen",
       "sent": "Gesendet",
       "ranges": {
@@ -5944,11 +5913,8 @@
     },
     "videos": {
       "title": "Videos in Vorbereitung",
-      "lead": "Inkadra erstellt von jedem Video eine leichte Kopie, damit es auch auf dem Handy gut läuft.",
-      "meta": "{{waiting}} wartend · {{ready}} heute fertig",
       "empty": "Keine Videos in Vorbereitung.",
-      "hidden": "Ein Video aus einem Projekt, in dem du nicht Mitglied bist",
-      "progress": "{{percent}} · noch etwa {{time}}"
+      "hidden": "Ein Video aus einem Projekt, in dem du nicht Mitglied bist"
     },
     "people": {
       "title": "Wer gerade verbunden ist",
@@ -5971,7 +5937,6 @@
       "empty": "Keine Probleme in den letzten 7 Tagen.",
       "times_one": "1-mal",
       "times_other": "{{count}}-mal",
-      "technical": "Technische Details",
       "retry": "Erneut versuchen",
       "seen": "Als gesehen markieren",
       "actionError": "Das hat nicht geklappt. Versuch es gleich noch einmal.",
@@ -6027,7 +5992,11 @@
           "title": "Etwas hat nicht funktioniert",
           "text": "Die technischen Details sagen, was."
         }
-      }
+      },
+      "technicalIn": "Technische Details unter Erweitert",
+      "technicalInNamed": "Technische Details unter Erweitert: {{title}}",
+      "retryNamed": "Wiederholen: {{title}}",
+      "seenNamed": "Als gesehen markieren: {{title}}"
     },
     "alerts": {
       "title": "Warnungen",
@@ -6040,30 +6009,10 @@
       "email": "Benachrichtigungen und E-Mail"
     },
     "details": {
-      "title": "Technische Details",
-      "lead": "Für alle, die den Server betreiben: Prozesse, Warteschlangen, Datenbank, Version",
-      "version": "Version",
-      "encoding": "Videokodierung",
-      "encoder": {
-        "none": "Aus",
-        "software": "Software (Prozessor)",
-        "hardware": "Hardware ({{label}})"
-      },
-      "database": "Datenbank",
-      "connections_one": "1 Verbindung",
-      "connections_other": "{{count}} Verbindungen",
-      "responses": "Antworten",
-      "responsesValue": "p95 {{p95}} · Fehler {{errors}} in der letzten Stunde",
-      "files": "Dateispeicher",
-      "driver": {
-        "local": "Lokale Festplatte",
-        "s3": "S3-Bucket"
-      },
       "copy": "Technische Daten kopieren",
       "process": "Prozess",
       "cpu": "Prozessor",
       "memory": "Arbeitsspeicher",
-      "uptime": "Läuft seit",
       "signal": "Signal",
       "queue": "Warteschlange",
       "waiting": "Wartend",
@@ -6083,10 +6032,6 @@
       "uptime": "Läuft seit",
       "processes": "Prozesse",
       "video": "Video",
-      "checks": "Prüfungen",
-      "checksValue": "{{ok}} von {{total}} ok",
-      "p95": "Antwort p95",
-      "backup": "Sicherung",
       "range": "Zeitraum",
       "ranges": {
         "15m": "15 Min.",
@@ -6094,29 +6039,18 @@
         "24h": "24 Std.",
         "7d": "7 T."
       },
-      "summary": "Übersicht",
       "cpu": "CPU",
       "cores_one": "1 Kern",
       "cores_other": "{{count}} Kerne",
       "memory": "Arbeitsspeicher",
       "limit": "Limit {{size}}",
       "network": "Netzwerk",
-      "container": "Container",
       "today": "heute ↓ {{in}} ↑ {{out}}",
       "storage": "Speicherplatz",
-      "storageSplit": "Originale {{originals}} · Kopien {{copies}} · Vorschauen {{previews}}",
       "cpuMeta": "Mittel {{avg}} · Spitze {{peak}}",
-      "cpuCap_one": "% von 1 Kern, alle Prozesse",
-      "cpuCap_other": "% von {{count}} Kernen, alle Prozesse",
       "memoryMeta": "Spitze {{peak}}",
-      "memoryCap": "Belegt vom Limit von {{limit}}",
       "latency": "Antwortzeiten",
       "latencyMeta": "p95 · Fehler {{errors}}",
-      "latencyCap": "Millisekunden pro Anfrage: 95 % der Anfragen sind schneller",
-      "networkTitle": "Netzwerk",
-      "networkMeta": "nur der Verkehr des Inkadra-Containers",
-      "in": "Eingehend (oben)",
-      "out": "Ausgehend (unten)",
       "transcodes": "Transkodierungen",
       "transcodesMeta": "{{active}} aktiv · {{waiting}} wartend",
       "speed": "{{speed}}× Echtzeit",
@@ -6132,7 +6066,44 @@
       "retryAll": "Fehlgeschlagene wiederholen",
       "seenAll": "Alle als gesehen markieren",
       "error": "Fehler",
-      "warning": "Warnung"
+      "warning": "Warnung",
+      "updated": "aktualisiert {{time}}",
+      "ofLimit": "{{share}} des Limits",
+      "limitLine": "Limit",
+      "latencyHint": "95 % der Anfragen sind schneller als das",
+      "networkOnly": "nur der Container",
+      "space": {
+        "used": "Belegt",
+        "of": "von {{total}} · {{share}}",
+        "originals": "Originale",
+        "originalsHint": "die hochgeladenen Dateien",
+        "copies": "Kopien",
+        "copiesHint": "leichte Videos zum Ansehen",
+        "previews": "Vorschauen",
+        "previewsHint": "Miniaturen"
+      }
+    },
+    "simple": {
+      "connected": "Jetzt verbunden",
+      "onBoards": "auf {{boards}}",
+      "waiting": "{{n}} wartend"
+    },
+    "how": {
+      "title": "Wie es läuft",
+      "space": {
+        "bar": "Belegter Speicherplatz",
+        "left": "{{free}} übrig. Gib Platz frei oder füge eine Festplatte hinzu, bevor Uploads stoppen",
+        "mostlyOriginals": "Fast alles sind hochgeladene Dateien.",
+        "beforeCompression": "Fast alles sind hochgeladene Dateien ({{size}} vor der Komprimierung der Festplatte)."
+      },
+      "backup": {
+        "lastSuccess": "Zuletzt erfolgreich: {{when}}"
+      }
+    },
+    "admin": {
+      "title": "Für alle, die den Server betreiben",
+      "lead": "Verläufe, Prozesse, Warteschlangen und das Fehlerprotokoll findest du in der erweiterten Ansicht.",
+      "open": "Erweitert öffnen"
     }
   },
   "updates": {

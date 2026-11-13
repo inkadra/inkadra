@@ -8,6 +8,7 @@ import {
   type InstanceVersion,
   PLAN_SHEET_PDF_CAPABILITY,
   TRANSFER_CANCEL_CAPABILITY,
+  SERVER_LIVE_CAPABILITY,
   UpdateMe,
   type User,
 } from '@inkadra/shared';
@@ -146,6 +147,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         BOARD_WRITERS_CAPABILITY,
         PLAN_SHEET_PDF_CAPABILITY,
         TRANSFER_CANCEL_CAPABILITY,
+        SERVER_LIVE_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });

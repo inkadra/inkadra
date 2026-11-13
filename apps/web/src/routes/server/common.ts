@@ -1,12 +1,15 @@
 import type {
   DiagnosticCheck,
   ServerAlerts,
+  ServerLive,
   ServerProblem,
   ServerRange,
   ServerStatus,
 } from '@inkadra/shared';
+import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../lib/datetime.ts';
+import { chartSpan } from './charts.ts';
 import { dayOf } from './format.ts';
 
 /** What both views need besides the status: actions on problems, alerts, the feedback form. */
@@ -21,6 +24,61 @@ export interface ServerActions {
   setRange: (range: ServerRange) => void;
   /** An action that failed, in words. */
   actionError: string | null;
+  /** When the values on screen were read (ms), for "updated 3 s ago". */
+  updatedAt: number | null;
+}
+
+/**
+ * The live values merged into the full status: the values of now, and the newest points in
+ * place of the ones of the same time, then the window moves on. Today's traffic and the share
+ * of errors stay those of the full status, which reads them every 30 s.
+ */
+export function mergeLive(status: ServerStatus, live: ServerLive): ServerStatus {
+  if (live.range !== status.range || live.checkedAt < status.checkedAt) return status;
+  const { from } = chartSpan({ ...status, checkedAt: live.checkedAt });
+  const byTime = new Map(status.history.map((s) => [s.t, s]));
+  for (const s of live.history) byTime.set(s.t, s);
+  return {
+    ...status,
+    checkedAt: live.checkedAt,
+    history: [...byTime.values()]
+      .filter((s) => Date.parse(s.t) >= from)
+      .sort((a, b) => a.t.localeCompare(b.t)),
+    now: {
+      cpu: live.now.cpu,
+      memory: live.now.memory,
+      network: live.now.network
+        ? {
+            ...live.now.network,
+            todayIn: status.now.network?.todayIn ?? 0,
+            todayOut: status.now.network?.todayOut ?? 0,
+          }
+        : null,
+      responses: { ...status.now.responses, p95: live.now.p95 },
+    },
+  };
+}
+
+/**
+ * "Technical details in Advanced" (Simple view): the problem to show in the error log. While
+ * it is set the page shows the Advanced view without saving it as the preference.
+ */
+let peeked: string | null = null;
+const peekers = new Set<() => void>();
+export function peekProblem(id: string | null) {
+  if (peeked === id) return;
+  peeked = id;
+  for (const listener of peekers) listener();
+}
+export function usePeek(): string | null {
+  return useSyncExternalStore(
+    (listener) => {
+      peekers.add(listener);
+      return () => peekers.delete(listener);
+    },
+    () => peeked,
+    () => peeked,
+  );
 }
 
 /** The text sent with a report: the problems and the state, without names or contents. */

@@ -5630,17 +5630,21 @@
         "steps": {
           "0": {
             "title": "At a glance",
-            "text": "One sentence says whether the server is well."
+            "text": "One sentence says whether the server is well: green, orange when something needs fixing, red when something stopped."
           },
           "1": {
             "title": "Simple or advanced",
             "text": "Plain words, or charts and figures for each part."
           },
           "2": {
+            "title": "How it is doing",
+            "text": "Space, backup and speed in plain words; in Advanced the curves, updated every few seconds."
+          },
+          "3": {
             "title": "Problems",
             "text": "Retry, mark as seen or send to the developers."
           },
-          "3": {
+          "4": {
             "title": "Alerts",
             "text": "Tells you when something is wrong."
           }
@@ -5787,7 +5791,6 @@
     "health": {
       "ok": "Everything works",
       "bad": "Something is wrong",
-      "uptime": "Up for {{time}}",
       "backup": {
         "ready": "last backup {{when}}, done",
         "failed": "last backup {{when}}, failed",
@@ -5808,25 +5811,17 @@
         "worker": "New videos stay in the queue; everything else works.",
         "database": "Inkadra cannot read or save anything.",
         "queue": "Background jobs are stopped."
+      },
+      "warn": "It works, but one thing needs fixing",
+      "checks": "Checks {{ok}} of {{total}} ok",
+      "reasons": {
+        "space": "Space is running out: {{free}} left. Free some up or add a disk before uploads stop.",
+        "backup": "The backup of {{when}} failed. Your data is safe, but check it before the next backup.",
+        "check": "A configuration check did not pass: {{check}}."
       }
     },
     "meters": {
-      "label": "Resources now",
       "of": "of {{total}}",
-      "cpu": {
-        "name": "Processor",
-        "hint": "How hard the server is working",
-        "ok": "Calm",
-        "busy": "Busy",
-        "high": "At the limit"
-      },
-      "memory": {
-        "name": "Memory",
-        "hint": "Memory used by Inkadra’s programs",
-        "ok": "Calm",
-        "busy": "Busy",
-        "high": "At the limit"
-      },
       "storage": {
         "name": "Space",
         "years": "Enough for years",
@@ -5841,12 +5836,9 @@
         "compressed": "Less space is used because the disk compresses the files."
       },
       "network": {
-        "name": "Internet",
-        "normal": "Normal",
         "unknown": "Not measured",
         "in": "received",
-        "out": "sent",
-        "hint": "↓ files received · ↑ files sent to people viewing boards"
+        "out": "sent"
       },
       "speed": {
         "name": "Speed",
@@ -5868,18 +5860,6 @@
       }
     },
     "services": {
-      "title": "Services",
-      "allOk": "all answering",
-      "someDown_one": "1 not answering",
-      "someDown_other": "{{count}} not answering",
-      "lastSignal": "last signal {{time}}",
-      "names": {
-        "web": "Site and sign-in",
-        "collab": "Live collaboration",
-        "worker": "Video and preview processing",
-        "database": "Database and job queue",
-        "configuration": "Configuration"
-      },
       "long": {
         "web": "The site",
         "collab": "Live collaboration",
@@ -5893,13 +5873,7 @@
         "warning": "Slow to answer",
         "down": "Not answering",
         "off": "Not used"
-      },
-      "configuration": "Public address, HTTPS, proxy, data folder, file storage, video encoding",
-      "checksPassed_one": "1 check passed",
-      "checksPassed_other": "{{count}} checks passed",
-      "checksFailing_one": "1 to fix",
-      "checksFailing_other": "{{count}} to fix",
-      "checks": "Configuration checks"
+      }
     },
     "roles": {
       "web": "web",
@@ -5909,11 +5883,6 @@
     },
     "chart": {
       "title": "Over time",
-      "metric": "What to show",
-      "period": "Period",
-      "cpu": "Processor",
-      "memory": "Memory",
-      "network": "Internet",
       "received": "Received",
       "sent": "Sent",
       "ranges": {
@@ -5944,11 +5913,8 @@
     },
     "videos": {
       "title": "Videos being prepared",
-      "lead": "Inkadra makes a light copy of every video, so it plays well on phones too.",
-      "meta": "{{waiting}} waiting · {{ready}} ready today",
       "empty": "No videos being prepared.",
-      "hidden": "A video of a project you are not a member of",
-      "progress": "{{percent}} · about {{time}} left"
+      "hidden": "A video of a project you are not a member of"
     },
     "people": {
       "title": "Who is connected now",
@@ -5971,7 +5937,6 @@
       "empty": "No problems in the last 7 days.",
       "times_one": "once",
       "times_other": "{{count}} times",
-      "technical": "Technical details",
       "retry": "Retry",
       "seen": "Mark as seen",
       "actionError": "That didn’t work. Try again in a moment.",
@@ -6027,7 +5992,11 @@
           "title": "Something did not work",
           "text": "The technical details say what."
         }
-      }
+      },
+      "technicalIn": "Technical details in Advanced",
+      "technicalInNamed": "Technical details in Advanced: {{title}}",
+      "retryNamed": "Retry: {{title}}",
+      "seenNamed": "Mark as seen: {{title}}"
     },
     "alerts": {
       "title": "Alerts",
@@ -6040,30 +6009,10 @@
       "email": "Notifications and email"
     },
     "details": {
-      "title": "Technical details",
-      "lead": "For whoever runs the server: processes, job queues, database, version",
-      "version": "Version",
-      "encoding": "Video encoding",
-      "encoder": {
-        "none": "Off",
-        "software": "Software (processor)",
-        "hardware": "Hardware ({{label}})"
-      },
-      "database": "Database",
-      "connections_one": "1 connection",
-      "connections_other": "{{count}} connections",
-      "responses": "Answers",
-      "responsesValue": "p95 {{p95}} · errors {{errors}} in the last hour",
-      "files": "File storage",
-      "driver": {
-        "local": "Local disk",
-        "s3": "S3 bucket"
-      },
       "copy": "Copy the technical data",
       "process": "Process",
       "cpu": "Processor",
       "memory": "Memory",
-      "uptime": "Up for",
       "signal": "Signal",
       "queue": "Job queue",
       "waiting": "Waiting",
@@ -6083,10 +6032,6 @@
       "uptime": "Up for",
       "processes": "Processes",
       "video": "Video",
-      "checks": "Checks",
-      "checksValue": "{{ok}} of {{total}} ok",
-      "p95": "p95 answer",
-      "backup": "Backup",
       "range": "Period",
       "ranges": {
         "15m": "15 min",
@@ -6094,29 +6039,18 @@
         "24h": "24 h",
         "7d": "7 d"
       },
-      "summary": "Summary",
       "cpu": "CPU",
       "cores_one": "1 core",
       "cores_other": "{{count}} cores",
       "memory": "Memory",
       "limit": "limit {{size}}",
       "network": "Network",
-      "container": "container",
       "today": "today ↓ {{in}} ↑ {{out}}",
       "storage": "Space",
-      "storageSplit": "originals {{originals}} · copies {{copies}} · previews {{previews}}",
       "cpuMeta": "average {{avg}} · peak {{peak}}",
-      "cpuCap_one": "% of 1 core, all processes",
-      "cpuCap_other": "% of {{count}} cores, all processes",
       "memoryMeta": "peak {{peak}}",
-      "memoryCap": "In use against the limit of {{limit}}",
       "latency": "Response times",
       "latencyMeta": "p95 · errors {{errors}}",
-      "latencyCap": "Milliseconds per request: 95 % of requests are faster than this",
-      "networkTitle": "Network",
-      "networkMeta": "Inkadra container traffic only",
-      "in": "Incoming (above)",
-      "out": "Outgoing (below)",
       "transcodes": "Transcodes",
       "transcodesMeta": "{{active}} running · {{waiting}} queued",
       "speed": "{{speed}}× real time",
@@ -6132,7 +6066,44 @@
       "retryAll": "Retry failed",
       "seenAll": "Mark all as seen",
       "error": "Error",
-      "warning": "Warning"
+      "warning": "Warning",
+      "updated": "updated {{time}}",
+      "ofLimit": "{{share}} of the limit",
+      "limitLine": "limit",
+      "latencyHint": "95 % of the requests are faster than this",
+      "networkOnly": "the container only",
+      "space": {
+        "used": "Used",
+        "of": "of {{total}} · {{share}}",
+        "originals": "Originals",
+        "originalsHint": "the uploaded files",
+        "copies": "Copies",
+        "copiesHint": "light videos to watch",
+        "previews": "Previews",
+        "previewsHint": "thumbnails"
+      }
+    },
+    "simple": {
+      "connected": "Online now",
+      "onBoards": "on {{boards}}",
+      "waiting": "{{n}} waiting"
+    },
+    "how": {
+      "title": "How it is doing",
+      "space": {
+        "bar": "Space used",
+        "left": "{{free}} left. Free some up or add a disk before uploads stop",
+        "mostlyOriginals": "Almost all of it is uploaded files.",
+        "beforeCompression": "Almost all of it is uploaded files ({{size}} before the disk compresses them)."
+      },
+      "backup": {
+        "lastSuccess": "Last successful: {{when}}"
+      }
+    },
+    "admin": {
+      "title": "For whoever runs the server",
+      "lead": "Charts over time, processes, job queues and the error log are in the Advanced view.",
+      "open": "Open Advanced"
     }
   },
   "updates": {

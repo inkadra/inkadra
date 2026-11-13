@@ -444,6 +444,7 @@ export const TOURS: Tour[] = [
     steps: [
       { anchor: 'server', media: 'gear', side: 'bottom' },
       { anchor: 'server-view', media: 'gear', side: 'bottom' },
+      { anchor: 'server-health', media: 'gear', side: 'top' },
       { anchor: 'server-problems', media: 'bell', side: 'top' },
       { anchor: 'server-alerts', media: 'bell', side: 'top' },
     ],

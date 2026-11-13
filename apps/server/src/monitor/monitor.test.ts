@@ -9,15 +9,17 @@ import {
   parseMemoryMax,
   parseNetDev,
 } from './resources.ts';
-import { average, LatencyRecorder, pointFrom } from './sampler.ts';
-import { capacity, combine, imageFlavour } from './status.ts';
+import { average, Bucket, LatencyRecorder, pointFrom, SAMPLE_MS } from './sampler.ts';
+import { capacity, combine, imageFlavour, RANGES, serverLive } from './status.ts';
 import {
   lastHour,
+  type MonitorStore,
   memoryStore,
   type Point,
   type ProblemInput,
   redisStore,
   type StoredProblem,
+  TIERS,
 } from './store.ts';
 
 describe('container readings', () => {
@@ -176,6 +178,116 @@ describe('the whole instance', () => {
       new Date(10_000).toISOString(),
       new Date(20_000).toISOString(),
     ]);
+  });
+});
+
+describe('sampling every 5 s', () => {
+  const point = (t: number, extra: Partial<Point> = {}): Point => ({
+    t,
+    c: 1,
+    cc: 4,
+    m: 1e9,
+    ml: 4e9,
+    rx: 100,
+    tx: 50,
+    pc: 0.2,
+    pm: 1e8,
+    ...extra,
+  });
+
+  it('samples every 5 s and keeps an hour of them', () => {
+    expect(SAMPLE_MS).toBe(5_000);
+    expect(TIERS.raw.step * TIERS.raw.keep).toBe(3600);
+    expect(TIERS.m1.step * TIERS.m1.keep).toBe(86_400);
+    expect(TIERS.m10.step * TIERS.m10.keep).toBe(7 * 86_400);
+  });
+
+  it('reads every range from a tier that covers it, at a step of whole samples', () => {
+    for (const { tier, window, step } of Object.values(RANGES)) {
+      expect(TIERS[tier].step * TIERS[tier].keep).toBeGreaterThanOrEqual(window);
+      expect(step % TIERS[tier].step).toBe(0);
+      expect(window / step).toBeLessThanOrEqual(180);
+    }
+    expect(RANGES['15m'].step).toBe(5);
+  });
+
+  it('rolls twelve samples into a minute and 120 into ten minutes', () => {
+    const m1 = new Bucket('m1');
+    const m10 = new Bucket('m10');
+    const minutes: Point[] = [];
+    const tens: Point[] = [];
+    for (let t = 0; t <= 600_000; t += 5_000) {
+      const p = point(t, { c: t < 60_000 ? (t / 5_000) % 2 : 2, req: 1, p95: t / 1000 });
+      const a = m1.add(p);
+      const b = m10.add(p);
+      if (a) minutes.push(a);
+      if (b) tens.push(b);
+    }
+    expect(minutes).toHaveLength(10);
+    // The first minute: twelve samples, half at 0 and half at 1 core.
+    expect(minutes[0]).toMatchObject({ t: 0, c: 0.5, req: 12, p95: 55 });
+    expect(minutes[1]).toMatchObject({ t: 60_000, c: 2, req: 12 });
+    expect(tens).toHaveLength(1);
+    expect(tens[0]).toMatchObject({ t: 0, req: 120, p95: 595 });
+  });
+});
+
+describe('the live values', () => {
+  const point = (t: number, extra: Partial<Point> = {}): Point => ({
+    t,
+    c: 1,
+    cc: 4,
+    m: 1e9,
+    ml: 4e9,
+    rx: 100,
+    tx: 50,
+    pc: 0.2,
+    pm: 1e8,
+    ...extra,
+  });
+  const now = 1_700_000_003_000;
+  const filled = async () => {
+    const store = memoryStore(() => now);
+    for (const process of ['web@a', 'worker@b']) {
+      const [role, host] = process.split('@') as ['web', string];
+      await store.beat({ role, host, startedAt: 0, at: now, cpu: 0, memory: 0 });
+      for (let t = now - 10 * 60_000; t <= now; t += 5_000)
+        await store.push(
+          'raw',
+          process,
+          point(t, role === 'web' ? { c: 2, p95: 80, req: 3, err: 0 } : { c: 1 }),
+        );
+    }
+    return store;
+  };
+
+  it('gives the values of now and the newest whole slices of the range', async () => {
+    const live = await serverLive(await filled(), '1h', now);
+    expect(live.step).toBe(20);
+    expect(live.now).toEqual({
+      cpu: { used: 3, cores: 8 },
+      memory: { used: 2e9, limit: 8e9 },
+      network: { in: 200, out: 100 },
+      p95: 80,
+    });
+    // Two whole 20 s slices and the one of now, on the clock, all four processes' worth.
+    const times = live.history.map((p) => Date.parse(p.t));
+    expect(times).toEqual([now - 43_000, now - 23_000, now - 3_000]);
+    expect(live.history.map((p) => p.memory)).toEqual([2e9, 2e9, 2e9]);
+  });
+
+  it('reads the monitor store only, never anything else', async () => {
+    const store = await filled();
+    const used = new Set<string>();
+    const spy = new Proxy(store, {
+      get(target, key: string) {
+        used.add(key);
+        return target[key as keyof MonitorStore];
+      },
+    });
+    await serverLive(spy, '15m', now);
+    await serverLive(spy, '24h', now);
+    expect([...used].sort()).toEqual(['beats', 'points']);
   });
 });
 

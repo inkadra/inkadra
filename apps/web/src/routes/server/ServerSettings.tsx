@@ -1,6 +1,7 @@
 import type {
   DiagnosticCheck,
   ServerAlerts,
+  ServerLive,
   ServerProblem,
   ServerRange,
   ServerStatus,
@@ -15,21 +16,32 @@ import { useSession } from '../../lib/session.tsx';
 import { probeWebSocket } from '../Diagnostics.tsx';
 import { trackSave } from '../settings-save.ts';
 import { AdvancedView } from './AdvancedView.tsx';
-import { type ServerActions, technicalSummary } from './common.ts';
+import {
+  mergeLive,
+  peekProblem,
+  type ServerActions,
+  technicalSummary,
+  usePeek,
+} from './common.ts';
 import { SimpleView } from './SimpleView.tsx';
 import './server.css';
 
-/** The samples come every 10 s: the page asks as often while it is visible. */
-const POLL_MS = 10_000;
+/** The full status (sums of the space, backup, queues, problems…) every 30 s. */
+export const FULL_MS = 30_000;
+/** The values of now and the newest points, from the monitor store alone, every 2.5 s. */
+export const LIVE_MS = 2_500;
 
 /**
- * Status of the instance, read again every 10 s while the page is on screen. A tick waits for
- * the answer before; only the newest request counts, so a slow answer for the range before
- * never replaces the one just chosen.
+ * Status of the instance while the page is on screen: the full status every 30 s, at once on a
+ * new range or after an action, and the live values in between. Nothing is asked while the tab
+ * is hidden, and a tick never starts while a request is on its way. Only the newest full
+ * request counts, so a slow answer for the range before never replaces the one just chosen,
+ * and a live answer older than it is dropped.
  */
 export function useServerStatus(range: ServerRange) {
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [error, setError] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const latest = useRef(0);
   const waiting = useRef(false);
   const load = useCallback(async () => {
@@ -39,6 +51,7 @@ export function useServerStatus(range: ServerRange) {
       const next = await api.get<ServerStatus>(`/instance/server?range=${range}`);
       if (id !== latest.current) return;
       setStatus(next);
+      setUpdatedAt(Date.now());
       setError(false);
     } catch {
       if (id === latest.current) setError(true);
@@ -46,14 +59,33 @@ export function useServerStatus(range: ServerRange) {
       if (id === latest.current) waiting.current = false;
     }
   }, [range]);
+  const live = useCallback(async () => {
+    const id = latest.current;
+    waiting.current = true;
+    try {
+      const next = await api.get<ServerLive>(`/instance/server/live?range=${range}`);
+      if (id !== latest.current) return;
+      setStatus((current) => (current ? mergeLive(current, next) : current));
+      setUpdatedAt(Date.now());
+    } catch {
+      // The next full reading says what is wrong; a live tick only skips.
+    } finally {
+      if (id === latest.current) waiting.current = false;
+    }
+  }, [range]);
   useEffect(() => {
     void load();
+    let full = Date.now();
     const timer = setInterval(() => {
-      if (document.visibilityState === 'visible' && !waiting.current) void load();
-    }, POLL_MS);
+      if (document.visibilityState !== 'visible' || waiting.current) return;
+      if (Date.now() - full >= FULL_MS) {
+        full = Date.now();
+        void load();
+      } else void live();
+    }, LIVE_MS);
     return () => clearInterval(timer);
-  }, [load]);
-  return { status, setStatus, error, load };
+  }, [load, live]);
+  return { status, setStatus, error, load, updatedAt };
 }
 
 /** The two checks only the browser can make, as on the Diagnostics page. */
@@ -89,16 +121,28 @@ function useBrowserChecks(): DiagnosticCheck[] {
   return checks;
 }
 
+/**
+ * The view on screen: the one remembered on the account, or Advanced while a problem of the
+ * Simple view is shown in its error log (not saved).
+ */
+export function useServerView(): 'simple' | 'advanced' {
+  const { serverView } = usePreferences();
+  return usePeek() !== null ? 'advanced' : serverView;
+}
+
 /** Simple or advanced, in the window header; remembered on the account (#514). */
 export function ServerViewToggle() {
   const { t } = useTranslation();
-  const { serverView } = usePreferences();
+  const view = useServerView();
   return (
     <span data-tour="server-view">
       <Segmented
         label={t('server.view.label')}
-        value={serverView}
-        onChange={(view) => void updatePreferences({ serverView: view }).catch(() => {})}
+        value={view}
+        onChange={(next) => {
+          peekProblem(null);
+          void updatePreferences({ serverView: next }).catch(() => {});
+        }}
         options={[
           { value: 'simple', label: t('server.view.simple') },
           { value: 'advanced', label: t('server.view.advanced') },
@@ -111,12 +155,14 @@ export function ServerViewToggle() {
 /** Settings → Server (#514): health, resources, jobs, people, problems and alerts. */
 export function ServerSettings() {
   const { t } = useTranslation();
-  const { serverView } = usePreferences();
+  const serverView = useServerView();
   const [range, setRange] = useState<ServerRange>('1h');
-  const { status, setStatus, error, load } = useServerStatus(range);
-  // The simple view has no 15 minutes: back to its default, the hour, as its menu shows.
+  const { status, setStatus, error, load, updatedAt } = useServerStatus(range);
+  // A problem shown in Advanced from the Simple view: back to the saved view on leaving.
+  useEffect(() => () => peekProblem(null), []);
+  // The simple view has no period: the hour, the lightest full reading with a curve.
   useEffect(() => {
-    if (serverView === 'simple' && range === '15m') setRange('1h');
+    if (serverView === 'simple' && range !== '1h') setRange('1h');
   }, [serverView, range]);
   const browserChecks = useBrowserChecks();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -140,6 +186,7 @@ export function ServerSettings() {
     range,
     setRange,
     actionError,
+    updatedAt,
     retry: (p) =>
       act(
         () => api.post(`/instance/server/problems/${encodeURIComponent(p.id)}/retry`, {}),
@@ -209,9 +256,13 @@ export function ServerSettings() {
       ...status.problems,
     ],
   };
-  return serverView === 'advanced' ? (
-    <AdvancedView status={withBrowser} checks={checks} actions={actions} />
-  ) : (
-    <SimpleView status={withBrowser} checks={checks} actions={actions} />
+  return (
+    <div className="server-page">
+      {serverView === 'advanced' ? (
+        <AdvancedView status={withBrowser} checks={checks} actions={actions} />
+      ) : (
+        <SimpleView status={withBrowser} checks={checks} actions={actions} />
+      )}
+    </div>
   );
 }
