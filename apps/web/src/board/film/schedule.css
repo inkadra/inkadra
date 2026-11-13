@@ -1676,7 +1676,7 @@ fieldset.schedule__field > legend {
   .schedule__summary-main:focus-visible {
     outline: 2px solid var(--ink-accent-primary);
     outline-offset: 2px;
-  box-shadow: none;
+    box-shadow: none;
   }
   .schedule__summary-card {
     display: flex;
@@ -1807,7 +1807,7 @@ fieldset.schedule__field > legend {
   .schedule__row:focus-visible {
     outline: 2px solid var(--ink-accent-primary);
     outline-offset: 2px;
-  box-shadow: none;
+    box-shadow: none;
   }
   .schedule__row > .schedule__block-time {
     flex: none;
