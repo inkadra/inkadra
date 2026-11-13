@@ -91,5 +91,11 @@ export const ProjectTransfers = z
   });
 export type ProjectTransfers = z.infer<typeof ProjectTransfers>;
 
+/**
+ * Capability on `GET /instance/version` of servers that answer
+ * `POST /transfers/{transferId}/cancel` (decision 0125): cancel only, never remove a finished one.
+ */
+export const TRANSFER_CANCEL_CAPABILITY = 'transfer-cancel';
+
 /** Hours an export stays downloadable. */
 export const EXPORT_TTL_HOURS = 24;

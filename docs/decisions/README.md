@@ -129,6 +129,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0122](0122-set-plan-sheet-from-the-server.md) | The server renders the set plan sheet as a PDF with the same MPL packages as the web: one route for members (team or client copy, "Day N" only for the team) and one for guests; ETag, 2 renders at once, 10 a minute (`plan-sheet-pdf`) |
 | [0123](0123-production-board.md) | One Production board per project holds the schedule and the Troupe; days move to it and point at frames of any storyboard by board and frame id, with a label for when it cannot be read; archives format 2; six pull requests |
 | [0124](0124-home-inbox-projects.md) | Home, Inbox and Projects share one top bar (New project, feedback, bell), one row for tasks and notifications and one card for boards and projects; New board leaves the Home |
+| [0125](0125-cancel-a-transfer.md) | `POST /transfers/{id}/cancel` cancels a queued or running export or import and never removes a finished one: 409 `conflict` with the transfer as it is; the web keeps `DELETE` (`transfer-cancel`) |
 
 A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they were accepted in parallel,
 and accepted records are not renumbered.
