@@ -360,6 +360,51 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
     expect(status.queues).toEqual([]);
   }, 10_000);
 
+  it('lists the programs a process runs now under it, not those of a stopped one', async () => {
+    const now = Date.now();
+    const own = memoryStore();
+    const ffmpeg = {
+      tool: 'ffmpeg',
+      label: 'clip.mov · 1080p',
+      startedAt: now - 60_000,
+      cpu: 1.5,
+      memory: 2e8,
+    };
+    await own.beat({
+      role: 'all',
+      host: 'a1',
+      startedAt: now - 600_000,
+      at: now,
+      cpu: 0.1,
+      memory: 1e8,
+      children: [ffmpeg],
+    });
+    await own.beat({
+      role: 'worker',
+      host: 'w9',
+      startedAt: now - 600_000,
+      at: now - 300_000,
+      cpu: 0,
+      memory: 0,
+      children: [ffmpeg],
+    });
+    const status = ServerStatus.parse(
+      await serverStatus(
+        { config, db, store: own, jobs: testDeps(db, log).jobs },
+        people.admin?.id as string,
+        '1h',
+        [],
+        now,
+      ),
+    );
+    const row = (host: string) => status.processes.find((p) => p.host === host);
+    expect(row('a1')?.children).toEqual([
+      { ...ffmpeg, startedAt: new Date(now - 60_000).toISOString() },
+    ]);
+    expect(row('w9')?.status).toBe('down');
+    expect(row('w9')?.children).toBeUndefined();
+  });
+
   it('saves the alert settings', async () => {
     const saved = await request('admin', 'PATCH', '/instance/server/alerts', { email: true });
     expect(saved.json()).toEqual({ enabled: true, email: true });

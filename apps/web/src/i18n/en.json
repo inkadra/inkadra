@@ -6110,6 +6110,8 @@
       "cpu": "Processor",
       "memory": "Memory",
       "signal": "Signal",
+      "toolOf": "Program run by {{role}}:",
+      "runningFor": "for {{time}}",
       "queue": "Job queue",
       "waiting": "Waiting",
       "active": "Running",

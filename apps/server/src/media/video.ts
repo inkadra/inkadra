@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import type { VideoRung, VideoRungCustom } from '@inkadra/shared';
+import { trackTool } from '../monitor/children.ts';
 import {
   encoderMemory,
   FFMPEG_MEMORY,
@@ -210,7 +211,6 @@ export async function probeVideo(
 /**
  * Writes one frame as PNG: a tenth of the way in (at most 5 s), which skips black leaders and
  * fades, or the first frame of very short clips. ffmpeg applies the rotation of phone videos.
- * An HDR frame is tone mapped like the copies, or the poster comes out washed out.
  */
 export async function extractPoster(
   ffmpeg: string,
@@ -218,7 +218,6 @@ export async function extractPoster(
   out: string,
   durationMs: number | null,
   container: string | null,
-  hdr = false,
 ): Promise<void> {
   const at = durationMs ? Math.min(5, durationMs / 10_000) : 0;
   const grab = (seek: number) =>
@@ -238,7 +237,7 @@ export async function extractPoster(
         '1',
         '-an',
         '-vf',
-        posterFilter(hdr),
+        "scale='min(2048,iw)':-2",
         '-f',
         'image2',
         '-c:v',
@@ -259,10 +258,6 @@ export async function extractPoster(
   if ((await written()) === 0) throw new Error('ffmpeg wrote no poster frame');
 }
 
-/** The filter of a poster frame: at most 2048 wide, tone mapped to SDR when HDR. */
-export const posterFilter = (hdr: boolean) =>
-  `scale='min(2048,iw)':-2${hdr ? `,format=yuv420p10le,${TONEMAP}` : ''}`;
-
 // Playable copies (decision 0048) ---------------------------------------------------------
 
 /** What the instance allows for playable copies, from the VIDEO_PROXY_* settings. */
@@ -280,11 +275,6 @@ export interface ProxySettings {
   bitrate: string | null;
   /** Rungs of the ladder made and stored (decision 0128), smallest first. */
   rungs: VideoRung[];
-  /**
-   * Rungs offered only live (decision 0128): stored all the same for a source this server
-   * cannot encode live (liveSource), which waits for its copies.
-   */
-  liveOnly?: VideoRung[];
   /** Originals the browser plays: the ladder only when heavy, always, or never. */
   playable: 'heavy' | 'always' | 'never';
   /** Values the admin set over the preset, by rung (Advanced, decision 0128). */
@@ -656,6 +646,7 @@ export async function runEncode(
   });
   await new Promise<void>((resolve, reject) => {
     const child = spawn(file, argv, { env: toolEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
+    trackTool(child, ffmpeg);
     let stderr = '';
     let pending = '';
     let last = -1;

@@ -10,7 +10,7 @@ import {
   renditionKey,
   videoPlan,
 } from './ladder.ts';
-import { DEFAULT_PROXY_SETTINGS, type ProxySettings, type VideoInfo } from './video.ts';
+import { DEFAULT_PROXY_SETTINGS, type VideoInfo } from './video.ts';
 
 const info = (over: Partial<VideoInfo> = {}): VideoInfo => ({
   durationMs: 10_000,
@@ -69,23 +69,6 @@ describe('videoPlan', () => {
     expect(videoPlan('video/quicktime', info(), 1e9, { ...settings, maxDurationS: 5 }).kind).toBe(
       'skip',
     );
-  });
-
-  it('stores the rungs offered only live for a source that cannot go live here', () => {
-    const qsv: VideoEncoder = { backend: 'qsv', label: 'Intel Quick Sync' };
-    const cpu: ProxySettings = { ...settings, rungs: [], liveOnly: ['480', '720', '1080'] };
-    const liveOnly = { ...cpu, encoder: qsv };
-    const hevc = info({ videoCodec: 'hevc', pixelFormat: 'yuv420p', bits: 8, audioCodec: 'aac' });
-    const all = { kind: 'ladder', rungs: ['480', '720', '1080'], original: false };
-    // A portrait 4K phone video: rotated, or HDR, or ProRes waits for stored copies.
-    const portrait = { ...hevc, width: 2160, height: 3840 };
-    expect(videoPlan('video/mp4', { ...portrait, rotated: true }, 1e9, liveOnly)).toEqual(all);
-    expect(videoPlan('video/mp4', { ...portrait, hdr: 'hlg' }, 1e9, liveOnly)).toEqual(all);
-    expect(videoPlan('video/quicktime', info(), 1e9, liveOnly)).toEqual(all);
-    // Without a GPU nothing goes live: every rung is stored.
-    expect(videoPlan('video/mp4', portrait, 1e9, cpu)).toEqual(all);
-    // A source the GPU plays live gets none stored.
-    expect(videoPlan('video/mp4', portrait, 1e9, liveOnly)).toEqual({ kind: 'skip' });
   });
 
   it('calls heavy what is over 1080, 12 Mbit/s or 60 fps', () => {

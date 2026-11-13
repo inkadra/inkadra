@@ -12,7 +12,6 @@ import {
   copiesVideo,
   decodesOnGpu,
   frameFilters,
-  liveDecodable,
   mergesMono,
   type ProxySettings,
   proxyPlan,
@@ -50,25 +49,10 @@ export function isHeavy(info: VideoInfo, sourceBytes: number) {
   );
 }
 
-/**
- * Whether `encoder` can play `info` live (decision 0128): a picture with a duration that the
- * GPU decodes and encodes on its own (liveDecodable).
- */
-export const liveSource = (info: VideoInfo, encoder: VideoEncoder | undefined) =>
-  Boolean(info.durationMs) && (shortSide(info) ?? 0) > 0 && liveDecodable(encoder, info);
-
-/**
- * The rungs `info` gets: the stored ones, plus those offered only live when it cannot go live
- * here (ProRes, HDR, a rotated phone video…), never above its size nor VIDEO_PROXY_RESOLUTION.
- */
+/** The rungs `info` gets: the stored ones, never above its size nor VIDEO_PROXY_RESOLUTION. */
 export function rungsOf(info: VideoInfo, settings: ProxySettings) {
   const side = Math.min(shortSide(info) ?? settings.resolution, settings.resolution);
-  const live = settings.liveOnly ?? [];
-  const stored =
-    live.length > 0 && !liveSource(info, settings.encoder)
-      ? [...settings.rungs, ...live]
-      : settings.rungs;
-  return ladderFor(stored, side);
+  return ladderFor(settings.rungs, side);
 }
 
 export function videoPlan(

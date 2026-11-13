@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { trackTool } from '../monitor/children.ts';
 
 const exec = promisify(execFile);
 
@@ -82,6 +83,8 @@ export interface RunLimits extends ProcessLimits {
   input?: Buffer;
   /** Kills the tool when it fires. */
   signal?: AbortSignal;
+  /** The program's name on the Server page, when `bin` is a wrapper (bubblewrap). */
+  name?: string;
 }
 
 /** The environment of a tool: no variables of the server (secrets, proxies) reach it. */
@@ -125,6 +128,7 @@ export async function runTool(bin: string, args: string[], limits: RunLimits) {
     env: toolEnv(),
     ...(limits.signal ? { signal: limits.signal } : {}),
   });
+  trackTool(run.child, limits.name ?? bin);
   if (limits.input) {
     run.child.stdin?.on('error', () => {});
     run.child.stdin?.end(limits.input);

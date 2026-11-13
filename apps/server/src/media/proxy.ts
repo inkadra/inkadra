@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
+import { withToolLabel } from '../monitor/children.ts';
 import { proxyKey, readAll, type Storage } from '../storage.ts';
 import type { VideoEnv } from '../video-settings.ts';
 import { SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
@@ -96,7 +97,9 @@ export async function runProxy(
     const copy = await storage.localCopy(row.storageKey, dir);
     try {
       const source = await privateInput(dir, copy.path);
-      return await transcode(deps, row, container, source, dir, onProgress, opts.regenerate);
+      return await withToolLabel(row.filename, () =>
+        transcode(deps, row, container, source, dir, onProgress, opts.regenerate),
+      );
     } finally {
       await copy.done();
     }

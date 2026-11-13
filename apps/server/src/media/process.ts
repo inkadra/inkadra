@@ -7,6 +7,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetRendition, assetVariant } from '../db/schema.ts';
+import { withToolLabel } from '../monitor/children.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
 import { applyVideoSettings, readVideoSettings, type VideoEnv } from '../video-settings.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
@@ -184,9 +185,19 @@ export async function processAsset(
   assetId: string,
   caps = ANIMATED_CAPS,
 ): Promise<ProcessResult> {
-  const { db, storage } = deps;
-  const [row] = await db.select().from(asset).where(eq(asset.id, assetId));
+  const [row] = await deps.db.select().from(asset).where(eq(asset.id, assetId));
   if (!row) return { skipped: 'gone' as const };
+  // The programs it runs show the file's name on the Server page.
+  return withToolLabel(row.filename, () => processRow(deps, row, caps));
+}
+
+async function processRow(
+  deps: MediaDeps,
+  row: typeof asset.$inferSelect,
+  caps: AnimatedCaps,
+): Promise<ProcessResult> {
+  const { db, storage } = deps;
+  const assetId = row.id;
   await db.update(asset).set({ status: 'processing' }).where(eq(asset.id, assetId));
 
   const digest = await sha256(storage, row.storageKey);
@@ -238,7 +249,7 @@ export async function processAsset(
           ? await probeVideo(tools.ffprobe, input, video).catch(() => null)
           : null;
         const durationMs = info?.durationMs ?? null;
-        await extractPoster(tools.ffmpeg, input, posterPath, durationMs, video, !!info?.hdr);
+        await extractPoster(tools.ffmpeg, input, posterPath, durationMs, video);
         const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
         const { status: proxyStatus, enqueue } = await proxyState(
           deps,

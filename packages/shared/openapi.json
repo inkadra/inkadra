@@ -5289,6 +5289,13 @@
               "null"
             ],
             "description": "Resident bytes."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServerProcessTool"
+            },
+            "description": "External programs the process runs now (video copies, previews, conversions), not counted in its own `cpu` and `memory`; absent when none or on older servers."
           }
         },
         "required": [
@@ -5297,6 +5304,48 @@
           "startedAt",
           "lastSeenAt",
           "status",
+          "cpu",
+          "memory"
+        ]
+      },
+      "ServerProcessTool": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "type": "string",
+            "description": "The program: `ffmpeg`, `ffprobe`, `LibreOffice`…"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Display name of the file it works on and what it makes (`clip.mov · 1080p`)."
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "cpu": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Cores used by the program; null where it cannot be read."
+          },
+          "memory": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Resident bytes."
+          }
+        },
+        "required": [
+          "tool",
+          "label",
+          "startedAt",
           "cpu",
           "memory"
         ]

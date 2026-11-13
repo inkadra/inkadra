@@ -5,6 +5,7 @@ import type { VideoRung } from '@inkadra/shared';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.ts';
 import { asset, assetRendition } from '../db/schema.ts';
+import { withToolLabel } from '../monitor/children.ts';
 import { SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
 import {
   generationOf,
@@ -138,8 +139,8 @@ export async function makeLadder(
   const used: string[] = [];
   for (const runRungs of runs) {
     try {
-      const run = await encodeRun(deps, row, container, source, dir, info, runRungs, (p) =>
-        report(runRungs, p),
+      const run = await withToolLabel(runRungs.map((r) => `${r}p`).join(' + '), () =>
+        encodeRun(deps, row, container, source, dir, info, runRungs, (p) => report(runRungs, p)),
       );
       await writing;
       used.push(run.encoder);

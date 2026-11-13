@@ -1,6 +1,6 @@
 import type { DiagnosticCheck, ServerProblem, ServerStatus } from '@inkadra/shared';
 import { Avatar, Button, Icon, Select, Switch } from '@inkadra/ui';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { updatePreferences } from '../../lib/preferences.ts';
@@ -645,6 +645,17 @@ function ForAdmins({ status, checks }: { status: ServerStatus; checks: Diagnosti
   );
 }
 
+/** A file name that wraps after `_` and `-` rather than inside a word or its extension. */
+function breakable(text: string) {
+  return text.split(/(?<=[_-])/).map((part, i, all) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one fixed string.
+    <Fragment key={i}>
+      {part}
+      {i < all.length - 1 && <wbr />}
+    </Fragment>
+  ));
+}
+
 export function ProcessTable({ status }: { status: ServerStatus }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
@@ -668,41 +679,81 @@ export function ProcessTable({ status }: { status: ServerStatus }) {
         </thead>
         <tbody>
           {status.processes.map((p) => (
-            <tr key={`${p.role}@${p.host}`}>
-              <th scope="row">
-                <span className={`server-dot server-dot--${p.status}`} aria-hidden="true" />
-                {t(`server.roles.${p.role}`)}
-                <span className="ink-sr-only">
-                  {' '}
-                  ·{' '}
-                  {t(
-                    `server.services.status.${p.status === 'ok' ? 'ok' : p.status === 'late' ? 'warning' : 'down'}`,
+            <Fragment key={`${p.role}@${p.host}`}>
+              <tr>
+                <th scope="row">
+                  <span className={`server-dot server-dot--${p.status}`} aria-hidden="true" />
+                  {t(`server.roles.${p.role}`)}
+                  <span className="ink-sr-only">
+                    {' '}
+                    ·{' '}
+                    {t(
+                      `server.services.status.${p.status === 'ok' ? 'ok' : p.status === 'late' ? 'warning' : 'down'}`,
+                    )}
+                  </span>
+                </th>
+                <td
+                  className={
+                    p.cpu === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                  }
+                >
+                  {p.cpu === null || !status.now.cpu.cores
+                    ? '—'
+                    : percent(p.cpu / status.now.cpu.cores, lang)}
+                </td>
+                <td
+                  className={
+                    p.memory === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                  }
+                >
+                  {p.memory === null ? '—' : formatStorage(p.memory, lang)}
+                </td>
+                <td className="server-table__n">
+                  {new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: 'short' }).format(
+                    Math.min(0, Math.round((new Date(p.lastSeenAt).getTime() - now) / 1000)),
+                    'second',
                   )}
-                </span>
-              </th>
-              <td
-                className={
-                  p.cpu === null ? 'server-table__n server-table__zero' : 'server-table__n'
-                }
-              >
-                {p.cpu === null || !status.now.cpu.cores
-                  ? '—'
-                  : percent(p.cpu / status.now.cpu.cores, lang)}
-              </td>
-              <td
-                className={
-                  p.memory === null ? 'server-table__n server-table__zero' : 'server-table__n'
-                }
-              >
-                {p.memory === null ? '—' : formatStorage(p.memory, lang)}
-              </td>
-              <td className="server-table__n">
-                {new Intl.RelativeTimeFormat(lang, { numeric: 'auto', style: 'short' }).format(
-                  Math.min(0, Math.round((new Date(p.lastSeenAt).getTime() - now) / 1000)),
-                  'second',
-                )}
-              </td>
-            </tr>
+                </td>
+              </tr>
+              {p.children?.map((c, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: two runs of a tool may share a name and start.
+                <tr key={i} className="server-table__child">
+                  <th scope="row">
+                    <span className="ink-sr-only">
+                      {t('server.details.toolOf', { role: t(`server.roles.${p.role}`) })}{' '}
+                    </span>
+                    {c.tool}
+                    {c.label && (
+                      <span className="server-table__label">
+                        <span className="ink-sr-only"> · </span>
+                        {breakable(c.label)}
+                      </span>
+                    )}
+                  </th>
+                  <td
+                    className={
+                      c.cpu === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                    }
+                  >
+                    {c.cpu === null || !status.now.cpu.cores
+                      ? '—'
+                      : percent(c.cpu / status.now.cpu.cores, lang)}
+                  </td>
+                  <td
+                    className={
+                      c.memory === null ? 'server-table__n server-table__zero' : 'server-table__n'
+                    }
+                  >
+                    {c.memory === null ? '—' : formatStorage(c.memory, lang)}
+                  </td>
+                  <td className="server-table__n">
+                    {t('server.details.runningFor', {
+                      time: duration(now - new Date(c.startedAt).getTime(), lang, 'short'),
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </Fragment>
           ))}
           {status.database.version && (
             <tr>

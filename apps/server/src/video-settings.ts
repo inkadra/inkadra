@@ -266,7 +266,6 @@ export function applyVideoSettings(base: ProxySettings, settings: VideoSettings)
     ...base,
     quality: settings.quality as VideoQuality,
     rungs: VIDEO_RUNGS.filter((r) => settings.rungs[r] === 'stored'),
-    liveOnly: VIDEO_RUNGS.filter((r) => settings.rungs[r] === 'live'),
     playable: settings.playable,
     ...(settings.custom ? { custom: settings.custom } : {}),
   };

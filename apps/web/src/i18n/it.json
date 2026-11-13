@@ -6110,6 +6110,8 @@
       "cpu": "Processore",
       "memory": "Memoria",
       "signal": "Segnale",
+      "toolOf": "Programma avviato da {{role}}:",
+      "runningFor": "da {{time}}",
       "queue": "Coda dei lavori",
       "waiting": "In attesa",
       "active": "In corso",

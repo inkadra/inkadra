@@ -158,7 +158,7 @@ rung live). Capability **`video-live`**; clients need nothing more than `playbac
   and the Video page says why ("richiede la codifica hardware della GPU"). Only sources the card
   decodes and encodes on its own go live (`liveDecodable`: `gpuDecodes`, upright, progressive,
   SDR); ProRes, DNx, 4:2:2/4:4:4, interlaced, rotated and HDR sources wait for their stored
-  rungs, so for them a rung set to "Solo al volo" is stored too (`rungsOf`). A failed GPU encode of a live session has no libx264 or CPU-decode fallback: the
+  rungs. A failed GPU encode of a live session has no libx264 or CPU-decode fallback: the
   segment answers 503 and the player keeps to the stored rungs or the original.
 - **The cap is measured** when the worker starts on a GPU: five seconds of 1080p H.264 of the
   generated test pattern, decoded, scaled and encoded on the card with the live settings, at a
