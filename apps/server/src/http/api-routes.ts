@@ -7,6 +7,7 @@ import {
   type Instance,
   type InstanceVersion,
   PLAN_SHEET_PDF_CAPABILITY,
+  TRANSFER_CANCEL_CAPABILITY,
   UpdateMe,
   type User,
 } from '@inkadra/shared';
@@ -144,6 +145,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'token-proof',
         BOARD_WRITERS_CAPABILITY,
         PLAN_SHEET_PDF_CAPABILITY,
+        TRANSFER_CANCEL_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });
