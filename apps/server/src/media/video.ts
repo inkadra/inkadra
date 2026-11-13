@@ -274,6 +274,11 @@ export interface ProxySettings {
   bitrate: string | null;
   /** Rungs of the ladder made and stored (decision 0128), smallest first. */
   rungs: VideoRung[];
+  /**
+   * Rungs offered only live (decision 0128): stored all the same for a source this server
+   * cannot encode live (liveSource), which waits for its copies.
+   */
+  liveOnly?: VideoRung[];
   /** Originals the browser plays: the ladder only when heavy, always, or never. */
   playable: 'heavy' | 'always' | 'never';
   /** Values the admin set over the preset, by rung (Advanced, decision 0128). */

@@ -12,7 +12,7 @@ import {
 import type { asset } from '../db/schema.ts';
 import { readAll, type Storage } from '../storage.ts';
 import { encoderMemory, type VideoEncoder } from './hwaccel.ts';
-import { ladderArgs, renditionCodecs, rungSide, shortSide } from './ladder.ts';
+import { ladderArgs, liveSource, renditionCodecs, rungSide, shortSide } from './ladder.ts';
 import { rungRate } from './quality.ts';
 import { privateInput } from './scratch.ts';
 import { limitedCommand, toolEnv } from './tools.ts';
@@ -103,10 +103,8 @@ export function rowInfo(row: AssetRow): VideoInfo {
  * N100: ProRes UHD decoded on the CPU 0.97×, 4K HDR tone mapped on the CPU 0.59×.
  */
 export function liveEligible(row: AssetRow, encoder: VideoEncoder | undefined) {
-  if (row.kind !== 'video' || row.status !== 'ready' || !row.durationMs) return false;
-  const info = rowInfo(row);
-  if (!(shortSide(info) ?? 0)) return false;
-  return liveDecodable(encoder, info);
+  if (row.kind !== 'video' || row.status !== 'ready') return false;
+  return liveSource(rowInfo(row), encoder);
 }
 
 /**

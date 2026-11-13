@@ -76,6 +76,7 @@ describe('video settings', () => {
     expect(applyVideoSettings(DEFAULT_PROXY_SETTINGS, settings)).toMatchObject({
       quality: 'light',
       rungs: ['720', '1080'],
+      liveOnly: ['480'],
       playable: 'heavy',
     });
   });
