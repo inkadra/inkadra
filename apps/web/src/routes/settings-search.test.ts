@@ -86,8 +86,9 @@ describe('searching the settings', () => {
     expect(english('tema').map((r) => [r.label, r.rank])).toEqual([['Theme', 3]]);
     // A label that starts with the query comes before one with a later word that does.
     expect(english('time').map((r) => r.key)).toEqual([
-      'setting:backups.time',
       'setting:preferences.timeFormat',
+      'setting:backups.time',
+      'setting:tutorials.hints',
     ]);
     for (const query of ['re', 'acc', 'spa', 'pro', 'ver'])
       for (const results of [italian(query), english(query)]) {
