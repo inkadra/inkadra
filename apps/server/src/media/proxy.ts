@@ -57,6 +57,8 @@ export async function runProxy(
   given: ProxyDeps,
   assetId: string,
   onProgress?: (percent: number) => void | Promise<void>,
+  /** A regeneration (decision 0128): makes the ladder over a copy of before. */
+  opts: { regenerate?: boolean } = {},
 ) {
   // Read once per job: changing the preset needs no restart of the worker.
   const deps = { ...given, proxies: await proxySettings(given) };
@@ -72,7 +74,7 @@ export async function runProxy(
     .select({ size: assetVariant.size })
     .from(assetVariant)
     .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
-  if (made) {
+  if (made && !opts.regenerate) {
     await setProxy(db, assetId, { proxyStatus: 'ready', proxyProgress: 100 });
     return { skipped: 'made' as const };
   }
@@ -94,7 +96,7 @@ export async function runProxy(
     const copy = await storage.localCopy(row.storageKey, dir);
     try {
       const source = await privateInput(dir, copy.path);
-      return await transcode(deps, row, container, source, dir, onProgress);
+      return await transcode(deps, row, container, source, dir, onProgress, opts.regenerate);
     } finally {
       await copy.done();
     }
@@ -108,6 +110,7 @@ async function transcode(
   source: string,
   dir: string,
   onProgress?: (percent: number) => void | Promise<void>,
+  regenerate = false,
 ) {
   const { db, storage } = deps;
   const assetId = row.id;
@@ -117,8 +120,23 @@ async function transcode(
   const out = join(dir, 'proxy.mp4');
   const info = await probeVideo(ffprobe, source, container);
   const plan = videoPlan(container, info, row.size, settings);
-  if (plan.kind === 'ladder')
-    return makeLadder(deps, row, container, source, dir, info, plan, onProgress);
+  if (plan.kind === 'ladder') {
+    const result = await makeLadder(deps, row, container, source, dir, info, plan, onProgress, {
+      regenerate,
+    });
+    // The ladder is in: the single copy of before goes (decision 0128).
+    if (regenerate && !('skipped' in result && result.skipped === 'gone'))
+      await dropOldCopy(db, storage, assetId);
+    return result;
+  }
+  // A regeneration of a copy that stays a single one changes nothing.
+  if (regenerate && (plan.kind === 'remux' || plan.kind === 'audio')) {
+    const [kept] = await db
+      .select({ size: assetVariant.size })
+      .from(assetVariant)
+      .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
+    if (kept) return { skipped: 'made' as const };
+  }
   if (plan.kind === 'none' || plan.kind === 'skip') {
     await setProxy(db, assetId, {
       proxyStatus: plan.kind === 'skip' ? 'skipped' : null,
@@ -281,6 +299,15 @@ async function saveProxy(
       .set({ proxyStatus: 'ready', proxyProgress: 100 })
       .where(eq(asset.id, assetId));
   });
+}
+
+/** Removes the single copy of before the ladder, row then file. */
+async function dropOldCopy(db: Database, storage: Storage, assetId: string) {
+  const removed = await db
+    .delete(assetVariant)
+    .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')))
+    .returning({ key: assetVariant.storageKey });
+  if (removed.length > 0) await storage.remove(removed.map((r) => r.key));
 }
 
 /** Called when the last attempt failed: the card falls back to the poster and Download. */

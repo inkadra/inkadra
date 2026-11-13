@@ -5813,7 +5813,7 @@
           },
           "2": {
             "title": "Nur für neue Videos",
-            "text": "Bereits hochgeladene Videos behalten ihre Kopien, bis du sie neu erstellst."
+            "text": "Erstelle sie neu, wann du willst: Die alten Kopien bleiben, bis die neuen fertig sind."
           }
         }
       }
@@ -6558,6 +6558,35 @@
       "format": "Format",
       "h264": "H.264: läuft in jedem Browser und auf jedem Telefon.",
       "av1": "Diese Karte kann auch AV1 kodieren; Inkadra nutzt es noch nicht."
+    },
+    "existing": {
+      "title": "Vorhandene Videos",
+      "outdated_one": "Ein Video hat Kopien mit den vorherigen Einstellungen",
+      "outdated_other": "{{count}} Videos haben Kopien mit den vorherigen Einstellungen",
+      "upToDate": "Die Videokopien entsprechen schon diesen Einstellungen",
+      "help": "Die aktuellen Kopien bleiben, bis die neuen fertig sind.",
+      "noRoom": "Es braucht etwa {{size}} mehr: Schaffe vorher Platz.",
+      "regenerate": "Kopien neu erstellen…",
+      "progress": "{{done}} von {{total}} Videos neu erstellt",
+      "running_one": "eines läuft",
+      "running_other": "{{count}} laufen",
+      "stop": "Anhalten",
+      "meter": "Neu erstellte Videos",
+      "first": "Neue Videos gehen vor. Du kannst diese Seite schließen.",
+      "space": "Platz der Kopien",
+      "toAbout": "GB → etwa",
+      "time": "Geschätzte Zeit",
+      "hours_one": "Stunde",
+      "hours_other": "Stunden",
+      "free": "Freier Platz",
+      "dialogTitle": "Videokopien neu erstellen",
+      "dialogBody": "Der Server erstellt die Kopien mit den Einstellungen dieser Seite neu, ein Video nach dem anderen, nach neuen Uploads. Die aktuellen Kopien bleiben, bis die neuen fertig sind; nicht mehr gewählte Auflösungen werden entfernt.",
+      "scope": "Welche Videos",
+      "scopes": {
+        "outdated": "Alle mit anderen Einstellungen",
+        "missing": "Nur die ohne Kopien"
+      },
+      "start": "Neu erstellen"
     }
   }
 }

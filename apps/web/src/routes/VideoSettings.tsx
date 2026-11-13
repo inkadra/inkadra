@@ -9,7 +9,7 @@ import {
   type VideoRung,
   type VideoSettingsView,
 } from '@inkadra/shared';
-import { Checkbox, ChoiceTile, Icon } from '@inkadra/ui';
+import { Button, Checkbox, ChoiceTile, Dialog, DialogActions, Icon } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -84,13 +84,215 @@ export function useVideoSettings() {
       setError(true);
     }
   }, []);
+  const running = view?.backfill?.status === 'running';
+  // While a regeneration runs, its progress comes back every few seconds.
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => {
+      api
+        .get<VideoSettingsView>('/instance/video-settings')
+        .then(setView)
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [running]);
   return { view, setView, error, save };
+}
+
+/** Seconds of video a minute of encoding makes, by encoder, before any copy measured it. */
+const DEFAULT_SPEED = { qsv: 3.5, nvenc: 8, vaapi: 3, software: 0.6 } as const;
+
+/** Hours a regeneration of the whole library takes with these choices. */
+export function regenerationHours(view: VideoSettingsView, rungs: VideoRung[]) {
+  const concurrency = view.encoder?.concurrency ?? 1;
+  const minutes = view.library.reduce((sum, row) => sum + row.minutes, 0);
+  if (view.speed) {
+    // Measured per rung: each rung of each video costs its own share.
+    const rungMinutes = view.library.reduce(
+      (sum, row) => sum + row.minutes * ladderFor(rungs, Number(row.side)).length,
+      0,
+    );
+    return (rungMinutes * 60) / view.speed / 3600 / concurrency;
+  }
+  const speed = DEFAULT_SPEED[view.encoder?.backend ?? 'software'];
+  return (minutes * 60) / speed / 3600 / concurrency;
+}
+
+/** "Video esistenti": regenerate the copies made otherwise, with the estimate first. */
+function ExistingVideos({
+  view,
+  setView,
+  number,
+}: {
+  view: VideoSettingsView;
+  setView: (view: VideoSettingsView) => void;
+  number: (n: number, digits?: number) => string;
+}) {
+  const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
+  const [scope, setScope] = useState<'outdated' | 'missing'>('outdated');
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const chosen = VIDEO_RUNGS.filter((r) => view.settings.rungs[r] === 'stored');
+  const after = libraryMb(view, view.settings.quality, chosen) * 1e6;
+  const growth = Math.max(0, after - view.copiesBytes);
+  const room = view.freeBytes === null || growth < view.freeBytes;
+  const hours = Math.max(1, Math.round(regenerationHours(view, chosen)));
+  const run = view.backfill?.status === 'running' ? view.backfill : null;
+  const act = async (call: () => Promise<VideoSettingsView>) => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      setView(await call());
+      setAsking(false);
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const gb = (bytes: number) => number(bytes / 1e9);
+  return (
+    <Card anchor="video.existing" tour="video-existing" title={t('videoSettings.existing.title')}>
+      <Row
+        className="settings-row--stack"
+        leading={<Tile icon="repeat" tone="accent" />}
+        label={
+          view.outdated > 0
+            ? t('videoSettings.existing.outdated', { count: view.outdated })
+            : t('videoSettings.existing.upToDate')
+        }
+        help={
+          room
+            ? t('videoSettings.existing.help')
+            : t('videoSettings.existing.noRoom', { size: `${gb(growth)} GB` })
+        }
+      >
+        {!run && (
+          <Button
+            variant="secondary"
+            disabled={!view.enabled || view.outdated === 0 || !room}
+            onClick={() => setAsking(true)}
+          >
+            {t('videoSettings.existing.regenerate')}
+          </Button>
+        )}
+      </Row>
+      {run ? (
+        <div className="settings-card__pad video-run">
+          <div className="video-run__line">
+            <span role="status">
+              <b className="num">
+                {t('videoSettings.existing.progress', {
+                  done: number(run.done),
+                  total: number(run.total),
+                })}
+              </b>
+              {view.queue.processing > 0 &&
+                ` · ${t('videoSettings.existing.running', { count: view.queue.processing })}`}
+            </span>
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={() =>
+                void act(() => api.delete<VideoSettingsView>('/instance/video-settings/reprocess'))
+              }
+            >
+              {t('videoSettings.existing.stop')}
+            </Button>
+          </div>
+          <div
+            className="video-meter"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={run.total}
+            aria-valuenow={run.done}
+            aria-label={t('videoSettings.existing.meter')}
+          >
+            <i
+              style={{ width: `${run.total ? Math.min(100, (run.done / run.total) * 100) : 0}%` }}
+            />
+          </div>
+          <div className="video-run__line">
+            <span>{t('videoSettings.existing.first')}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="settings-card__pad">
+          <dl className="video-totals num">
+            <div>
+              <dt>{t('videoSettings.existing.space')}</dt>
+              <dd>
+                {gb(view.copiesBytes)} <small>{t('videoSettings.existing.toAbout')}</small>{' '}
+                {gb(after)} <small>GB</small>
+              </dd>
+            </div>
+            <div>
+              <dt>{t('videoSettings.existing.time')}</dt>
+              <dd>
+                {t('videoSettings.about')} {number(hours)}{' '}
+                <small>{t('videoSettings.existing.hours', { count: hours })}</small>
+              </dd>
+            </div>
+            {view.freeBytes !== null && (
+              <div>
+                <dt>{t('videoSettings.existing.free')}</dt>
+                <dd>
+                  {gb(view.freeBytes)} <small>GB</small>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+      {failed && (
+        <p className="settings-card__pad" role="alert">
+          {t('auth.errors.generic')}
+        </p>
+      )}
+      <Dialog
+        open={asking}
+        title={t('videoSettings.existing.dialogTitle')}
+        onClose={() => setAsking(false)}
+      >
+        <div className="settings-form">
+          <p>{t('videoSettings.existing.dialogBody')}</p>
+          <Segmented
+            label={t('videoSettings.existing.scope')}
+            name="video-backfill-scope"
+            value={scope}
+            options={(['outdated', 'missing'] as const).map((value) => ({
+              value,
+              label: t(`videoSettings.existing.scopes.${value}`),
+            }))}
+            onChange={setScope}
+          />
+          <DialogActions>
+            <Button disabled={busy} onClick={() => setAsking(false)}>
+              {t('project.cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() =>
+                void act(() =>
+                  api.post<VideoSettingsView>('/instance/video-settings/reprocess', { scope }),
+                )
+              }
+            >
+              {t('videoSettings.existing.start')}
+            </Button>
+          </DialogActions>
+        </div>
+      </Dialog>
+    </Card>
+  );
 }
 
 /** Settings → Server → Video (decision 0128). */
 export function VideoSettings() {
   const { t, i18n } = useTranslation();
-  const { view, error, save } = useVideoSettings();
+  const { view, setView, error, save } = useVideoSettings();
   if (error) return <p role="alert">{t('auth.errors.generic')}</p>;
   if (!view) return null;
   const number = (n: number, digits = 0) =>
@@ -298,6 +500,8 @@ export function VideoSettings() {
           />
         </Row>
       </Card>
+
+      <ExistingVideos view={view} setView={setView} number={number} />
 
       <Card
         title={t('videoSettings.encoding.title')}

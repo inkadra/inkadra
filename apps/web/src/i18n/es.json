@@ -5813,7 +5813,7 @@
           },
           "2": {
             "title": "Solo para los nuevos",
-            "text": "Los vídeos ya subidos conservan sus copias hasta que las regeneres."
+            "text": "Regéneralas cuando quieras: las copias viejas se quedan hasta que las nuevas estén listas."
           }
         }
       }
@@ -6558,6 +6558,35 @@
       "format": "Formato",
       "h264": "H.264: se reproduce en cualquier navegador y teléfono.",
       "av1": "Esta tarjeta también codifica AV1; Inkadra aún no lo usa."
+    },
+    "existing": {
+      "title": "Vídeos existentes",
+      "outdated_one": "Un vídeo tiene copias hechas con los ajustes anteriores",
+      "outdated_other": "{{count}} vídeos tienen copias hechas con los ajustes anteriores",
+      "upToDate": "Las copias ya están hechas con estos ajustes",
+      "help": "Las copias actuales se quedan hasta que las nuevas estén listas.",
+      "noRoom": "Hacen falta unos {{size}} más: libera espacio antes de regenerar.",
+      "regenerate": "Regenerar las copias…",
+      "progress": "{{done}} de {{total}} vídeos rehechos",
+      "running_one": "uno en curso",
+      "running_other": "{{count}} en curso",
+      "stop": "Detener",
+      "meter": "Vídeos rehechos",
+      "first": "Los vídeos nuevos van primero. Puedes cerrar esta página.",
+      "space": "Espacio de las copias",
+      "toAbout": "GB → unos",
+      "time": "Tiempo estimado",
+      "hours_one": "hora",
+      "hours_other": "horas",
+      "free": "Espacio libre",
+      "dialogTitle": "Regenerar las copias de los vídeos",
+      "dialogBody": "El servidor rehace las copias con los ajustes de esta página, un vídeo cada vez, después de las subidas nuevas. Las copias actuales se quedan hasta que las nuevas estén listas; las resoluciones que ya no están elegidas se quitan.",
+      "scope": "Qué vídeos",
+      "scopes": {
+        "outdated": "Todos los que tienen ajustes distintos",
+        "missing": "Solo los que no tienen copias"
+      },
+      "start": "Regenerar"
     }
   }
 }

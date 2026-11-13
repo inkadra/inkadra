@@ -62,6 +62,7 @@ export async function makeLadder(
   info: VideoInfo,
   plan: Extract<VideoPlan, { kind: 'ladder' }>,
   onProgress?: (percent: number) => void | Promise<void>,
+  opts: { regenerate?: boolean } = {},
 ) {
   const { db, storage } = deps;
   const settings = deps.proxies ?? DEFAULT_PROXY_SETTINGS;
@@ -73,6 +74,16 @@ export async function makeLadder(
   const current = (name: VideoRung) =>
     rows.find((r) => r.name === name && r.status === 'ready' && r.recipe === recipe);
   const todo = plan.rungs.filter((name) => !current(name));
+  // A regeneration also takes away the rungs no longer chosen, row then file.
+  if (opts.regenerate) {
+    const dropped = rows.filter((r) => !plan.rungs.includes(r.name));
+    for (const r of dropped) {
+      await db
+        .delete(assetRendition)
+        .where(and(eq(assetRendition.assetId, assetId), eq(assetRendition.name, r.name)));
+      if (r.storageKey) await storage.remove([r.storageKey]);
+    }
+  }
   // The original plays: the old copy status stays null, the rungs are read from Asset.playback.
   const aggregate = !plan.original;
   if (todo.length === 0) {

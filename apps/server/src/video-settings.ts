@@ -14,8 +14,10 @@ import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import { instanceSetting } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
+import type { Jobs } from './jobs.ts';
 import { readVideoEncoder } from './media/encoder-setting.ts';
 import type { ProxySettings } from './media/video.ts';
+import { countNeeding, readBackfill } from './video-backfill.ts';
 
 type Reader = Pick<Database, 'select' | 'execute'>;
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -164,7 +166,7 @@ export async function videoLibrary(db: Reader): Promise<VideoSettingsView['libra
 export async function videoSettingsView(
   db: Reader,
   config: VideoEnv & Pick<Config, 'VIDEO_PROXY_CONCURRENCY'>,
-  extra: { freeBytes: number | null; recipe: (quality: VideoQuality) => string },
+  extra: { freeBytes: number | null; recipe: (quality: VideoQuality) => string; jobs?: Jobs },
 ): Promise<VideoSettingsView> {
   const { settings, locked } = await readVideoSettings(db, config);
   const saved = await readVideoEncoder(db);
@@ -183,12 +185,7 @@ export async function videoSettingsView(
         where r.status = 'ready' and r.encode_ms > 0 and a.duration_ms > 0
           and r.created_at > now() - interval '30 days') as speed`);
   const recipe = extra.recipe(settings.quality);
-  const [outdated] = await db.execute<{ n: string }>(sql`select count(*)::text as n from asset a
-      where a.kind = 'video' and a.status = 'ready'
-        and (a.proxy_status in ('ready', 'skipped', 'failed') or exists(
-          select 1 from asset_rendition r where r.asset_id = a.id))
-        and not exists(select 1 from asset_rendition r
-          where r.asset_id = a.id and r.status = 'ready' and r.recipe = ${recipe})`);
+
   const hardware = saved && saved.backend !== 'software';
   return {
     settings,
@@ -206,8 +203,8 @@ export async function videoSettingsView(
     library: await videoLibrary(db),
     copiesBytes: Number(counts?.copies ?? 0),
     freeBytes: extra.freeBytes,
-    outdated: Number(outdated?.n ?? 0),
+    outdated: await countNeeding(db, 'outdated', recipe),
     speed: counts?.speed ? Number(counts.speed) : null,
-    backfill: null,
+    backfill: await readBackfill(db, extra.jobs),
   };
 }

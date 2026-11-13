@@ -9,7 +9,13 @@ export interface Jobs {
    * The playable MP4 copy of a video browsers cannot play (decision 0048), queued by the
    * worker after the poster; missing where nothing makes them.
    */
-  makeProxy?(assetId: string): Promise<void>;
+  makeProxy?(assetId: string, opts?: { regenerate?: boolean }): Promise<void>;
+  /** The next step of a regeneration of video copies (decision 0128). */
+  runVideoBackfill?(delayMs?: number): Promise<void>;
+  /** Drops the regenerations still waiting. */
+  cancelRegenerations?(): Promise<void>;
+  /** Regenerations waiting in the queue. */
+  regenerationsWaiting?(): Promise<number>;
   /** Whether the copy of an asset is waiting or running in the queue (decision 0128). */
   proxyQueued?(assetId: string): Promise<boolean>;
   /**

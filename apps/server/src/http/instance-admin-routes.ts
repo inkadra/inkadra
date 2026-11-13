@@ -3,6 +3,7 @@ import {
   ClassificationCatalogs,
   ClassificationsQuery,
   Id,
+  StartVideoBackfill,
   type StorageLimits,
   UpdateInstanceMember,
   UpdateInstanceSettings,
@@ -26,6 +27,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
+import type { Jobs } from '../jobs.ts';
 import { recipeFor } from '../media/ladder.ts';
 import { diskSpace, growthPerMonth } from '../monitor/health.ts';
 import {
@@ -40,13 +42,14 @@ import {
 } from '../storage-limits.ts';
 import { revokeTokens } from '../tokens.ts';
 import { CHECK_NOW_MS, checkForUpdates, readUpdates } from '../updates.ts';
-import { saveVideoSettings, videoSettingsView } from '../video-settings.ts';
+import { startBackfill, stopBackfill } from '../video-backfill.ts';
+import { readVideoSettings, saveVideoSettings, videoSettingsView } from '../video-settings.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 export function registerInstanceAdminRoutes(
   app: FastifyInstance,
-  { db, auth, config }: { db: Database; auth: Auth; config: Config },
+  { db, auth, config, jobs }: { db: Database; auth: Auth; config: Config; jobs?: Jobs },
 ) {
   const admin = async (req: FastifyRequest) => {
     const { user: actor } = await requireSession(auth, req, db);
@@ -154,6 +157,7 @@ export function registerInstanceAdminRoutes(
     videoSettingsView(db, config, {
       freeBytes: (await diskSpace(config))?.free ?? null,
       recipe: recipeFor,
+      jobs,
     });
   app.get(`${API_PREFIX}/instance/video-settings`, async (req, reply) => {
     await admin(req);
@@ -167,6 +171,20 @@ export function registerInstanceAdminRoutes(
       await tx.execute(sql`select pg_advisory_xact_lock(10893)`);
       await saveVideoSettings(tx, config, patch);
     });
+    return videoView();
+  });
+  app.post(`${API_PREFIX}/instance/video-settings/reprocess`, async (req, reply) => {
+    await admin(req);
+    const { scope } = StartVideoBackfill.parse(req.body ?? {});
+    const { settings } = await readVideoSettings(db, config);
+    if (!jobs) throw new HttpError('conflict', 'This server makes no video copies.');
+    await startBackfill(db, jobs, scope, recipeFor(settings.quality));
+    reply.status(202);
+    return videoView();
+  });
+  app.delete(`${API_PREFIX}/instance/video-settings/reprocess`, async (req) => {
+    await admin(req);
+    if (jobs) await stopBackfill(db, jobs);
     return videoView();
   });
   app.get(`${API_PREFIX}/instance/members/:userId/files`, async (req, reply) => {

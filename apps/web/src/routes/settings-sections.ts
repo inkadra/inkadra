@@ -160,6 +160,7 @@ export const SETTINGS: SettingEntry[] = [
   ]),
   s('video.renditions', 'videoSettings.rungs.title', [], ['480p', '720p', '1080p', '4K']),
   s('video.playable', 'videoSettings.playable.label', ['videoSettings.examples.title']),
+  s('video.existing', 'videoSettings.existing.title', ['videoSettings.existing.regenerate']),
   s('backups.now', 'backups.now'),
   s('backups.nightly', 'backups.nightly'),
   s('backups.time', 'backups.time'),
