@@ -205,7 +205,8 @@ test('account settings end another session without handing out its token', async
   });
   const more = sessionList.getByRole('button', { name: /^Mostra tutte/ });
   if (await more.isVisible()) await more.click();
-  const end = sessionList.getByRole('button', { name: 'Esci', exact: true });
+  // Each "Esci" is named after its session's row (#677).
+  const end = sessionList.getByRole('button', { name: /^Esci .+ Ultima attività/ });
   await expect(end).toHaveCount(sessions.items.length - 1);
   await end.first().click();
   await expect(end).toHaveCount(sessions.items.length - 2);

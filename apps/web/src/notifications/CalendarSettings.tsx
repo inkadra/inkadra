@@ -74,6 +74,8 @@ export function CalendarSettings() {
       icon="copy"
       disabled={!feed?.url || busy}
       onClick={() => void copy()}
+      // One "Copy" per page: the clipper row has the other (#677).
+      aria-label={t('calendar.copyLink')}
     >
       {t(phone ? 'calendar.copyLink' : 'calendar.copy')}
     </Button>

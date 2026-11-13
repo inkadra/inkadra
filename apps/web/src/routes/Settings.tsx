@@ -951,7 +951,7 @@ function Sessions() {
       <ul className="settings-list">
         {(all ? items : items?.slice(0, SESSIONS_SHOWN))?.map((s) => (
           <li key={s.id}>
-            <span className="settings-list__text">
+            <span className="settings-list__text" id={`session-${s.id}`}>
               <span className="settings-row__label">{deviceName(s.userAgent, t)}</span>
               <span className="settings-row__help">
                 {[
@@ -967,6 +967,9 @@ function Sessions() {
             ) : (
               <Button
                 variant="ghost"
+                // "Sign out" names the device it ends (#677): one name per row.
+                id={`session-end-${s.id}`}
+                aria-labelledby={`session-end-${s.id} session-${s.id}`}
                 onClick={async () => {
                   try {
                     await trackSave(api.delete(`/me/sessions/${s.id}`));
