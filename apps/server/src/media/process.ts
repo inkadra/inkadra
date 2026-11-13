@@ -6,14 +6,14 @@ import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
 import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
-import { asset, assetVariant } from '../db/schema.ts';
+import { assetRendition, asset, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
 import { readFileMetadata } from './file-metadata.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
-import { videoPlan } from './ladder.ts';
+import { recipeOf, videoPlan } from './ladder.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
 import {
@@ -646,7 +646,23 @@ async function proxyState(
   const plan = videoPlan(container, info, size, deps.proxies ?? DEFAULT_PROXY_SETTINGS);
   if (plan.kind === 'none') return { status: null, enqueue: false };
   if (plan.kind === 'skip' || !deps.enqueueProxy) return { status: 'skipped', enqueue: false };
-  if (plan.kind === 'ladder' && plan.original) return { status: null, enqueue: true };
+  if (plan.kind === 'ladder') {
+    // A second pass (a reprocess, an import) keeps rungs already made with these settings.
+    const recipe = recipeOf(await proxySettings(deps));
+    const ready = await deps.db
+      .select({ name: assetRendition.name })
+      .from(assetRendition)
+      .where(
+        and(
+          eq(assetRendition.assetId, assetId),
+          eq(assetRendition.status, 'ready'),
+          eq(assetRendition.recipe, recipe),
+        ),
+      );
+    const done = plan.rungs.every((r) => ready.some((x) => x.name === r));
+    if (plan.original) return { status: null, enqueue: !done };
+    return done ? { status: 'ready', enqueue: false } : { status: 'queued', enqueue: true };
+  }
   const [made] = await deps.db
     .select({ size: assetVariant.size })
     .from(assetVariant)

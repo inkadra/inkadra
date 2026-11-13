@@ -10,7 +10,7 @@ import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, assetVariant, project } from '../db/schema.ts';
+import { assetRendition, asset, assetVariant, project } from '../db/schema.ts';
 import { requeueStuckProxies, STUCK_PROXY_MS } from '../queues.ts';
 import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
@@ -780,9 +780,13 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         ({ row, variants } = await load(id));
         expect(row).toMatchObject({ proxyStatus: 'ready', proxyProgress: 100 });
         expect(progress.at(-1)).toBe(100);
-        const proxy = variants.find((v) => v.size === 'proxy');
-        expect(proxy).toMatchObject({ mime: 'video/mp4', width: 64, height: 36 });
+        // The ladder (decision 0128): one rung for so small a source, never upscaled.
+        const rungs = await db.select().from(assetRendition).where(eq(assetRendition.assetId, id));
+        expect(rungs).toHaveLength(1);
+        const proxy = rungs[0];
+        expect(proxy).toMatchObject({ name: '480', status: 'ready', width: 64, height: 36 });
         expect(proxy?.bytes).toBeGreaterThan(0);
+        expect(proxy?.playlist).toContain('#EXT-X-MAP:URI="480.mp4?v=');
         const out = join(root, `proxy-${id}.mp4`);
         writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
         const made = await probeVideo(tools.ffprobe ?? '', out, 'video/mp4');
@@ -799,7 +803,6 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         await processAsset(again.deps, id);
         ({ row, variants } = await load(id));
         expect(row?.proxyStatus).toBe('ready');
-        expect(variants.some((v) => v.size === 'proxy')).toBe(true);
         expect(again.queued).toEqual([]);
       });
 
@@ -841,10 +844,13 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
           id,
         );
         expect(result).toMatchObject({ encoder: 'software' });
-        expect(warned).toEqual(['hardware encoding failed: making the playable copy with libx264']);
-        const { row, variants } = await load(id);
+        expect(warned).toEqual(['hardware encoding failed: making the video ladder with libx264']);
+        const { row } = await load(id);
         expect(row).toMatchObject({ proxyStatus: 'ready', proxyProgress: 100 });
-        expect(variants.some((v) => v.size === 'proxy')).toBe(true);
+        const rungs = await db.select().from(assetRendition).where(eq(assetRendition.assetId, id));
+        expect(rungs.map((r) => [r.name, r.status, r.encoder])).toEqual([
+          ['480', 'ready', 'software'],
+        ]);
       });
 
       it('tries a CPU decode before libx264 when the GPU decoded the source', async () => {
@@ -878,10 +884,10 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         expect(result).toMatchObject({ encoder: 'software' });
         expect(warned).toEqual([
           'hardware decoding failed: decoding on the CPU, encoding on the GPU',
-          'hardware encoding failed: making the playable copy with libx264',
+          'hardware encoding failed: making the video ladder with libx264',
         ]);
-        const { variants } = await load(id);
-        expect(variants.find((v) => v.size === 'proxy')).toMatchObject({ width: 320, height: 180 });
+        const rungs = await db.select().from(assetRendition).where(eq(assetRendition.assetId, id));
+        expect(rungs[0]).toMatchObject({ name: '480', width: 320, height: 180 });
       });
 
       it('saves the encoder the worker chose, for Diagnostics', async () => {

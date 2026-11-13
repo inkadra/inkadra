@@ -384,7 +384,8 @@ export function copiesVideo(info: VideoInfo, settings: ProxySettings, sourceByte
   if (!plainH264(info) || short > settings.resolution) return false;
   if ((info.frameRate ?? 0) > 60) return false;
   const rate = sourceBitrate(info, sourceBytes);
-  return rate !== null && rate <= rungRate('high', short, info.frameRate).peak;
+  // Below the smallest rung, the rate of the smallest rung: a tiny clip is not "heavy".
+  return rate !== null && rate <= rungRate('high', Math.max(short, 480), info.frameRate).peak;
 }
 
 /**
