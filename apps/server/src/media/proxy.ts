@@ -122,7 +122,9 @@ async function transcode(
   let shown = 0;
   let writing: Promise<unknown> = Promise.resolve();
   const encoder =
-    copiesVideo(info, settings, row.size) || !info.videoCodec ? null : (settings.encoder ?? SOFTWARE_ENCODER);
+    copiesVideo(info, settings, row.size) || !info.videoCodec
+      ? null
+      : (settings.encoder ?? SOFTWARE_ENCODER);
   // A GPU that cannot take this file never fails the copy: when it decoded the source, it is
   // tried again decoding on the CPU (a codec or profile the card does not decode), then with
   // libx264 (an encoder that refuses it, a busy device). Not after a timeout, though.

@@ -4,7 +4,9 @@ Accepted, 2026-11-12. The maintainer approved the interactive mockup kept in
 [0124/settings-redesign.html](0124/settings-redesign.html): its `NAV` is the navigation, its
 `PAGES` the content of every page, and the page "Cosa cambia" lists every move. Its sample data
 and the dashed "↪ da …" chips are illustration only. Builds on 0029 (the settings window),
-0055 (personal preferences) and 0121 (modules).
+0055 (personal preferences) and 0121 (modules). Amended by
+[0128](0128-video-renditions.md): the Server group gains a seventeenth page, Video, after
+Archiviazione.
 
 ## Context
 

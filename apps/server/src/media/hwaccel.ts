@@ -223,7 +223,14 @@ export function videoPipeline(encoder: VideoEncoder, opts: PipelineOptions): Vid
           'medium',
           // A quality with -b:v and -maxrate makes ffmpeg pick QVBR; without it, VBR.
           ...(full
-            ? ['-global_quality', String(q.globalQuality), '-extbrc', '1', '-look_ahead_depth', '30']
+            ? [
+                '-global_quality',
+                String(q.globalQuality),
+                '-extbrc',
+                '1',
+                '-look_ahead_depth',
+                '30',
+              ]
             : []),
           '-b:v',
           String(target),
@@ -418,7 +425,14 @@ export function av1TestArgs(encoder: VideoEncoder) {
       ? { input: [], filter: 'format=yuv420p' }
       : encoder.backend === 'qsv'
         ? {
-            input: ['-init_hw_device', `vaapi=va:${device}`, '-init_hw_device', 'qsv=qs@va', '-filter_hw_device', 'qs'],
+            input: [
+              '-init_hw_device',
+              `vaapi=va:${device}`,
+              '-init_hw_device',
+              'qsv=qs@va',
+              '-filter_hw_device',
+              'qs',
+            ],
             filter: 'format=nv12,hwupload=extra_hw_frames=64,format=qsv',
           }
         : {

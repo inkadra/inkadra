@@ -104,7 +104,9 @@ describe('videoPipeline', () => {
       rate: rungRate('light', 1080, 25),
       gpu: false,
     });
-    expect(p.codec).toEqual(expect.arrayContaining(['veryfast', '-crf', '24', '-maxrate', '5250000']));
+    expect(p.codec).toEqual(
+      expect.arrayContaining(['veryfast', '-crf', '24', '-maxrate', '5250000']),
+    );
   });
 
   it('decodes and scales on the card with NVENC, or only encodes there', () => {
