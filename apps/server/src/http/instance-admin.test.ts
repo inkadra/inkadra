@@ -11,6 +11,7 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   account,
   asset,
+  assetRendition,
   assetVariant,
   boardElementIndex,
   boardGrant,
@@ -223,6 +224,15 @@ describe.skipIf(!url)('instance administration', () => {
       storageKey: 'derived-test',
       bytes: 250,
     });
+    // A rung of the video ladder counts with the derived files (decision 0128).
+    await db.insert(assetRendition).values({
+      assetId: image!.id,
+      name: '480',
+      status: 'ready',
+      storageKey: 'rendition-test',
+      bytes: 1000,
+      recipe: 'h264/balanced/1',
+    });
     // Repeated and cross-project references never multiply or reassign the owning asset.
     await db.insert(boardElementIndex).values([
       {
@@ -266,10 +276,10 @@ describe.skipIf(!url)('instance administration', () => {
         color: own.icon.color,
       },
     ]);
-    expect(result.derivedBytes).toBe(250);
+    expect(result.derivedBytes).toBe(1250);
     expect(result.byUser?.filter((row) => row.bytes > 0)).toEqual([
       { userId: people.second!.id, name: 'second', image: avatar, bytes: 3000, derivedBytes: 0 },
-      { userId: people.admin!.id, name: 'admin', image: null, bytes: 1000, derivedBytes: 250 },
+      { userId: people.admin!.id, name: 'admin', image: null, bytes: 1000, derivedBytes: 1250 },
       { userId: null, name: null, image: null, bytes: 500, derivedBytes: 0 },
     ]);
     // Someone who has uploaded nothing is listed too.
