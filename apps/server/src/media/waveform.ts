@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { trackTool } from '../monitor/children.ts';
 import { FFMPEG_MEMORY } from './hwaccel.ts';
 import { limitedCommand, toolEnv } from './tools.ts';
 import { MAX_INT32, safeInput } from './video.ts';
@@ -114,6 +115,7 @@ export async function readPeaks(
   const peaks = new BlockPeaks();
   await new Promise<void>((resolve, reject) => {
     const child = spawn(file, argv, { env: toolEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
+    trackTool(child, ffmpeg);
     let stderr = '';
     const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
     child.stdout.on('data', (chunk: Buffer) => peaks.push(chunk));

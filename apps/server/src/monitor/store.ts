@@ -1,6 +1,7 @@
 import type { ServerProblemKind, ServerRole, ServerServiceId } from '@inkadra/shared';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
+import type { BeatChild } from './children.ts';
 
 /**
  * Where the roles leave their samples, heartbeats, problems and events for the Server page
@@ -64,6 +65,8 @@ export interface Beat {
   cpu: number;
   memory: number;
   presence?: PresenceBoard[];
+  /** The external programs it runs now (ffmpeg, LibreOffice…); older beats lack it. */
+  children?: BeatChild[];
 }
 
 export interface StoredProblem {

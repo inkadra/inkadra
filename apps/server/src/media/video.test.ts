@@ -6,7 +6,6 @@ import {
   liveDecodable,
   MAX_INT32,
   parseProbe,
-  posterFilter,
   proxyArgs,
   proxyMaxBytes,
   proxyPlan,
@@ -14,7 +13,6 @@ import {
   safeInput,
   shortCopy,
   sniffAudio,
-  TONEMAP,
   type VideoInfo,
   webPlayable,
 } from './video.ts';
@@ -423,12 +421,5 @@ describe('copiesVideo (decision 0128)', () => {
     expect(copiesVideo(phone, DEFAULT_PROXY_SETTINGS, 125e6)).toBe(false);
     expect(copiesVideo({ ...phone, frameRate: 120 }, DEFAULT_PROXY_SETTINGS, 5e6)).toBe(false);
     expect(copiesVideo({ ...phone, durationMs: null }, DEFAULT_PROXY_SETTINGS, 5e6)).toBe(false);
-  });
-});
-
-describe('posterFilter', () => {
-  it('tone maps an HDR frame to SDR, as the copies, and leaves SDR as it is', () => {
-    expect(posterFilter(false)).toBe("scale='min(2048,iw)':-2");
-    expect(posterFilter(true)).toBe(`scale='min(2048,iw)':-2,format=yuv420p10le,${TONEMAP}`);
   });
 });

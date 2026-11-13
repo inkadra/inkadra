@@ -46,6 +46,22 @@ export const ServerEvent = z
   .openapi('ServerEvent');
 export type ServerEvent = z.infer<typeof ServerEvent>;
 
+export const ServerProcessTool = z
+  .object({
+    tool: z.string().openapi({ description: 'The program: `ffmpeg`, `ffprobe`, `LibreOffice`…' }),
+    label: z.string().nullable().openapi({
+      description: 'Display name of the file it works on and what it makes (`clip.mov · 1080p`).',
+    }),
+    startedAt: Timestamp,
+    cpu: z
+      .number()
+      .nullable()
+      .openapi({ description: 'Cores used by the program; null where it cannot be read.' }),
+    memory: z.number().int().nullable().openapi({ description: 'Resident bytes.' }),
+  })
+  .openapi('ServerProcessTool');
+export type ServerProcessTool = z.infer<typeof ServerProcessTool>;
+
 export const ServerProcess = z
   .object({
     role: ServerRole,
@@ -57,6 +73,10 @@ export const ServerProcess = z
     }),
     cpu: z.number().nullable().openapi({ description: 'Cores used by this process.' }),
     memory: z.number().int().nullable().openapi({ description: 'Resident bytes.' }),
+    children: z.array(ServerProcessTool).optional().openapi({
+      description:
+        'External programs the process runs now (video copies, previews, conversions), not counted in its own `cpu` and `memory`; absent when none or on older servers.',
+    }),
   })
   .openapi('ServerProcess');
 export type ServerProcess = z.infer<typeof ServerProcess>;

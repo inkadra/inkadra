@@ -455,6 +455,16 @@
 .server-table .server-table__n {
   text-align: end;
 }
+/* A program a process runs (ffmpeg, LibreOffice) sits under it, indented past its dot. */
+.server-table tbody .server-table__child th:first-child {
+  padding-left: 30px;
+  text-indent: 0;
+}
+.server-table__label {
+  display: block;
+  color: var(--ink-text-secondary);
+  overflow-wrap: break-word;
+}
 /* Above `.server-table td`, which sets the normal weight. */
 .server-table td.server-table__fail {
   color: var(--ink-status-warn);

@@ -507,3 +507,36 @@ it('shows the thumbnail of a file being converted, and a placeholder without one
   expect(thumbs[0]?.querySelector('img')).toBeNull();
   expect(thumbs[1]?.querySelector('img')?.getAttribute('src')).toBe(url);
 });
+
+it('lists the programs a process runs under it, with their own CPU and memory', async () => {
+  const s = status();
+  const web = s.processes[0] as ServerStatus['processes'][number];
+  const startedAt = new Date(new Date(s.checkedAt).getTime() - 120_000).toISOString();
+  vi.mocked(api.get).mockResolvedValue({
+    ...s,
+    processes: [
+      {
+        ...web,
+        children: [
+          { tool: 'ffmpeg', label: 'Spot.mov · 1080p', startedAt, cpu: 2, memory: 3e8 },
+          { tool: 'LibreOffice', label: null, startedAt, cpu: null, memory: null },
+        ],
+      },
+    ],
+  });
+  await act(async () => updatePreferences({ serverView: 'advanced' }));
+  await render();
+  const rows = [...host.querySelectorAll('.server-table__child')];
+  expect(rows).toHaveLength(2);
+  const cells = (row: Element | undefined) =>
+    [...(row?.querySelectorAll('th, td') ?? [])].map((c) => c.textContent);
+  expect(cells(rows[0])).toEqual([
+    'server.details.toolOf ffmpeg · Spot.mov · 1080p',
+    '50%',
+    expect.stringMatching(/MB/),
+    'server.details.runningFor',
+  ]);
+  expect(cells(rows[1])?.slice(0, 3)).toEqual(['server.details.toolOf LibreOffice', '—', '—']);
+  // Under its process, before the database.
+  expect(rows[0]?.previousElementSibling?.textContent).toContain('server.roles.web');
+});

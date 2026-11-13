@@ -232,6 +232,7 @@ export async function convertOffice(
     processes: OFFICE_CAPS.processes,
     maxBuffer: 64 * 1024,
     input: filter,
+    name: 'LibreOffice',
   });
   return takeSandboxPdf(join(dir, 'out', 'source.pdf'), join(dir, 'render', 'converted.pdf'));
 }

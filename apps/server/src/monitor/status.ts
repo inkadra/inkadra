@@ -645,6 +645,10 @@ export async function serverStatus(
       status: beatStatus(b.at, now),
       cpu: b.cpu,
       memory: b.memory,
+      // A process that stopped took its programs with it.
+      ...(b.children?.length && beatStatus(b.at, now) !== 'down'
+        ? { children: b.children.map((c) => ({ ...c, startedAt: iso(c.startedAt) })) }
+        : {}),
     }))
     .sort((a, b) => a.role.localeCompare(b.role));
   const running = beats.filter((b) => beatStatus(b.at, now) !== 'down');

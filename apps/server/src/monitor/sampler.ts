@@ -1,6 +1,7 @@
 import { hostname } from 'node:os';
 import type { ServerRole } from '@inkadra/shared';
 import type { Logger } from 'pino';
+import { ChildSampler } from './children.ts';
 import {
   type ContainerReading,
   type GpuReading,
@@ -169,6 +170,7 @@ export function startSampler(opts: {
   let previous: { container: ContainerReading; cpu: NodeJS.CpuUsage; at: number } | null = null;
   const interval = opts.intervalMs ?? SAMPLE_MS;
   const gpuWindow = new GpuWindow(GPU_WINDOW_MS);
+  const tools = new ChildSampler();
   let failing = false;
 
   async function sample() {
@@ -179,6 +181,7 @@ export function startSampler(opts: {
     const cpu = process.cpuUsage();
     const rss = process.memoryUsage.rss();
     const presence = opts.presence?.();
+    const children = await tools.sample(at);
     if (previous) {
       const point = pointFrom(at, at - previous.at, previous, { container, cpu, rss });
       point.g = gpu;
@@ -197,6 +200,7 @@ export function startSampler(opts: {
         cpu: point.pc,
         memory: rss,
         ...(presence ? { presence } : {}),
+        ...(children.length ? { children } : {}),
       });
     } else {
       await opts.store.beat({ role: opts.role, host, startedAt, at, cpu: 0, memory: rss });
