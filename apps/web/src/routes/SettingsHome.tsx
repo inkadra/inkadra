@@ -154,45 +154,45 @@ export function SettingsHome({ setup }: { setup: Setup }) {
   return (
     <div className="settings-home">
       <SettingsSearch replace={false}>
-      <Link to={href('account')} className="settings-home__me">
-        <Avatar name={user?.name ?? ''} image={user?.image} size={44} />
-        <span className="settings-home__label">
-          <strong>{user?.name}</strong>
-          <span className="settings-home__sub">
-            {admin ? t('admin.roles.admin') : t('admin.roles.member')} · {user?.email}
+        <Link to={href('account')} className="settings-home__me">
+          <Avatar name={user?.name ?? ''} image={user?.image} size={44} />
+          <span className="settings-home__label">
+            <strong>{user?.name}</strong>
+            <span className="settings-home__sub">
+              {admin ? t('admin.roles.admin') : t('admin.roles.member')} · {user?.email}
+            </span>
           </span>
-        </span>
-        <Icon name="chevronRight" size={14} />
-      </Link>
-      <Group title={t(GROUP_TITLES.personal)}>
-        <li className="settings-home__inline">
-          <span className="settings-home__label">{t('admin.theme')}</span>
-          <Segmented
-            label={t('admin.theme')}
-            value={preference}
-            onChange={(value: ThemePreference) => choose(value)}
-            options={(['dark', 'light', 'system'] as const).map((value) => ({
-              value,
-              label: t(`admin.themes.${value}`),
-            }))}
+          <Icon name="chevronRight" size={14} />
+        </Link>
+        <Group title={t(GROUP_TITLES.personal)}>
+          <li className="settings-home__inline">
+            <span className="settings-home__label">{t('admin.theme')}</span>
+            <Segmented
+              label={t('admin.theme')}
+              value={preference}
+              onChange={(value: ThemePreference) => choose(value)}
+              options={(['dark', 'light', 'system'] as const).map((value) => ({
+                value,
+                label: t(`admin.themes.${value}`),
+              }))}
+            />
+          </li>
+          <PageItems
+            group="personal"
+            setup={setup}
+            values={{
+              preferences: t(`settings.profile.languages.${user?.locale ?? i18n.language}`),
+              notifications: email
+                ? t(`settingsUi.notifications.short.${email === 'off' ? 'immediate' : email}`)
+                : undefined,
+            }}
           />
-        </li>
-        <PageItems
-          group="personal"
-          setup={setup}
-          values={{
-            preferences: t(`settings.profile.languages.${user?.locale ?? i18n.language}`),
-            notifications: email
-              ? t(`settingsUi.notifications.short.${email === 'off' ? 'immediate' : email}`)
-              : undefined,
-          }}
-        />
-      </Group>
-      {admin && <AdminGroups setup={setup} />}
-      <button type="button" className="settings-home__signout" onClick={() => void signOut()}>
-        {t('auth.signOut')}
-      </button>
-      <p className="settings-home__version">Inkadra {version} · AGPL-3.0</p>
+        </Group>
+        {admin && <AdminGroups setup={setup} />}
+        <button type="button" className="settings-home__signout" onClick={() => void signOut()}>
+          {t('auth.signOut')}
+        </button>
+        <p className="settings-home__version">Inkadra {version} · AGPL-3.0</p>
       </SettingsSearch>
     </div>
   );

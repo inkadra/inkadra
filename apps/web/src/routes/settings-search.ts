@@ -107,7 +107,13 @@ export function searchSettings(
   const rank = (keys: string[], terms: string[] = []): number | null => {
     const here = rankTexts([...keys.map((key) => t(key)), ...terms], query);
     if (here !== null) return here;
-    const there = others.some((lng) => rankTexts(keys.map((key) => t(key, { lng })), query) !== null);
+    const there = others.some(
+      (lng) =>
+        rankTexts(
+          keys.map((key) => t(key, { lng })),
+          query,
+        ) !== null,
+    );
     return there ? 3 : null;
   };
   const results: SettingsResult[] = [];
@@ -226,7 +232,7 @@ export function searchData(
           const name =
             key === 'projectTypes' || key === 'tags'
               ? option.label
-              : shotOptionLabel(key, option, t);
+              : shotOptionLabel(key, option, (word) => t(word));
           const rank = rankTexts([name], query);
           return rank === null
             ? []

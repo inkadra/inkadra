@@ -58,30 +58,30 @@ export function SettingsNav({
                 {pages
                   .filter((p) => p.group === group)
                   .map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      to={p.href}
-                      replace
-                      className="settings-nav__item"
-                      aria-current={p.id === current ? 'page' : undefined}
-                      {...(setupAttention(setup, p.id) && {
-                        'data-attention': true,
-                        title: t('onboarding.settingsPending'),
-                      })}
-                      {...(p.id === 'updates' &&
-                        update && {
-                          'data-update': true,
-                          title: t('updates.navAvailable', { version: update.version }),
+                    <li key={p.id}>
+                      <Link
+                        to={p.href}
+                        replace
+                        className="settings-nav__item"
+                        aria-current={p.id === current ? 'page' : undefined}
+                        {...(setupAttention(setup, p.id) && {
+                          'data-attention': true,
+                          title: t('onboarding.settingsPending'),
                         })}
-                    >
-                      <Icon name={p.icon} size={16} />
-                      <span className="settings-nav__label">{t(p.title)}</span>
-                      {p.id === 'members' && members != null && (
-                        <span className="settings-nav__count">{members}</span>
-                      )}
-                    </Link>
-                  </li>
-                ))}
+                        {...(p.id === 'updates' &&
+                          update && {
+                            'data-update': true,
+                            title: t('updates.navAvailable', { version: update.version }),
+                          })}
+                      >
+                        <Icon name={p.icon} size={16} />
+                        <span className="settings-nav__label">{t(p.title)}</span>
+                        {p.id === 'members' && members != null && (
+                          <span className="settings-nav__count">{members}</span>
+                        )}
+                      </Link>
+                    </li>
+                  ))}
               </ul>
             </div>
           ))}

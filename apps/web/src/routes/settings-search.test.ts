@@ -124,15 +124,20 @@ describe('the settings registry', () => {
     const code = sources(join(__dirname, '..'))
       .map((file) => readFileSync(file, 'utf8'))
       .join('\n');
-    const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // `anchor="x"` on Row, Card or Summary, `data-setting="x"` on an element, or a template
     // (`modules.${id}`) whose ${…} stands for one segment of the id.
     const anchors = [
       ...code.matchAll(/(?:data-setting|\banchor)=(?:"([^"]+)"|\{`([^`]+)`\})/g),
     ].map(([, plain, template]) =>
       plain
-        ? new RegExp(`^${escape(plain)}$`)
-        : new RegExp(`^${(template as string).split(/\$\{[^}]+\}/).map(escape).join('[^.:]+')}$`),
+        ? new RegExp(`^${literal(plain)}$`)
+        : new RegExp(
+            `^${(template as string)
+              .split(/\$\{[^}]+\}/)
+              .map(literal)
+              .join('[^.:]+')}$`,
+          ),
     );
     const missing = SETTINGS.filter((entry) => !anchors.some((a) => a.test(entry.id)));
     expect(

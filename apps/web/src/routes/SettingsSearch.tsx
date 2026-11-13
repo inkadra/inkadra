@@ -149,7 +149,8 @@ export function SettingsSearch({
   const current = Math.min(active, results.length - 1);
   const optionId = (index: number) => `${listId}-${index}`;
   useEffect(() => {
-    if (current >= 0) document.getElementById(optionId(current))?.scrollIntoView?.({ block: 'nearest' });
+    if (current >= 0)
+      document.getElementById(optionId(current))?.scrollIntoView?.({ block: 'nearest' });
   });
 
   const open = (index: number) => {

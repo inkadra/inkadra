@@ -545,7 +545,11 @@ function Profile() {
             }}
           />
         </Row>
-        <Row anchor="account.email" label={t('auth.email')} help={t('settingsUi.account.emailHelp')}>
+        <Row
+          anchor="account.email"
+          label={t('auth.email')}
+          help={t('settingsUi.account.emailHelp')}
+        >
           <span className="settings-value">{user?.email}</span>
         </Row>
       </div>

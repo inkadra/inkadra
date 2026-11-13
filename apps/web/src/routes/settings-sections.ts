@@ -232,4 +232,3 @@ export function autosaves(id: string): boolean {
 export function isSettingsHome(pathname: string, search: string): boolean {
   return pathname === '/settings' && !new URLSearchParams(search).get('section');
 }
-

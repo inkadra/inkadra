@@ -450,7 +450,9 @@ test('settings search finds settings by their English names with the interface i
   }
   await search.fill('theme');
   await search.press('Enter');
-  await expect(dialog.getByRole('heading', { name: 'Aspetto e lingua', exact: true })).toBeVisible();
+  await expect(
+    dialog.getByRole('heading', { name: 'Aspetto e lingua', exact: true }),
+  ).toBeVisible();
 });
 
 test('Escape clears the settings search, then closes the window', async ({ page }) => {

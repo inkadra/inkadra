@@ -167,16 +167,18 @@ it('opens a page on the row a search result names: scrolled to, highlighted and 
   expect(host.querySelector('[data-setting="preferences.language"]')?.className).toBe('');
 });
 
+/** A row that appears once its page has loaded. */
+function Later() {
+  const [shown, show] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => show(true), 20);
+    return () => clearTimeout(timer);
+  }, []);
+  return shown ? <p data-setting="member:u1">Antonino</p> : null;
+}
+
 it('waits for a row that the page loads later, like a member', async () => {
   HTMLElement.prototype.scrollIntoView = vi.fn();
-  function Later() {
-    const [shown, show] = useState(false);
-    useEffect(() => {
-      const timer = setTimeout(() => show(true), 20);
-      return () => clearTimeout(timer);
-    }, []);
-    return shown ? <p data-setting="member:u1">Antonino</p> : null;
-  }
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={['/settings/team?setting=member%3Au1']}>
