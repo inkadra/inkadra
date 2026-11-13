@@ -10,4 +10,4 @@ export {
   SCENE_FIELDS,
   type SceneField,
   similarity,
-} from '@inkadra/canvas-core/screenplay';
+} from '@inkadra/canvas-core/screenplay/revision';

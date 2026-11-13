@@ -8,7 +8,7 @@ import {
   type ScriptScene,
   splitCue,
 } from './script.ts';
-import { descendants, parseXml, textContent, XmlError, type XmlElement } from './xml.ts';
+import { descendants, parseXml, textContent, type XmlElement, XmlError } from './xml.ts';
 
 /**
  * Reads a Final Draft file (.fdx, XML). Documents with a DOCTYPE or entity declarations are
@@ -74,9 +74,7 @@ export function parseFdx(source: string): Script {
 function titlePage(root: XmlElement): Record<string, string> {
   const page = child(root, 'TitlePage');
   const content = page && child(page, 'Content');
-  const texts = (content ? descendants(content, 'Paragraph') : [])
-    .map(textOf)
-    .filter(Boolean);
+  const texts = (content ? descendants(content, 'Paragraph') : []).map(textOf).filter(Boolean);
   const fields: Record<string, string> = {};
   const [title] = texts;
   if (title) fields.title = title;

@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 import { addFrame, addScene, listElements, storyboardOf } from '@inkadra/canvas-core';
+import fountain from '@inkadra/canvas-core/fixtures/last-train.fountain?raw';
 import { Dialog } from '@inkadra/ui';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import fountain from '@inkadra/canvas-core/fixtures/last-train.fountain?raw';
 import { ScreenplayImportDialog } from './ScreenplayImportDialog.tsx';
 
 const translations = vi.hoisted(() => ({

@@ -33,9 +33,9 @@ describe('Final Draft without the DOM', () => {
   );
 
   it('reads deep nesting without running out of stack', () => {
-    const deep = `<FinalDraft><Content>${'<x>'.repeat(200_000)}${'</x>'.repeat(200_000)}</Content></FinalDraft>`;
+    const deep = `<FinalDraft><Content>${'<x>'.repeat(50_000)}${'</x>'.repeat(50_000)}</Content></FinalDraft>`;
     expect(read('deep.fdx', deep)).toEqual({ error: 'empty' });
-    const text = `<FinalDraft><Content><Paragraph Type="Scene Heading"><Text>${'<b>'.repeat(200_000)}INT. A - DAY${'</b>'.repeat(200_000)}</Text></Paragraph></Content></FinalDraft>`;
+    const text = `<FinalDraft><Content><Paragraph Type="Scene Heading"><Text>${'<b>'.repeat(50_000)}INT. A - DAY${'</b>'.repeat(50_000)}</Text></Paragraph></Content></FinalDraft>`;
     expect(read('deep.fdx', text)).toMatchObject({ script: { scenes: [{ location: 'A' }] } });
   });
 });

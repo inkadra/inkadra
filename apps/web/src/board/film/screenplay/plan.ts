@@ -13,4 +13,4 @@ export {
   placeName,
   planImport,
   sceneNumbers,
-} from '@inkadra/canvas-core/screenplay';
+} from '@inkadra/canvas-core/screenplay/plan';

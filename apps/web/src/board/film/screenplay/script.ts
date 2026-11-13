@@ -11,4 +11,4 @@ export {
   ScriptError,
   type ScriptScene,
   splitCue,
-} from '@inkadra/canvas-core/screenplay';
+} from '@inkadra/canvas-core/screenplay/script';

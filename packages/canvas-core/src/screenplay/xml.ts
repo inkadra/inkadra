@@ -22,11 +22,19 @@ export interface XmlElement {
 
 export class XmlError extends Error {}
 
-const NAME = /[A-Za-z_:À-ÖØ-öø-˿Ͱ-ͽͿ-῿‌‍⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�\uD800-\uDBFF][\w.:\-·À-ÖØ-öø-ͽͿ-῿‌‍‿⁀⁰-↏Ⰰ-⿯、-퟿豈-﷏ﷰ-�\uD800-\uDFFF]*/y;
+/** XML's name characters, written as escapes (joiners left out: a name with one is refused). */
+const NAME_START =
+  'A-Za-z_:\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF' +
+  '\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD\\uD800-\\uDBFF';
+const NAME = new RegExp(
+  `[${NAME_START}][${NAME_START}\\w.\\-\\u00B7\\u0300-\\u036F\\u203F\\u2040\\uDC00-\\uDFFF]*`,
+  'y',
+);
 const SPACE = /[ \t\n]*/y;
 const ATTRIBUTE_VALUE = /"([^<"]*)"|'([^<']*)'/y;
 /** Characters XML does not allow, written or referenced. */
-const NOT_CHAR = /[\0-\x08\x0B\x0C\x0E-\x1F￾￿]/;
+// biome-ignore lint/suspicious/noControlCharactersInRegex: finding control characters is the point.
+const NOT_CHAR = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/;
 const PREDEFINED = new Map([
   ['amp', '&'],
   ['lt', '<'],

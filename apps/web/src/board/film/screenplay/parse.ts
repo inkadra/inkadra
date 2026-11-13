@@ -1,11 +1,9 @@
 import {
   looksLikeScreenplay,
-  MAX_SCRIPT_BYTES,
   parseScreenplay,
   SCRIPT_EXTENSIONS,
-  type Script,
-  ScriptError,
-} from '@inkadra/canvas-core/screenplay';
+} from '@inkadra/canvas-core/screenplay/parse';
+import { MAX_SCRIPT_BYTES, type Script, ScriptError } from '@inkadra/canvas-core/screenplay/script';
 
 // Parsing moved to an MPL package (decision 0116); reading a browser `File` stays here.
 export { looksLikeScreenplay, parseScreenplay, SCRIPT_EXTENSIONS };

@@ -297,7 +297,10 @@ read from each on `main` in Chromium before the move; a package test fails when 
 gives anything else. The fixtures `last-train.fdx` and `last-train.fountain` moved with the tests
 and are exported by path (`@inkadra/canvas-core/fixtures/last-train.fdx`). The web's `script.ts`,
 `plan.ts`, `revision.ts` and `parse.ts` re-export the moved names, so their callers did not
-change. Stays in the web: reading a browser `File` (`readScreenplay`, `detectScreenplay`), the
+change; they import each module by its own path (`@inkadra/canvas-core/screenplay/plan`,
+`/revision`, `/script`, `/parse`, `/fountain`, `/pdf-text`, `/fdx`), not the index, so the
+web's chunks hold the same code as before: the import plan, which the project setup loads at
+start, does not bring the readers and the matching with it. Stays in the web: reading a browser `File` (`readScreenplay`, `detectScreenplay`), the
 PDF's text layer with pdf.js in a worker (`pdf.ts`, `pdf.worker.ts`), creating the storyboard
 board and queueing its seed (`new-storyboard.ts`), and the dialog and the revision list as React.
 
