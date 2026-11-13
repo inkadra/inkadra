@@ -248,6 +248,17 @@ test('the plan opens at 100 % with its room sizes, stools counted, the sun on a 
     await expect(props.getByRole('status').filter({ hasText: 'tolto' })).toBeVisible();
     // The last date the day had, not the one it had when it was picked.
     await expect(props.getByLabel('Data')).toHaveValue('2026-03-20');
+    // The editor's capture shortcuts must leave the calendar's keys to the calendar.
+    const dateField = props.getByLabel('Data', { exact: true });
+    await dateField.press('Enter');
+    const calendarDay = page.locator('.ink-date__body [data-day][tabindex="0"]');
+    await expect(calendarDay).toHaveAttribute('data-day', '2026-03-20');
+    await page.keyboard.press('ArrowRight');
+    await expect(calendarDay).toHaveAttribute('data-day', '2026-03-21');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.ink-date__panel')).toHaveCount(0);
+    await expect(dateField).toBeFocused();
+    await expect(dateField).toHaveValue('2026-03-20');
 
     // Personal choices live in the account: snap to the grid off (G), Lights hidden for me.
     const area = (await editor.locator('.plan-main__canvas').boundingBox())!;

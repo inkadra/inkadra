@@ -1,4 +1,5 @@
 import type { ScheduleBlock, ShootingDayInput } from '@inkadra/shared';
+import { addDays, localDate, monthGrid, weekStart } from '@inkadra/ui';
 import { clockMinutes, scheduleTimes } from './schedule.ts';
 
 /**
@@ -63,17 +64,8 @@ export function clockString(minutes: number): string {
   return `${String(Math.floor(local / 60)).padStart(2, '0')}:${String(local % 60).padStart(2, '0')}`;
 }
 
-/** Calendar dates, as YYYY-MM-DD strings on UTC midnight: days carry no time zone (0022). */
-export function addDays(date: string, days: number): string {
-  const time = Date.parse(`${date}T00:00:00Z`);
-  if (Number.isNaN(time)) return date;
-  return new Date(time + days * 86_400_000).toISOString().slice(0, 10);
-}
-/** Monday of the week of `date`. */
-export function weekStart(date: string): string {
-  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return addDays(date, -((day + 6) % 7));
-}
+// Calendar dates (YYYY-MM-DD on UTC midnight, decision 0022) are shared with the date field.
+export { addDays, localDate, monthGrid, weekStart };
 /**
  * The columns of a week: Monday to Friday, and Saturday or Sunday only when something is shot on
  * them, so a working week is not squeezed by two empty columns.
@@ -84,15 +76,6 @@ export function weekDates(date: string, shooting: ReadonlySet<string>): string[]
     (d, i) => i < 5 || shooting.has(d),
   );
 }
-/** The six weeks of a month grid, Monday first, with the days of the next and previous months. */
-export function monthGrid(month: string): string[] {
-  const first = `${month.slice(0, 7)}-01`;
-  const start = weekStart(first);
-  return Array.from({ length: 42 }, (_, i) => addDays(start, i));
-}
-export const localDate = (now: Date) =>
-  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
 export interface Slot {
   id: string;
   start: number;

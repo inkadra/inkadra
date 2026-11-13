@@ -202,6 +202,14 @@
     "discard": "Discard",
     "keep": "Keep editing"
   },
+  "dateField": {
+    "clear": "Clear",
+    "today": "Today",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "previousYear": "Previous year",
+    "nextYear": "Next year"
+  },
   "notFound": {
     "title": "Page not found",
     "back": "Back to home"

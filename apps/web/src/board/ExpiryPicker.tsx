@@ -114,11 +114,6 @@ export function ExpiryPicker({
               value={day}
               autoFocus
               onChange={setDay}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter') return;
-                e.preventDefault();
-                void submit();
-              }}
             />
           </label>
           <p className="share__expiry-help">{t('share.expiry.help')}</p>

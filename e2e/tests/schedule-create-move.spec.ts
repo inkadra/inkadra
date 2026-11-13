@@ -226,7 +226,9 @@ test.describe('on a phone', () => {
     const sheet = page.getByRole('dialog').filter({ hasText: 'Giorno 1 di 2' });
     await sheet.getByRole('button', { name: /^Sposta a un.altra data…$/ }).click();
     const dialog = page.getByRole('dialog', { name: /^Sposta / });
-    await dialog.getByLabel('Data', { exact: true }).fill('2027-03-03');
+    // A phone chooses from the calendar sheet: the field takes no typing there.
+    await dialog.getByLabel('Data', { exact: true }).click();
+    await dialog.getByRole('gridcell', { name: /^mercoledì 3 marzo 2027/ }).click();
     await expect(dialog).toContainText('i due giorni si scambiano');
     const swap = edited(page);
     await dialog.getByRole('button', { name: 'Scambia', exact: true }).click();

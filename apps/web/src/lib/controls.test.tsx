@@ -226,3 +226,246 @@ it('forwards date bounds and keyboard handlers to the underlying date input', as
   );
   expect(onKeyDown).toHaveBeenCalledOnce();
 });
+
+it('opens Inkadra’s calendar instead of the native picker, and chooses with the keys', async () => {
+  const showPicker = vi.fn();
+  HTMLInputElement.prototype.showPicker = showPicker;
+  const onChange = vi.fn();
+  await act(async () =>
+    root.render(
+      <DateField
+        label="End of shoot"
+        value="2026-11-20"
+        rangeStart="2026-11-16"
+        min="2026-11-16"
+        onChange={onChange}
+      />,
+    ),
+  );
+  const input = host.querySelector<HTMLInputElement>('input[type="date"]') as HTMLInputElement;
+  await act(async () => input.click());
+  expect(showPicker).not.toHaveBeenCalled();
+  const grid = host.querySelector<HTMLElement>('[role="grid"]') as HTMLElement;
+  const day = (date: string) =>
+    host.querySelector<HTMLElement>(`.ink-date__body [data-day="${date}"]`);
+  expect(day('2026-11-20')?.className).toContain('is-end');
+  expect(day('2026-11-16')?.className).toContain('is-start');
+  expect(day('2026-11-18')?.className).toContain('is-in');
+  expect(day('2026-11-15')?.getAttribute('aria-disabled')).toBe('true');
+  expect(document.activeElement).toBe(day('2026-11-20'));
+  await act(async () =>
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })),
+  );
+  expect(document.activeElement).toBe(day('2026-11-21'));
+  // A disabled day cannot be chosen.
+  await act(async () => day('2026-11-15')?.click());
+  expect(onChange).not.toHaveBeenCalled();
+  await act(async () =>
+    (document.activeElement as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(onChange).toHaveBeenCalledWith('2026-11-21');
+  expect(document.activeElement).toBe(input);
+});
+
+it('closes the calendar with Escape and gives the focus back to the field', async () => {
+  await act(async () =>
+    root.render(<DateField label="Due" value="" required onChange={() => {}} />),
+  );
+  const input = host.querySelector<HTMLInputElement>('input[type="date"]') as HTMLInputElement;
+  await act(async () => input.click());
+  // A required date has nothing to clear.
+  expect(host.querySelector('.ink-date__foot')?.textContent).toBe('Today');
+  await act(async () =>
+    (document.activeElement as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(document.activeElement).toBe(input);
+  expect(host.querySelector('.ink-date__layer')?.classList.contains('is-closing')).toBe(true);
+});
+
+it('keeps the touch calendar trigger focusable without a native picker or keyboard', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+  try {
+    await act(async () =>
+      root.render(<DateField label="Due" value="2026-11-20" onChange={() => {}} />),
+    );
+    const input = host.querySelector('input') as HTMLInputElement;
+    expect(input.type).toBe('text');
+    expect(input.getAttribute('inputmode')).toBe('none');
+    await act(async () => input.click());
+    expect(host.querySelector('.ink-date__panel')).not.toBeNull();
+    await act(async () =>
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+      ),
+    );
+    expect(document.activeElement).toBe(input);
+  } finally {
+    media.mockRestore();
+  }
+});
+
+it('keeps pointer focus inside the calendar before activating its controls', async () => {
+  await act(async () =>
+    root.render(<DateField label="Due" value="2026-11-20" onChange={() => {}} />),
+  );
+  await act(async () => host.querySelector<HTMLInputElement>('input')?.click());
+  const next = host.querySelector<HTMLButtonElement>('[aria-label="Next month"]')!;
+  const press = new PointerEvent('pointerdown', { bubbles: true, cancelable: true });
+  await act(async () => next.dispatchEvent(press));
+  expect(press.defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(next);
+  await act(async () => next.click());
+  expect(host.querySelector('.ink-date__heading')?.textContent).toMatch(/December|dicembre/i);
+  expect(host.querySelector('.ink-date__panel')).not.toBeNull();
+});
+
+it('uses the calendar when the browser falls back from date to an unvalidated text input', async () => {
+  const type = vi.spyOn(HTMLInputElement.prototype, 'type', 'get').mockReturnValue('text');
+  try {
+    await act(async () => root.render(<DateField label="Due" value="" onChange={() => {}} />));
+    const input = host.querySelector('input') as HTMLInputElement;
+    expect(input.getAttribute('inputmode')).toBe('none');
+    await act(async () => input.click());
+    expect(host.querySelector('.ink-date__panel')).not.toBeNull();
+  } finally {
+    type.mockRestore();
+  }
+});
+
+it('chooses another month with roving keyboard focus', async () => {
+  const onChange = vi.fn();
+  await act(async () =>
+    root.render(<DateField label="Due" value="2026-11-20" onChange={onChange} />),
+  );
+  await act(async () => host.querySelector('input')?.click());
+  await act(async () => host.querySelector<HTMLButtonElement>('.ink-date__heading')?.click());
+  const key = async (key: string) =>
+    act(async () => {
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      );
+    });
+  const month = host.querySelector<HTMLElement>(
+    '.ink-date__body .ink-date__months [tabindex="0"]',
+  )!;
+  await act(async () => month.focus());
+  // Three months a row: November's row starts in October, July is above it, September ends it.
+  await key('Home');
+  await key('ArrowUp');
+  await key('End');
+  expect(document.activeElement?.textContent).toMatch(/Sep|set/i);
+  await act(async () => (document.activeElement as HTMLButtonElement).click());
+  await key('Enter');
+  expect(onChange).toHaveBeenCalledWith('2026-09-20');
+});
+
+it('keeps required and the bounds blocking a form behind the touch trigger', async () => {
+  const media = vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+  try {
+    for (const [value, valid] of [
+      ['', false],
+      ['2026-11-15', false],
+      ['2026-11-21', false],
+      ['2026-11-20', true],
+    ] as const) {
+      await act(async () =>
+        root.render(
+          <form>
+            <DateField
+              label="Due"
+              name="due"
+              required
+              min="2026-11-16"
+              max="2026-11-20"
+              value={value}
+              onChange={() => {}}
+            />
+          </form>,
+        ),
+      );
+      const form = host.querySelector('form')!;
+      const input = host.querySelector<HTMLInputElement>('.ink-date__input')!;
+      expect(input.readOnly).toBe(false);
+      expect(input.getAttribute('inputmode')).toBe('none');
+      expect(form.checkValidity()).toBe(valid);
+      expect(new FormData(form).getAll('due')).toEqual([value]);
+    }
+  } finally {
+    media.mockRestore();
+  }
+});
+
+it('consumes Escape on the open trigger inside a parent dialog', async () => {
+  const parentKey = vi.fn();
+  await act(async () =>
+    root.render(
+      <dialog open onKeyDown={parentKey}>
+        <DateField label="Due" value="2026-11-20" onChange={() => {}} />
+      </dialog>,
+    ),
+  );
+  const input = host.querySelector('input')!;
+  await act(async () => input.click());
+  await act(async () => input.focus());
+  await act(async () =>
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(parentKey).not.toHaveBeenCalled();
+  expect(host.querySelector('.ink-date__layer')?.classList.contains('is-closing')).toBe(true);
+  expect(host.querySelector('dialog')?.open).toBe(true);
+});
+
+it('keeps a focused disabled day as the keyboard cursor without selecting the old value', async () => {
+  const onChange = vi.fn();
+  await act(async () =>
+    root.render(<DateField label="Due" value="2026-11-20" min="2026-11-16" onChange={onChange} />),
+  );
+  await act(async () => host.querySelector('input')?.click());
+  const day = host.querySelector<HTMLElement>('.ink-date__body [data-day="2026-11-15"]')!;
+  await act(async () =>
+    day.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })),
+  );
+  await act(async () => day.click());
+  await act(async () =>
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(onChange).not.toHaveBeenCalled();
+  expect(host.querySelector('.ink-date__layer')?.classList.contains('is-closing')).toBe(false);
+  await act(async () =>
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }),
+    ),
+  );
+  expect(document.activeElement?.getAttribute('data-day')).toBe('2026-11-16');
+});
+
+it('keeps the desktop panel within a viewport with no space on either side', async () => {
+  const bounds = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue({ top: 180, bottom: 216, left: 20 } as DOMRect);
+  const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(374);
+  const viewport = vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(390);
+  try {
+    await act(async () =>
+      root.render(<DateField label="Due" value="2026-11-20" onChange={() => {}} />),
+    );
+    await act(async () => host.querySelector('input')?.click());
+    expect(
+      (host.querySelector('.ink-date__layer') as HTMLElement).style.getPropertyValue(
+        '--ink-date-top',
+      ),
+    ).toBe('8px');
+  } finally {
+    bounds.mockRestore();
+    height.mockRestore();
+    viewport.mockRestore();
+  }
+});

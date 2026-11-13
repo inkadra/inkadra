@@ -202,6 +202,14 @@
     "discard": "Abandonner",
     "keep": "Continuer à modifier"
   },
+  "dateField": {
+    "clear": "Effacer",
+    "today": "Aujourd’hui",
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Mois suivant",
+    "previousYear": "Année précédente",
+    "nextYear": "Année suivante"
+  },
   "notFound": {
     "title": "Page introuvable",
     "back": "Retour à l’accueil"

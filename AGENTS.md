@@ -31,6 +31,8 @@ Take the first option that fully works:
   security, accessibility, anything the task asked for.
 - Inkadra's design rules still apply: tokens from `packages/ui` (radius.test.ts enforces radii),
   existing components, and screenshots for every UI change.
+- Dates always use `DateField` from `packages/ui` (its own calendar), never a native date input
+  or picker; `date-input.test.ts` enforces it.
 - An approved mockup is part of the task: the smallest change still matches it. If a part of it
   can't be built, ask; don't swap in a simpler widget or drop it on your own.
 - Wait for builds, tests and CI without ending your turn: nothing wakes you up afterwards.

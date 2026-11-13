@@ -202,6 +202,14 @@
     "discard": "Scarta",
     "keep": "Continua a modificare"
   },
+  "dateField": {
+    "clear": "Cancella",
+    "today": "Oggi",
+    "previousMonth": "Mese precedente",
+    "nextMonth": "Mese successivo",
+    "previousYear": "Anno precedente",
+    "nextYear": "Anno successivo"
+  },
   "notFound": {
     "title": "Pagina non trovata",
     "back": "Torna alla home"

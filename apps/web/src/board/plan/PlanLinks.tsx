@@ -22,7 +22,7 @@ import {
   sunPosition,
   sunRotation,
 } from '@inkadra/shared';
-import { Button, Icon, Select, Slider } from '@inkadra/ui';
+import { Button, DateField, Icon, Select, Slider } from '@inkadra/ui';
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from '../assets.ts';
@@ -658,11 +658,11 @@ export function SunSection({ ed }: { ed: Ed }) {
               ]}
             />
           ) : (
-            <input
-              className="plan-field"
-              type="date"
+            <DateField
+              className="plan-date"
+              label={t('board.plan.links.date')}
               value={date ?? ''}
-              onChange={(e) => set({ date: e.target.value || undefined, day: undefined })}
+              onChange={(value) => set({ date: value || undefined, day: undefined })}
             />
           )}
         </label>
