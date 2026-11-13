@@ -9,11 +9,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
-import type { Asset, VideoSettingsView } from '@inkadra/shared';
 import { expect, type Page, test } from '@playwright/test';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 const shots = process.env.E2E_SHOTS;
+
+/** The parts of the API the test reads (`@inkadra/shared` is not a dependency of e2e). */
+type Asset = { playback?: { renditions: Array<{ name: string; status: string }> } | null };
+type VideoSettingsView = Record<string, unknown>;
 const admin = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 
 /** Two seconds of 720p ProRes: a format browsers do not play, large enough for two rungs. */

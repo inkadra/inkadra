@@ -3,6 +3,7 @@ import {
   copiesVideo,
   DEFAULT_PROXY_SETTINGS,
   decodesOnGpu,
+  liveDecodable,
   MAX_INT32,
   parseProbe,
   proxyArgs,
