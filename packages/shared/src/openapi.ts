@@ -1231,6 +1231,17 @@ registry.registerPath({
 });
 registry.registerPath({
   method: 'post',
+  path: v1('/instance/video-settings/benchmark'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: detect the encoder and measure live playback again.',
+  description:
+    'Queued on the worker, as at its start; `VideoSettingsView.benchmark` says when it ends. ' +
+    '409 while one runs.',
+  responses: { 202: { description: 'Started', ...json(VideoSettingsView) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
   path: v1('/instance/video-settings/reprocess'),
   tags: ['Instance'],
   security: secured,

@@ -1,11 +1,15 @@
-import { DEFAULT_VIDEO_SETTINGS, type VideoSettings } from '@inkadra/shared';
+import { DEFAULT_VIDEO_SETTINGS, UpdateVideoSettings, type VideoSettings } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PROXY_SETTINGS } from './media/video.ts';
 import {
   applyVideoSettings,
   envRungs,
+  invalidCustom,
   invalidVideoSettings,
+  readBenchmark,
   readVideoSettings,
+  runBenchmark,
+  startBenchmark,
 } from './video-settings.ts';
 
 /** A database whose instance_setting row holds `value`. */
@@ -81,20 +85,20 @@ describe('live playback limits (decision 0128)', () => {
   // The fake database answers every key with this row: the encoder fields and the settings.
   const gpu = { label: 'Intel Quick Sync', backend: 'qsv', liveSessions: 3, liveSpeed: 5.35 };
 
-  it('uses the sessions measured at start, and lets the admin only lower them', async () => {
+  it('uses the sessions measured at start; the admin may lower or raise them (Advanced)', async () => {
     const measured = await readVideoSettings(db(gpu), env);
-    expect(measured.live).toMatchObject({
-      available: true,
-      sessions: 3,
-      speed: 5.35,
-      reason: null,
-    });
+    expect(measured.live).toMatchObject({ available: true, sessions: 3, measured: 3, speed: 5.35 });
     expect(measured.settings.live).toMatchObject({ enabled: true, maxSessions: 3 });
-    const lower = await readVideoSettings(db({ ...gpu, live: { maxSessions: 2 } }), env);
-    expect(lower.settings.live.maxSessions).toBe(2);
-    // An older, higher choice is clamped to what was measured.
+    expect((await readVideoSettings(db({ ...gpu, live: { maxSessions: 2 } }), env)).settings.live.maxSessions).toBe(2);
+    // More than measured is allowed: the page warns.
     const higher = await readVideoSettings(db({ ...gpu, live: { maxSessions: 6 } }), env);
-    expect(higher.settings.live.maxSessions).toBe(3);
+    expect(higher.live).toMatchObject({ sessions: 6, measured: 3, available: true });
+    // 0 turns it off.
+    const off = await readVideoSettings(db({ ...gpu, live: { maxSessions: 0 } }), env);
+    expect(off.live).toMatchObject({ available: false, reason: 'set-off' });
+    // The environment wins over both.
+    const env5 = await readVideoSettings(db({ ...gpu, live: { maxSessions: 6 } }), { ...env, VIDEO_LIVE_MAX_SESSIONS: 5 });
+    expect(env5.live).toMatchObject({ sessions: 5, locked: true });
   });
 
   it('turns live off when the GPU was too slow, and lets the environment set the cap', async () => {
@@ -112,5 +116,80 @@ describe('live playback limits (decision 0128)', () => {
   it('keeps live-only resolutions on disk when live playback cannot run', async () => {
     const read = await readVideoSettings(db({ rungs: { '2160': 'live' } }), env);
     expect(read.settings.rungs['2160']).toBe('stored');
+  });
+});
+
+describe('custom values of the rungs (Advanced)', () => {
+  it('needs the peak at least the target, with the preset filling what is not given', () => {
+    expect(invalidCustom('balanced', { '1080': { target: 8_000_000, peak: 12_000_000 } })).toBeNull();
+    expect(invalidCustom('balanced', { '1080': { target: 8_000_000, peak: 6_000_000 } })).toMatch(
+      /1080p .* must be at least its target/,
+    );
+    // Balanced 1080p peaks at 9 Mbit/s: a target of 10 without a peak is refused.
+    expect(invalidCustom('balanced', { '1080': { target: 10_000_000 } })).toMatch(/at least/);
+    expect(invalidCustom('balanced', { '480': { quality: 18 } })).toBeNull();
+  });
+
+  it('checks the bounds at the boundary: 200k to 80M, quality 0 to 51', () => {
+    const ok = UpdateVideoSettings.safeParse({ custom: { '720': { target: 200_000, quality: 0 } } });
+    expect(ok.success).toBe(true);
+    for (const bad of [
+      { target: 199_999 },
+      { peak: 80_000_001 },
+      { quality: 52 },
+      { quality: -1 },
+      { crf: 20 },
+    ])
+      expect(UpdateVideoSettings.safeParse({ custom: { '720': bad } }).success).toBe(false);
+    expect(UpdateVideoSettings.safeParse({ live: { maxSessions: 17 } }).success).toBe(false);
+    expect(UpdateVideoSettings.safeParse({ live: { maxSessions: null } }).success).toBe(true);
+  });
+
+  it('gives the worker the custom values', () => {
+    const custom = { '720': { target: 4_000_000 } };
+    expect(applyVideoSettings(DEFAULT_PROXY_SETTINGS, { ...DEFAULT_VIDEO_SETTINGS, custom }).custom).toEqual(custom);
+  });
+});
+
+describe('performance test from the page', () => {
+  /** A database of one table of settings, by key. */
+  const memory = () => {
+    const rows = new Map<string, unknown>();
+    let key = '';
+    const fake = {
+      select: () => ({
+        from: () => ({
+          where: async () => (rows.has(key) ? [{ value: rows.get(key) }] : []),
+        }),
+      }),
+      insert: () => ({
+        values: (v: { key: string; value: unknown }) => ({
+          onConflictDoUpdate: async () => void rows.set(v.key, v.value),
+        }),
+      }),
+    };
+    return { fake: fake as never, use: (k: string) => void (key = k) };
+  };
+
+  it('runs one at a time: a second request while one runs is refused with 409', async () => {
+    const { fake, use } = memory();
+    use('video-benchmark');
+    let queued = 0;
+    const jobs = {
+      processAsset: async () => {},
+      deleteFiles: async () => {},
+      runVideoBenchmark: async () => void queued++,
+    };
+    await startBenchmark(fake, jobs);
+    expect(queued).toBe(1);
+    expect((await readBenchmark(fake)).running).toBe(true);
+    await expect(startBenchmark(fake, jobs)).rejects.toMatchObject({ code: 'conflict' });
+    // Done: another may start.
+    await runBenchmark(fake, async () => {});
+    expect((await readBenchmark(fake)).running).toBe(false);
+    await startBenchmark(fake, jobs);
+    expect(queued).toBe(2);
+    // One left running by a worker that died is stale after ten minutes.
+    expect((await readBenchmark(fake, Date.now() + 11 * 60_000)).running).toBe(false);
   });
 });
