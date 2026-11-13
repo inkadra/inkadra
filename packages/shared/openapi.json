@@ -5569,6 +5569,10 @@
               "null"
             ],
             "description": "As `h264 1080p`."
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "Same-origin path of the smallest thumbnail, `/api/v1/assets/{assetId}/variants/256`, for a named file the worker made one for. Older servers omit it."
           }
         },
         "required": [

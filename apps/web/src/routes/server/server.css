@@ -206,6 +206,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.server-thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: flex-start;
+  width: 64px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+}
+.server-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .server-name--hidden {
   color: var(--ink-text-secondary);
   font-style: italic;

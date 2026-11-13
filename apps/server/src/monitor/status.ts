@@ -245,6 +245,8 @@ async function transcodes(
       codec: asset.videoCodec,
       height: asset.height,
       progress: asset.proxyProgress,
+      thumbnail: sql<boolean>`exists(select 1 from asset_variant v
+        where v.asset_id = ${asset.id} and v.size = '256')`,
     })
     .from(asset)
     .where(eq(asset.proxyStatus, 'processing'))
@@ -262,9 +264,12 @@ async function transcodes(
     const since = started.get(r.id);
     const elapsed = since ? now - since : null;
     const lines = r.height ? Math.min(r.height, config.VIDEO_PROXY_RESOLUTION ?? 1080) : null;
+    const named = visible.has(r.projectId);
     return {
       assetId: r.id,
-      name: visible.has(r.projectId) ? r.filename : null,
+      name: named ? r.filename : null,
+      // Only for a project the administrator is a member of: the variant route checks the same.
+      ...(named && r.thumbnail && { thumbnailUrl: `/api/v1/assets/${r.id}/variants/256` }),
       progress,
       secondsLeft:
         elapsed && progress >= 1

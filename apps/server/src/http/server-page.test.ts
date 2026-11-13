@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { ServerLive, ServerStatus } from '@inkadra/shared';
 import type { Queue } from 'bullmq';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
@@ -9,6 +9,7 @@ import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   asset,
+  assetVariant,
   board,
   boardElementIndex,
   boardGrant,
@@ -290,6 +291,48 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
       (await request('admin', 'POST', `/instance/server/problems/video_failed:${assetId}/retry`))
         .statusCode,
     ).toBe(409);
+  });
+
+  it('gives the thumbnail of a file being converted only in a project of the administrator', async () => {
+    const projectOf = async (boardId: string) =>
+      (await db.select({ id: board.projectId }).from(board).where(eq(board.id, boardId)))[0]
+        ?.id as string;
+    const converting = (projectId: string) => ({
+      projectId,
+      kind: 'video' as const,
+      mime: 'video/quicktime',
+      filename: 'Converting.mov',
+      size: 10,
+      storageKey: 'x',
+      status: 'ready' as const,
+      proxyStatus: 'processing' as const,
+    });
+    const files = await db
+      .insert(asset)
+      .values([
+        converting(await projectOf(boards.admin as string)),
+        converting(await projectOf(boards.member as string)),
+      ])
+      .returning({ id: asset.id });
+    const [own, secret] = files.map((f) => f.id);
+    await db.insert(assetVariant).values(
+      files.map((f) => ({
+        assetId: f.id,
+        size: '256' as const,
+        width: 256,
+        height: 144,
+        storageKey: `${f.id}/256.webp`,
+      })),
+    );
+    const status = ServerStatus.parse((await request('admin', 'GET', '/instance/server')).json());
+    const job = (id: string | undefined) => status.transcodes.active.find((j) => j.assetId === id);
+    expect(job(own)?.thumbnailUrl).toBe(`/api/v1/assets/${own}/variants/256`);
+    expect(job(secret)).toMatchObject({ name: null });
+    expect(job(secret)?.thumbnailUrl).toBeUndefined();
+    await db
+      .update(asset)
+      .set({ proxyStatus: 'ready' })
+      .where(inArray(asset.id, [own, secret] as string[]));
   });
 
   it('shows the queue down instead of waiting for it', async () => {

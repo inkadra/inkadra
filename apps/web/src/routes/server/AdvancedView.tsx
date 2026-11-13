@@ -1,5 +1,5 @@
 import type { DiagnosticCheck, ServerRange, ServerStatus } from '@inkadra/shared';
-import { Button, Segmented } from '@inkadra/ui';
+import { Button, Icon, Segmented } from '@inkadra/ui';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatStorage } from '../StorageCharts.tsx';
@@ -371,6 +371,13 @@ function Transcodes({ status }: { status: ServerStatus }) {
             const name = job.name ?? t('server.videos.hidden');
             return (
               <li key={job.assetId}>
+                <span className="server-thumb" aria-hidden="true">
+                  {job.thumbnailUrl ? (
+                    <img src={job.thumbnailUrl} alt="" loading="lazy" decoding="async" />
+                  ) : (
+                    <Icon name="film" size={16} />
+                  )}
+                </span>
                 <div className="settings-list__text">
                   <span className={job.name ? 'server-name' : 'server-name server-name--hidden'}>
                     <span className="server-ellipsis">{name}</span>
