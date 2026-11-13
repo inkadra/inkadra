@@ -154,10 +154,23 @@ rung live). Capability **`video-live`**; clients need nothing more than `playbac
   again. ffmpeg is paused (SIGSTOP) 30 segments ahead of what was asked, resumed under 15. The
   same filters, limits (`prlimit`) and fallback chain (GPU, GPU with CPU decoding, libx264) as
   stored copies; the source is read through `privateInput` with `safeInput`.
+- **Only on a GPU** (owner decision, 13 Nov): with libx264 live playback is off and not offered,
+  and the Video page says why ("richiede la codifica hardware della GPU"). Only sources the card
+  decodes and encodes on its own go live (`liveDecodable`: `gpuDecodes`, upright, progressive,
+  SDR); ProRes, DNx, 4:2:2/4:4:4, interlaced, rotated and HDR sources wait for their stored
+  rungs. A failed GPU encode of a live session has no libx264 or CPU-decode fallback: the
+  segment answers 503 and the player keeps to the stored rungs or the original.
+- **The cap is measured** when the worker starts on a GPU: five seconds of 1080p H.264 of the
+  generated test pattern, decoded, scaled and encoded on the card with the live settings, at a
+  lower priority, killed after a minute; sessions = floor(speed / 1.5), from 0 to 8. On the N100
+  one session ran at 5.35×, which gives 3 (three ran at 1.78× each, four at 1.33×). 0, a timeout
+  or an error turns live off with the reason ("GPU troppo lenta per il tempo reale", or the log).
+  Saved with the encoder (`liveSessions`, `liveSpeed`, `measuredAt`), shown in Diagnostics and on
+  the Video page; `VIDEO_LIVE_MAX_SESSIONS` overrides it. `video-live` is announced only where
+  live playback runs.
 - One session per viewer and video (a person, or one guest of a link), a 30-minute lease renewed
   by every request, ended after 5 minutes without one; a sweep every two seconds. Limits: videos
-  at once on the server (default **3 with a GPU, 1 without**, from the N100 numbers below) and
-  per person or share link (default 1). They are checked when the master playlist is asked: past
+  at once on the server (the cap above) and per person or share link (default 1). They are checked when the master playlist is asked: past
   them it lists only stored rungs, so the player never errors; a segment that cannot be made
   answers 503 with `Retry-After` and hls.js keeps to the other levels.
 - Live sessions run in the process that answers the requests (the web role, or `all`): no
@@ -168,9 +181,7 @@ rung live). Capability **`video-live`**; clients need nothing more than `playbac
   that video and kept in a cache of 20 GiB, least recently used first out; the local volume is
   read in place. Ranged reads through ffmpeg were not used: ffmpeg would need the HTTP protocol,
   which `safeInput` forbids on purpose.
-- Not offered live (they wait for the stored copy): 4K sources the CPU decodes (ProRes, DNx,
-  4:2:2), 4K HDR sources (tone mapping runs on the CPU), and anything past 1080p without a GPU.
-  The probe facts this needs are kept in `asset.media_info`.
+- The probe facts the source rule needs are kept in `asset.media_info`.
 - Settings → Video: "Riproduzione al volo" (on/off, videos at once, per person or link) and, per
   resolution, "Salva su disco" or "Solo al volo". Live rungs take no space in the estimates.
 
