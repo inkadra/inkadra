@@ -184,7 +184,8 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 | `sha-1a2b3c4` | One commit                                                  |
 
 Every tag also exists with the suffix `-office` (`0.9.0-office`, `latest-office`, `edge-office`…).
-**In 0.9.0**, media tools still require `0.9.0-media`; `0.9.0` does not include them.
+**In 0.9.0**, media tools still require `0.9.0-media`; `0.9.0` does not include them: pin
+`INKADRA_TAG=0.9.0-media` for video, PDF and RAW previews.
 **After 0.9.0**, standard includes media tools and new builds no longer publish `-media`.
 Remove the suffix only when moving to one of those builds. Keep `INKADRA_TAG` without
 `-office` when using the [Office worker override](office.md#the-worker-image), which adds it.
