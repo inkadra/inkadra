@@ -23,16 +23,10 @@ export const ServerSample = z
   .object({
     t: Timestamp,
     cpu: z.number().nullable().openapi({ description: 'Percent of the cores Inkadra may use.' }),
-    gpu: z
-      .number()
-      .min(0)
-      .max(100)
-      .nullable()
-      .optional()
-      .openapi({
-        description:
-          'Percent of the busiest GPU engine used by Inkadra containers; absent without DRM fdinfo.',
-      }),
+    gpu: z.number().min(0).max(100).nullable().optional().openapi({
+      description:
+        'Percent of the busiest GPU engine used by Inkadra containers; absent without DRM fdinfo.',
+    }),
     memory: z.number().int().nullable().openapi({ description: 'Bytes in use.' }),
     in: z.number().nullable().openapi({ description: 'Bytes per second received.' }),
     out: z.number().nullable().openapi({ description: 'Bytes per second sent.' }),
