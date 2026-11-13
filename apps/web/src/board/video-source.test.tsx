@@ -154,18 +154,19 @@ it('plays the original file when chosen', async () => {
   expect(host.querySelector('video')?.getAttribute('src')).toBe('/api/v1/assets/a/file');
 });
 
+function Menu() {
+  const [choice, setChoice] = useState<QualityChoice>('auto');
+  return (
+    <QualityMenu
+      asset={asset([rung('480'), rung('720'), rung('1080', 'processing')])}
+      choice={choice}
+      onChoose={setChoice}
+      playing={720}
+    />
+  );
+}
+
 it('lists Auto, the rungs (those being made disabled) and the original in the menu', async () => {
-  function Menu() {
-    const [choice, setChoice] = useState<QualityChoice>('auto');
-    return (
-      <QualityMenu
-        asset={asset([rung('480'), rung('720'), rung('1080', 'processing')])}
-        choice={choice}
-        onChoose={setChoice}
-        playing={720}
-      />
-    );
-  }
   await act(async () => root.render(<Menu />));
   const button = host.querySelector<HTMLButtonElement>('.viewer-quality__button');
   expect(button?.textContent).toContain('viewer.quality.autoAt:{"quality":"720p"}');
