@@ -139,13 +139,14 @@ services:
     image: valkey/valkey:9-alpine
     restart: unless-stopped
     # The password, when set, goes in as configuration on standard input ("-"), never on the
-    # command line, so no process list shows it. Without it Valkey starts as before.
+    # command line, so no process list shows it. Without it Valkey starts as before. Through
+    # the image's entrypoint, which gives /data to the valkey user and drops root.
     command:
       - sh
       - -c
       - |
-        [ -z "$$VALKEY_PASSWORD" ] && exec valkey-server --appendonly yes
-        exec valkey-server - --appendonly yes <<EOF
+        [ -z "$$VALKEY_PASSWORD" ] && exec docker-entrypoint.sh valkey-server --appendonly yes
+        exec docker-entrypoint.sh valkey-server - --appendonly yes <<EOF
         requirepass $$VALKEY_PASSWORD
         EOF
     environment:
