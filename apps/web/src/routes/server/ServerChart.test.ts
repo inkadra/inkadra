@@ -59,9 +59,9 @@ it('joins nearby video labels into one with the counts added, and leaves out oth
   expect(labels.map((l) => l.marker.label)).toEqual(['6 videos converted', '1 videos converted']);
   // A backup beside a video label is not a video: it is left out, the counts stay.
   const backup = { t: new Date(11).toISOString(), label: 'Backup' };
-  expect(markerLabels([at(10, 2), backup], xAt, 46, width - 6).map((l) => l.marker.label)).toEqual(
-    ['2 videos converted'],
-  );
+  expect(markerLabels([at(10, 2), backup], xAt, 46, width - 6).map((l) => l.marker.label)).toEqual([
+    '2 videos converted',
+  ]);
 });
 
 it('reserves room for the widest tick label', () => {
