@@ -1671,9 +1671,9 @@ export function UploadPanel() {
               {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
                 <span className="ink-muted">
                   {t('board.uploads.transfer', {
-                    speed: new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 1 }).format(
-                      u.bytesPerSecond / 1024 / 1024,
-                    ),
+                    speed: new Intl.NumberFormat(i18n.language, {
+                      maximumFractionDigits: 1,
+                    }).format(u.bytesPerSecond / 1024 / 1024),
                     seconds: u.remainingSeconds,
                   })}
                 </span>

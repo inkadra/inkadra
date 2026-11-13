@@ -893,7 +893,10 @@ it('finishes a progressive hydration from a snapshot under continuous edits', {
     Y.applyUpdate(doc, update);
     const all = listElements(doc);
     const note = all.find((el) => el.type === 'note')!;
-    const table = all.find((el) => el.type === 'table') as Extract<schema.Element, { type: 'table' }>;
+    const table = all.find((el) => el.type === 'table') as Extract<
+      schema.Element,
+      { type: 'table' }
+    >;
     const scheduler = manualScheduler();
     const store = BoardStore.hydrate(doc, {
       budgetMs: 0.02,
