@@ -134,6 +134,46 @@ ffmpeg 9 skips the rotation without an error and the copy comes out on its side 
   live job for over fifteen minutes.
 - WebM AV1 is no longer "playable everywhere": it gets the H.264 ladder.
 
+### Live playback
+
+A rung can be **stored** (encoded once, as above) or **live** (encoded while someone watches).
+Live is used for rungs still queued or processing right after an upload, so a video plays at
+once; for rungs the admin sets to "Solo al volo" (2160p, say); and for "no stored copies" (every
+rung live). Capability **`video-live`**; clients need nothing more than `playback.hls`
+(`AssetRendition.live` marks the rungs offered live).
+
+- The master playlist lists stored and live rungs together, smallest first; live ones point to
+  `live/{rung}.m3u8`, a playlist of two-second fMP4 segments computed from the duration
+  (`live/{rung}/init.mp4`, `live/{rung}/seg-{n}.m4s`). Keyframes every two seconds by time in
+  both, so hls.js switches between a stored rung (4-second fragments of one file) and a live
+  one (2-second segments) without a break: checked in Chromium and Firefox, including a live
+  rung whose ffmpeg was started again mid-way.
+- A segment request starts ffmpeg at that segment (`-ss` before the input and `-copyts`, keyframe
+  grid kept on even seconds, the `hls` muxer with `-start_number`); later requests wait for their
+  file. A request outside the window of what ffmpeg wrote (a seek), or for another rung, starts it
+  again. ffmpeg is paused (SIGSTOP) 30 segments ahead of what was asked, resumed under 15. The
+  same filters, limits (`prlimit`) and fallback chain (GPU, GPU with CPU decoding, libx264) as
+  stored copies; the source is read through `privateInput` with `safeInput`.
+- One session per viewer and video (a person, or one guest of a link), a 30-minute lease renewed
+  by every request, ended after 5 minutes without one; a sweep every two seconds. Limits: videos
+  at once on the server (default **3 with a GPU, 1 without**, from the N100 numbers below) and
+  per person or share link (default 1). They are checked when the master playlist is asked: past
+  them it lists only stored rungs, so the player never errors; a segment that cannot be made
+  answers 503 with `Retry-After` and hls.js keeps to the other levels.
+- Live sessions run in the process that answers the requests (the web role, or `all`): no
+  round trip through the queue for every two seconds of video. With several web replicas a
+  viewer may get a session on each; acceptable for now. The web role detects its own encoder
+  when it is not the worker.
+- Buckets: the source is not downloaded per session. A local copy is shared by every session of
+  that video and kept in a cache of 20 GiB, least recently used first out; the local volume is
+  read in place. Ranged reads through ffmpeg were not used: ffmpeg would need the HTTP protocol,
+  which `safeInput` forbids on purpose.
+- Not offered live (they wait for the stored copy): 4K sources the CPU decodes (ProRes, DNx,
+  4:2:2), 4K HDR sources (tone mapping runs on the CPU), and anything past 1080p without a GPU.
+  The probe facts this needs are kept in `asset.media_info`.
+- Settings → Video: "Riproduzione al volo" (on/off, videos at once, per person or link) and, per
+  resolution, "Salva su disco" or "Solo al volo". Live rungs take no space in the estimates.
+
 ### Data and API
 
 Table `asset_rendition (asset_id, name, status, progress, width, height, codecs, bitrate,
@@ -214,8 +254,28 @@ F, 12 s, noisier). Reference: lanczos 1080p 8-bit; VMAF v0.6.1 at 1080p.
 - Bilanciata 1080p reaches VMAF ≥ 93 on clip A on both encoders; clip F (heavy sensor noise)
   stays near 87–89 at any reasonable rate, as expected for grain VMAF penalises.
 
-Not verified here: Quick Sync and VAAPI values (the test instance on the N100), Safari and
-ExoPlayer playback of the fragmented files.
+### On the Intel N100 (test instance, 13 Nov 2026, ffmpeg 7.1.5 of Debian, iHD driver)
+
+- `h264_qsv` works only in low power (VDEnc): without it "current profile/ratecontrol mode is
+  unsupported". ICQ is not supported.
+- `-global_quality` with `-b:v` and `-maxrate` selects QVBR (`RateControlMethod: QVBR`), and
+  `-extbrc`/`-look_ahead_depth` are accepted, but on VDEnc the quality value changes nothing
+  (21, 24 and 28 all give about 6.2 Mbit/s, the target): QVBR behaves as VBR at the target. The
+  old settings gave 2.7 Mbit/s for the same 1080p clip.
+- VAAPI: QVBR and VBR supported, ICQ not.
+- A rotated HEVC source with frames kept on the GPU comes out unrotated (1920×1080): rotated
+  sources go the CPU way, as on NVENC.
+- 4K HLG to 1080p with tone mapping on the CPU: 0.59× (GPU decode) / 0.56× (CPU decode).
+- ProRes 422 UHD to 1080p: 0.79× with two threads, 0.97× with four (720p with a fast scaler:
+  1.38×). HEVC 4K to 1080p decoded on the GPU: 3.47×.
+- The ladder (480/720/1080) in one run with `split` on the GPU: 10 s of 4K in 4 s.
+- Live sessions of 1080p H.264 to 1080p at once: 1 = 5.35×, 2 = 2.66×, 3 = 1.78×, 4 = 1.33×,
+  6 = 0.88×, 8 = 0.67× each; from 4K HEVC: 4 = 0.87×, 6 = 0.56×. Hence three sessions by default
+  with a GPU.
+- On the workstation (RTX 3090, ffmpeg 9), a live 720p rung of a 4K50 10-bit 4:2:2 source
+  (CPU decode): first segment after 2.4 s, a seek that starts ffmpeg again 1.6 s.
+
+Not verified here: Safari and ExoPlayer playback of the fragmented files and of live rungs.
 
 ## Consequences
 
