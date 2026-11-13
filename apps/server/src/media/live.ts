@@ -166,8 +166,9 @@ export function liveVariant(row: AssetRow, rung: VideoRung, settings: ProxySetti
 
 /**
  * The HLS output of a live session: fMP4 segments of SEGMENT_S seconds from `n`, in `dir`.
- * The init segment is a bare name: ffmpeg writes it next to the playlist (in `dir`), and an
- * absolute path there doubles the folder and fails with ENOENT (exit 254).
+ * The init segment is a bare name: ffmpeg writes it next to the playlist, after the playlist's
+ * last '/'. An absolute path there doubles the folder and fails with ENOENT (exit 254); a
+ * Windows path has no '/', so the playlist is given with forward slashes.
  */
 export const liveOutput = (dir: string, n: number) => (path: string) => [
   '-avoid_negative_ts',
@@ -188,7 +189,7 @@ export const liveOutput = (dir: string, n: number) => (path: string) => [
   join(dir, 'seg-%d.m4s'),
   '-start_number',
   String(n),
-  path,
+  path.replaceAll('\\', '/'),
 ];
 
 interface Session {
