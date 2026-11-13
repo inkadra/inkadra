@@ -129,6 +129,17 @@ it('finds people for administrators, loading the data once', async () => {
   ]);
   await type('antonin');
   expect(get).toHaveBeenCalledTimes(4);
+  // A new text never shows, nor opens with Enter, a result of the text before it: the data
+  // is matched at once, only its loading waits for the typing to stop.
+  const input = host.querySelector<HTMLInputElement>('input[role="combobox"]') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      input,
+      'antonino zzz',
+    );
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(options()).toEqual([]);
 });
 
 it('never loads or shows admin-only data to members', async () => {

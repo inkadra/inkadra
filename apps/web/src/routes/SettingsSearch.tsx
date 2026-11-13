@@ -113,7 +113,8 @@ export function SettingsSearch({
   const phone = useIsPhone();
   const listId = useId();
   const [query, setQuery] = useState('');
-  // The data is matched a moment after typing stops, and loaded on the first search.
+  // The data loads a moment after typing stops, on the first search; once loaded it is matched
+  // as the text changes, so a result never belongs to an earlier text.
   const [settled, setSettled] = useState('');
   const [data, setData] = useState<SettingsData>(NO_DATA);
   const [active, setActive] = useState(0);
@@ -141,7 +142,7 @@ export function SettingsSearch({
       admin ? data : NO_DATA,
       toursFor(admin, !!instance?.demo, modulesOff),
       pages,
-      settled,
+      query,
       t,
     ),
   ];
