@@ -20,13 +20,26 @@ the transfer moves to `failed` (`cancelled`) only if it is still `queued` or `ru
 removes a row or an archive.
 
 - **200** with the `ProjectTransfer` as it is now (`failed`, `cancelled`). The row stays in
-  `GET /transfers`, as after a DELETE of a running transfer. The worker re-reads the row between
-  steps and stops, whichever process runs it; a queued transfer's uploaded file goes at once.
+  `GET /transfers`, as after a DELETE of a running transfer. A queued transfer never starts, and a
+  queued import's uploaded archive is removed at once. A running one stops at the worker's next
+  progress step, in whatever process runs it: its progress update (or the heartbeat, once a
+  minute) matches no `running` row and the worker throws `Cancelled`. A cancelled export removes
+  its incomplete archive. An import cancelled before its database transaction removes the files
+  it already wrote to storage and leaves no project. The transaction itself is not interrupted:
+  an import whose cancel lands during or after it keeps the new project, its owner can open it
+  from the project list, but the transfer stays `failed` (`cancelled`) without its `projectId`
+  and no "import ready" notification is sent.
 - **409** `conflict` when the transfer is already `ready` or `failed` (for any reason). `details`
   is the `ProjectTransfer` as it is now, so the client can show the finished export or the
   failure without another request. Nothing changes.
 - **404** `not_found` for an unknown transfer or one of someone else, as the other transfer
   routes.
+
+**Race with completion.** The worker marks a transfer `ready` only while it is still `running`.
+If a cancel commits first, that update matches no row and the cancel wins: the export's
+finished archive is removed at once and the transfer stays `failed` (`cancelled`); for an import
+see above. If the worker commits `ready` first, the cancel answers 409 with the ready transfer.
+Either way the client gets one consistent answer and nothing it can still download is removed.
 
 **Who.** The same as `DELETE`: only the person who started the transfer, with a session or a
 personal token. No role check beyond that.
