@@ -7,6 +7,7 @@ import {
   API_PREFIX,
   BackupSettings,
   Id,
+  ImportIdempotencyKey,
   type InstanceBackups,
   UpdateBackupSettings,
   z,
@@ -25,10 +26,18 @@ import {
 } from '../backup.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { instanceBackup, instanceSetting, project, projectTransfer, user } from '../db/schema.ts';
+import {
+  creationRequest,
+  instanceBackup,
+  instanceSetting,
+  project,
+  projectTransfer,
+  user,
+} from '../db/schema.ts';
 import { exportsOf, refuse } from '../demo.ts';
 import type { Jobs } from '../jobs.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
+import { sha256 } from '../secrets.ts';
 import {
   canExport,
   type TransferRow,
@@ -39,6 +48,12 @@ import {
 import { contentDisposition } from './assets-routes.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
+import {
+  creationKeyHash,
+  rememberCreation,
+  rememberedCreation,
+  requestKeyHash,
+} from './idempotency.ts';
 
 interface Deps {
   db: Database;
@@ -53,6 +68,8 @@ const location = (id: string) => v1(`/transfers/${id}`);
 /** Statuses the shared error codes do not have: the body keeps the usual shape. */
 const plain = (code: string, message: string) => ({ error: { code, message } });
 const ACTIVE = ['queued', 'running'] as const;
+/** The `Idempotency-Key` scope of imports (decision 0127). */
+const IMPORTS = 'imports';
 
 /** Project exports and imports (decision 0037) and the administrators' backups. */
 export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
@@ -134,6 +151,22 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       const declared = Number(req.headers['content-length']);
       if (!Number.isFinite(declared) || declared <= 0)
         return reply.status(411).send(plain('bad_request', 'Content-Length is required.'));
+      // Decision 0127: the key is looked up before anything that depends on the archive or on
+      // other imports, under its lock only for this short transaction, never while receiving.
+      const keyHash = requestKeyHash(req, actor.id, IMPORTS);
+      const fingerprint = sha256(JSON.stringify({ contentLength: declared }));
+      const replay = async (transferId: string) => {
+        const [first] = await db
+          .select()
+          .from(projectTransfer)
+          .where(eq(projectTransfer.id, transferId));
+        if (!first) throw new HttpError('not_found', 'The import of this key was removed.');
+        return reply.status(202).header('location', location(first.id)).send(toTransfer(first));
+      };
+      if (keyHash) {
+        const previous = await db.transaction((tx) => rememberedCreation(tx, keyHash, fingerprint));
+        if (previous) return replay(previous);
+      }
       // One at a time per person (also enforced by a unique index): checked before receiving.
       const [busy] = await db
         .select({ id: projectTransfer.id })
@@ -177,11 +210,32 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
         await rm(partial, { force: true });
         throw err;
       }
-      const [row] = await db
-        .insert(projectTransfer)
-        .values({ id, kind: 'import', userId: actor.id, projectName: '', size: seen })
-        .onConflictDoNothing()
-        .returning();
+      // The key is checked again under its lock: a request with the same key may have been
+      // received meanwhile and committed first. Then this archive is discarded.
+      let outcome: { row?: TransferRow; replayed?: string };
+      try {
+        outcome = await db.transaction(async (tx) => {
+          if (keyHash) {
+            const previous = await rememberedCreation(tx, keyHash, fingerprint);
+            if (previous) return { replayed: previous };
+          }
+          const [inserted] = await tx
+            .insert(projectTransfer)
+            .values({ id, kind: 'import', userId: actor.id, projectName: '', size: seen })
+            .onConflictDoNothing()
+            .returning();
+          if (inserted && keyHash) await rememberCreation(tx, keyHash, actor.id, fingerprint, id);
+          return { row: inserted };
+        });
+      } catch (err) {
+        await rm(file, { force: true });
+        throw err;
+      }
+      if (outcome.replayed) {
+        await rm(file, { force: true });
+        return replay(outcome.replayed);
+      }
+      const row = outcome.row;
       if (!row) {
         // Another import of the same person started while this one was being received.
         await rm(file, { force: true });
@@ -190,6 +244,8 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       try {
         await enqueue(jobs.runTransfer(id));
       } catch (err) {
+        // Nothing was started: the key is forgotten too, so a retry imports again.
+        if (keyHash) await db.delete(creationRequest).where(eq(creationRequest.keyHash, keyHash));
         await db.delete(projectTransfer).where(eq(projectTransfer.id, id));
         await rm(file, { force: true });
         throw err;
@@ -212,6 +268,28 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       .orderBy(desc(projectTransfer.createdAt))
       .limit(50);
     return { items: rows.map(toTransfer), nextCursor: null };
+  });
+
+  // Registered before `/transfers/:transferId`, so `import-requests` is never read as an id.
+  // Only the caller's own key matches: it is hashed with the person (decision 0127).
+  app.get(v1('/transfers/import-requests/:idempotencyKey'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { idempotencyKey } = z
+      .object({ idempotencyKey: ImportIdempotencyKey })
+      .parse(req.params);
+    const [found] = await db
+      .select({ transfer: projectTransfer })
+      .from(creationRequest)
+      .innerJoin(projectTransfer, eq(projectTransfer.id, creationRequest.resourceId))
+      .where(
+        and(
+          eq(creationRequest.keyHash, creationKeyHash(actor.id, IMPORTS, idempotencyKey)),
+          gt(creationRequest.expiresAt, new Date()),
+          eq(projectTransfer.userId, actor.id),
+        ),
+      );
+    if (!found) throw new HttpError('not_found', 'No import of yours has this key.');
+    return toTransfer(found.transfer);
   });
 
   app.get(v1('/transfers/:transferId'), async (req) => toTransfer((await own(req)).row));

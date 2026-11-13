@@ -117,6 +117,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'transfer-cancel',
         'server-live',
         'classification-delete',
+        'idempotent-import',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();

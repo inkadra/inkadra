@@ -3,6 +3,7 @@ import {
   API_PREFIX,
   BOARD_WRITERS_CAPABILITY,
   CLASSIFICATION_DELETE_CAPABILITY,
+  IDEMPOTENT_IMPORT_CAPABILITY,
   COLLAB_PATH,
   type Health,
   type Instance,
@@ -150,6 +151,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         TRANSFER_CANCEL_CAPABILITY,
         SERVER_LIVE_CAPABILITY,
         CLASSIFICATION_DELETE_CAPABILITY,
+        IDEMPOTENT_IMPORT_CAPABILITY,
       ],
     } satisfies InstanceVersion;
   });

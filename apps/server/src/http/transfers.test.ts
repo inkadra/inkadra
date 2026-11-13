@@ -1,11 +1,12 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { addElement, CURRENT_SCHEMA_VERSION, createBoardDoc, roots } from '@inkadra/doc-schema';
 import {
+  IDEMPOTENT_IMPORT_CAPABILITY,
   ProjectArchiveManifest,
   ProjectTransfer,
   ProjectTransfers,
@@ -25,6 +26,7 @@ import {
   boardDoc,
   boardVersion,
   comment,
+  creationRequest,
   elementReview,
   elementReviewEvent,
   notification,
@@ -1392,5 +1394,173 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
         role: 'editor',
       },
     );
+  });
+
+  describe('Idempotency-Key on POST /projects/import (decision 0127)', () => {
+    let importer: { id: string; cookie: string };
+    const zip = { 'content-type': 'application/zip' };
+    const post = (key: string | null, body: Buffer = archive, who = importer) =>
+      call(source.app, who, 'POST', '/projects/import', body, {
+        ...zip,
+        ...(key === null ? {} : { 'idempotency-key': key }),
+      });
+    const lookup = (key: string, who = importer) =>
+      call(source.app, who, 'GET', `/transfers/import-requests/${encodeURIComponent(key)}`);
+    const imports = async () =>
+      (
+        await source.db
+          .select({ id: projectTransfer.id })
+          .from(projectTransfer)
+          .where(and(eq(projectTransfer.userId, importer.id), eq(projectTransfer.kind, 'import')))
+      ).length;
+    const ownedProjects = async () =>
+      (await call(source.app, importer, 'GET', '/projects')).json().items.length;
+
+    beforeAll(async () => {
+      importer = await signUp(source.app, 'retrying-importer');
+    });
+
+    it('answers a retry with the first import as it is now, whatever its status, starting nothing', async () => {
+      const key = 'a/key?with#odd%chars';
+      const first = await post(key);
+      expect(first.statusCode).toBe(202);
+      const id = first.json().id;
+      await source.deps.jobs.idle();
+      const before = { transfers: await imports(), projects: await ownedProjects() };
+      expect(before.projects).toBe(1);
+
+      const ready = await post(key);
+      expect(ready.statusCode).toBe(202);
+      expect(ready.headers.location).toBe(`/api/v1/transfers/${id}`);
+      expect(ProjectTransfer.parse(ready.json())).toMatchObject({ id, status: 'ready' });
+      expect(ready.json().projectId).not.toBeNull();
+      expect((await lookup(key)).json()).toMatchObject({ id, status: 'ready' });
+
+      for (const state of [
+        { status: 'queued', failure: null },
+        { status: 'running', failure: null },
+        { status: 'failed', failure: 'invalid_archive' },
+        { status: 'failed', failure: 'cancelled' },
+      ] as const) {
+        await source.db.update(projectTransfer).set(state).where(eq(projectTransfer.id, id));
+        // Queued or running: the import itself, not the one-import-at-a-time 409.
+        const again = await post(key);
+        expect(again.statusCode).toBe(202);
+        expect(again.json()).toMatchObject({ id, ...state });
+        expect((await lookup(key)).json()).toMatchObject({ id, ...state });
+      }
+      await source.deps.jobs.idle();
+      expect({ transfers: await imports(), projects: await ownedProjects() }).toEqual(before);
+    });
+
+    it('refuses the same key with another Content-Length and a malformed key', async () => {
+      const key = randomUUID();
+      expect((await post(key)).statusCode).toBe(202);
+      await source.deps.jobs.idle();
+      const changed = await post(key, Buffer.concat([archive, Buffer.from('x')]));
+      expect(changed.statusCode).toBe(409);
+      expect(changed.json().error.code).toBe('conflict');
+      expect((await post('k'.repeat(129))).statusCode).toBe(400);
+    });
+
+    it('answers 404 once the import of the key was removed, and starts nothing', async () => {
+      const key = randomUUID();
+      const first = await post(key);
+      await source.deps.jobs.idle();
+      const removed = await call(source.app, importer, 'DELETE', `/transfers/${first.json().id}`);
+      expect(removed.statusCode).toBe(204);
+      const count = await imports();
+      const retry = await post(key);
+      expect(retry.statusCode).toBe(404);
+      expect(retry.json().error.code).toBe('not_found');
+      expect((await lookup(key)).statusCode).toBe(404);
+      expect(await imports()).toBe(count);
+    });
+
+    it("looks up only the caller's own, unexpired key", async () => {
+      const key = randomUUID();
+      const first = await post(key);
+      await source.deps.jobs.idle();
+      const own = await lookup(key);
+      expect(own.statusCode).toBe(200);
+      expect(ProjectTransfer.parse(own.json()).id).toBe(first.json().id);
+      const stranger = await signUp(source.app, 'key-stranger');
+      expect((await lookup(key, stranger)).statusCode).toBe(404);
+      expect((await lookup(randomUUID())).statusCode).toBe(404);
+      expect((await call(source.app, null, 'GET', `/transfers/import-requests/${key}`)).statusCode).toBe(401);
+      // Seven days later the key is forgotten: the lookup says 404 and a POST imports again.
+      await source.db
+        .update(creationRequest)
+        .set({ expiresAt: new Date(Date.now() - 1000) })
+        .where(eq(creationRequest.resourceId, first.json().id));
+      expect((await lookup(key)).statusCode).toBe(404);
+      const fresh = await post(key);
+      expect(fresh.statusCode).toBe(202);
+      expect(fresh.json().id).not.toBe(first.json().id);
+      await source.deps.jobs.idle();
+    });
+
+    it('makes one import of two requests with the same key, without a lock while receiving', async () => {
+      const key = randomUUID();
+      const count = await imports();
+      const dir = transfersDir(source.deps.root);
+      const partials = async () =>
+        (await readdir(dir).catch(() => [] as string[])).filter((f) => f.endsWith('.partial'));
+      // The first request stalls halfway through its archive.
+      const slow = new PassThrough();
+      const stalled = source.app.inject({
+        method: 'POST',
+        url: '/api/v1/projects/import',
+        headers: {
+          cookie: importer.cookie,
+          origin: 'http://localhost:3000',
+          ...zip,
+          'content-length': String(archive.length),
+          'idempotency-key': key,
+        },
+        payload: slow,
+      });
+      slow.write(archive.subarray(0, 1024));
+      for (let i = 0; i < 200 && (await partials()).length === 0; i++)
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(await partials()).toHaveLength(1);
+      // Meanwhile neither the lookup nor the retry waits for it: no lock is held while receiving.
+      expect((await lookup(key)).statusCode).toBe(404);
+      const retry = await post(key);
+      expect(retry.statusCode).toBe(202);
+      // The stalled request finishes: it finds the key, discards its archive, answers as a retry.
+      slow.end(archive.subarray(1024));
+      const late = await stalled;
+      expect(late.statusCode).toBe(202);
+      expect(late.json().id).toBe(retry.json().id);
+      expect(await partials()).toHaveLength(0);
+      // Every archive left on disk belongs to a transfer: the discarded one is gone.
+      const known = new Set(
+        (await source.db.select({ id: projectTransfer.id }).from(projectTransfer)).map((r) => r.id),
+      );
+      expect((await readdir(dir)).filter((f) => !known.has(f.split('.')[0] ?? ''))).toEqual([]);
+      await source.deps.jobs.idle();
+      expect(await imports()).toBe(count + 1);
+    });
+
+    it('imports as before without the header, remembering nothing', async () => {
+      const remembered = async () =>
+        (
+          await source.db
+            .select()
+            .from(creationRequest)
+            .where(eq(creationRequest.userId, importer.id))
+        ).length;
+      const before = await remembered();
+      const plainImport = await post(null);
+      expect(plainImport.statusCode).toBe(202);
+      await source.deps.jobs.idle();
+      expect(await remembered()).toBe(before);
+    });
+
+    it('is advertised on the instance version', async () => {
+      const res = await call(source.app, importer, 'GET', '/instance/version');
+      expect(res.json().capabilities).toContain(IDEMPOTENT_IMPORT_CAPABILITY);
+    });
   });
 });
