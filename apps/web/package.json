@@ -35,7 +35,7 @@
     "@tiptap/y-tiptap": "^3.0.12",
     "hls.js": "1.6.15",
     "html-to-image": "^1.11.13",
-    "i18next": "^26.7.1",
+    "i18next": "^27.1.1",
     "leaflet": "^1.9.4",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "^6.5.438",
