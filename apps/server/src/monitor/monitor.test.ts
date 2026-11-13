@@ -7,6 +7,7 @@ import { beatStatus, repeating } from './health.ts';
 import { jobProblem, technicalText } from './problems.ts';
 import {
   type GpuReading,
+  GpuWindow,
   gpuPercent,
   parseCpuMax,
   parseCpuStat,
@@ -16,7 +17,14 @@ import {
   parseNetDev,
   readGpu,
 } from './resources.ts';
-import { average, Bucket, LatencyRecorder, pointFrom, SAMPLE_MS } from './sampler.ts';
+import {
+  average,
+  Bucket,
+  LatencyRecorder,
+  pointFrom,
+  recordsLatency,
+  SAMPLE_MS,
+} from './sampler.ts';
 import { capacity, combine, imageFlavour, liveNow, RANGES, serverLive } from './status.ts';
 import {
   lastHour,
@@ -522,6 +530,17 @@ drm-total-cycles-vcs: ${total}
 drm-engine-capacity-vcs: 2`;
     expect(gpuPercent(reading(xe(100, 1000)), reading(xe(500, 2000)), 5)).toBe(20);
   });
+  it('retains measured work of closed clients until it ages out of the window', () => {
+    const window = new GpuWindow(20_000);
+    expect(window.sample(reading(i915(1, 0)), 0)).toBeNull();
+    for (let t = 5000; t <= 20_000; t += 5000)
+      expect(window.sample(reading(i915(1, t * 1e6)), t)).toBe(50);
+    expect(window.sample(new Map(), 25_000)).toBe(37.5);
+    expect(window.sample(new Map(), 30_000)).toBe(25);
+    expect(window.sample(new Map(), 35_000)).toBe(12.5);
+    expect(window.sample(new Map(), 40_000)).toBe(0);
+    expect(window.sample(reading(i915(2, 1e9)), 45_000)).toBe(2.5);
+  });
   it('reads visible processes once per device/client and tolerates missing files', async () => {
     const proc = await mkdtemp(join(tmpdir(), 'inkadra-gpu-'));
     await mkdir(join(proc, '123/fdinfo'), { recursive: true });
@@ -594,26 +613,22 @@ drm-engine-capacity-vcs: 2`;
     expect(point.g).toBe(40);
     // A saturated i915 engine with GuC: the counter stood still, then jumped. Over the window it
     // reads the true average, not 0 % now and 100 % next time.
-    const box = (gpu: GpuReading) => ({
-      cpuUsec: 0,
-      cores: 4,
-      memory: 0,
-      memoryLimit: 100,
-      rx: 0,
-      tx: 0,
-      machine: null,
-      hostCores: false,
-      hostMemory: false,
-      gpu,
-    });
-    const cpu = { user: 0, system: 0 };
-    const windowed = pointFrom(
-      21_000,
-      5000,
-      { container: box(reading(i915(1, 4e9))), cpu },
-      { container: box(reading(i915(1, 24e9))), cpu, rss: 0 },
-      { gpu: reading(i915(1, 0)), at: 1000 },
-    );
-    expect(windowed.g).toBe(60);
+    const window = new GpuWindow(20_000);
+    window.sample(reading(i915(1, 0)), 1000);
+    window.sample(reading(i915(1, 4e9)), 16_000);
+    expect(window.sample(reading(i915(1, 24e9)), 21_000)).toBeCloseTo(60);
   });
+});
+
+it('counts response times of JSON requests only, never of file transfers', () => {
+  for (const status of [200, 204, 500])
+    expect(recordsLatency('application/offset+octet-stream', 'application/json', status)).toBe(
+      false,
+    );
+  expect(recordsLatency('multipart/form-data; boundary=x', 'application/json', 200)).toBe(false);
+  expect(recordsLatency('application/zip', 'application/json', 202)).toBe(false);
+  expect(recordsLatency('', 'application/json; charset=utf-8', 200)).toBe(true);
+  expect(recordsLatency('application/json', '', 204)).toBe(true);
+  expect(recordsLatency('', '', 500)).toBe(true);
+  expect(recordsLatency('', 'video/mp4', 206)).toBe(false);
 });

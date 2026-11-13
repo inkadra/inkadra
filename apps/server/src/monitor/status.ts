@@ -244,6 +244,10 @@ async function queueCounts(
   );
 }
 
+/** Resolution names follow the ladder: shorter side, including portrait/rotated sources. */
+export const sourceSide = (size: { width: number | null; height: number | null }) =>
+  size.width && size.height ? Math.min(size.width, size.height) : null;
+
 async function transcodes(
   deps: ServerDeps,
   visible: Set<string>,
@@ -259,6 +263,7 @@ async function transcodes(
       durationMs: asset.durationMs,
       codec: asset.videoCodec,
       height: asset.height,
+      width: asset.width,
       progress: asset.proxyProgress,
       thumbnail: sql<boolean>`exists(select 1 from asset_variant v
         where v.asset_id = ${asset.id} and v.size = '256')`,
@@ -278,7 +283,8 @@ async function transcodes(
     const progress = Math.max(0, Math.min(100, r.progress ?? 0));
     const since = started.get(r.id);
     const elapsed = since ? now - since : null;
-    const lines = r.height ? Math.min(r.height, config.VIDEO_PROXY_RESOLUTION ?? 1080) : null;
+    const sourceLines = sourceSide(r);
+    const lines = sourceLines ? Math.min(sourceLines, config.VIDEO_PROXY_RESOLUTION ?? 1080) : null;
     const named = visible.has(r.projectId);
     return {
       assetId: r.id,
@@ -294,7 +300,7 @@ async function transcodes(
         elapsed && r.durationMs && progress > 0
           ? Math.round(((r.durationMs * progress) / 100 / elapsed) * 10) / 10
           : null,
-      source: r.codec ? `${r.codec}${r.height ? ` ${r.height}p` : ''}` : null,
+      source: r.codec ? `${r.codec}${sourceLines ? ` ${sourceLines}p` : ''}` : null,
       target: r.kind === 'audio' ? 'aac' : `h264${lines ? ` ${lines}p` : ''}`,
     };
   });

@@ -4,6 +4,7 @@ import type { Logger } from 'pino';
 import {
   type ContainerReading,
   type GpuReading,
+  GpuWindow,
   gpuPercent,
   readContainer,
   readGpu,
@@ -25,6 +26,17 @@ export const SAMPLE_MS = TIERS.raw.step * 1000;
  * engine), so 5 s readings went ~97 % and ~3 % in turns.
  */
 export const GPU_WINDOW_MS = 20_000;
+
+/**
+ * Whether a finished API request counts as a response time: JSON answers, 204s and server
+ * errors of requests without a file in their body. A body other than JSON (tus PATCH chunks,
+ * multipart clips, zip imports, feedback attachments) takes as long as the transfer (#745).
+ */
+export function recordsLatency(requestType: string, responseType: string, status: number) {
+  const body = requestType.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (body && body !== 'application/json') return false;
+  return status >= 500 || status === 204 || responseType.startsWith('application/json');
+}
 
 /**
  * Response times of the web role between two samples. Only JSON answers of the API count:
@@ -117,7 +129,6 @@ export function pointFrom(
   ms: number,
   before: { container: ContainerReading; cpu: NodeJS.CpuUsage },
   after: { container: ContainerReading; cpu: NodeJS.CpuUsage; rss: number },
-  gpuSince?: { gpu: GpuReading | null | undefined; at: number },
 ): Point {
   const seconds = ms / 1000;
   const rate = (a: number | null, b: number | null) =>
@@ -126,9 +137,7 @@ export function pointFrom(
   const processUsec = after.cpu.user + after.cpu.system - (before.cpu.user + before.cpu.system);
   return {
     t,
-    g: gpuSince
-      ? gpuPercent(gpuSince.gpu, after.container.gpu, t - gpuSince.at)
-      : gpuPercent(before.container.gpu, after.container.gpu, ms),
+    g: gpuPercent(before.container.gpu, after.container.gpu, ms),
     c: Math.max(0, cpuUsec / 1e6 / seconds),
     cc: after.container.cores,
     m: after.container.memory,
@@ -159,24 +168,20 @@ export function startSampler(opts: {
   const buckets = [new Bucket('m1'), new Bucket('m10')];
   let previous: { container: ContainerReading; cpu: NodeJS.CpuUsage; at: number } | null = null;
   const interval = opts.intervalMs ?? SAMPLE_MS;
-  const gpuReadings: { gpu: GpuReading | null | undefined; at: number }[] = [];
+  const gpuWindow = new GpuWindow(GPU_WINDOW_MS);
   let failing = false;
 
   async function sample() {
     const at = Date.now();
     const container = await readContainer();
     if (opts.role !== 'collab') container.gpu = await readGpu();
+    const gpu = gpuWindow.sample(container.gpu, at);
     const cpu = process.cpuUsage();
     const rss = process.memoryUsage.rss();
     const presence = opts.presence?.();
     if (previous) {
-      const point = pointFrom(
-        at,
-        at - previous.at,
-        previous,
-        { container, cpu, rss },
-        gpuReadings[0],
-      );
+      const point = pointFrom(at, at - previous.at, previous, { container, cpu, rss });
+      point.g = gpu;
       if (opts.latency) Object.assign(point, opts.latency.take());
       if (presence) point.people = new Set(presence.flatMap((b) => b.users)).size;
       await opts.store.push('raw', key, point);
@@ -197,8 +202,6 @@ export function startSampler(opts: {
       await opts.store.beat({ role: opts.role, host, startedAt, at, cpu: 0, memory: rss });
     }
     previous = { container, cpu, at };
-    gpuReadings.push({ gpu: container.gpu, at });
-    if (gpuReadings.length > Math.max(1, Math.round(GPU_WINDOW_MS / interval))) gpuReadings.shift();
   }
 
   const tick = () =>

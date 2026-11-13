@@ -7,6 +7,7 @@ import {
   healthOf,
   memoryScale,
   niceMax,
+  responseTime,
   sortedProblems,
   speedVerdict,
   storageVerdict,
@@ -135,4 +136,11 @@ it('puts the problem the orange card names on top, the others newest first', () 
     'b',
   ]);
   expect(sortedProblems(list, { level: 'ok' }).map((p) => p.id)).toEqual(['a', 'b', 'c']);
+});
+
+it('writes response-time ticks in seconds past one second', () => {
+  expect(responseTime(0, 'en')).toBe('0');
+  expect(responseTime(450, 'en')).toBe('450 ms');
+  expect(responseTime(20_000, 'en')).toBe('20 s');
+  expect(responseTime(2500, 'it')).toBe('2,5 s');
 });
