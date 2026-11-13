@@ -140,8 +140,8 @@
 }
 .server-swatch {
   display: inline-block;
-  width: 10px;
-  height: 2px;
+  width: 8px;
+  height: 8px;
   margin-right: 6px;
   border-radius: var(--ink-radius-full);
   vertical-align: middle;
