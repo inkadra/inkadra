@@ -42,4 +42,5 @@ networks:
     ipam:
       config:
         - subnet: 10.212.47.0/24
+          gateway: 10.212.47.1
           ip_range: 10.212.47.128/25
