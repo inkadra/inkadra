@@ -16,6 +16,8 @@ describe('the module registry (decision 0121)', () => {
     expect(moduleOf('tours', 'setplanLinks')).toBe('plan');
     expect(moduleOf('notifications', 'review')).toBe('review');
     expect(moduleOf('exports', 'callSheet')).toBe('production');
+    expect(moduleOf('calendar', 'shooting')).toBe('production');
+    expect(moduleOf('calendar', 'tasks')).toBeNull();
   });
 
   it('gives each name to one module at most', () => {

@@ -6,7 +6,8 @@ import { getPreferences, updatePreferences, usePreferences } from './preferences
 /**
  * The person's modules (decision 0121). Off hides the ways to create, never the data: a
  * surface asks `offers(part, name)` before offering a kind, a view, a tool, a menu entry, a
- * tour, a notification row or an export content. The server refuses nothing.
+ * tour, a notification row or an export content. The server refuses nothing; only the calendar
+ * feed, which no app filters, leaves out the events of a module that is off (#676).
  */
 export function useModules() {
   const off = usePreferences().modulesOff;

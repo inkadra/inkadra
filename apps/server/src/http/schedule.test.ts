@@ -707,6 +707,18 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
         headers: { 'if-none-match': String(feed.headers.etag) },
       });
       expect(again.statusCode).toBe(304);
+      // Production off (#676): no shooting days, the to-dos stay; back on, the days come back.
+      await request('viewer', 'PATCH', '/me/preferences', { modulesOff: ['production'] });
+      const off = await app.inject({
+        method: 'GET',
+        url,
+        headers: { 'if-none-match': String(feed.headers.etag) },
+      });
+      expect(off.statusCode).toBe(200);
+      expect(off.body).not.toContain('LOCATION:Rifugio');
+      expect(off.body).toContain('Hidden from guests');
+      await request('viewer', 'PATCH', '/me/preferences', { modulesOff: [] });
+      expect((await app.inject({ method: 'GET', url })).body).toContain('LOCATION:Rifugio');
       // A cap keeps the feed bounded.
       await db
         .insert(shootingDay)

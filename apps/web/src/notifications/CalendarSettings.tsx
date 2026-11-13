@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from '../board/chrome.tsx';
 import { api, RequestError } from '../lib/api.ts';
+import { useModules } from '../lib/modules.ts';
 import { Card, Row, useIsPhone } from '../routes/settings-ui.tsx';
 
 const failure = (err: unknown) =>
@@ -12,6 +13,7 @@ const failure = (err: unknown) =>
 export function CalendarSettings() {
   const { t } = useTranslation();
   const phone = useIsPhone();
+  const { offers } = useModules();
   const [feed, setFeed] = useState<CalendarFeed | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -115,11 +117,13 @@ export function CalendarSettings() {
               {copyButton}
             </Row>
           )}
-          <Row
-            icon="scene"
-            label={t('calendar.shooting')}
-            help={t(phone ? 'calendar.shootingHelpPhone' : 'calendar.shootingHelp')}
-          />
+          {offers('calendar', 'shooting') && (
+            <Row
+              icon="scene"
+              label={t('calendar.shooting')}
+              help={t(phone ? 'calendar.shootingHelpPhone' : 'calendar.shootingHelp')}
+            />
+          )}
           <Row
             icon="todo"
             label={t(phone ? 'calendar.tasksPhone' : 'calendar.tasks')}

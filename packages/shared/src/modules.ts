@@ -25,6 +25,8 @@ export interface ModuleParts {
   notifications: readonly NotificationChannelType[];
   /** Contents and options of the export dialog. */
   exports: readonly string[];
+  /** Events of the personal calendar feed, and their rows in its settings card. */
+  calendar: readonly string[];
 }
 export type ModulePart = keyof ModuleParts;
 
@@ -41,6 +43,7 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     tours: ['storyboard', 'draw', 'shotlist'],
     notifications: [],
     exports: [],
+    calendar: [],
   },
   production: {
     kinds: ['production'],
@@ -50,6 +53,8 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     tours: ['schedule', 'troupe'],
     notifications: [],
     exports: ['scenesheets', 'callSheet', 'callsheets'],
+    // Off leaves shooting days out of the feed; they stay in Production and come back with it.
+    calendar: ['shooting'],
   },
   moodboard: {
     kinds: ['moodboard'],
@@ -59,6 +64,7 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     tours: ['moodboard'],
     notifications: [],
     exports: [],
+    calendar: [],
   },
   review: {
     kinds: [],
@@ -68,6 +74,7 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     tours: ['review'],
     notifications: ['review'],
     exports: ['approvedOnly'],
+    calendar: [],
   },
   plan: {
     kinds: [],
@@ -77,6 +84,7 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     tours: ['setplan', 'setplanLinks', 'setplanOutputs'],
     notifications: [],
     exports: [],
+    calendar: [],
   },
 };
 
