@@ -1,11 +1,16 @@
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { addElement, CURRENT_SCHEMA_VERSION, createBoardDoc, roots } from '@inkadra/doc-schema';
-import { ProjectArchiveManifest, ProjectTransfer, ProjectTransfers } from '@inkadra/shared';
+import {
+  ProjectArchiveManifest,
+  ProjectTransfer,
+  ProjectTransfers,
+  TRANSFER_CANCEL_CAPABILITY,
+} from '@inkadra/shared';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
@@ -918,6 +923,193 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     expect(
       (await call(source.app, people.owner ?? null, 'GET', `/transfers/${id}/download`)).statusCode,
     ).toBe(404);
+  });
+
+  describe('POST /transfers/{id}/cancel (decision 0125)', () => {
+    const owner = () => people.owner ?? null;
+    const exists = (id: string) =>
+      stat(transferFile(source.deps.root, id)).then(
+        () => true,
+        () => false,
+      );
+    const read = async (id: string) =>
+      (await source.db.select().from(projectTransfer).where(eq(projectTransfer.id, id)))[0];
+    const exportRow = async (status: 'queued' | 'running' = 'queued') =>
+      (
+        await source.db
+          .insert(projectTransfer)
+          .values({
+            kind: 'export',
+            status,
+            userId: people.owner?.id as string,
+            projectId,
+            projectName: 'Last Train',
+          })
+          .returning()
+      )[0]?.id as string;
+    /** Runs the worker in this process with `db` and `storage` swapped for the test. */
+    const work = (id: string, swap: { db?: Database; storage?: Instance['deps']['storage'] }) =>
+      runTransfer(
+        {
+          db: swap.db ?? source.db,
+          storage: swap.storage ?? source.deps.storage,
+          jobs: source.deps.jobs,
+          dataDir: source.deps.root,
+          uploadMaxSize: 0,
+          importMaxSize: 1024 ** 3,
+          log: pino({ level: 'silent' }),
+        },
+        id,
+      );
+    /** A database whose `ready` update runs `hook` around it: the worker finishing meanwhile. */
+    const racing = (hook: (commit: () => Promise<unknown>) => Promise<unknown>) => {
+      const db = Object.create(source.db) as Database;
+      const update = source.db.update.bind(source.db);
+      db.update = ((table: typeof projectTransfer) => {
+        const builder = update(table);
+        const set = builder.set.bind(builder);
+        builder.set = ((values: Parameters<typeof set>[0]) => {
+          const query = set(values);
+          if (values.status !== 'ready') return query;
+          const returning = query.returning.bind(query);
+          query.returning = ((...cols: Parameters<typeof returning>) =>
+            hook(async () => await returning(...cols))) as typeof returning;
+          return query;
+        }) as typeof set;
+        return builder;
+      }) as unknown as Database['update'];
+      return db;
+    };
+
+    it('cancels a queued export, which the worker then never runs', async () => {
+      const id = await exportRow();
+      const res = await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`);
+      expect(res.statusCode).toBe(200);
+      expect(ProjectTransfer.parse(res.json())).toMatchObject({
+        id,
+        status: 'failed',
+        failure: 'cancelled',
+      });
+      expect(res.json().finishedAt).not.toBeNull();
+      await work(id, {});
+      expect(await read(id)).toMatchObject({ status: 'failed', failure: 'cancelled' });
+      expect(await exists(id)).toBe(false);
+    });
+
+    it('cancels a queued import and removes its uploaded archive at once', async () => {
+      const importer = await signUp(source.app, 'cancel-importer');
+      const [row] = await source.db
+        .insert(projectTransfer)
+        .values({ kind: 'import', userId: importer.id, projectName: '' })
+        .returning();
+      const id = row?.id as string;
+      await mkdir(transfersDir(source.deps.root), { recursive: true });
+      await writeFile(transferFile(source.deps.root, id), 'zip');
+      const res = await call(source.app, importer, 'POST', `/transfers/${id}/cancel`);
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ status: 'failed', failure: 'cancelled' });
+      expect(await exists(id)).toBe(false);
+    });
+
+    it('stops a running export at its next step and removes the archive', async () => {
+      const id = await exportRow();
+      let answer = 0;
+      const storage = {
+        ...source.deps.storage,
+        async read(...args: Parameters<typeof source.deps.storage.read>) {
+          if (!answer)
+            answer = (await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`))
+              .statusCode;
+          return source.deps.storage.read(...args);
+        },
+      };
+      await work(id, { storage });
+      expect(answer).toBe(200);
+      expect(await read(id)).toMatchObject({ status: 'failed', failure: 'cancelled' });
+      expect(await exists(id)).toBe(false);
+    });
+
+    it('wins over a worker finishing after it: the archive is removed, the cancel stays', async () => {
+      const id = await exportRow();
+      let answer = 0;
+      const db = racing(async (commit) => {
+        answer = (await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`)).statusCode;
+        return commit();
+      });
+      await work(id, { db });
+      expect(answer).toBe(200);
+      expect(await read(id)).toMatchObject({ status: 'failed', failure: 'cancelled' });
+      expect(await exists(id)).toBe(false);
+    });
+
+    it('answers 409 with the ready export, which stays downloadable', async () => {
+      const id = await exportRow();
+      let conflict: { error: { code: string; details: unknown } } | undefined;
+      const db = racing(async (commit) => {
+        const rows = await commit();
+        const res = await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`);
+        expect(res.statusCode).toBe(409);
+        conflict = res.json();
+        return rows;
+      });
+      await work(id, { db });
+      expect(conflict?.error.code).toBe('conflict');
+      expect(ProjectTransfer.parse(conflict?.error.details)).toMatchObject({
+        id,
+        status: 'ready',
+        failure: null,
+      });
+      // Asked again once ready: the same answer, nothing removed.
+      const again = await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`);
+      expect(again.statusCode).toBe(409);
+      expect(again.json().error.details).toMatchObject({ status: 'ready' });
+      const download = await call(source.app, owner(), 'GET', `/transfers/${id}/download`);
+      expect(download.statusCode).toBe(200);
+    });
+
+    it('answers a second cancel with 409 and the cancelled transfer', async () => {
+      const id = await exportRow('running');
+      expect((await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`)).statusCode).toBe(
+        200,
+      );
+      const second = await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`);
+      expect(second.statusCode).toBe(409);
+      expect(second.json().error.details).toMatchObject({
+        id,
+        status: 'failed',
+        failure: 'cancelled',
+      });
+      expect(await read(id)).toBeDefined();
+    });
+
+    it("refuses someone else's, unknown and unauthenticated cancels", async () => {
+      const id = await exportRow();
+      const foreign = await call(
+        source.app,
+        people.editor ?? null,
+        'POST',
+        `/transfers/${id}/cancel`,
+      );
+      expect(foreign.statusCode).toBe(404);
+      expect(foreign.json().error.code).toBe('not_found');
+      const unknown = await call(
+        source.app,
+        owner(),
+        'POST',
+        '/transfers/0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2aff/cancel',
+      );
+      expect(unknown.statusCode).toBe(404);
+      expect((await call(source.app, null, 'POST', `/transfers/${id}/cancel`)).statusCode).toBe(
+        401,
+      );
+      expect(await read(id)).toMatchObject({ status: 'queued' });
+      await call(source.app, owner(), 'DELETE', `/transfers/${id}`);
+    });
+
+    it('is advertised on the instance version', async () => {
+      const res = await call(source.app, owner(), 'GET', '/instance/version');
+      expect(res.json().capabilities).toContain(TRANSFER_CANCEL_CAPABILITY);
+    });
   });
 
   /** An archive of one root board and one file, built by hand around `file`. */

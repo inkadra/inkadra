@@ -29,7 +29,13 @@ import { instanceBackup, instanceSetting, project, projectTransfer, user } from 
 import { exportsOf, refuse } from '../demo.ts';
 import type { Jobs } from '../jobs.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
-import { canExport, toTransfer, transferFile, transfersDir } from '../transfers/service.ts';
+import {
+  canExport,
+  type TransferRow,
+  toTransfer,
+  transferFile,
+  transfersDir,
+} from '../transfers/service.ts';
 import { contentDisposition } from './assets-routes.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
@@ -232,20 +238,41 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       .send(createReadStream(file));
   });
 
-  app.delete(v1('/transfers/:transferId'), async (req, reply) => {
-    const { row } = await own(req);
-    // A queued or running transfer is marked cancelled; the worker, in whatever process, sees
-    // it on its next step, stops and removes its files. The row stays in the list as failed.
+  /**
+   * Marks a queued or running transfer cancelled in one conditional update; the worker, in
+   * whatever process, sees it on its next step, stops and removes its files. The row stays in
+   * the list as failed. Returns the cancelled row, or nothing when it had already finished.
+   */
+  const cancel = async (row: TransferRow) => {
     const [stopped] = await db
       .update(projectTransfer)
       .set({ status: 'failed', failure: 'cancelled', finishedAt: new Date() })
       .where(and(eq(projectTransfer.id, row.id), inArray(projectTransfer.status, ACTIVE)))
-      .returning({ status: projectTransfer.status });
-    if (!stopped) {
+      .returning();
+    // A queued import's uploaded archive: no worker will ever read it.
+    if (stopped && row.status === 'queued')
+      await rm(transferFile(dataDir, row.id), { force: true });
+    return stopped;
+  };
+
+  app.delete(v1('/transfers/:transferId'), async (req, reply) => {
+    const { row } = await own(req);
+    if (!(await cancel(row))) {
       await db.delete(projectTransfer).where(eq(projectTransfer.id, row.id));
       await rm(transferFile(dataDir, row.id), { force: true });
-    } else if (row.status === 'queued') await rm(transferFile(dataDir, row.id), { force: true });
+    }
     return reply.status(204).send();
+  });
+
+  // Cancel only, never remove (decision 0125): a finished transfer answers 409 as it is now.
+  app.post(v1('/transfers/:transferId/cancel'), async (req) => {
+    const { row } = await own(req);
+    const stopped = await cancel(row);
+    if (stopped) return toTransfer(stopped);
+    // Removed meanwhile (a DELETE, the hourly sweep): unknown, as the other routes say.
+    const [now] = await db.select().from(projectTransfer).where(eq(projectTransfer.id, row.id));
+    if (!now) throw new HttpError('not_found', 'Transfer not found.');
+    throw new HttpError('conflict', 'The transfer has already finished.', toTransfer(now));
   });
 
   // Backups: administrators only, with a session (not a token), like the other instance pages.
