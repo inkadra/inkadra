@@ -87,10 +87,14 @@ test('uploaded PDF and ProRes files get their badges, page count and playable co
   await page.mouse.move(box.x + box.width + 300, box.y + box.height - 12, { steps: 8 });
   await page.mouse.up();
 
-  // Opening the card shows the shared viewer, which plays the copy, not the original.
+  // Opening the card shows the shared viewer, which plays the copy, not the original: the
+  // rungs of the ladder through hls.js (decision 0128), never the file of the original.
   await video.locator('.fcard__footer').dblclick();
   const viewer = page.getByRole('dialog', { name: 'prores-proxy.mov' });
-  await expect(viewer.locator('video')).toHaveAttribute('src', /\/proxy$/);
+  await expect(viewer.locator('.viewer-quality__button')).toBeVisible();
+  await expect
+    .poll(() => viewer.locator('video').evaluate((v: HTMLVideoElement) => v.currentSrc))
+    .toMatch(/^blob:|\/hls\//);
   await page.keyboard.press('Escape');
   await expect(viewer).toBeHidden();
 
