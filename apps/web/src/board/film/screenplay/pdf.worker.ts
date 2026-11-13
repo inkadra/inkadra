@@ -1,8 +1,8 @@
+import { parseFountain } from '@inkadra/canvas-core/screenplay/fountain';
+import { type PdfPage, pdfPagesToFountain } from '@inkadra/canvas-core/screenplay/pdf-text';
+import { MAX_SCRIPT_BYTES, ScriptError } from '@inkadra/canvas-core/screenplay/script';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { parseFountain } from './fountain.ts';
-import { type PdfPage, pdfPagesToFountain } from './pdf-text.ts';
-import { MAX_SCRIPT_BYTES, ScriptError } from './script.ts';
 
 GlobalWorkerOptions.workerSrc = workerUrl;
 // No remote fonts, CMaps, URLs, actions or attachments are read. Only inline PDF bytes.

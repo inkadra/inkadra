@@ -8,19 +8,24 @@ import {
   type ScriptScene,
   splitCue,
 } from './script.ts';
+import { descendants, parseXml, textContent, type XmlElement, XmlError } from './xml.ts';
 
 /**
  * Reads a Final Draft file (.fdx, XML). Documents with a DOCTYPE or entity declarations are
- * refused before parsing, so nothing is expanded or fetched; the browser's DOMParser does the
- * rest and never loads external resources for XML.
+ * refused before parsing, so nothing is expanded or fetched; a strict XML reader without the DOM
+ * does the rest (`xml.ts`), so the same code reads a file in the browser, Node and Hermes.
  */
 export function parseFdx(source: string): Script {
   const xml = source.replace(/^﻿/, '');
   if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new ScriptError('unsafe');
-  const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  const root = doc.documentElement;
-  if (doc.getElementsByTagName('parsererror').length > 0 || root?.nodeName !== 'FinalDraft')
-    throw new ScriptError('invalid');
+  let root: XmlElement;
+  try {
+    root = parseXml(xml);
+  } catch (error) {
+    if (error instanceof XmlError) throw new ScriptError('invalid');
+    throw error;
+  }
+  if (root.name !== 'FinalDraft') throw new ScriptError('invalid');
 
   const scenes: ScriptScene[] = [];
   let scene: ScriptScene | null = null;
@@ -29,18 +34,18 @@ export function parseFdx(source: string): Script {
   const push = (block: ScriptBlock) => (scene ? scene.blocks : prelude).push(block);
   const content = child(root, 'Content');
   for (const p of content ? paragraphs(content) : []) {
-    const type = p.getAttribute('Type') ?? 'Action';
+    const type = p.attributes.get('Type') ?? 'Action';
     const text = textOf(p);
     if (type === 'Scene Heading') {
       if (!text) continue;
-      const number = p.getAttribute('Number')?.trim();
+      const number = p.attributes.get('Number')?.trim();
       scene = { ...parseHeading(text), blocks: [], characters: [] };
       if (number && !scene.number) scene.number = number.slice(0, 12);
       if (section) scene.section = section;
       scenes.push(scene);
       const props = child(p, 'SceneProperties');
       const summary = props && child(props, 'Summary');
-      for (const s of summary ? [...summary.getElementsByTagName('Paragraph')] : []) {
+      for (const s of summary ? descendants(summary, 'Paragraph') : []) {
         const t = textOf(s);
         if (t) push({ kind: 'synopsis', text: t });
       }
@@ -66,12 +71,10 @@ export function parseFdx(source: string): Script {
  * Final Draft keeps the title page as free paragraphs: the first one is the title, the one
  * after "by" or "written by" the credit and the author.
  */
-function titlePage(root: Element): Record<string, string> {
+function titlePage(root: XmlElement): Record<string, string> {
   const page = child(root, 'TitlePage');
   const content = page && child(page, 'Content');
-  const texts = (content ? [...content.getElementsByTagName('Paragraph')] : [])
-    .map(textOf)
-    .filter(Boolean);
+  const texts = (content ? descendants(content, 'Paragraph') : []).map(textOf).filter(Boolean);
   const fields: Record<string, string> = {};
   const [title] = texts;
   if (title) fields.title = title;
@@ -87,24 +90,24 @@ function titlePage(root: Element): Record<string, string> {
 }
 
 /** The script's paragraphs in order. Dual dialogue wraps its own in another paragraph. */
-function* paragraphs(content: Element): Generator<Element> {
+function* paragraphs(content: XmlElement): Generator<XmlElement> {
   for (const p of content.children) {
-    if (p.nodeName !== 'Paragraph') continue;
+    if (p.name !== 'Paragraph') continue;
     const dual = child(p, 'DualDialogue');
     if (dual) {
-      for (const inner of dual.children) if (inner.nodeName === 'Paragraph') yield inner;
+      for (const inner of dual.children) if (inner.name === 'Paragraph') yield inner;
     } else yield p;
   }
 }
 
-function child(el: Element, name: string): Element | null {
-  for (const c of el.children) if (c.nodeName === name) return c;
+function child(el: XmlElement, name: string): XmlElement | null {
+  for (const c of el.children) if (c.name === name) return c;
   return null;
 }
 
 /** The paragraph's own text runs, joined: formatting splits a line into several <Text>. */
-function textOf(p: Element): string {
+function textOf(p: XmlElement): string {
   let text = '';
-  for (const c of p.children) if (c.nodeName === 'Text') text += c.textContent ?? '';
+  for (const c of p.children) if (c.name === 'Text') text += textContent(c);
   return clean(text);
 }

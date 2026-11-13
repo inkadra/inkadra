@@ -1,4 +1,3 @@
-// @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import fdx from './fixtures/last-train.fdx?raw';
 import fountain from './fixtures/last-train.fountain?raw';

@@ -7,7 +7,7 @@ import { signIn } from './perf/seed.ts';
 test.describe.configure({ mode: 'serial' });
 
 const admin = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
-const fixtures = new URL('../../apps/web/src/board/film/screenplay/fixtures/', import.meta.url);
+const fixtures = new URL('../../packages/canvas-core/src/screenplay/fixtures/', import.meta.url);
 let seeded: { projectId: string; storyboardId: string; canvasId: string };
 
 test.beforeAll(async ({ baseURL }) => {
