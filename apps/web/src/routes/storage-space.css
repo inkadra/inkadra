@@ -133,7 +133,7 @@
   min-width: 0;
   font-variant-numeric: tabular-nums;
 }
-.space-files__legend li > span {
+.space-files__legend .space-files__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -197,6 +197,11 @@
   place-items: center;
   color: var(--ink-on-accent);
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+/* Only the project name gives way on a narrow row. */
+.ink-row__where > .space-file__sep,
+.ink-row__where > .space-file__kind {
+  flex: none;
 }
 /* The project marker: a small diamond in the project's colour. */
 .ink-row__where > .space-file__dot {

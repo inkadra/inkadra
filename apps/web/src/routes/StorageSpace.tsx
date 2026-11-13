@@ -239,13 +239,15 @@ export function LargestFilesDialog({
                   {summary.projects.map((p) => (
                     <li key={p.id}>
                       <i style={{ background: swatch(p.color) }} aria-hidden="true" />
-                      <span>{p.name}</span> · {size(p.bytes)}
+                      <span className="space-files__name">{p.name}</span>
+                      <span>· {size(p.bytes)}</span>
                     </li>
                   ))}
                   {summary.restBytes > 0 && (
                     <li>
                       <i className="space-files__rest" aria-hidden="true" />
-                      {t('storageSpace.rest')} · {size(summary.restBytes)}
+                      <span>{t('storageSpace.rest')}</span>
+                      <span>· {size(summary.restBytes)}</span>
                     </li>
                   )}
                 </ul>
@@ -354,7 +356,12 @@ function FileRow({
           <>
             <i className="space-file__dot" style={{ background: swatch(f.projectColor) }} />
             <span>{f.projectName}</span>
-            {f.kind && <span>· {t(`storageSpace.kinds.${f.kind}`)}</span>}
+            {f.kind && (
+              <>
+                <span className="space-file__sep">·</span>
+                <span className="space-file__kind">{t(`storageSpace.kinds.${f.kind}`)}</span>
+              </>
+            )}
           </>
         }
         trail={
