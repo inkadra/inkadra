@@ -2011,7 +2011,8 @@
       "original": "Original",
       "live": "al vuelo",
       "liveCopy": "copia al {{percent}} %",
-      "liveNote": "Las calidades «al vuelo» las convierte la tarjeta gráfica mientras miras; cuando la copia está lista se pasa a ella."
+      "liveNote": "Las calidades «al vuelo» las convierte la tarjeta gráfica mientras miras; cuando la copia está lista se pasa a ella.",
+      "liveOnlyNote": "Las calidades «al vuelo» las convierte la tarjeta gráfica mientras miras, sin guardar una copia."
     }
   },
   "search": {
