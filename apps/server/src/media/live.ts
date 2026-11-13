@@ -404,8 +404,9 @@ export class LiveSessions {
       'temp_file+independent_segments',
       '-hls_playlist_type',
       'event',
+      // Absolute, as the segments: a bare name lands in the working folder of the process.
       '-hls_fmp4_init_filename',
-      'init.mp4',
+      join(session.dir, 'init.mp4'),
       '-hls_segment_filename',
       join(session.dir, 'seg-%d.m4s'),
       '-start_number',
