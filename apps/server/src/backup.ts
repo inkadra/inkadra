@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import {
   chmod,
@@ -24,7 +25,7 @@ import {
   type InstanceBackup,
   BackupSettings as Settings,
 } from '@inkadra/shared';
-import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import postgres from 'postgres';
 import { VERSION } from './config.ts';
@@ -66,6 +67,11 @@ class BackupStalled extends Error {
 
 /** A running backup moves its heartbeat this often; one silent for STALE_MS was interrupted. */
 const HEARTBEAT_MS = 10 * 1000;
+/**
+ * A job delivered again takes over a claimed backup only once its heartbeat stopped this long
+ * (#810): BullMQ redelivers a job whose lock lapsed even when its first run is still alive.
+ */
+const TAKEOVER_MS = 6 * HEARTBEAT_MS;
 export const STALE_MS = 15 * 60 * 1000;
 /**
  * A worker that starts reaps running backups whose heartbeat is this old. A live process
@@ -226,6 +232,13 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   // The id keeps two backups of the same second apart.
   const fileName = `inkadra-backup-${stamp(new Date())}-${id.slice(0, 8)}.zip`;
   const partial = join(dir, `${fileName}.partial`);
+  // Set by the claim below: only this run moves or finishes the row from then on.
+  const runId = randomUUID();
+  const ours = and(
+    eq(instanceBackup.id, id),
+    eq(instanceBackup.status, 'running'),
+    eq(instanceBackup.runId, runId),
+  );
   // Two clocks. The heartbeat says this process is alive: it beats on a timer for the whole
   // run (rename and bucket copy included), so a worker that starts elsewhere never takes a
   // live backup for a dead one. Stall detection watches the dump only: when no data moved
@@ -260,7 +273,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
     () => {
       db.update(instanceBackup)
         .set({ heartbeatAt: new Date() })
-        .where(and(eq(instanceBackup.id, id), eq(instanceBackup.status, 'running')))
+        .where(ours)
         .catch(() => {});
       watch().catch(() => {});
     },
@@ -269,13 +282,24 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   heartbeat.unref();
   try {
     // A job can run again after its worker died (BullMQ moves it back to the queue): only a
-    // row still running is worked on, never one already marked failed or done.
+    // row still running is worked on, never one already marked failed or done, nor one another
+    // run still beats for.
     const [claimed] = await db
-      .select({ status: instanceBackup.status })
-      .from(instanceBackup)
-      .where(eq(instanceBackup.id, id));
-    if (claimed?.status !== 'running') {
-      log.warn({ backup: id, status: claimed?.status ?? null }, 'backup not running, skipped');
+      .update(instanceBackup)
+      .set({ runId, heartbeatAt: new Date() })
+      .where(
+        and(
+          eq(instanceBackup.id, id),
+          eq(instanceBackup.status, 'running'),
+          or(
+            isNull(instanceBackup.runId),
+            lt(instanceBackup.heartbeatAt, new Date(Date.now() - TAKEOVER_MS)),
+          ),
+        ),
+      )
+      .returning({ id: instanceBackup.id });
+    if (!claimed) {
+      log.warn({ backup: id }, 'backup not running or run elsewhere, skipped');
       return null;
     }
     log.info({ backup: id, fileName }, 'backup started');
@@ -328,10 +352,14 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         fileBytes: result.files.bytes,
         finishedAt: new Date(),
       })
-      .where(and(eq(instanceBackup.id, id), eq(instanceBackup.status, 'running')))
+      .where(ours)
       .returning();
-    if (!row) log.warn({ backup: id, fileName }, 'backup written after it was marked over');
-    else log.info({ backup: id, fileName, size: result.size }, 'backup written');
+    if (!row) {
+      // No row will ever point to this archive: retention would never remove it.
+      log.warn({ backup: id, fileName }, 'backup written after it was marked over: removed');
+      await rm(join(dir, fileName), { force: true });
+      if (copied) await deps.storage.remove([`${BUCKET_PREFIX}${fileName}`]).catch(() => {});
+    } else log.info({ backup: id, fileName, size: result.size }, 'backup written');
     await applyBackupRetention(deps);
     return row ?? null;
   } catch (err) {
@@ -351,7 +379,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
     const [row] = await db
       .update(instanceBackup)
       .set({ status: 'failed', failure, finishedAt: new Date() })
-      .where(and(eq(instanceBackup.id, id), eq(instanceBackup.status, 'running')))
+      .where(ours)
       .returning();
     return row ?? null;
   } finally {

@@ -1069,6 +1069,47 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       expect(download.statusCode).toBe(200);
     });
 
+    it('leaves a running export to its live run, and takes over one whose worker stopped (#810)', async () => {
+      const id = await exportRow('running');
+      // Delivered again while the first run still beats: the row stays with that run.
+      await work(id, {});
+      expect(await read(id)).toMatchObject({ status: 'running', runId: null });
+      // Quiet for minutes: the worker died, the job delivered again takes it over.
+      await source.db
+        .update(projectTransfer)
+        .set({ updatedAt: new Date(Date.now() - 10 * 60 * 1000) })
+        .where(eq(projectTransfer.id, id));
+      await work(id, {});
+      expect(await read(id)).toMatchObject({ status: 'ready' });
+      expect(await exists(id)).toBe(true);
+    });
+
+    it('a run whose row was taken over never finishes it nor touches its archive (#810)', async () => {
+      const id = await exportRow();
+      const other = randomUUID();
+      let taken = false;
+      const storage = {
+        ...source.deps.storage,
+        async read(...args: Parameters<typeof source.deps.storage.read>) {
+          // Another worker claims the row while this run is still writing.
+          if (!taken)
+            await source.db
+              .update(projectTransfer)
+              .set({ runId: other })
+              .where(eq(projectTransfer.id, id));
+          taken = true;
+          return source.deps.storage.read(...args);
+        },
+      };
+      await work(id, { storage });
+      expect(taken).toBe(true);
+      expect(await read(id)).toMatchObject({ status: 'running', runId: other });
+      expect(await exists(id)).toBe(false);
+      expect(
+        (await readdir(transfersDir(source.deps.root))).filter((n) => n.startsWith(id)),
+      ).toEqual([]);
+    });
+
     it('answers a second cancel with 409 and the cancelled transfer', async () => {
       const id = await exportRow('running');
       expect((await call(source.app, owner(), 'POST', `/transfers/${id}/cancel`)).statusCode).toBe(

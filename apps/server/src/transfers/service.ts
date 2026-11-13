@@ -1,7 +1,8 @@
-import { mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { EXPORT_TTL_HOURS, type ProjectTransfer } from '@inkadra/shared';
-import { and, eq, inArray, lt, or } from 'drizzle-orm';
+import { and, eq, inArray, lt, or, type SQL } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { atLeast, projectRole } from '../access.ts';
 import type { Database } from '../db/client.ts';
@@ -36,6 +37,11 @@ const LIST_DAYS = 7;
 export const STALLED_MS = 15 * 60 * 1000;
 /** A running transfer touches its row at least this often, even inside one large file. */
 const HEARTBEAT_MS = 60 * 1000;
+/**
+ * A running transfer is taken over by a job delivered again only once its heartbeat stopped
+ * (#810): BullMQ redelivers a job whose lock lapsed even when its first run is still alive.
+ */
+const TAKEOVER_MS = 2 * HEARTBEAT_MS;
 
 export function toTransfer(row: TransferRow): ProjectTransfer {
   return {
@@ -65,25 +71,45 @@ export async function canExport(db: Database, userId: string, projectId: string)
 
 /**
  * Runs one queued transfer to its end. Safe to call twice: only a queued row (or a running
- * one, after a worker restart) is picked up, and the row is the only source of truth.
+ * one whose worker stopped beating, after a restart) is picked up, and the row is the only
+ * source of truth. Each claim sets a new run id: a run that lost its row never moves it again.
  */
 export async function runTransfer(deps: TransferDeps, id: string): Promise<void> {
   const { db, log } = deps;
+  const runId = randomUUID();
   const [row] = await db
     .update(projectTransfer)
-    .set({ status: 'running', progress: 0 })
-    .where(and(eq(projectTransfer.id, id), inArray(projectTransfer.status, ['queued', 'running'])))
+    .set({ status: 'running', progress: 0, runId })
+    .where(
+      and(
+        eq(projectTransfer.id, id),
+        or(
+          eq(projectTransfer.status, 'queued'),
+          and(
+            eq(projectTransfer.status, 'running'),
+            lt(projectTransfer.updatedAt, new Date(Date.now() - TAKEOVER_MS)),
+          ),
+        ),
+      ),
+    )
     .returning();
   if (!row) return;
+  const ours = and(
+    eq(projectTransfer.id, id),
+    eq(projectTransfer.status, 'running'),
+    eq(projectTransfer.runId, runId),
+  );
   const file = transferFile(deps.dataDir, id);
+  // An export is written aside and moved in place once whole: two runs never share a file.
+  const partial = `${file}.${runId}.partial`;
   let last = 0;
   let lastAt = 0;
-  // Only a row still `running` moves: one deleted or cancelled meanwhile stops the work.
+  // Only a row still ours moves: one deleted, cancelled or taken over meanwhile stops the work.
   const touch = async (value: number) => {
     const updated = await db
       .update(projectTransfer)
       .set({ progress: value })
-      .where(and(eq(projectTransfer.id, id), eq(projectTransfer.status, 'running')))
+      .where(ours)
       .returning({ id: projectTransfer.id });
     return updated.length > 0;
   };
@@ -109,8 +135,10 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
       if (!row.projectId || !(await canExport(db, row.userId, row.projectId)))
         throw new ArchiveError('invalid_archive', 'gone');
       await mkdir(transfersDir(deps.dataDir), { recursive: true, mode: 0o700 });
-      const result = await exportProject(deps, row.projectId, file, progress);
-      const done = await finish(db, id, {
+      const result = await exportProject(deps, row.projectId, partial, progress);
+      if (!(await touch(1000))) throw new Cancelled();
+      await rename(partial, file);
+      const done = await finish(db, ours, {
         size: result.size,
         summary: result.summary,
         expiresAt: new Date(Date.now() + EXPORT_TTL_HOURS * 3600 * 1000),
@@ -120,7 +148,7 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
     } else {
       const result = await importProject(deps, file, row.userId, progress);
       await rm(file, { force: true });
-      const done = await finish(db, id, {
+      const done = await finish(db, ours, {
         projectId: result.projectId,
         projectName: result.projectName,
         summary: result.summary,
@@ -129,11 +157,18 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
       if (done) await notify(db, row.userId, 'import_ready', result.projectId);
     }
   } catch (err) {
+    await rm(partial, { force: true });
+    const [now] = await db
+      .select({ status: projectTransfer.status, runId: projectTransfer.runId })
+      .from(projectTransfer)
+      .where(eq(projectTransfer.id, id));
+    // Taken over by another run: the file is that run's now.
+    if (now?.status === 'running' && now.runId !== runId) return;
     await rm(file, { force: true });
     if (err instanceof Cancelled) return;
     // Cancelled or removed while a file was being read (a demo sandbox ending, decision 0084):
     // its files may be gone already, which is no failure to report.
-    if (!(await stillRunning(db, id))) return;
+    if (now?.status !== 'running') return;
     const failure =
       err instanceof ArchiveError
         ? err.message === 'gone'
@@ -147,29 +182,21 @@ export async function runTransfer(deps: TransferDeps, id: string): Promise<void>
     await db
       .update(projectTransfer)
       .set({ status: 'failed', failure, finishedAt: new Date() })
-      .where(and(eq(projectTransfer.id, id), eq(projectTransfer.status, 'running')));
+      .where(ours);
   } finally {
     clearInterval(heartbeat);
   }
 }
 
-async function stillRunning(db: Database, id: string) {
-  const [row] = await db
-    .select({ status: projectTransfer.status })
-    .from(projectTransfer)
-    .where(eq(projectTransfer.id, id));
-  return row?.status === 'running';
-}
-
 async function finish(
   db: Database,
-  id: string,
+  ours: SQL | undefined,
   values: Partial<typeof projectTransfer.$inferInsert>,
 ): Promise<boolean> {
   const rows = await db
     .update(projectTransfer)
     .set({ ...values, status: 'ready', progress: 1000, finishedAt: new Date() })
-    .where(and(eq(projectTransfer.id, id), eq(projectTransfer.status, 'running')))
+    .where(ours)
     .returning({ id: projectTransfer.id });
   return rows.length > 0;
 }
@@ -242,7 +269,8 @@ export async function sweepTransfers(
   let removed = 0;
   const dir = transfersDir(dataDir);
   for (const name of await readdir(dir).catch(() => [] as string[])) {
-    if (live.has(name)) continue;
+    // An export still being written sits next to its archive as `<id>.zip.<run>.partial`.
+    if (live.has(name) || live.has(`${name.split('.')[0]}.zip`)) continue;
     const path = join(dir, name);
     // Uploads still being received have no row yet: leave fresh files alone.
     const info = await stat(path).catch(() => null);
