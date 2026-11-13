@@ -232,7 +232,7 @@ export function DateField({
         className="ink-date__grid"
         onKeyDown={live ? gridKey : undefined}
       >
-        {/* biome-ignore lint/a11y/useSemanticElements: the header row of a grid of buttons. */}
+        {/* biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: the header row of a grid of buttons. */}
         <div role="row" className="ink-date__row">
           {days.slice(0, 7).map((d) => (
             // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: a weekday heading; the days take focus.
@@ -247,7 +247,7 @@ export function DateField({
           ))}
         </div>
         {[0, 1, 2, 3, 4, 5].map((week) => (
-          // biome-ignore lint/a11y/useSemanticElements: a week of the grid; its days take focus.
+          // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: a week of the grid; its days take focus.
           <div key={week} role="row" className="ink-date__row">
             {days.slice(week * 7, week * 7 + 7).map((d) => {
               const s = dayState(d, { month: at, today, value, rangeStart, min, max });
