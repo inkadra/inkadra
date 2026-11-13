@@ -175,10 +175,18 @@ rung live). Capability **`video-live`**; clients need nothing more than `playbac
   answers 503 with `Retry-After` and hls.js keeps to the other levels.
 - Live sessions run in the process that answers the requests (the web role, or `all`): no
   round trip through the queue for every two seconds of video. With several web replicas a
-  viewer may get a session on each; acceptable for now. The web role detects its own encoder
+  viewer may get a session on each; acceptable for now. Replicas may share `DATA_DIR`, so each
+  process keeps its sessions under `tmp/live/<host>-<pid>/` and its bucket copies under
+  `tmp/live-src/<host>-<pid>/`: at start it clears only its own (a restarted container has the
+  same host and pid), touches them every two seconds, and once a minute removes the folders of
+  other processes untouched for ten minutes (replicas that stopped), as stale job folders are
+  swept. Concurrent requests of one session (the player asks `init.mp4` and `seg-0` at once)
+  wait for the ffmpeg being started instead of starting another; the source is taken once per
+  session. The web role detects its own encoder
   when it is not the worker.
 - Buckets: the source is not downloaded per session. A local copy is shared by every session of
-  that video and kept in a cache of 20 GiB, least recently used first out; the local volume is
+  that video and kept in a cache of 20 GiB, least recently used first out, checked when a copy is taken
+  and when one is let go; a failed copy is removed at once; the local volume is
   read in place. Ranged reads through ffmpeg were not used: ffmpeg would need the HTTP protocol,
   which `safeInput` forbids on purpose.
 - The probe facts the source rule needs are kept in `asset.media_info`.

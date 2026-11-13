@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { mkdir, readdir, rm, stat, utimes } from 'node:fs/promises';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { ladderFor, VIDEO_RUNGS, type VideoRung, type VideoSettings } from '@inkadra/shared';
 import type { asset } from '../db/schema.ts';
@@ -41,6 +42,14 @@ const WINDOW = 3;
 const SEGMENT_WAIT_MS = 30_000;
 /** Source copies kept for live playback from a bucket: they are not downloaded per session. */
 export const SOURCE_CACHE_BYTES = 20 * 1024 ** 3;
+/**
+ * Folders of another process (a replica sharing DATA_DIR, or a run that died) untouched this
+ * long are removed: a running process touches its own every two seconds.
+ */
+const STALE_PROCESS_MS = 10 * 60_000;
+
+/** This process's folder under `live/` and `live-src/`: replicas may share DATA_DIR. */
+export const processFolder = () => `${hostname()}-${process.pid}`;
 
 type AssetRow = typeof asset.$inferSelect;
 
@@ -148,6 +157,12 @@ interface Session {
   /** The local source and its sniffed container, once acquired. */
   source: string | null;
   container: string | null;
+  /**
+   * The ffmpeg being started, for `rung` from segment `n`: requests that arrive meanwhile (the
+   * player asks init.mp4 and seg-0 at once) wait for it instead of starting another.
+   */
+  starting: { rung: VideoRung; n: number; done: Promise<void> } | null;
+  ended: boolean;
 }
 
 /** Who watches: one session per `id` and video; `group` shares the per-viewer limit. */
@@ -163,23 +178,38 @@ export interface LiveLimits {
 
 export interface LiveDeps {
   storage: Storage;
-  /** `DATA_DIR/tmp`: sessions under `live/`, bucket sources under `live-src/`. */
+  /**
+   * `DATA_DIR/tmp`: sessions under `live/<process>/`, bucket sources under
+   * `live-src/<process>/` (processFolder).
+   */
   tmpDir: string;
   encoder?: VideoEncoder;
   proxies?: ProxySettings;
   log?: { warn: (fields: Record<string, unknown>, message: string) => void };
+  /** Tests: another process folder, cache size, ffmpeg and spawn. */
+  folder?: string;
+  cacheBytes?: number;
+  ffmpeg?: string;
+  spawn?: typeof spawn;
 }
 
 /** Local copies of bucket sources, shared by sessions, least recently used first out. */
-class SourceCache {
+export class SourceCache {
   private readonly entries = new Map<
     string,
     { path: string; bytes: number; used: number; users: number; ready: Promise<string> }
   >();
   constructor(
     private readonly deps: LiveDeps,
+    /** `live-src/<process>`: this process's copies only. */
+    readonly root: string,
     private readonly limit = SOURCE_CACHE_BYTES,
   ) {}
+
+  /** Sessions using the copy of `assetId` (tests and the Server page). */
+  users(assetId: string) {
+    return this.entries.get(assetId)?.users ?? 0;
+  }
 
   async acquire(row: AssetRow): Promise<{ path: string; release: () => Promise<void> }> {
     const { storage } = this.deps;
@@ -189,13 +219,17 @@ class SourceCache {
     }
     let entry = this.entries.get(row.id);
     if (!entry) {
-      const dir = join(this.deps.tmpDir, 'live-src', row.id);
+      const dir = join(this.root, row.id);
       const ready = mkdir(dir, { recursive: true })
         .then(() => storage.localCopy(row.storageKey, dir))
         .then((copy) => copy.path);
       entry = { path: '', bytes: row.size, used: Date.now(), users: 0, ready };
       this.entries.set(row.id, entry);
-      ready.catch(() => this.entries.delete(row.id));
+      // A failed copy leaves nothing behind: neither the entry nor what it wrote.
+      ready.catch(async () => {
+        this.entries.delete(row.id);
+        await rm(dir, { recursive: true, force: true });
+      });
     }
     entry.users += 1;
     entry.used = Date.now();
@@ -212,6 +246,8 @@ class SourceCache {
       release: async () => {
         current.users = Math.max(0, current.users - 1);
         current.used = Date.now();
+        // After a spike of sessions the cache goes back under its limit as they end.
+        await this.evict();
       },
     };
   }
@@ -226,7 +262,7 @@ class SourceCache {
       const entry = this.entries.get(id);
       this.entries.delete(id);
       total -= entry?.bytes ?? 0;
-      await rm(join(this.deps.tmpDir, 'live-src', id), { recursive: true, force: true });
+      await rm(join(this.root, id), { recursive: true, force: true });
     }
   }
 }
@@ -234,23 +270,52 @@ class SourceCache {
 /** Sessions of live playback of this process. */
 export class LiveSessions {
   private readonly sessions = new Map<string, Session>();
-  private readonly sources: SourceCache;
+  readonly sources: SourceCache;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private swept = 0;
+  /** `live/<process>`: the session folders of this process. */
+  private readonly root: string;
 
   constructor(
     private readonly deps: LiveDeps,
     private readonly now = Date.now,
   ) {
-    this.sources = new SourceCache(deps);
+    const folder = deps.folder ?? processFolder();
+    this.root = join(deps.tmpDir, 'live', folder);
+    this.sources = new SourceCache(
+      deps,
+      join(deps.tmpDir, 'live-src', folder),
+      deps.cacheBytes ?? SOURCE_CACHE_BYTES,
+    );
   }
 
   /** Starts the sweep and the back-pressure of running encodes (every two seconds). */
   async start() {
     if (this.timer) return;
-    // Folders of a previous run of the process: nothing plays from them any more.
-    await rm(join(this.deps.tmpDir, 'live'), { recursive: true, force: true });
+    // This process's folders of a previous run (same host and pid, as in a container that
+    // restarted): nothing plays from them any more, and the cache starts empty.
+    await rm(this.root, { recursive: true, force: true });
+    await rm(this.sources.root, { recursive: true, force: true });
+    await this.sweep();
     this.timer = setInterval(() => void this.tick(), 2000);
     this.timer.unref?.();
+  }
+
+  /**
+   * Folders of other processes nobody touched for STALE_PROCESS_MS: replicas that stopped. A
+   * live replica touches its own on every tick, so its sessions and sources are never taken.
+   */
+  async sweep(now = Date.now()) {
+    for (const parent of ['live', 'live-src']) {
+      const dir = join(this.deps.tmpDir, parent);
+      for (const name of await readdir(dir).catch(() => [] as string[])) {
+        const path = join(dir, name);
+        if (path === this.root || path === this.sources.root) continue;
+        const info = await stat(path).catch(() => null);
+        if (!info?.isDirectory() || now - info.mtimeMs < STALE_PROCESS_MS) continue;
+        await rm(path, { recursive: true, force: true });
+      }
+    }
   }
 
   async close() {
@@ -284,7 +349,7 @@ export class LiveSessions {
       key,
       viewer,
       assetId,
-      dir: join(this.deps.tmpDir, 'live', `${assetId}-${Math.random().toString(36).slice(2, 10)}`),
+      dir: join(this.root, `${assetId}-${Math.random().toString(36).slice(2, 10)}`),
       lease: now + LEASE_MS,
       last: now,
       rung: null,
@@ -295,6 +360,8 @@ export class LiveSessions {
       release: null,
       source: null,
       container: null,
+      starting: null,
+      ended: false,
     });
     return true;
   }
@@ -316,14 +383,18 @@ export class LiveSessions {
     const n = file === 'init' ? (session.rung === rung ? session.start : 0) : file;
     if (file !== 'init') session.asked = n;
     const written = session.rung === rung ? await this.highest(session) : -1;
-    const running = session.child !== null && session.rung === rung;
-    const inWindow =
-      running && n >= session.start && n <= Math.max(written, session.start) + WINDOW;
     const name = file === 'init' ? 'init.mp4' : `seg-${n}.m4s`;
     if (file !== 'init' && session.rung === rung && (await exists(join(session.dir, name))))
       return join(session.dir, name);
-    if (!inWindow) {
-      await this.run(session, row, rung, n);
+    // From here to `session.starting` nothing awaits: two requests at once start one ffmpeg.
+    const pending = session.starting;
+    if (pending && pending.rung === rung && n >= pending.n && n <= pending.n + WINDOW) {
+      await pending.done;
+    } else {
+      const running = session.child !== null && session.rung === rung;
+      const inWindow =
+        running && n >= session.start && n <= Math.max(written, session.start) + WINDOW;
+      if (!inWindow) await this.begin(session, row, rung, n);
     }
     // ffmpeg creates the init segment empty and fills it with the first segment: it is whole
     // once that one is there.
@@ -358,10 +429,28 @@ export class LiveSessions {
     return null;
   }
 
+  /** Starts ffmpeg once for `rung` at `n`, after any start still under way in the session. */
+  private async begin(session: Session, row: AssetRow, rung: VideoRung, n: number) {
+    const before = session.starting?.done ?? Promise.resolve();
+    const done = before
+      .then(() => this.run(session, row, rung, n))
+      .catch((err) => {
+        this.deps.log?.warn(
+          { assetId: row.id, rung, err: String(err) },
+          'live encoding not started',
+        );
+      });
+    const mine = { rung, n, done };
+    session.starting = mine;
+    await done;
+    if (session.starting === mine) session.starting = null;
+  }
+
   /** Starts ffmpeg for `rung` at segment `n`, stopping the one before. */
   private async run(session: Session, row: AssetRow, rung: VideoRung, n: number) {
     await this.stop(session);
-    const { ffmpeg } = await mediaTools();
+    if (session.ended) return;
+    const ffmpeg = this.deps.ffmpeg ?? (await mediaTools()).ffmpeg;
     if (!ffmpeg) return;
     await rm(session.dir, { recursive: true, force: true });
     await mkdir(session.dir, { recursive: true });
@@ -374,6 +463,7 @@ export class LiveSessions {
       ).catch(() => new Uint8Array());
       session.container = sniffVideo(head);
     }
+    if (session.ended) return;
     // ffmpeg reads the source through a link of its own, as for stored copies (privateInput).
     const input = await privateInput(session.dir, session.source);
     const container = session.container;
@@ -420,7 +510,10 @@ export class LiveSessions {
       fileBytes: 4 * 1024 ** 3,
       nice: false,
     });
-    const child = spawn(file, argv, { env: toolEnv(), stdio: ['ignore', 'ignore', 'pipe'] });
+    const child = (this.deps.spawn ?? spawn)(file, argv, {
+      env: toolEnv(),
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
     let stderr = '';
     child.stderr?.setEncoding('utf8');
     child.stderr?.on('data', (chunk: string) => {
@@ -452,6 +545,9 @@ export class LiveSessions {
 
   private async end(session: Session) {
     this.sessions.delete(session.key);
+    session.ended = true;
+    // A start under way finishes first, so its ffmpeg and its source are let go here too.
+    await session.starting?.done;
     await this.stop(session);
     await session.release?.();
     session.release = null;
@@ -478,6 +574,13 @@ export class LiveSessions {
       }
       // The folder stays clear of the sweep of stale job folders.
       await utimes(session.dir, new Date(), new Date()).catch(() => {});
+    }
+    // This process's roots stay clear of the sweep of other replicas.
+    for (const root of [this.root, this.sources.root])
+      await utimes(root, new Date(), new Date()).catch(() => {});
+    if (now - this.swept > 60_000) {
+      this.swept = now;
+      await this.sweep();
     }
   }
 }

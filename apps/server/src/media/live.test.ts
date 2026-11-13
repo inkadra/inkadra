@@ -1,6 +1,13 @@
+import type { ChildProcess, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { mkdir, mkdtemp, readdir, utimes, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { Readable } from 'node:stream';
 import { DEFAULT_VIDEO_SETTINGS } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import type { asset } from '../db/schema.ts';
+import type { Storage } from '../storage.ts';
 import type { VideoEncoder } from './hwaccel.ts';
 import { LiveSessions, liveEligible, livePlaylist, liveRungs, liveVariant } from './live.ts';
 import { DEFAULT_PROXY_SETTINGS } from './video.ts';
@@ -105,5 +112,106 @@ describe('live playback', () => {
     expect(sessions.count()).toBe(2);
     await sessions.close();
     expect(sessions.count()).toBe(0);
+  });
+
+  it('starts one ffmpeg for init.mp4 and seg-0 asked at once, and lets the source go', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'inkadra-live-'));
+    const spawned: string[][] = [];
+    const children: EventEmitter[] = [];
+    const fake = ((_file: string, argv: string[]) => {
+      spawned.push(argv);
+      const child = Object.assign(new EventEmitter(), {
+        stderr: null,
+        kill: () => {
+          setImmediate(() => child.emit('close', null));
+          return true;
+        },
+      });
+      children.push(child);
+      // As ffmpeg: the init segment, then the first segment, a moment later.
+      const dir = dirname(argv[argv.indexOf('-hls_segment_filename') + 1] as string);
+      const start = argv[argv.indexOf('-start_number') + 1];
+      setTimeout(async () => {
+        await writeFile(join(dir, 'init.mp4'), 'i');
+        await writeFile(join(dir, `seg-${start}.m4s`), 's');
+      }, 30);
+      return child as unknown as ChildProcess;
+    }) as unknown as typeof spawn;
+    const storage = {
+      copiesToLocal: true,
+      async localCopy(_key: string, dir: string) {
+        const path = join(dir, 'source.mov');
+        await writeFile(path, 'x');
+        return { path, done: async () => {} };
+      },
+      async read() {
+        return Readable.from([Buffer.alloc(16)]);
+      },
+    } as unknown as Storage;
+    const sessions = new LiveSessions({
+      storage,
+      tmpDir,
+      encoder: qsv,
+      ffmpeg: 'ffmpeg',
+      spawn: fake,
+      folder: 'p1',
+    });
+    const who = { id: 'user:anna', group: 'user:anna' };
+    const limits = { maxSessions: 2, perViewer: 1 };
+    const video = row({ storageKey: 'originals/a1', size: 1000 });
+    const [init, first] = await Promise.all([
+      sessions.file(who, video, '720', 'init', limits),
+      sessions.file(who, video, '720', 0, limits),
+    ]);
+    expect(init).toMatch(/init\.mp4$/);
+    expect(first).toMatch(/seg-0\.m4s$/);
+    expect(spawned).toHaveLength(1);
+    expect(sessions.sources.users('a1')).toBe(1);
+    await sessions.close();
+    expect(sessions.sources.users('a1')).toBe(0);
+  });
+
+  it('clears its own folders at start and only stale ones of other processes', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'inkadra-live-'));
+    const folder = (parent: string, name: string) => join(tmpDir, parent, name);
+    for (const parent of ['live', 'live-src'])
+      for (const name of ['p1', 'other', 'gone'])
+        await mkdir(folder(parent, name), { recursive: true });
+    const old = new Date(Date.now() - 60 * 60_000);
+    for (const parent of ['live', 'live-src']) await utimes(folder(parent, 'gone'), old, old);
+    const sessions = new LiveSessions({ storage: {} as never, tmpDir, folder: 'p1' });
+    await sessions.start();
+    await sessions.close();
+    // Its own (a previous run): gone. Another replica's, touched recently: kept. A dead one: gone.
+    expect((await readdir(join(tmpDir, 'live'))).sort()).toEqual(['other']);
+    expect((await readdir(join(tmpDir, 'live-src'))).sort()).toEqual(['other']);
+  });
+
+  it('removes a failed copy, and goes back under the cache limit as sessions end', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'inkadra-live-'));
+    const storage = {
+      copiesToLocal: true,
+      async localCopy(key: string, dir: string) {
+        await writeFile(join(dir, 'partial'), 'x');
+        if (key === 'broken') throw new Error('bucket unreachable');
+        const path = join(dir, 'source.mov');
+        await writeFile(path, 'x');
+        return { path, done: async () => {} };
+      },
+    } as unknown as Storage;
+    const sessions = new LiveSessions({ storage, tmpDir, folder: 'p1', cacheBytes: 15 });
+    const root = join(tmpDir, 'live-src', 'p1');
+    await expect(
+      sessions.sources.acquire(row({ id: 'b', storageKey: 'broken', size: 10 })),
+    ).rejects.toThrow();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(await readdir(root)).toEqual([]);
+    const a = await sessions.sources.acquire(row({ id: 'a', storageKey: 'a', size: 10 }));
+    const b = await sessions.sources.acquire(row({ id: 'c', storageKey: 'c', size: 10 }));
+    // Both in use: over the limit for now.
+    expect((await readdir(root)).sort()).toEqual(['a', 'c']);
+    await a.release();
+    expect(await readdir(root)).toEqual(['c']);
+    await b.release();
   });
 });
