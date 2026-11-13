@@ -1,28 +1,25 @@
 # A tour of Inkadra
 
-What the main tools do and where to find them. The pictures come from the sample project that
-`pnpm --filter @inkadra/e2e screenshots` builds on an empty instance: every name and image in them
-is invented.
+What the main tools do and where to find them. The pictures show an invented sample project.
 
 ## Tutorials
 
 The first time you sign in, Inkadra offers a one-minute tour of the interface. Each feature has a
-tour of three steps, offered by a small pill the first time you open it; skip it and it waits in
-**Settings → Tutorial**, where you can replay any tour, see which ones are new, turn the pills off
-or start over. Guests of a review link get two steps, and **?** in their header plays them again.
+short tour, offered by a small pill the first time you open it. **Settings → Help and tutorials**
+replays any tour, shows which ones are new, turns the pills off or starts over. Guests of a review
+link get a short tour too, and **?** in their header plays it again.
 
 ## The board
 
-A board is an infinite canvas. The **dock** at the bottom always holds Select, Hand and Arrow, then
+A board is an infinite canvas. The dock at the bottom always holds Select, Hand and Arrow, then
 notes, pictures, links and to-do lists. **⋯** (More) lists the other tools (columns, section titles,
 colours, tables, voice notes, maps, characters, places, frames and set plans), each with
-**Put in the bar**; columns and section titles start there. **Canvas** at the end of the dock creates
-boards: a board, a moodboard or a storyboard, each shown with a small preview, or one made from a
-screenplay. **Settings → Toolbar** chooses the same. Panels never cover the dock: it moves over when
-one opens. On a phone it shows the first few tools above the navigation bar, and the rest are under
-**More**.
+**Put in the bar**; columns and section titles start there. **Settings → Board** chooses the same.
+**Canvas** at the end of the dock creates boards: a board, a moodboard, a storyboard, one made
+from a screenplay, or the project's Production board. On a phone the dock shows the first few
+tools above the navigation bar, and the rest are under **More**.
 
-Select a card and a **toolbar** appears above it, with what that card can do: a note's text style,
+Select a card and a toolbar appears above it, with what that card can do: a note's text style,
 lists, links and colours while you type, a section's size and colour, a link's info and preview, or
 Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
 
@@ -61,9 +58,8 @@ count, and the view you look at, such as the first frames of a storyboard, the f
 shot list, how far the client's review has got, or the pictures and colours of a moodboard. When the
 board has more than one view, small tabs on the card switch between them; the card remembers your
 choice on this device, and opening it opens that view. The card shows only what you could see by
-opening the board. Cards made before the preview stay small: **Show preview** in the card's bar
-makes one larger, and **Compact** puts it back to its name only. Guests of a share link and exports
-show the board's name, as before.
+opening the board. **Compact** in the card's bar shrinks it to its name, and **Show preview**
+brings the preview back. Guests of a share link and exports see the board's name only.
 
 ## The Production board
 
@@ -78,17 +74,13 @@ its ⋯ menu prints the call sheet of every day, each frame read from its own st
 storyboard's ⋯ menu shows **Shooting days: N · Open Production** when the Production board plans
 some of its frames; its scene sheets and set plans read their days there.
 
-Its card shows the next shooting day (the first from today on, else the last): its number and
-date, place and call, its first five blocks with their time, dot and label, and how many other
-days there are. On **Crew** it shows the first four people with their role, to members of the
-project only. The storyboards' cards no longer count days and people once the project has one.
+Its card shows the next shooting day (the first from today on, else the last) with its first
+blocks, or, on **Crew**, the first people and their role, to members of the project only.
 
-Storyboards have no Schedule or Crew of their own: when Inkadra is updated, the shooting days and
-the crew of every project move to its Production board, made for it under the project's board. A
-link to a storyboard's schedule or crew opens the Production board's. If a project has shooting days
-or a crew but no Production board (its Production board is in the trash, or the server was told not
-to move them), its storyboards' ⋯ menu shows **Schedule and Crew now live in Production · Add it**
-to editors: it adds the board, or brings back the one in the trash, with every day.
+Storyboards have no Schedule or Crew of their own. If a project has shooting days or a crew but no
+Production board (it is in the trash, or the server was told not to move them there on upgrade),
+its storyboards' ⋯ menu shows **Schedule and Crew now live in Production · Add it** to editors: it
+adds the board, or brings back the one in the trash, with every day.
 
 ## Modules
 
@@ -103,8 +95,7 @@ brings its scenes as cards, and once a short notice says what Storyboard would d
 
 ## Videos in their card
 
-An uploaded video plays inside its card: press play and it runs there, with its controls, without
-opening anything. One plays at a time. Video links from YouTube and Vimeo play in their card as well.
+An uploaded video plays inside its card, with its controls. One plays at a time. Video links from YouTube and Vimeo play in their card as well.
 With the [standard image](self-hosting/README.md#the-image), formats that browsers cannot play get a
 playable copy, and a video gets a poster and its details.
 
@@ -117,8 +108,7 @@ playable copy, and a video gets a poster and its details.
 
 A storyboard is made of scenes and frames, and its other views show the same data: the shot list
 and the review, when they are on; the Production board schedules its frames. Double-click a frame to open its panel: action, shot size, angle, movement,
-lens, cast and status. The panel follows your selection, and closes when you pick
-something else.
+lens, cast and status.
 
 Drag a picture from the board onto a frame and it becomes the frame's picture and leaves the board,
 with an Undo. A card that holds strokes, a crop, a rotation or a caption stays, because a frame has
@@ -191,7 +181,8 @@ the drawing.
 - **Snapping**: drop a person on a chair, sofa or bed, a modifier on the front of a light, a
   light or a camera on a stand or support, a dolly on a track: the target lights up and the icon
   attaches. Moving or turning the base takes what is on it along; pull an icon away to detach it.
-  Hold `Alt` while dropping to place it free (on a phone, turn off **Snap** in the header).
+  Hold `Alt` while dropping to place it free (on a phone, turn off **Snap icons together**, the
+  magnet in the header).
 - **Properties** shows what is selected: a light's role, fixture, watts, make, modifiers, gel,
   stand, colour temperature, intensity, beam, height, tilt and circuit; a camera's lens, sensor,
   support, height, angle, view length and positions; a person's pose, seat and movement; a prop's
@@ -271,7 +262,8 @@ renamed.
 
 ## Reporting a problem
 
-The icon next to the notifications, `Ctrl/⌘+Shift+B` or **Settings → About** opens the report: a bug,
+The icon next to the notifications, `Ctrl/⌘+Shift+B` or **Settings → Help and tutorials** opens
+the report: a bug,
 an idea or a question, with a screenshot of the page that you can draw on or blur, a recording up to
 60 seconds, or files. **Preview** shows exactly what leaves, and you choose what to keep.
 
