@@ -184,7 +184,10 @@ describe('the crew on the call sheet (decision 0092)', () => {
   });
 
   it('prints the contact, the called crew, the cast calls and the sunrise cell', () => {
-    const sections = callSheetSections(shooting, () => undefined, t, new Map(), crew);
+    // The project's zone: the sun of a set in Italy, wherever the device is (#848).
+    const sections = callSheetSections(shooting, () => undefined, t, new Map(), crew, {
+      timeZone: 'Europe/Rome',
+    });
     const titles = sections.map((s) => s.title);
     expect(titles.slice(0, 4)).toEqual([
       'callSheet.times',

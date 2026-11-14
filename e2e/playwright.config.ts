@@ -33,6 +33,23 @@ if (!process.env.TEST_WORKER_INDEX && existsSync(builtWeb)) {
   cpSync(builtWeb, webDist, { recursive: true });
 }
 
+const smokeSpecs = [
+  'home.spec.ts',
+  'storyboard.spec.ts',
+  'thumbnail-ready.spec.ts',
+  'pdf-export.spec.ts',
+  'sharing-guests.spec.ts',
+  'guest-recovery.spec.ts',
+  'date-field.spec.ts',
+];
+const dateSpecs = [
+  'schedule.spec.ts',
+  'schedule-create-move.spec.ts',
+  'day-calls.spec.ts',
+  'mobile-call-sheet.spec.ts',
+  'date-field.spec.ts',
+];
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
@@ -63,6 +80,39 @@ export default defineConfig({
       testIgnore: ['**/perf/**', '**/first-run.spec.ts'],
       dependencies: ['first-run'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    // #848: the main suite runs in Chromium, in the runner's UTC. These run a smoke subset (sign-in,
+    // board, upload, export, guest link, dates) in Firefox and WebKit, and the date-heavy specs in a
+    // zone where the local and UTC dates differ for most of the day. CI gives each its own database.
+    {
+      name: 'firefox-smoke',
+      testMatch: smokeSpecs,
+      dependencies: ['first-run'],
+      use: {
+        ...devices['Desktop Firefox'],
+        viewport: { width: 1440, height: 900 },
+        timezoneId: 'Europe/Rome',
+      },
+    },
+    {
+      name: 'webkit-smoke',
+      testMatch: smokeSpecs,
+      dependencies: ['first-run'],
+      use: {
+        ...devices['Desktop Safari'],
+        viewport: { width: 1440, height: 900 },
+        timezoneId: 'Europe/Rome',
+      },
+    },
+    {
+      name: 'dates-los-angeles',
+      testMatch: dateSpecs,
+      dependencies: ['first-run'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        timezoneId: 'America/Los_Angeles',
+      },
     },
     {
       // Load tests, run on their own with `pnpm test:perf`.

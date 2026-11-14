@@ -10,7 +10,7 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "env": ["DATABASE_URL", "REDIS_URL"]
+      "env": ["DATABASE_URL", "REDIS_URL", "TZ", "CI", "INKADRA_TEST_MEDIA_TOOLS", "COLLAB_SIM_DURATION_MS"]
     },
     "dev": {
       "cache": false,

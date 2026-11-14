@@ -5,6 +5,11 @@
 convergence, persistence and restart checks. It requires both `DATABASE_URL`
 and `REDIS_URL`; without them the test is skipped. Use disposable services:
 the fixture truncates users, projects and instance settings.
+In CI the test fails instead of skipping when either is missing, and the nightly run of
+`ci.yml` simulates five minutes instead of thirty seconds. Its log line `peakRssMiB` is the
+process's peak memory: one board, ten editors, server and clients in one process. It proves
+convergence, not capacity: there is no test yet of many boards, of the split `collab` and
+`web` roles under load, or of memory per open board.
 
 For a 30-minute soak on a machine with Postgres and Valkey:
 
