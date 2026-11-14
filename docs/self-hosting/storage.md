@@ -135,6 +135,24 @@ The key needs to read, write, list and delete objects in that bucket only. The d
 mounted: Inkadra writes upload parts and temporary files there before they move to the bucket,
 so give it some free space (a few times your largest upload).
 
+An upload that never finishes is an open multipart upload in the bucket. Inkadra aborts it when
+it removes the upload, a day later. As a safety net for uploads it cannot abort (the bucket
+refused, or the file was removed by hand), add a lifecycle rule that aborts incomplete multipart
+uploads after two days, if your service supports one (AWS, R2 and B2 do):
+
+```json
+{
+  "Rules": [
+    {
+      "ID": "abort-incomplete-uploads",
+      "Status": "Enabled",
+      "Filter": {},
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 2 }
+    }
+  ]
+}
+```
+
 CI tests the S3 driver against RustFS. Other S3-compatible services (AWS, Cloudflare R2,
 Backblaze B2, Garage, SeaweedFS, a MinIO server) speak the same API; self-hosted ones usually
 need `S3_FORCE_PATH_STYLE=true`.

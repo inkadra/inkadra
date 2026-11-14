@@ -874,7 +874,9 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       .update(user)
       .set({ createdAt: new Date(Date.now() - 2 * 3_600_000) })
       .where(eq(user.id, a.id));
-    expect(await sweepSandboxes({ db, jobs: deps.jobs, config, log })).toBe(1);
+    expect(await sweepSandboxes({ db, jobs: deps.jobs, storage: deps.storage, config, log })).toBe(
+      1,
+    );
     expect(await db.select().from(user).where(eq(user.id, a.id))).toHaveLength(0);
     expect(await db.select().from(project).where(inArray(project.id, own))).toHaveLength(0);
     expect(await db.select().from(session).where(eq(session.userId, a.id))).toHaveLength(0);
@@ -899,7 +901,9 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       role: 'member',
       createdAt: new Date(0),
     });
-    expect(await sweepSandboxes({ db, jobs: deps.jobs, config, log })).toBe(0);
+    expect(await sweepSandboxes({ db, jobs: deps.jobs, storage: deps.storage, config, log })).toBe(
+      0,
+    );
     expect(await db.select().from(user).where(eq(user.email, 'operator@example.com'))).toHaveLength(
       1,
     );

@@ -56,6 +56,7 @@ import {
   shootingDay,
   user,
 } from '../db/schema.ts';
+import { clearDeletions, recordDeletions, removeFiles } from '../file-deletions.ts';
 import { readPreferences, readTheme } from '../http/export-settings-routes.ts';
 import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
@@ -319,6 +320,8 @@ export async function importProject(
         },
       });
       const key = originalKey(id);
+      // Recorded first: after a crash before the rows below, the sweep removes it (#801).
+      await recordDeletions(db, [key]);
       written.push(key);
       // piped: a damaged or truncated entry fails the write instead of hanging it.
       await storage.writeStream(
@@ -328,7 +331,7 @@ export async function importProject(
       );
       const digest = hash.digest('hex');
       if (a.sha256 && a.sha256 !== digest) {
-        await storage.remove([key]);
+        await removeFiles(db, storage, [key]);
         written.pop();
         skippedFiles += 1;
         continue;
@@ -361,6 +364,8 @@ export async function importProject(
     let elements = 0;
     const created = await db.transaction(async (tx) => {
       await fence(tx);
+      // The files belong to the rows made here: no longer to remove.
+      await clearDeletions(tx, written);
       await tx.insert(project).values({
         id: projectId,
         name: meta.name,
@@ -645,7 +650,7 @@ export async function importProject(
       },
     };
   } catch (err) {
-    if (!committed && written.length) await storage.remove(written).catch(() => {});
+    if (!committed && written.length) await removeFiles(db, storage, written).catch(() => {});
     throw err;
   } finally {
     zip.close();

@@ -38,10 +38,13 @@ import {
   userAvatar,
   verification,
 } from '../db/schema.ts';
+import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, securityNotification } from '../mailer.ts';
+import { removeFilesLater } from '../queues.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
+import type { Storage } from '../storage.ts';
 import { largestFiles, myStorage } from '../storage-limits.ts';
 import { proofKeyFor, proveNonce } from '../token-proof.ts';
 import { issueToken, revokeTokens, toPersonalToken } from '../tokens.ts';
@@ -55,6 +58,7 @@ interface Deps {
   db: Database;
   auth: Auth;
   jobs: Jobs;
+  storage: Storage;
   mailer?: Mailer;
 }
 
@@ -100,7 +104,7 @@ export async function normalizeAvatar(bytes: Buffer): Promise<Buffer> {
 }
 
 export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
-  const { config, db, auth, jobs } = deps;
+  const { config, db, auth, jobs, storage } = deps;
   const mailInstance = { instanceName: config.INSTANCE_NAME, publicUrl: config.PUBLIC_URL };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000, 'account-routes:exchangeLimiter');
@@ -514,9 +518,10 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       if (alone.length > 0) await tx.delete(project).where(inArray(project.id, alone));
       // Sessions, accounts, memberships, grants, tokens and two-factor data cascade.
       await tx.delete(user).where(eq(user.id, userId));
+      await recordDeletions(tx, files);
       return files;
     });
-    if (keys.length > 0) await jobs.deleteFiles(keys);
+    await removeFilesLater({ db, jobs, storage }, keys, req.log);
     return reply.status(204).send();
   });
 }

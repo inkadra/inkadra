@@ -49,11 +49,12 @@ import {
   relayVideo,
   sendRelay,
 } from '../feedback-relay.ts';
+import { recordDeletions } from '../file-deletions.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { sniffImage } from '../media/heic.ts';
 import { mediaTools } from '../media/tools.ts';
 import { sniffVideo } from '../media/video.ts';
-import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
+import { removeFilesLater } from '../queues.ts';
 import { RateLimiter } from '../rate-limits.ts';
 import { DocViews } from '../share-links.ts';
 import type { AppDeps } from './app.ts';
@@ -235,21 +236,11 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         .returning({ id: attachment.id });
       const [gone] = await tx.delete(report).where(eq(report.id, id)).returning({ id: report.id });
       if (!gone) throw new HttpError('not_found', 'No such report.');
-      return removed.map((file) => key(file.id));
+      const files = removed.map((file) => key(file.id));
+      await recordDeletions(tx, files);
+      return files;
     });
-    if (files.length)
-      try {
-        await within(
-          deps.jobs.deleteFiles(files),
-          ENQUEUE_TIMEOUT_MS,
-          'The job queue did not answer.',
-        );
-      } catch (err) {
-        req.log.warn({ err, report: id }, 'Feedback files not queued for removal: removing now');
-        await storage
-          .remove(files)
-          .catch((e) => req.log.error({ err: e, report: id }, 'Feedback files not removed'));
-      }
+    await removeFilesLater({ db, jobs: deps.jobs, storage }, files, req.log);
     return reply.code(204).send();
   });
   app.get(`${API_PREFIX}/feedback/reports`, async (req, reply) => {
