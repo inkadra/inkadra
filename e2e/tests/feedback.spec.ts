@@ -145,7 +145,9 @@ test('captures and redacts a screenshot, shows the scrubbed logs, waits for the 
   });
   expect(sharpest).toBeLessThan(32);
   await editor.getByRole('button', { name: 'Applica', exact: true }).click();
-  await expect(dialog.getByText('1 area sfocata')).toBeVisible();
+  // Applying waits for canvas.toBlob, which Chromium encodes in idle time: on a busy runner
+  // that takes up to its own 1 s + 5 s fallbacks, past the default 5 s (#891).
+  await expect(dialog.getByText('1 area sfocata')).toBeVisible({ timeout: 15_000 });
   await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
   const preview = page.getByRole('dialog', PREVIEW);
   await expect(preview).toContainText('[redacted header]');

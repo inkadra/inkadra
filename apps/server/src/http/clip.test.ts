@@ -1369,7 +1369,8 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
         expect(failed.json.error.details).toBeUndefined();
         expect(failed.ms).toBeLessThan(5000);
         expect(await rows('persa.png')).toBe(0);
-        expect(originals()).toBe(files);
+        // Removed off the request (removeFilesLater does not wait for the storage).
+        await expect.poll(originals).toBe(files);
       } finally {
         for (const other of apps) await other.app.close();
         queues.connection.disconnect();
