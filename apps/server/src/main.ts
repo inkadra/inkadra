@@ -225,6 +225,7 @@ async function main() {
       log,
       publicUrl: config.PUBLIC_URL,
       trustProxy: config.TRUST_PROXY,
+      monitor: { store: monitor, role: command },
       ...(limits ? { limits } : {}),
       unsavedDir: unsavedBoardsDir(config.DATA_DIR),
     });
@@ -259,7 +260,7 @@ async function main() {
     let jobs: Jobs;
     let queueHandles: ReturnType<typeof createQueues> | undefined;
     if (config.REDIS_URL) {
-      const queues = createQueues(config.REDIS_URL);
+      const queues = createQueues(config.REDIS_URL, { log });
       queueHandles = queues;
       jobs = queues.jobs;
       closers.unshift(() => queues.close());
@@ -481,6 +482,10 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
 }
 
 main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+  // pino's `err` serializer keeps the stack and the `cause` chain (a failed migration's real
+  // PostgreSQL error is the cause of drizzle's "Failed query"). The configured logger may not
+  // exist yet (a config error), so this one is standalone.
+  const log = pino({ base: { service: process.argv[2] ?? 'all' } });
+  log.fatal({ err }, 'inkadra failed to start');
   process.exit(1);
 });

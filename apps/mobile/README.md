@@ -1,5 +1,6 @@
-# Inkadra for Android and iOS
+# Inkadra for Android
 
-React Native (Expo) app with a Skia canvas. Development starts in December 2026 against the
-mock API (`pnpm mock`). It shares `@inkadra/shared`, `@inkadra/doc-schema` and
-`@inkadra/canvas-core` with the web app.
+The Android app is developed in a separate repository and is not released yet. It uses
+`@inkadra/shared`, `@inkadra/doc-schema` and `@inkadra/canvas-core` from this repository and talks
+to the server's `/api/v1`. Until it is out, Inkadra works in a phone's browser and installs from
+there as an app.

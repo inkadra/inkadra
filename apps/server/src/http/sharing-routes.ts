@@ -184,7 +184,7 @@ async function rootBoardId(db: Database, projectId: string): Promise<string> {
 export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, mailer } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const seal = sealer(config.AUTH_SECRET, 'invitation');
+  const seal = sealer(config.AUTH_SECRET, 'invitation', config.AUTH_SECRET_PREVIOUS);
   const previewLimiter = new RateLimiter(30, 60_000);
   const searchLimiter = new RateLimiter(30, 60_000);
   const joinUrl = (token: string) => `${config.PUBLIC_URL}/join/${token}`;

@@ -461,6 +461,32 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     ).toBe(404);
   });
 
+  it('admits one export per project atomically and never exposes another editor transfer', async () => {
+    const original = source.deps.jobs.runTransfer;
+    source.deps.jobs.runTransfer = async () => {};
+    try {
+      const responses = await Promise.all(
+        Array.from({ length: 6 }, () =>
+          call(source.app, people.owner ?? null, 'POST', `/projects/${projectId}/exports`),
+        ),
+      );
+      expect(responses.map((r) => r.statusCode)).toEqual(Array(6).fill(202));
+      const id = responses[0]!.json().id;
+      expect(new Set(responses.map((r) => r.json().id)).size).toBe(1);
+      const other = await call(
+        source.app,
+        people.editor ?? null,
+        'POST',
+        `/projects/${projectId}/exports`,
+      );
+      expect(other.statusCode).toBe(409);
+      expect(other.body).not.toContain(id);
+      await source.db.delete(projectTransfer).where(eq(projectTransfer.id, id));
+    } finally {
+      source.deps.jobs.runTransfer = original;
+    }
+  });
+
   it('exports the project as a documented archive', async () => {
     const started = await call(
       source.app,

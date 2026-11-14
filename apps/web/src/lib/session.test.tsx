@@ -220,3 +220,31 @@ it('clears enrollment after the next successful version probe', async () => {
     await act(async () => root.unmount());
   }
 });
+
+it('says the server cannot be reached and loads once it answers again (#821)', async () => {
+  let down = true;
+  vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (down) throw new RequestError(502, 'unknown', 'Bad Gateway');
+    if (path === '/me') throw new RequestError(401, 'unauthorized', 'Sign in');
+    return instance;
+  });
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <SessionProvider>
+          <Probe />
+        </SessionProvider>,
+      ),
+    );
+    expect(snapshot.loading).toBe(true);
+    expect(snapshot.unreachable).toBe(true);
+    down = false;
+    await act(async () => window.dispatchEvent(new Event('online')));
+    expect(snapshot.loading).toBe(false);
+    expect(snapshot.unreachable).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+  }
+});

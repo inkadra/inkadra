@@ -28,6 +28,7 @@
     "passwordHint": "Almeno 10 caratteri",
     "createAdmin": "Crea account e accedi",
     "signOut": "Esci",
+    "signOutFailed": "Impossibile uscire. Controlla la connessione e riprova.",
     "errors": {
       "reauthRequired": "Accedi di nuovo per continuare.",
       "invalid": "Email o password non corrette.",
@@ -218,6 +219,10 @@
     "title": "Qualcosa non ha funzionato",
     "body": "La pagina ha smesso di funzionare. Le modifiche già sincronizzate sono salve; ricarica per riconnetterti.",
     "retry": "Riprova",
+    "unreachableTitle": "Il server non risponde",
+    "unreachableBody": "Inkadra riprova da solo. Controlla la connessione, o attendi un momento se il server si sta riavviando.",
+    "updateTitle": "Inkadra è stato aggiornato",
+    "updateBody": "Ricarica la pagina per aprire la nuova versione.",
     "copy": "Copia dettagli",
     "copied": "Dettagli copiati",
     "id": "ID errore {{id}}",
@@ -2011,7 +2016,8 @@
       "original": "Originale",
       "live": "al volo",
       "liveCopy": "copia al {{percent}}%",
-      "liveNote": "Le qualità «al volo» le converte la scheda grafica mentre guardi; quando la copia è pronta si passa a quella."
+      "liveNote": "Le qualità «al volo» le converte la scheda grafica mentre guardi; quando la copia è pronta si passa a quella.",
+      "liveOnlyNote": "Le qualità «al volo» le converte la scheda grafica mentre guardi, senza salvare una copia."
     }
   },
   "search": {
@@ -6079,6 +6085,14 @@
         "server_error": {
           "title": "Il server ha dato un errore",
           "text": "Una richiesta non è andata a buon fine. Se si ripete, inviala agli sviluppatori."
+        },
+        "board_save_failed": {
+          "title": "Una board non è stata salvata",
+          "text": "Le ultime modifiche restano solo in memoria. Controlla il database: riavviare prima che torni le fa perdere."
+        },
+        "board_load_failed": {
+          "title": "Una board non si è aperta",
+          "text": "Al momento nessuno può aprirla. Controlla il database e il log del server."
         },
         "config_check": {
           "title": "Configurazione da sistemare",

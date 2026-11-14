@@ -9,18 +9,18 @@ Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/
 
 What it does:
 
-- **Toolbar button**: saves the current page as a link card, with a board (recent boards
+- The toolbar button saves the current page as a link card, with a board (recent boards
   first, then projects and their sub-boards, or search), a column, a note and tags. Text selected in the page's main frame fills the empty note (up to the API's
   2,000 characters); pages that refuse scripts leave it empty. The tab title is kept on link cards.
   The board is remembered for next time.
-- **Images tab** in the toolbar popup: lists the pictures of the page (its `<img>` elements, with
+- The **Images** tab of the popup lists the pictures of the page (its `<img>` elements, with
   the image the browser picked from `srcset`, or the largest candidate when it has not loaded yet;
   without duplicates, SVG icons and pictures under 100 px on a side) so you can save several at
   once, also on sites where right-click doesn't reach the image. Each becomes its own image card
   on the chosen board and column, with the same tags; they are read and uploaded one at a time
   like a right-clicked image. Pictures that fail stay selected to try again. CSS background images
   are not listed; pages that refuse scripts show none.
-- **Right-click menus**: on an image, a selection (a note with the quote and its page), a
+- Right-click menus work on an image, a selection (a note with the quote and its page), a
   link or the page itself. When connected with recent boards, each has one "Save … to…" item
   listing up to 5 of them, the last used first. Otherwise one item saves in one click: to the first
   board the server remembers, or it opens the board picker, or the settings when not connected.
@@ -28,7 +28,7 @@ What it does:
   them under the extension's name. A right-clicked picture is saved in the largest size its `srcset` lists (a thumbnail becomes the original when the page offers it). Images are read inside the browser, with the page's cookies when it can, so pictures
   behind a login are uploaded as files; when they cannot be read the image address is sent
   instead.
-- **Shortcut**: `Alt+Shift+S` saves the page to the last board. Change it at
+- `Alt+Shift+S` saves the page to the last board. Change it at
   `chrome://extensions/shortcuts`.
 
 Interface text is in `public/_locales`: English is the default, used when the browser's language
@@ -70,7 +70,7 @@ your own build; see Chrome's documentation on keeping a consistent extension id.
    and allow access. The extension receives an app token (OAuth 2.0 code flow with PKCE
    S256) and keeps it in `chrome.storage.local`.
 
-The token appears in **Settings → Account → Apps and tokens** on the web, where it can be
+The token appears in **Settings → Connected apps** on the web, where it can be
 revoked. **Disconnect** in the extension revokes it on the server and forgets it. When the
 server answers 401 (token revoked or expired), the extension asks to reconnect.
 
@@ -120,7 +120,7 @@ Clip errors preserve `details.reason`. `outcome_unknown` and every HTTP 500 (inc
 missing, malformed or unknown reasons) ask to check the board before trying again, per
 ADR 0017. There are no automatic clip retries. HTTP 413 reports the upload limit from
 `Instance.limits` cached at connection time when positive, otherwise a generic size error;
-HTTP 429 asks to wait a minute. Both locales use the same messages in popup and menu toasts.
+HTTP 429 asks to wait a minute. The popup and the menu toasts use the same messages.
 
 ## Long uploads in Chrome MV3
 

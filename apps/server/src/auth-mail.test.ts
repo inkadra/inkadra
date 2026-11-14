@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mailText } from './mail-texts.ts';
-import { sendDetached } from './mailer.ts';
+import { MailError, sendDetached } from './mailer.ts';
 
 it('does not await SMTP and handles delivery failures', async () => {
   const log = { warn: vi.fn() };
@@ -14,7 +14,26 @@ it('does not await SMTP and handles delivery failures', async () => {
       log,
     ),
   ).toBeUndefined();
-  await vi.waitFor(() => expect(log.warn).toHaveBeenCalledWith('security email delivery failed'));
+  await vi.waitFor(() =>
+    expect(log.warn).toHaveBeenCalledWith(
+      { err: expect.objectContaining({ message: 'SMTP unavailable' }) },
+      'security email delivery failed',
+    ),
+  );
+});
+
+it('keeps the cause of a mail failure and masks the addresses in it', () => {
+  const err = new MailError(
+    Object.assign(new Error('550 5.1.1 <name@example.com>: Recipient address rejected'), {
+      code: 'EENVELOPE',
+      responseCode: 550,
+      command: 'RCPT TO',
+      rejected: ['name@example.com'],
+    }),
+  );
+  expect(err.message).toBe('550 5.1.1 <n…@example.com>: Recipient address rejected');
+  expect(err).toMatchObject({ code: 'EENVELOPE', responseCode: 550, command: 'RCPT TO' });
+  expect(JSON.stringify(err)).not.toContain('name@example.com');
 });
 
 describe('localized security notifications', () => {

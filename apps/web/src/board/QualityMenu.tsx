@@ -161,8 +161,15 @@ export function QualityMenu({
         </div>
       )}
       {open && rungs.some((r) => r.live && r.status !== 'ready') && (
-        // Outside the menu (only items belong there): what the "al volo" levels are.
-        <p className="viewer-quality__note">{t('viewer.quality.liveNote')}</p>
+        // Outside the menu (only items belong there): what the "al volo" levels are, and that
+        // playback moves to the copy only when one is being made.
+        <p className="viewer-quality__note">
+          {t(
+            rungs.some((r) => r.live && r.status !== 'ready' && !r.liveOnly)
+              ? 'viewer.quality.liveNote'
+              : 'viewer.quality.liveOnlyNote',
+          )}
+        </p>
       )}
     </div>
   );

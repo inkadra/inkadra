@@ -600,10 +600,13 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     // Each answer decodes board documents: a script must not keep the server busy for everyone.
     const path = `/api/v1/projects/${projectId}/plan-kit`;
     const statuses: number[] = [];
-    for (let i = 0; i < 21; i++) statuses.push((await get('stranger', path)).status);
-    // 20 a minute; the stranger read it once in the test above.
+    for (let i = 0; i < 21; i++)
+      statuses.push(
+        (await get('stranger', i % 2 ? path : path.replace('plan-kit', 'cast-appearances'))).status,
+      );
+    // 20 shared reads a minute; the stranger read cast appearances and the kit above.
     const first = statuses.indexOf(429);
-    expect(first).toBe(19);
+    expect(first).toBe(18);
     expect(statuses.slice(0, first).every((s) => s === 200)).toBe(true);
     // Another person is not held back by it.
     expect((await get('guest', path)).status).toBe(200);

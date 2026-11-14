@@ -211,6 +211,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
 
   app.get(v1('/projects/:projectId/cast-appearances'), async (req) => {
     const actor = await requireActor(auth, req, db);
+    kits.require(actor.id, 'Too many reads of the project kit. Try again in a minute.');
     const { projectId } = ProjectParams.parse(req.params);
     const { excludeBoardId } = CastAppearancesQuery.parse(req.query ?? {});
     const { boardIds } = await readableBoards(db, actor, projectId);

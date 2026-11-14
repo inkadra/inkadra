@@ -57,7 +57,7 @@ import { officeFiles } from '../media/office.ts';
 import { animatedVariantKey } from '../storage.ts';
 import { storageUsage } from '../storage-usage.ts';
 import { iso } from './api-routes.ts';
-import { requireActor } from './auth-routes.ts';
+import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { renditionFiles } from './hls.ts';
 import { idempotentCreation } from './idempotency.ts';
@@ -209,7 +209,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
   app.get(v1('/instance/storage'), async (req, reply) => {
-    const actor = await requireActor(auth, req, db);
+    const { user: actor } = await requireSession(auth, req, db);
     if (actor.role !== 'admin')
       throw new HttpError('forbidden', 'Only administrators can see instance storage.');
     reply.header('cache-control', 'private, no-store');

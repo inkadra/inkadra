@@ -79,4 +79,4 @@ content: `toolbar` → `board`, `providers` and `registration` → `access`.
 - No API, database or board-schema change.
 - Modules (0121) still apply: tools of a module that is off are not offered on Board, its
   notification rows leave Notifiche and its tours leave Aiuto e tutorial.
-- Screenshots of every page, both themes, desktop and phone: `docs/screenshots/0124-settings/`.
+- Screenshots of every page, both themes, desktop and phone: private review captures (not committed).

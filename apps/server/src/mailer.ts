@@ -22,6 +22,29 @@ export const noMailer: Mailer = {
   },
 };
 
+/** `name@example.com` as `n…@example.com`, the way every mail log line shows an address. */
+export const maskAddress = (address: string) => address.replace(/^(.).*(@.*)$/, '$1…$2');
+
+/**
+ * A delivery failure that is safe to log: the cause (`code`, `responseCode`, `command`) and the
+ * message, with every address masked (an SMTP server often echoes the recipient). Nodemailer's
+ * own error also carries the full `response`, `rejected` and the transport, so it is not kept.
+ */
+export class MailError extends Error {
+  code: string | undefined;
+  responseCode: number | undefined;
+  command: string | undefined;
+  constructor(cause: unknown) {
+    const e = (cause ?? {}) as Record<string, unknown>;
+    const raw = cause instanceof Error ? cause.message : String(cause);
+    super(raw.replace(/[^\s<>"',;]+@[^\s<>"',;]+/g, maskAddress));
+    this.name = 'MailError';
+    if (typeof e.code === 'string') this.code = e.code;
+    if (typeof e.responseCode === 'number') this.responseCode = e.responseCode;
+    if (typeof e.command === 'string') this.command = e.command;
+  }
+}
+
 /** SMTP from SMTP_URL, or a mailer that is off. */
 export function createMailer(config: Config, log: Logger): Mailer {
   if (!config.SMTP_URL || !config.MAIL_FROM) return noMailer;
@@ -30,8 +53,12 @@ export function createMailer(config: Config, log: Logger): Mailer {
   return {
     enabled: true,
     async send(mail) {
-      await transport.sendMail({ from, ...mail });
-      log.info({ to: mail.to.replace(/^(.).*(@.*)$/, '$1…$2') }, 'email sent');
+      try {
+        await transport.sendMail({ from, ...mail });
+      } catch (err) {
+        throw new MailError(err);
+      }
+      log.info({ to: maskAddress(mail.to) }, 'email sent');
     },
   };
 }
@@ -53,7 +80,7 @@ export function sendDetached(mailer: Mailer | undefined, mail: Mail, log?: Pick<
   if (!mailer?.enabled) return;
   void Promise.resolve()
     .then(() => mailer.send(mail))
-    .catch(() => log?.warn('security email delivery failed'));
+    .catch((err) => log?.warn({ err }, 'security email delivery failed'));
 }
 
 /** Sent for every security change, detached so an auth response never waits for SMTP. */

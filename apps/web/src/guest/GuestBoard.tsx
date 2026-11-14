@@ -275,14 +275,12 @@ export function GuestBoardScreen({
         );
         refresh();
       } catch (err) {
+        // Anything else goes back to the control, which words it with `fail` (#830).
         if (failureOf(err).kind === 'name') setNaming({ next: () => pick(elementId, body) });
-        else {
-          const message = fail(err);
-          if (message) throw new Error(message);
-        }
+        else throw err;
       }
     },
-    [linkId, boardId, refresh, fail],
+    [linkId, boardId, refresh],
   );
 
   const review = useCallback(
@@ -307,12 +305,10 @@ export function GuestBoardScreen({
           setNaming({ next: () => review(elementId, body) });
           return false;
         }
-        const message = fail(err);
-        if (message) throw new Error(message);
-        return false;
+        throw err;
       }
     },
-    [linkId, boardId, refresh, fail],
+    [linkId, boardId, refresh],
   );
 
   const elements = useMemo(
