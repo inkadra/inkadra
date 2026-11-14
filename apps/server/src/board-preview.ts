@@ -182,7 +182,7 @@ export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
 }
 
 /** The navigation counts of a loaded document; stored with it so lists need not decode it. */
-export function docCounts(doc: Y.Doc): Omit<BoardCount, 'boardId'> {
+export function docCounts(doc: Y.Doc): ReturnType<typeof contentCounts> {
   return contentCounts(
     [...roots(doc).elements.values()]
       .filter((el) => el instanceof Y.Map)
