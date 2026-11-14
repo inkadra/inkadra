@@ -38,6 +38,7 @@ import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
 import { type Actor, activeMember, atLeast, higher, live, requireProjectRole } from '../access.ts';
 import { readExpiry, requireProjectCreation } from '../access-expiry.ts';
+import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications, validateProjectType } from '../classifications.ts';
 import type { Config } from '../config.ts';
@@ -602,7 +603,19 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     await requireProjectRole(db, actor, projectId, 'owner');
     const keys = await db.transaction(async (tx) => {
       const files = await projectFiles(tx, [projectId]);
-      await tx.delete(project).where(eq(project.id, projectId));
+      const [gone] = await tx
+        .delete(project)
+        .where(eq(project.id, projectId))
+        .returning({ name: project.name });
+      await recordAudit(tx, {
+        action: 'project.deleted',
+        actorId: actor.id,
+        targetType: 'project',
+        targetId: projectId,
+        projectId,
+        ip: req.ip,
+        details: { name: gone?.name ?? null, files: files.length },
+      });
       await recordDeletions(tx, files);
       return files;
     });
@@ -667,6 +680,15 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
             ...(current ? {} : { addedAt: sql`now()` }),
           },
         });
+      await recordAudit(tx, {
+        action: 'project.member_set',
+        actorId: actor.id,
+        targetType: 'user',
+        targetId: userId,
+        projectId,
+        ip: req.ip,
+        details: { role, before: current?.role ?? null, expiresAt: end?.toISOString() ?? null },
+      });
     });
     const member = (await listMembers(db, projectId)).items.find((m) => m.user.id === userId);
     if (!member) throw new Error('Member vanished after upsert');
@@ -690,6 +712,15 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       await tx
         .delete(projectMember)
         .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+      await recordAudit(tx, {
+        action: 'project.member_removed',
+        actorId: actor.id,
+        targetType: 'user',
+        targetId: userId,
+        projectId,
+        ip: req.ip,
+        details: { role: current.role, left: userId === actor.id },
+      });
     });
     return reply.status(204).send();
   });

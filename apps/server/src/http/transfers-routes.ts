@@ -15,6 +15,7 @@ import {
 import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { requireProjectCreation } from '../access-expiry.ts';
+import { changes, recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import {
   nextBackupAt,
@@ -414,7 +415,16 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
-      const value = BackupSettings.parse({ ...(await readBackupSettings(tx)), ...patch });
+      const before = await readBackupSettings(tx);
+      const value = BackupSettings.parse({ ...before, ...patch });
+      await recordAudit(tx, {
+        action: 'settings.changed',
+        actorId: actor.id,
+        targetType: 'settings',
+        targetId: 'backup',
+        ip: req.ip,
+        details: { changes: changes(before, patch) },
+      });
       await tx
         .insert(instanceSetting)
         .values({ key: 'backup', value })
@@ -430,6 +440,13 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
     if (!jobs.runBackup) throw new HttpError('internal', 'Backups are not available.');
     const row = await startBackup(db, 'manual', actor.id);
     if (!row) return sendError(reply, 'conflict', 'A backup is already running.');
+    await recordAudit(db, {
+      action: 'backup.started',
+      actorId: actor.id,
+      targetType: 'backup',
+      targetId: row.id,
+      ip: req.ip,
+    });
     try {
       await enqueue(jobs.runBackup(row.id));
     } catch (err) {

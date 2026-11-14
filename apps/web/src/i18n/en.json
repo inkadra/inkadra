@@ -3729,7 +3729,8 @@
       "apps": "What connects to your account from outside: calendar, browser extension, tokens.",
       "instance": "The instance name and what is left to finish the setup.",
       "reports": "Where the reports people send from “Report a problem” go, and the ones received.",
-      "video": "Inkadra prepares lighter copies of videos in several resolutions: each viewer gets the one that suits their connection. Originals are never touched."
+      "video": "Inkadra prepares lighter copies of videos in several resolutions: each viewer gets the one that suits their connection. Originals are never touched.",
+      "audit": "Who changed roles, members, sharing, settings and tokens, what was deleted or backed up, and which sign-ins failed."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -4212,7 +4213,7 @@
   },
   "backups": {
     "title": "Backups",
-    "cardLead": "Each backup holds the whole database. Files stay where they are: back up the data volume or the bucket too.",
+    "cardLead": "Each backup holds the whole database and is read back once written. Files stay where they are: back up the data volume or the bucket too. Deleted files are kept until no kept backup needs them.",
     "now": "Back up now",
     "running": "Backing up…",
     "busy": "A backup is already running.",
@@ -4251,9 +4252,13 @@
       "no_space": "The data volume is full.",
       "permission": "The server cannot write to its data folder (DATA_DIR/backups).",
       "internal": "Something went wrong. The server log says what, with the id of this backup.",
-      "inconsistent": "Some boards or comments point at each other in a loop, so they cannot be saved in order. The server log names the table."
+      "inconsistent": "Some boards or comments point at each other in a loop, so they cannot be saved in order. The server log names the table.",
+      "corrupt": "The archive did not read back as it was written, so it was not kept. Check the data volume."
     },
-    "notInBucket": "Kept on the server only: the copy to the bucket failed."
+    "notInBucket": "Kept on the server only: the copy to the bucket failed.",
+    "verified": "verified",
+    "missingFiles_one": "{{count}} listed file is missing from storage: a restore would lack it.",
+    "missingFiles_other": "{{count}} listed files are missing from storage: a restore would lack them."
   },
   "export": {
     "title": "Export",
@@ -5883,6 +5888,23 @@
             "text": "For experts: run the card test again, change live sessions and the values of each resolution. «Reset» goes back to the recommended value."
           }
         }
+      },
+      "audit": {
+        "name": "Activity log",
+        "steps": {
+          "0": {
+            "title": "Who did what",
+            "text": "Changes to people, sharing and settings, with who and when."
+          },
+          "1": {
+            "title": "Narrow it down",
+            "text": "Show only people, sharing, sign-ins or data."
+          },
+          "2": {
+            "title": "Kept for a year",
+            "text": "Older events are removed on their own."
+          }
+        }
       }
     }
   },
@@ -6739,6 +6761,46 @@
       "customPreset": "Custom",
       "customNote": "Some values were changed in the advanced settings.",
       "resetAll": "Back to the preset values"
+    }
+  },
+  "audit": {
+    "title": "Activity log",
+    "filter": "Show",
+    "events": "Events",
+    "none": "Nothing recorded yet.",
+    "loadError": "The activity log could not be loaded.",
+    "more": "Show older",
+    "nobody": "Someone not signed in",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Events are kept for {{count}} day.",
+    "retention_other": "Events are kept for {{count}} days.",
+    "groups": {
+      "all": "Everything",
+      "members": "People",
+      "sharing": "Sharing",
+      "security": "Sign-in and tokens",
+      "data": "Data and settings"
+    },
+    "actions": {
+      "member.updated": "Member changed",
+      "settings.changed": "Settings changed",
+      "project.deleted": "Project deleted",
+      "project.member_set": "Project member added or changed",
+      "project.member_removed": "Project member removed",
+      "board.grant_set": "Board access given",
+      "board.grant_removed": "Board access removed",
+      "invitation.created": "Invitation created",
+      "invitation.revoked": "Invitation revoked",
+      "share_link.created": "Share link created",
+      "share_link.changed": "Share link changed",
+      "share_link.removed": "Share link turned off",
+      "token.created": "Token created",
+      "token.revoked": "Token revoked",
+      "account.deleted": "Account deleted",
+      "backup.started": "Backup started",
+      "backup.restored": "Backup restored",
+      "auth.sign_in_failed": "Sign-in failed",
+      "auth.locked_out": "Sign-in locked"
     }
   }
 }

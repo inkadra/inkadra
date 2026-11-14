@@ -3729,7 +3729,8 @@
       "apps": "Was sich von außen mit deinem Konto verbindet: Kalender, Browsererweiterung, Tokens.",
       "instance": "Der Name der Instanz und was für die Einrichtung noch fehlt.",
       "reports": "Wohin die Meldungen gehen, die über „Problem melden“ gesendet werden, und die eingegangenen.",
-      "video": "Inkadra erstellt leichtere Kopien von Videos in mehreren Auflösungen: Wer zuschaut, bekommt die passende für seine Verbindung. Die Originale bleiben unverändert."
+      "video": "Inkadra erstellt leichtere Kopien von Videos in mehreren Auflösungen: Wer zuschaut, bekommt die passende für seine Verbindung. Die Originale bleiben unverändert.",
+      "audit": "Wer Rollen, Mitglieder, Freigaben, Einstellungen und Tokens geändert hat, was gelöscht oder gesichert wurde und welche Anmeldungen fehlschlugen."
     },
     "autosave": {
       "idle": "Automatisches Speichern",
@@ -4212,7 +4213,7 @@
   },
   "backups": {
     "title": "Backups",
-    "cardLead": "Jedes Backup enthält die ganze Datenbank. Dateien bleiben, wo sie sind: Sichere auch das Daten-Volume oder den Bucket.",
+    "cardLead": "Jedes Backup enthält die ganze Datenbank und wird nach dem Schreiben zurückgelesen. Dateien bleiben, wo sie sind: Sichere auch das Datenvolume oder den Bucket. Gelöschte Dateien bleiben, solange ein behaltenes Backup sie braucht.",
     "now": "Jetzt sichern",
     "running": "Backup läuft…",
     "busy": "Es läuft bereits ein Backup.",
@@ -4251,9 +4252,13 @@
       "no_space": "Das Daten-Volume ist voll.",
       "permission": "Der Server kann nicht in seinen Datenordner schreiben (DATA_DIR/backups).",
       "internal": "Etwas ist schiefgelaufen. Das Server-Log sagt was, mit der ID dieses Backups.",
-      "inconsistent": "Einige Boards oder Kommentare verweisen in einer Schleife aufeinander und lassen sich nicht geordnet speichern. Das Server-Log nennt die Tabelle."
+      "inconsistent": "Einige Boards oder Kommentare verweisen in einer Schleife aufeinander und lassen sich nicht geordnet speichern. Das Server-Log nennt die Tabelle.",
+      "corrupt": "Das Archiv ließ sich nicht so zurücklesen, wie es geschrieben wurde, und wurde nicht behalten. Prüfe das Datenvolume."
     },
-    "notInBucket": "Nur auf dem Server gespeichert: Die Kopie in den Bucket ist fehlgeschlagen."
+    "notInBucket": "Nur auf dem Server gespeichert: Die Kopie in den Bucket ist fehlgeschlagen.",
+    "verified": "geprüft",
+    "missingFiles_one": "{{count}} aufgeführte Datei fehlt im Speicher: Eine Wiederherstellung hätte sie nicht.",
+    "missingFiles_other": "{{count}} aufgeführte Dateien fehlen im Speicher: Eine Wiederherstellung hätte sie nicht."
   },
   "export": {
     "title": "Exportieren",
@@ -5883,6 +5888,23 @@
             "text": "Für Fachleute: Kartentest wiederholen, Live-Sitzungen und die Werte jeder Auflösung ändern. «Zurücksetzen» kehrt zum empfohlenen Wert zurück."
           }
         }
+      },
+      "audit": {
+        "name": "Aktivitätsprotokoll",
+        "steps": {
+          "0": {
+            "title": "Wer hat was getan",
+            "text": "Änderungen an Personen, Freigaben und Einstellungen, mit wem und wann."
+          },
+          "1": {
+            "title": "Eingrenzen",
+            "text": "Nur Personen, Teilen, Anmeldungen oder Daten anzeigen."
+          },
+          "2": {
+            "title": "Ein Jahr lang",
+            "text": "Ältere Ereignisse werden von selbst entfernt."
+          }
+        }
       }
     }
   },
@@ -6739,6 +6761,46 @@
       "customPreset": "Angepasst",
       "customNote": "Einige Werte wurden in den erweiterten Einstellungen geändert.",
       "resetAll": "Zurück zu den Werten der Stufe"
+    }
+  },
+  "audit": {
+    "title": "Aktivitätsprotokoll",
+    "filter": "Anzeigen",
+    "events": "Ereignisse",
+    "none": "Noch nichts aufgezeichnet.",
+    "loadError": "Das Aktivitätsprotokoll konnte nicht geladen werden.",
+    "more": "Ältere anzeigen",
+    "nobody": "Jemand ohne Anmeldung",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Ereignisse bleiben {{count}} Tag erhalten.",
+    "retention_other": "Ereignisse bleiben {{count}} Tage erhalten.",
+    "groups": {
+      "all": "Alles",
+      "members": "Personen",
+      "sharing": "Teilen",
+      "security": "Anmeldung und Tokens",
+      "data": "Daten und Einstellungen"
+    },
+    "actions": {
+      "member.updated": "Mitglied geändert",
+      "settings.changed": "Einstellungen geändert",
+      "project.deleted": "Projekt gelöscht",
+      "project.member_set": "Projektmitglied hinzugefügt oder geändert",
+      "project.member_removed": "Projektmitglied entfernt",
+      "board.grant_set": "Board-Zugriff erteilt",
+      "board.grant_removed": "Board-Zugriff entfernt",
+      "invitation.created": "Einladung erstellt",
+      "invitation.revoked": "Einladung widerrufen",
+      "share_link.created": "Freigabelink erstellt",
+      "share_link.changed": "Freigabelink geändert",
+      "share_link.removed": "Freigabelink deaktiviert",
+      "token.created": "Token erstellt",
+      "token.revoked": "Token widerrufen",
+      "account.deleted": "Konto gelöscht",
+      "backup.started": "Backup gestartet",
+      "backup.restored": "Backup wiederhergestellt",
+      "auth.sign_in_failed": "Anmeldung fehlgeschlagen",
+      "auth.locked_out": "Anmeldung gesperrt"
     }
   }
 }

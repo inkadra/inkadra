@@ -991,6 +991,14 @@ export const notification = pgTable(
     readAt: timestamp('read_at', { withTimezone: true }),
     /** Set once the notification went out by email, alone or in a digest. */
     emailedAt: timestamp('emailed_at', { withTimezone: true }),
+    /**
+     * Claimed for an email until then (#812): a worker that dies before sending leaves the row
+     * to the next run once the lease ends, so the email goes out at least once. A failed send
+     * moves it later, with a growing wait.
+     */
+    emailLeaseUntil: timestamp('email_lease_until', { withTimezone: true }),
+    /** Failed email attempts; past `MAX_EMAIL_ATTEMPTS` the row is given up (#812). */
+    emailAttempts: integer('email_attempts').notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [
@@ -1467,6 +1475,10 @@ export const instanceBackup = pgTable(
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     /** Set once retention removed the archive. */
     removedAt: timestamp('removed_at', { withTimezone: true }),
+    /** When the archive was read back and its files looked up in storage (#794). */
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    /** Files the archive lists that storage did not have when it was verified. */
+    missingFiles: integer('missing_files'),
   },
   (t) => [
     index('instance_backup_started_idx').on(t.startedAt.desc()),
@@ -1579,4 +1591,30 @@ export const pendingFileDeletion = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index('pending_file_deletion_created_idx').on(t.createdAt)],
+);
+
+/**
+ * Administrative and security-relevant actions (#806), append-only. Not tied to the rows it
+ * names: deleting the person, the project or the board keeps the event, with the actor's name
+ * as it was. Removed after `AUDIT_RETENTION_DAYS` by the daily maintenance job.
+ */
+export const auditEvent = pgTable(
+  'audit_event',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+    actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),
+    actorName: text('actor_name'),
+    action: text('action').notNull(),
+    targetType: text('target_type'),
+    targetId: text('target_id'),
+    projectId: uuid('project_id'),
+    ip: text('ip'),
+    details: jsonb('details').$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [
+    index('audit_event_at_idx').on(t.at.desc(), t.id.desc()),
+    index('audit_event_action_idx').on(t.action, t.at.desc()),
+    index('audit_event_actor_idx').on(t.actorId).where(sql`${t.actorId} is not null`),
+  ],
 );

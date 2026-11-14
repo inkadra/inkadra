@@ -7,6 +7,7 @@ import { FeedbackSettings } from '../feedback/FeedbackSettings.tsx';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { usePendingUpdate } from '../lib/updates.ts';
+import { AuditLog } from './AuditLog.tsx';
 import { BackupSettings } from './BackupSettings.tsx';
 import { ProviderIcon } from './ProviderIcon.tsx';
 import { StorageCharts } from './StorageCharts.tsx';
@@ -206,6 +207,7 @@ export function InstanceSettings({ section, setup }: { section: string; setup: S
   if (section === 'workspace') return <StoragePage />;
   if (section === 'access') return <AccessPage />;
   if (section === 'reports') return <FeedbackSettings />;
+  if (section === 'audit') return <AuditLog />;
   if (section === 'backups') return <BackupSettings />;
   if (section === 'server') return <ServerSettings />;
   if (section === 'updates') return <UpdateSettings />;

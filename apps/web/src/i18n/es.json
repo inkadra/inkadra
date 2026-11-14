@@ -3729,7 +3729,8 @@
       "apps": "Lo que se conecta a tu cuenta desde fuera: calendario, extensión del navegador, tokens.",
       "instance": "El nombre de la instancia y lo que falta para terminar la configuración.",
       "reports": "Adónde van los informes que se envían desde «Informar de un problema», y los recibidos.",
-      "video": "Inkadra prepara copias más ligeras de los vídeos en varias resoluciones: quien mira recibe la adecuada para su conexión. Los originales nunca se tocan."
+      "video": "Inkadra prepara copias más ligeras de los vídeos en varias resoluciones: quien mira recibe la adecuada para su conexión. Los originales nunca se tocan.",
+      "audit": "Quién cambió roles, miembros, uso compartido, ajustes y tokens, qué se eliminó o se copió y qué inicios de sesión fallaron."
     },
     "autosave": {
       "idle": "Guardado automático",
@@ -4212,7 +4213,7 @@
   },
   "backups": {
     "title": "Copias de seguridad",
-    "cardLead": "Cada copia contiene toda la base de datos. Los archivos se quedan donde están: haz también copia del volumen de datos o del bucket.",
+    "cardLead": "Cada copia contiene toda la base de datos y se relee tras escribirse. Los archivos se quedan donde están: haz también copia del volumen de datos o del bucket. Los archivos eliminados se conservan mientras una copia guardada los necesite.",
     "now": "Hacer copia ahora",
     "running": "Haciendo copia…",
     "busy": "Ya hay una copia en curso.",
@@ -4251,9 +4252,13 @@
       "no_space": "El volumen de datos está lleno.",
       "permission": "El servidor no puede escribir en su carpeta de datos (DATA_DIR/backups).",
       "internal": "Algo salió mal. El registro del servidor indica qué, con el id de esta copia.",
-      "inconsistent": "Algunos tableros o comentarios se apuntan entre sí en un bucle y no se pueden guardar en orden. El registro del servidor indica la tabla."
+      "inconsistent": "Algunos tableros o comentarios se apuntan entre sí en un bucle y no se pueden guardar en orden. El registro del servidor indica la tabla.",
+      "corrupt": "El archivo no se pudo releer tal como se escribió, así que no se conservó. Revisa el volumen de datos."
     },
-    "notInBucket": "Conservada solo en el servidor: falló la copia al bucket."
+    "notInBucket": "Conservada solo en el servidor: falló la copia al bucket.",
+    "verified": "verificada",
+    "missingFiles_one": "Falta {{count}} archivo de la lista en el almacenamiento: una restauración no lo tendría.",
+    "missingFiles_other": "Faltan {{count}} archivos de la lista en el almacenamiento: una restauración no los tendría."
   },
   "export": {
     "title": "Exportar",
@@ -5883,6 +5888,23 @@
             "text": "Para expertos: repite la prueba de la tarjeta, cambia las sesiones al vuelo y los valores de cada resolución. «Restablecer» vuelve a lo recomendado."
           }
         }
+      },
+      "audit": {
+        "name": "Registro de actividad",
+        "steps": {
+          "0": {
+            "title": "Quién hizo qué",
+            "text": "Cambios en personas, uso compartido y ajustes, con quién y cuándo."
+          },
+          "1": {
+            "title": "Acota",
+            "text": "Muestra solo personas, compartir, accesos o datos."
+          },
+          "2": {
+            "title": "Un año",
+            "text": "Los eventos más antiguos se quitan solos."
+          }
+        }
       }
     }
   },
@@ -6739,6 +6761,46 @@
       "customPreset": "Personalizada",
       "customNote": "Algunos valores se cambiaron en los ajustes avanzados.",
       "resetAll": "Volver a los valores del nivel"
+    }
+  },
+  "audit": {
+    "title": "Registro de actividad",
+    "filter": "Mostrar",
+    "events": "Eventos",
+    "none": "Aún no hay nada registrado.",
+    "loadError": "No se pudo cargar el registro de actividad.",
+    "more": "Mostrar anteriores",
+    "nobody": "Alguien sin sesión",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Los eventos se guardan {{count}} día.",
+    "retention_other": "Los eventos se guardan {{count}} días.",
+    "groups": {
+      "all": "Todo",
+      "members": "Personas",
+      "sharing": "Compartir",
+      "security": "Acceso y tokens",
+      "data": "Datos y ajustes"
+    },
+    "actions": {
+      "member.updated": "Miembro modificado",
+      "settings.changed": "Ajustes modificados",
+      "project.deleted": "Proyecto eliminado",
+      "project.member_set": "Miembro del proyecto añadido o modificado",
+      "project.member_removed": "Miembro del proyecto quitado",
+      "board.grant_set": "Acceso a la pizarra concedido",
+      "board.grant_removed": "Acceso a la pizarra quitado",
+      "invitation.created": "Invitación creada",
+      "invitation.revoked": "Invitación revocada",
+      "share_link.created": "Enlace compartido creado",
+      "share_link.changed": "Enlace compartido modificado",
+      "share_link.removed": "Enlace compartido desactivado",
+      "token.created": "Token creado",
+      "token.revoked": "Token revocado",
+      "account.deleted": "Cuenta eliminada",
+      "backup.started": "Copia iniciada",
+      "backup.restored": "Copia restaurada",
+      "auth.sign_in_failed": "Inicio de sesión fallido",
+      "auth.locked_out": "Inicio de sesión bloqueado"
     }
   }
 }

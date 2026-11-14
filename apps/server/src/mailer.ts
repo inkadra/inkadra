@@ -8,6 +8,8 @@ export interface Mail {
   subject: string;
   text: string;
   html?: string;
+  /** The same id for the same content sent again (#812). */
+  messageId?: string;
 }
 
 export interface Mailer {
@@ -45,10 +47,21 @@ export class MailError extends Error {
   }
 }
 
+/**
+ * SMTP_URL with timeouts of 30 seconds unless it sets its own (#812): Nodemailer's defaults
+ * wait up to 10 minutes on a silent server, holding the single email worker.
+ */
+export function smtpUrl(url: string): string {
+  const parsed = new URL(url);
+  for (const option of ['connectionTimeout', 'greetingTimeout', 'socketTimeout'])
+    if (!parsed.searchParams.has(option)) parsed.searchParams.set(option, '30000');
+  return parsed.toString();
+}
+
 /** SMTP from SMTP_URL, or a mailer that is off. */
 export function createMailer(config: Config, log: Logger): Mailer {
   if (!config.SMTP_URL || !config.MAIL_FROM) return noMailer;
-  const transport = createTransport(config.SMTP_URL);
+  const transport = createTransport(smtpUrl(config.SMTP_URL));
   const from = config.MAIL_FROM;
   return {
     enabled: true,

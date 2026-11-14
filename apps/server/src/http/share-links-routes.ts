@@ -13,6 +13,7 @@ import { hashPassword } from 'better-auth/crypto';
 import { and, asc, count, desc, eq, gt, inArray, isNotNull, min, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { type Actor, requireBoardRole } from '../access.ts';
+import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -159,7 +160,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
           undefined,
           hourlyRetryAfter(recent?.oldest),
         );
-      return tx
+      const rows = await tx
         .insert(shareLink)
         .values({
           projectId: access.board.projectId,
@@ -178,6 +179,25 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
             : null,
         })
         .returning();
+      const [made] = rows;
+      if (made)
+        await recordAudit(tx, {
+          action: 'share_link.created',
+          actorId: actor.id,
+          targetType: 'share_link',
+          targetId: made.id,
+          projectId: made.projectId,
+          ip: req.ip,
+          details: {
+            boardId,
+            role: input.role,
+            label: made.label,
+            password: Boolean(passwordHash),
+            allowDownload: input.allowDownload,
+            expiresAt: made.expiresAt?.toISOString() ?? null,
+          },
+        });
+      return rows;
     });
     if (!row) throw new Error('Share link insert returned nothing');
     return reply.status(201).send(await toShareLink(row, token));
@@ -222,6 +242,21 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
         .set(patch)
         .where(eq(shareLink.id, row.id))
         .returning();
+      // The password itself never goes in the log: only that it changed.
+      const { password, ...rest } = input;
+      await recordAudit(tx, {
+        action: 'share_link.changed',
+        actorId: actor.id,
+        targetType: 'share_link',
+        targetId: row.id,
+        projectId: row.projectId,
+        ip: req.ip,
+        details: {
+          boardId: row.boardId,
+          ...rest,
+          ...(password !== undefined ? { password: password === null ? 'removed' : 'set' } : {}),
+        },
+      });
       if (input.expiresAt !== undefined) {
         // Recompute active sessions immediately when either extending or shortening expiry.
         // The browser cookie lasts 30 days independently; the server always checks this cap.
@@ -249,7 +284,18 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const { linkId } = LinkParams.parse(req.params);
     const row = await managedLink(actor, linkId);
     if (!row.revokedAt)
-      await db.update(shareLink).set({ revokedAt: new Date() }).where(eq(shareLink.id, row.id));
+      await db.transaction(async (tx) => {
+        await tx.update(shareLink).set({ revokedAt: new Date() }).where(eq(shareLink.id, row.id));
+        await recordAudit(tx, {
+          action: 'share_link.removed',
+          actorId: actor.id,
+          targetType: 'share_link',
+          targetId: row.id,
+          projectId: row.projectId,
+          ip: req.ip,
+          details: { boardId: row.boardId, label: row.label },
+        });
+      });
     return reply.status(204).send();
   });
 

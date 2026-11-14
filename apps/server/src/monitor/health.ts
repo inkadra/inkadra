@@ -192,6 +192,24 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
     }
   }
 
+  // The verification found files the backup lists but storage lacks (#794): the backup is
+  // complete, a restore of it would not be. A warning on the Server page, no alert email.
+  if (backup?.status === 'ready' && backup.missingFiles && backup.finishedAt) {
+    const id = `backup_files_missing:${backup.id}`;
+    if (!problems.has(id) && now - backup.finishedAt.getTime() < 7 * DAY_MS)
+      await store.record({
+        id,
+        kind: 'backup_failed',
+        severity: 'warning',
+        role: 'worker',
+        technical: `worker · maintenance · backup\n${backup.missingFiles} listed files missing from storage`,
+        assetId: null,
+        service: null,
+        job: null,
+        at: backup.finishedAt.getTime(),
+      });
+  }
+
   // Schedulers live in Valkey: a flushed or evicted Valkey stops the nightly backup without a
   // failed row (#798). Two days without a ready one while backups are on is a failure too.
   // shortcut: an instance whose first backup never ran is not checked; fine while each install

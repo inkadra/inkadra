@@ -28,7 +28,12 @@ from the same snapshot. Size and checksum can be null; variant sizes are not rec
 not inside the backup: back up the data volume or the bucket as it is (files never change once
 written). Restore into an empty database with
 `docker compose run --rm inkadra backup restore <file>`, using a version whose migration history contains the backup's history as a prefix. Restore checks file
-existence and known sizes, not checksums. Keep `.env` too: encrypted secrets require the
+existence and known sizes, not checksums.
+
+Each table entry and `files.jsonl` carry an optional `sha256` in the manifest (servers before
+#794 leave it out). After writing an archive the server reads it back: every table is counted
+and hashed against the manifest and every listed file is looked up in storage; an archive that
+does not match is not kept (`corrupt`). Keep `.env` too: encrypted secrets require the
 original `AUTH_SECRET`. See [Restoring](../self-hosting/README.md#restoring).
 
 Backups contain password hashes, sessions and sealed tokens: keep them like the database.

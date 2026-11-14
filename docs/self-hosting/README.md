@@ -314,8 +314,22 @@ data volume or the bucket too**, with your usual tool (restic, Borg, a snapshot 
 bucket versioning or replication). The format is described in
 [instance-backup.md](../formats/instance-backup.md).
 
-These backups stay on the same disk as your files, so they do not protect you from losing that
-disk. **A complete backup, copied to another machine, is:**
+Every backup is **read back once written**: each table is counted and hashed against the
+manifest, and every file it lists is looked up in storage. An archive that does not read back
+fails as `corrupt`; files the backup lists but storage lacks are shown in the history and on
+**Settings → Server** (a restore of that backup would miss them).
+
+Files of deleted projects, accounts and exports are **kept while a kept backup may list them**:
+they are removed once every kept backup is newer than the deletion (at most 91 days), so
+restoring any backup of the history finds its files, as long as the volume or bucket itself
+survives. A copy of the files taken at any time after the backup is therefore consistent with
+it.
+
+By default these backups stay on the same disk as your files, so they do not protect you from
+losing that disk. To keep them elsewhere, mount another disk or a network share at
+`/data/backups` (for example `- /mnt/backup-disk/inkadra:/data/backups` under `volumes:`), or
+use S3 for files: archives are then copied to `backups/` in the bucket too. **A complete backup,
+copied to another machine, is:**
 
 1. the data: the `inkadra-data` volume or your `INKADRA_DATA` folder, which holds the nightly
    zips too, or the bucket;
@@ -328,6 +342,14 @@ To copy the default data volume to the current folder:
 ```sh
 docker run --rm -v inkadra_inkadra-data:/from -v "$PWD":/to alpine tar czf /to/inkadra-data.tgz -C /from .
 ```
+
+Take the copy of the files **after** the nightly backup (for example at 04:00 with the default
+03:00): files are never changed once written and stay while a kept backup lists them, so that
+copy has every file of every kept backup.
+
+The nightly backup is a point of recovery once a day. If you need less, run PostgreSQL with
+continuous archiving (WAL archiving with pgBackRest or WAL-G, or the point-in-time recovery of a
+managed database) next to it; Inkadra does not configure it for you.
 
 Backups contain password hashes, sessions and sealed tokens: keep them as safe as the database,
 and never make the `backups/` prefix of a bucket public. They are not downloadable from the
@@ -364,8 +386,9 @@ docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-2026
 docker compose up -d
 ```
 
-The restore loads the tables in order, rebuilds the search index on the next start, and lists
-any file named by the backup that storage does not have (a warning, not an error: restore the
+The restore loads the tables in order, rebuilds the search index on the next start, records a
+`backup.restored` event in the audit log, and lists any file named by the backup that storage
+does not have (a warning, not an error: restore the
 volume or the bucket and they come back). To restore a backup copied elsewhere, put it in the
 data folder first, for example with `docker compose cp`.
 

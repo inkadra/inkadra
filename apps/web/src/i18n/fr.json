@@ -3729,7 +3729,8 @@
       "apps": "Ce qui se connecte à votre compte depuis l’extérieur : calendrier, extension du navigateur, jetons.",
       "instance": "Le nom de l’instance et ce qu’il reste pour terminer la configuration.",
       "reports": "Où vont les signalements envoyés depuis « Signaler un problème », et ceux reçus.",
-      "video": "Inkadra prépare des copies plus légères des vidéos, en plusieurs résolutions : chacun reçoit celle qui convient à sa connexion. Les originaux ne sont jamais modifiés."
+      "video": "Inkadra prépare des copies plus légères des vidéos, en plusieurs résolutions : chacun reçoit celle qui convient à sa connexion. Les originaux ne sont jamais modifiés.",
+      "audit": "Qui a changé les rôles, les membres, le partage, les réglages et les jetons, ce qui a été supprimé ou sauvegardé, et quelles connexions ont échoué."
     },
     "autosave": {
       "idle": "Enregistrement automatique",
@@ -4212,7 +4213,7 @@
   },
   "backups": {
     "title": "Sauvegardes",
-    "cardLead": "Chaque sauvegarde contient toute la base de données. Les fichiers restent à leur place : sauvegardez aussi le volume de données ou le bucket.",
+    "cardLead": "Chaque sauvegarde contient toute la base de données et est relue après écriture. Les fichiers restent où ils sont : sauvegardez aussi le volume de données ou le bucket. Les fichiers supprimés restent tant qu’une sauvegarde gardée en a besoin.",
     "now": "Sauvegarder maintenant",
     "running": "Sauvegarde en cours…",
     "busy": "Une sauvegarde est déjà en cours.",
@@ -4251,9 +4252,13 @@
       "no_space": "Le volume de données est plein.",
       "permission": "Le serveur ne peut pas écrire dans son dossier de données (DATA_DIR/backups).",
       "internal": "Une erreur s’est produite. Le journal du serveur en indique la cause, avec l’id de cette sauvegarde.",
-      "inconsistent": "Des tableaux ou des commentaires se référencent en boucle et ne peuvent pas être enregistrés dans l’ordre. Le journal du serveur indique la table."
+      "inconsistent": "Des tableaux ou des commentaires se référencent en boucle et ne peuvent pas être enregistrés dans l’ordre. Le journal du serveur indique la table.",
+      "corrupt": "L’archive relue ne correspond pas à ce qui a été écrit : elle n’a pas été gardée. Vérifiez le volume de données."
     },
-    "notInBucket": "Conservée uniquement sur le serveur : la copie dans le bucket a échoué."
+    "notInBucket": "Conservée uniquement sur le serveur : la copie dans le bucket a échoué.",
+    "verified": "vérifiée",
+    "missingFiles_one": "{{count}} fichier listé manque dans le stockage : une restauration ne l’aurait pas.",
+    "missingFiles_other": "{{count}} fichiers listés manquent dans le stockage : une restauration ne les aurait pas."
   },
   "export": {
     "title": "Exporter",
@@ -5883,6 +5888,23 @@
             "text": "Pour les experts : refaites le test de la carte, changez les sessions à la volée et les valeurs de chaque résolution. «Rétablir» revient au conseillé."
           }
         }
+      },
+      "audit": {
+        "name": "Journal d’activité",
+        "steps": {
+          "0": {
+            "title": "Qui a fait quoi",
+            "text": "Les changements de personnes, de partage et de réglages, avec qui et quand."
+          },
+          "1": {
+            "title": "Affiner",
+            "text": "N’afficher que les personnes, le partage, les connexions ou les données."
+          },
+          "2": {
+            "title": "Gardé un an",
+            "text": "Les événements plus anciens s’effacent seuls."
+          }
+        }
       }
     }
   },
@@ -6739,6 +6761,46 @@
       "customPreset": "Personnalisée",
       "customNote": "Certaines valeurs ont été changées dans les paramètres avancés.",
       "resetAll": "Revenir aux valeurs du niveau"
+    }
+  },
+  "audit": {
+    "title": "Journal d’activité",
+    "filter": "Afficher",
+    "events": "Événements",
+    "none": "Rien d’enregistré pour l’instant.",
+    "loadError": "Le journal d’activité n’a pas pu être chargé.",
+    "more": "Afficher les précédents",
+    "nobody": "Quelqu’un de non connecté",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Les événements sont gardés {{count}} jour.",
+    "retention_other": "Les événements sont gardés {{count}} jours.",
+    "groups": {
+      "all": "Tout",
+      "members": "Personnes",
+      "sharing": "Partage",
+      "security": "Connexion et jetons",
+      "data": "Données et réglages"
+    },
+    "actions": {
+      "member.updated": "Membre modifié",
+      "settings.changed": "Réglages modifiés",
+      "project.deleted": "Projet supprimé",
+      "project.member_set": "Membre du projet ajouté ou modifié",
+      "project.member_removed": "Membre du projet retiré",
+      "board.grant_set": "Accès au tableau donné",
+      "board.grant_removed": "Accès au tableau retiré",
+      "invitation.created": "Invitation créée",
+      "invitation.revoked": "Invitation révoquée",
+      "share_link.created": "Lien de partage créé",
+      "share_link.changed": "Lien de partage modifié",
+      "share_link.removed": "Lien de partage désactivé",
+      "token.created": "Jeton créé",
+      "token.revoked": "Jeton révoqué",
+      "account.deleted": "Compte supprimé",
+      "backup.started": "Sauvegarde lancée",
+      "backup.restored": "Sauvegarde restaurée",
+      "auth.sign_in_failed": "Connexion échouée",
+      "auth.locked_out": "Connexion bloquée"
     }
   }
 }

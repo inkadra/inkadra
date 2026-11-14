@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import {
   chmod,
@@ -12,8 +12,9 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises';
-import { join } from 'node:path';
-import { type Readable, Transform, type Writable } from 'node:stream';
+import { basename, join } from 'node:path';
+import { createInterface } from 'node:readline';
+import { Readable, Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import {
   BACKUP_FORMAT,
@@ -33,7 +34,7 @@ import { createDatabase, type Database, runMigrations, UNLIMITED_SESSION } from 
 import { instanceBackup, instanceSetting } from './db/schema.ts';
 import type { Storage } from './storage.ts';
 import { REBUILD_STORAGE_TOTALS, STORAGE_TOTAL_TABLES } from './storage-limits.ts';
-import { piped, readZip, writeZip } from './transfers/zip.ts';
+import { ArchiveError, piped, readZip, writeZip, type ZipReader } from './transfers/zip.ts';
 
 /**
  * Instance backups (decision 0037): a logical dump of every table of the `public` schema with
@@ -61,6 +62,8 @@ const NAME = /^[a-z_][a-z0-9_]{0,62}$/;
 export const STALL_MS = 5 * 60 * 1000;
 /** Rows the backup cannot write in an order a restore can load (a cycle of parents). */
 class BackupInconsistent extends Error {}
+/** The archive did not read back as it was written (#794). */
+class BackupCorrupt extends Error {}
 
 class BackupStalled extends Error {
   constructor() {
@@ -138,6 +141,9 @@ export function toBackup(row: BackupRow): InstanceBackup {
     copiedToBucket: row.copiedToBucket,
     files: row.fileCount === null ? null : { count: row.fileCount, bytes: row.fileBytes ?? 0 },
     failure: row.failure,
+    verification: row.verifiedAt
+      ? { at: row.verifiedAt.toISOString(), missingFiles: row.missingFiles ?? 0 }
+      : null,
     startedAt: row.startedAt.toISOString(),
     finishedAt: row.finishedAt?.toISOString() ?? null,
   };
@@ -332,6 +338,14 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
     const result = await Promise.race([dump, stalled]).finally(() => {
       dumping = false;
     });
+    // Read the archive back before it counts (#794): every table counted and hashed against
+    // the manifest, every listed file looked up in storage.
+    const verified = await verifyBackup(partial, deps.storage);
+    if (verified.missing.count > 0)
+      log.warn(
+        { backup: id, missing: verified.missing.count, examples: verified.missing.examples },
+        'backup lists files that storage does not have',
+      );
     await rename(partial, join(dir, fileName));
     // The archive on the data volume is a complete backup on its own: a failed copy to the
     // bucket keeps it, reported as not copied (`copiedToBucket: false`) and logged.
@@ -361,6 +375,8 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         copiedToBucket: copied,
         fileCount: result.files.count,
         fileBytes: result.files.bytes,
+        verifiedAt: new Date(),
+        missingFiles: verified.missing.count,
         finishedAt: new Date(),
       })
       .where(ours)
@@ -380,7 +396,9 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         ? 'stalled'
         : err instanceof BackupInconsistent
           ? 'inconsistent'
-          : code === 'ENOSPC'
+          : err instanceof BackupCorrupt || err instanceof ArchiveError
+            ? 'corrupt'
+            : code === 'ENOSPC'
             ? 'no_space'
             : code === 'EACCES' || code === 'EPERM'
               ? 'permission'
@@ -435,6 +453,7 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storag
 /** Counts rows of COPY text output: one line each, newlines inside values are escaped. */
 function lineCounter(moved: () => void) {
   let lines = 0;
+  const hash = createHash('sha256');
   // COPY sends one message per row: hand the zip 64 KiB pieces, not hundreds of thousands of
   // 200-byte ones (deflating those ran at a few MB/s).
   const BATCH = 64 * 1024;
@@ -443,6 +462,7 @@ function lineCounter(moved: () => void) {
   const stream = new Transform({
     transform(chunk: Buffer, _enc, done) {
       moved();
+      hash.update(chunk);
       for (let at = chunk.indexOf(10); at !== -1; at = chunk.indexOf(10, at + 1)) lines += 1;
       pending.push(chunk);
       size += chunk.length;
@@ -456,7 +476,7 @@ function lineCounter(moved: () => void) {
       done(null, size ? Buffer.concat(pending, size) : undefined);
     },
   });
-  return { stream, lines: () => lines };
+  return { stream, lines: () => lines, sha256: () => hash.digest('hex') };
 }
 
 /**
@@ -599,26 +619,41 @@ async function dumpDatabase(
                 `${name}: ${missing} rows are in a cycle of parents and cannot be backed up.`,
               );
           }
-          listed.push({ name, columns, rows: counter.lines(), entry });
+          listed.push({ name, columns, rows: counter.lines(), entry, sha256: counter.sha256() });
         }
         // Every stored file: originals with their checksum, thumbnails by key. Playable
-        // copies of videos are left out with their rows (WITHOUT_DERIVED).
-        const files = await tx<{ key: string; size: string | null; sha256: string | null }[]>`
+        // copies of videos are left out with their rows (WITHOUT_DERIVED). Streamed a page at a
+        // time (#794): an instance with millions of files never holds the list in memory.
+        let count = 0;
+        let bytes = 0;
+        const filesHash = createHash('sha256');
+        const pages = tx<{ key: string; size: string | null; sha256: string | null }[]>`
         select storage_key as key, size::text, sha256 from asset where status <> 'pending'
         union all
         select storage_key, null, null from asset_variant where size <> 'proxy'
         union all
-        select 'feedback/' || id, bytes::text, null from feedback_attachment where expires_at > now()`;
-        let bytes = 0;
-        const lines = files.map((f) => {
-          bytes += Number(f.size ?? 0);
-          return JSON.stringify({
-            key: f.key,
-            size: f.size === null ? null : Number(f.size),
-            sha256: f.sha256,
-          });
-        });
-        await zip.addBuffer('files.jsonl', lines.length ? `${lines.join('\n')}\n` : '');
+        select 'feedback/' || id, bytes::text, null from feedback_attachment where expires_at > now()`.cursor(
+          1000,
+        );
+        async function* fileLines() {
+          for await (const rows of pages) {
+            let out = '';
+            for (const f of rows) {
+              count += 1;
+              bytes += Number(f.size ?? 0);
+              out += `${JSON.stringify({
+                key: f.key,
+                size: f.size === null ? null : Number(f.size),
+                sha256: f.sha256,
+              })}\n`;
+            }
+            moved();
+            const chunk = Buffer.from(out);
+            filesHash.update(chunk);
+            yield chunk;
+          }
+        }
+        await zip.addStream('files.jsonl', Readable.from(fileLines(), { objectMode: false }));
         const manifest: BackupManifest = {
           format: BACKUP_FORMAT,
           formatVersion: BACKUP_FORMAT_VERSION,
@@ -627,10 +662,10 @@ async function dumpDatabase(
           migrations,
           tables: listed,
           rebuilt: [...BACKUP_REBUILT_TABLES],
-          files: { count: files.length, bytes, entry: 'files.jsonl' },
+          files: { count, bytes, entry: 'files.jsonl', sha256: filesHash.digest('hex') },
         };
         await zip.addJson('manifest.json', manifest);
-        return { files: { count: files.length, bytes } };
+        return { files: { count, bytes } };
       } catch (err) {
         // Ending the connection rejects the transaction with its own error: keep ours.
         cause = err;
@@ -718,11 +753,7 @@ export async function restoreBackup(opts: {
   tmpDir: string;
   log: Logger;
 }): Promise<RestoreReport> {
-  const zip = await readZip(opts.file, {
-    entries: 10_000,
-    totalBytes: Number.MAX_SAFE_INTEGER,
-    compressionRatio: 10_000,
-  });
+  const zip = await readZip(opts.file, ARCHIVE_LIMITS);
   try {
     const manifest = await zip.json('manifest.json', BackupManifest, 64 * 1024 * 1024);
     if (manifest.format !== BACKUP_FORMAT || manifest.formatVersion > BACKUP_FORMAT_VERSION)
@@ -812,27 +843,105 @@ export async function restoreBackup(opts: {
       await after.end();
     }
 
-    const files = (await zip.buffer('files.jsonl', 1024 * 1024 * 1024))
-      .toString('utf8')
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as { key: string; size: number | null });
-    const missing: string[] = [];
-    for (let i = 0; i < files.length; i += 16) {
-      await Promise.all(
-        files.slice(i, i + 16).map(async (f) => {
-          const size = await opts.storage.size(f.key).catch(() => null);
-          if (size === null || (f.size !== null && size !== f.size)) missing.push(f.key);
-        }),
-      );
+    const files = await checkFiles(zip, opts.storage);
+    // In the restored database: who restored is not known (the command line), when and what is.
+    const { sql: audit } = createDatabase(opts.databaseUrl, 1);
+    try {
+      await audit`
+        insert into audit_event (action, target_type, target_id, details)
+        values ('backup.restored', 'backup', ${basename(opts.file)},
+          ${audit.json({ createdAt: manifest.createdAt, appVersion: manifest.appVersion, missingFiles: files.missing.count })})`;
+    } finally {
+      await audit.end();
     }
     return {
       tables: manifest.tables.length,
       rows,
       migrationsBefore: count,
       migrationsAfter: local.length,
-      files: { listed: files.length, missing: missing.length, examples: missing.slice(0, 10) },
+      files: {
+        listed: files.listed,
+        missing: files.missing.count,
+        examples: files.missing.examples,
+      },
     };
+  } finally {
+    zip.close();
+  }
+}
+
+const ARCHIVE_LIMITS = {
+  entries: 10_000,
+  totalBytes: Number.MAX_SAFE_INTEGER,
+  compressionRatio: 10_000,
+};
+
+/**
+ * Reads `files.jsonl` line by line and looks each file up in storage, 16 at a time: the files
+ * a restore of this backup would miss (#794). Never holds the whole list in memory.
+ */
+async function checkFiles(zip: ZipReader, storage: Storage) {
+  const hash = createHash('sha256');
+  const source = piped(
+    await zip.stream('files.jsonl', Number.MAX_SAFE_INTEGER),
+    new Transform({
+      transform(chunk: Buffer, _enc, done) {
+        hash.update(chunk);
+        done(null, chunk);
+      },
+    }),
+  );
+  const missing = { count: 0, examples: [] as string[] };
+  let listed = 0;
+  let batch: Array<{ key: string; size: number | null }> = [];
+  const flush = async () => {
+    await Promise.all(
+      batch.map(async (f) => {
+        const size = await storage.size(f.key).catch(() => null);
+        if (size === null || (f.size !== null && size !== f.size)) {
+          missing.count += 1;
+          if (missing.examples.length < 10) missing.examples.push(f.key);
+        }
+      }),
+    );
+    batch = [];
+  };
+  for await (const line of createInterface({ input: source, crlfDelay: Number.POSITIVE_INFINITY })) {
+    if (!line) continue;
+    listed += 1;
+    batch.push(JSON.parse(line) as { key: string; size: number | null });
+    if (batch.length === 16) await flush();
+  }
+  await flush();
+  return { listed, missing, sha256: hash.digest('hex') };
+}
+
+/**
+ * Reads a written archive back (#794): the manifest, each table entry counted and hashed
+ * against it, and the file list checked against storage. Throws `BackupCorrupt` when the
+ * archive does not match what was written; files missing from storage are only reported.
+ */
+export async function verifyBackup(file: string, storage: Storage) {
+  const zip = await readZip(file, ARCHIVE_LIMITS);
+  try {
+    const manifest = await zip.json('manifest.json', BackupManifest, 64 * 1024 * 1024);
+    for (const table of manifest.tables) {
+      const counter = lineCounter(() => {});
+      await pipeline(
+        await zip.stream(table.entry, Number.MAX_SAFE_INTEGER),
+        counter.stream,
+        new Writable({ write: (_chunk, _enc, done) => done() }),
+      );
+      if (counter.lines() !== table.rows || (table.sha256 && counter.sha256() !== table.sha256))
+        throw new BackupCorrupt(`${table.name} does not read back as written.`);
+    }
+    const files = await checkFiles(zip, storage);
+    if (
+      files.listed !== manifest.files.count ||
+      (manifest.files.sha256 && files.sha256 !== manifest.files.sha256)
+    )
+      throw new BackupCorrupt('files.jsonl does not read back as written.');
+    return { tables: manifest.tables.length, files: files.listed, missing: files.missing };
   } finally {
     zip.close();
   }

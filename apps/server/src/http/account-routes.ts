@@ -21,6 +21,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNull, ne, or, sql } from 'dri
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
 import { activeGrant, activeMember } from '../access.ts';
+import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import { FRESH_SIGN_IN_MS } from '../auth-session.ts';
 import type { Config } from '../config.ts';
@@ -304,6 +305,14 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       name: input.name,
       expiresAt: new Date(Date.now() + (input.expiresInDays ?? 90) * 86_400_000),
     });
+    await recordAudit(db, {
+      action: 'token.created',
+      actorId: session.user.id,
+      targetType: 'token',
+      targetId: row.id,
+      ip: req.ip,
+      details: { name: row.name, expiresAt: row.expiresAt?.toISOString() ?? null },
+    });
     securityNotification(
       deps.mailer,
       session.user,
@@ -324,6 +333,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       'token_revoked',
     );
     if (removed.length === 0) throw new HttpError('not_found', 'Token not found.');
+    await recordAudit(db, {
+      action: 'token.revoked',
+      actorId: actor.id,
+      targetType: 'token',
+      targetId: tokenId,
+      ip: req.ip,
+    });
     return reply.status(204).send();
   });
 
@@ -428,6 +444,14 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       name: pending.deviceName ?? CLIENT_NAMES[pending.clientId],
       client: pending.clientId,
     });
+    await recordAudit(db, {
+      action: 'token.created',
+      actorId: owner.id,
+      targetType: 'token',
+      targetId: issued.id,
+      ip: req.ip,
+      details: { name: issued.name, client: pending.clientId },
+    });
     securityNotification(
       deps.mailer,
       owner,
@@ -531,6 +555,15 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
         .for('update');
       const files = await projectFiles(tx, alone);
       if (alone.length > 0) await tx.delete(project).where(inArray(project.id, alone));
+      // Before the user row goes: the event keeps the name, its actor id becomes null.
+      await recordAudit(tx, {
+        action: 'account.deleted',
+        actorId: userId,
+        targetType: 'user',
+        targetId: userId,
+        ip: req.ip,
+        details: { projectsDeleted: alone.length, files: files.length },
+      });
       // Sessions, accounts, memberships, grants, tokens and two-factor data cascade.
       await tx.delete(user).where(eq(user.id, userId));
       await recordDeletions(tx, files);

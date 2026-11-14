@@ -32,6 +32,7 @@ import {
   requireProjectRole,
 } from '../access.ts';
 import { mergeInvitedRole, readExpiry, widensEnd } from '../access-expiry.ts';
+import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -342,30 +343,52 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     )
       throw new HttpError('forbidden', 'Only project owners can remove or extend an end date.');
     const reset = !current || end?.getTime() !== current.expiresAt?.getTime();
-    await db
-      .insert(boardGrant)
-      .values({ boardId, userId, role, grantedBy: actor.id, expiresAt: end })
-      .onConflictDoUpdate({
-        target: [boardGrant.boardId, boardGrant.userId],
-        set: {
-          role,
-          grantedBy: actor.id,
-          expiresAt: end,
-          ...(reset ? { expiryWarnedAt: null } : {}),
-        },
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(boardGrant)
+        .values({ boardId, userId, role, grantedBy: actor.id, expiresAt: end })
+        .onConflictDoUpdate({
+          target: [boardGrant.boardId, boardGrant.userId],
+          set: {
+            role,
+            grantedBy: actor.id,
+            expiresAt: end,
+            ...(reset ? { expiryWarnedAt: null } : {}),
+          },
+        });
+      await recordAudit(tx, {
+        action: 'board.grant_set',
+        actorId: actor.id,
+        targetType: 'board',
+        targetId: boardId,
+        projectId: mine.board.projectId,
+        ip: req.ip,
+        details: { userId, role, expiresAt: end?.toISOString() ?? null },
       });
+    });
     return entryFor(db, boardId, userId);
   });
 
   app.delete(v1('/boards/:boardId/grants/:userId'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, userId } = GrantParams.parse(req.params);
-    await checkGrant(actor, boardId, userId);
-    const removed = await db
-      .delete(boardGrant)
-      .where(and(eq(boardGrant.boardId, boardId), eq(boardGrant.userId, userId)))
-      .returning({ userId: boardGrant.userId });
-    if (removed.length === 0) throw new HttpError('not_found', 'No grant on this board.');
+    const mine = await checkGrant(actor, boardId, userId);
+    await db.transaction(async (tx) => {
+      const removed = await tx
+        .delete(boardGrant)
+        .where(and(eq(boardGrant.boardId, boardId), eq(boardGrant.userId, userId)))
+        .returning({ userId: boardGrant.userId, role: boardGrant.role });
+      if (removed.length === 0) throw new HttpError('not_found', 'No grant on this board.');
+      await recordAudit(tx, {
+        action: 'board.grant_removed',
+        actorId: actor.id,
+        targetType: 'board',
+        targetId: boardId,
+        projectId: mine.board.projectId,
+        ip: req.ip,
+        details: { userId, role: removed[0]?.role ?? null },
+      });
+    });
     return reply.status(204).send();
   });
 
@@ -570,6 +593,15 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
                 },
               });
           }
+          await recordAudit(db, {
+            action: boardId ? 'board.grant_set' : 'project.member_set',
+            actorId: actor.id,
+            targetType: boardId ? 'board' : 'user',
+            targetId: boardId ?? existing.id,
+            projectId,
+            ip: req.ip,
+            details: { userId: existing.id, role, invited: true },
+          });
         }
         const body: InvitationResult = {
           status: 'added',
@@ -608,7 +640,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         if (pending)
           throw new HttpError('conflict', 'An invitation for this email is already pending.');
       }
-      return tx
+      const rows = await tx
         .insert(invitation)
         .values({
           kind: input.kind,
@@ -625,6 +657,18 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
           accessExpiresAt,
         })
         .returning();
+      const [made] = rows;
+      if (made)
+        await recordAudit(tx, {
+          action: 'invitation.created',
+          actorId: actor.id,
+          targetType: 'invitation',
+          targetId: made.id,
+          projectId,
+          ip: req.ip,
+          details: { kind: input.kind, email: email ?? null, boardId, role },
+        });
+      return rows;
     });
     if (!created) throw new Error('Invitation insert returned nothing');
     let row = created;
@@ -691,7 +735,18 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { invitationId } = InvitationParams.parse(req.params);
     const row = await managedInvitation(actor, invitationId);
-    await db.update(invitation).set({ revokedAt: new Date() }).where(eq(invitation.id, row.id));
+    await db.transaction(async (tx) => {
+      await tx.update(invitation).set({ revokedAt: new Date() }).where(eq(invitation.id, row.id));
+      await recordAudit(tx, {
+        action: 'invitation.revoked',
+        actorId: actor.id,
+        targetType: 'invitation',
+        targetId: row.id,
+        projectId: row.projectId,
+        ip: req.ip,
+        details: { kind: row.kind, email: row.email },
+      });
+    });
     return reply.status(204).send();
   });
 

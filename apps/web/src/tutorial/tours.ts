@@ -448,6 +448,19 @@ export const TOURS: Tour[] = [
     ],
   },
   {
+    id: 'audit',
+    group: 'admin',
+    icon: 'eye',
+    admin: true,
+    offer: 'audit',
+    href: '/settings?section=audit',
+    steps: [
+      { anchor: 'audit', media: 'users', side: 'bottom' },
+      { anchor: 'audit-filter', media: 'users', side: 'bottom' },
+      { anchor: null, media: 'gear' },
+    ],
+  },
+  {
     id: 'backups',
     group: 'admin',
     icon: 'clock',

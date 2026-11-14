@@ -5,6 +5,7 @@ import { and, eq, inArray, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
 import { sweepAccessExpiry } from './access-expiry.ts';
+import { purgeAudit } from './audit.ts';
 import {
   type BackupDeps,
   backupCron,
@@ -28,7 +29,7 @@ import { pruneWriters } from './board-writers.ts';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
 import { asset, clientAsset, creationRequest } from './db/schema.ts';
-import { removeFiles, sweepDeletions } from './file-deletions.ts';
+import { removeDeletedFiles, sweepDeletions } from './file-deletions.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { recipesOf } from './media/ladder.ts';
@@ -433,8 +434,7 @@ export async function startWorkers(
       if (job.name === 'ping') return { pong: Date.now() };
       if (job.name === 'delete-files') {
         const { keys } = job.data as JobPayloads['maintenance:delete-files'];
-        await removeFiles(deps.db, deps.storage, keys);
-        return { removed: keys.length };
+        return { removed: await removeDeletedFiles(deps.db, deps.storage, keys) };
       }
       if (job.name === 'video-benchmark') {
         const measure = deps.benchmark;
@@ -459,6 +459,7 @@ export async function startWorkers(
       if (job.name === 'purge-notifications')
         return {
           ...(await purgeNotifications(deps.db)),
+          audit: (await purgeAudit(deps.db)).removed,
           storageTotals: await reconcileStorageTotals(deps.db),
         };
       if (job.name === 'access-expiry') return sweepAccessExpiry(deps.db);
@@ -775,7 +776,11 @@ export const ENQUEUE_TIMEOUT_MS = 2_000;
  * recorded the keys (`recordDeletions`), so what fails here is removed by the hourly sweep.
  */
 export async function removeFilesLater(
-  deps: { db: Pick<Database, 'delete'>; jobs: Pick<Jobs, 'deleteFiles'>; storage: Storage },
+  deps: {
+    db: Pick<Database, 'delete' | 'select'>;
+    jobs: Pick<Jobs, 'deleteFiles'>;
+    storage: Storage;
+  },
   keys: string[],
   log?: Pick<Logger, 'warn' | 'error'>,
 ) {
@@ -785,7 +790,7 @@ export async function removeFilesLater(
   } catch (err) {
     log?.warn({ err, files: keys.length }, 'Files not queued for removal: removing them now');
     // Not awaited: S3 removal checks each upload, and the keys are recorded for the sweep anyway.
-    void removeFiles(deps.db, deps.storage, keys).catch((e) =>
+    void removeDeletedFiles(deps.db, deps.storage, keys).catch((e) =>
       log?.error({ err: e, files: keys.length }, 'Files not removed: the sweep will retry'),
     );
   }
@@ -1064,7 +1069,7 @@ export function inlineJobs(
       cancelled += 1;
     },
     async deleteFiles(keys) {
-      track(removeFiles(deps.db, deps.storage, keys));
+      track(removeDeletedFiles(deps.db, deps.storage, keys));
     },
     ...(transfers
       ? {

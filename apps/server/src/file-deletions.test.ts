@@ -4,8 +4,21 @@ import { eq, inArray } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createDatabase, type Database, runMigrations } from './db/client.ts';
-import { asset, pendingFileDeletion, project, projectTransfer, user } from './db/schema.ts';
-import { assetIdOf, DELETION_GRACE_MS, recordDeletions, sweepDeletions } from './file-deletions.ts';
+import {
+  asset,
+  instanceBackup,
+  pendingFileDeletion,
+  project,
+  projectTransfer,
+  user,
+} from './db/schema.ts';
+import {
+  assetIdOf,
+  DELETION_GRACE_MS,
+  recordDeletions,
+  removeDeletedFiles,
+  sweepDeletions,
+} from './file-deletions.ts';
 import { removeFilesLater } from './queues.ts';
 import type { Storage } from './storage.ts';
 import { freshDatabase, testDeps } from './test-deps.ts';
@@ -102,6 +115,36 @@ describe.skipIf(!url)('recorded file removals (needs DATABASE_URL)', () => {
     expect(await storage.size(kept)).not.toBeNull();
     expect(await storage.size(fresh)).not.toBeNull();
     expect(await keysIn([gone, fresh, kept])).toEqual([fresh]);
+  });
+
+  it('keeps the files a kept backup lists until no kept backup is older (#794)', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const [backup] = await db
+      .insert(instanceBackup)
+      .values({ trigger: 'scheduled', status: 'ready', startedAt: new Date(Date.now() - 2 * day) })
+      .returning();
+    const before = `feedback/${randomUUID()}`;
+    const after = `feedback/${randomUUID()}`;
+    for (const key of [before, after]) await write(key);
+    await recordDeletions(db, [before, after]);
+    // Deleted before the backup: not in it. After: the backup still lists it.
+    await db
+      .update(pendingFileDeletion)
+      .set({ createdAt: new Date(Date.now() - 3 * day) })
+      .where(eq(pendingFileDeletion.key, before));
+    await db
+      .update(pendingFileDeletion)
+      .set({ createdAt: new Date(Date.now() - 1.5 * day) })
+      .where(eq(pendingFileDeletion.key, after));
+    expect(await removeDeletedFiles(db, storage, [after])).toBe(0);
+    await sweepDeletions(db, storage, log);
+    expect(await storage.size(before)).toBeNull();
+    expect(await storage.size(after)).not.toBeNull();
+    expect(await keysIn([before, after])).toEqual([after]);
+
+    await db.delete(instanceBackup).where(eq(instanceBackup.id, backup?.id as string));
+    await sweepDeletions(db, storage, log);
+    expect(await storage.size(after)).toBeNull();
   });
 
   it('keeps going when a chunk fails and ignores an import that stopped answering', async () => {

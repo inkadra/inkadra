@@ -1,11 +1,18 @@
-import { and, asc, eq, gt, inArray, lt } from 'drizzle-orm';
+import { BACKUP_RETENTION_MAX } from '@inkadra/shared';
+import { and, asc, eq, gt, inArray, isNull, lt, min } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import type { Database } from './db/client.ts';
-import { asset, pendingFileDeletion, projectTransfer } from './db/schema.ts';
+import { asset, instanceBackup, pendingFileDeletion, projectTransfer } from './db/schema.ts';
 import type { Storage } from './storage.ts';
 
 /** How long a recorded removal waits before the sweep does it (#801). */
 export const DELETION_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The longest a kept backup holds back the removal of files (#794): the largest retention, one
+ * backup a night, plus a day. Past it the files go even if an older backup is still kept.
+ */
+export const BACKUP_HOLD_MAX_MS = (BACKUP_RETENTION_MAX + 1) * 24 * 60 * 60 * 1000;
 
 const CHUNK = 1000;
 /** An import silent for this long (as in `STALLED_MS`) is taken for dead and no longer holds the sweep. */
@@ -37,15 +44,49 @@ export async function removeFiles(db: Pick<Database, 'delete'>, storage: Storage
   await clearDeletions(db, keys);
 }
 
+/**
+ * Recorded removals before this time may go (#794): a day old, and older than every kept
+ * backup, so that restoring any kept backup finds the files it lists. A removal recorded
+ * before a backup started is not in that backup: its rows were already gone.
+ */
+export async function removableBefore(db: Pick<Database, 'select'>, now = Date.now()) {
+  const [kept] = await db
+    .select({ oldest: min(instanceBackup.startedAt) })
+    .from(instanceBackup)
+    .where(and(eq(instanceBackup.status, 'ready'), isNull(instanceBackup.removedAt)));
+  const oldest = kept?.oldest ? new Date(kept.oldest).getTime() : Number.POSITIVE_INFINITY;
+  return new Date(Math.max(Math.min(now - DELETION_GRACE_MS, oldest), now - BACKUP_HOLD_MAX_MS));
+}
+
+/**
+ * Files of rows just deleted (a project, an account, an export). Removed now when no kept
+ * backup lists them; otherwise the records stay and the sweep removes the files once every
+ * kept backup is newer than the deletion (#794).
+ */
+export async function removeDeletedFiles(
+  db: Pick<Database, 'delete' | 'select'>,
+  storage: Storage,
+  keys: string[],
+) {
+  const [kept] = await db
+    .select({ id: instanceBackup.id })
+    .from(instanceBackup)
+    .where(and(eq(instanceBackup.status, 'ready'), isNull(instanceBackup.removedAt)))
+    .limit(1);
+  if (kept) return 0;
+  await removeFiles(db, storage, keys);
+  return keys.length;
+}
+
 /** The asset a storage key belongs to (`originals/<id>`, `variants/<id>/…`), or null. */
 export function assetIdOf(key: string): string | null {
   return /^(?:originals|variants)\/([0-9a-f-]{36})(?:\/|$)/.exec(key)?.[1] ?? null;
 }
 
 /**
- * Removes the files recorded over a day ago and still there. Waits while an import runs: its
- * files are recorded before its rows exist. A key whose asset has a row again (an upload
- * restarted with the same id) is dropped from the list and its file kept.
+ * Removes the files recorded over a day ago (and before every kept backup, #794) and still
+ * there. Waits while an import runs: its files are recorded before its rows exist. A key whose
+ * asset has a row again (an upload restarted with the same id) is dropped and its file kept.
  */
 export async function sweepDeletions(
   db: Database,
@@ -68,7 +109,7 @@ export async function sweepDeletions(
     return 0;
   }
   // Oldest first, a chunk at a time: a chunk that fails is logged and skipped, not the sweep.
-  const before = new Date(Date.now() - DELETION_GRACE_MS);
+  const before = await removableBefore(db);
   let removed = 0;
   const tried = new Set<string>();
   for (;;) {

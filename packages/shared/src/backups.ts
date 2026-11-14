@@ -51,7 +51,22 @@ export const InstanceBackup = z
       .openapi({
         description:
           'Why it failed, for the log. `interrupted`: the worker stopped and the backup made no ' +
-          'progress for 15 minutes; it no longer blocks the next one.',
+          'progress for 15 minutes; it no longer blocks the next one. `corrupt`: the archive ' +
+          'did not read back as written.',
+      }),
+    verification: z
+      .object({
+        at: Timestamp,
+        missingFiles: z.int().min(0).openapi({
+          description: 'Listed files that storage did not have (or had with another size).',
+        }),
+      })
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'The check run on the archive after it was written (#794): every table read back ' +
+          'and counted, every listed file looked up in storage. Absent on older servers.',
       }),
     startedAt: Timestamp,
     finishedAt: Timestamp.nullable(),
@@ -102,6 +117,11 @@ export const BackupManifest = z.object({
           .max(200),
         rows: z.int().min(0),
         entry: z.string().regex(/^db\/[a-z_][a-z0-9_]{0,62}\.copy$/),
+        /** SHA-256 of the entry, checked by the verification of the backup (#794). */
+        sha256: z
+          .string()
+          .regex(/^[0-9a-f]{64}$/)
+          .optional(),
       }),
     )
     .max(500),
@@ -112,6 +132,10 @@ export const BackupManifest = z.object({
     count: z.int().min(0),
     bytes: z.number().int().min(0),
     entry: z.literal('files.jsonl'),
+    sha256: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .optional(),
   }),
 });
 export type BackupManifest = z.infer<typeof BackupManifest>;

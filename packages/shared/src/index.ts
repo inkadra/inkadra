@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 export * from './assets.ts';
+export * from './audit.ts';
 export * from './backups.ts';
 export * from './boards.ts';
 export * from './bytes.ts';

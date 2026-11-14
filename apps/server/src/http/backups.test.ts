@@ -27,6 +27,7 @@ import {
   runBackup,
   STALE_MS,
   startBackup,
+  verifyBackup,
 } from '../backup.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
@@ -179,6 +180,8 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
   });
   afterAll(async () => {
     await app?.close();
+    // Kept backups hold back file removals (#794): leave none to the next test files.
+    await db.execute(sql`truncate table instance_backup`);
     await client.end({ timeout: 1 });
   });
 
@@ -213,6 +216,43 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     expect(latest).toMatchObject({ trigger: 'manual', status: 'ready', copiedToBucket: false });
     expect(latest?.size).toBeGreaterThan(0);
     expect(existsSync(join(backupsDir(deps.root), latest?.fileName ?? ''))).toBe(true);
+    // Read back and checked against storage before it counts (#794).
+    expect(latest?.verification).toMatchObject({ missingFiles: 0 });
+    const audit = (await request('admin', 'GET', '/instance/audit?action=backup.started')).json();
+    expect(audit.items[0]).toMatchObject({
+      action: 'backup.started',
+      actor: { id: people.admin?.id, name: 'admin' },
+      targetId: latest?.id,
+    });
+  });
+
+  it('finds an archive that does not read back as written, and files storage lacks (#794)', async () => {
+    const row = await startBackup(db, 'manual', null);
+    const done = await runBackup(backupDeps(), row?.id as string);
+    const file = join(backupsDir(deps.root), done?.fileName ?? '');
+    const zip = await readZip(file, {
+      entries: 10_000,
+      totalBytes: Number.MAX_SAFE_INTEGER,
+      compressionRatio: 10_000,
+    });
+    const manifest = JSON.parse((await zip.buffer('manifest.json', 1 << 26)).toString('utf8'));
+    const tampered = join(deps.root, `tampered-${randomUUID()}.zip`);
+    const out = writeZip(tampered);
+    for (const name of zip.names())
+      if (name === 'manifest.json') {
+        manifest.tables[0].rows += 1;
+        await out.addJson(name, manifest);
+      } else await out.addBuffer(name, await zip.buffer(name, Number.MAX_SAFE_INTEGER));
+    await out.close();
+    zip.close();
+    await expect(verifyBackup(tampered, deps.storage)).rejects.toThrow('does not read back');
+
+    const absent = {
+      ...deps.storage,
+      size: async () => null,
+    };
+    const checked = await verifyBackup(file, absent);
+    expect(checked.missing.count).toBe(checked.files);
   });
 
   it('runs one backup at a time', async () => {
@@ -771,6 +811,7 @@ describe.skipIf(!url || !s3Endpoint)('backups with files in S3 (needs S3_TEST_EN
       expect(await deps.storage.size(key)).toBeNull();
       await deps.storage.remove([`${BUCKET_PREFIX}${next?.fileName}`]);
     } finally {
+      await db.execute(sql`truncate table instance_backup`);
       await client.end({ timeout: 1 });
     }
   });
