@@ -18,8 +18,8 @@ async function render(page: Page, theme: string, fixed = true) {
         <div class="notifications${fixed ? ' notifications--fixed' : ''}">
           <div class="notifications__list-pane">
             <header class="notifications__head"><h2>Inbox</h2></header>
-            <div class="notifications-filter-tabs">
-              <button class="notifications-filter-tab is-active">All</button>
+            <div class="ink-tabs ink-tabs--line notifications-filter-tabs" role="tablist">
+              <button class="ink-tabs__tab" role="tab" aria-selected="true">All</button>
             </div>
             <div class="notifications__list-container">
               <div class="notification is-selected is-unread">
@@ -98,7 +98,7 @@ for (const theme of ['light', 'dark']) {
       for (const [fg, bg] of [
         ['.notification__line b', '.notifications__list-pane'],
         ['.ink-row__preview', '.notification__open'],
-        ['.notifications-filter-tab.is-active', '.notifications__list-pane'],
+        ['.ink-tabs__tab[aria-selected="true"]', '.notifications__list-pane'],
         ['.inbox-detail__message-body', '.inbox-detail'],
         ['.inbox-detail__composer-textarea', '.inbox-detail__composer'],
       ]) {

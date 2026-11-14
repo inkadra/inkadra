@@ -83,7 +83,7 @@ it('right-aligns numbers, marks left-out rows and puts the tabs below the sheet'
   expect(host.querySelector('.office-sheet__more td')?.textContent).toBe('…');
   expect(host.querySelector('.office-sheet__note')?.textContent).toBe('office.truncated');
   const kids = [...(host.querySelector('.office-sheet')?.children ?? [])].map((c) => c.className);
-  expect(kids.at(-1)).toBe('office-sheet__tabs');
+  expect(kids.at(-1)).toContain('office-sheet__tabs');
   expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
   await done();
 });

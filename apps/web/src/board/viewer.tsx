@@ -2,12 +2,11 @@
 import { updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { type Asset, isRawImageType } from '@inkadra/shared';
-import { Avatar, Button, fadeOutCopy, Icon } from '@inkadra/ui';
+import { Avatar, Button, fadeOutCopy, Icon, moveTabFocus } from '@inkadra/ui';
 import { memo, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { formatDateTime } from '../lib/datetime.ts';
-import { moveTabFocus } from '../lib/tabs.ts';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { addPalette } from './colors.ts';

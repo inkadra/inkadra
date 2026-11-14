@@ -22,6 +22,8 @@ import {
   Segmented,
   Switch,
   swallowOutsidePress,
+  Tabs,
+  useTabPanelFade,
 } from '@inkadra/ui';
 import {
   type ReactNode,
@@ -41,7 +43,6 @@ import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { useListMotion } from '../lib/list-motion.ts';
 import { signedInId } from '../lib/me.ts';
-import { moveTabFocus } from '../lib/tabs.ts';
 import { MyTasksTab } from '../routes/MyTasks.tsx';
 import { useProjects } from '../routes/projects-context.ts';
 import { formatStorage } from '../routes/StorageCharts.tsx';
@@ -416,6 +417,8 @@ export function NotificationList({
   // The days whose in-app reports are unfolded, by the id of their first report.
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
   const tabsId = useId();
+  const listPanel = useRef<HTMLDivElement>(null);
+  useTabPanelFade(listPanel, filter);
   const [actionError, setActionError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -728,41 +731,31 @@ export function NotificationList({
           </header>
         )}
         {fixed && (
-          <div
-            role="tablist"
-            aria-label={t('notifications.filter')}
+          <Tabs
+            id={tabsId}
+            label={t('notifications.filter')}
             className="notifications-filter-tabs"
             data-tour="inbox-filters"
-            // The arrows only move the focus: choosing a tab waits for Enter, Space or a click.
-            onKeyDown={moveTabFocus}
-          >
-            {INBOX_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                id={`${tabsId}-${tab.value}`}
-                type="button"
-                role="tab"
-                aria-selected={filter === tab.value}
-                aria-controls={`${tabsId}-panel`}
-                tabIndex={filter === tab.value ? 0 : -1}
-                className={`notifications-filter-tab ${filter === tab.value ? 'is-active' : ''}`}
-                onClick={() => setFilter(tab.value)}
-              >
-                {t(tab.label)}
-                {tab.value === 'all' && unread > 0 && (
-                  <span className="notifications-filter-tab__count">
+            value={filter}
+            onChange={setFilter}
+            items={INBOX_TABS.map((tab) => ({
+              id: tab.value,
+              label: t(tab.label),
+              count:
+                tab.value === 'all' && unread > 0 ? (
+                  <>
                     <span className="ink-sr-only">, </span>
                     {unreadBadge(unread)}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+                  </>
+                ) : undefined,
+            }))}
+          />
         )}
         {fixed && filter !== 'all' && filter !== 'tasks' && next && (
           <p className="notifications__helper">{t('notifications.loadedOnly')}</p>
         )}
         <div
+          ref={listPanel}
           className="notifications__list-container"
           {...(fixed
             ? {

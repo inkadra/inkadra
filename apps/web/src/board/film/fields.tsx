@@ -1,7 +1,7 @@
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
 import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
 import { Icon, Select } from '@inkadra/ui';
-import { type KeyboardEvent, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   addClassification,
@@ -344,58 +344,5 @@ export function TokenField({
         </datalist>
       )}
     </div>
-  );
-}
-
-/**
- * A time that is worked out when nobody sets it: shows the computed time, muted, and turns
- * into a time input on click. Clearing the input returns to the computed time.
- */
-export function AutoTime({
-  id,
-  value,
-  computed,
-  autoLabel,
-  disabled,
-  onChange,
-}: {
-  id: string;
-  value: string | null;
-  /** The time used when `value` is empty, already formatted; null when there is none. */
-  computed: string | null;
-  autoLabel: string;
-  disabled?: boolean | undefined;
-  onChange: (value: string | null) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-  if (!value && !editing && computed) {
-    return (
-      <button
-        id={id}
-        type="button"
-        className="ink-input auto-time"
-        disabled={disabled}
-        onClick={() => {
-          setEditing(true);
-          requestAnimationFrame(() => input.current?.focus());
-        }}
-      >
-        <span>{computed}</span>
-        <span className="auto-time__tag">{autoLabel}</span>
-      </button>
-    );
-  }
-  return (
-    <input
-      ref={input}
-      id={id}
-      className="ink-input"
-      type="time"
-      value={value ?? ''}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value || null)}
-      onBlur={() => setEditing(false)}
-    />
   );
 }

@@ -1336,38 +1336,10 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.board-card__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.board-card__tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-full);
-  background: transparent;
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-size: 10.5px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.board-card__tab:hover {
-  border-color: var(--ink-border-strong);
-}
-.board-card__tab[aria-selected="true"] {
-  background: var(--ink-surface-2);
-  border-color: var(--ink-border-strong);
-  color: var(--ink-text-primary);
-  font-weight: 600;
-}
-.board-card__tab:focus-visible {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: 1px;
-  box-shadow: none;
+/* Small segmented tabs; on a narrow card the names shorten rather than wrap. */
+.board-card__tabs .ink-tabs__tab {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .board-card__body {
   flex: 1;
@@ -4200,9 +4172,6 @@ button.crumb--editable:focus-visible {
 .ink-header .view-tabs::-webkit-scrollbar {
   display: none;
 }
-.ink-header .view-tabs__tab {
-  flex: none;
-}
 .board-header-editing {
   display: flex;
   align-items: center;
@@ -4225,10 +4194,10 @@ button.crumb--editable:focus-visible {
 }
 @media (width < 1600px) {
   /* Laptops: the tabs that are not open show their icon, with the name in the tooltip. */
-  .ink-header .view-tabs__tab:not([aria-selected="true"]) {
+  .ink-header .view-tabs .ink-tabs__tab:not([aria-selected="true"]) {
     padding: 0 7px;
   }
-  .ink-header .view-tabs__tab:not([aria-selected="true"]) .view-tabs__label {
+  .ink-header .view-tabs .ink-tabs__tab:not([aria-selected="true"]) .ink-tabs__label {
     display: none;
   }
 }
@@ -5162,10 +5131,6 @@ button.card__play {
   /* The views in the top-left panel, next to where am I. */
   .ink-shell > .ink-header .view-tabs {
     margin-left: 4px;
-    padding: 3px;
-  }
-  .ink-shell > .ink-header .view-tabs__tab {
-    height: 26px;
   }
   /* Comments is a quiet button next to Share, the panel's primary action. */
   .ink-shell > .ink-header .comments-button:not(:hover, [aria-expanded="true"]) {
@@ -5351,29 +5316,9 @@ button.card__play {
 }
 /* Sheet tabs sit below the sheet, on the stage, not inside it. */
 .office-sheet__tabs {
-  display: flex;
-  gap: 2px;
+  flex: none;
   margin-top: 8px;
-  padding: 4px;
-  align-self: flex-start;
   max-width: 100%;
-  overflow: auto;
-  background: var(--ink-bg-panel);
-  border-radius: var(--ink-radius-md);
-}
-.office-sheet__tabs button {
-  border: 0;
-  background: transparent;
-  color: var(--ink-text-secondary);
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: var(--ink-radius-sm);
-  white-space: nowrap;
-}
-.office-sheet__tabs button[aria-selected="true"] {
-  background: var(--ink-surface-1);
-  color: var(--ink-text-primary);
-  box-shadow: inset 0 0 0 1px var(--ink-border-default);
 }
 .office-info {
   display: grid;

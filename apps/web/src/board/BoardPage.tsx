@@ -15,7 +15,7 @@ import {
   type Project,
   type ProjectRole,
 } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, IconButton, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, Button, EmptyState, Icon, IconButton, ProjectGlyph, Tabs } from '@inkadra/ui';
 import {
   Fragment,
   lazy,
@@ -39,7 +39,6 @@ import { useHeaderContent } from '../lib/header.tsx';
 import { MODULE_GLYPHS, setModule, useModules } from '../lib/modules.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
-import { moveTabFocus } from '../lib/tabs.ts';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { addBoard } from '../routes/add-storyboard.ts';
 import { NotFound } from '../routes/NotFound.tsx';
@@ -330,42 +329,30 @@ function ViewTabs({
   const list = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => slideTabPill(list.current, view), [view]);
   return (
-    <div
-      ref={list}
+    <Tabs
+      id={id}
+      listRef={list}
+      variant="segmented"
       className="view-tabs"
-      role="tablist"
       data-tour="views"
-      aria-label={t('film.views.label')}
-      // The arrows walk the tabs; Enter and Space pick one, as on any button.
-      onKeyDown={moveTabFocus}
-    >
-      <span className="view-tabs__pill" aria-hidden="true" />
-      {tabs.map((v) => (
-        <button
-          key={v}
-          id={`${id}-${v}`}
-          type="button"
-          role="tab"
-          aria-selected={view === v}
-          aria-controls={`${id}-panel`}
-          tabIndex={view === v ? 0 : -1}
-          className="view-tabs__tab"
+      label={t('film.views.label')}
+      value={view}
+      onChange={onChoose}
+      items={tabs.map((v) => ({
+        id: v,
+        label: t(viewLabelKey(v, kind)),
+        icon: <Icon name={viewIcon(v)} contentKind={v} size={14} />,
+        props: {
           // On narrow desktops only the open tab keeps its name: the rest say it on hover.
-          aria-label={t(viewLabelKey(v, kind))}
-          data-ink-tooltip={t(viewLabelKey(v, kind))}
+          'aria-label': t(viewLabelKey(v, kind)),
+          'data-ink-tooltip': t(viewLabelKey(v, kind)),
           // Focus on press would scroll a tab cut off by the strip out from under the
           // pointer: the release lands on its neighbour and the click is lost.
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={(e) => {
-            e.currentTarget.focus({ preventScroll: true });
-            onChoose(v);
-          }}
-        >
-          <Icon name={viewIcon(v)} contentKind={v} size={14} />
-          <span className="view-tabs__label">{t(viewLabelKey(v, kind))}</span>
-        </button>
-      ))}
-    </div>
+          onMouseDown: (e) => e.preventDefault(),
+          onClick: (e) => e.currentTarget.focus({ preventScroll: true }),
+        },
+      }))}
+    />
   );
 }
 

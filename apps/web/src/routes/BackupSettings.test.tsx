@@ -58,7 +58,10 @@ it('shows the last result, the schedule and the history', async () => {
   expect(host.textContent).toContain('backups.failure.stalled');
   expect(host.textContent).not.toContain('backups.notInBucket');
   expect(host.textContent).toContain('inkadra-backup-20261102-030000-0193f0a4.zip');
-  expect(host.querySelector<HTMLInputElement>('input[type=time]')?.value).toBe('03:00');
+  const time = [
+    ...host.querySelectorAll<HTMLInputElement>('.backup-settings__time .ink-time__seg'),
+  ];
+  expect(time.map((s) => s.value).join(':')).toBe('03:00');
   expect(host.querySelector<HTMLButtonElement>('.ink-select')?.dataset.value).toBe('7');
   // Backups are never offered as a download from the browser.
   expect(host.querySelector('a[download]')).toBeNull();

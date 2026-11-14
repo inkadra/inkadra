@@ -8,6 +8,7 @@ import {
   useRef,
 } from 'react';
 import { Icon } from './icons.tsx';
+import { useSlidingIndicator } from './tabs.tsx';
 
 type ChoiceProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   ref?: Ref<HTMLInputElement>;
@@ -116,6 +117,9 @@ function Choices<T extends string>({
   segmented,
 }: RadioGroupProps<T> & { segmented: boolean }) {
   const id = useId();
+  const optionsRef = useRef<HTMLDivElement>(null);
+  // Segmented: the checked option sits on the segmented tabs' raised thumb, which slides (#771).
+  useSlidingIndicator(optionsRef, '[data-checked]', value);
   return (
     <fieldset
       className={`ink-radio-group ${segmented ? 'ink-segmented' : ''} ${className}`.trim()}
@@ -123,11 +127,13 @@ function Choices<T extends string>({
       disabled={disabled}
     >
       <legend className={hideLabel ? 'ink-sr-only' : 'ink-radio-group__legend'}>{label}</legend>
-      <div className="ink-radio-group__options">
+      <div ref={optionsRef} className="ink-radio-group__options">
+        {segmented && <span className="ink-tabs__ind" aria-hidden="true" />}
         {options.map((option) => (
           <label
             key={option.value}
             className="ink-radio-group__option"
+            data-checked={value === option.value || undefined}
             data-ink-tooltip={option.tooltip}
           >
             <Radio

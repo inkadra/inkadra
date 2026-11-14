@@ -106,42 +106,9 @@
 }
 
 .notifications-filter-tabs {
-  display: flex;
-  gap: 2px;
-  padding: 12px 12px 0;
   flex: none;
-  background: transparent;
-}
-
-.notifications-filter-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 9px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-nav);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.notifications-filter-tab:hover {
-  color: var(--ink-text-primary);
-}
-.notifications-filter-tab:focus-visible {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: -2px;
-  box-shadow: none;
-}
-.notifications-filter-tab.is-active {
-  background: var(--ink-surface-2);
-  color: var(--ink-text-primary);
-}
-.notifications-filter-tab__count {
-  font-size: 11px;
-  color: var(--ink-accent-soft-fg);
+  margin: 0 12px;
+  padding-top: 8px;
 }
 
 .notification__av {
@@ -725,9 +692,6 @@
     border-radius: var(--ink-radius-lg);
     box-shadow: var(--ink-float-shadow);
     transition: left var(--ink-dur-slow) var(--ink-ease-out);
-  }
-  .notifications--fixed .notifications-filter-tabs {
-    flex-wrap: wrap;
   }
 }
 /* With a mouse a row's Mark as read waits for the row, over its time: the text keeps its width. */

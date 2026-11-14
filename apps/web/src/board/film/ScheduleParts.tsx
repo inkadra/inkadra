@@ -15,10 +15,12 @@ import {
   Icon,
   IconButton,
   Select,
+  TabPanel,
+  Tabs,
+  TimeField,
 } from '@inkadra/ui';
 import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { moveTabFocus } from '../../lib/tabs.ts';
 import { SetupChips } from '../plan/SetupChips.tsx';
 import { ScenePlanButton } from '../plan/scenes.tsx';
 import { groupBySetup, type ShotSetup } from '../plan/setups.ts';
@@ -33,9 +35,9 @@ import {
 } from './calendar.ts';
 import { plannedWrap } from './call-sheet.ts';
 import { FramePicture } from './FramePicture.tsx';
-import { AutoTime, TokenField } from './fields.tsx';
+import { TokenField } from './fields.tsx';
 import type { CalendarDay } from './ScheduleCalendar.tsx';
-import { clockLabel, scheduleTimes } from './schedule.ts';
+import { clockLabel, fieldClock, scheduleTimes } from './schedule.ts';
 import {
   type BlockLook,
   offersWhole,
@@ -753,14 +755,17 @@ export function BlockEditor({
         <div className="schedule__pair">
           <label className="schedule__field" htmlFor={`${id}-start`}>
             {t('schedule.start')}
-            <AutoTime
+            <TimeField
               key={block.id}
               id={`${id}-start`}
+              label={t('schedule.start')}
               value={block.start}
-              computed={clockLabel(slot.start)}
+              auto={fieldClock(slot.start).time}
               autoLabel={after}
+              suffix={fieldClock(slot.start).suffix}
+              clearLabel={t('timeField.clearNamed', { name: t('schedule.start') })}
               disabled={locked}
-              onChange={(start) => update({ start }, `start:${block.id}`)}
+              onChange={(start) => update({ start: start || null }, `start:${block.id}`)}
             />
           </label>
           {variant === 'sheet' ? (
@@ -1008,6 +1013,7 @@ export function DayPanel({
   const { draft, stale } = entry;
   const disabled = readOnly || busy;
   const wrapAuto = plannedWrap({ ...draft, wrap: null });
+  const wrapEnd = plannedWrap(draft);
   const valid = DaySchema.safeParse(draft).success;
   const update = (patch: Partial<ShootingDayInput>, key?: string) =>
     onChange({ ...draft, ...patch }, key);
@@ -1084,24 +1090,27 @@ export function DayPanel({
               onChange={(date) => update({ date }, 'date')}
             />
           </label>
-          <label>
+          <label htmlFor={`${idBase}-call`}>
             {t('schedule.callTime')}
-            <input
-              className="ink-input"
-              type="time"
+            <TimeField
+              id={`${idBase}-call`}
+              label={t('schedule.callTime')}
               required
               value={draft.callTime}
-              onChange={(e) => update({ callTime: e.target.value }, 'call')}
+              onChange={(callTime) => update({ callTime }, 'call')}
             />
           </label>
           <label htmlFor={`${idBase}-wrap`}>
             {t('schedule.wrap')}
-            <AutoTime
+            <TimeField
               id={`${idBase}-wrap`}
+              label={t('schedule.wrap')}
               value={draft.wrap}
-              computed={wrapAuto === null ? null : clockLabel(wrapAuto)}
+              auto={wrapAuto === null ? null : fieldClock(wrapAuto).time}
               autoLabel={t('schedule.auto')}
-              onChange={(wrap) => update({ wrap }, 'wrap')}
+              suffix={wrapEnd === null ? undefined : fieldClock(wrapEnd).suffix}
+              clearLabel={t('timeField.clearNamed', { name: t('schedule.wrap') })}
+              onChange={(wrap) => update({ wrap: wrap || null }, 'wrap')}
             />
           </label>
         </div>
@@ -1172,42 +1181,23 @@ export function DayPanel({
         <h2>{long.charAt(0).toLocaleUpperCase() + long.slice(1)}</h2>
         <p className="schedule__summary">{summary}</p>
       </header>
-      <div
+      <Tabs
+        id={`${idBase}-tab`}
         className="schedule__tabs"
-        role="tablist"
-        aria-label={t('schedule.inspector')}
-        onKeyDown={moveTabFocus}
-      >
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            id={`${idBase}-tab-${item.id}`}
-            type="button"
-            role="tab"
-            className="schedule__tab"
-            aria-selected={current?.id === item.id}
-            aria-controls={`${idBase}-panel`}
-            tabIndex={current?.id === item.id ? 0 : -1}
-            onClick={() => onTab(item.id)}
-          >
-            {/* The tour points at the calls tab (decision 0092). */}
-            {item.id === 'calls' ? (
-              <span data-tour="schedule-calls">{item.label}</span>
-            ) : (
-              item.label
-            )}
-            {!!item.count && <span className="schedule__tab-count">{item.count}</span>}
-          </button>
-        ))}
-      </div>
-      <div
-        role="tabpanel"
-        id={`${idBase}-panel`}
-        aria-labelledby={`${idBase}-tab-${current?.id}`}
-        className="schedule__panel"
-      >
+        label={t('schedule.inspector')}
+        value={current?.id ?? 'day'}
+        onChange={onTab}
+        items={tabs.map((item) => ({
+          id: item.id,
+          // The tour points at the calls tab (decision 0092).
+          label:
+            item.id === 'calls' ? <span data-tour="schedule-calls">{item.label}</span> : item.label,
+          count: item.count || undefined,
+        }))}
+      />
+      <TabPanel id={`${idBase}-tab`} value={current?.id ?? 'day'} className="schedule__panel">
         {current?.panel()}
-      </div>
+      </TabPanel>
     </aside>
   );
 }

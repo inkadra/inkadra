@@ -9,11 +9,12 @@ import {
   variantView,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, Tabs } from '@inkadra/ui';
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -146,6 +147,7 @@ export function PlanViewer({
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const setupTabsId = useId();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [cache] = useState(() => new ExportCache());
@@ -196,6 +198,8 @@ export function PlanViewer({
       aria-modal="true"
       aria-label={planTitle(t, shown)}
       onKeyDown={(e) => {
+        // The setup tabs took the arrow to move the focus.
+        if (e.defaultPrevented) return;
         if (e.key === 'Escape') onClose();
         else if (e.key === '+' || e.key === '=') surface.zoomBy(1);
         else if (e.key === '-') surface.zoomBy(-1);
@@ -219,28 +223,14 @@ export function PlanViewer({
           </span>
         </div>
         {tabs.length > 1 && (
-          <div className="plan-setups" role="tablist" aria-label={t('board.plan.setups')}>
-            {tabs.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                className="plan-setups__tab"
-                aria-selected={p.id === plan.id}
-                tabIndex={p.id === plan.id ? 0 : -1}
-                onClick={() => p.id !== plan.id && onSwitch?.(p.id)}
-                onKeyDown={(e) => {
-                  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-                  const i =
-                    tabs.findIndex((f) => f.id === p.id) + (e.key === 'ArrowRight' ? 1 : -1);
-                  const next = tabs[(i + tabs.length) % tabs.length];
-                  if (next && next.id !== plan.id) onSwitch?.(next.id);
-                }}
-              >
-                {setupName(p, tabs, t)}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            id={setupTabsId}
+            className="plan-setups"
+            label={t('board.plan.setups')}
+            value={plan.id}
+            onChange={(id) => onSwitch?.(id)}
+            items={tabs.map((p) => ({ id: p.id, label: setupName(p, tabs, t) }))}
+          />
         )}
         <div className="plan-top__end">
           {store && (

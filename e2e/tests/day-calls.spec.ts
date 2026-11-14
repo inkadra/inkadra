@@ -74,10 +74,12 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
   await expect(inspector.getByRole('checkbox', { name: 'Ada Neri convocato oggi' })).toBeChecked();
   await expect(inspector.getByText('Non convocato oggi · Bruno Sala')).toBeVisible();
   // The call shows the day's call until a time is typed.
-  const call = inspector.getByLabel('Convocazione di Ada Neri', { exact: true });
-  await expect(call).toContainText('07:00');
-  await call.click();
-  await call.fill('06:15');
+  const call = inspector.getByRole('group', { name: 'Convocazione di Ada Neri', exact: true });
+  const callHours = call.getByRole('spinbutton', { name: 'Ore' });
+  await expect(callHours).toHaveValue('07');
+  await expect(call.getByRole('spinbutton', { name: 'Minuti' })).toHaveValue('00');
+  await callHours.click();
+  await page.keyboard.type('0615');
   await inspector.getByLabel('Pick-up di Ada Neri', { exact: true }).fill('Hotel Roma');
   await expect(schedule.locator('.schedule__status')).toHaveText(/Salvato alle/);
 

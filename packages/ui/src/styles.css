@@ -262,6 +262,122 @@ select {
 .ink-date:has(.ink-date__input:disabled) {
   opacity: 0.6;
 }
+/* TimeField (#772): the date field's box with typed segments, and a clock for the list. */
+.ink-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ink-time {
+  cursor: text;
+  font-variant-numeric: tabular-nums;
+}
+.ink-time.is-invalid {
+  border-color: var(--ink-status-danger);
+}
+.ink-time.is-disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.ink-time__segs {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+.ink-time__part {
+  display: flex;
+  align-items: center;
+}
+.ink-time__seg {
+  width: 2ch;
+  height: auto;
+  margin: 0;
+  padding: 1px 2px;
+  box-sizing: content-box;
+  border: 0;
+  border-radius: var(--ink-radius-xs);
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  caret-color: transparent;
+  outline: none;
+  cursor: inherit;
+}
+.ink-time__seg::selection {
+  background: transparent;
+}
+.ink-time__seg.is-empty,
+.ink-time.is-auto .ink-time__seg {
+  color: var(--ink-text-muted);
+}
+.ink-time.is-auto .ink-time__seg {
+  color: var(--ink-text-secondary);
+}
+.ink-time__seg--period {
+  width: 2.8ch;
+  margin-left: 3px;
+}
+.ink-time__seg:focus {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  /* The filled segment is the focus mark, from the keyboard too. */
+  box-shadow: none;
+}
+.ink-time__seg:disabled {
+  cursor: default;
+}
+.ink-time__sep {
+  padding: 0 1px;
+  color: var(--ink-text-muted);
+}
+.ink-time__auto {
+  /* Gives way first in a narrow field: the time and the clock stay whole. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: -4px;
+  padding: 0 6px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-muted);
+  font-size: 11px;
+  line-height: 18px;
+}
+.ink-time__next {
+  flex: none;
+  margin-left: -4px;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+}
+.ink-time__btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-xs);
+  background: none;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+}
+.ink-time__btn:hover:not(:disabled) {
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-2);
+}
+.ink-time__btn:disabled {
+  cursor: default;
+}
+/* The × (when shown) or the clock sits at the right end. */
+.ink-time > button:first-of-type {
+  margin-left: auto;
+}
 .ink-input::placeholder {
   color: var(--ink-text-muted);
 }
@@ -1277,7 +1393,8 @@ select {
     height: 44px;
     font-size: 16px;
   }
-  .ink-date__clear {
+  .ink-date__clear,
+  .ink-time__btn {
     width: 36px;
     height: 36px;
   }
@@ -1802,6 +1919,78 @@ select {
   color: var(--ink-text-muted);
   cursor: default;
 }
+/* The time list: the calendar's surface with a column of hours and one of minutes (and AM/PM).
+   Each column's heading stays above its own scrolling list, so it never covers an entry. */
+.ink-time__layer {
+  width: auto;
+}
+.ink-time__panel {
+  padding: 8px;
+}
+.ink-time__cols {
+  display: flex;
+  gap: 4px;
+}
+.ink-time__col {
+  display: flex;
+  flex-direction: column;
+  width: 56px;
+}
+.ink-time__col + .ink-time__col {
+  padding-left: 4px;
+  border-left: 1px solid var(--ink-border-muted);
+}
+.ink-time__colhead {
+  padding: 2px 0 4px;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.ink-time__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 196px;
+  padding: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  scrollbar-width: thin;
+}
+.ink-time__opt {
+  flex: none;
+  height: 30px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  scroll-snap-align: center;
+  transition:
+    background-color var(--ink-dur-fast) var(--ink-ease-out),
+    color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.ink-time__opt:hover {
+  background: var(--ink-surface-2);
+}
+.ink-time__opt:focus-visible {
+  outline: none;
+  box-shadow: var(--ink-focus-ring-inset);
+}
+.ink-time__opt[aria-selected="true"] {
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font-weight: 600;
+}
+.ink-time__panel .ink-date__foot {
+  margin-top: 8px;
+  padding-top: 8px;
+}
 @media (max-width: 479px), (pointer: coarse) {
   .ink-date__layer {
     inset: 0;
@@ -1878,6 +2067,30 @@ select {
   .ink-date__quiet {
     height: 44px;
     font-size: 15px;
+  }
+  /* The time list as a short sheet: two wide columns, entries of a thumb's height. */
+  .ink-time__layer {
+    width: auto;
+  }
+  .ink-time__panel {
+    padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .ink-time__cols {
+    justify-content: center;
+    gap: 8px;
+  }
+  .ink-time__col {
+    width: 96px;
+  }
+  .ink-time__col + .ink-time__col {
+    padding-left: 8px;
+  }
+  .ink-time__list {
+    height: 228px;
+  }
+  .ink-time__opt {
+    height: 44px;
+    font-size: 17px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2234,28 +2447,31 @@ select {
   margin-top: 6px;
 }
 
-/* Segmented: the same radios drawn as segments; the checked one is raised, never blue. */
+/* Segmented: the same radios drawn as segments, with the segmented tabs' look (#771): the checked
+   one sits on a raised thumb (.ink-tabs__ind) that slides to the new choice. */
 .ink-segmented .ink-radio-group__options {
+  position: relative;
   flex-direction: row;
   align-self: flex-start;
   gap: 2px;
   max-width: 100%;
   width: fit-content;
   padding: 2px;
-  border: 1px solid var(--ink-border-default);
   border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-2);
 }
 .ink-segmented .ink-radio-group__option {
   position: relative;
+  z-index: 1;
   align-items: center;
-  height: 26px;
+  height: 28px;
   padding: 0 10px;
   border-radius: calc(var(--ink-radius-sm) - 2px);
   color: var(--ink-text-secondary);
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
+  transition: color var(--ink-dur-fast) var(--ink-ease-out);
 }
 .ink-segmented .ink-radio-group__option > .ink-choice {
   position: absolute;
@@ -2265,14 +2481,14 @@ select {
   margin: 0;
   border-radius: inherit;
 }
+.ink-segmented .ink-choice:has(> input:focus-visible) {
+  box-shadow: var(--ink-focus-ring-inset);
+}
 .ink-segmented .ink-choice__box {
   display: none;
 }
-.ink-segmented .ink-radio-group__option:hover {
-  color: var(--ink-text-primary);
-}
+.ink-segmented .ink-radio-group__option:hover,
 .ink-segmented .ink-radio-group__option:has(input:checked) {
-  background: var(--ink-surface-3);
   color: var(--ink-text-primary);
 }
 .ink-segmented .ink-radio-group__option:has(input:disabled) {
@@ -2363,6 +2579,177 @@ select {
   .ink-choice__box,
   .ink-switch__track,
   .ink-switch__track::after {
+    transition: none;
+  }
+}
+
+/* Tabs (#771) ---------------------------------------------------------------- */
+
+/* One bar, two looks. The chosen tab keeps the weight of the others, so no label changes width;
+   its line (line) or raised thumb (segmented) is one indicator that slides between tabs with
+   transform only (tabs.tsx). */
+.ink-tabs {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.ink-tabs__tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.ink-tabs__tab:hover,
+.ink-tabs__tab[aria-selected="true"] {
+  color: var(--ink-text-primary);
+}
+.ink-tabs__tab:focus-visible {
+  outline: none;
+  box-shadow: var(--ink-focus-ring-inset);
+}
+.ink-tabs__tab:disabled {
+  color: var(--ink-text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ink-tabs__tab > svg {
+  flex: none;
+}
+.ink-tabs__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ink-tabs__count {
+  min-width: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  line-height: 17px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition:
+    background-color var(--ink-dur-fast) var(--ink-ease-out),
+    color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.ink-tabs__tab[aria-selected="true"] .ink-tabs__count {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.ink-tabs__ind {
+  position: absolute;
+  left: 0;
+  width: 0;
+  pointer-events: none;
+  transform-origin: 0 50%;
+}
+
+/* line: sections of a dialog, panel or page; scrolls sideways, the cut edges fade. */
+.ink-tabs--line {
+  gap: 2px;
+  border-bottom: 1px solid var(--ink-border-muted);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ink-tabs--line::-webkit-scrollbar {
+  display: none;
+}
+.ink-tabs--line .ink-tabs__tab {
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  border-radius: var(--ink-radius-xs) var(--ink-radius-xs) 0 0;
+}
+.ink-tabs--line .ink-tabs__ind {
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--ink-accent-primary);
+}
+.ink-tabs--line.is-clip-end {
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+.ink-tabs--line.is-clip-start {
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+}
+.ink-tabs--line.is-clip-start.is-clip-end {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 28px,
+    #000 calc(100% - 28px),
+    transparent
+  );
+}
+
+/* segmented: two to five short, fixed modes of the same content; the chosen one is raised. */
+.ink-tabs--segmented {
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px;
+  box-sizing: border-box;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+}
+.ink-tabs--segmented .ink-tabs__tab {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: calc(var(--ink-radius-sm) - 2px);
+}
+.ink-tabs--segmented .ink-tabs__ind,
+.ink-segmented .ink-tabs__ind {
+  top: 2px;
+  bottom: 2px;
+  border-radius: calc(var(--ink-radius-sm) - 2px);
+  background: var(--ink-surface-1);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.2),
+    inset 0 0 0 1px var(--ink-border-muted);
+}
+.ink-tabs--sm .ink-tabs__tab {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.ink-tabs--fill {
+  width: 100%;
+}
+.ink-tabs--fill .ink-tabs__tab {
+  flex: 1 1 0;
+  min-width: 0;
+}
+@media (width < 768px) {
+  .ink-tabs--line .ink-tabs__tab {
+    height: 44px;
+    padding: 0 12px;
+    font-size: 15px;
+  }
+  .ink-tabs--segmented .ink-tabs__tab {
+    height: 40px;
+    min-width: 44px;
+    font-size: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-tabs__tab,
+  .ink-tabs__count,
+  .ink-segmented .ink-radio-group__option,
+  .ink-time__opt {
     transition: none;
   }
 }

@@ -9,7 +9,16 @@ import {
   moveFrames,
   updateElement,
 } from '@inkadra/canvas-core';
-import { Button, Checkbox, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
+import {
+  Button,
+  Checkbox,
+  EmptyState,
+  Icon,
+  IconButton,
+  Select,
+  Tabs,
+  useTabPanelFade,
+} from '@inkadra/ui';
 import {
   useCallback,
   useEffect,
@@ -23,7 +32,6 @@ import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
 import { useListMotion } from '../../lib/list-motion.ts';
 import { useIsPhone } from '../../lib/phone.ts';
-import { moveTabFocus } from '../../lib/tabs.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
 import { SetupChips } from '../plan/SetupChips.tsx';
@@ -86,6 +94,8 @@ export function ShotList({
   const phone = useIsPhone();
   const [mode, setMode] = useState<'table' | 'kanban'>('table');
   const tabsId = useId();
+  const layoutPanel = useRef<HTMLDivElement>(null);
+  useTabPanelFade(layoutPanel, mode);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<ShotDisplayStatus | ''>('');
   const [selectedScene, setSelectedScene] = useState<string>('');
@@ -788,41 +798,28 @@ export function ShotList({
   return (
     <div className="shots" ref={containerRef} data-tour="shotlist">
       <div className="story__bar" data-chrome>
-        <div
+        <Tabs
+          id={tabsId}
+          variant="segmented"
           className="view-tabs"
-          role="tablist"
           data-tour="shotlist-layouts"
           // Not the header's "View": two tab bars with one name would be told apart by nothing.
-          aria-label={t('film.list.layouts')}
-          onKeyDown={moveTabFocus}
-        >
-          <button
-            type="button"
-            role="tab"
-            id={`${tabsId}-table`}
-            aria-selected={mode === 'table'}
-            aria-controls={`${tabsId}-panel`}
-            tabIndex={mode === 'table' ? 0 : -1}
-            className="view-tabs__tab"
-            onClick={() => setMode('table')}
-          >
-            <Icon name="shotlist" size={14} />
-            <span className="shots__mode-label">{t('film.list.table')}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id={`${tabsId}-kanban`}
-            aria-selected={mode === 'kanban'}
-            aria-controls={`${tabsId}-panel`}
-            tabIndex={mode === 'kanban' ? 0 : -1}
-            className="view-tabs__tab"
-            onClick={() => setMode('kanban')}
-          >
-            <Icon name="board" size={14} />
-            <span className="shots__mode-label">{t('film.list.kanban')}</span>
-          </button>
-        </div>
+          label={t('film.list.layouts')}
+          value={mode}
+          onChange={setMode}
+          items={[
+            {
+              id: 'table',
+              label: <span className="shots__mode-label">{t('film.list.table')}</span>,
+              icon: <Icon name="shotlist" size={14} />,
+            },
+            {
+              id: 'kanban',
+              label: <span className="shots__mode-label">{t('film.list.kanban')}</span>,
+              icon: <Icon name="board" size={14} />,
+            },
+          ]}
+        />
 
         <input
           className="ink-input shots__filter"
@@ -921,6 +918,7 @@ export function ShotList({
 
       <div className="story__main">
         <div
+          ref={layoutPanel}
           className="shots__scroll"
           data-scroll
           role="tabpanel"

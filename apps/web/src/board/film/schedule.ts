@@ -16,6 +16,20 @@ export function clockLabel(minutes: number): string {
   return `${formatClock(clock)}${day ? ` (+${day})` : ''}`;
 }
 
+/**
+ * A time of the schedule for a TimeField: its "HH:MM" on the clock and, when it falls on a
+ * later day than the call, the "(+1)" that `clockLabel` writes after it.
+ */
+export function fieldClock(minutes: number): { time: string; suffix: string | undefined } {
+  const day = Math.floor(minutes / 1440);
+  const local = minutes % 1440;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    time: `${pad(Math.floor(local / 60))}:${pad(local % 60)}`,
+    suffix: day ? `(+${day})` : undefined,
+  };
+}
+
 export function newScheduleBlock(
   type: ScheduleBlock['type'],
   shotId: string | null = null,

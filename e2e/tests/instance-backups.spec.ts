@@ -25,8 +25,10 @@ async function login(page: Page, who: { email: string; password: string }) {
   await expect(page).not.toHaveURL(/\/login/);
 }
 
-const isBackupSettings = (r: { url(): string; request(): { method(): string } }) =>
-  r.url().endsWith('/instance/backups/settings') && r.request().method() === 'PATCH';
+const isBackupSettings = (r: {
+  url(): string;
+  request(): { method(): string; postData(): string | null };
+}) => r.url().endsWith('/instance/backups/settings') && r.request().method() === 'PATCH';
 
 test('the administrator backs up now and finds the backup in the history', async ({ page }) => {
   await login(page, admin);
@@ -69,7 +71,9 @@ test('the nightly schedule, its time and the retention persist after a reload', 
   await login(page, admin);
   await page.goto('/settings?section=backups');
   const nightly = page.getByRole('switch', { name: 'Backup notturno' });
-  const time = page.getByLabel('Ora', { exact: true });
+  const time = page.getByRole('group', { name: 'Ora', exact: true });
+  const hours = time.getByRole('spinbutton', { name: 'Ore' });
+  const minutes = time.getByRole('spinbutton', { name: 'Minuti' });
   const keep = page.getByLabel('Conserva', { exact: true });
   await expect(time).toBeVisible();
   // Start from off, whatever the default is: the time is off limits until the backup is on.
@@ -78,16 +82,20 @@ test('the nightly schedule, its time and the retention persist after a reload', 
     await nightly.uncheck();
     expect((await off).ok()).toBe(true);
   }
-  await expect(time).toBeDisabled();
+  await expect(hours).toBeDisabled();
 
   let saved = page.waitForResponse(isBackupSettings);
   await nightly.check();
   expect((await saved).ok()).toBe(true);
-  await expect(time).toBeEnabled();
+  await expect(hours).toBeEnabled();
   await expect(page.getByText(/^Prossimo:/)).toBeVisible();
 
-  saved = page.waitForResponse(isBackupSettings);
-  await time.fill('03:45');
+  // Typed in the time field's segments; the hour alone may save first, so wait for 03:45.
+  saved = page.waitForResponse(
+    (r) => isBackupSettings(r) && (r.request().postData() ?? '').includes('03:45'),
+  );
+  await hours.click();
+  await page.keyboard.type('0345');
   expect((await saved).ok()).toBe(true);
 
   saved = page.waitForResponse(isBackupSettings);
@@ -96,7 +104,8 @@ test('the nightly schedule, its time and the retention persist after a reload', 
 
   await page.reload();
   await expect(nightly).toBeChecked();
-  await expect(time).toHaveValue('03:45');
+  await expect(hours).toHaveValue('03');
+  await expect(minutes).toHaveValue('45');
   await expect(keep).toHaveAttribute('data-value', '3');
   await expect(page.getByText(/^Prossimo:/)).toContainText('03:45');
 
@@ -106,8 +115,9 @@ test('the nightly schedule, its time and the retention persist after a reload', 
   expect((await saved).ok()).toBe(true);
   await page.reload();
   await expect(nightly).not.toBeChecked();
-  await expect(time).toBeDisabled();
-  await expect(time).toHaveValue('03:45');
+  await expect(hours).toBeDisabled();
+  await expect(hours).toHaveValue('03');
+  await expect(minutes).toHaveValue('45');
   await expect(keep).toHaveAttribute('data-value', '3');
   await expect(
     page.getByText('Disattivato: i backup partono solo quando li avvii tu.'),

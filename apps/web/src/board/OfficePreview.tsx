@@ -1,8 +1,8 @@
 /* biome-ignore-all lint/suspicious/noArrayIndexKey: immutable worker grids use stable cell/page coordinates */
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type Asset, OfficePreview as OfficePreviewSchema } from '@inkadra/shared';
-import { Button } from '@inkadra/ui';
-import { useEffect, useId, useState } from 'react';
+import { Button, Tabs, useTabPanelFade } from '@inkadra/ui';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fileBadge, fileFamily } from './file-kinds.ts';
 import { isNumeric, type OfficePreview, officeUrl, SHEET_PREVIEW, tableable } from './office.ts';
@@ -48,6 +48,8 @@ export function OfficeStage({
   const [zoom, setZoom] = useState(100);
   const [failed, setFailed] = useState(false);
   const tabsId = useId();
+  const sheetPanel = useRef<HTMLElement>(null);
+  useTabPanelFade(sheetPanel, String(sheet));
   const selected = data?.sheets[sheet] ?? data?.sheets[0];
   const pages = data?.pageCount ?? 0;
   if (data === undefined) return <p role="status">{t('office.loading')}</p>;
@@ -57,6 +59,7 @@ export function OfficeStage({
     return (
       <div className="office-sheet">
         <section
+          ref={sheetPanel}
           className="office-sheet__scroll ink-paper"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users must be able to scroll the bounded sheet
           tabIndex={0}
@@ -102,22 +105,14 @@ export function OfficeStage({
           </p>
         )}
         {tabbed && data && (
-          <div className="office-sheet__tabs" role="tablist" aria-label={t('office.sheets')}>
-            {data.sheets.map((s, i) => (
-              <button
-                type="button"
-                role="tab"
-                id={`${tabsId}-${i}`}
-                aria-selected={sheet === i}
-                aria-controls={`${tabsId}-panel`}
-                tabIndex={sheet === i ? 0 : -1}
-                key={i}
-                onClick={() => setSheet(i)}
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            id={tabsId}
+            className="office-sheet__tabs"
+            label={t('office.sheets')}
+            value={String(sheet)}
+            onChange={(i) => setSheet(Number(i))}
+            items={data.sheets.map((s, i) => ({ id: String(i), label: s.name }))}
+          />
         )}
       </div>
     );

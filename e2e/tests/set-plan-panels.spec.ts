@@ -119,7 +119,8 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
     const name = editor.getByRole('textbox', { name: 'Nome del setup' });
     // The tablist holds its tabs only, the field lies over the tab outside it.
     await expect(tabs.getByRole('textbox')).toHaveCount(0);
-    await expect(tabs.locator(':scope > *:not([role="tab"])')).toHaveCount(0);
+    // Only the tabs, and the sliding line hidden from assistive technology.
+    await expect(tabs.locator(':scope > *:not([role="tab"], [aria-hidden="true"])')).toHaveCount(0);
     await name.fill('Master');
     await name.press('Enter');
     await expect(tabs.getByRole('tab')).toHaveText(['1 · Master', '2 · PP Anna']);
@@ -130,14 +131,19 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
     await name.fill('Altro');
     await name.press('Escape');
     await expect(tabs.getByRole('tab', { name: '1 · Master' })).toBeFocused();
-    // The arrows move between the setups, the focus following the tab.
+    // The arrows move the focus between the setups and Enter switches (#455); the focus stays
+    // on the tab of the setup that opens.
     await page.keyboard.press('ArrowRight');
     const second = editor
       .getByRole('tablist', { name: 'Setup' })
       .getByRole('tab', { name: '2 · PP Anna' });
+    await expect(second).toBeFocused();
+    await expect(second).toHaveAttribute('aria-selected', 'false');
+    await page.keyboard.press('Enter');
     await expect(second).toHaveAttribute('aria-selected', 'true');
     await expect(second).toBeFocused();
     await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Enter');
     await expect(
       editor.getByRole('tablist', { name: 'Setup' }).getByRole('tab', { name: '1 · Master' }),
     ).toHaveAttribute('aria-selected', 'true');

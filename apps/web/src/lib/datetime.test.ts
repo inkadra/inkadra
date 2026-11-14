@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, formatDateTime } from './datetime.ts';
+import { formatClock, formatDateTime, uses12h } from './datetime.ts';
 
 const at = new Date(2026, 10, 14, 7, 30);
 const medium = { dateStyle: 'medium', timeStyle: 'short' } as const;
@@ -50,5 +50,14 @@ describe('formatDateTime language', () => {
     expect(formatDateTime(at, day, { dateFormat: 'auto', timeFormat: 'auto' }, 'en-GB')).toBe(
       new Intl.DateTimeFormat('en-GB', day).format(at),
     );
+  });
+});
+
+describe('uses12h', () => {
+  it('follows the chosen clock, or the interface language for Automatic', () => {
+    expect(uses12h({ dateFormat: 'auto', timeFormat: '12h' }, 'it')).toBe(true);
+    expect(uses12h({ dateFormat: 'auto', timeFormat: '24h' }, 'en-US')).toBe(false);
+    expect(uses12h({ dateFormat: 'auto', timeFormat: 'auto' }, 'it')).toBe(false);
+    expect(uses12h({ dateFormat: 'auto', timeFormat: 'auto' }, 'en-US')).toBe(true);
   });
 });

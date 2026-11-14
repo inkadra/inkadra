@@ -221,6 +221,15 @@
     "previousYear": "Previous year",
     "nextYear": "Next year"
   },
+  "timeField": {
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "period": "AM/PM",
+    "choose": "Choose a time",
+    "now": "Now",
+    "required": "Enter a time",
+    "clearNamed": "Clear {{name}}"
+  },
   "notFound": {
     "title": "Page not found",
     "back": "Back to home"
