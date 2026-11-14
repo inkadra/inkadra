@@ -1,0 +1,34 @@
+{
+  "apps/server": {
+    "lines": 86,
+    "branches": 76
+  },
+  "apps/web": {
+    "lines": 57,
+    "branches": 48
+  },
+  "apps/clipper": {
+    "lines": 51,
+    "branches": 58
+  },
+  "packages/canvas-core": {
+    "lines": 91,
+    "branches": 79
+  },
+  "packages/doc-schema": {
+    "lines": 94,
+    "branches": 85
+  },
+  "packages/print": {
+    "lines": 78,
+    "branches": 61
+  },
+  "packages/shared": {
+    "lines": 94,
+    "branches": 83
+  },
+  "packages/ui": {
+    "lines": 10,
+    "branches": 10
+  }
+}

@@ -826,6 +826,25 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         expect(await storage.size(proxyKey(id))).toBeNull();
       });
 
+      it('removes a rung whose asset is deleted while it is stored (#846)', async () => {
+        const id = await upload(fixture('prores-proxy.mov'), 'video/quicktime', 'gone.mov');
+        await processAsset(withQueue().deps, id);
+        const written: string[] = [];
+        // The person deletes the asset between the file write and the row update.
+        const racing = {
+          ...storage,
+          writeStream: async (...args: Parameters<typeof storage.writeStream>) => {
+            await storage.writeStream(...args);
+            written.push(args[0]);
+            await db.delete(asset).where(eq(asset.id, id));
+          },
+        };
+        expect(await runProxy({ ...deps, storage: racing }, id)).toEqual({ skipped: 'gone' });
+        expect(written).toHaveLength(1);
+        expect(written[0]).toMatch(new RegExp(`^variants/${id}/r.+-480\\.mp4$`));
+        expect(await storage.size(written[0] ?? '')).toBeNull();
+      });
+
       it('only remuxes H.264 out of Matroska, with the sound as AAC', async () => {
         const id = await upload(fixture('h264-opus.mkv'), 'video/x-matroska', 'take.mkv');
         const q = withQueue();

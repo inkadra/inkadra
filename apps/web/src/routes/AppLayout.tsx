@@ -522,7 +522,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         type="button"
         className="ink-sidebar__search"
         data-tour="search"
-        aria-label={t('nav.search')}
+        aria-keyshortcuts={isMac() ? 'Meta+K' : 'Control+K'}
         data-ink-tooltip={t('nav.search')}
         onClick={() => {
           setDrawerOpen(false);
@@ -532,7 +532,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         <Icon name="search" size={14} />
         <span className="ink-sidebar__search-text">
           {t('nav.search')}
-          <KeyCap>{isMac() ? '⌘K' : 'Ctrl K'}</KeyCap>
+          {/* Named by its text; the shortcut is announced through aria-keyshortcuts (#853). */}
+          <span aria-hidden="true">
+            <KeyCap>{isMac() ? '⌘K' : 'Ctrl K'}</KeyCap>
+          </span>
         </span>
       </button>
       <NavItem
