@@ -41,7 +41,7 @@ async function seed(cookie: string) {
   });
   await call(cookie, 'PUT', `/projects/${project.id}/members/${user.id}`, { role: 'editor' });
   await call(cookie, 'POST', `/boards/${project.rootBoardId}/share-links`, {
-    role: 'viewer',
+    role: 'guest_comment',
     label: 'Client review',
   });
   await call(cookie, 'POST', '/invitations', { kind: 'email', email: 'sara@example.com' });
