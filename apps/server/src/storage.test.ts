@@ -206,9 +206,7 @@ describe('signed URLs of the bucket (#839)', () => {
   });
 
   it.skipIf(!s3Endpoint)('serve the bytes straight from the bucket', async () => {
-    const storage = createStorage(
-      loadConfig({ ...s3EnvForSigning(), S3_PUBLIC_REDIRECT: 'true' }),
-    );
+    const storage = createStorage(loadConfig({ ...s3EnvForSigning(), S3_PUBLIC_REDIRECT: 'true' }));
     const key = `variants/${randomUUID()}/x.webp`;
     await storage.write(key, Buffer.from('signed'), 'image/webp');
     const res = await fetch((await storage.signedUrl?.(key, 60)) ?? '');

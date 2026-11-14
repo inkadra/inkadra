@@ -55,7 +55,12 @@ export interface Storage {
    * A short-lived URL browsers fetch the file from, straight from the bucket (#839). Only the S3
    * driver has it, and only with S3_PUBLIC_REDIRECT: otherwise every file goes through `read`.
    */
-  signedUrl?(key: string, ttlS: number, disposition?: string, contentType?: string): Promise<string>;
+  signedUrl?(
+    key: string,
+    ttlS: number,
+    disposition?: string,
+    contentType?: string,
+  ): Promise<string>;
 }
 
 /** Hours before an unfinished upload is removed. */

@@ -136,7 +136,11 @@ async function main() {
   const leases: Lease[] = [];
   let leaseRedis: IORedis | undefined;
   const leaseRoles: LeaseRole[] =
-    command === 'all' ? ['web', 'collab'] : command === 'web' || command === 'collab' ? [command] : [];
+    command === 'all'
+      ? ['web', 'collab']
+      : command === 'web' || command === 'collab'
+        ? [command]
+        : [];
   if (leaseRoles.length > 0 && config.REDIS_URL) {
     leaseRedis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: false });
     leaseRedis.on('error', () => undefined);
