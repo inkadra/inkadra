@@ -828,6 +828,7 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
         timeout: 15_000,
       })
       .toBe('ready');
+    expect((await call(a.cookie, 'DELETE', `/api/v1/transfers/${id}`)).status).toBe(204);
     const second = await call(a.cookie, 'POST', `/api/v1/projects/${a.projectId}/exports`, {});
     expect(second.status).toBe(429);
     expect(second.json().error.details).toEqual({ reason: 'demo_export' });

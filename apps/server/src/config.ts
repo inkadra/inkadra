@@ -23,6 +23,10 @@ const Env = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
+  AUTH_SECRET_PREVIOUS: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(32).optional(),
+  ),
   FEEDBACK_RELAY_URL: z
     .union([
       z.literal(''),

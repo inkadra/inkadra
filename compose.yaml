@@ -25,6 +25,7 @@ services:
     environment:
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      AUTH_SECRET_PREVIOUS: ${AUTH_SECRET_PREVIOUS:-}
       DATABASE_URL: postgres://inkadra:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/inkadra
       # With VALKEY_PASSWORD set (recommended, hex only: `openssl rand -hex 32`), Valkey asks for it.
       REDIS_URL: redis://${VALKEY_PASSWORD:+:${VALKEY_PASSWORD}@}valkey:6379

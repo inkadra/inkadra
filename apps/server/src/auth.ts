@@ -8,7 +8,7 @@ import type { Logger } from 'pino';
 import { z } from 'zod';
 import { DEVICE_AGE, DEVICE_COOKIE, knownDevices } from './auth-device.ts';
 import { authSecurity, authSource } from './auth-security.ts';
-import { hardenedTwoFactor } from './auth-two-factor.ts';
+import { hardenedTwoFactor, readableTwoFactor } from './auth-two-factor.ts';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import * as schema from './db/schema.ts';
@@ -354,8 +354,10 @@ function createAuthInstance(
         ...adapter,
         // Filter at the adapter boundary: HTTP endpoints, internal getSession and
         // collab all use this authoritative lookup, including session refresh.
-        findOne: (input: Parameters<ReturnType<ReturnType<typeof drizzleAdapter>>['findOne']>[0]) =>
-          adapter.findOne({
+        findOne: async (
+          input: Parameters<ReturnType<ReturnType<typeof drizzleAdapter>>['findOne']>[0],
+        ) => {
+          const row = await adapter.findOne({
             ...input,
             ...(input.model === 'session'
               ? {
@@ -368,7 +370,11 @@ function createAuthInstance(
                   ],
                 }
               : {}),
-          }),
+          });
+          return input.model === 'twoFactor'
+            ? readableTwoFactor(row, config.AUTH_SECRET, config.AUTH_SECRET_PREVIOUS)
+            : row;
+        },
       };
     },
     emailAndPassword: {

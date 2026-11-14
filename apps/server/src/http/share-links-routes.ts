@@ -48,7 +48,8 @@ const LinkParams = z.object({ linkId: Id });
 const LINKS_PER_HOUR = 50;
 
 /** Seals link tokens so the people who manage a link can copy it again. */
-export const shareLinkSealer = (authSecret: string) => sealer(authSecret, 'share-link');
+export const shareLinkSealer = (authSecret: string, previousSecret?: string) =>
+  sealer(authSecret, 'share-link', previousSecret);
 
 /** Path of the guest page of a share link in the web app, followed by the link token. */
 export const GUEST_PAGE_PATH = '/s/';
@@ -61,7 +62,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth } = deps;
   const docs = deps.docs ?? new DocViews();
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const seal = shareLinkSealer(config.AUTH_SECRET);
+  const seal = shareLinkSealer(config.AUTH_SECRET, config.AUTH_SECRET_PREVIOUS);
 
   async function toShareLink(row: ShareLinkRow, fresh?: string): Promise<ShareLink> {
     const [[b], [creator], [guests], resolved] = await Promise.all([
