@@ -405,7 +405,7 @@ function createAuthInstance(
                   ),
                   deps.log,
                 );
-              })().catch(() => security.reportError());
+              })().catch((err) => deps.log?.warn({ err }, 'sign-in email not prepared'));
             },
           }
         : {}),
@@ -533,7 +533,7 @@ function createAuthInstance(
                     magicLinkMail(to, existing ?? {}, url, config.INSTANCE_NAME),
                     deps.log,
                   );
-                })().catch(() => security.reportError());
+                })().catch((err) => deps.log?.warn({ err }, 'sign-in email not prepared'));
               },
             }),
           ]
