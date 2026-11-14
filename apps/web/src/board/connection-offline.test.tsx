@@ -5,16 +5,24 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
 import { RequestError } from '../lib/api.ts';
-import { type BoardConnection, useBoardConnection } from './connection.ts';
+import {
+  type BoardConnection,
+  CACHED_BOARDS,
+  cachedBoards,
+  useBoardConnection,
+} from './connection.ts';
 
 type Options = {
   document: Y.Doc;
   onAuthenticated: (event: { scope: string }) => void;
   onDisconnect: () => void;
   onAuthenticationFailed: (event: { reason: string }) => void;
+  websocketProvider?: object;
 };
 const person = vi.hoisted(() => ({ id: 'offline-test' }));
 const sockets = vi.hoisted(() => [] as Options[]);
+/** What was destroyed, in order: a shared socket must close after its providers flushed. */
+const destroyed = vi.hoisted(() => [] as string[]);
 const me = vi.hoisted(() => ({ get: vi.fn(async () => ({})) }));
 vi.mock('../lib/api.ts', async (original) => ({
   ...(await original<typeof import('../lib/api.ts')>()),
@@ -30,7 +38,15 @@ vi.mock('@hocuspocus/provider', () => ({
     }
     on() {}
     off() {}
-    destroy() {}
+    attach() {}
+    destroy() {
+      destroyed.push('provider');
+    }
+  },
+  HocuspocusProviderWebsocket: class {
+    destroy() {
+      destroyed.push('socket');
+    }
   },
 }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -41,12 +57,13 @@ afterEach(async () => {
   root = undefined;
   document.body.replaceChildren();
   sockets.length = 0;
+  destroyed.length = 0;
   person.id = 'offline-test';
   me.get.mockReset();
   me.get.mockResolvedValue({});
 });
-function Board({ id }: { id: string }) {
-  connection = useBoardConnection(id, false);
+function Board({ id, share = false }: { id: string; share?: boolean }) {
+  connection = useBoardConnection(id, false, share);
   return null;
 }
 async function open(id: string) {
@@ -143,4 +160,47 @@ it('stays offline, not denied, when the server cannot say who is signed in', asy
   const socket = await open('unreachable-board');
   await act(async () => socket.onAuthenticationFailed({ reason: 'permission-denied' }));
   expect(connection?.status).toBe('offline');
+});
+
+it('keeps only the last boards, but never one with edits the server has not confirmed', async () => {
+  cachedBoards.clear();
+  let socket = await open('unsaved-early');
+  await act(async () => {
+    socket.onAuthenticated({ scope: 'read-write' });
+    connection!.store.doc.getMap('meta').set('title', 'Not saved yet');
+    socket.onDisconnect();
+  });
+  await act(async () => root!.unmount());
+  for (let i = 0; i < CACHED_BOARDS + 2; i++) {
+    socket = await open(`seen-${i}`);
+    await act(async () => socket.onAuthenticated({ scope: 'read-write' }));
+    await act(async () => root!.unmount());
+  }
+  root = undefined;
+  expect(cachedBoards.size).toBe(CACHED_BOARDS);
+  // The oldest saved boards went first; the unsaved one stayed although it is older.
+  expect(cachedBoards.has(`${person.id}:seen-0`)).toBe(false);
+  expect(cachedBoards.has(`${person.id}:seen-${CACHED_BOARDS + 1}`)).toBe(true);
+  await open('unsaved-early');
+  expect(connection?.store.doc.getMap('meta').get('title')).toBe('Not saved yet');
+});
+
+it('opens shared-socket boards over one socket, closed only after every provider flushed', async () => {
+  const div = document.createElement('div');
+  document.body.append(div);
+  root = createRoot(div);
+  await act(async () =>
+    root!.render(
+      <>
+        <Board id="story-a" share />
+        <Board id="story-b" share />
+      </>,
+    ),
+  );
+  expect(sockets).toHaveLength(2);
+  expect(sockets[0]!.websocketProvider).toBeDefined();
+  expect(sockets[1]!.websocketProvider).toBe(sockets[0]!.websocketProvider);
+  await act(async () => root!.unmount());
+  root = undefined;
+  expect(destroyed).toEqual(['provider', 'provider', 'socket']);
 });

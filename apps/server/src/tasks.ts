@@ -121,6 +121,51 @@ export async function myTasks(db: Database, userId: string): Promise<MyTask[]> {
 const TaskFields = TodoItem.pick({ assigneeId: true, dueDate: true });
 
 /**
+ * Keys whose new value can change what the task check reads: the task fields themselves, and
+ * what makes a map a todo item under its key (`id`, `type`, `items`).
+ */
+const TASK_KEYS = new Set(['assigneeId', 'dueDate', 'id', 'type', 'items']);
+
+/**
+ * Whether an update can assign a task or set a due date (#755). Todo items are Y.Maps, so such a
+ * write is always an item under one of TASK_KEYS; the full check, which copies the whole board,
+ * runs only then. A first value carries its key; a new value of a key that had one carries only
+ * its origin, the value it replaces, so the key is read from that item, in the document or earlier
+ * in the update. A deletion alone assigns nobody: at most it uncovers what someone already wrote
+ * under the same key. Anything that can't be resolved here gets the full check.
+ */
+export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
+  try {
+    const { structs } = Y.decodeUpdate(update);
+    const sent = (id: Y.ID) =>
+      structs.find(
+        (s) => s.id.client === id.client && s.id.clock <= id.clock && id.clock < s.id.clock + s.length,
+      );
+    /** The map key of an item, null when it is not a map value, undefined when unknown. */
+    const keyOf = (item: Y.Item | Y.GC | Y.Skip | undefined, depth = 0): string | null | undefined => {
+      if (!(item instanceof Y.Item) || depth > structs.length) return undefined;
+      if (item.parentSub !== null) return item.parentSub;
+      // Read from the document: a decoded item names neither its key nor its parent.
+      if (item.parent !== null && item.origin === null && item.rightOrigin === null) return null;
+      const origin = item.origin ?? item.rightOrigin;
+      if (!origin) return null;
+      if (origin.clock < Y.getState(document.store, origin.client)) {
+        const stored = Y.getItem(document.store, origin);
+        return stored instanceof Y.Item ? stored.parentSub : undefined;
+      }
+      return keyOf(sent(origin), depth + 1);
+    };
+    return structs.some((s) => {
+      if (!(s instanceof Y.Item)) return false;
+      const key = keyOf(s);
+      return key === undefined || (key !== null && TASK_KEYS.has(key));
+    });
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Refuse a prospective CRDT update only for what its sender may not do. It has to stay that way:
  * a refused update closes the document, and the client resends it forever with all its other edits.
  * Who can be assigned changes while a client is offline, so that is corrected afterwards instead
@@ -133,6 +178,7 @@ export async function validateTaskUpdate(
   document: Y.Doc,
   update: Uint8Array,
 ) {
+  if (!mayTouchTasks(document, update)) return;
   const candidate = new Y.Doc();
   try {
     Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));

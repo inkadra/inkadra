@@ -246,11 +246,23 @@ export function entriesFor(doc: Y.Doc): IndexEntry[] {
   });
 }
 
+/** What a row says, the same however Postgres orders the keys of its jsonb data. */
+function rowKey(r: Omit<IndexEntry, 'elementId'> & { projectId: string }): string {
+  const sorted = (_key: string, value: unknown) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : value;
+  return JSON.stringify(
+    [r.projectId, r.type, r.title, r.text, r.tags, r.assetId ?? null, r.data ?? null],
+    sorted,
+  );
+}
+
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
- * Replaces the index rows of a board with the content of `doc`. Idempotent: running it twice
- * on the same document leaves the same rows.
+ * Makes the index rows of a board match the content of `doc`, writing only the rows that differ.
+ * Idempotent: running it twice on the same document leaves the same rows, and writes none.
  */
 export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y.Doc) {
   const [row] = await tx
@@ -281,11 +293,55 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
     tags: entries.flatMap((e) => e.tags),
     text: entries.flatMap((e) => (e.type === 'frame' ? [e.text] : [])),
   });
-  await tx.delete(boardElementIndex).where(eq(boardElementIndex.boardId, boardId));
-  for (let i = 0; i < entries.length; i += 500) {
+  // #797: only the rows that changed are written. Rewriting every row of the board on every
+  // store churned the GIN indexes and the WAL in proportion to the board, not to the edit.
+  // shortcut: the rows are read back to compare them, which costs no WAL; keep the last indexed
+  // rows in memory per open board if that read ever shows up.
+  const kept = await tx
+    .select({
+      elementId: boardElementIndex.elementId,
+      projectId: boardElementIndex.projectId,
+      type: boardElementIndex.type,
+      title: boardElementIndex.title,
+      text: boardElementIndex.text,
+      tags: boardElementIndex.tags,
+      assetId: boardElementIndex.assetId,
+      data: boardElementIndex.data,
+    })
+    .from(boardElementIndex)
+    .where(eq(boardElementIndex.boardId, boardId));
+  const was = new Map(kept.map((r) => [r.elementId, rowKey(r)]));
+  const rows = entries.map((e) => ({ ...e, boardId, projectId: row.projectId }));
+  const changed = rows.filter((r) => was.get(r.elementId) !== rowKey(r));
+  const live = new Set(entries.map((e) => e.elementId));
+  const gone = kept.flatMap((r) => (live.has(r.elementId) ? [] : [r.elementId]));
+  for (let i = 0; i < gone.length; i += 500) {
+    await tx
+      .delete(boardElementIndex)
+      .where(
+        and(
+          eq(boardElementIndex.boardId, boardId),
+          inArray(boardElementIndex.elementId, gone.slice(i, i + 500)),
+        ),
+      );
+  }
+  for (let i = 0; i < changed.length; i += 500) {
     await tx
       .insert(boardElementIndex)
-      .values(entries.slice(i, i + 500).map((e) => ({ ...e, boardId, projectId: row.projectId })));
+      .values(changed.slice(i, i + 500))
+      .onConflictDoUpdate({
+        target: [boardElementIndex.boardId, boardElementIndex.elementId],
+        set: {
+          projectId: sql`excluded.project_id`,
+          type: sql`excluded.type`,
+          title: sql`excluded.title`,
+          text: sql`excluded.text`,
+          tags: sql`excluded.tags`,
+          assetId: sql`excluded.asset_id`,
+          data: sql`excluded.data`,
+          updatedAt: new Date(),
+        },
+      });
   }
   // Keep updated_at as it is: it says when the document changed, not the index.
   await tx

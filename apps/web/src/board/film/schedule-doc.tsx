@@ -10,7 +10,7 @@ export default function SourceDoc({
   boardId: string;
   onConn: (boardId: string, conn: BoardConnection | null) => void;
 }) {
-  const conn = useBoardConnection(boardId, false);
+  const conn = useBoardConnection(boardId, false, true);
   useEffect(() => {
     onConn(boardId, conn);
   }, [boardId, conn, onConn]);

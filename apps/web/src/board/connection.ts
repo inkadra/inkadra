@@ -1,4 +1,8 @@
-import { HocuspocusProvider, type onUnsyncedChangesParameters } from '@hocuspocus/provider';
+import {
+  HocuspocusProvider,
+  HocuspocusProviderWebsocket,
+  type onUnsyncedChangesParameters,
+} from '@hocuspocus/provider';
 import {
   boardDocName,
   CURRENT_SCHEMA_VERSION,
@@ -150,7 +154,40 @@ export async function refusalStatus(): Promise<ConnectionStatus> {
 // Keep reopened boards and their last authenticated role available while this tab is offline.
 // shortcut: memory only, so a closed or reloaded tab loses them; `setUnsaved` warns before
 // that. Upgrade to a persistent copy (IndexedDB) to survive it (#791).
-const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean; unsaved: boolean }>();
+// #777: only the last few boards are kept, so a long session does not hold every board it opened.
+// A board with edits the server has not confirmed is never dropped (#791 will persist those).
+// Signing out reloads the page (#831), which empties it.
+// shortcut: counted in boards, not bytes; add a byte budget if boards grow to tens of MB.
+export const CACHED_BOARDS = 8;
+type CachedBoard = { update: Uint8Array; readOnly: boolean; unsaved: boolean };
+export const cachedBoards = new Map<string, CachedBoard>();
+/** Keeps a closed board as the most recent one, then drops the oldest saved ones past the cap. */
+export function cacheBoard(key: string, entry: CachedBoard) {
+  cachedBoards.delete(key);
+  cachedBoards.set(key, entry);
+  for (const [oldKey, old] of cachedBoards) {
+    if (cachedBoards.size <= CACHED_BOARDS) break;
+    if (!old.unsaved) cachedBoards.delete(oldKey);
+  }
+}
+/**
+ * One WebSocket for the connections that ask for it (#826): the Production board opens every
+ * storyboard of a project, each its own document over the same socket (Hocuspocus multiplexing).
+ * Counted, so the socket closes only after the last provider was destroyed and flushed.
+ */
+let sharedSocket: { socket: HocuspocusProviderWebsocket; users: number } | null = null;
+export function acquireSharedSocket(): HocuspocusProviderWebsocket {
+  sharedSocket ??= { socket: new HocuspocusProviderWebsocket({ url: collabUrl() }), users: 0 };
+  sharedSocket.users += 1;
+  return sharedSocket.socket;
+}
+export function releaseSharedSocket(socket: HocuspocusProviderWebsocket) {
+  if (sharedSocket?.socket !== socket) return;
+  sharedSocket.users -= 1;
+  if (sharedSocket.users > 0) return;
+  sharedSocket = null;
+  socket.destroy();
+}
 /**
  * Deletions made in a document that was reopened after a refusal, to make again once the
  * reopened one has synced: a deletion is what still passes on a board at its size limit.
@@ -160,7 +197,12 @@ const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean; un
 const refusedDeletions = new Map<string, Uint8Array>();
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
-export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
+/** `shareSocket`: open the document over the socket shared with other such boards (#826). */
+export function useBoardConnection(
+  boardId: string,
+  trackBusy = true,
+  shareSocket = false,
+): BoardConnection | null {
   const { user } = useSession();
   const userId = user?.id ?? '';
   const [conn, setConn] = useState<BoardConnection | null>(null);
@@ -197,8 +239,9 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
       setUnsaved(cacheKey, edited && state.status !== 'denied');
     };
+    const socket = shareSocket ? acquireSharedSocket() : undefined;
     const provider = new HocuspocusProvider({
-      url: collabUrl(),
+      ...(socket ? { websocketProvider: socket } : { url: collabUrl() }),
       name: boardDocName(boardId),
       document: doc,
       onSynced: () => {
@@ -249,6 +292,8 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       hold();
     };
     doc.on('update', onEdit);
+    // A provider on a shared socket is not attached by itself.
+    if (socket) provider.attach();
     let roleReadOnly = cached?.readOnly ?? false;
     function update(patch: Partial<typeof state>) {
       if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
@@ -274,7 +319,7 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       // Signed out keeps the edits: the same person signing in again in this tab gets them back.
       if (refused || state.status === 'denied') cachedBoards.delete(cacheKey);
       else
-        cachedBoards.set(cacheKey, {
+        cacheBoard(cacheKey, {
           update: Y.encodeStateAsUpdate(doc),
           readOnly: roleReadOnly,
           unsaved: edited,
@@ -283,7 +328,9 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       stopSchema();
       stopSaves();
       setBusy(busy, false);
+      // Destroying flushes what is still buffered: the shared socket closes only after that.
       provider.destroy();
+      if (socket) releaseSharedSocket(socket);
       store.destroy();
       doc.destroy();
       setConn(null);

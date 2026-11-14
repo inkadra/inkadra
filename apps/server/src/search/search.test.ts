@@ -334,6 +334,49 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     await client.end();
   });
 
+  it('writes only the index rows that changed (#797)', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Diff' },
+    });
+    const id = created.json().id as string;
+    const doc = storyboard(id);
+    const state = Y.encodeStateAsUpdate(doc);
+    await db.insert(boardDoc).values({ boardId: id, state, schemaVersion: 2, size: state.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const old = new Date('2020-01-01T00:00:00Z');
+    await db.update(boardElementIndex).set({ updatedAt: old }).where(eq(boardElementIndex.boardId, id));
+    const rows = () =>
+      db
+        .select({ elementId: boardElementIndex.elementId, text: boardElementIndex.text, updatedAt: boardElementIndex.updatedAt })
+        .from(boardElementIndex)
+        .where(eq(boardElementIndex.boardId, id));
+    const before = await rows();
+    // Nothing changed: no row is written, frames with jsonb data included.
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    expect((await rows()).every((r) => r.updatedAt.getTime() === old.getTime())).toBe(true);
+    // One card renamed, one removed, one added: only those rows move.
+    const elements = roots(doc).elements;
+    const marta = [...elements.values()].find((m) => m.get('name') === 'Marta')!;
+    marta.set('name', 'Martina');
+    const color = [...elements.values()].find((m) => m.get('type') === 'color')!;
+    elements.delete(String(color.get('id')));
+    const added = addElement(doc, { ...base(), type: 'character', name: 'Leo' });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const after = await rows();
+    const moved = after.filter((r) => r.updatedAt.getTime() !== old.getTime());
+    expect(moved.map((r) => r.elementId).sort()).toEqual(
+      [String(marta.get('id')), String(added.get('id'))].sort(),
+    );
+    expect(after.map((r) => r.elementId)).not.toContain(String(color.get('id')));
+    expect(after).toHaveLength(before.length);
+    expect(after.find((r) => r.elementId === marta.get('id'))?.text).toContain('Martina');
+    // Out of the way of the searches below.
+    await db.delete(board).where(eq(board.id, id));
+  });
+
   it('finds cards, boards and projects by part of a word', async () => {
     const res = await get('owner', '/api/v1/search?q=binar');
     expect(res.status).toBe(200);
