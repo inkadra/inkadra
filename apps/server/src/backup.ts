@@ -850,7 +850,11 @@ export async function restoreBackup(opts: {
       await audit`
         insert into audit_event (action, target_type, target_id, details)
         values ('backup.restored', 'backup', ${basename(opts.file)},
-          ${audit.json({ createdAt: manifest.createdAt, appVersion: manifest.appVersion, missingFiles: files.missing.count })})`;
+          ${JSON.stringify({
+            createdAt: manifest.createdAt,
+            appVersion: manifest.appVersion,
+            missingFiles: files.missing.count,
+          })}::jsonb)`;
     } finally {
       await audit.end();
     }

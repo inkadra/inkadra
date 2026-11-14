@@ -92,7 +92,8 @@ export function AuditLog() {
                   <span className="backup-list__when">
                     {t('audit.line', {
                       who: e.actor?.name ?? t('audit.nobody'),
-                      what: t(`audit.actions.${e.action}`),
+                      // Catalogue keys hold no dots: `member.updated` is `member_updated`.
+                      what: t(`audit.actions.${e.action.replace('.', '_')}`),
                     })}
                   </span>
                   <span className="backup-list__meta">
