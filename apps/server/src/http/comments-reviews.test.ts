@@ -1444,7 +1444,10 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     const pending = await addNotification('owner', root, {
       createdAt: new Date(Date.now() - 600000),
     });
-    expect(await sendImmediateEmails({ ...mailDeps, mailer: noMailer })).toEqual({ sent: 0, failed: 0 });
+    expect(await sendImmediateEmails({ ...mailDeps, mailer: noMailer })).toEqual({
+      sent: 0,
+      failed: 0,
+    });
     // A broken SMTP fails the job, so the Server page shows it (#812).
     await expect(
       sendImmediateEmails({
@@ -1469,7 +1472,10 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     const fresh = await addNotification('owner');
     expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0, failed: 0 });
     await call('owner', 'POST', `/me/notifications/${fresh.id}/read`);
-    expect(await sendImmediateEmails(mailDeps, new Date(Date.now() + 600000))).toEqual({ sent: 0, failed: 0 });
+    expect(await sendImmediateEmails(mailDeps, new Date(Date.now() + 600000))).toEqual({
+      sent: 0,
+      failed: 0,
+    });
   });
 
   it('sends again an email whose claim ran out: at least once, with a stable Message-ID (#812)', async () => {
@@ -1617,7 +1623,10 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     });
     await addNotification('owner');
     expect(await sendDigests(mailDeps)).toEqual({ sent: 0, failed: 0 });
-    expect(await sendDigests(mailDeps, new Date(Date.now() + 25 * 3600000))).toEqual({ sent: 1, failed: 0 });
+    expect(await sendDigests(mailDeps, new Date(Date.now() + 25 * 3600000))).toEqual({
+      sent: 1,
+      failed: 0,
+    });
     const expired = await addNotification('owner', root, {
       createdAt: new Date(Date.now() - 91 * 86400000),
     });

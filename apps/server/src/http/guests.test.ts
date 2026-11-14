@@ -802,7 +802,10 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     const mailer = memoryMailer();
     const mailDeps = { db, log, mailer, publicUrl: config.PUBLIC_URL, instanceName: 'Inkadra' };
     const due = new Date(Date.now() + EMAIL_GROUP_DELAY_MS + 1000);
-    expect(await sendImmediateEmails({ ...mailDeps, mailer: noMailer }, due)).toEqual({ sent: 0, failed: 0 });
+    expect(await sendImmediateEmails({ ...mailDeps, mailer: noMailer }, due)).toEqual({
+      sent: 0,
+      failed: 0,
+    });
     expect(await sendImmediateEmails(mailDeps, due)).toEqual({ sent: 1, failed: 0 });
     expect(mailer.sent.map((m) => m.to)).toEqual(['owner@example.com']);
     expect(mailer.sent[0]?.text).toContain('Notification Guest');

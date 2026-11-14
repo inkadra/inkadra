@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   type Notification,
   NotificationChannelType,
@@ -5,7 +6,6 @@ import {
   type ReviewStatus,
   renderMentions,
 } from '@inkadra/shared';
-import { createHash } from 'node:crypto';
 import { and, asc, eq, getTableColumns, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { boardRoles, boardRolesForPeople, touchesProject } from './access.ts';
@@ -414,7 +414,8 @@ export function notificationMessageId(ids: string[], publicUrl: string) {
 
 /** Runs `work` over `items`, `size` at a time. */
 async function inBatches<T>(items: T[], size: number, work: (item: T) => Promise<void>) {
-  for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(work));
+  for (let i = 0; i < items.length; i += size)
+    await Promise.all(items.slice(i, i + size).map(work));
 }
 
 /**

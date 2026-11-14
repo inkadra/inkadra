@@ -220,11 +220,13 @@ export function BackupSettings() {
                   {b.status === 'failed' && (
                     <span className="backup-list__failure">{failureText(t, b.failure)}</span>
                   )}
-                  {b.status === 'ready' && b.fileName && (b.verification?.missingFiles ?? 0) > 0 && (
-                    <span className="backup-list__failure">
-                      {t('backups.missingFiles', { count: b.verification?.missingFiles })}
-                    </span>
-                  )}
+                  {b.status === 'ready' &&
+                    b.fileName &&
+                    (b.verification?.missingFiles ?? 0) > 0 && (
+                      <span className="backup-list__failure">
+                        {t('backups.missingFiles', { count: b.verification?.missingFiles })}
+                      </span>
+                    )}
                   {data.bucket && b.status === 'ready' && b.fileName && !b.copiedToBucket && (
                     <span className="backup-list__failure">{t('backups.notInBucket')}</span>
                   )}

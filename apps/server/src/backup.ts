@@ -399,10 +399,10 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
           : err instanceof BackupCorrupt || err instanceof ArchiveError
             ? 'corrupt'
             : code === 'ENOSPC'
-            ? 'no_space'
-            : code === 'EACCES' || code === 'EPERM'
-              ? 'permission'
-              : 'internal';
+              ? 'no_space'
+              : code === 'EACCES' || code === 'EPERM'
+                ? 'permission'
+                : 'internal';
     log.error({ err, backup: id, failure }, 'backup failed');
     await rm(partial, { force: true }).catch(() => {});
     const [row] = await db
@@ -906,7 +906,10 @@ async function checkFiles(zip: ZipReader, storage: Storage) {
     );
     batch = [];
   };
-  for await (const line of createInterface({ input: source, crlfDelay: Number.POSITIVE_INFINITY })) {
+  for await (const line of createInterface({
+    input: source,
+    crlfDelay: Number.POSITIVE_INFINITY,
+  })) {
     if (!line) continue;
     listed += 1;
     batch.push(JSON.parse(line) as { key: string; size: number | null });

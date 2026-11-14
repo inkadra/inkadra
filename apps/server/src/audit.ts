@@ -106,8 +106,7 @@ export async function listAudit(
         id: r.id,
         at: r.when.toISOString(),
         action: r.action as AuditAction,
-        actor:
-          r.actorId || r.actorName ? { id: r.actorId, name: r.actorName } : null,
+        actor: r.actorId || r.actorName ? { id: r.actorId, name: r.actorName } : null,
         targetType: r.targetType,
         targetId: r.targetId,
         projectId: r.projectId,
@@ -131,7 +130,11 @@ export async function purgeAudit(db: Database, now = new Date()) {
       .where(
         inArray(
           auditEvent.id,
-          db.select({ id: auditEvent.id }).from(auditEvent).where(lt(auditEvent.at, cutoff)).limit(1000),
+          db
+            .select({ id: auditEvent.id })
+            .from(auditEvent)
+            .where(lt(auditEvent.at, cutoff))
+            .limit(1000),
         ),
       );
     count = result.count;
