@@ -29,8 +29,8 @@ tag=${INKADRA_TAG:-edge}
 from_tag=${INKADRA_FROM_TAG:?set INKADRA_FROM_TAG to the last release, e.g. 0.9.0}
 email=upgrade@example.com
 password=correct-horse-battery
-# Boards opened per step; a person may save 20 versions an hour per process.
-max_boards=15
+# Boards opened per step; a person may save 20 versions an hour.
+max_boards=19
 
 cat >"$work/.env" <<ENV
 PUBLIC_URL=$url
@@ -88,6 +88,9 @@ files_digest() { # sha256 of every listed asset's file, as the API serves it
 # version loads the document there (and migrates it to this version's schema).
 open_boards() { # label
   local opened=0 broken=0 board code
+  # The limit of saved versions per person lives in Valkey and outlasts a restart: each step
+  # starts with the whole budget.
+  compose exec -T valkey sh -c "valkey-cli --scan --pattern '*versions-routes:saves*' | xargs -r valkey-cli del" >/dev/null
   for board in $(sql "select id from board where deleted_at is null order by id limit $max_boards"); do
     code=$(c -o "$work/version.json" -w '%{http_code}' -b "$jar" -H 'Content-Type: application/json' \
       --data "{\"name\":\"$1\"}" "$url/api/v1/boards/$board/versions")
