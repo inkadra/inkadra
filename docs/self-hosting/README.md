@@ -100,7 +100,8 @@ Open **Settings → General** to review setup and **Settings → Server status**
 To stop Inkadra, run `docker compose stop`; to start it again, `docker compose up -d`.
 Stopping waits up to 30 seconds (`stop_grace_period` in `compose.yaml`) so open boards are
 saved; a board the database cannot take in time is kept in the data folder
-(`unsaved-boards/`) and stored at the next start. Keep that grace period if you write your own
+(`unsaved-boards/`) and stored at the next start. Jobs still running after 10 seconds, such as
+a long video copy, start again after the restart. Keep that grace period if you write your own
 compose file.
 `docker compose down` also removes the containers, and keeps your data. Only
 `docker compose down -v` deletes the data, so do not use that one.
@@ -243,7 +244,8 @@ The image's command selects the role. Each role has its own health check.
   `compose.yaml` runs PostgreSQL 18; to move an install from 16, see
   [Upgrades](upgrades.md#upgrading-to-postgresql-18).
 - **Valkey 8 or newer, or Redis 7**, required in production by every role. `compose.yaml` runs
-  Valkey 9.
+  Valkey 9. If you bring your own or a managed one, set `maxmemory-policy noeviction`: with an
+  eviction policy it may drop the queues and the schedules of recurring jobs.
 - The server runs as user `node` (uid 1000) with a read-only root filesystem and no Linux
   capabilities, and writes only to `/data`. `compose.yaml` starts the container as root with
   four capabilities, only so that it can give `/data` to uid 1000 when a host folder belongs to

@@ -1,5 +1,6 @@
 import { statfs } from 'node:fs/promises';
-import { desc, gt, sql } from 'drizzle-orm';
+import { desc, eq, gt, sql } from 'drizzle-orm';
+import { readBackupSettings } from '../backup.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset, instanceBackup } from '../db/schema.ts';
@@ -15,6 +16,8 @@ const FULL_SHARE = 0.1;
 const FULL_BYTES = 5e9;
 /** An error that keeps happening: this many times within the hour. */
 export const REPEATED = 5;
+/** No ready backup for this long while nightly backups are on: two nights missed (#798). */
+export const BACKUP_MISSING_MS = 2 * DAY_MS + 3_600_000;
 
 export function beatStatus(at: number, now: number): 'ok' | 'late' | 'down' {
   const age = now - at;
@@ -173,6 +176,52 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
         service: null,
         job: null,
         at: backup.finishedAt.getTime(),
+      });
+      await sendServerAlert(
+        deps,
+        {
+          kind: 'backup_failed',
+          service: null,
+          free: null,
+          total: null,
+          weeksLeft: null,
+          count: null,
+        },
+        true,
+      );
+    }
+  }
+
+  // Schedulers live in Valkey: a flushed or evicted Valkey stops the nightly backup without a
+  // failed row (#798). Two days without a ready one while backups are on is a failure too.
+  // shortcut: an instance whose first backup never ran is not checked; fine while each install
+  // runs its first backup the first night.
+  if (config.REDIS_URL && (await readBackupSettings(db)).enabled) {
+    const [ready] = await db
+      .select({ id: instanceBackup.id, at: instanceBackup.startedAt })
+      .from(instanceBackup)
+      .where(eq(instanceBackup.status, 'ready'))
+      .orderBy(desc(instanceBackup.startedAt))
+      .limit(1);
+    const [first] = ready
+      ? [ready]
+      : await db
+          .select({ id: instanceBackup.id, at: instanceBackup.startedAt })
+          .from(instanceBackup)
+          .orderBy(instanceBackup.startedAt)
+          .limit(1);
+    const id = `backup_missing:${first?.id}`;
+    if (first && now - first.at.getTime() > BACKUP_MISSING_MS && !problems.has(id)) {
+      await store.record({
+        id,
+        kind: 'backup_failed',
+        severity: 'error',
+        role: 'worker',
+        technical: `worker · maintenance · backup\nno backup since ${first.at.toISOString()}`,
+        assetId: null,
+        service: null,
+        job: null,
+        at: now,
       });
       await sendServerAlert(
         deps,

@@ -349,6 +349,9 @@ export async function requeueStuckProxies(db: Database, jobs: Jobs) {
   return requeued;
 }
 
+/** How often a worker registers the recurring jobs again (#798). */
+const SCHEDULER_REFRESH_MS = 5 * 60 * 1000;
+
 /** The nightly backup at the time of the settings, in the server's time zone. */
 async function scheduleBackups(queue: Queue, settings: BackupSettings) {
   if (!settings.enabled) {
@@ -563,36 +566,6 @@ export async function startWorkers(
 
   const scheduler = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
   scheduler.on('error', onError('scheduler'));
-  await scheduler.upsertJobScheduler(
-    'purge-uploads',
-    { every: 60 * 60 * 1000 },
-    { name: 'purge-uploads', data: {}, opts: KEEP },
-  );
-  await scheduler.upsertJobScheduler(
-    'version-retention',
-    { every: 60 * 60 * 1000 },
-    { name: 'version-retention', data: {}, opts: KEEP },
-  );
-  await scheduler.upsertJobScheduler(
-    'purge-notifications',
-    { every: 24 * 60 * 60 * 1000 },
-    { name: 'purge-notifications', data: {}, opts: KEEP },
-  );
-  // Decision 0080: new releases on GitHub; the job does nothing while the check is off.
-  await scheduler.upsertJobScheduler(
-    'update-check',
-    { every: RETRY_MS },
-    { name: 'update-check', data: {}, opts: KEEP },
-  );
-  await scheduler.upsertJobScheduler(
-    'access-expiry',
-    { every: 60 * 1000 },
-    {
-      name: 'access-expiry',
-      data: {},
-      opts: { ...KEEP, removeOnComplete: { age: 600, count: 100 } },
-    },
-  );
   const mailScheduler = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
   mailScheduler.on('error', onError('mail-scheduler'));
   if (deps.mailer?.enabled)
@@ -612,22 +585,70 @@ export async function startWorkers(
       );
     });
   const QUIET = { removeOnComplete: { age: 600, count: 100 }, removeOnFail: { age: 86400 } };
-  await mailScheduler.upsertJobScheduler(
-    'notifications',
-    { every: 60 * 1000 },
-    { name: 'notifications', data: {}, opts: QUIET },
+  // Schedulers live in Valkey only: registered again every few minutes, so a flushed, evicted or
+  // replaced Valkey gets them back without a restart (#798). Upserting the same one is a no-op.
+  const registerSchedulers = async () => {
+    await scheduler.upsertJobScheduler(
+      'purge-uploads',
+      { every: 60 * 60 * 1000 },
+      { name: 'purge-uploads', data: {}, opts: KEEP },
+    );
+    await scheduler.upsertJobScheduler(
+      'version-retention',
+      { every: 60 * 60 * 1000 },
+      { name: 'version-retention', data: {}, opts: KEEP },
+    );
+    await scheduler.upsertJobScheduler(
+      'purge-notifications',
+      { every: 24 * 60 * 60 * 1000 },
+      { name: 'purge-notifications', data: {}, opts: KEEP },
+    );
+    // Decision 0080: new releases on GitHub; the job does nothing while the check is off.
+    await scheduler.upsertJobScheduler(
+      'update-check',
+      { every: RETRY_MS },
+      { name: 'update-check', data: {}, opts: KEEP },
+    );
+    await scheduler.upsertJobScheduler(
+      'access-expiry',
+      { every: 60 * 1000 },
+      {
+        name: 'access-expiry',
+        data: {},
+        opts: { ...KEEP, removeOnComplete: { age: 600, count: 100 } },
+      },
+    );
+    await mailScheduler.upsertJobScheduler(
+      'notifications',
+      { every: 60 * 1000 },
+      { name: 'notifications', data: {}, opts: QUIET },
+    );
+    await mailScheduler.upsertJobScheduler(
+      'digest',
+      { every: 60 * 60 * 1000 },
+      { name: 'digest', data: {}, opts: QUIET },
+    );
+    await scheduler.upsertJobScheduler(
+      'anonymise-guests',
+      { every: 60 * 60 * 1000 },
+      { name: 'anonymise-guests', data: {}, opts: KEEP },
+    );
+    if (deps.transfers) {
+      await scheduler.upsertJobScheduler(
+        'transfer-sweep',
+        { every: 60 * 60 * 1000 },
+        { name: 'transfer-sweep', data: {}, opts: KEEP },
+      );
+      await scheduleBackups(scheduler, await readBackupSettings(deps.db));
+    }
+  };
+  await registerSchedulers();
+  const reregister = setInterval(
+    () =>
+      void registerSchedulers().catch((err) => log.warn({ err }, 'job schedulers not registered')),
+    SCHEDULER_REFRESH_MS,
   );
-  await mailScheduler.upsertJobScheduler(
-    'digest',
-    { every: 60 * 60 * 1000 },
-    { name: 'digest', data: {}, opts: QUIET },
-  );
-
-  await scheduler.upsertJobScheduler(
-    'anonymise-guests',
-    { every: 60 * 60 * 1000 },
-    { name: 'anonymise-guests', data: {}, opts: KEEP },
-  );
+  reregister.unref();
 
   // Exports and imports read and write whole projects: one at a time.
   const transfers = new Worker(
@@ -644,15 +665,9 @@ export async function startWorkers(
     { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
   );
   if (deps.transfers) {
-    await scheduler.upsertJobScheduler(
-      'transfer-sweep',
-      { every: 60 * 60 * 1000 },
-      { name: 'transfer-sweep', data: {}, opts: KEEP },
-    );
     // Backups run only in workers: one left running by a worker that died is over.
     const reaped = await reapStaleBackups(deps.db, STARTUP_STALE_MS);
     if (reaped) log.warn({ reaped }, 'backups left running by a stopped worker marked interrupted');
-    await scheduleBackups(scheduler, await readBackupSettings(deps.db));
   }
 
   const monitor = deps.monitor;
@@ -688,6 +703,7 @@ export async function startWorkers(
   }
   return {
     async close() {
+      clearInterval(reregister);
       await Promise.all([
         maintenance.close(),
         media.close(),
