@@ -72,7 +72,10 @@ Useful commands:
 `src/openapi.ts`, run `pnpm openapi` and commit `openapi.json`. CI fails if it is stale.
 Endpoints live under `/api/v1`. Additive changes (new endpoint, new optional field) are fine
 within v1; removing or renaming anything needs a new version or a deprecation period, because
-installed mobile apps and extensions talk to servers of different ages.
+installed mobile apps and extensions talk to servers of different ages. CI compares
+`openapi.json` with the last release, and the names each `packages/*` entry point exports with
+the commit the change builds on (`scripts/contract-check.mjs`); a break decided on purpose is
+listed in `scripts/contract-breaks.json` with its pull request.
 
 **Database.** Edit `apps/server/src/db/schema.ts`, run `pnpm db:generate --name <what>` and
 commit the generated SQL in `apps/server/drizzle`. Never edit a migration that has been
@@ -111,8 +114,11 @@ the change, may lower `min`, and the entry names that test by its title, which s
   The screenshots of the README and the docs come from a sample project: rebuild them with
   `SHOTS_BASE_URL=… pnpm --filter @inkadra/e2e screenshots` against an empty instance on the
   standard image, with ffmpeg on your PATH, and look at each one before committing it.
-- Every pull request needs green CI: lint, types and unit tests, end-to-end tests, the secret
-  scan, the workflow lint and the image build.
+- Every pull request needs green CI: the check **All checks** passes only when every gate in
+  `.github/workflows/ci.yml` passed (lint, types and unit tests, end-to-end tests in Chromium,
+  Firefox, WebKit and other time zones, the relay, performance, the secret scan, the workflow
+  lint, the image and the jobs that try it). In CI the server suites fail instead of skipping
+  when the database, Valkey or a media tool is missing.
 - Sign off every commit (`git commit -s`) to certify the
   [Developer Certificate of Origin](https://developercertificate.org).
 - Licences differ by folder: `apps/server`, `apps/web` and the rest of the repository are

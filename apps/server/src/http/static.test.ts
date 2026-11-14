@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { brotliCompressSync } from 'node:zlib';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
@@ -33,6 +34,7 @@ describe('web app files', () => {
     writeFileSync(join(dist, 'sw.js'), 'self.addEventListener("fetch", () => {});');
     writeFileSync(join(dist, 'icons', 'icon-192.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
     writeFileSync(join(dist, 'assets', 'index-Bzm8OgW2.js'), 'export {};');
+    writeFileSync(join(dist, 'assets', 'index-Bzm8OgW2.js.br'), brotliCompressSync('export {};'));
     app = await createApp({
       config,
       db,
@@ -81,6 +83,20 @@ describe('web app files', () => {
   it('keeps fingerprinted build files immutable', async () => {
     const res = await app.inject('/assets/index-Bzm8OgW2.js');
     expect(res.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+  });
+
+  it('sends the compressed copy the web build made to browsers that accept it (#827)', async () => {
+    const res = await app.inject({
+      url: '/assets/index-Bzm8OgW2.js',
+      headers: { 'accept-encoding': 'gzip, br' },
+    });
+    expect(res.headers['content-encoding']).toBe('br');
+    expect(res.headers['content-type']).toMatch(/javascript/);
+    expect(res.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+    expect(res.rawPayload).toEqual(brotliCompressSync('export {};'));
+    const plain = await app.inject('/assets/index-Bzm8OgW2.js');
+    expect(plain.headers['content-encoding']).toBeUndefined();
+    expect(plain.body).toBe('export {};');
   });
 
   it('answers app routes with the app, and missing build files with 404', async () => {

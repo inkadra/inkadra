@@ -5,14 +5,22 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  # A merge queue tests the merged result before it lands (#842).
+  merge_group:
+  # Every night on main: the e2e specs dealt to other shards (#857) and a longer collaboration
+  # simulation (#854). A red night opens an issue, like a red push.
+  schedule:
+    - cron: "17 2 * * *"
   workflow_dispatch:
 
 # Read-only by default; the jobs that publish ask for more, one by one.
 permissions:
   contents: read
 
+# A pull request keeps only its newest run. Every commit of main and every tag gets its own group:
+# one group per branch made GitHub drop the pending run of a commit when the next one queued (#842).
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || format('{0}-{1}-{2}', github.event_name, github.ref, github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -30,6 +38,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # HEAD^1 is the commit this one builds on: main, for the merge commit of a pull request.
+          fetch-depth: 2
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -41,6 +51,16 @@ jobs:
         run: pnpm biome ci .
       - name: OpenAPI document is current
         run: pnpm --filter @inkadra/shared openapi:check
+      # Installed apps and API clients (#845): accepted breaks are listed in scripts/contract-breaks.json.
+      - name: The API keeps the contract of the last release
+        run: |
+          tag=$(git ls-remote --tags --refs origin 'v*' | sed 's|.*refs/tags/||' | grep -v -- - | sort -V | tail -n1)
+          echo "Comparing with $tag"
+          git fetch --no-tags --depth=1 origin "refs/tags/$tag:refs/tags/$tag"
+          git show "$tag:packages/shared/openapi.json" > "$RUNNER_TEMP/released-openapi.json"
+          node scripts/contract-check.mjs openapi "$RUNNER_TEMP/released-openapi.json" packages/shared/openapi.json
+      - name: Packages keep the names they export
+        run: node scripts/contract-check.mjs packages HEAD^1
       - name: Migrations match the schema
         run: |
           pnpm --filter @inkadra/server db:generate --name ci-check
@@ -60,7 +80,8 @@ jobs:
   server:
     name: Server tests (PostgreSQL ${{ matrix.postgres }}, shard ${{ matrix.shard }}/2)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # The nightly run simulates collaboration for five minutes instead of thirty seconds.
+    timeout-minutes: ${{ github.event_name == 'schedule' && 30 || 15 }}
     strategy:
       fail-fast: false
       matrix:
@@ -122,6 +143,51 @@ jobs:
       - run: pnpm turbo run test --filter=@inkadra/server -- "--shard=$SHARD/2"
         env:
           SHARD: ${{ matrix.shard }}
+          # A missing variable or tool fails the run instead of skipping suites (#855).
+          INKADRA_TEST_MEDIA_TOOLS: ${{ matrix.postgres == 18 && 'required' || '' }}
+          COLLAB_SIM_DURATION_MS: ${{ github.event_name == 'schedule' && '300000' || '' }}
+
+  # Dates where the local day and the UTC day differ (#848); the other jobs run in UTC.
+  web-time-zones:
+    name: Web unit tests (${{ matrix.tz }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        tz: [Europe/Rome, Pacific/Auckland]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm # zizmor: ignore[cache-poisoning] publishes nothing; publish jobs use no cache
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run test --filter=@inkadra/web
+        env:
+          TZ: ${{ matrix.tz }}
+
+  # Its own workflow deploys it; the tests run here so that every pull request reports them (#854).
+  relay:
+    name: Report relay tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: relay
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+      - run: npm test
 
   # The check the ruleset of main requires: keep its name.
   tests:
@@ -202,6 +268,8 @@ jobs:
           pnpm test:e2e "${files[@]}"
         env:
           SHARD: ${{ matrix.shard }}
+          # At night the specs are dealt at random: one that needs another's data fails (#857).
+          E2E_SHARD_SEED: ${{ github.event_name == 'schedule' && github.run_id || '' }}
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -221,6 +289,72 @@ jobs:
         env:
           RESULT: ${{ needs.e2e-shard.result }}
         run: test "$RESULT" = success
+
+  # A smoke subset in Firefox and WebKit, and the date-heavy specs in Los Angeles (#848), each on
+  # its own database: the main suite stays in Chromium.
+  e2e-browsers:
+    name: End-to-end (${{ matrix.project }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: firefox-smoke
+            browsers: chromium firefox
+          - project: webkit-smoke
+            browsers: chromium webkit
+          - project: dates-los-angeles
+            browsers: chromium
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: inkadra
+          POSTGRES_PASSWORD: inkadra
+          POSTGRES_DB: inkadra
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U inkadra" --health-interval 5s --health-timeout 5s --health-retries 20
+      valkey:
+        image: valkey/valkey:9-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm # zizmor: ignore[cache-poisoning] publishes nothing; publish jobs use no cache
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run build
+      # The packages the end-to-end shards keep; this job only reads them.
+      - run: sudo chown "$USER" /var/cache/apt/archives
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: apt-e2e-ubuntu-24.04-
+      - env:
+          BROWSERS: ${{ matrix.browsers }}
+        run: |
+          read -ra list <<< "$BROWSERS"
+          pnpm --filter @inkadra/e2e exec playwright install --with-deps "${list[@]}"
+      - name: Media tools of the standard image
+        run: *media-tools
+      - env:
+          PROJECT: ${{ matrix.project }}
+        run: pnpm --filter @inkadra/e2e exec playwright test "--project=$PROJECT"
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: e2e/playwright-report
+          retention-days: 7
 
   perf:
     name: Canvas performance
@@ -471,10 +605,61 @@ jobs:
   # main and tags only: build each architecture on its own runner (no emulation), push by
   # digest, then join them under the version tags. A digest has no tag yet, so nobody pulls it
   # until manifest: before that, this job starts and scans that very image (#835).
+  # The one check that names every gate (#842): require it in the ruleset of main. It fails when any
+  # gate failed, was cancelled or was skipped, so a new gate counts as soon as it is listed here.
+  all:
+    name: All checks
+    if: always()
+    needs:
+      - tests
+      - e2e
+      - e2e-browsers
+      - web-time-zones
+      - relay
+      - perf
+      - secrets
+      - workflows
+      - image
+      - proxy
+      - data-dir
+      - postgres-upgrade
+      - scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every gate passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
+          test "$(jq '[.[] | select(.result != "success")] | length' <<< "$NEEDS")" = 0
+
+  # A red main or a red night opens an issue, or adds to the open one (#842).
+  red-main:
+    name: Report a red main
+    if: failure() && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+    needs: all
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          title="CI is red on main"
+          body="The $EVENT run of $GITHUB_SHA failed: $RUN"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"; fi
+
   publish:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})
-    if: github.event_name != 'pull_request'
-    needs: [tests, e2e, secrets, workflows, proxy, data-dir, postgres-upgrade, scan]
+    # Not for pull requests, the merge queue or the nightly run.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: all
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     # The organisation default for GITHUB_TOKEN is read-only: publishing needs this grant.

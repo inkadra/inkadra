@@ -55,19 +55,6 @@ export async function loadPlanning(
   return { days: await loadBoardDays(boardId, boards) };
 }
 
-/** A `YYYY-MM-DD` date in the reader's language, read as a calendar date. */
-export function calendarDate(date: string, language: string, style: 'short' | 'long'): string {
-  const time = Date.parse(`${date}T00:00:00Z`);
-  if (Number.isNaN(time)) return date;
-  return new Intl.DateTimeFormat(language, {
-    weekday: 'short',
-    day: 'numeric',
-    month: style,
-    ...(style === 'long' ? { year: 'numeric' } : {}),
-    timeZone: 'UTC',
-  }).format(time);
-}
-
 /**
  * Team-only call sheet sections, derived from the same elements as the print dialog. The crew,
  * its phones, calls and pick-ups come only from the team's roster (decision 0092): the client

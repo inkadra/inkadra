@@ -5,27 +5,19 @@ import { Placeholder } from '@tiptap/extensions';
 import { TextSelection } from '@tiptap/pm/state';
 import { type Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { type ReactNode, useEffect, useReducer } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { isFeedbackKey } from '../feedback/state.ts';
 import { NoteAppearance, NoteInk, noteColor, TaskItem, TaskList } from './note-format.ts';
 import { NoteImageNode, NoteMention, NotePicture } from './note-nodes.tsx';
+import { plainText, useFragment } from './note-text.ts';
 
 /**
  * Notes keep their rich text in a Y.XmlFragment (the ProseMirror document, as y-prosemirror
  * stores it). Only the note being edited mounts an editor; every other note is rendered
  * straight from the fragment, which keeps a board with hundreds of notes light.
  */
-
-export function useFragment(fragment: Y.XmlFragment | null) {
-  const [, bump] = useReducer((n: number) => n + 1, 0);
-  useEffect(() => {
-    if (!fragment) return;
-    fragment.observeDeep(bump);
-    return () => fragment.unobserveDeep(bump);
-  }, [fragment]);
-}
 
 export function NoteBody({ fragment }: { fragment: Y.XmlFragment }) {
   useFragment(fragment);
@@ -40,16 +32,6 @@ export function isEmpty(fragment: Y.XmlFragment): boolean {
     noteImageAssetIds(fragment).length === 0 &&
     fragment.toArray().every((n) => n instanceof Y.XmlElement && plainText(n).trim() === '')
   );
-}
-
-export function plainText(node: Y.XmlElement | Y.XmlFragment | Y.XmlText): string {
-  if (node instanceof Y.XmlText) return node.toString().replace(/<[^>]+>/g, '');
-  if (node instanceof Y.XmlElement && node.nodeName === 'mention')
-    return `@${node.getAttribute('label') ?? ''}`;
-  return node
-    .toArray()
-    .map((c) => plainText(c as Y.XmlElement | Y.XmlText))
-    .join(node instanceof Y.XmlElement && node.nodeName === 'paragraph' ? '' : '\n');
 }
 
 const BLOCKS: Record<string, string> = {

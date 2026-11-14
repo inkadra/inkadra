@@ -52,6 +52,7 @@ import {
   transformOps,
 } from './board-render.ts';
 import type { ExportCache } from './cache.ts';
+import { calendarDate } from './calendar-date.ts';
 import { commentEntries } from './comments.ts';
 import {
   boardPage,
@@ -90,7 +91,6 @@ import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
 import { type PlanSheetInclude, planSheetPages } from './plan-sheet.ts';
 import {
-  calendarDate,
   callSheetPages,
   callSheetSections,
   linkCallSheetPdf,

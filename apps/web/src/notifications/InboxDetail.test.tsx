@@ -383,6 +383,8 @@ it('reads the selected frame label, thumbnail and shot metadata from the board',
       ? { myRole: 'viewer' }
       : { items: [thread('frame-comment', { pin: { x: 0.25, y: 0.75 } })], nextCursor: null },
   );
+  // The board connection is a lazy chunk: loaded once here, it resolves within act.
+  await import('./InboxConnected.tsx');
   await render('frame-comment', frame.id);
   expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain('4C');
   expect(host.querySelector('img')?.getAttribute('src')).toBe('/original.png');

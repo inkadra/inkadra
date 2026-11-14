@@ -25,6 +25,7 @@ import {
 import { Button, DateField, Icon, Select, Slider } from '@inkadra/ui';
 import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { localDate } from '../../routes/home-data.ts';
 import { pickVariant, useAsset } from '../assets.ts';
 import { FramePicture } from '../film/FramePicture.tsx';
 import { usePresetText } from '../film/fields.tsx';
@@ -559,7 +560,7 @@ export function SunSection({ ed }: { ed: Ed }) {
     location?.type === 'location'
       ? locationCoords([location.mapUrl, location.address].filter(Boolean).join(' '))
       : null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDate(new Date());
   // shortcut: the device's time zone, not the project's, until the editor knows the project.
   const position = coords ? sunPosition(date ?? today, time, coords.lat, coords.lng) : null;
   const bearing = position?.azimuth ?? sunBearingByClock(time);

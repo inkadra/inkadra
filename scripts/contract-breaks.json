@@ -1,0 +1,9 @@
+{
+  "comment": "Breaking changes to /api/v1 or to what packages/* export, accepted on purpose. scripts/contract-check.mjs fails CI on any other one. Each entry names the PR that decided it; remove entries once the release they shipped in is the baseline.",
+  "accepted": [
+    { "break": "openapi: ExportPreferences.preset removed", "pr": 550 },
+    { "break": "openapi: ExportPreferences.kickoffSummary removed", "pr": 550 },
+    { "break": "openapi: UpdateExportSettings.preset removed", "pr": 550 },
+    { "break": "openapi: UpdateExportSettings.kickoffSummary removed", "pr": 550 }
+  ]
+}

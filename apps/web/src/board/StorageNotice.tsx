@@ -8,7 +8,7 @@ import { api } from '../lib/api.ts';
 import { SessionContext } from '../lib/session-context.ts';
 import { formatStorage } from '../routes/StorageCharts.tsx';
 import { LargestFilesDialog, spaceTone } from '../routes/StorageSpace.tsx';
-import { Toast } from './chrome.tsx';
+import { Toast } from './Toast.tsx';
 import { batchCount, dismissRefused, type UploadItem, useUploads } from './uploads.ts';
 
 /** Batches already told, across every upload panel of the page. */

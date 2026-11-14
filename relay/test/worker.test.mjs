@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
+import { readFile } from 'node:fs/promises';
 import worker, { Meter, collectFiles, contentsBody, fenced, formatSize, ipPrefix, issueBody, issueTitle, powOk, leadingZeroBits, sanitizeReport, verify } from '../src/worker.js';
 
 /** A Durable Object's `ctx.storage.sql`, on Node's SQLite. */
@@ -824,4 +825,10 @@ test('the log keeps its newest lines, up to the limit', () => {
   const r = sanitizeReport({ title: 'T', logExcerpt: `old${'x'.repeat(6000)}new` });
   assert.equal(r.logExcerpt.length, 6000);
   assert.ok(r.logExcerpt.endsWith('new'));
+});
+
+test('keeps every field of the report the Inkadra server sends (shared fixture)', async () => {
+  const { report } = JSON.parse(await readFile(new URL('./fixtures/server-report.json', import.meta.url), 'utf8'));
+  const kept = sanitizeReport(report);
+  for (const [key, value] of Object.entries(report)) assert.deepEqual(kept[key], value, key);
 });

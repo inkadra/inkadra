@@ -1102,10 +1102,11 @@ it('folds the in-app reports of a day into one row that unfolds (decision 0124)'
     createdAt,
   });
   vi.mocked(api.get).mockResolvedValue({
+    // Early in the UTC day: one local day in every time zone, Auckland included (#848).
     items: [
-      report('r1', '2026-10-25T11:30:00Z'),
-      { ...baseNotification, id: 'n1', type: 'comment' },
-      report('r2', '2026-10-25T10:00:00Z'),
+      report('r1', '2026-10-25T06:30:00Z'),
+      { ...baseNotification, id: 'n1', type: 'comment', createdAt: '2026-10-25T06:00:00Z' },
+      report('r2', '2026-10-25T05:00:00Z'),
     ],
     nextCursor: null,
   });
