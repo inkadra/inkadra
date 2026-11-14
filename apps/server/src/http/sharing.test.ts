@@ -8,6 +8,8 @@ import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
+  asset,
+  assetVariant,
   invitation as invitationTable,
   personalToken,
   project,
@@ -1131,7 +1133,60 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       Number(limited.readableHeaders.find(([name]) => name === 'retry-after')?.[1]),
     ).toBeGreaterThan(0);
     expect((await call('newbie', 'DELETE', '/api/v1/me', {})).status).toBe(400);
-    expect((await call('newbie', 'DELETE', '/api/v1/me', { password: PASSWORD })).status).toBe(204);
+
+    // A file of theirs still being processed elsewhere (#879): the save holds its row, then
+    // writes a copy, which locks their storage total. The deletion waits for the save and
+    // never takes the total first, so neither ends in a deadlock.
+    const file = (inProject: string) => ({
+      projectId: inProject,
+      kind: 'video' as const,
+      mime: 'video/mp4',
+      filename: 'a.mp4',
+      size: 100,
+      storageKey: `originals/${randomBytes(8).toString('hex')}`,
+      createdBy: as.newbie.id,
+    });
+    await db.insert(asset).values(file(solo.body.id));
+    const [processing] = await db.insert(asset).values(file(projectId)).returning();
+    const id = processing?.id as string;
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    const save = db.transaction(async (tx) => {
+      await tx.update(asset).set({ status: 'ready' }).where(eq(asset.id, id));
+      held();
+      await released;
+      await tx.insert(assetVariant).values({
+        assetId: id,
+        size: '256',
+        width: 1,
+        height: 1,
+        storageKey: `variants/${id}`,
+        bytes: 10,
+      });
+    });
+    await holding;
+    const deletion = call('newbie', 'DELETE', '/api/v1/me', { password: PASSWORD });
+    await vi.waitFor(
+      async () => {
+        const [waiting] = await db.execute<{ n: number }>(
+          sql`select count(*)::int as n from pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock'`,
+        );
+        expect(waiting?.n).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
+    release();
+    await save;
+    expect((await deletion).status).toBe(204);
+    const [kept] = await db.select().from(asset).where(eq(asset.id, id));
+    expect(kept?.createdBy).toBeNull();
     expect(await db.select().from(project).where(eq(project.id, solo.body.id))).toEqual([]);
     expect((await call('newbie', 'GET', '/api/v1/me')).status).toBe(401);
     // The shared project stays, without the person.

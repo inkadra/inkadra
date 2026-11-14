@@ -363,17 +363,6 @@ export async function importProject(
     const commentIds = new Map(comments.map((c) => [c.id, randomUUID()]));
     let elements = 0;
     const created = await db.transaction(async (tx) => {
-      // Locks in the order every other path takes them (#879): the storage lock, then the
-      // instance lock, then rows. The asset rows below lock their uploader's storage total, which
-      // an upload holding the storage lock or an account deletion holding the instance lock may
-      // wait for. The files must still fit: another upload may have taken the space meanwhile.
-      await fits(
-        tx,
-        [...stored.values()].reduce((n, f) => n + f.size, 0),
-      );
-      // The instance lock orders projects (the position set at the end) and guards account
-      // deletion, which removes projects, transfers and files under it.
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       await fence(tx);
       // The files belong to the rows made here: no longer to remove.
       await clearDeletions(tx, written);
@@ -395,40 +384,10 @@ export async function importProject(
       // A type removed here since the export comes back, archived (decision 0126).
       await reviveUsed(tx, { projectTypes: meta.type ? [meta.type] : [] });
 
-      await insertBatches(
-        tx,
-        asset,
-        assets.flatMap((a) => {
-          const file = stored.get(a.id);
-          if (!file) return [];
-          const mime = cleanMime(a.mime, a.filename);
-          return [
-            {
-              id: file.id,
-              projectId,
-              kind: kindOf(mime, a.filename),
-              mime,
-              filename: a.filename,
-              size: file.size,
-              sha256: file.sha256,
-              storageKey: originalKey(file.id),
-              status: 'processing' as const,
-              sourceUrl: a.sourceUrl,
-              // Always the importer, even without an author in the archive: the files count
-              // in their space (decision 0081).
-              createdBy: userId,
-              importedAuthor: nameOf(a.createdBy),
-              createdAt: new Date(a.createdAt),
-            },
-          ];
-        }),
-      );
-
       // Boards one by one, parents first: each carries its document and search index.
       for (const b of boards) {
         const isRoot = b === root;
         const id = boardIds.get(b.id) as string;
-        const cover = b.coverAssetId ? stored.get(b.coverAssetId)?.id : null;
         await tx.insert(board).values({
           id,
           projectId,
@@ -438,7 +397,8 @@ export async function importProject(
           // The root board carries the project name, as on creation.
           title: isRoot ? meta.name : b.title,
           position: isRoot ? 'a0' : b.position,
-          coverAssetId: cover ?? null,
+          // Set once the files exist, at the end (see below).
+          coverAssetId: null,
           icon: b.icon ?? null,
           docSchemaVersion: CURRENT_SCHEMA_VERSION,
           createdBy: personOrNull(b.createdBy),
@@ -596,6 +556,57 @@ export async function importProject(
         await adoptDays(tx, projectId, productionId);
       }
 
+      // Locks in the order every other path takes them (#879): the storage lock, then the
+      // instance lock, then rows. The asset rows lock their uploader's storage total, which an
+      // upload holding the storage lock or an account deletion holding the instance lock may
+      // wait for, so they come last: the locks are held only for the files, what points at
+      // them and the commit, not for the boards, versions and comments above. The files must
+      // still fit: another upload may have taken the space meanwhile.
+      await fits(
+        tx,
+        [...stored.values()].reduce((n, f) => n + f.size, 0),
+      );
+      // The instance lock orders projects (the position set at the end) and guards account
+      // deletion, which removes projects, transfers and files under it.
+      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      await insertBatches(
+        tx,
+        asset,
+        assets.flatMap((a) => {
+          const file = stored.get(a.id);
+          if (!file) return [];
+          const mime = cleanMime(a.mime, a.filename);
+          return [
+            {
+              id: file.id,
+              projectId,
+              kind: kindOf(mime, a.filename),
+              mime,
+              filename: a.filename,
+              size: file.size,
+              sha256: file.sha256,
+              storageKey: originalKey(file.id),
+              status: 'processing' as const,
+              sourceUrl: a.sourceUrl,
+              // Always the importer, even without an author in the archive: the files count
+              // in their space (decision 0081).
+              createdBy: userId,
+              importedAuthor: nameOf(a.createdBy),
+              createdAt: new Date(a.createdAt),
+            },
+          ];
+        }),
+      );
+
+      for (const b of boards) {
+        const cover = b.coverAssetId ? stored.get(b.coverAssetId)?.id : undefined;
+        if (cover)
+          await tx
+            .update(board)
+            .set({ coverAssetId: cover })
+            .where(eq(board.id, boardIds.get(b.id) as string));
+      }
+      // Guest picks and the export logo point at files too.
       await importGuests(tx, guestData, { projectId, userId, boardIds, stored });
 
       if (exportSettings) {

@@ -17,7 +17,7 @@ import {
   UploadAvatar,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
 import { activeGrant, activeMember } from '../access.ts';
@@ -27,6 +27,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
   account,
+  asset,
   board,
   boardGrant,
   notification,
@@ -514,6 +515,20 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
         .where(and(eq(user.role, 'admin'), isNull(user.deactivatedAt)));
       if (admins.length === 1 && admins[0]?.id === userId)
         throw new HttpError('conflict', 'The instance needs at least one active administrator.');
+      // Every file the deletion touches, locked first and in one order (#879): deleting the
+      // projects locks the person's storage total, then the user row clears `created_by` on
+      // their files elsewhere. A file still being processed is saved row first, total second
+      // (media/process.ts); taking the rows here, before the total, never waits the other way.
+      await tx
+        .select({ id: asset.id })
+        .from(asset)
+        .where(
+          alone.length > 0
+            ? or(inArray(asset.projectId, alone), eq(asset.createdBy, userId))
+            : eq(asset.createdBy, userId),
+        )
+        .orderBy(asset.id)
+        .for('update');
       const files = await projectFiles(tx, alone);
       if (alone.length > 0) await tx.delete(project).where(inArray(project.id, alone));
       // Sessions, accounts, memberships, grants, tokens and two-factor data cascade.
