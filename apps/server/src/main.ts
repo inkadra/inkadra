@@ -211,7 +211,10 @@ async function main() {
     if (command === 'migrate') return;
   } else if (command === 'collab' || command === 'worker') {
     // Started next to a web role that may still be backing up and migrating (#805): its code
-    // needs the new schema. Alive meanwhile for the container health check.
+    // needs the new schema. Alive meanwhile for the container health check. The data steps
+    // after the migrations (mergeCastLinks, moveToProductionBoards) may still run in the web
+    // role: both are idempotent (advisory lock / per-project transaction, rows marked done),
+    // and this role does not depend on their result.
     const starting =
       command === 'collab'
         ? await startingListener({

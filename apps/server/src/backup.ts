@@ -545,7 +545,7 @@ export async function liveTableBytes(sql: postgres.Sql) {
     select coalesce(sum(
       case when coalesce(t.n_live_tup, 0) + coalesce(t.n_dead_tup, 0) = 0
         then pg_table_size(c.oid)
-        else pg_table_size(c.oid) * t.n_live_tup / (t.n_live_tup + t.n_dead_tup) end
+        else pg_table_size(c.oid)::numeric * t.n_live_tup / (t.n_live_tup + t.n_dead_tup) end
     ), 0)::bigint::text as n
     from pg_class c join pg_namespace s on s.oid = c.relnamespace
     left join pg_stat_user_tables t on t.relid = c.oid
@@ -556,8 +556,33 @@ export async function liveTableBytes(sql: postgres.Sql) {
 const mib = (n: number) => `${Math.round(n / 1024 / 1024)} MiB`;
 
 const PRE_UPGRADE = 'inkadra-backup-pre-upgrade-';
-/** Archives of one schema state: `m<applied migrations>-`, then the time and id. */
-const preUpgradePrefix = (applied: number) => `${PRE_UPGRADE}m${applied}-`;
+/**
+ * Archives of one schema state of one database: `m<applied migrations>-<database>-`, then the
+ * time and id. The database part keeps another database (a restore, a swapped volume) from
+ * having its state mistaken for this one's.
+ */
+const preUpgradePrefix = (applied: number, database: string) =>
+  `${PRE_UPGRADE}m${applied}-${database}-`;
+
+/**
+ * Short id of this database: its cluster `system_identifier` and name. Where the role may not
+ * call `pg_control_system()` (some managed services), the oldest migration's time stands in
+ * for the cluster: the same name and first migration on another cluster is not told apart.
+ */
+async function databaseFingerprint(sql: postgres.Sql) {
+  let ident: string;
+  try {
+    const [row] = await sql<{ id: string }[]>`
+      select system_identifier::text || '/' || current_database() as id from pg_control_system()`;
+    ident = row?.id ?? '';
+  } catch {
+    const [row] = await sql<{ id: string }[]>`
+      select current_database() || '/' || coalesce(min(created_at)::text, '') as id
+      from drizzle.__drizzle_migrations`;
+    ident = row?.id ?? '';
+  }
+  return createHash('sha256').update(ident).digest('hex').slice(0, 8);
+}
 /**
  * A start that finds an archive this recent for the same schema state reuses it instead of
  * writing another (#805): a migration that fails restarts the server in a loop, and each start
@@ -578,7 +603,11 @@ const PRE_UPGRADE_VERIFY_MS = 5 * 60 * 1000;
  * Lists archives written before an upgrade that the history does not know: those of a start
  * whose migrations failed, or of a database restored since. Retention then keeps the newest.
  */
-async function adoptPreUpgradeArchives(db: Database, dir: string) {
+async function adoptPreUpgradeArchives(
+  db: Database,
+  dir: string,
+  deps: Pick<BackupDeps, 'bucket' | 'storage'>,
+) {
   const names = (await readdir(dir).catch(() => [] as string[])).filter(
     (n) => n.startsWith(PRE_UPGRADE) && n.endsWith('.zip'),
   );
@@ -595,10 +624,15 @@ async function adoptPreUpgradeArchives(db: Database, dir: string) {
     if (known.has(fileName)) continue;
     const info = await stat(join(dir, fileName)).catch(() => null);
     if (!info) continue;
+    // Retention removes the bucket copy only when the row says there is one.
+    const copiedToBucket = deps.bucket
+      ? (await deps.storage.size(`${BUCKET_PREFIX}${fileName}`).catch(() => null)) !== null
+      : false;
     await db.insert(instanceBackup).values({
       trigger: 'pre-upgrade',
       status: 'ready',
       fileName,
+      copiedToBucket,
       size: info.size,
       startedAt: info.mtime,
       heartbeatAt: info.mtime,
@@ -629,7 +663,7 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
       return undefined;
     }
     const dir = backupsDir(deps.dataDir);
-    const prefix = preUpgradePrefix(pending.applied);
+    const prefix = preUpgradePrefix(pending.applied, await databaseFingerprint(sql));
     const listed = await readdir(dir).catch(() => [] as string[]);
     // Under the migration lock no other start writes one: a `.partial` is from a killed start.
     for (const name of listed)
@@ -641,7 +675,7 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
     const newestAt = newest ? (await stat(join(dir, newest)).catch(() => null))?.mtime : undefined;
     const adopt = async (db: Database) => {
       try {
-        await adoptPreUpgradeArchives(db, dir);
+        await adoptPreUpgradeArchives(db, dir, deps);
         await applyBackupRetention({ db, storage: deps.storage, dataDir: deps.dataDir });
       } catch (err) {
         // The archives are complete on disk: only the history misses them.
@@ -697,7 +731,11 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
       );
     }
     // One archive per schema state: the new one replaces older copies of the same state.
-    for (const old of same) await rm(join(dir, old), { force: true }).catch(() => {});
+    for (const old of same) {
+      await rm(join(dir, old), { force: true }).catch(() => {});
+      if (deps.bucket)
+        await deps.storage.remove([`${BUCKET_PREFIX}${old}`]).catch(() => {});
+    }
     const copied = await copyToBucket(deps, id, fileName);
     const file = join(dir, fileName);
     log.info(

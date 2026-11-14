@@ -246,7 +246,7 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
     const fresh = await freshDatabase(url ?? '', 'pre_upgrade_loop');
     await runMigrations(fresh, older);
     const { older: broken } = migrationsUpTo(Number.POSITIVE_INFINITY, true);
-    const d = deps(fresh);
+    const d = { ...deps(fresh), bucket: true };
     const step = { beforeMigrating: backupBeforeMigrating(d) };
     // A restart loop: each start fails on the migration itself, never on a second backup.
     for (let i = 0; i < 3; i++)
@@ -264,6 +264,9 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
     const now = archives(d.dataDir);
     expect(now).toHaveLength(1);
     expect(now[0]).not.toBe(first);
+    // The replaced archive's bucket copy goes with it; the new one is in the bucket.
+    expect(await d.storage.size(`backups/${first}`)).toBeNull();
+    expect(await d.storage.size(`backups/${now[0]}`)).not.toBeNull();
     // Fixed: it migrates, and the history lists the archive the failed starts left.
     await runMigrations(fresh, folder, step);
     const { db, sql } = createDatabase(fresh, 1);

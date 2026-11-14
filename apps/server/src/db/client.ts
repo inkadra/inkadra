@@ -135,8 +135,13 @@ export async function waitForMigrations(
     for (;;) {
       const state = await pendingMigrations(sql, migrationsFolder);
       if (state.pending === 0) return;
+      // shortcut: no timeout, a backup before a large upgrade may take hours and a role that
+      // gave up would restart in a loop; an operator sees this line and the web role's log.
       if (Date.now() - toldAt >= 60_000) {
-        log.info(state, 'waiting for the web role to apply the database migrations');
+        log.info(
+          state,
+          'waiting for the database migrations: a web or migrate role of this version must run to apply them',
+        );
         toldAt = Date.now();
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
