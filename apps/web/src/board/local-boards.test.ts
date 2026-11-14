@@ -319,6 +319,10 @@ it('restores the cards of edits set aside as new ones, leaving the board as it i
   expect(card(board, ids[0] ?? '')?.get('x')).toBe(120);
   expect(card(board, note)).toBeUndefined();
   expect(card(board, other)?.get('x')).toBe(500);
+  // A card still on the board: the copy lands beside it, not over it.
+  const [beside] = restoreAsNew(board, update, [other], { boardId: 'board', userId: 'me' });
+  expect(card(board, beside ?? '')?.get('x')).toBe(424);
+  expect(card(board, beside ?? '')?.get('y')).toBe(24);
 });
 
 it('refuses newer edits set aside and those missing what they build on (#898)', () => {

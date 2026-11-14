@@ -543,9 +543,11 @@ export function restoreAsNew(
     if (!ids.length) return [];
     const data = copyElements(kept, ids);
     const free = data.elements.filter((e) => e.parent === null);
+    // Beside a card still on the board, as Duplicate puts a copy, rather than hiding it.
+    const shift = ids.some((id) => roots(board).elements.has(id)) ? 24 : 0;
     const at = {
-      x: free.length ? Math.min(...free.map((e) => e.x)) : 0,
-      y: free.length ? Math.min(...free.map((e) => e.y)) : 0,
+      x: (free.length ? Math.min(...free.map((e) => e.x)) : 0) + shift,
+      y: (free.length ? Math.min(...free.map((e) => e.y)) : 0) + shift,
     };
     try {
       return pasteElements(board, data, at, { userId: opts.userId }).ids;
