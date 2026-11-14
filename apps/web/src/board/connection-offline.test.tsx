@@ -9,6 +9,7 @@ import {
   type BoardConnection,
   CACHED_BOARDS,
   cachedBoards,
+  SOCKET_DOCS,
   useBoardConnection,
 } from './connection.ts';
 
@@ -203,4 +204,31 @@ it('opens shared-socket boards over one socket, closed only after every provider
   await act(async () => root!.unmount());
   root = undefined;
   expect(destroyed).toEqual(['provider', 'provider', 'socket']);
+});
+
+it('fills a socket up to SOCKET_DOCS boards, and never with the same board twice', async () => {
+  const div = document.createElement('div');
+  document.body.append(div);
+  root = createRoot(div);
+  const ids = Array.from({ length: SOCKET_DOCS + 1 }, (_, i) => `story-${i}`);
+  const last = ids.at(-1)!;
+  await act(async () =>
+    root!.render(
+      <>
+        {ids.map((id) => (
+          <Board key={id} id={id} share />
+        ))}
+        <Board id={last} share />
+      </>,
+    ),
+  );
+  const used = sockets.map((s) => s.websocketProvider);
+  expect(used).toHaveLength(SOCKET_DOCS + 2);
+  expect(new Set(used.slice(0, SOCKET_DOCS)).size).toBe(1);
+  // Past the cap, a second socket; a second view of the same board, a third with its own document.
+  expect(new Set(used).size).toBe(3);
+  expect(sockets.at(-1)!.document).not.toBe(sockets.at(-2)!.document);
+  await act(async () => root!.unmount());
+  root = undefined;
+  expect(destroyed.filter((d) => d === 'socket')).toHaveLength(3);
 });

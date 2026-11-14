@@ -171,21 +171,38 @@ export function cacheBoard(key: string, entry: CachedBoard) {
   }
 }
 /**
- * One WebSocket for the connections that ask for it (#826): the Production board opens every
+ * Shared WebSockets for the connections that ask for them (#826): the Production board opens every
  * storyboard of a project, each its own document over the same socket (Hocuspocus multiplexing).
- * Counted, so the socket closes only after the last provider was destroyed and flushed.
+ * A socket closes only after the last provider on it was destroyed and flushed.
+ * A socket carries a board at most once: Hocuspocus routes messages by document name, so a second
+ * view of the same board (two Production views) gets another socket and its own document.
+ * shortcut: Hocuspocus closes a socket with more than 100 documents waiting to sign in
+ * (`maxPendingDocuments`), so a socket carries at most SOCKET_DOCS boards and more open another;
+ * load storyboards on demand if projects reach hundreds of them.
+ * Known limits, kept as they are: an Unauthorized close (an expired session) closes every board on
+ * the socket, which all show signed out, as each would on its own socket; and the server reads the
+ * session cookie of the request that opened the socket, so a board attached later signs in with
+ * that one. Both only matter after the session changed, and signing in again reloads the page
+ * (#831), which opens new sockets.
  */
-let sharedSocket: { socket: HocuspocusProviderWebsocket; users: number } | null = null;
-export function acquireSharedSocket(): HocuspocusProviderWebsocket {
-  sharedSocket ??= { socket: new HocuspocusProviderWebsocket({ url: collabUrl() }), users: 0 };
-  sharedSocket.users += 1;
-  return sharedSocket.socket;
+export const SOCKET_DOCS = 50;
+const sharedSockets: Array<{ socket: HocuspocusProviderWebsocket; names: Set<string> }> = [];
+export function acquireSharedSocket(name: string): HocuspocusProviderWebsocket {
+  let shared = sharedSockets.find((s) => s.names.size < SOCKET_DOCS && !s.names.has(name));
+  if (!shared) {
+    shared = { socket: new HocuspocusProviderWebsocket({ url: collabUrl() }), names: new Set() };
+    sharedSockets.push(shared);
+  }
+  shared.names.add(name);
+  return shared.socket;
 }
-export function releaseSharedSocket(socket: HocuspocusProviderWebsocket) {
-  if (sharedSocket?.socket !== socket) return;
-  sharedSocket.users -= 1;
-  if (sharedSocket.users > 0) return;
-  sharedSocket = null;
+export function releaseSharedSocket(socket: HocuspocusProviderWebsocket, name: string) {
+  const index = sharedSockets.findIndex((s) => s.socket === socket);
+  const shared = sharedSockets[index];
+  if (!shared) return;
+  shared.names.delete(name);
+  if (shared.names.size > 0) return;
+  sharedSockets.splice(index, 1);
   socket.destroy();
 }
 /**
@@ -239,7 +256,7 @@ export function useBoardConnection(
       setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
       setUnsaved(cacheKey, edited && state.status !== 'denied');
     };
-    const socket = shareSocket ? acquireSharedSocket() : undefined;
+    const socket = shareSocket ? acquireSharedSocket(boardDocName(boardId)) : undefined;
     const provider = new HocuspocusProvider({
       ...(socket ? { websocketProvider: socket } : { url: collabUrl() }),
       name: boardDocName(boardId),
@@ -330,7 +347,7 @@ export function useBoardConnection(
       setBusy(busy, false);
       // Destroying flushes what is still buffered: the shared socket closes only after that.
       provider.destroy();
-      if (socket) releaseSharedSocket(socket);
+      if (socket) releaseSharedSocket(socket, boardDocName(boardId));
       store.destroy();
       doc.destroy();
       setConn(null);

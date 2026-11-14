@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, newElementId, roots } from '@inkadra/doc-schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
@@ -716,6 +716,60 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect(
       counted.body.items.find((i: { boardId: string }) => i.boardId === boardId),
     ).toMatchObject(stored!.counts!);
+  });
+
+  it('lets a store and the backfill of the same board take turns, the newer state last', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Turni' },
+    });
+    const id = created.json().id as string;
+    const doc = storyboard(id);
+    const v1 = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state: v1, schemaVersion: 2, size: v1.byteLength });
+    const marta = [...roots(doc).elements.values()].find((m) => m.get('name') === 'Marta')!;
+    marta.set('name', 'Martina');
+    const v2 = Y.encodeStateAsUpdate(doc);
+    // A store writes the newer state and its index, and has not committed yet...
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let indexing = () => {};
+    const indexed = new Promise<void>((resolve) => {
+      indexing = resolve;
+    });
+    const store = db.transaction(async (tx) => {
+      await tx
+        .update(boardDoc)
+        .set({ state: v2, size: v2.byteLength, updatedAt: new Date() })
+        .where(eq(boardDoc.boardId, id));
+      await writeBoardIndex(tx, id, doc);
+      indexing();
+      await gate;
+    });
+    await indexed;
+    // ...while the backfill read the older state, still listed as never indexed.
+    const backfill = backfillIndex(db);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await store;
+    await backfill;
+    const titles = await db
+      .select({ title: boardElementIndex.title })
+      .from(boardElementIndex)
+      .where(
+        and(
+          eq(boardElementIndex.boardId, id),
+          eq(boardElementIndex.elementId, String(marta.get('id'))),
+        ),
+      );
+    expect(titles).toEqual([{ title: 'Martina' }]);
+    await db.delete(board).where(eq(board.id, id));
   });
 
   it('goes past a board it cannot index instead of stopping at it (#815)', async () => {

@@ -263,8 +263,17 @@ type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 /**
  * Makes the index rows of a board match the content of `doc`, writing only the rows that differ.
  * Idempotent: running it twice on the same document leaves the same rows, and writes none.
+ * Holds the board's document row until the transaction ends: two writes of the same board (a
+ * store and the backfill, or a retried store) take turns, and each reads `doc` only once it has
+ * the turn. A caller that read the stored state itself rereads it after this lock
+ * (backfillIndex), so an older state never lands after a newer one.
  */
 export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y.Doc) {
+  await tx
+    .select({ boardId: boardDoc.boardId })
+    .from(boardDoc)
+    .where(eq(boardDoc.boardId, boardId))
+    .for('update');
   const [row] = await tx
     .select({ projectId: board.projectId })
     .from(board)
@@ -373,9 +382,23 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
   for (const row of stale) {
     const doc = new Y.Doc();
     try {
-      Y.applyUpdate(doc, row.state);
-      await db.transaction((tx) => writeBoardIndex(tx, row.boardId, doc));
-      indexed += 1;
+      // Reread under the lock: a store may have written a newer state and its index since.
+      const done = await db.transaction(async (tx) => {
+        const [locked] = await tx
+          .select({
+            state: boardDoc.state,
+            indexedAt: boardDoc.indexedAt,
+            updatedAt: boardDoc.updatedAt,
+          })
+          .from(boardDoc)
+          .where(eq(boardDoc.boardId, row.boardId))
+          .for('update');
+        if (!locked || (locked.indexedAt && locked.indexedAt >= locked.updatedAt)) return false;
+        Y.applyUpdate(doc, locked.state);
+        await writeBoardIndex(tx, row.boardId, doc);
+        return true;
+      });
+      if (done) indexed += 1;
     } catch (err) {
       failed.push({ boardId: row.boardId, err });
     } finally {
