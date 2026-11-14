@@ -703,7 +703,10 @@ it('draws a priority card inside its column, read with it', async () => {
   store.destroy();
 });
 
-it('costs about the same with every card a priority card', { timeout: 60_000 }, async () => {
+// Coverage slows every call: the timed tests below run in the jobs that do not measure it (#852).
+const timed = it.skipIf(Boolean(process.env.INKADRA_COVERAGE));
+
+timed('costs about the same with every card a priority card', { timeout: 60_000 }, async () => {
   // Whether every priority card is read is a counter: thousands of them stay linear.
   const doc = new Y.Doc();
   doc.transact(() => {
@@ -732,7 +735,7 @@ it('costs about the same with every card a priority card', { timeout: 60_000 }, 
 /** The host's build identity, as an app passes it to export and open snapshots. */
 const BUILD = 'web 1.0.0 (abc1234)';
 
-it('opens from a validated snapshot without validating the cards it holds', {
+timed('opens from a validated snapshot without validating the cards it holds', {
   timeout: 60_000,
 }, async () => {
   const { update } = generateReferenceBoard('small', 13);

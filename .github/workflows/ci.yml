@@ -74,6 +74,8 @@ jobs:
           pnpm turbo run test --filter='!@inkadra/server' --
           --coverage.enabled --coverage.include='src/**'
           --coverage.reporter=json-summary --coverage.reporter=text-summary
+        env:
+          INKADRA_COVERAGE: "1"
       - name: Coverage stays above its floors
         run: node scripts/coverage-check.mjs apps/web apps/clipper packages/*
       - if: ${{ !cancelled() }}
