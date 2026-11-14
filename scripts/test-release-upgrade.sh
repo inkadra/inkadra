@@ -29,8 +29,9 @@ tag=${INKADRA_TAG:-edge}
 from_tag=${INKADRA_FROM_TAG:?set INKADRA_FROM_TAG to the last release, e.g. 0.9.0}
 email=upgrade@example.com
 password=correct-horse-battery
-# Boards opened per step; a person may save 20 versions an hour.
-max_boards=19
+# Boards of the release opened per step: a person may save 20 versions an hour, in Valkey, which
+# the steps share (1 before the upgrade, then up to 9 after the upgrade and 9 after the restore).
+max_boards=9
 
 cat >"$work/.env" <<ENV
 PUBLIC_URL=$url
@@ -84,15 +85,11 @@ files_digest() { # sha256 of every listed asset's file, as the API serves it
   printf '%s' "$out"
 }
 
-# Every board of the imported projects opens in the collaboration server: saving a named
+# Every board of the release opens in the collaboration server: saving a named
 # version loads the document there (and migrates it to this version's schema).
 open_boards() { # label
   local opened=0 broken=0 board code
-  # The limit of saved versions per person lives in Valkey (a sorted set under a hashed name)
-  # and outlasts a restart: each step starts with the whole budget. Only this test's Valkey.
-  compose exec -T valkey sh -c "valkey-cli --scan --pattern 'inkadra:auth:*' --type zset | xargs -r valkey-cli del" >/dev/null ||
-    fail "could not reset the limits in Valkey"
-  for board in $(sql "select id from board where deleted_at is null order by id limit $max_boards"); do
+  for board in $(sql "select id from board where id = any('{${before_ids[board]}}'::uuid[]) and deleted_at is null order by id limit $max_boards"); do
     code=$(c -o "$work/version.json" -w '%{http_code}' -b "$jar" -H 'Content-Type: application/json' \
       --data "{\"name\":\"$1\"}" "$url/api/v1/boards/$board/versions")
     if [[ $code == 201 || $code == 200 ]]; then opened=$((opened + 1)); else
