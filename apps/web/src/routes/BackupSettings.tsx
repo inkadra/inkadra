@@ -208,7 +208,7 @@ export function BackupSettings() {
                   <span className="backup-list__when">{time(b.startedAt)}</span>
                   <span className="backup-list__meta">
                     {[
-                      t(`backups.trigger.${b.trigger}`),
+                      t(`backups.trigger.${b.beforeUpgrade ? 'preUpgrade' : b.trigger}`),
                       size(b.size),
                       b.copiedToBucket ? t('backups.inBucket') : null,
                       !b.verification

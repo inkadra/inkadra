@@ -1454,7 +1454,8 @@ export const instanceBackup = pgTable(
   'instance_backup',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    trigger: text('trigger', { enum: ['scheduled', 'manual'] }).notNull(),
+    /** `pre-upgrade`: written at start before pending migrations (#805), kept apart. */
+    trigger: text('trigger', { enum: ['scheduled', 'manual', 'pre-upgrade'] }).notNull(),
     status: text('status', { enum: ['running', 'ready', 'failed'] })
       .notNull()
       .default('running'),

@@ -71,6 +71,15 @@ export async function runMigrations(
      */
     schemaOnly?: boolean;
     log?: Parameters<typeof moveToProductionBoards>[1];
+    /**
+     * Runs under the lock, before anything is applied, when migrations are pending on a
+     * database that already has some (not a fresh install): the pre-upgrade backup (#805).
+     * Throwing stops the start before any migration. What it returns runs once they applied.
+     */
+    beforeMigrating?: (
+      sql: postgres.Sql,
+      pending: { applied: number; pending: number },
+    ) => Promise<((db: Database) => Promise<void>) | undefined>;
   } = {},
 ) {
   // One connection (max 1) that is never recycled: the session lock holds until sql.end() below.
@@ -92,7 +101,13 @@ export async function runMigrations(
       await sql`select pg_advisory_lock(${MIGRATION_LOCK})`;
     }
     await refuseNewerDatabase(sql, migrationsFolder);
+    const pending = opts.beforeMigrating ? await pendingMigrations(sql, migrationsFolder) : null;
+    const after =
+      pending && pending.applied > 0 && pending.pending > 0
+        ? await opts.beforeMigrating?.(sql, pending)
+        : undefined;
     await migrate(db, { migrationsFolder });
+    await after?.(db);
     if (opts.schemaOnly) return;
     // Data that only code can move: the old board cast links become crew rows (decision 0091).
     await mergeCastLinks(db);
@@ -101,6 +116,26 @@ export async function runMigrations(
   } finally {
     await sql.end();
   }
+}
+
+/**
+ * Migrations applied to the database and those of this build still to apply. Drizzle's migrator
+ * applies every journal entry newer than the last applied one, so that is what is pending.
+ */
+export async function pendingMigrations(sql: postgres.Sql, migrationsFolder: string) {
+  const journal = JSON.parse(
+    await readFile(join(migrationsFolder, 'meta', '_journal.json'), 'utf8'),
+  ) as { entries: { when: number }[] };
+  const [table] = await sql<{ ok: boolean }[]>`
+    select to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+  if (!table?.ok) return { applied: 0, pending: journal.entries.length };
+  const [row] = await sql<{ n: number; last: string | null }[]>`
+    select count(*)::int as n, max(created_at)::text as last from drizzle.__drizzle_migrations`;
+  const last = row?.last === null || row?.last === undefined ? -1 : Number(row.last);
+  return {
+    applied: row?.n ?? 0,
+    pending: journal.entries.filter((e) => e.when > last).length,
+  };
 }
 
 /**

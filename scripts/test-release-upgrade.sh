@@ -5,13 +5,14 @@
 #
 # 1. The release (INKADRA_FROM_TAG) imports the two sample projects (boards, files, schedule,
 #    crew) through the API, saves a named version, and makes an Inkadra backup.
-# 2. This version (INKADRA_TAG) starts on that database: migrations run on real rows. The data,
-#    the files (same bytes) and the old version are there, and every board opens in the
-#    collaboration server (a saved version loads it there).
+# 2. This version (INKADRA_TAG) starts on that database: it writes a backup before the pending
+#    migrations (listed, verified), then migrations run on real rows. The data, the files (same
+#    bytes) and the old version are there, and every board opens in the collaboration server
+#    (a saved version loads it there).
 # 3. The backup of the release is restored by this version into a new, empty database (its
 #    migrations, the data, then the newer migrations on top), with the same checks.
-# 4. Rollback (docs/self-hosting/upgrades.md): the release restores its own backup into a new,
-#    empty database and finds everything it had.
+# 4. Rollback (docs/self-hosting/upgrades.md): the release restores the backup this version
+#    wrote before migrating into a new, empty database and finds everything it had.
 #
 #   INKADRA_FROM_TAG=0.9.0 INKADRA_TAG=edge scripts/test-release-upgrade.sh
 #
@@ -180,6 +181,14 @@ migrations_after=$(sql 'select count(*) from drizzle.__drizzle_migrations')
   fail "migrations: $migrations_before before, $migrations_after now"
 [[ $(c "$url/api/v1/health") == *'"status":"ok"'* ]] && pass "health ok" || fail "health"
 check_data "upgrade"
+# The backup written before the migrations (#805): one archive, listed and verified.
+pre_upgrade=$(compose exec -T inkadra sh -c 'ls /data/backups/inkadra-backup-pre-upgrade-*.zip 2>/dev/null' | tr -d '\r')
+[[ $(wc -w <<<"$pre_upgrade") == 1 ]] && pass "backup before the migrations written: ${pre_upgrade##*/}" ||
+  fail "backup before the migrations: '${pre_upgrade}'"
+row=$(sql "select status || ',' || coalesce(verify_complete::text, '-') || ',' || coalesce(missing_files::text, '-') from instance_backup where trigger = 'pre-upgrade'")
+[[ $row == 'ready,true,0' ]] && pass "it is in the history, verified, no file missing" || fail "pre-upgrade row: '$row'"
+[[ $(api /instance/backups | jq '[.items[] | select(.beforeUpgrade == true)] | length') == 1 ]] &&
+  pass "the API lists it as taken before the upgrade" || fail "pre-upgrade backup not in /instance/backups"
 open_boards "After the upgrade"
 current stop inkadra
 
@@ -203,8 +212,8 @@ docker run --rm -v "$work/pg-rollback:/p" --entrypoint chown postgres:18-alpine 
 sed -i '/^POSTGRES_DATA=/d' "$work/.env"
 echo "POSTGRES_DATA=$work/pg-rollback" >>"$work/.env"
 compose up -d --wait --wait-timeout 120 postgres valkey
-release run --rm inkadra backup restore "$backup_file" >"$work/rollback.log" 2>&1 &&
-  pass "rollback: $from_tag restores its own backup into a new database" ||
+release run --rm inkadra backup restore "$pre_upgrade" >"$work/rollback.log" 2>&1 &&
+  pass "rollback: $from_tag restores the backup taken before the upgrade into a new database" ||
   fail "rollback restore: $(tail -n8 "$work/rollback.log")"
 release up -d --wait --wait-timeout 240
 check_data "rollback"

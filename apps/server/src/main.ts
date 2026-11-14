@@ -10,7 +10,13 @@ import { startInlineExpirySweep } from './access-expiry.ts';
 import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
-import { backupsDir, restoreBackup, runBackup, startBackup } from './backup.ts';
+import {
+  backupBeforeMigrating,
+  backupsDir,
+  restoreBackup,
+  runBackup,
+  startBackup,
+} from './backup.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
@@ -180,6 +186,10 @@ async function main() {
     await runMigrations(config.DATABASE_URL, migrationsFolder, {
       productionBoards: config.PRODUCTION_BOARD_MOVE,
       log,
+      beforeMigrating: backupBeforeMigrating(
+        { storage: createStorage(config), log, ...transferDeps(config) },
+        { skip: config.SKIP_PRE_MIGRATION_BACKUP },
+      ),
     });
     log.info('database migrations applied');
     if (command === 'migrate') return;

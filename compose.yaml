@@ -67,6 +67,8 @@ services:
       VIDEO_PROXIES: ${VIDEO_PROXIES:-true}
       # Shooting days move to each project's Production board at start (decision 0123): true or false only
       PRODUCTION_BOARD_MOVE: ${PRODUCTION_BOARD_MOVE:-true}
+      # A database backup before pending migrations at start (#805); true skips it: true or false only
+      SKIP_PRE_MIGRATION_BACKUP: ${SKIP_PRE_MIGRATION_BACKUP:-false}
       # Map pictures of map cards and GPX files (decision 0053)
       MAPS: ${MAPS:-true}
       MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}

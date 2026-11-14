@@ -22,7 +22,8 @@ docker compose pull
 docker compose up -d --wait
 ```
 
-Database migrations run when the new version starts, before it accepts requests. Compare your
+Database migrations run when the new version starts, before it accepts requests, right after
+an automatic [backup of the database](#the-backup-before-an-upgrade). Compare your
 `compose.yaml` and `deploy/` files with the ones attached to the release: new settings arrive
 there.
 
@@ -30,11 +31,31 @@ Migrations only go forward. To go back, follow
 [Going back to an older version](#going-back-to-an-older-version). A backup restores on the same
 or any newer version, so it also carries data across an upgrade.
 
+### The backup before an upgrade
+
+When a new version starts and finds migrations to apply on a database that has data, it first
+writes a backup of the database, before changing anything: the usual archive
+(`/data/backups/inkadra-backup-pre-upgrade-<time>.zip`, copied to the bucket with S3 storage),
+read back and verified like the nightly one. Settings → Backups lists it as "Before upgrade".
+The two newest of these are kept apart from the nightly retention. A fresh install, and a
+restart with nothing to migrate, take none. It holds the database only: the files stay in the
+data volume or the bucket, which migrations do not touch.
+
+The backup takes about as long as `backup create` and needs free space in `/data/backups`;
+the server refuses to start when the disk has clearly too little (about half the size of the
+tables). If the backup fails, **nothing is migrated** and the server stops with the reason in
+the log: the database is as the previous version left it, so you can start that version again
+or fix the cause (free space, folder permissions) and retry. To upgrade without it, for
+example when you took a backup or a snapshot yourself, set `SKIP_PRE_MIGRATION_BACKUP=true` in
+`.env` for that start.
+
 ### Going back to an older version
 
-There are no down migrations: going back means the backup taken before the upgrade, restored
-with the older version, into a new, empty database. Everything written after that backup is
-lost, so decide quickly, and keep the upgraded database until you are sure.
+There are no down migrations: going back means the [backup taken before the
+upgrade](#the-backup-before-an-upgrade) (`inkadra-backup-pre-upgrade-….zip`, the newest one,
+or one you took yourself), restored with the older version, into a new, empty database.
+Everything written after that backup is lost, so decide quickly, and keep the upgraded database
+until you are sure.
 
 ```sh
 docker compose stop inkadra
@@ -42,13 +63,15 @@ docker compose stop inkadra
 docker compose exec postgres psql -U inkadra -d postgres -c 'alter database inkadra rename to inkadra_upgraded'
 docker compose exec postgres createdb -U inkadra inkadra
 # INKADRA_TAG back to the older version in .env, then:
-docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-<before the upgrade>.zip
+# The backup the upgrade wrote, newest last:
+docker compose run --rm --entrypoint ls inkadra /data/backups
+docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-pre-upgrade-<time>.zip
 docker compose up -d --wait
 ```
 
 The files stay where they are: files uploaded after the backup are kept in storage but no
-longer listed. CI runs this rollback, and the upgrade from the last release with its sample
-data, on every change (`scripts/test-release-upgrade.sh`).
+longer listed. CI runs this rollback with the backup the upgrade wrote, and the upgrade from
+the last release with its sample data, on every change (`scripts/test-release-upgrade.sh`).
 
 From the version after 0.9.0, a server refuses to start on a database that a newer version
 migrated, with a message that points here, instead of running on a schema it does not know.
@@ -65,6 +88,10 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
 These changes are on `main`, not in 0.9.0.
 
+- **A database backup before migrations.** The first start of these builds on a 0.9.0
+  database writes `inkadra-backup-pre-upgrade-….zip` before migrating, and refuses to migrate
+  if it fails: check the free space in `/data/backups` first. See
+  [The backup before an upgrade](#the-backup-before-an-upgrade).
 - **Media tools are now in the standard image.** Remove `-media` from `INKADRA_TAG` when
   moving to these builds, not when installing 0.9.0. Standard still excludes LibreOffice.
 - **Video copies use quality presets and multiple resolutions.** Review

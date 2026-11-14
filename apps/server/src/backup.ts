@@ -10,6 +10,7 @@ import {
   rename,
   rm,
   stat,
+  statfs,
   writeFile,
 } from 'node:fs/promises';
 import { basename, join } from 'node:path';
@@ -26,9 +27,10 @@ import {
   type InstanceBackup,
   BackupSettings as Settings,
 } from '@inkadra/shared';
-import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import postgres from 'postgres';
+import { recordAudit } from './audit.ts';
 import { VERSION } from './config.ts';
 import { createDatabase, type Database, runMigrations, UNLIMITED_SESSION } from './db/client.ts';
 import { instanceBackup, instanceSetting } from './db/schema.ts';
@@ -143,7 +145,9 @@ export type BackupRow = typeof instanceBackup.$inferSelect;
 export function toBackup(row: BackupRow): InstanceBackup {
   return {
     id: row.id,
-    trigger: row.trigger,
+    // Older clients know two triggers: a backup before an upgrade is the server's own.
+    trigger: row.trigger === 'pre-upgrade' ? 'scheduled' : row.trigger,
+    ...(row.trigger === 'pre-upgrade' ? { beforeUpgrade: true } : {}),
     status: row.status,
     fileName: row.removedAt ? null : row.fileName,
     size: row.size,
@@ -392,22 +396,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
     await rename(partial, join(dir, fileName));
     // The archive on the data volume is a complete backup on its own: a failed copy to the
     // bucket keeps it, reported as not copied (`copiedToBucket: false`) and logged.
-    let copied = false;
-    if (deps.bucket) {
-      try {
-        await deps.storage.writeStream(
-          `${BUCKET_PREFIX}${fileName}`,
-          createReadStream(join(dir, fileName)),
-          'application/zip',
-        );
-        copied = true;
-      } catch (err) {
-        log.error(
-          { err, backup: id, fileName },
-          'backup kept on the data volume, bucket copy failed',
-        );
-      }
-    }
+    const copied = await copyToBucket(deps, id, fileName);
     // Only a backup still running becomes ready: never one another process marked over.
     const [row] = await db
       .update(instanceBackup)
@@ -462,7 +451,36 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   }
 }
 
-/** Keeps the newest `retention` successful backups; removes older archives and old rows. */
+/** Copies a written archive to the bucket when files live there; false when it failed. */
+async function copyToBucket(
+  deps: Pick<BackupDeps, 'bucket' | 'storage' | 'dataDir' | 'log'>,
+  id: string,
+  fileName: string,
+) {
+  if (!deps.bucket) return false;
+  try {
+    await deps.storage.writeStream(
+      `${BUCKET_PREFIX}${fileName}`,
+      createReadStream(join(backupsDir(deps.dataDir), fileName)),
+      'application/zip',
+    );
+    return true;
+  } catch (err) {
+    deps.log.error(
+      { err, backup: id, fileName },
+      'backup kept on the data volume, bucket copy failed',
+    );
+    return false;
+  }
+}
+
+/** Backups taken before an upgrade (#805) kept, apart from the nightly `retention`. */
+export const PRE_UPGRADE_KEEP = 2;
+
+/**
+ * Keeps the newest `retention` successful backups, and the newest `PRE_UPGRADE_KEEP` taken
+ * before an upgrade; removes older archives and old rows.
+ */
 export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storage' | 'dataDir'>) {
   const { db } = deps;
   const { retention } = await readBackupSettings(db);
@@ -471,7 +489,10 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storag
     .from(instanceBackup)
     .where(and(eq(instanceBackup.status, 'ready'), isNull(instanceBackup.removedAt)))
     .orderBy(desc(instanceBackup.startedAt));
-  const old = kept.slice(retention);
+  const old = [
+    ...kept.filter((r) => r.trigger !== 'pre-upgrade').slice(retention),
+    ...kept.filter((r) => r.trigger === 'pre-upgrade').slice(PRE_UPGRADE_KEEP),
+  ];
   for (const row of old) {
     if (row.fileName) {
       await rm(join(backupsDir(deps.dataDir), row.fileName), { force: true });
@@ -490,10 +511,136 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storag
         ),
       );
   await reapStaleBackups(db);
+  // Rows of archives still kept stay, however old: without them nothing would remove the file.
   await db
     .delete(instanceBackup)
-    .where(lt(instanceBackup.startedAt, new Date(Date.now() - 180 * 86400 * 1000)));
+    .where(
+      and(
+        lt(instanceBackup.startedAt, new Date(Date.now() - 180 * 86400 * 1000)),
+        or(ne(instanceBackup.status, 'ready'), isNotNull(instanceBackup.removedAt)),
+      ),
+    );
   return { removed: old.length };
+}
+
+// Before an upgrade ------------------------------------------------------------
+
+/**
+ * Free space a backup of `tableBytes` of table data needs, as far as start-up can tell: the
+ * archive is COPY text compressed, mostly well under half the tables, plus a margin.
+ * shortcut: an estimate, not the size; a database of incompressible data may still fill the
+ * disk (the backup then fails as no_space and nothing is migrated).
+ */
+export function preUpgradeSpaceNeeded(tableBytes: number) {
+  return Math.ceil(tableBytes / 2) + 64 * 1024 * 1024;
+}
+
+const mib = (n: number) => `${Math.round(n / 1024 / 1024)} MiB`;
+
+/**
+ * The step `runMigrations` runs before pending migrations (#805): a database backup on the
+ * schema as the previous version left it, in the usual format, read back and verified, in the
+ * usual folder (and bucket). Its history row is written once the migrations applied (the
+ * table may not have its newest columns before), with an audit event, both best effort. A
+ * failure stops the start before anything is migrated; `skip` (SKIP_PRE_MIGRATION_BACKUP)
+ * only logs.
+ */
+export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip?: boolean } = {}) {
+  const { log } = deps;
+  return async (
+    sql: postgres.Sql,
+    pending: { applied: number; pending: number },
+  ): Promise<((db: Database) => Promise<void>) | undefined> => {
+    if (opts.skip) {
+      log.warn(
+        pending,
+        'migrations pending: backup before them skipped (SKIP_PRE_MIGRATION_BACKUP)',
+      );
+      return undefined;
+    }
+    log.info(pending, 'migrations pending: backing up the database before applying them');
+    const id = randomUUID();
+    const startedAt = new Date();
+    const dir = backupsDir(deps.dataDir);
+    const fileName = `inkadra-backup-pre-upgrade-${stamp(startedAt)}-${id.slice(0, 8)}.zip`;
+    const partial = join(dir, `${fileName}.partial`);
+    let written: Awaited<ReturnType<typeof dumpDatabase>>;
+    let verified: Awaited<ReturnType<typeof verifyBackup>>;
+    try {
+      await mkdir(dir, { recursive: true, mode: 0o700 });
+      await chmod(dir, 0o700).catch(() => {});
+      const [tables] = await sql<{ n: string }[]>`
+        select coalesce(sum(pg_table_size(c.oid)), 0)::text as n
+        from pg_class c join pg_namespace s on s.oid = c.relnamespace
+        where s.nspname = 'public' and c.relkind = 'r'`;
+      const needed = preUpgradeSpaceNeeded(Number(tables?.n ?? 0));
+      const disk = await statfs(dir);
+      const free = Number(disk.bavail) * Number(disk.bsize);
+      if (free < needed)
+        throw new Error(
+          `not enough free space in ${dir}: about ${mib(needed)} needed, ${mib(free)} free`,
+        );
+      // Timeouts 0 (UNLIMITED_SESSION) on its own connection. No stall watch: start-up waits.
+      written = await dumpDatabase(deps, partial, {
+        moved: () => {},
+        connected: () => {},
+        signal: new AbortController().signal,
+      });
+      verified = await verifyBackup(partial, deps.storage, {
+        signal: AbortSignal.timeout(deps.verifyBudgetMs ?? VERIFY_BUDGET_MS),
+      });
+      await rename(partial, join(dir, fileName));
+    } catch (err) {
+      await rm(partial, { force: true }).catch(() => {});
+      log.error({ err }, 'backup before the migrations failed: nothing migrated');
+      throw new Error(
+        `The backup before the database upgrade failed (${(err as Error).message}). Nothing ` +
+          'was migrated: the database is as the previous version left it. Fix the cause and ' +
+          'start again, or set SKIP_PRE_MIGRATION_BACKUP=true to upgrade without it (take a ' +
+          'backup yourself first): see ' +
+          'https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/upgrades.md#the-backup-before-an-upgrade',
+        { cause: err },
+      );
+    }
+    const copied = await copyToBucket(deps, id, fileName);
+    const file = join(dir, fileName);
+    log.info(
+      { file, size: written.size, complete: verified.complete, missing: verified.missing.count },
+      'backup before the migrations written',
+    );
+    return async (db) => {
+      try {
+        await db.insert(instanceBackup).values({
+          id,
+          trigger: 'pre-upgrade',
+          status: 'ready',
+          fileName,
+          size: written.size,
+          copiedToBucket: copied,
+          fileCount: written.files.count,
+          fileBytes: written.files.bytes,
+          startedAt,
+          heartbeatAt: startedAt,
+          finishedAt: new Date(),
+          verifiedAt: new Date(),
+          missingFiles: verified.missing.count,
+          checkedFiles: verified.checked,
+          unverifiedFiles: verified.unverified,
+          verifyComplete: verified.complete,
+        });
+        await recordAudit(db, {
+          action: 'backup.started',
+          targetType: 'backup',
+          targetId: id,
+          details: { kind: 'pre-upgrade', files: written.files.count, ...pending },
+        }).catch((err) => log.error({ err }, 'audit of the backup before the migrations failed'));
+        await applyBackupRetention({ db, storage: deps.storage, dataDir: deps.dataDir });
+      } catch (err) {
+        // The archive is complete on disk: only the history misses it.
+        log.error({ err, file }, 'backup before the migrations written but not listed');
+      }
+    };
+  };
 }
 
 /** Counts rows of COPY text output: one line each, newlines inside values are escaped. */
@@ -595,7 +742,7 @@ export function copyWritable(
 }
 
 async function dumpDatabase(
-  deps: BackupDeps,
+  deps: Pick<BackupDeps, 'databaseUrl' | 'migrationsFolder'>,
   path: string,
   hooks: { moved: () => void; connected: (pid: number) => void; signal: AbortSignal },
 ) {
