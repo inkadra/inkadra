@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
-import { createWriteStream } from 'node:fs';
 import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
-import { pipeline } from 'node:stream/promises';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
 import IORedis from 'ioredis';
@@ -13,12 +11,13 @@ import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
 import {
-  type BackupRemote,
+  archiveToRestore,
   backupBeforeMigrating,
   backupDirOf,
   backupRemote,
   checkBackupDir,
   restoreBackup,
+  restoreBackupFiles,
   runBackup,
   startBackup,
 } from './backup.ts';
@@ -616,13 +615,16 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
   if (action === 'restore' && file && args.length === 2) {
     const tmpDir = join(config.DATA_DIR, 'tmp');
     await mkdir(tmpDir, { recursive: true });
+    const archive = await archiveToRestore(file, dir, remote, log);
     const report = await restoreBackup({
-      file: await archiveToRestore(file, dir, remote, log),
+      file: archive.path,
       databaseUrl: config.DATABASE_URL,
       migrationsFolder,
       storage: createStorage(config),
       tmpDir,
       log,
+      // Hashing what storage already has costs a read: cheap on a local disk only.
+      hashExisting: config.STORAGE_DRIVER === 'local',
     });
     log.info(report, 'backup restored');
     // Boards a shutdown kept on disk belong to the database just replaced: set aside, not
@@ -635,16 +637,19 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
         if (err.code !== 'ENOENT') throw err;
       },
     );
-    if (report.files.missing > 0)
-      log.warn(
-        { missing: report.files.missing, examples: report.files.examples },
-        'some files listed by the backup are not in storage: restore the data volume or bucket too',
-      );
-    if (report.files.unverified > 0)
-      log.warn(
-        { unverified: report.files.unverified },
-        'storage did not answer for some listed files: they were not checked',
-      );
+    await reportFiles(report.files, archive, file, log);
+    return;
+  }
+  if (action === 'restore-files' && file && args.length === 2) {
+    const archive = await archiveToRestore(file, dir, remote, log);
+    const files = await restoreBackupFiles({
+      file: archive.path,
+      storage: createStorage(config),
+      log,
+      hashExisting: config.STORAGE_DRIVER === 'local',
+    });
+    log.info(files, 'files of the backup restored');
+    await reportFiles(files, archive, file, log);
     return;
   }
   if (action === 'create' && args.length === 1) {
@@ -666,38 +671,49 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
     return;
   }
   throw new Error(
-    'Usage: inkadra backup create | inkadra backup list | inkadra backup restore <file or name>',
+    'Usage: inkadra backup create | inkadra backup list | inkadra backup restore <file or name> | inkadra backup restore-files <file or name>',
   );
 }
 
 /**
- * The archive a restore reads: a path, a name in the backup folder, or a name only the backup
- * bucket has, downloaded into the backup folder first (#899).
+ * Says what a restore left out (#899). Files that could not be written make the command exit
+ * with 1 and keep a downloaded archive for `backup restore-files`; otherwise the download, a
+ * copy of what the bucket keeps, is removed.
  */
-async function archiveToRestore(
-  file: string,
-  dir: string,
-  remote: BackupRemote | null,
+async function reportFiles(
+  files: {
+    failed: number;
+    failedExamples: string[];
+    missing: number;
+    unverified: number;
+    examples: string[];
+  },
+  archive: { path: string; downloaded: boolean },
+  name: string,
   log: Logger,
 ) {
-  const exists = async (path: string) => (await stat(path).catch(() => null)) !== null;
-  // A path that is not there: the restore says so.
-  if ((await exists(file)) || basename(file) !== file) return file;
-  const local = join(dir, file);
-  if ((await exists(local)) || !remote) return local;
-  log.info({ from: `${remote.label}${file}`, to: local }, 'downloading the backup');
-  await mkdir(dir, { recursive: true, mode: 0o700 });
-  const partial = `${local}.partial`;
-  try {
-    await pipeline(
-      await remote.storage.read(`${remote.prefix}${file}`),
-      createWriteStream(partial, { mode: 0o600 }),
+  if (files.missing > 0)
+    log.warn(
+      { missing: files.missing, examples: files.examples },
+      'some files listed by the backup are not in storage: restore the data volume or bucket too',
     );
-    await rename(partial, local);
-  } finally {
-    await rm(partial, { force: true });
+  if (files.unverified > 0)
+    log.warn(
+      { unverified: files.unverified },
+      'storage did not answer for some listed files: they were not checked',
+    );
+  if (files.failed > 0) {
+    log.error(
+      { failed: files.failed, examples: files.failedExamples, archive: archive.path },
+      `some files of the backup were not restored: run "backup restore-files ${name}" again`,
+    );
+    process.exitCode = 1;
+    return;
   }
-  return local;
+  if (archive.downloaded) {
+    await rm(archive.path, { force: true });
+    log.info({ file: archive.path }, 'downloaded backup removed: the bucket keeps it');
+  }
 }
 
 main().catch((err) => {

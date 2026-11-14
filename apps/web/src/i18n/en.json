@@ -4259,6 +4259,8 @@
     "media": "Include files",
     "mediaHelp": "Uploaded files and their thumbnails go into each backup too: about {{size}} more now. Playable copies of videos are made again after a restore.",
     "mediaHelpPlain": "Uploaded files and their thumbnails go into each backup too. Playable copies of videos are made again after a restore.",
+    "mediaKept_one": "With the last backup kept, that is about {{total}} in all; kept backups take {{used}} now.",
+    "mediaKept_other": "Each kept backup holds its own copy: about {{total}} for the last {{count}}, while kept backups take {{used}} now.",
     "history": "History",
     "inBucket": "copied to the bucket",
     "withMedia_one": "with {{count}} file",

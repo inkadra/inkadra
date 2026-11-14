@@ -18,6 +18,7 @@ import { basename, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Readable, Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   BACKUP_FORMAT,
   BACKUP_FORMAT_VERSION,
@@ -32,7 +33,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from 'driz
 import type { Logger } from 'pino';
 import postgres from 'postgres';
 import { recordAudit } from './audit.ts';
-import { type Config, VERSION } from './config.ts';
+import { type Config, STORAGE_PREFIXES, VERSION } from './config.ts';
 import { createDatabase, type Database, runMigrations, UNLIMITED_SESSION } from './db/client.ts';
 import { instanceBackup, instanceSetting } from './db/schema.ts';
 import { createStorage, type Storage } from './storage.ts';
@@ -148,6 +149,12 @@ class BackupCorrupt extends Error {}
  * verification `incomplete`, never left running and blocking the next one.
  */
 export const VERIFY_BUDGET_MS = 30 * 60 * 1000;
+/**
+ * Files of a backup with media are read back at least this fast (bytes a millisecond, about
+ * 25 MiB/s): their part of the verification gets `VERIFY_BUDGET_MS` plus the time this rate
+ * needs for `media.bytes`, apart from the tables and the file list (#899).
+ */
+export const MEDIA_VERIFY_BYTES_PER_MS = (25 * 1024 * 1024) / 1000;
 /** Above this many listed files, the verification looks up an even sample of this size. */
 export const VERIFY_SAMPLE = 20_000;
 /** Storage lookups the verification has in flight at once. */
@@ -293,7 +300,7 @@ export interface BackupDeps {
   stallMs?: number;
   /** Tests: how often the heartbeat beats. */
   heartbeatMs?: number;
-  /** Tests: the time the verification may take (`VERIFY_BUDGET_MS`). */
+  /** Tests: the time the verification of tables and file list may take (`VERIFY_BUDGET_MS`). */
   verifyBudgetMs?: number;
   storage: Storage;
   /** BACKUP_DIR or `DATA_DIR/backups` (#899). */
@@ -441,7 +448,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         dumpPid = pid;
       },
       signal: stall.signal,
-      ...(includeMedia ? { media: deps.storage } : {}),
+      ...(includeMedia ? { media: deps.storage, log } : {}),
     });
     // After a stall the dump may still fail on its own: that is already handled.
     dump.catch(() => {});
@@ -449,21 +456,22 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
       dumping = false;
     });
     // Read the archive back before it counts (#794): every table counted and hashed against
-    // the manifest, the listed files looked up in storage. Watched for stalls and bounded in
-    // time: past either it stops as incomplete and the backup is kept.
+    // the manifest, the listed files looked up in storage, the files of the archive hashed.
+    // Watched for stalls and bounded in time, each part on its own budget (#899): past either
+    // it stops as incomplete and the backup is kept.
     movedAt = Date.now();
     verifying = true;
-    const budget = setTimeout(() => verifyStop.abort(), deps.verifyBudgetMs ?? VERIFY_BUDGET_MS);
     const verified = await verifyBackup(partial, deps.storage, {
       signal: verifyStop.signal,
+      budgetMs: deps.verifyBudgetMs ?? VERIFY_BUDGET_MS,
       moved: () => {
         movedAt = Date.now();
       },
     }).finally(() => {
       verifying = false;
-      clearTimeout(budget);
     });
-    if (!verified.complete) log.warn({ backup: id }, 'backup verification incomplete');
+    if (!verified.complete)
+      log.warn({ backup: id, parts: verified.parts }, 'backup verification incomplete');
     if (verified.missing.count > 0 || verified.unverified > 0)
       log.warn(
         {
@@ -957,10 +965,11 @@ export function copyWritable(
 /**
  * Bytes of the files a backup with media copies (#899): originals, thumbnails and the other
  * listed copies, feedback attachments; never the playable copies of videos nor ladder rungs.
+ * Copies whose size was never recorded (older rows) count as 512 KiB each, a generous thumbnail.
  */
 export const MEDIA_BYTES = `select (
   (select coalesce(sum(size), 0) from asset where status <> 'pending')
-  + (select coalesce(sum(bytes), 0) from asset_variant where size <> 'proxy')
+  + (select coalesce(sum(coalesce(bytes, ${512 * 1024})), 0) from asset_variant where size <> 'proxy')
   + (select coalesce(sum(bytes), 0) from feedback_attachment where expires_at > now())
 )::bigint::text as n`;
 
@@ -984,6 +993,7 @@ async function dumpDatabase(
     connected: (pid: number) => void;
     signal: AbortSignal;
     media?: Storage;
+    log?: Logger;
   },
 ) {
   const { moved, signal } = hooks;
@@ -1140,7 +1150,7 @@ async function dumpDatabase(
     if (list && hooks.media) {
       list.end();
       await once(list, 'close');
-      manifest.media = await addMedia(zip, listPath, hooks.media, moved);
+      manifest.media = await addMedia(zip, listPath, hooks.media, moved, hooks.log);
       media = { count: manifest.media.count, bytes: manifest.media.bytes };
     }
     await zip.addJson('manifest.json', manifest);
@@ -1162,17 +1172,25 @@ const mediaEntry = (key: string) => `media/${key}`;
 
 /**
  * Copies the files of the list at `listPath` into the archive, one at a time and streamed, each
- * hashed on the way (#899); `media.jsonl` records key, size and SHA-256 for the verification
- * and the restore. A file storage no longer has is left out and counted (`missing`): it was
- * already lost, the database still restores.
+ * hashed on the way (#899); `media.jsonl` records key, size and SHA-256 of the bytes read, for
+ * the verification and the restore. A file storage no longer has, or that went away between its
+ * lookup and its read, is left out and counted (`missing`): it was already lost, the database
+ * still restores. A file whose size changed meanwhile is kept as read and logged.
  */
-async function addMedia(zip: ZipWriter, listPath: string, storage: Storage, moved: () => void) {
+async function addMedia(
+  zip: ZipWriter,
+  listPath: string,
+  storage: Storage,
+  moved: () => void,
+  log?: Logger,
+) {
   const linesPath = `${listPath}.media`;
   const lines = createWriteStream(linesPath, { mode: 0o600 });
   const linesHash = createHash('sha256');
   let count = 0;
   let bytes = 0;
   let missing = 0;
+  let changed = 0;
   try {
     for await (const line of createInterface({
       input: createReadStream(listPath),
@@ -1181,33 +1199,41 @@ async function addMedia(zip: ZipWriter, listPath: string, storage: Storage, move
       if (!line) continue;
       const { key } = JSON.parse(line) as { key: string };
       const size = await storage.size(key);
-      if (size === null) {
+      const body = size === null ? null : await openStored(storage, key);
+      if (size === null || body === null) {
         missing += 1;
         continue;
       }
       const hash = createHash('sha256');
+      let read = 0;
       const hashing = new Transform({
         transform(chunk: Buffer, _enc, done) {
           moved();
           hash.update(chunk);
+          read += chunk.length;
           done(null, chunk);
         },
       });
-      // Stored, not deflated: pictures and videos are compressed already. The size makes yazl
-      // fail the archive when storage hands back other bytes than it said.
-      await zip.addStream(mediaEntry(key), piped(await storage.read(key), hashing), {
-        compress: false,
-        size,
-      });
-      const out = Buffer.from(`${JSON.stringify({ key, size, sha256: hash.digest('hex') })}\n`);
+      // Stored, not deflated: pictures and videos are compressed already. No size given to
+      // yazl: a file rewritten since its lookup goes in as read, never fails the archive.
+      await zip.addStream(mediaEntry(key), piped(body, hashing), { compress: false });
+      if (read !== size) {
+        changed += 1;
+        log?.warn({ key, listed: size, read }, 'file changed while it was backed up');
+      }
+      const out = Buffer.from(
+        `${JSON.stringify({ key, size: read, sha256: hash.digest('hex') })}\n`,
+      );
       linesHash.update(out);
       if (!lines.write(out)) await once(lines, 'drain');
       count += 1;
-      bytes += size;
+      bytes += read;
     }
     lines.end();
     await once(lines, 'close');
     await zip.addStream('media.jsonl', createReadStream(linesPath));
+    if (missing > 0 || changed > 0)
+      log?.warn({ missing, changed }, 'some files changed or went away while backed up');
     return {
       count,
       bytes,
@@ -1221,6 +1247,21 @@ async function addMedia(zip: ZipWriter, listPath: string, storage: Storage, move
   }
 }
 
+/**
+ * A stored file opened for reading, or null when it is gone: a local file is only opened on
+ * its first read, so this waits for that before the archive gets an entry it could not fill.
+ */
+async function openStored(storage: Storage, key: string) {
+  try {
+    const body = await storage.read(key);
+    await once(body, 'readable');
+    return body;
+  } catch (err) {
+    if ((await storage.size(key).catch(() => 0)) === null) return null;
+    throw err;
+  }
+}
+
 // Restore --------------------------------------------------------------------
 
 export interface RestoreReport {
@@ -1228,10 +1269,16 @@ export interface RestoreReport {
   rows: number;
   migrationsBefore: number;
   migrationsAfter: number;
-  /** `restored`: files put back into storage from a backup with media (#899). */
+  /**
+   * `restored`: files put back into storage from a backup with media (#899); `failed`: those
+   * that could not be, named in `failedExamples` (run `backup restore-files` again).
+   */
   files: {
     listed: number;
     restored: number;
+    kept: number;
+    failed: number;
+    failedExamples: string[];
     missing: number;
     unverified: number;
     examples: string[];
@@ -1287,8 +1334,10 @@ async function partialMigrations(source: string, count: number, into: string) {
 /**
  * Restores a backup into an empty database: migrations of the backup, the data, then the
  * migrations this version adds. Refuses a database with accounts in it and backups from a
- * newer version. A backup with media puts its files back into storage (#899); the files are
- * then checked against the list.
+ * newer version. The archive is read back whole first (`verifyBackup`, no time limit): a
+ * corrupt one never touches the database. A backup with media puts its files back into
+ * storage (#899); the files are then checked against the list. Files that failed are in
+ * `files.failed`: the database is restored, `restoreBackupFiles` finishes the files.
  */
 export async function restoreBackup(opts: {
   file: string;
@@ -1297,7 +1346,16 @@ export async function restoreBackup(opts: {
   storage: Storage;
   tmpDir: string;
   log: Logger;
+  /** Compare stored files by hash too before keeping them (local storage). */
+  hashExisting?: boolean;
+  retryMs?: number;
+  /** Tests of the load itself only: no reading back first. */
+  skipVerify?: boolean;
 }): Promise<RestoreReport> {
+  if (!opts.skipVerify) {
+    opts.log.info('reading the backup back before restoring it');
+    await verifyBackup(opts.file, opts.storage, { lookUp: false });
+  }
   const zip = await readZip(opts.file, ARCHIVE_LIMITS);
   try {
     const manifest = await zip.json('manifest.json', BackupManifest, 64 * 1024 * 1024);
@@ -1388,10 +1446,10 @@ export async function restoreBackup(opts: {
       await after.end();
     }
 
-    const restoredFiles = manifest.media
-      ? await restoreMedia(zip, manifest.media, opts.storage, opts.log)
-      : 0;
-    if (manifest.media) opts.log.info({ restored: restoredFiles }, 'files of the backup restored');
+    const media = manifest.media
+      ? await restoreMedia(zip, manifest.media, opts.storage, opts.log, opts)
+      : null;
+    if (media) opts.log.info(media, 'files of the backup restored');
     const files = await checkFiles(zip, opts.storage);
     // In the restored database: who restored is not known (the command line), when and what is.
     // Best effort: the restore itself succeeded, a failed record must not report it failed.
@@ -1404,6 +1462,7 @@ export async function restoreBackup(opts: {
             createdAt: manifest.createdAt,
             appVersion: manifest.appVersion,
             missingFiles: files.missing.count,
+            failedFiles: media?.failed.count ?? 0,
           })}::jsonb)`;
     } catch (err) {
       opts.log.error({ err }, 'restore not recorded in the audit log');
@@ -1417,7 +1476,10 @@ export async function restoreBackup(opts: {
       migrationsAfter: local.length,
       files: {
         listed: files.listed,
-        restored: restoredFiles,
+        restored: media?.restored ?? 0,
+        kept: media?.kept ?? 0,
+        failed: media?.failed.count ?? 0,
+        failedExamples: media?.failed.examples ?? [],
         missing: files.missing.count,
         unverified: files.unverified,
         examples: files.missing.examples,
@@ -1448,7 +1510,13 @@ const ARCHIVE_LIMITS = {
 async function checkFiles(
   zip: ZipReader,
   storage: Storage,
-  opts: { listed?: number; sample?: number; signal?: AbortSignal; moved?: () => void } = {},
+  opts: {
+    listed?: number;
+    sample?: number;
+    signal?: AbortSignal;
+    moved?: () => void;
+    lookUp?: boolean;
+  } = {},
 ) {
   const hash = createHash('sha256');
   const source = piped(
@@ -1510,7 +1578,7 @@ async function checkFiles(
   })) {
     if (!line) continue;
     listed += 1;
-    if (opts.signal?.aborted || (listed - 1) % every !== 0) continue;
+    if (opts.lookUp === false || opts.signal?.aborted || (listed - 1) % every !== 0) continue;
     batch.push(JSON.parse(line) as { key: string; size: number | null });
     if (batch.length === VERIFY_CONCURRENCY) await flush();
   }
@@ -1527,73 +1595,138 @@ async function checkFiles(
 
 /**
  * Reads a written archive back (#794): the manifest, each table entry counted and hashed
- * against it, and the file list checked against storage (a sample above `VERIFY_SAMPLE`
- * files). Throws `BackupCorrupt` when the archive does not match what was written; files
- * missing from storage are only reported. Once `signal` aborts (time budget, stall) it stops
- * and answers `complete: false` with what it checked: never corrupt for lack of time.
+ * against it, the file list checked against storage (a sample above `VERIFY_SAMPLE` files) and,
+ * in a backup with media, every file hashed against `media.jsonl` (#899). Throws
+ * `BackupCorrupt` when the archive does not match what was written; files missing from storage
+ * are only reported. Once `signal` aborts (a stall) it stops; `budgetMs` bounds the tables and
+ * the file list, the files of the archive get it plus the time `MEDIA_VERIFY_BYTES_PER_MS`
+ * needs for their bytes. A part stopped early answers `complete: false` with what it checked,
+ * named in `parts`: never corrupt for lack of time. With `lookUp: false` the file list is read
+ * and hashed but not looked up (a restore, before the files are back).
  */
 export async function verifyBackup(
   file: string,
   storage: Storage,
-  opts: { signal?: AbortSignal; moved?: () => void; sample?: number } = {},
+  opts: {
+    signal?: AbortSignal;
+    moved?: () => void;
+    sample?: number;
+    budgetMs?: number;
+    lookUp?: boolean;
+  } = {},
 ) {
   const zip = await readZip(file, ARCHIVE_LIMITS);
+  const within = (ms: number | undefined) => {
+    const signals = [
+      ...(opts.signal ? [opts.signal] : []),
+      ...(ms === undefined ? [] : [AbortSignal.timeout(ms)]),
+    ];
+    return signals.length ? AbortSignal.any(signals) : undefined;
+  };
+  const parts = { tables: false, files: false, media: null as boolean | null };
   const incomplete = (tables: number) => ({
     tables,
     files: 0,
     checked: 0,
     unverified: 0,
     missing: { count: 0, examples: [] as string[] },
+    media: null,
     complete: false,
+    parts,
   });
   try {
     const manifest = await zip.json('manifest.json', BackupManifest, 64 * 1024 * 1024);
+    // One budget for the tables and the file list, as before files were in backups.
+    const signal = within(opts.budgetMs);
     let tables = 0;
     for (const table of manifest.tables) {
-      if (opts.signal?.aborted) return incomplete(tables);
+      if (signal?.aborted) return incomplete(tables);
       const counter = lineCounter(() => opts.moved?.());
       await pipeline(
         await zip.stream(table.entry, Number.MAX_SAFE_INTEGER),
         counter.stream,
         new Writable({ write: (_chunk, _enc, done) => done() }),
-        { signal: opts.signal ?? new AbortController().signal },
+        { signal: signal ?? new AbortController().signal },
       ).catch((err) => {
-        if (!opts.signal?.aborted) throw err;
+        if (!signal?.aborted) throw err;
       });
-      if (opts.signal?.aborted) return incomplete(tables);
+      if (signal?.aborted) return incomplete(tables);
       if (counter.lines() !== table.rows || (table.sha256 && counter.sha256() !== table.sha256))
         throw new BackupCorrupt(`${table.name} does not read back as written.`);
       tables += 1;
     }
-    if (manifest.media) {
-      const media = await checkMedia(zip, manifest.media, opts);
-      if (!media) return incomplete(tables);
-    }
+    parts.tables = true;
     const files = await checkFiles(zip, storage, {
       listed: manifest.files.count,
       sample: opts.sample ?? VERIFY_SAMPLE,
-      signal: opts.signal,
+      signal,
       moved: opts.moved,
+      lookUp: opts.lookUp,
     });
     if (
       files.listed !== manifest.files.count ||
       (manifest.files.sha256 && files.sha256 !== manifest.files.sha256)
     )
       throw new BackupCorrupt('files.jsonl does not read back as written.');
+    parts.files = files.complete;
+    // The files of the archive last, on a budget of their own: a large library never keeps
+    // the file list from being looked up.
+    let media: { checked: number; count: number } | null = null;
+    if (manifest.media) {
+      const checked = await checkMedia(zip, manifest.media, {
+        signal: within(
+          opts.budgetMs === undefined
+            ? undefined
+            : Math.ceil(opts.budgetMs + manifest.media.bytes / MEDIA_VERIFY_BYTES_PER_MS),
+        ),
+        moved: opts.moved,
+      });
+      media = { checked: checked.checked, count: manifest.media.count };
+      parts.media = checked.complete;
+    }
     return {
       tables,
       files: files.listed,
       checked: files.checked,
       unverified: files.unverified,
       missing: files.missing,
-      complete: files.complete,
+      media,
+      complete: parts.tables && parts.files && parts.media !== false,
+      parts,
     };
   } finally {
     zip.close();
   }
 }
 
-/** The lines of `media.jsonl`, each checked against the hash of its listing. */
+/**
+ * A key a backup may hold a file of: a safe storage key under one of the folders of stored
+ * files (`STORAGE_PREFIXES`), never anywhere else in storage (#899).
+ */
+const MEDIA_KEY = new RegExp(
+  `^(${STORAGE_PREFIXES.map((p) => p.slice(0, -1)).join('|')})(/[A-Za-z0-9._-]+)+$`,
+);
+
+/** The keys of `files.jsonl`, in its order. */
+async function* listedKeys(zip: ZipReader) {
+  const source = await zip.stream('files.jsonl', Number.MAX_SAFE_INTEGER);
+  try {
+    for await (const line of createInterface({
+      input: source,
+      crlfDelay: Number.POSITIVE_INFINITY,
+    }))
+      if (line) yield (JSON.parse(line) as { key: string }).key;
+  } finally {
+    source.destroy();
+  }
+}
+
+/**
+ * The lines of `media.jsonl`, each checked: a well-formed line for a stored-file key that
+ * `files.jsonl` lists, in its order (the backup copies files in the order of the list), and,
+ * at the end, the count and hash of the listing. A line that fails throws `BackupCorrupt`:
+ * read the whole listing once before writing anything (#899).
+ */
 async function* mediaLines(zip: ZipReader, media: NonNullable<BackupManifest['media']>) {
   const hash = createHash('sha256');
   let count = 0;
@@ -1606,13 +1739,38 @@ async function* mediaLines(zip: ZipReader, media: NonNullable<BackupManifest['me
       },
     }),
   );
-  for await (const line of createInterface({
-    input: source,
-    crlfDelay: Number.POSITIVE_INFINITY,
-  })) {
-    if (!line) continue;
-    count += 1;
-    yield JSON.parse(line) as { key: string; size: number; sha256: string };
+  const listed = listedKeys(zip);
+  try {
+    for await (const line of createInterface({
+      input: source,
+      crlfDelay: Number.POSITIVE_INFINITY,
+    })) {
+      if (!line) continue;
+      count += 1;
+      let file: { key: string; size: number; sha256: string };
+      try {
+        file = JSON.parse(line);
+      } catch {
+        throw new BackupCorrupt(`media.jsonl line ${count} is not JSON.`);
+      }
+      if (
+        typeof file?.key !== 'string' ||
+        !MEDIA_KEY.test(file.key) ||
+        file.key.includes('..') ||
+        !Number.isSafeInteger(file.size) ||
+        file.size < 0 ||
+        typeof file.sha256 !== 'string' ||
+        !/^[0-9a-f]{64}$/.test(file.sha256)
+      )
+        throw new BackupCorrupt(`media.jsonl line ${count} is not a stored file of a backup.`);
+      let next = await listed.next();
+      while (!next.done && next.value !== file.key) next = await listed.next();
+      if (next.done) throw new BackupCorrupt(`${file.key} is not in the file list of the backup.`);
+      yield file;
+    }
+  } finally {
+    await listed.return(undefined);
+    source.destroy();
   }
   if (count !== media.count || hash.digest('hex') !== media.sha256)
     throw new BackupCorrupt('media.jsonl does not read back as written.');
@@ -1620,60 +1778,224 @@ async function* mediaLines(zip: ZipReader, media: NonNullable<BackupManifest['me
 
 /**
  * Reads every file of a backup with media back (#899): its size and SHA-256 against
- * `media.jsonl`. False when `signal` stopped it first; throws `BackupCorrupt` on a mismatch.
+ * `media.jsonl`. `complete: false` when `signal` stopped it first, with the files checked by
+ * then; throws `BackupCorrupt` on a mismatch.
  */
 async function checkMedia(
   zip: ZipReader,
   media: NonNullable<BackupManifest['media']>,
   opts: { signal?: AbortSignal; moved?: () => void },
 ) {
+  let checked = 0;
   for await (const file of mediaLines(zip, media)) {
-    if (opts.signal?.aborted) return false;
-    const hash = createHash('sha256');
-    let size = 0;
+    if (opts.signal?.aborted) return { checked, complete: false };
     await pipeline(
       await zip.stream(mediaEntry(file.key), file.size),
-      new Writable({
-        write(chunk: Buffer, _enc, done) {
-          opts.moved?.();
-          hash.update(chunk);
-          size += chunk.length;
-          done();
-        },
-      }),
+      matching(file, opts.moved),
+      new Writable({ write: (_chunk, _enc, done) => done() }),
       { signal: opts.signal ?? new AbortController().signal },
     ).catch((err) => {
       if (!opts.signal?.aborted) throw err;
     });
-    if (opts.signal?.aborted) return false;
-    if (size !== file.size || hash.digest('hex') !== file.sha256)
-      throw new BackupCorrupt(`${file.key} does not read back as written.`);
+    if (opts.signal?.aborted) return { checked, complete: false };
+    checked += 1;
   }
-  return true;
+  return { checked, complete: true };
+}
+
+/**
+ * Passes a file of the archive through, and fails with `BackupCorrupt` at its end when its size
+ * or SHA-256 is not what `media.jsonl` says: before the end of the stream, so a write it feeds
+ * never completes with other bytes (a local file is not renamed into place, an S3 upload is
+ * not completed). The archive's own CRC is not checked by yauzl: this is the check.
+ */
+function matching(file: { key: string; size: number; sha256: string }, moved?: () => void) {
+  const hash = createHash('sha256');
+  let size = 0;
+  return new Transform({
+    transform(chunk: Buffer, _enc, done) {
+      moved?.();
+      hash.update(chunk);
+      size += chunk.length;
+      done(null, chunk);
+    },
+    flush(done) {
+      done(
+        size === file.size && hash.digest('hex') === file.sha256
+          ? null
+          : new BackupCorrupt(`${file.key} does not read back as written.`),
+      );
+    },
+  });
+}
+
+/** Waits before trying a storage call again: `RESTORE_RETRY_MS`, then twice, then four times. */
+export const RESTORE_RETRY_MS = 1000;
+const RESTORE_ATTEMPTS = 4;
+
+/**
+ * `work` tried again with backoff after an error of storage (a 5xx, a timeout); never after an
+ * error of the archive itself, which trying again would not mend.
+ */
+async function retried<T>(work: () => Promise<T>, waitMs: number): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await work();
+    } catch (err) {
+      if (
+        attempt >= RESTORE_ATTEMPTS ||
+        err instanceof BackupCorrupt ||
+        err instanceof ArchiveError
+      )
+        throw err;
+      await delay(waitMs * 2 ** (attempt - 1));
+    }
+  }
+}
+
+/** SHA-256 of a stored file. */
+async function storedHash(storage: Storage, key: string) {
+  const hash = createHash('sha256');
+  for await (const chunk of await storage.read(key)) hash.update(chunk as Buffer);
+  return hash.digest('hex');
+}
+
+export interface MediaRestore {
+  /** Files written back. */
+  restored: number;
+  /** Files storage already had with the same size (and hash, with `hashExisting`). */
+  kept: number;
+  /** Files that could not be written back, or whose bytes in the archive are not as listed. */
+  failed: { count: number; examples: string[] };
 }
 
 /**
  * Puts the files of a backup with media back into storage (#899), local or bucket: those
- * storage lacks or has with another size. Files already there are kept: they never change.
+ * storage lacks or has with another size (or, with `hashExisting`, other bytes: cheap on a
+ * local disk only). `media.jsonl` is read and checked whole first: an archive listing a key
+ * outside the folders of stored files, or not in its file list, writes nothing. Each file is
+ * hashed as it is written and only lands when it matches; storage errors are tried again with
+ * backoff. A file that still fails is counted and named, and the others go on: running it again
+ * (`backup restore-files`) writes only what is still missing.
  */
 async function restoreMedia(
   zip: ZipReader,
   media: NonNullable<BackupManifest['media']>,
   storage: Storage,
   log: Logger,
-) {
-  let restored = 0;
+  opts: { hashExisting?: boolean; retryMs?: number } = {},
+): Promise<MediaRestore> {
+  // Read to the end first: every line checked before the first write.
+  let listed = 0;
+  for await (const _file of mediaLines(zip, media)) listed += 1;
+  log.info({ files: listed }, 'restoring the files of the backup');
+  const waitMs = opts.retryMs ?? RESTORE_RETRY_MS;
+  const result: MediaRestore = { restored: 0, kept: 0, failed: { count: 0, examples: [] } };
   for await (const file of mediaLines(zip, media)) {
-    if ((await storage.size(file.key)) === file.size) continue;
-    await storage.writeStream(
-      file.key,
-      await zip.stream(mediaEntry(file.key), file.size),
-      'application/octet-stream',
-    );
-    restored += 1;
-    if (restored % 1000 === 0) log.info({ restored }, 'restoring files');
+    try {
+      const present = await retried(() => storage.size(file.key), waitMs);
+      if (
+        present === file.size &&
+        (!opts.hashExisting ||
+          (await retried(() => storedHash(storage, file.key), waitMs)) === file.sha256)
+      ) {
+        result.kept += 1;
+        continue;
+      }
+      await retried(
+        async () =>
+          storage.writeStream(
+            file.key,
+            piped(await zip.stream(mediaEntry(file.key), file.size), matching(file)),
+            'application/octet-stream',
+          ),
+        waitMs,
+      );
+      result.restored += 1;
+      if (result.restored % 1000 === 0) log.info({ restored: result.restored }, 'restoring files');
+    } catch (err) {
+      result.failed.count += 1;
+      if (result.failed.examples.length < 20) result.failed.examples.push(file.key);
+      log.error({ err, key: file.key }, 'file of the backup not restored');
+    }
   }
-  return restored;
+  return result;
+}
+
+/**
+ * `backup restore-files` (#899): puts the files of a backup with media back into storage
+ * without touching the database, after a restore whose files did not all land (a bucket that
+ * failed mid-way). Writes only what storage lacks or has with other bytes: run it again until
+ * nothing fails.
+ */
+export async function restoreBackupFiles(opts: {
+  file: string;
+  storage: Storage;
+  log: Logger;
+  hashExisting?: boolean;
+  retryMs?: number;
+}) {
+  const zip = await readZip(opts.file, ARCHIVE_LIMITS);
+  try {
+    const manifest = await zip.json('manifest.json', BackupManifest, 64 * 1024 * 1024);
+    if (manifest.format !== BACKUP_FORMAT || manifest.formatVersion > BACKUP_FORMAT_VERSION)
+      throw new Error('Not an Inkadra backup this version can read.');
+    if (!manifest.media)
+      throw new Error('This backup holds no files: it was made without "Include files".');
+    const media = await restoreMedia(zip, manifest.media, opts.storage, opts.log, opts);
+    const files = await checkFiles(zip, opts.storage);
+    return {
+      listed: files.listed,
+      restored: media.restored,
+      kept: media.kept,
+      failed: media.failed.count,
+      failedExamples: media.failed.examples,
+      missing: files.missing.count,
+      unverified: files.unverified,
+      examples: files.missing.examples,
+    };
+  } finally {
+    zip.close();
+  }
+}
+
+/**
+ * The archive a restore reads: a path, a name in the backup folder, or a name only the backup
+ * bucket has, downloaded into the backup folder first (#899) when its disk has room for it.
+ * `downloaded`: the copy is this restore's, to remove once it succeeded.
+ */
+export async function archiveToRestore(
+  file: string,
+  dir: string,
+  remote: BackupRemote | null,
+  log: Logger,
+) {
+  const exists = async (path: string) => (await stat(path).catch(() => null)) !== null;
+  // A path that is not there: the restore says so.
+  if ((await exists(file)) || basename(file) !== file) return { path: file, downloaded: false };
+  const local = join(dir, file);
+  if ((await exists(local)) || !remote) return { path: local, downloaded: false };
+  const key = `${remote.prefix}${file}`;
+  const size = await remote.storage.size(key);
+  if (size === null) throw new Error(`${file} is neither in ${dir} nor in ${remote.label}.`);
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  const free = await freeBytes(dir);
+  if (free < size)
+    throw Object.assign(
+      new Error(
+        `not enough free space in ${dir} to download ${file}: ${mib(size)} needed, ${mib(free)} free`,
+      ),
+      { code: 'ENOSPC' },
+    );
+  log.info({ from: `${remote.label}${file}`, to: local }, 'downloading the backup');
+  const partial = `${local}.partial`;
+  try {
+    await pipeline(await remote.storage.read(key), createWriteStream(partial, { mode: 0o600 }));
+    await rename(partial, local);
+  } finally {
+    await rm(partial, { force: true });
+  }
+  return { path: local, downloaded: true };
 }
 
 /** Removes `.partial` files left by a backup that was interrupted. */

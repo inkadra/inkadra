@@ -4259,6 +4259,8 @@
     "media": "Incluir archivos",
     "mediaHelp": "Los archivos subidos y sus miniaturas también entran en cada copia: ahora unos {{size}} más. Las copias reproducibles de los vídeos se vuelven a crear tras una restauración.",
     "mediaHelpPlain": "Los archivos subidos y sus miniaturas también entran en cada copia. Las copias reproducibles de los vídeos se vuelven a crear tras una restauración.",
+    "mediaKept_one": "Guardando solo la última copia, son unos {{total}} en total; las copias guardadas ocupan ahora {{used}}.",
+    "mediaKept_other": "Cada copia guardada tiene sus propios archivos: unos {{total}} para las últimas {{count}}, mientras que ahora las copias guardadas ocupan {{used}}.",
     "history": "Historial",
     "inBucket": "copiada al bucket",
     "withMedia_one": "con {{count}} archivo",

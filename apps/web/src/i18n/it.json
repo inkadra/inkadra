@@ -4259,6 +4259,8 @@
     "media": "Includi i file",
     "mediaHelp": "Anche i file caricati e le loro miniature entrano in ogni backup: ora circa {{size}} in più. Le copie riproducibili dei video si rifanno dopo un ripristino.",
     "mediaHelpPlain": "Anche i file caricati e le loro miniature entrano in ogni backup. Le copie riproducibili dei video si rifanno dopo un ripristino.",
+    "mediaKept_one": "Tenendo solo l'ultimo backup, sono circa {{total}} in tutto; i backup tenuti occupano ora {{used}}.",
+    "mediaKept_other": "Ogni backup tenuto ha la sua copia: circa {{total}} per gli ultimi {{count}}, mentre ora i backup tenuti occupano {{used}}.",
     "history": "Cronologia",
     "inBucket": "copiato nel bucket",
     "withMedia_one": "con {{count}} file",

@@ -47,6 +47,11 @@ describe('backup folder and bucket (#899)', () => {
     expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: 'my-backups/' })).toThrow(
       /BACKUP_S3_PREFIX/,
     );
+    // Never among the stored files: originals (and tus uploads), copies, feedback attachments.
+    for (const prefix of ['originals/', 'variants/backups/', 'feedback/'])
+      expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: prefix })).toThrow(
+        /BACKUP_S3_PREFIX: Not inside the folders of stored files/,
+      );
     expect(loadConfig({ ...base, BACKUP_S3_PREFIX: 'inkadra/nightly-2/' }).BACKUP_S3_PREFIX).toBe(
       'inkadra/nightly-2/',
     );

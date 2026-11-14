@@ -46,7 +46,7 @@ import {
 } from '../db/schema.ts';
 import { createStorage, localStorage, readAll } from '../storage.ts';
 import { freshDatabase, testDeps } from '../test-deps.ts';
-import { readZip, writeZip } from '../transfers/zip.ts';
+import { readZip, streamOf, writeZip } from '../transfers/zip.ts';
 import { createApp } from './app.ts';
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
@@ -679,9 +679,61 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
         tmpDir: join(deps.root, 'tmp'),
         log,
       });
-      expect(report.files).toMatchObject({ listed: 2, restored: 2, missing: 0 });
+      expect(report.files).toMatchObject({ listed: 2, restored: 2, failed: 0, missing: 0 });
       expect(await readAll(await empty.read('originals/still'))).toEqual(original);
       expect(await readAll(await empty.read(`variants/${a?.id}/256.webp`))).toEqual(thumb);
+
+      // A damaged archive is read back whole first: it never touches the database.
+      const untouched = await freshDatabase(config.DATABASE_URL, 'media_damaged');
+      await expect(
+        restoreBackup({
+          file: tampered,
+          databaseUrl: untouched,
+          migrationsFolder: migrations,
+          storage: localStorage(join(mkdtempSync(join(tmpdir(), 'media-none-')), 'files')),
+          tmpDir: join(deps.root, 'tmp'),
+          log,
+        }),
+      ).rejects.toThrow(/originals\/still does not read back/);
+      const check = postgres(untouched, { max: 1, onnotice: () => {} });
+      try {
+        const [tables] = await check`select count(*)::int as n from information_schema.tables
+          where table_schema = 'public'`;
+        expect(tables?.n).toBe(0);
+      } finally {
+        await check.end({ timeout: 1 });
+      }
+
+      // A file removed between its lookup and its read is left out as missing, a file rewritten
+      // meanwhile goes in as read: the backup is kept and verified either way.
+      let looked = false;
+      const changing = {
+        ...files,
+        size: async (key: string) => {
+          if (key !== 'originals/still') return files.size(key);
+          if (looked) return null;
+          looked = true;
+          return original.length;
+        },
+        read: async (key: string) =>
+          key === 'originals/still'
+            ? files.read('originals/gone')
+            : key.startsWith('variants/')
+              ? streamOf(Buffer.from('a rewritten picture'))
+              : files.read(key),
+      };
+      const again = await startBackup(other, 'manual', null);
+      const partial = await runBackup(
+        { ...backupDeps(), db: other, databaseUrl: fresh, storage: changing, backupDir },
+        again?.id as string,
+      );
+      expect(partial).toMatchObject({
+        status: 'ready',
+        mediaCount: 1,
+        verifyComplete: true,
+        missingFiles: 1,
+      });
+      expect(partial?.mediaBytes).toBe('a rewritten picture'.length);
     } finally {
       await admin.end({ timeout: 1 });
       await client.end({ timeout: 1 });
@@ -957,7 +1009,8 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     }
 
     const fresh = await freshDatabase(config.DATABASE_URL, 'restore_missing');
-    // Before the fix the open COPY made the ROLLBACK hang or fail with COPY_IN_PROGRESS.
+    // Before the fix the open COPY made the ROLLBACK hang or fail with COPY_IN_PROGRESS. Read
+    // back first, the archive would be refused before the load: this checks the load itself.
     await expect(
       restoreBackup({
         file: broken,
@@ -966,6 +1019,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
         storage: deps.storage,
         tmpDir: join(deps.root, 'tmp'),
         log,
+        skipVerify: true,
       }),
     ).rejects.toMatchObject({ reason: 'invalid_archive', message: /Missing entry/ });
     const { sql: after } = createDatabase(fresh, 1);

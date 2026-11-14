@@ -4259,6 +4259,8 @@
     "media": "Incluir ficheiros",
     "mediaHelp": "Os ficheiros enviados e as suas miniaturas também entram em cada backup: agora cerca de {{size}} a mais. As cópias reproduzíveis dos vídeos são refeitas depois de um restauro.",
     "mediaHelpPlain": "Os ficheiros enviados e as suas miniaturas também entram em cada backup. As cópias reproduzíveis dos vídeos são refeitas depois de um restauro.",
+    "mediaKept_one": "Guardando só o último backup, são cerca de {{total}} no total; os backups guardados ocupam agora {{used}}.",
+    "mediaKept_other": "Cada backup guardado tem a sua própria cópia: cerca de {{total}} para os últimos {{count}}, enquanto os backups guardados ocupam agora {{used}}.",
     "history": "Histórico",
     "inBucket": "copiado para o bucket",
     "withMedia_one": "com {{count}} ficheiro",

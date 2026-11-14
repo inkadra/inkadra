@@ -4259,6 +4259,8 @@
     "media": "Inclure les fichiers",
     "mediaHelp": "Les fichiers envoyés et leurs miniatures entrent aussi dans chaque sauvegarde : environ {{size}} de plus aujourd'hui. Les copies lisibles des vidéos sont refaites après une restauration.",
     "mediaHelpPlain": "Les fichiers envoyés et leurs miniatures entrent aussi dans chaque sauvegarde. Les copies lisibles des vidéos sont refaites après une restauration.",
+    "mediaKept_one": "En gardant seulement la dernière sauvegarde, cela fait environ {{total}} au total ; les sauvegardes gardées occupent {{used}} aujourd'hui.",
+    "mediaKept_other": "Chaque sauvegarde gardée a sa propre copie : environ {{total}} pour les {{count}} dernières, alors que les sauvegardes gardées occupent {{used}} aujourd'hui.",
     "history": "Historique",
     "inBucket": "copiée dans le bucket",
     "withMedia_one": "avec {{count}} fichier",

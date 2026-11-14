@@ -101,7 +101,10 @@ docker compose up -d --wait
 ```
 
 The files stay where they are: files uploaded after the backup are kept in storage but no
-longer listed. CI runs this rollback with the backup the upgrade wrote, and the upgrade from
+longer listed. When you restore a nightly backup with files instead and the restore ends with
+exit code 1 because some files could not be written back, the database is already restored:
+run `backup restore-files <file>` until it reports none failed (see
+[Restoring](README.md#restoring)). CI runs this rollback with the backup the upgrade wrote, and the upgrade from
 the last release with its sample data, on every change (`scripts/test-release-upgrade.sh`).
 
 From the version after 0.9.0, a server refuses to start on a database that a newer version

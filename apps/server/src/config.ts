@@ -395,6 +395,12 @@ export function demoConfig(c: Config): Config {
   };
 }
 
+/**
+ * The folders of stored files in storage (`storage.ts`): originals (and the tus uploads next
+ * to them), thumbnails and other copies, feedback attachments. Nothing else may write there.
+ */
+export const STORAGE_PREFIXES = ['originals/', 'variants/', 'feedback/'] as const;
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = Env.superRefine((c, ctx) => {
     if (c.STORAGE_DRIVER === 's3' && !c.S3_BUCKET)
@@ -416,6 +422,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
           message: `Set together with ${c[a] ? a : b}`,
         });
     }
+    // Archives among the stored files would be listed, cleaned up or served as files (#899).
+    if (STORAGE_PREFIXES.some((p) => c.BACKUP_S3_PREFIX.startsWith(p)))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['BACKUP_S3_PREFIX'],
+        message: `Not inside the folders of stored files (${STORAGE_PREFIXES.join(', ')})`,
+      });
     if (c.SMTP_URL && !c.MAIL_FROM)
       ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'Required with SMTP_URL' });
     if (Boolean(c.TURNSTILE_SITE_KEY) !== Boolean(c.TURNSTILE_SECRET))

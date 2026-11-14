@@ -4259,6 +4259,8 @@
     "media": "Dateien einschließen",
     "mediaHelp": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jede Sicherung: derzeit etwa {{size}} mehr. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
     "mediaHelpPlain": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jede Sicherung. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
+    "mediaKept_one": "Mit nur dem letzten Backup sind das insgesamt etwa {{total}}; die behaltenen Backups belegen jetzt {{used}}.",
+    "mediaKept_other": "Jedes behaltene Backup hat seine eigene Kopie: etwa {{total}} für die letzten {{count}}, die behaltenen Backups belegen jetzt {{used}}.",
     "history": "Verlauf",
     "inBucket": "in den Bucket kopiert",
     "withMedia_one": "mit {{count}} Datei",

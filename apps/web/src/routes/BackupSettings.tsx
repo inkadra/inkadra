@@ -87,6 +87,10 @@ export function BackupSettings() {
   const size = (bytes: number | null) =>
     bytes === null ? null : formatStorage(bytes, i18n.language);
   const last = data.items.find((b) => b.status !== 'running') ?? null;
+  // Retention multiplies the space (#899): each kept backup holds its own copy of the files.
+  const kept = data.items.filter((b) => b.status === 'ready' && b.fileName);
+  const usedBytes = kept.reduce((sum, b) => sum + (b.size ?? 0), 0);
+  const tableBytes = Math.max(0, (kept[0]?.size ?? 0) - (kept[0]?.media?.bytes ?? 0));
   const retentionChoices = RETENTION_CHOICES.includes(settings.retention)
     ? RETENTION_CHOICES
     : [...RETENTION_CHOICES, settings.retention].sort((a, b) => a - b);
@@ -197,7 +201,14 @@ export function BackupSettings() {
               help={
                 data.mediaBytes === undefined
                   ? t('backups.mediaHelpPlain')
-                  : t('backups.mediaHelp', { size: size(data.mediaBytes) })
+                  : `${t('backups.mediaHelp', { size: size(data.mediaBytes) })} ${t(
+                      'backups.mediaKept',
+                      {
+                        count: settings.retention,
+                        total: size((tableBytes + data.mediaBytes) * settings.retention),
+                        used: size(usedBytes),
+                      },
+                    )}`
               }
             >
               <Switch
