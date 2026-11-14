@@ -31,7 +31,10 @@ export function installWebLocks(): void {
           return true;
         };
         if (grant()) return;
-        if (options.ifAvailable) Promise.resolve().then(() => callback(null)).then(resolve, reject);
+        if (options.ifAvailable)
+          Promise.resolve()
+            .then(() => callback(null))
+            .then(resolve, reject);
         else waiting.push(grant);
       });
     },

@@ -24,7 +24,8 @@ export function useSignOut(
       .catch(() => [])
       .then((boards) => (boards.length ? setUnsaved(boards.length) : leave()));
   };
-  const dialog = (
+  // Mounted only while it asks: a closed dialog's text would sit in every page.
+  const dialog = unsaved > 0 && (
     <Dialog open={unsaved > 0} title={t('auth.signOutUnsaved.title')} onClose={() => setUnsaved(0)}>
       <p>{t('auth.signOutUnsaved.body', { count: unsaved })}</p>
       <DialogActions>
