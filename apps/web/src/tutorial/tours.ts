@@ -350,6 +350,9 @@ export const TOURS: Tour[] = [
       { anchor: 'versions-tabs', media: 'versions', side: 'bottom' },
       { anchor: 'versions-list', media: 'versions', side: 'top' },
       { anchor: null, media: 'versions' },
+      // Edits set aside on the device (#898): the notice's button, then the board menu's entry.
+      { anchor: 'kept-restore', media: 'versions', side: 'bottom' },
+      { anchor: 'board-menu', media: 'versions', side: 'bottom' },
     ],
   },
   {

@@ -1953,6 +1953,19 @@
       "keptRestoreTooNew": "These changes were made with a newer version of Inkadra: update the app to restore them.",
       "keptRestoreInvalid": "This file isn’t a set of changes downloaded from Inkadra.",
       "keptRestoreOtherBoard": "This file holds changes to another board: open that board to restore them.",
+      "keptRestoreTooBig": "This file is too big to be a set of changes to a board.",
+      "keptConflict": "Not restored: the board changed since these changes were set aside, and merging them would drop some of them or overwrite newer edits. Nothing on the board was changed.",
+      "keptConflictOlder": "They were made with an older version of Inkadra, so merging them could overwrite newer edits.",
+      "keptConflictDeleted_one": "{{count}} card you changed was deleted on the board since.",
+      "keptConflictDeleted_other": "{{count}} cards you changed were deleted on the board since.",
+      "keptConflictChanged_one": "{{count}} card you changed was also changed on the board since.",
+      "keptConflictChanged_other": "{{count}} cards you changed were also changed on the board since.",
+      "keptConflictSettings": "Board settings you changed were also changed on the board since.",
+      "keptConflictAsNew_one": "Restore as new cards adds your version of the card you changed beside the board’s own, which stays as it is.",
+      "keptConflictAsNew_other": "Restore as new cards adds your version of the {{count}} cards you changed beside the board’s own, which stay as they are.",
+      "keptConflictNoCards": "No card can be restored as new: download the changes to keep a copy.",
+      "keptRestoreAsNew": "Restore as new cards",
+      "keptRestoredAsNew": "Your changes are back on the board as new cards and saved.",
       "sizeLimitReadOnly": "This board has reached its size limit and is read-only. Additions were not saved."
     },
     "sheet": {
@@ -5611,6 +5624,14 @@
           "2": {
             "title": "Bring one back",
             "text": "You can recover a single deleted card too."
+          },
+          "3": {
+            "title": "Changes kept on this device",
+            "text": "When the server can’t take your edits (size limit, no access, in the trash), they stay on this device. Once the board takes edits again, Restore into board brings them back; if the board changed meanwhile, restore them as new cards."
+          },
+          "4": {
+            "title": "From a downloaded file",
+            "text": "Downloaded the changes? In the board menu, Restore changes from file… brings them back into the same board."
           }
         }
       },

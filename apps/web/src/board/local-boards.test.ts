@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
-import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
+import { createElement, deleteElements } from '@inkadra/canvas-core';
+import { CURRENT_SCHEMA_VERSION, createBoardDoc } from '@inkadra/doc-schema';
 import { expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { installWebLocks } from '../test/web-locks.ts';
@@ -8,6 +9,7 @@ import {
   discardKept,
   dropLocalBoard,
   hasKept,
+  KEPT_FILE_MAX_BYTES,
   keepAside,
   keptBoards,
   keptFile,
@@ -16,6 +18,8 @@ import {
   openLocalBoard,
   RestoreError,
   restorableUpdate,
+  restoreAsNew,
+  restoreConflict,
   sweepLocalBoards,
   unsavedLocalBoards,
 } from './local-boards.ts';
@@ -236,25 +240,120 @@ it('restores a downloaded file only into its own board, and only a file it made 
   );
 });
 
-it('migrates edits set aside under an older schema before the merge, and refuses newer ones (#898)', () => {
+/** A board and the copy of it set aside on a device, which share its history (#898). */
+function sharedBoard(keptClient: number, boardClient: number) {
+  const base = createBoardDoc('board');
+  const opts = { userId: 'someone' };
+  const note = createElement(base, 'note', { x: 0, y: 0 }, {}, opts);
+  const other = createElement(base, 'note', { x: 400, y: 0 }, {}, opts);
+  const copy = (clientID: number) => {
+    const doc = new Y.Doc();
+    doc.clientID = clientID;
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(base));
+    return doc;
+  };
+  const card = (doc: Y.Doc, id: string) => doc.getMap<Y.Map<unknown>>('elements').get(id);
+  return { kept: copy(keptClient), board: copy(boardClient), note: note.id, other: other.id, card };
+}
+
+it('says what merging edits set aside would lose: a card deleted on the board since (#898)', () => {
+  const { kept, board, note, card } = sharedBoard(1, 2);
+  card(kept, note)?.set('x', 120);
+  // Someone deleted the card to make room while the edit was set aside.
+  deleteElements(board, [note]);
+  const update = Y.encodeStateAsUpdate(kept);
+  const conflict = restoreConflict(board, update);
+  expect(conflict).toMatchObject({ deleted: [note], changed: [], older: false, cards: [note] });
+  // What a blind merge did: the edit integrates as deleted, and nothing says so.
+  Y.applyUpdate(board, update);
+  expect(card(board, note)).toBeUndefined();
+});
+
+it('says what merging edits set aside would lose or overwrite in a field written since (#898)', () => {
+  // The board's write wins (its client sorts last): the edit set aside would be lost.
+  const lost = sharedBoard(1, 2);
+  lost.card(lost.kept, lost.note)?.set('x', 120);
+  lost.card(lost.board, lost.note)?.set('x', 300);
+  expect(restoreConflict(lost.board, Y.encodeStateAsUpdate(lost.kept))).toMatchObject({
+    deleted: [],
+    changed: [lost.note],
+  });
+  // The edit set aside wins: the newer write on the board would be overwritten.
+  const over = sharedBoard(3, 2);
+  over.card(over.kept, over.note)?.set('x', 120);
+  over.card(over.board, over.note)?.set('x', 300);
+  expect(restoreConflict(over.board, Y.encodeStateAsUpdate(over.kept))).toMatchObject({
+    changed: [over.note],
+  });
+  // The same value written on both sides loses nothing.
+  const same = sharedBoard(1, 2);
+  same.card(same.kept, same.note)?.set('x', 120);
+  same.card(same.board, same.note)?.set('x', 120);
+  expect(restoreConflict(same.board, Y.encodeStateAsUpdate(same.kept))).toBeNull();
+});
+
+it('merges edits set aside that lose nothing, beside other edits made since (#898)', () => {
+  const { kept, board, note, other, card } = sharedBoard(1, 2);
+  card(kept, note)?.set('x', 120);
+  card(board, other)?.set('x', 500);
+  const update = Y.encodeStateAsUpdate(kept);
+  expect(restoreConflict(board, update)).toBeNull();
+  Y.applyUpdate(board, update);
+  expect(card(board, note)?.get('x')).toBe(120);
+  expect(card(board, other)?.get('x')).toBe(500);
+});
+
+it('restores the cards of edits set aside as new ones, leaving the board as it is (#898)', () => {
+  const { kept, board, note, other, card } = sharedBoard(1, 2);
+  card(kept, note)?.set('x', 120);
+  deleteElements(board, [note]);
+  card(board, other)?.set('x', 500);
+  const update = Y.encodeStateAsUpdate(kept);
+  const conflict = restoreConflict(board, update);
+  const ids = restoreAsNew(board, update, conflict?.cards ?? [], {
+    boardId: 'board',
+    userId: 'me',
+  });
+  expect(ids).toHaveLength(1);
+  expect(ids[0]).not.toBe(note);
+  expect(card(board, ids[0] ?? '')?.get('x')).toBe(120);
+  expect(card(board, note)).toBeUndefined();
+  expect(card(board, other)?.get('x')).toBe(500);
+});
+
+it('refuses newer edits set aside and those missing what they build on (#898)', () => {
   const ahead = new Y.Doc();
   ahead.getMap('meta').set('schemaVersion', CURRENT_SCHEMA_VERSION + 1);
-  expect(refusal(() => restorableUpdate(Y.encodeStateAsUpdate(ahead), 'board'))).toBe('tooNew');
-  const old = new Y.Doc();
-  old.transact(() => {
-    old.getMap('meta').set('schemaVersion', 25);
-    const plan = new Y.Map<unknown>();
-    plan.set('type', 'plan');
-    const icon = new Y.Map<unknown>();
-    icon.set('steps', [{ x: 1, y: 1 }]);
-    icon.set('note', 'Enters left');
-    plan.set('icons', Y.Array.from([icon]));
-    old.getMap('elements').set('plan-1', plan);
+  expect(refusal(() => restorableUpdate(Y.encodeStateAsUpdate(ahead)))).toBe('tooNew');
+  const doc = new Y.Doc();
+  doc.getText('text').insert(0, 'abc');
+  const first = Y.encodeStateVector(doc);
+  doc.getText('text').insert(3, 'def');
+  // Without the first insertion, the second builds on what is not there.
+  const partial = Y.encodeStateAsUpdate(doc, first);
+  expect(refusal(() => restorableUpdate(partial))).toBe('invalid');
+});
+
+it('refuses a file larger than a board can be, before decoding it (#898)', () => {
+  const update = 'A'.repeat(Math.ceil((KEPT_FILE_MAX_BYTES / 3) * 4) + 4);
+  const file = { format: 'inkadra-kept-changes', version: 1, boardId: 'board', update };
+  expect(refusal(() => keptFileUpdate(JSON.stringify(file), 'board'))).toBe('tooBig');
+});
+
+it('does not merge edits set aside under an older schema, and restores them as new cards (#898)', () => {
+  const old = createBoardDoc('board');
+  const card = createElement(old, 'note', { x: 40, y: 60 }, {}, { userId: 'me' });
+  old.getMap('meta').set('schemaVersion', CURRENT_SCHEMA_VERSION - 1);
+  const board = createBoardDoc('board');
+  const update = restorableUpdate(Y.encodeStateAsUpdate(old));
+  const conflict = restoreConflict(board, update);
+  expect(conflict).toMatchObject({ older: true, cards: [card.id] });
+  const [id] = restoreAsNew(board, update, conflict?.cards ?? [], {
+    boardId: 'board',
+    userId: 'me',
   });
-  const board = new Y.Doc();
-  Y.applyUpdate(board, restorableUpdate(Y.encodeStateAsUpdate(old), 'board'));
+  expect(id).toBeDefined();
+  const copy = board.getMap<Y.Map<unknown>>('elements').get(id ?? '');
+  expect(copy?.get('x')).toBe(40);
   expect(board.getMap('meta').get('schemaVersion')).toBe(CURRENT_SCHEMA_VERSION);
-  const plan = board.getMap('elements').get('plan-1') as Y.Map<unknown>;
-  const [icon] = (plan.get('icons') as Y.Array<Y.Map<unknown>>).toArray();
-  expect(icon?.get('stepNote')).toBe('Enters left');
 });

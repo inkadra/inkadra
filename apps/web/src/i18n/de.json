@@ -1953,6 +1953,19 @@
       "keptRestoreTooNew": "Diese Änderungen wurden mit einer neueren Version von Inkadra gemacht: Aktualisiere die App, um sie wiederherzustellen.",
       "keptRestoreInvalid": "Diese Datei enthält keine aus Inkadra heruntergeladenen Änderungen.",
       "keptRestoreOtherBoard": "Diese Datei enthält Änderungen an einem anderen Board: Öffne dieses Board, um sie wiederherzustellen.",
+      "keptRestoreTooBig": "Diese Datei ist zu groß für die Änderungen eines Boards.",
+      "keptConflict": "Nicht wiederhergestellt: Das Board hat sich geändert, seit diese Änderungen beiseitegelegt wurden, und beim Zusammenführen gingen einige verloren oder neuere Änderungen würden überschrieben. Am Board wurde nichts geändert.",
+      "keptConflictOlder": "Sie wurden mit einer älteren Version von Inkadra gemacht; beim Zusammenführen könnten neuere Änderungen überschrieben werden.",
+      "keptConflictDeleted_one": "{{count}} Karte, die du geändert hast, wurde inzwischen im Board gelöscht.",
+      "keptConflictDeleted_other": "{{count}} Karten, die du geändert hast, wurden inzwischen im Board gelöscht.",
+      "keptConflictChanged_one": "{{count}} Karte, die du geändert hast, wurde inzwischen auch im Board geändert.",
+      "keptConflictChanged_other": "{{count}} Karten, die du geändert hast, wurden inzwischen auch im Board geändert.",
+      "keptConflictSettings": "Board-Einstellungen, die du geändert hast, wurden inzwischen auch im Board geändert.",
+      "keptConflictAsNew_one": "„Als neue Karten wiederherstellen“ fügt deine Fassung der geänderten Karte neben der des Boards hinzu, die bleibt, wie sie ist.",
+      "keptConflictAsNew_other": "„Als neue Karten wiederherstellen“ fügt deine Fassung der {{count}} geänderten Karten neben denen des Boards hinzu, die bleiben, wie sie sind.",
+      "keptConflictNoCards": "Keine Karte lässt sich als neue wiederherstellen: Lade die Änderungen herunter, um eine Kopie zu behalten.",
+      "keptRestoreAsNew": "Als neue Karten wiederherstellen",
+      "keptRestoredAsNew": "Deine Änderungen sind als neue Karten wieder im Board und gespeichert.",
       "sizeLimitReadOnly": "Dieses Board hat seine Größenbegrenzung erreicht und ist schreibgeschützt. Ergänzungen wurden nicht gespeichert."
     },
     "sheet": {
@@ -5611,6 +5624,14 @@
           "2": {
             "title": "Ein Element zurückholen",
             "text": "Du kannst auch eine einzelne gelöschte Karte wiederherstellen."
+          },
+          "3": {
+            "title": "Änderungen auf diesem Gerät",
+            "text": "Wenn der Server deine Änderungen nicht annehmen kann (Größenbegrenzung, kein Zugriff, im Papierkorb), bleiben sie auf diesem Gerät. Sobald das Board wieder Änderungen annimmt, holt „Im Board wiederherstellen“ sie zurück; hat sich das Board inzwischen geändert, stelle sie als neue Karten wieder her."
+          },
+          "4": {
+            "title": "Aus einer heruntergeladenen Datei",
+            "text": "Änderungen heruntergeladen? Im Board-Menü holt „Änderungen aus Datei wiederherstellen…“ sie in dasselbe Board zurück."
           }
         }
       },

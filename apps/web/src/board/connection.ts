@@ -28,6 +28,8 @@ import {
   localBoardName,
   openLocalBoard,
   RestoreError,
+  restoreAsNew,
+  restoreConflict,
   sweepLocalBoards,
 } from './local-boards.ts';
 import { BoardStore } from './store.ts';
@@ -65,9 +67,11 @@ export interface BoardConnection {
   saves: SaveStore;
   /**
    * Merges edits set aside (#898) into the board (`restorableUpdate`): resolves once the server
-   * has confirmed them, rejects with a `RestoreError` when it cannot take them.
+   * has confirmed them, rejects with a `RestoreError` when it cannot take them, and with
+   * `conflict` (nothing merged) when merging would lose some or overwrite newer edits
+   * (`restoreConflict`). With `asNew`, those cards are copied in as new ones (`restoreAsNew`).
    */
-  merge?: (update: Uint8Array) => Promise<void>;
+  merge?: (update: Uint8Array, asNew?: string[]) => Promise<void>;
 }
 
 /**
@@ -75,8 +79,11 @@ export interface BoardConnection {
  * (#898), downloads or discards them.
  */
 export interface KeptChanges {
-  /** Deletes them once the server confirmed them; refused, they stay (`RestoreError`). */
-  restore(): Promise<void>;
+  /**
+   * Deletes them once the server confirmed them; refused, or in conflict with the board, they
+   * stay (`RestoreError`). With `asNew`, the cards `conflict.cards` names come back as new ones.
+   */
+  restore(asNew?: string[]): Promise<void>;
   download(): Promise<void>;
   discard(): Promise<void>;
 }
@@ -254,6 +261,8 @@ export function releaseSharedSocket(socket: HocuspocusProviderWebsocket, name: s
  * would need telling them apart from the refused additions.
  */
 const refusedDeletions = new Map<string, Uint8Array>();
+/** How long a merge of edits set aside (#898) waits for the server before it counts refused. */
+export const MERGE_TIMEOUT_MS = 60_000;
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 /** `shareSocket`: open the document over the socket shared with other such boards (#826). */
@@ -335,22 +344,45 @@ export function useBoardConnection(
       local = null;
     };
     // A merge of edits set aside (#898), until the server confirms or refuses it.
-    let merging: { resolve: () => void; reject: (err: Error) => void } | null = null;
+    let merging: {
+      resolve: () => void;
+      reject: (err: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    } | null = null;
     const settleMerge = (err?: Error) => {
       const pending = merging;
       merging = null;
+      if (pending) clearTimeout(pending.timer);
       if (err) pending?.reject(err);
       else pending?.resolve();
     };
-    const merge = (update: Uint8Array) =>
+    const merge: NonNullable<BoardConnection['merge']> = (update, asNew) =>
       new Promise<void>((resolve, reject) => {
         if (state.readOnly || state.status !== 'synced' || refused || dropped || merging) {
           reject(new RestoreError('notWritable'));
           return;
         }
-        merging = { resolve, reject };
-        // An edit made here: sent, stored in the copy and counted unsaved like any other.
-        Y.applyUpdate(doc, update);
+        try {
+          if (!asNew) {
+            // Checked against the board as it is now, in the same turn as the merge.
+            const conflict = restoreConflict(doc, update);
+            if (conflict) throw new RestoreError('conflict', conflict);
+          }
+          // A refusal the server does not say again, or an answer that never comes: the edits
+          // stay set aside rather than wait forever.
+          const timer = setTimeout(
+            () => settleMerge(new RestoreError('refused')),
+            MERGE_TIMEOUT_MS,
+          );
+          merging = { resolve, reject, timer };
+          // An edit made here: sent, stored in the copy and counted unsaved like any other.
+          if (asNew) restoreAsNew(doc, update, asNew, { boardId, userId: userId || null });
+          else Y.applyUpdate(doc, update);
+        } catch (err) {
+          if (merging) settleMerge(err instanceof RestoreError ? err : new RestoreError('invalid'));
+          else reject(err instanceof RestoreError ? err : new RestoreError('invalid'));
+          return;
+        }
         // Nothing the board lacked: nothing for the server to confirm.
         if (!provider.hasUnsyncedChanges) settleMerge();
       });
@@ -540,10 +572,10 @@ export function useBoardConnection(
       keptBoard === boardId && userId
         ? {
             // Deleted only once the server has them: refused, they stay set aside.
-            restore: async () => {
+            restore: async (asNew?: string[]) => {
               const update = await keptUpdate(userId, boardId);
               if (!merger.current) throw new RestoreError('notWritable');
-              await merger.current(update);
+              await merger.current(update, asNew);
               await discardKept(userId, boardId);
               setKeptBoard(null);
             },

@@ -77,7 +77,12 @@ import {
 import { shootingZone } from './film/sun.ts';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
-import { keptFileUpdate, RestoreError } from './local-boards.ts';
+import {
+  keptFileMaxSize,
+  keptFileUpdate,
+  type RestoreConflict,
+  RestoreError,
+} from './local-boards.ts';
 import { RestoredToast } from './RestoredToast.tsx';
 import { isMac } from './shortcuts.ts';
 import { LOCAL, REPAIR } from './store.ts';
@@ -498,20 +503,46 @@ function BoardScreen({
   // Edits set aside, back into the board (#898): from this device or from a downloaded file.
   const [restoring, setRestoring] = useState(false);
   const [restoreToast, setRestoreToast] = useState<{ text: string; ok: boolean } | null>(null);
+  // Merging would lose some of them or overwrite newer edits: nothing merged, the person picks.
+  const [conflict, setConflict] = useState<{
+    found: RestoreConflict;
+    /** Copies the cards they change as new ones. */
+    asNew: () => Promise<void>;
+    /** From a file: nothing kept on the device to download or discard. */
+    fromFile: boolean;
+  } | null>(null);
   const restoreKept = useCallback(
-    (run: () => Promise<void>) => {
+    (
+      run: () => Promise<void>,
+      onConflict?: { asNew: (cards: string[]) => () => Promise<void>; fromFile: boolean },
+      done?: string,
+    ) => {
       setRestoring(true);
       run()
         .then(
-          () => setRestoreToast({ text: t('board.contextual.keptRestored'), ok: true }),
+          () => {
+            setConflict(null);
+            setRestoreToast({ text: done ?? t('board.contextual.keptRestored'), ok: true });
+          },
           (err) => {
             const reason = err instanceof RestoreError ? err.reason : 'refused';
+            if (err instanceof RestoreError && err.conflict && onConflict) {
+              const found = err.conflict;
+              setConflict({
+                found,
+                asNew: onConflict.asNew(found.cards),
+                fromFile: onConflict.fromFile,
+              });
+              return;
+            }
             const text = {
               refused: t('board.contextual.keptRestoreRefused'),
               notWritable: t('board.contextual.keptRestoreNotWritable'),
               tooNew: t('board.contextual.keptRestoreTooNew'),
               invalid: t('board.contextual.keptRestoreInvalid'),
               otherBoard: t('board.contextual.keptRestoreOtherBoard'),
+              tooBig: t('board.contextual.keptRestoreTooBig'),
+              conflict: t('board.contextual.keptRestoreRefused'),
             }[reason];
             setRestoreToast({ text, ok: false });
           },
@@ -529,10 +560,23 @@ function BoardScreen({
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) return;
-      restoreKept(async () => {
-        if (!merge) throw new RestoreError('notWritable');
-        await merge(keptFileUpdate(await file.text(), boardId));
-      });
+      let update: Uint8Array | undefined;
+      restoreKept(
+        async () => {
+          if (!merge) throw new RestoreError('notWritable');
+          // Refused before it is read: a file far larger than a board can be.
+          if (file.size > keptFileMaxSize()) throw new RestoreError('tooBig');
+          update = keptFileUpdate(await file.text(), boardId);
+          await merge(update);
+        },
+        {
+          asNew: (cards) => async () => {
+            if (!merge || !update) throw new RestoreError('notWritable');
+            await merge(update, cards);
+          },
+          fromFile: true,
+        },
+      );
     };
     input.click();
   }, [merge, boardId, restoreKept]);
@@ -967,7 +1011,8 @@ function BoardScreen({
                                 },
                               ]
                             : []),
-                          ...(conn?.merge
+                          // Only while the board takes edits: read-only, offline or refused, not.
+                          ...(conn?.merge && conn.status === 'synced'
                             ? [
                                 {
                                   label: t('board.menu.restoreKept'),
@@ -1209,43 +1254,113 @@ function BoardScreen({
         ? { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${view}` }
         : {})}
     >
-      {(conn.sizeLimited || conn.kept) && !conn.schemaTooNew && (
+      {conflict && (
         <div role="alert" className="board-update-notice">
-          {t(
-            !conn.sizeLimited
-              ? 'board.contextual.kept'
-              : conn.readOnly
-                ? 'board.contextual.sizeLimitReadOnly'
-                : conn.kept
-                  ? 'board.contextual.sizeLimitKept'
-                  : 'board.contextual.sizeLimit',
-          )}
-          {conn.kept && (
-            <div className="board-update-notice__actions">
-              {/* The board takes edits again: restored from the trash, access back, room made. */}
-              {!conn.readOnly && conn.status === 'synced' && (
-                <Button
-                  variant="primary"
-                  icon="undo"
-                  busy={restoring}
-                  onClick={() => {
-                    const kept = conn.kept;
-                    if (kept) restoreKept(() => kept.restore());
-                  }}
-                >
-                  {t('board.contextual.keptRestore')}
+          <p>{t('board.contextual.keptConflict')}</p>
+          <ul>
+            {conflict.found.older && <li>{t('board.contextual.keptConflictOlder')}</li>}
+            {conflict.found.deleted.length > 0 && (
+              <li>
+                {t('board.contextual.keptConflictDeleted', {
+                  count: conflict.found.deleted.length,
+                })}
+              </li>
+            )}
+            {conflict.found.changed.length > 0 && (
+              <li>
+                {t('board.contextual.keptConflictChanged', {
+                  count: conflict.found.changed.length,
+                })}
+              </li>
+            )}
+            {conflict.found.settings.length > 0 && (
+              <li>{t('board.contextual.keptConflictSettings')}</li>
+            )}
+          </ul>
+          <p>
+            {conflict.found.cards.length > 0
+              ? t('board.contextual.keptConflictAsNew', { count: conflict.found.cards.length })
+              : t('board.contextual.keptConflictNoCards')}
+          </p>
+          <div className="board-update-notice__actions">
+            {conflict.found.cards.length > 0 && !conn.readOnly && conn.status === 'synced' && (
+              <Button
+                variant="primary"
+                icon="copy"
+                busy={restoring}
+                onClick={() =>
+                  restoreKept(conflict.asNew, undefined, t('board.contextual.keptRestoredAsNew'))
+                }
+              >
+                {t('board.contextual.keptRestoreAsNew')}
+              </Button>
+            )}
+            {conflict.fromFile ? (
+              <Button onClick={() => setConflict(null)}>{t('project.cancel')}</Button>
+            ) : (
+              <>
+                <Button icon="download" onClick={() => void conn.kept?.download().catch(() => {})}>
+                  {t('board.contextual.keptDownload')}
                 </Button>
-              )}
-              <Button icon="download" onClick={() => void conn.kept?.download().catch(() => {})}>
-                {t('board.contextual.keptDownload')}
-              </Button>
-              <Button onClick={() => void conn.kept?.discard().catch(() => {})}>
-                {t('board.contextual.keptDiscard')}
-              </Button>
-            </div>
-          )}
+                <Button
+                  onClick={() =>
+                    void conn.kept
+                      ?.discard()
+                      .then(() => setConflict(null))
+                      .catch(() => {})
+                  }
+                >
+                  {t('board.contextual.keptDiscard')}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       )}
+      {(conn.sizeLimited || conn.kept) &&
+        !conn.schemaTooNew &&
+        !(conflict && !conflict.fromFile) && (
+          <div role="alert" className="board-update-notice">
+            {t(
+              !conn.sizeLimited
+                ? 'board.contextual.kept'
+                : conn.readOnly
+                  ? 'board.contextual.sizeLimitReadOnly'
+                  : conn.kept
+                    ? 'board.contextual.sizeLimitKept'
+                    : 'board.contextual.sizeLimit',
+            )}
+            {conn.kept && (
+              <div className="board-update-notice__actions">
+                {/* The board takes edits again: restored from the trash, access back, room made. */}
+                {!conn.readOnly && conn.status === 'synced' && (
+                  <Button
+                    variant="primary"
+                    icon="undo"
+                    busy={restoring}
+                    data-tour="kept-restore"
+                    onClick={() => {
+                      const kept = conn.kept;
+                      if (kept)
+                        restoreKept(() => kept.restore(), {
+                          asNew: (cards) => () => kept.restore(cards),
+                          fromFile: false,
+                        });
+                    }}
+                  >
+                    {t('board.contextual.keptRestore')}
+                  </Button>
+                )}
+                <Button icon="download" onClick={() => void conn.kept?.download().catch(() => {})}>
+                  {t('board.contextual.keptDownload')}
+                </Button>
+                <Button onClick={() => void conn.kept?.discard().catch(() => {})}>
+                  {t('board.contextual.keptDiscard')}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       {conn.schemaTooNew && (
         <div role="alert" className="board-update-notice">
           {t('board.contextual.updateApp')}

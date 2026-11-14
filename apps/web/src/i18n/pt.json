@@ -1953,6 +1953,19 @@
       "keptRestoreTooNew": "Estas alterações foram feitas com uma versão mais recente do Inkadra: atualize a app para as restaurar.",
       "keptRestoreInvalid": "Este ficheiro não é um conjunto de alterações transferido do Inkadra.",
       "keptRestoreOtherBoard": "Este ficheiro contém alterações de outro quadro: abra esse quadro para as restaurar.",
+      "keptRestoreTooBig": "Este ficheiro é demasiado grande para conter as alterações de um quadro.",
+      "keptConflict": "Não restauradas: o quadro mudou desde que estas alterações foram postas de parte, e juntá-las perderia algumas ou substituiria alterações mais recentes. Nada foi alterado no quadro.",
+      "keptConflictOlder": "Foram feitas com uma versão anterior do Inkadra: juntá-las poderia substituir alterações mais recentes.",
+      "keptConflictDeleted_one": "{{count}} cartão que alterou foi eliminado do quadro entretanto.",
+      "keptConflictDeleted_other": "{{count}} cartões que alterou foram eliminados do quadro entretanto.",
+      "keptConflictChanged_one": "{{count}} cartão que alterou também foi alterado no quadro entretanto.",
+      "keptConflictChanged_other": "{{count}} cartões que alterou também foram alterados no quadro entretanto.",
+      "keptConflictSettings": "Definições do quadro que alterou também foram alteradas entretanto.",
+      "keptConflictAsNew_one": "Restaurar como cartões novos adiciona a sua versão do cartão que alterou ao lado do cartão do quadro, que fica como está.",
+      "keptConflictAsNew_other": "Restaurar como cartões novos adiciona a sua versão dos {{count}} cartões que alterou ao lado dos do quadro, que ficam como estão.",
+      "keptConflictNoCards": "Nenhum cartão pode ser restaurado como novo: transfira as alterações para guardar uma cópia.",
+      "keptRestoreAsNew": "Restaurar como cartões novos",
+      "keptRestoredAsNew": "As suas alterações voltaram ao quadro como cartões novos e estão guardadas.",
       "sizeLimitReadOnly": "Este quadro atingiu o limite de tamanho e está em modo somente leitura. As adições não foram salvas."
     },
     "sheet": {
@@ -5611,6 +5624,14 @@
           "2": {
             "title": "Recupere um elemento",
             "text": "Também pode recuperar um único cartão eliminado."
+          },
+          "3": {
+            "title": "Alterações guardadas neste dispositivo",
+            "text": "Quando o servidor não pode aceitar as suas alterações (limite de tamanho, sem acesso, no lixo), ficam neste dispositivo. Quando o quadro voltar a aceitar alterações, Restaurar no quadro trá-las de volta; se o quadro mudou entretanto, restaure-as como cartões novos."
+          },
+          "4": {
+            "title": "De um ficheiro transferido",
+            "text": "Transferiu as alterações? No menu do quadro, Restaurar alterações de um ficheiro… trá-las de volta ao mesmo quadro."
           }
         }
       },

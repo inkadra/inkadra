@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { copyElements, PasteRefusedError, pasteElements } from '@inkadra/canvas-core';
 import {
   CURRENT_SCHEMA_VERSION,
   getSchemaVersion,
@@ -330,16 +331,28 @@ async function readKept(userId: string, boardId: string): Promise<Y.Doc> {
 
 /** Why edits set aside could not go back into their board (#898). */
 export class RestoreError extends Error {
-  constructor(readonly reason: 'refused' | 'notWritable' | 'tooNew' | 'invalid' | 'otherBoard') {
+  constructor(
+    readonly reason:
+      | 'refused'
+      | 'notWritable'
+      | 'tooNew'
+      | 'invalid'
+      | 'otherBoard'
+      | 'tooBig'
+      | 'conflict',
+    /** With `conflict`: what merging them would lose or overwrite. */
+    readonly conflict?: RestoreConflict,
+  ) {
     super(`Edits not restored: ${reason}`);
   }
 }
 
 /**
- * Edits set aside, as an update the board merges (#898): checked apart first, as an opened copy
- * is. One of an older schema is migrated; one of a newer schema than this build reads is refused.
+ * Edits set aside, checked apart first as an opened copy is (#898): one of a newer schema than
+ * this build reads is refused, and so is one that is not whole (structs missing what they build
+ * on). An older one is returned as it is: `restoreConflict` says it cannot be merged as such.
  */
-export function restorableUpdate(update: Uint8Array, boardId: string): Uint8Array {
+export function restorableUpdate(update: Uint8Array): Uint8Array {
   const scratch = new Y.Doc();
   try {
     try {
@@ -347,12 +360,201 @@ export function restorableUpdate(update: Uint8Array, boardId: string): Uint8Arra
     } catch {
       throw new RestoreError('invalid');
     }
-    const version = getSchemaVersion(scratch);
-    if (version > CURRENT_SCHEMA_VERSION) throw new RestoreError('tooNew');
-    if (version > 0 && version < CURRENT_SCHEMA_VERSION) migrateBoardDoc(scratch, boardId);
-    return Y.encodeStateAsUpdate(scratch);
+    if (scratch.store.pendingStructs || scratch.store.pendingDs) throw new RestoreError('invalid');
+    if (getSchemaVersion(scratch) > CURRENT_SCHEMA_VERSION) throw new RestoreError('tooNew');
+    return update;
   } finally {
     scratch.destroy();
+  }
+}
+
+/** What merging edits set aside would do to the board as it is now (#898). */
+export interface RestoreConflict {
+  /** Cards the edits change that were deleted on the board since. */
+  deleted: string[];
+  /** Cards whose edits would lose to edits made on the board since, or overwrite them. */
+  changed: string[];
+  /** Board settings (`meta` keys) in the same case. */
+  settings: string[];
+  /**
+   * Set aside under an older schema than the board's: merging them would also merge the
+   * migration this device made, whose writes can overwrite newer ones on the board.
+   */
+  older: boolean;
+  /** Every card the edits change, which `restoreAsNew` copies. */
+  cards: string[];
+}
+
+/** Where an item of a board lives: its card and the card's field, or a root's key. */
+function placeOf(item: Y.Item): { card?: string; key: string | null } {
+  let field: Y.Item | null = null;
+  let at: Y.Item = item;
+  for (;;) {
+    const parent = at.parent as Y.AbstractType<unknown>;
+    if (!parent._item) {
+      if (Y.findRootTypeKey(parent) === 'elements')
+        return { card: at.parentSub ?? undefined, key: field?.parentSub ?? null };
+      return { key: at.parentSub };
+    }
+    field = at;
+    at = parent._item;
+  }
+}
+
+/**
+ * Calls `each` with the parts of the structs in `[clock, clock + length)` of a client: items, or
+ * GC where content went with a deleted parent (merged into a card deleted and collected, it is).
+ */
+function eachPart(
+  doc: Y.Doc,
+  client: number,
+  clock: number,
+  length: number,
+  each: (struct: Y.Item | Y.GC) => void,
+) {
+  const end = clock + length;
+  let at = clock;
+  while (at < end) {
+    const struct = Y.getItem(doc.store, Y.createID(client, at)) as Y.Item | Y.GC;
+    each(struct);
+    at = struct.id.clock + struct.length;
+  }
+}
+
+/** Gone from the document: deleted, or collected as GC. */
+const gone = (struct: Y.Item | Y.GC) => !(struct instanceof Y.Item) || struct.deleted;
+
+/** Whether two values of a board read the same, whatever the order of their keys. */
+const same = (a: unknown, b: unknown) => {
+  const plain = (v: unknown): unknown => {
+    const value = v instanceof Y.AbstractType ? v.toJSON() : v;
+    if (Array.isArray(value)) return value.map(plain);
+    if (value && typeof value === 'object')
+      return Object.fromEntries(
+        Object.keys(value)
+          .sort()
+          .map((k) => [k, plain((value as Record<string, unknown>)[k])]),
+      );
+    return value;
+  };
+  return JSON.stringify(plain(a)) === JSON.stringify(plain(b));
+};
+
+/** The value at a place of a board, as `same` compares it. */
+function valueAt(doc: Y.Doc, place: { card?: string; key: string | null }): unknown {
+  const { meta, elements } = roots(doc);
+  if (place.card === undefined) return place.key === null ? undefined : meta.get(place.key);
+  const card = elements.get(place.card);
+  return place.key === null ? card : card?.get(place.key);
+}
+
+/**
+ * What merging edits set aside (`update`, from `restorableUpdate`) into `board` would lose or
+ * overwrite, or null when it would keep every one of them and every newer edit of the board.
+ * The part the board lacks is merged into a clone: an edit lost is one of its items that ends up
+ * deleted there (its card deleted since, or a field written since that wins over it), an edit
+ * overwritten is one of the board's items the kept copy never saw that the merge deletes. Only
+ * where the value differs: two writes of the same value lose nothing.
+ */
+export function restoreConflict(board: Y.Doc, update: Uint8Array): RestoreConflict | null {
+  const kept = new Y.Doc({ gc: false });
+  const clone = new Y.Doc({ gc: false });
+  try {
+    Y.applyUpdate(kept, update);
+    const missing = Y.diffUpdate(update, Y.encodeStateVector(board));
+    const seen = Y.decodeStateVector(Y.encodeStateVector(kept));
+    Y.applyUpdate(clone, Y.encodeStateAsUpdate(board));
+    // The board's items the kept copy never saw, alive before the merge.
+    const newer: { client: number; clock: number; length: number }[] = [];
+    for (const [client, structs] of clone.store.clients) {
+      const from = seen.get(client) ?? 0;
+      for (const struct of structs)
+        if (struct instanceof Y.Item && !struct.deleted && struct.id.clock + struct.length > from)
+          newer.push({ client, clock: struct.id.clock, length: struct.length });
+    }
+    Y.applyUpdate(clone, missing);
+    if (clone.store.pendingStructs) throw new RestoreError('invalid');
+    const deleted = new Set<string>();
+    const changed = new Set<string>();
+    const settings = new Set<string>();
+    const cards = new Set<string>();
+    const note = (place: { card?: string; key: string | null }) => {
+      if (place.card === undefined) {
+        if (place.key !== null) settings.add(place.key);
+      } else if (!roots(clone).elements.has(place.card) && roots(kept).elements.has(place.card))
+        deleted.add(place.card);
+      // Also a card deleted while set aside that someone edited since: the deletion drops it.
+      else changed.add(place.card);
+    };
+    for (const struct of Y.decodeUpdate(missing).structs) {
+      if (!(struct instanceof Y.Item)) continue;
+      const { client, clock } = struct.id;
+      eachPart(kept, client, clock, struct.length, (item) => {
+        // Typed, then deleted again while set aside: nothing to keep.
+        if (!(item instanceof Y.Item) || item.deleted) return;
+        const place = placeOf(item);
+        if (place.card !== undefined && roots(kept).elements.has(place.card)) cards.add(place.card);
+        eachPart(clone, client, item.id.clock, item.length, (merged) => {
+          if (gone(merged) && !same(valueAt(clone, place), valueAt(kept, place))) note(place);
+        });
+      });
+    }
+    for (const { client, clock, length } of newer)
+      eachPart(clone, client, clock, length, (item) => {
+        if (!(item instanceof Y.Item) || !item.deleted) return;
+        const place = placeOf(item);
+        if (!same(valueAt(clone, place), valueAt(board, place))) note(place);
+      });
+    const version = getSchemaVersion(kept);
+    const older = version > 0 && version < getSchemaVersion(board);
+    if (!older && !deleted.size && !changed.size && !settings.size) return null;
+    for (const id of deleted) changed.delete(id);
+    return {
+      deleted: [...deleted],
+      changed: [...changed],
+      settings: [...settings],
+      older,
+      cards: [...cards],
+    };
+  } finally {
+    kept.destroy();
+    clone.destroy();
+  }
+}
+
+/**
+ * Restores edits set aside as new cards (#898): a copy of every card they change (`cards` of
+ * `restoreConflict`), as the kept copy has it, with new ids and at its place, while the board's
+ * own cards stay as they are. Nothing is merged, so nothing on the board is overwritten; one of
+ * an older schema is migrated apart first. Returns the ids of the new cards.
+ */
+export function restoreAsNew(
+  board: Y.Doc,
+  update: Uint8Array,
+  cards: string[],
+  opts: { boardId: string; userId: string | null },
+): string[] {
+  const kept = new Y.Doc();
+  try {
+    Y.applyUpdate(kept, update);
+    const version = getSchemaVersion(kept);
+    if (version > 0 && version < CURRENT_SCHEMA_VERSION) migrateBoardDoc(kept, opts.boardId);
+    const ids = cards.filter((id) => roots(kept).elements.has(id));
+    if (!ids.length) return [];
+    const data = copyElements(kept, ids);
+    const free = data.elements.filter((e) => e.parent === null);
+    const at = {
+      x: free.length ? Math.min(...free.map((e) => e.x)) : 0,
+      y: free.length ? Math.min(...free.map((e) => e.y)) : 0,
+    };
+    try {
+      return pasteElements(board, data, at, { userId: opts.userId }).ids;
+    } catch (err) {
+      if (err instanceof PasteRefusedError) throw new RestoreError('invalid');
+      throw err;
+    }
+  } finally {
+    kept.destroy();
   }
 }
 
@@ -361,14 +563,34 @@ export async function keptUpdate(userId: string, boardId: string): Promise<Uint8
   const doc = await readKept(userId, boardId);
   const update = Y.encodeStateAsUpdate(doc);
   doc.destroy();
-  return restorableUpdate(update, boardId);
+  return restorableUpdate(update);
 }
 
 /**
+ * The largest set of edits a file may bring back (#898): the server's default limit of a
+ * board's state (BOARD_MAX_STATE_BYTES). shortcut: an instance with a higher limit cannot
+ * restore a larger file this way; the client would need the limit from the server.
+ */
+export const KEPT_FILE_MAX_BYTES = 64 * 1024 * 1024;
+
+/** The size a file `keptFile` made may have: the update in base64, and the board readable. */
+export const keptFileMaxSize = () => KEPT_FILE_MAX_BYTES * 3;
+
+const fromBase64 = (text: string): Uint8Array => {
+  const native = (Uint8Array as { fromBase64?: (s: string) => Uint8Array }).fromBase64;
+  if (native) return native(text);
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+
+/**
  * The edits in a file `keptFile` made, ready to merge into the board (#898). The file comes from
- * the person's disk: anything but such a file of this board is refused.
+ * the person's disk: anything but such a file of this board, within the size limit, is refused.
  */
 export function keptFileUpdate(text: string, boardId: string): Uint8Array {
+  if (text.length > keptFileMaxSize()) throw new RestoreError('tooBig');
   let file: { format?: unknown; version?: unknown; boardId?: unknown; update?: unknown };
   try {
     file = JSON.parse(text);
@@ -379,13 +601,14 @@ export function keptFileUpdate(text: string, boardId: string): Uint8Array {
     throw new RestoreError('invalid');
   if (typeof file.version !== 'number' || file.version > 1) throw new RestoreError('tooNew');
   if (file.boardId !== boardId) throw new RestoreError('otherBoard');
+  if ((file.update.length / 4) * 3 > KEPT_FILE_MAX_BYTES) throw new RestoreError('tooBig');
   let bytes: Uint8Array;
   try {
-    bytes = Uint8Array.from(atob(file.update), (c) => c.charCodeAt(0));
+    bytes = fromBase64(file.update);
   } catch {
     throw new RestoreError('invalid');
   }
-  return restorableUpdate(bytes, boardId);
+  return restorableUpdate(bytes);
 }
 
 /**

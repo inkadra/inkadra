@@ -1953,6 +1953,19 @@
       "keptRestoreTooNew": "Estos cambios se hicieron con una versión más reciente de Inkadra: actualiza la app para restaurarlos.",
       "keptRestoreInvalid": "Este archivo no es un conjunto de cambios descargado de Inkadra.",
       "keptRestoreOtherBoard": "Este archivo contiene cambios de otro tablero: abre ese tablero para restaurarlos.",
+      "keptRestoreTooBig": "Este archivo es demasiado grande para contener los cambios de un tablero.",
+      "keptConflict": "No restaurados: el tablero cambió desde que estos cambios se apartaron, y unirlos perdería algunos o sobrescribiría cambios más recientes. No se cambió nada en el tablero.",
+      "keptConflictOlder": "Se hicieron con una versión anterior de Inkadra: unirlos podría sobrescribir cambios más recientes.",
+      "keptConflictDeleted_one": "{{count}} tarjeta que cambiaste se eliminó del tablero mientras tanto.",
+      "keptConflictDeleted_other": "{{count}} tarjetas que cambiaste se eliminaron del tablero mientras tanto.",
+      "keptConflictChanged_one": "{{count}} tarjeta que cambiaste también se cambió en el tablero mientras tanto.",
+      "keptConflictChanged_other": "{{count}} tarjetas que cambiaste también se cambiaron en el tablero mientras tanto.",
+      "keptConflictSettings": "Los ajustes del tablero que cambiaste también se cambiaron mientras tanto.",
+      "keptConflictAsNew_one": "Restaurar como tarjetas nuevas añade tu versión de la tarjeta que cambiaste junto a la del tablero, que queda como está.",
+      "keptConflictAsNew_other": "Restaurar como tarjetas nuevas añade tu versión de las {{count}} tarjetas que cambiaste junto a las del tablero, que quedan como están.",
+      "keptConflictNoCards": "Ninguna tarjeta se puede restaurar como nueva: descarga los cambios para conservar una copia.",
+      "keptRestoreAsNew": "Restaurar como tarjetas nuevas",
+      "keptRestoredAsNew": "Tus cambios vuelven a estar en el tablero como tarjetas nuevas y guardados.",
       "sizeLimitReadOnly": "Este tablero ha alcanzado su límite de tamaño y es de solo lectura. Las adiciones no se guardaron."
     },
     "sheet": {
@@ -5611,6 +5624,14 @@
           "2": {
             "title": "Recupera un elemento",
             "text": "También puedes recuperar una sola tarjeta eliminada."
+          },
+          "3": {
+            "title": "Cambios conservados en este dispositivo",
+            "text": "Cuando el servidor no puede aceptar tus cambios (límite de tamaño, sin acceso, en la papelera), se quedan en este dispositivo. Cuando el tablero vuelve a aceptar cambios, Restaurar en el tablero los devuelve; si el tablero cambió mientras tanto, restáuralos como tarjetas nuevas."
+          },
+          "4": {
+            "title": "Desde un archivo descargado",
+            "text": "¿Descargaste los cambios? En el menú del tablero, Restaurar cambios desde un archivo… los devuelve al mismo tablero."
           }
         }
       },

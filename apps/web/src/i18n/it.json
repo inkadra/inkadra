@@ -1953,6 +1953,19 @@
       "keptRestoreTooNew": "Queste modifiche sono state fatte con una versione più recente di Inkadra: aggiorna l’app per ripristinarle.",
       "keptRestoreInvalid": "Questo file non è un insieme di modifiche scaricato da Inkadra.",
       "keptRestoreOtherBoard": "Questo file contiene modifiche a un’altra board: apri quella board per ripristinarle.",
+      "keptRestoreTooBig": "Questo file è troppo grande per contenere le modifiche di una board.",
+      "keptConflict": "Non ripristinate: la board è cambiata da quando queste modifiche sono state messe da parte, e unirle ne perderebbe alcune o sovrascriverebbe modifiche più recenti. Nella board non è cambiato nulla.",
+      "keptConflictOlder": "Sono state fatte con una versione precedente di Inkadra: unirle potrebbe sovrascrivere modifiche più recenti.",
+      "keptConflictDeleted_one": "{{count}} card che hai modificato è stata eliminata nella board nel frattempo.",
+      "keptConflictDeleted_other": "{{count}} card che hai modificato sono state eliminate nella board nel frattempo.",
+      "keptConflictChanged_one": "{{count}} card che hai modificato è stata modificata anche nella board nel frattempo.",
+      "keptConflictChanged_other": "{{count}} card che hai modificato sono state modificate anche nella board nel frattempo.",
+      "keptConflictSettings": "Anche le impostazioni della board che hai modificato sono cambiate nel frattempo.",
+      "keptConflictAsNew_one": "Ripristina come nuove card aggiunge la tua versione della card che hai modificato accanto a quella della board, che resta com’è.",
+      "keptConflictAsNew_other": "Ripristina come nuove card aggiunge la tua versione delle {{count}} card che hai modificato accanto a quelle della board, che restano come sono.",
+      "keptConflictNoCards": "Nessuna card si può ripristinare come nuova: scarica le modifiche per tenerne una copia.",
+      "keptRestoreAsNew": "Ripristina come nuove card",
+      "keptRestoredAsNew": "Le tue modifiche sono di nuovo nella board come nuove card e sono salvate.",
       "sizeLimitReadOnly": "Questa board ha raggiunto il limite di dimensione ed è in sola lettura. Le aggiunte non sono state salvate."
     },
     "sheet": {
@@ -5611,6 +5624,14 @@
           "2": {
             "title": "Riporta un elemento",
             "text": "Puoi recuperare anche una sola card eliminata."
+          },
+          "3": {
+            "title": "Modifiche conservate su questo dispositivo",
+            "text": "Quando il server non può accettare le tue modifiche (limite di dimensione, nessun accesso, nel cestino), restano su questo dispositivo. Quando la board accetta di nuovo modifiche, Ripristina nella board le riporta; se nel frattempo la board è cambiata, ripristinale come nuove card."
+          },
+          "4": {
+            "title": "Da un file scaricato",
+            "text": "Hai scaricato le modifiche? Nel menu della board, Ripristina modifiche da file… le riporta nella stessa board."
           }
         }
       },
