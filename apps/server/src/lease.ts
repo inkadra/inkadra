@@ -43,7 +43,9 @@ export interface Lease {
 }
 
 /**
- * Takes the lease of `role` or throws `LeaseTakenError`. While held it is renewed every
+ * Takes the lease of `role` or throws `LeaseTakenError`. A held lease is waited for, a little
+ * longer than it lives: the process before this one may have been killed before releasing it
+ * (`docker compose down` past its grace period, a crash), and Valkey keeps it across restarts. While held it is renewed every
  * `renewMs`; `onLost` runs when another process holds it at a renewal (this one must stop).
  * A Valkey outage only logs: the lease is renewed again once it is back.
  */
@@ -51,18 +53,31 @@ export async function acquireLease(
   redis: Redis,
   role: LeaseRole,
   log: Pick<Logger, 'warn' | 'error'>,
-  opts: { host?: string; ttlMs?: number; renewMs?: number; onLost: () => void },
+  opts: {
+    host?: string;
+    ttlMs?: number;
+    renewMs?: number;
+    /** How long a held lease is waited for; by default its whole life and 5 s more. */
+    waitMs?: number;
+    onLost: () => void;
+  },
 ): Promise<Lease> {
   const host = opts.host ?? hostname();
   const ttl = String(opts.ttlMs ?? LEASE_TTL_MS);
   const me = `${host}/${process.pid}/${randomUUID()}`;
   const key = leaseKey(role);
-  const got = await redis.eval(ACQUIRE, 1, key, me, ttl, `${host}/`);
+  const until = Date.now() + (opts.waitMs ?? Number(ttl) + 5_000);
+  let got = await redis.eval(ACQUIRE, 1, key, me, ttl, `${host}/`);
+  if (got !== 1) log.warn({ role }, `waiting for the ${role} lease held by another process`);
+  while (got !== 1 && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    got = await redis.eval(ACQUIRE, 1, key, me, ttl, `${host}/`);
+  }
   if (got !== 1)
     throw new LeaseTakenError(
       `Another inkadra process with the ${role} role is running (${String(got).split('/')[0]}). ` +
         `Inkadra supports exactly one ${role} process per instance: stop the other one, or ` +
-        `wait ${Math.ceil(Number(ttl) / 1000)} s if it has just stopped.`,
+        `start this one again if it has just stopped.`,
     );
   const timer = setInterval(() => {
     redis.eval(RENEW, 1, key, me, ttl).then(

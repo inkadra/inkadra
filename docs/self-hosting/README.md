@@ -281,8 +281,9 @@ volume and live video sessions in memory, so two of either would lose edits or u
 ([#790](https://github.com/inkadra/inkadra/issues/790),
 [#819](https://github.com/inkadra/inkadra/issues/819)). Each of these processes holds a lease
 in Valkey while it runs, and a second one with the same role refuses to start with
-"Another inkadra process with the … role is running". After a crash the lease ends by itself
-within 30 seconds; the same container restarting takes it back at once. On an orchestrator,
+"Another inkadra process with the … role is running" after waiting 35 seconds. After a crash
+the lease ends by itself within 30 seconds, and a new process waits for it; the same container
+restarting takes it back at once. On an orchestrator,
 update by recreating (stop the old process, then start the new one), not by a rolling update.
 Only `worker` can run as several replicas.
 

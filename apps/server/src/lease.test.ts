@@ -17,23 +17,23 @@ describe.skipIf(!process.env.REDIS_URL)('single-process lease (#790, #819)', () 
   it('refuses a second holder, lets the same host restart, frees on release and expiry', async () => {
     const onLost = vi.fn();
     const first = await acquireLease(redis, role, log, { host: 'a', onLost });
-    await expect(acquireLease(redis, role, log, { host: 'b', onLost })).rejects.toThrow(
+    await expect(acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 })).rejects.toThrow(
       LeaseTakenError,
     );
-    await expect(acquireLease(redis, role, log, { host: 'b', onLost })).rejects.toThrow(
+    await expect(acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 })).rejects.toThrow(
       /one web-.* process per instance/,
     );
     // A restart of the same container after a crash: taken back at once.
     const again = await acquireLease(redis, role, log, { host: 'a', onLost });
     await first.release(); // not the holder any more: leaves the lease alone
-    await expect(acquireLease(redis, role, log, { host: 'b', onLost })).rejects.toThrow();
+    await expect(acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 })).rejects.toThrow();
     await again.release();
     const other = await acquireLease(redis, role, log, { host: 'b', onLost, ttlMs: 200 });
     // A crashed holder (never renewed, never released): free once its time is over.
     await other.release();
-    await redis.set(leaseKey(role), 'gone/1/x', 'PX', 100);
-    await new Promise((r) => setTimeout(r, 150));
-    await (await acquireLease(redis, role, log, { host: 'c', onLost })).release();
+    // A holder killed before releasing: the next process waits for the lease to end.
+    await redis.set(leaseKey(role), 'gone/1/x', 'PX', 1500);
+    await (await acquireLease(redis, role, log, { host: 'c', onLost, waitMs: 5000 })).release();
   });
 
   it('renews while held and stops the holder when another took over', async () => {
