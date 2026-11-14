@@ -471,6 +471,7 @@ export const TOURS: Tour[] = [
       { anchor: 'backups', media: 'backup', side: 'bottom' },
       { anchor: 'backups-history', media: 'backup', side: 'top' },
       { anchor: 'backups-now', media: 'backup', side: 'bottom' },
+      { anchor: 'backups-media', media: 'backup', side: 'top' },
     ],
   },
   {

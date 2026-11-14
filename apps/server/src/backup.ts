@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { once } from 'node:events';
+import { createReadStream, createWriteStream } from 'node:fs';
 import {
   chmod,
   copyFile,
@@ -13,7 +14,7 @@ import {
   statfs,
   writeFile,
 } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Readable, Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -31,12 +32,19 @@ import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from 'driz
 import type { Logger } from 'pino';
 import postgres from 'postgres';
 import { recordAudit } from './audit.ts';
-import { VERSION } from './config.ts';
+import { type Config, VERSION } from './config.ts';
 import { createDatabase, type Database, runMigrations, UNLIMITED_SESSION } from './db/client.ts';
 import { instanceBackup, instanceSetting } from './db/schema.ts';
-import type { Storage } from './storage.ts';
+import { createStorage, type Storage } from './storage.ts';
 import { REBUILD_STORAGE_TOTALS, STORAGE_TOTAL_TABLES } from './storage-limits.ts';
-import { ArchiveError, piped, readZip, writeZip, type ZipReader } from './transfers/zip.ts';
+import {
+  ArchiveError,
+  piped,
+  readZip,
+  writeZip,
+  type ZipReader,
+  type ZipWriter,
+} from './transfers/zip.ts';
 
 /**
  * Instance backups (decision 0037): a logical dump of every table of the `public` schema with
@@ -44,6 +52,75 @@ import { ArchiveError, piped, readZip, writeZip, type ZipReader } from './transf
  */
 export const backupsDir = (dataDir: string) => join(dataDir, 'backups');
 export const BUCKET_PREFIX = 'backups/';
+
+/** The folder of the archives: BACKUP_DIR, or `DATA_DIR/backups` (#899). */
+export const backupDirOf = (config: Pick<Config, 'BACKUP_DIR' | 'DATA_DIR'>) =>
+  config.BACKUP_DIR ?? backupsDir(config.DATA_DIR);
+
+/** Where archives are copied once written and verified: `prefix` + file name in `storage`. */
+export interface BackupRemote {
+  storage: Storage;
+  prefix: string;
+  /** `s3://bucket/prefix`, for administrators; never the keys. */
+  label: string;
+}
+
+/**
+ * The bucket of BACKUP_S3_* when set, whatever STORAGE_DRIVER is (#899), otherwise `backups/` of
+ * the files bucket when files live in S3, otherwise none. Same S3 client code as the files.
+ */
+export function backupRemote(config: Config): BackupRemote | null {
+  const label = backupRemoteLabel(config);
+  if (!label) return null;
+  if (config.BACKUP_S3_BUCKET)
+    return {
+      storage: createStorage({
+        ...config,
+        STORAGE_DRIVER: 's3',
+        S3_ENDPOINT: config.BACKUP_S3_ENDPOINT,
+        S3_REGION: config.BACKUP_S3_REGION,
+        S3_BUCKET: config.BACKUP_S3_BUCKET,
+        S3_ACCESS_KEY_ID: config.BACKUP_S3_ACCESS_KEY_ID,
+        S3_SECRET_ACCESS_KEY: config.BACKUP_S3_SECRET_ACCESS_KEY,
+        S3_FORCE_PATH_STYLE: config.BACKUP_S3_FORCE_PATH_STYLE,
+        S3_PUBLIC_REDIRECT: false,
+        S3_PUBLIC_ENDPOINT: undefined,
+      }),
+      prefix: config.BACKUP_S3_PREFIX,
+      label,
+    };
+  return { storage: createStorage(config), prefix: BUCKET_PREFIX, label };
+}
+
+/** `s3://bucket/prefix/` of `backupRemote`, without making a client. */
+export function backupRemoteLabel(
+  config: Pick<Config, 'BACKUP_S3_BUCKET' | 'BACKUP_S3_PREFIX' | 'STORAGE_DRIVER' | 'S3_BUCKET'>,
+) {
+  if (config.BACKUP_S3_BUCKET) return `s3://${config.BACKUP_S3_BUCKET}/${config.BACKUP_S3_PREFIX}`;
+  if (config.STORAGE_DRIVER === 's3') return `s3://${config.S3_BUCKET}/${BUCKET_PREFIX}`;
+  return null;
+}
+
+/**
+ * Checked at start (#899): the folder exists (made if needed, readable by the server's user
+ * only) and a file can be written in it. A folder that cannot be written stops the start with
+ * its path, instead of every backup failing later as `permission`.
+ */
+export async function checkBackupDir(dir: string) {
+  try {
+    await mkdir(dir, { recursive: true, mode: 0o700 });
+    const probe = join(dir, `.write-check-${randomUUID()}.partial`);
+    await writeFile(probe, '');
+    await rm(probe, { force: true });
+  } catch (err) {
+    throw new Error(
+      `The backup folder ${dir} cannot be written (${(err as NodeJS.ErrnoException).code ?? (err as Error).message}). ` +
+        'Fix its owner or mount, or set BACKUP_DIR to another folder: see ' +
+        'https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/README.md#backups',
+      { cause: err },
+    );
+  }
+}
 
 /**
  * Left out of every backup: the feature's own bookkeeping (a restored running row would block
@@ -153,6 +230,7 @@ export function toBackup(row: BackupRow): InstanceBackup {
     size: row.size,
     copiedToBucket: row.copiedToBucket,
     files: row.fileCount === null ? null : { count: row.fileCount, bytes: row.fileBytes ?? 0 },
+    media: row.mediaCount === null ? null : { count: row.mediaCount, bytes: row.mediaBytes ?? 0 },
     failure: row.failure,
     verification: row.verifiedAt
       ? {
@@ -218,10 +296,11 @@ export interface BackupDeps {
   /** Tests: the time the verification may take (`VERIFY_BUDGET_MS`). */
   verifyBudgetMs?: number;
   storage: Storage;
-  dataDir: string;
+  /** BACKUP_DIR or `DATA_DIR/backups` (#899). */
+  backupDir: string;
   migrationsFolder: string;
-  /** Files live in S3: copy the archive to the bucket as well. */
-  bucket: boolean;
+  /** Where the archive is copied once verified (`backupRemote`), or null. */
+  remote: BackupRemote | null;
   log: Logger;
 }
 
@@ -258,7 +337,7 @@ export async function startBackup(
 /** Writes the archive of `row` and applies retention. Never throws: failures go in the row. */
 export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow | null> {
   const { db, log } = deps;
-  const dir = backupsDir(deps.dataDir);
+  const dir = deps.backupDir;
   // The id keeps two backups of the same second apart.
   const fileName = `inkadra-backup-${stamp(new Date())}-${id.slice(0, 8)}.zip`;
   const partial = join(dir, `${fileName}.partial`);
@@ -353,6 +432,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
     await mkdir(dir, { recursive: true, mode: 0o700 });
     await chmod(dir, 0o700).catch(() => {});
     dumping = true;
+    const { includeMedia } = await readBackupSettings(db);
     const dump = dumpDatabase(deps, partial, {
       moved: () => {
         movedAt = Date.now();
@@ -361,6 +441,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         dumpPid = pid;
       },
       signal: stall.signal,
+      ...(includeMedia ? { media: deps.storage } : {}),
     });
     // After a stall the dump may still fail on its own: that is already handled.
     dump.catch(() => {});
@@ -407,6 +488,8 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         copiedToBucket: copied,
         fileCount: result.files.count,
         fileBytes: result.files.bytes,
+        mediaCount: result.media?.count ?? null,
+        mediaBytes: result.media?.bytes ?? null,
         verifiedAt: new Date(),
         missingFiles: verified.missing.count,
         checkedFiles: verified.checked,
@@ -420,7 +503,8 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
       // No row will ever point to this archive: retention would never remove it.
       log.warn({ backup: id, fileName }, 'backup written after it was marked over: removed');
       await rm(join(dir, fileName), { force: true });
-      if (copied) await deps.storage.remove([`${BUCKET_PREFIX}${fileName}`]).catch(() => {});
+      if (copied && deps.remote)
+        await deps.remote.storage.remove([`${deps.remote.prefix}${fileName}`]).catch(() => {});
     } else log.info({ backup: id, fileName, size: result.size }, 'backup written');
     await applyBackupRetention(deps);
     return row ?? null;
@@ -451,24 +535,24 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   }
 }
 
-/** Copies a written archive to the bucket when files live there; false when it failed. */
+/** Copies a written, verified archive to the remote bucket, if any; false when it failed. */
 async function copyToBucket(
-  deps: Pick<BackupDeps, 'bucket' | 'storage' | 'dataDir' | 'log'>,
+  deps: Pick<BackupDeps, 'remote' | 'backupDir' | 'log'>,
   id: string,
   fileName: string,
 ) {
-  if (!deps.bucket) return false;
+  if (!deps.remote) return false;
   try {
-    await deps.storage.writeStream(
-      `${BUCKET_PREFIX}${fileName}`,
-      createReadStream(join(backupsDir(deps.dataDir), fileName)),
+    await deps.remote.storage.writeStream(
+      `${deps.remote.prefix}${fileName}`,
+      createReadStream(join(deps.backupDir, fileName)),
       'application/zip',
     );
     return true;
   } catch (err) {
     deps.log.error(
-      { err, backup: id, fileName },
-      'backup kept on the data volume, bucket copy failed',
+      { err, backup: id, fileName, remote: deps.remote.label },
+      'backup kept in the backup folder, bucket copy failed',
     );
     return false;
   }
@@ -481,7 +565,9 @@ export const PRE_UPGRADE_KEEP = 2;
  * Keeps the newest `retention` successful backups, and the newest `PRE_UPGRADE_KEEP` taken
  * before an upgrade; removes older archives and old rows.
  */
-export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storage' | 'dataDir'>) {
+export async function applyBackupRetention(
+  deps: Pick<BackupDeps, 'db' | 'remote' | 'backupDir'>,
+) {
   const { db } = deps;
   const { retention } = await readBackupSettings(db);
   const kept = await db
@@ -495,9 +581,13 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storag
   ];
   for (const row of old) {
     if (row.fileName) {
-      await rm(join(backupsDir(deps.dataDir), row.fileName), { force: true });
-      if (row.copiedToBucket)
-        await deps.storage.remove([`${BUCKET_PREFIX}${row.fileName}`]).catch(() => {});
+      await rm(join(deps.backupDir, row.fileName), { force: true });
+      // shortcut: the copy is removed from the bucket configured now; after BACKUP_S3_* changed,
+      // copies in the earlier bucket stay there (documented).
+      if (row.copiedToBucket && deps.remote)
+        await deps.remote.storage
+          .remove([`${deps.remote.prefix}${row.fileName}`])
+          .catch(() => {});
     }
   }
   if (old.length)
@@ -606,7 +696,7 @@ const PRE_UPGRADE_VERIFY_MS = 5 * 60 * 1000;
 async function adoptPreUpgradeArchives(
   db: Database,
   dir: string,
-  deps: Pick<BackupDeps, 'bucket' | 'storage'>,
+  deps: Pick<BackupDeps, 'remote'>,
 ) {
   const names = (await readdir(dir).catch(() => [] as string[])).filter(
     (n) => n.startsWith(PRE_UPGRADE) && n.endsWith('.zip'),
@@ -625,8 +715,10 @@ async function adoptPreUpgradeArchives(
     const info = await stat(join(dir, fileName)).catch(() => null);
     if (!info) continue;
     // Retention removes the bucket copy only when the row says there is one.
-    const copiedToBucket = deps.bucket
-      ? (await deps.storage.size(`${BUCKET_PREFIX}${fileName}`).catch(() => null)) !== null
+    const copiedToBucket = deps.remote
+      ? (await deps.remote.storage
+          .size(`${deps.remote.prefix}${fileName}`)
+          .catch(() => null)) !== null
       : false;
     await db.insert(instanceBackup).values({
       trigger: 'pre-upgrade',
@@ -662,7 +754,7 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
       );
       return undefined;
     }
-    const dir = backupsDir(deps.dataDir);
+    const dir = deps.backupDir;
     const prefix = preUpgradePrefix(pending.applied, await databaseFingerprint(sql));
     const listed = await readdir(dir).catch(() => [] as string[]);
     // Under the migration lock no other start writes one: a `.partial` is from a killed start.
@@ -676,7 +768,7 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
     const adopt = async (db: Database) => {
       try {
         await adoptPreUpgradeArchives(db, dir, deps);
-        await applyBackupRetention({ db, storage: deps.storage, dataDir: deps.dataDir });
+        await applyBackupRetention({ db, remote: deps.remote, backupDir: dir });
       } catch (err) {
         // The archives are complete on disk: only the history misses them.
         log.error({ err, dir }, 'backups before the migrations written but not listed');
@@ -700,13 +792,6 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
     try {
       await mkdir(dir, { recursive: true, mode: 0o700 });
       await chmod(dir, 0o700).catch(() => {});
-      const needed = preUpgradeSpaceNeeded(await liveTableBytes(sql));
-      const disk = await statfs(dir);
-      const free = Number(disk.bavail) * Number(disk.bsize);
-      if (free < needed)
-        throw new Error(
-          `not enough free space in ${dir}: about ${mib(needed)} needed, ${mib(free)} free`,
-        );
       // Timeouts 0 (UNLIMITED_SESSION) on its own connection. No stall watch: start-up waits.
       written = await dumpDatabase(deps, partial, {
         moved: () => {},
@@ -733,7 +818,8 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
     // One archive per schema state: the new one replaces older copies of the same state.
     for (const old of same) {
       await rm(join(dir, old), { force: true }).catch(() => {});
-      if (deps.bucket) await deps.storage.remove([`${BUCKET_PREFIX}${old}`]).catch(() => {});
+      if (deps.remote)
+        await deps.remote.storage.remove([`${deps.remote.prefix}${old}`]).catch(() => {});
     }
     const copied = await copyToBucket(deps, id, fileName);
     const file = join(dir, fileName);
@@ -873,10 +959,37 @@ export function copyWritable(
   return guardCopyStream(query as { resolve?: (s: Writable) => void }, () => query.writable());
 }
 
+/**
+ * Bytes of the files a backup with media copies (#899): originals, thumbnails and the other
+ * listed copies, feedback attachments; never the playable copies of videos nor ladder rungs.
+ */
+export const MEDIA_BYTES = `select (
+  (select coalesce(sum(size), 0) from asset where status <> 'pending')
+  + (select coalesce(sum(bytes), 0) from asset_variant where size <> 'proxy')
+  + (select coalesce(sum(bytes), 0) from feedback_attachment where expires_at > now())
+)::bigint::text as n`;
+
+/** Free bytes of the disk of `dir`. */
+async function freeBytes(dir: string) {
+  const disk = await statfs(dir);
+  return Number(disk.bavail) * Number(disk.bsize);
+}
+
+/**
+ * The archive, written to `path`: the tables in one read-only snapshot, the list of stored files
+ * and, with `media`, the files themselves (#899), streamed from storage after the snapshot.
+ * Fails with ENOSPC (`no_space`) before writing when the disk of `path` lacks the space the
+ * estimate asks for.
+ */
 async function dumpDatabase(
   deps: Pick<BackupDeps, 'databaseUrl' | 'migrationsFolder'>,
   path: string,
-  hooks: { moved: () => void; connected: (pid: number) => void; signal: AbortSignal },
+  hooks: {
+    moved: () => void;
+    connected: (pid: number) => void;
+    signal: AbortSignal;
+    media?: Storage;
+  },
 ) {
   const { moved, signal } = hooks;
   const journal = await readJournal(deps.migrationsFolder);
@@ -889,6 +1002,28 @@ async function dumpDatabase(
     onnotice: () => {},
     connection: UNLIMITED_SESSION,
   });
+  try {
+    let needed = preUpgradeSpaceNeeded(await liveTableBytes(sql));
+    if (hooks.media) {
+      const [row] = await sql.unsafe<{ n: string }[]>(MEDIA_BYTES);
+      needed += Number(row?.n ?? 0);
+    }
+    const free = await freeBytes(dirname(path));
+    if (free < needed)
+      throw Object.assign(
+        new Error(
+          `not enough free space in ${dirname(path)}: about ${mib(needed)} needed, ${mib(free)} free`,
+        ),
+        { code: 'ENOSPC' },
+      );
+  } catch (err) {
+    await sql.end({ timeout: 0 }).catch(() => {});
+    throw err;
+  }
+  // The list of files, kept on disk next to the archive for the copy of the files after the
+  // snapshot: never in memory.
+  const listPath = `${path}.list.partial`;
+  const list = hooks.media ? createWriteStream(listPath, { mode: 0o600 }) : null;
   const zip = writeZip(path);
   // A stalled dump (see runBackup) gives up its connection and its file.
   const stop = () => {
@@ -981,6 +1116,7 @@ async function dumpDatabase(
             moved();
             const chunk = Buffer.from(out);
             filesHash.update(chunk);
+            if (list && !list.write(chunk)) await once(list, 'drain');
             yield chunk;
           }
         }
@@ -995,8 +1131,7 @@ async function dumpDatabase(
           rebuilt: [...BACKUP_REBUILT_TABLES],
           files: { count, bytes, entry: 'files.jsonl', sha256: filesHash.digest('hex') },
         };
-        await zip.addJson('manifest.json', manifest);
-        return { files: { count, bytes } };
+        return manifest;
       } catch (err) {
         // Ending the connection rejects the transaction with its own error: keep ours.
         cause = err;
@@ -1004,14 +1139,90 @@ async function dumpDatabase(
         throw err;
       }
     });
+    await sql.end({ timeout: 0 }).catch(() => {});
+    const manifest = result;
+    let media: { count: number; bytes: number } | null = null;
+    if (list && hooks.media) {
+      list.end();
+      await once(list, 'close');
+      manifest.media = await addMedia(zip, listPath, hooks.media, moved);
+      media = { count: manifest.media.count, bytes: manifest.media.bytes };
+    }
+    await zip.addJson('manifest.json', manifest);
     const size = await zip.close();
-    return { size, ...result };
+    return { size, files: { count: manifest.files.count, bytes: manifest.files.bytes }, media };
   } catch (err) {
     zip.abort();
     throw cause ?? err;
   } finally {
     signal.removeEventListener('abort', stop);
+    list?.destroy();
+    await rm(listPath, { force: true }).catch(() => {});
     await sql.end({ timeout: 0 }).catch(() => {});
+  }
+}
+
+/** Where a stored file is in an archive with media. */
+const mediaEntry = (key: string) => `media/${key}`;
+
+/**
+ * Copies the files of the list at `listPath` into the archive, one at a time and streamed, each
+ * hashed on the way (#899); `media.jsonl` records key, size and SHA-256 for the verification
+ * and the restore. A file storage no longer has is left out and counted (`missing`): it was
+ * already lost, the database still restores.
+ */
+async function addMedia(zip: ZipWriter, listPath: string, storage: Storage, moved: () => void) {
+  const linesPath = `${listPath}.media`;
+  const lines = createWriteStream(linesPath, { mode: 0o600 });
+  const linesHash = createHash('sha256');
+  let count = 0;
+  let bytes = 0;
+  let missing = 0;
+  try {
+    for await (const line of createInterface({
+      input: createReadStream(listPath),
+      crlfDelay: Number.POSITIVE_INFINITY,
+    })) {
+      if (!line) continue;
+      const { key } = JSON.parse(line) as { key: string };
+      const size = await storage.size(key);
+      if (size === null) {
+        missing += 1;
+        continue;
+      }
+      const hash = createHash('sha256');
+      const hashing = new Transform({
+        transform(chunk: Buffer, _enc, done) {
+          moved();
+          hash.update(chunk);
+          done(null, chunk);
+        },
+      });
+      // Stored, not deflated: pictures and videos are compressed already. The size makes yazl
+      // fail the archive when storage hands back other bytes than it said.
+      await zip.addStream(mediaEntry(key), piped(await storage.read(key), hashing), {
+        compress: false,
+        size,
+      });
+      const out = Buffer.from(`${JSON.stringify({ key, size, sha256: hash.digest('hex') })}\n`);
+      linesHash.update(out);
+      if (!lines.write(out)) await once(lines, 'drain');
+      count += 1;
+      bytes += size;
+    }
+    lines.end();
+    await once(lines, 'close');
+    await zip.addStream('media.jsonl', createReadStream(linesPath));
+    return {
+      count,
+      bytes,
+      missing,
+      entry: 'media.jsonl' as const,
+      sha256: linesHash.digest('hex'),
+    };
+  } finally {
+    lines.destroy();
+    await rm(linesPath, { force: true }).catch(() => {});
   }
 }
 
@@ -1022,7 +1233,14 @@ export interface RestoreReport {
   rows: number;
   migrationsBefore: number;
   migrationsAfter: number;
-  files: { listed: number; missing: number; unverified: number; examples: string[] };
+  /** `restored`: files put back into storage from a backup with media (#899). */
+  files: {
+    listed: number;
+    restored: number;
+    missing: number;
+    unverified: number;
+    examples: string[];
+  };
 }
 
 /**
@@ -1074,7 +1292,8 @@ async function partialMigrations(source: string, count: number, into: string) {
 /**
  * Restores a backup into an empty database: migrations of the backup, the data, then the
  * migrations this version adds. Refuses a database with accounts in it and backups from a
- * newer version. Files are only checked against the manifest.
+ * newer version. A backup with media puts its files back into storage (#899); the files are
+ * then checked against the list.
  */
 export async function restoreBackup(opts: {
   file: string;
@@ -1174,6 +1393,10 @@ export async function restoreBackup(opts: {
       await after.end();
     }
 
+    const restoredFiles = manifest.media
+      ? await restoreMedia(zip, manifest.media, opts.storage, opts.log)
+      : 0;
+    if (manifest.media) opts.log.info({ restored: restoredFiles }, 'files of the backup restored');
     const files = await checkFiles(zip, opts.storage);
     // In the restored database: who restored is not known (the command line), when and what is.
     // Best effort: the restore itself succeeded, a failed record must not report it failed.
@@ -1199,6 +1422,7 @@ export async function restoreBackup(opts: {
       migrationsAfter: local.length,
       files: {
         listed: files.listed,
+        restored: restoredFiles,
         missing: files.missing.count,
         unverified: files.unverified,
         examples: files.missing.examples,
@@ -1210,7 +1434,10 @@ export async function restoreBackup(opts: {
 }
 
 const ARCHIVE_LIMITS = {
-  entries: 10_000,
+  // shortcut: one entry per file of a backup with media (#899), and yazl and yauzl keep the
+  // central directory in memory (a few hundred bytes an entry); past this many files, media
+  // backups need a format with an index of its own.
+  entries: 2_000_000,
   totalBytes: Number.MAX_SAFE_INTEGER,
   compressionRatio: 10_000,
 };
@@ -1343,6 +1570,10 @@ export async function verifyBackup(
         throw new BackupCorrupt(`${table.name} does not read back as written.`);
       tables += 1;
     }
+    if (manifest.media) {
+      const media = await checkMedia(zip, manifest.media, opts);
+      if (!media) return incomplete(tables);
+    }
     const files = await checkFiles(zip, storage, {
       listed: manifest.files.count,
       sample: opts.sample ?? VERIFY_SAMPLE,
@@ -1367,9 +1598,88 @@ export async function verifyBackup(
   }
 }
 
+/** The lines of `media.jsonl`, each checked against the hash of its listing. */
+async function* mediaLines(zip: ZipReader, media: NonNullable<BackupManifest['media']>) {
+  const hash = createHash('sha256');
+  let count = 0;
+  const source = piped(
+    await zip.stream(media.entry, Number.MAX_SAFE_INTEGER),
+    new Transform({
+      transform(chunk: Buffer, _enc, done) {
+        hash.update(chunk);
+        done(null, chunk);
+      },
+    }),
+  );
+  for await (const line of createInterface({ input: source, crlfDelay: Number.POSITIVE_INFINITY })) {
+    if (!line) continue;
+    count += 1;
+    yield JSON.parse(line) as { key: string; size: number; sha256: string };
+  }
+  if (count !== media.count || hash.digest('hex') !== media.sha256)
+    throw new BackupCorrupt('media.jsonl does not read back as written.');
+}
+
+/**
+ * Reads every file of a backup with media back (#899): its size and SHA-256 against
+ * `media.jsonl`. False when `signal` stopped it first; throws `BackupCorrupt` on a mismatch.
+ */
+async function checkMedia(
+  zip: ZipReader,
+  media: NonNullable<BackupManifest['media']>,
+  opts: { signal?: AbortSignal; moved?: () => void },
+) {
+  for await (const file of mediaLines(zip, media)) {
+    if (opts.signal?.aborted) return false;
+    const hash = createHash('sha256');
+    let size = 0;
+    await pipeline(
+      await zip.stream(mediaEntry(file.key), file.size),
+      new Writable({
+        write(chunk: Buffer, _enc, done) {
+          opts.moved?.();
+          hash.update(chunk);
+          size += chunk.length;
+          done();
+        },
+      }),
+      { signal: opts.signal ?? new AbortController().signal },
+    ).catch((err) => {
+      if (!opts.signal?.aborted) throw err;
+    });
+    if (opts.signal?.aborted) return false;
+    if (size !== file.size || hash.digest('hex') !== file.sha256)
+      throw new BackupCorrupt(`${file.key} does not read back as written.`);
+  }
+  return true;
+}
+
+/**
+ * Puts the files of a backup with media back into storage (#899), local or bucket: those
+ * storage lacks or has with another size. Files already there are kept: they never change.
+ */
+async function restoreMedia(
+  zip: ZipReader,
+  media: NonNullable<BackupManifest['media']>,
+  storage: Storage,
+  log: Logger,
+) {
+  let restored = 0;
+  for await (const file of mediaLines(zip, media)) {
+    if ((await storage.size(file.key)) === file.size) continue;
+    await storage.writeStream(
+      file.key,
+      await zip.stream(mediaEntry(file.key), file.size),
+      'application/octet-stream',
+    );
+    restored += 1;
+    if (restored % 1000 === 0) log.info({ restored }, 'restoring files');
+  }
+  return restored;
+}
+
 /** Removes `.partial` files left by a backup that was interrupted. */
-export async function sweepPartialBackups(dataDir: string) {
-  const dir = backupsDir(dataDir);
+export async function sweepPartialBackups(dir: string) {
   for (const name of await readdir(dir).catch(() => [] as string[]))
     if (name.endsWith('.partial')) {
       const info = await stat(join(dir, name)).catch(() => null);

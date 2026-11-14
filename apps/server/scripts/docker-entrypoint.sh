@@ -1,7 +1,7 @@
 #!/bin/sh
 # Starts the server as the node user with a data folder it can write to.
 #
-# Started as root (compose.yaml does this), it gives DATA_DIR to node when the folder or one of
+# Started as root (compose.yaml does this), it gives DATA_DIR (and BACKUP_DIR) to node when the folder or one of
 # its entries belongs to someone else, for example a host folder created by root, then drops to
 # node. Started as any other user, it checks that DATA_DIR is writable and explains what to do
 # when it is not. See docs/self-hosting/upgrades.md.
@@ -30,14 +30,17 @@ if [ "$(id -u)" = 0 ]; then
     die "started as root without the SETUID and SETGID capabilities, so it cannot switch to" \
       "the node user. Use the compose.yaml of this release (it adds them with cap_add), or" \
       "run the container as uid $uid."
-  mkdir -p "$data"
-  # Only the folder and its direct entries: a full scan on every start would be slow on large
-  # libraries, and a folder that changed hands is wrong at the top too.
-  if [ -n "$(find "$data" -maxdepth 1 ! -user "$uid" -print -quit)" ]; then
-    has_cap $CAP_CHOWN || die "$data is not owned by uid $uid and the CHOWN capability is missing."
-    echo "inkadra: giving $data to uid $uid:$gid (once, it belonged to another user)" >&2
-    chown -R "$uid:$gid" "$data"
-  fi
+  # BACKUP_DIR too, when backups live on a mount of their own (#899).
+  for dir in "$data" ${BACKUP_DIR:+"$BACKUP_DIR"}; do
+    mkdir -p "$dir"
+    # Only the folder and its direct entries: a full scan on every start would be slow on large
+    # libraries, and a folder that changed hands is wrong at the top too.
+    if [ -n "$(find "$dir" -maxdepth 1 ! -user "$uid" -print -quit)" ]; then
+      has_cap $CAP_CHOWN || die "$dir is not owned by uid $uid and the CHOWN capability is missing."
+      echo "inkadra: giving $dir to uid $uid:$gid (once, it belonged to another user)" >&2
+      chown -R "$uid:$gid" "$dir"
+    fi
+  done
   # Switching from root to another user clears every capability. node keeps its own groups and
   # those compose adds with group_add (the render group of /dev/dri for hardware encoding), but
   # never the root group.

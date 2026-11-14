@@ -1,0 +1,21 @@
+# Backups on a disk or share of their own (#899), and optionally copied to a bucket of their own,
+# also when files stay on the data volume:
+#   docker compose -f compose.yaml -f deploy/compose.backups.yaml up -d
+# Set INKADRA_BACKUPS in .env to a host folder (another disk, a NAS mount). At startup it is given
+# to uid 1000, the user Inkadra runs as. For the bucket, set BACKUP_S3_BUCKET and its keys too;
+# leave BACKUP_S3_BUCKET empty to keep backups on that folder only.
+# See docs/self-hosting/README.md#backups.
+
+services:
+  inkadra:
+    environment:
+      BACKUP_DIR: /backups
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-backups/}
+      BACKUP_S3_FORCE_PATH_STYLE: ${BACKUP_S3_FORCE_PATH_STYLE:-false}
+    volumes:
+      - ${INKADRA_BACKUPS:?set INKADRA_BACKUPS in .env}:/backups

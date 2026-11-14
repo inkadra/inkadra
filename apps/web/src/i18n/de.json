@@ -4237,7 +4237,7 @@
   },
   "backups": {
     "title": "Backups",
-    "cardLead": "Jedes Backup enthält die ganze Datenbank und wird nach dem Schreiben zurückgelesen. Dateien bleiben, wo sie sind: Sichere auch das Datenvolume oder den Bucket. Gelöschte Dateien bleiben, solange ein behaltenes Backup sie braucht.",
+    "cardLead": "Jede Sicherung enthält die ganze Datenbank und wird nach dem Schreiben erneut gelesen. Dateien bleiben, wo sie sind, außer du nimmst sie mit auf: Sichere auch das Datenvolume oder den Bucket. Gelöschte Dateien bleiben, solange eine aufbewahrte Sicherung sie braucht.",
     "now": "Jetzt sichern",
     "running": "Backup läuft…",
     "busy": "Es läuft bereits ein Backup.",
@@ -4256,8 +4256,13 @@
     "keepHelp": "Ältere Backups werden entfernt, nachdem ein neues gelungen ist.",
     "keepCount_one": "das letzte Backup",
     "keepCount_other": "die letzten {{count}} Backups",
+    "media": "Dateien einschließen",
+    "mediaHelp": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jede Sicherung: derzeit etwa {{size}} mehr. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
+    "mediaHelpPlain": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jede Sicherung. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
     "history": "Verlauf",
     "inBucket": "in den Bucket kopiert",
+    "withMedia_one": "mit {{count}} Datei",
+    "withMedia_other": "mit {{count}} Dateien",
     "trigger": {
       "scheduled": "Nächtlich",
       "manual": "Manuell",
@@ -4271,11 +4276,13 @@
     },
     "where": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie vom Server aus DATA_DIR/backups. Wiederherstellung auf einer leeren Datenbank mit",
     "whereBucket": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie aus DATA_DIR/backups oder aus backups/ im Bucket. Wiederherstellung auf einer leeren Datenbank mit",
+    "whereLocal": "Sicherungen lassen sich nicht im Browser herunterladen: Kopiere sie auf dem Server aus {{directory}}. Wiederherstellen in eine leere Datenbank mit",
+    "whereIn": "Sicherungen lassen sich nicht im Browser herunterladen: Kopiere sie auf dem Server aus {{directory}} oder aus {{bucket}}. Wiederherstellen in eine leere Datenbank mit",
     "failure": {
       "interrupted": "Der Server hat währenddessen angehalten. Starte das Backup erneut.",
       "stalled": "Es kam nicht mehr voran und wurde abgebrochen. Prüfe das Server-Log zu diesem Backup.",
-      "no_space": "Das Daten-Volume ist voll.",
-      "permission": "Der Server kann nicht in seinen Datenordner schreiben (DATA_DIR/backups).",
+      "no_space": "Im Sicherungsordner ist nicht genug Platz frei.",
+      "permission": "Der Server kann nicht in seinen Sicherungsordner schreiben (BACKUP_DIR).",
       "internal": "Etwas ist schiefgelaufen. Das Server-Log sagt was, mit der ID dieses Backups.",
       "inconsistent": "Einige Boards oder Kommentare verweisen in einer Schleife aufeinander und lassen sich nicht geordnet speichern. Das Server-Log nennt die Tabelle.",
       "corrupt": "Das Archiv ließ sich nicht so zurücklesen, wie es geschrieben wurde, und wurde nicht behalten. Prüfe das Datenvolume."
@@ -5713,6 +5720,10 @@
           "2": {
             "title": "Sofort",
             "text": "Mach jetzt eines, vor einem Update."
+          },
+          "3": {
+            "title": "Auch Dateien",
+            "text": "Nimm hochgeladene Dateien in die Sicherungen auf, nicht nur die Datenbank."
           }
         }
       },

@@ -4237,7 +4237,7 @@
   },
   "backups": {
     "title": "Backup",
-    "cardLead": "Ogni backup contiene l'intero database e viene riletto dopo la scrittura. I file restano dove sono: fai il backup anche del volume dati o del bucket. I file eliminati restano finché un backup conservato ne ha bisogno.",
+    "cardLead": "Ogni backup contiene l'intero database e viene riletto dopo la scrittura. I file restano dove sono, a meno che tu non li includa: fai il backup anche del volume dati o del bucket. I file eliminati restano finché un backup conservato ne ha bisogno.",
     "now": "Esegui backup ora",
     "running": "Backup in corso…",
     "busy": "C'è già un backup in corso.",
@@ -4256,8 +4256,13 @@
     "keepHelp": "I backup più vecchi vengono rimossi dopo che uno nuovo è riuscito.",
     "keepCount_one": "l'ultimo backup",
     "keepCount_other": "gli ultimi {{count}} backup",
+    "media": "Includi i file",
+    "mediaHelp": "Anche i file caricati e le loro miniature entrano in ogni backup: ora circa {{size}} in più. Le copie riproducibili dei video si rifanno dopo un ripristino.",
+    "mediaHelpPlain": "Anche i file caricati e le loro miniature entrano in ogni backup. Le copie riproducibili dei video si rifanno dopo un ripristino.",
     "history": "Cronologia",
     "inBucket": "copiato nel bucket",
+    "withMedia_one": "con {{count}} file",
+    "withMedia_other": "con {{count}} file",
     "trigger": {
       "scheduled": "Notturno",
       "manual": "Manuale",
@@ -4271,11 +4276,13 @@
     },
     "where": "I backup non si scaricano dal browser: copiali da DATA_DIR/backups sul server. Ripristina su un database vuoto con",
     "whereBucket": "I backup non si scaricano dal browser: copiali da DATA_DIR/backups o da backups/ nel bucket. Ripristina su un database vuoto con",
+    "whereLocal": "I backup non si scaricano dal browser: copiali da {{directory}} sul server. Ripristina su un database vuoto con",
+    "whereIn": "I backup non si scaricano dal browser: copiali da {{directory}} sul server o da {{bucket}}. Ripristina su un database vuoto con",
     "failure": {
       "interrupted": "Il server si è fermato mentre era in corso. Avvialo di nuovo.",
       "stalled": "Ha smesso di avanzare ed è stato annullato. Controlla il log del server per questo backup.",
-      "no_space": "Il volume dei dati è pieno.",
-      "permission": "Il server non può scrivere nella sua cartella dati (DATA_DIR/backups).",
+      "no_space": "Non c'è abbastanza spazio libero nella cartella dei backup.",
+      "permission": "Il server non può scrivere nella cartella dei backup (BACKUP_DIR).",
       "internal": "Qualcosa è andato storto. Il log del server dice cosa, con l'id di questo backup.",
       "inconsistent": "Alcune board o commenti si indicano a vicenda in un ciclo e non si possono salvare in ordine. Il log del server indica la tabella.",
       "corrupt": "L'archivio riletto non corrisponde a quanto scritto, quindi non è stato conservato. Controlla il volume dei dati."
@@ -5713,6 +5720,10 @@
           "2": {
             "title": "Subito",
             "text": "Fanne uno adesso, prima di un aggiornamento."
+          },
+          "3": {
+            "title": "Anche i file",
+            "text": "Metti nei backup i file caricati, non solo il database."
           }
         }
       },

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
-import { mkdir, rename, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { createWriteStream } from 'node:fs';
+import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
 import IORedis from 'ioredis';
@@ -11,8 +13,11 @@ import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
 import {
+  type BackupRemote,
   backupBeforeMigrating,
-  backupsDir,
+  backupDirOf,
+  backupRemote,
+  checkBackupDir,
   restoreBackup,
   runBackup,
   startBackup,
@@ -183,6 +188,11 @@ async function main() {
   } else if (leaseRoles.length > 0)
     log.warn('REDIS_URL is not set: run only one inkadra process for this instance');
 
+  // The roles that write backups (the one before an upgrade, nightly, manual) refuse to start
+  // without a folder they can write to (#899).
+  if (['migrate', 'web', 'all', 'worker'].includes(command))
+    await checkBackupDir(backupDirOf(config));
+
   if (command === 'migrate' || command === 'web' || command === 'all') {
     // Alive, not ready, while the backup before an upgrade and the migrations run (#805): a
     // long backup must not get the container marked unhealthy and restarted.
@@ -200,7 +210,7 @@ async function main() {
         productionBoards: config.PRODUCTION_BOARD_MOVE,
         log,
         beforeMigrating: backupBeforeMigrating(
-          { storage: createStorage(config), log, ...transferDeps(config) },
+          { storage: createStorage(config), log, ...backupDeps(config) },
           { skip: config.SKIP_PRE_MIGRATION_BACKUP },
         ),
       });
@@ -558,6 +568,16 @@ async function main() {
   stop.ready();
 }
 
+/** What a backup needs from the configuration (#899). */
+function backupDeps(config: Config, remote = backupRemote(config)) {
+  return {
+    backupDir: backupDirOf(config),
+    remote,
+    migrationsFolder,
+    databaseUrl: config.DATABASE_URL,
+  };
+}
+
 function transferDeps(config: Config) {
   return {
     dataDir: config.DATA_DIR,
@@ -568,18 +588,36 @@ function transferDeps(config: Config) {
       STORAGE_LIMIT_PER_USER: config.STORAGE_LIMIT_PER_USER,
     },
     migrationsFolder,
-    bucket: config.STORAGE_DRIVER === 's3',
+    backupDir: backupDirOf(config),
+    backupRemote: backupRemote(config),
     databaseUrl: config.DATABASE_URL,
   };
 }
 
 async function backupCommand(config: Config, log: Logger, args: string[]) {
   const [action, file] = args;
+  const dir = backupDirOf(config);
+  const remote = backupRemote(config);
+  if (action === 'list' && args.length === 1) {
+    // The archives on this server and in the backup bucket (#899), oldest first.
+    const local = (await readdir(dir).catch(() => [] as string[])).filter((n) =>
+      /^inkadra-backup-.*\.zip$/.test(n),
+    );
+    for (const name of local.sort())
+      process.stdout.write(`${join(dir, name)}\t${(await stat(join(dir, name))).size}\n`);
+    if (remote?.storage.list)
+      for (const o of (await remote.storage.list(remote.prefix)).sort((a, b) =>
+        a.key.localeCompare(b.key),
+      ))
+        if (/\.zip$/.test(o.key))
+          process.stdout.write(`${remote.label}${o.key.slice(remote.prefix.length)}\t${o.size}\n`);
+    return;
+  }
   if (action === 'restore' && file && args.length === 2) {
     const tmpDir = join(config.DATA_DIR, 'tmp');
     await mkdir(tmpDir, { recursive: true });
     const report = await restoreBackup({
-      file,
+      file: await archiveToRestore(file, dir, remote, log),
       databaseUrl: config.DATABASE_URL,
       migrationsFolder,
       storage: createStorage(config),
@@ -610,23 +648,56 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
     return;
   }
   if (action === 'create' && args.length === 1) {
+    await checkBackupDir(dir);
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     const { db, sql } = createDatabase(config.DATABASE_URL, 2);
     try {
       const row = await startBackup(db, 'manual', null);
       if (!row) throw new Error('A backup is already running.');
       const done = await runBackup(
-        { db, storage: createStorage(config), log, ...transferDeps(config) },
+        { db, storage: createStorage(config), log, ...backupDeps(config, remote) },
         row.id,
       );
       if (done?.status !== 'ready') throw new Error('The backup failed, see the log above.');
-      log.info({ file: join(backupsDir(config.DATA_DIR), done.fileName ?? '') }, 'backup written');
+      log.info({ file: join(dir, done.fileName ?? '') }, 'backup written');
     } finally {
       await sql.end({ timeout: 5 });
     }
     return;
   }
-  throw new Error('Usage: inkadra backup create | inkadra backup restore <file>');
+  throw new Error(
+    'Usage: inkadra backup create | inkadra backup list | inkadra backup restore <file or name>',
+  );
+}
+
+/**
+ * The archive a restore reads: a path, a name in the backup folder, or a name only the backup
+ * bucket has, downloaded into the backup folder first (#899).
+ */
+async function archiveToRestore(
+  file: string,
+  dir: string,
+  remote: BackupRemote | null,
+  log: Logger,
+) {
+  const exists = async (path: string) => (await stat(path).catch(() => null)) !== null;
+  // A path that is not there: the restore says so.
+  if ((await exists(file)) || basename(file) !== file) return file;
+  const local = join(dir, file);
+  if ((await exists(local)) || !remote) return local;
+  log.info({ from: `${remote.label}${file}`, to: local }, 'downloading the backup');
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  const partial = `${local}.partial`;
+  try {
+    await pipeline(
+      await remote.storage.read(`${remote.prefix}${file}`),
+      createWriteStream(partial, { mode: 0o600 }),
+    );
+    await rename(partial, local);
+  } finally {
+    await rm(partial, { force: true });
+  }
+  return local;
 }
 
 main().catch((err) => {

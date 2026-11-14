@@ -11,6 +11,7 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
@@ -52,6 +53,8 @@ export interface Storage {
     signal?: AbortSignal,
   ): Promise<{ path: string; done: () => Promise<void> }>;
   remove(keys: string[]): Promise<void>;
+  /** Keys under `prefix` with their size; only the S3 driver (archives in a bucket, #899). */
+  list?(prefix: string): Promise<Array<{ key: string; size: number }>>;
   /**
    * A short-lived URL browsers fetch the file from, straight from the bucket (#839). Only the S3
    * driver has it, and only with S3_PUBLIC_REDIRECT: otherwise every file goes through `read`.
@@ -337,6 +340,19 @@ function s3Storage(config: Config): Storage {
           .catch(() => {});
         throw err;
       }
+    },
+    async list(prefix) {
+      const found: Array<{ key: string; size: number }> = [];
+      let ContinuationToken: string | undefined;
+      do {
+        const page = await client.send(
+          new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken }),
+        );
+        for (const o of page.Contents ?? [])
+          if (o.Key) found.push({ key: o.Key, size: o.Size ?? 0 });
+        ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+      } while (ContinuationToken);
+      return found;
     },
     async localCopy(key, tmpDir, signal) {
       const target = join(tmpDir, key.replaceAll('/', '_'));

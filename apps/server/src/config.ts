@@ -278,6 +278,24 @@ const Env = z.object({
    * written first and the server refuses to migrate if it fails (#805). `true` skips it.
    */
   SKIP_PRE_MIGRATION_BACKUP: bool('false'),
+  /** Where backups are written (#899); default `DATA_DIR/backups`. Another disk or mount. */
+  BACKUP_DIR: optional,
+  /**
+   * A bucket the archives are copied to once written and verified (#899), whatever
+   * STORAGE_DRIVER is; it replaces the copy to `backups/` of the files bucket. Keys only here,
+   * never in the database.
+   */
+  BACKUP_S3_ENDPOINT: z.preprocess(emptyToUndefined, z.url().optional()),
+  BACKUP_S3_REGION: z.string().min(1).default('us-east-1'),
+  BACKUP_S3_BUCKET: optional,
+  BACKUP_S3_ACCESS_KEY_ID: optional,
+  BACKUP_S3_SECRET_ACCESS_KEY: optional,
+  /** Folder of the archives in that bucket, ending with `/`. */
+  BACKUP_S3_PREFIX: z
+    .string()
+    .regex(/^[a-z][a-z0-9._-]*\/([A-Za-z0-9._-]+\/)*$/, 'A folder such as backups/ or inkadra/backups/')
+    .default('backups/'),
+  BACKUP_S3_FORCE_PATH_STYLE: bool('false'),
 
   /**
    * The public demo (decision 0084): "Try the demo" makes a sandbox without an account, which
@@ -385,6 +403,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         message: 'Required with STORAGE_DRIVER=s3',
       });
     for (const [a, b] of [
+      ['BACKUP_S3_ACCESS_KEY_ID', 'BACKUP_S3_SECRET_ACCESS_KEY'],
       ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
       ['OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET'],
       ['OIDC_CLIENT_ID', 'OIDC_DISCOVERY_URL'],

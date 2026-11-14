@@ -189,6 +189,25 @@ export function BackupSettings() {
               ))}
             </Select>
           </Row>
+          {/* Older servers know no such setting (#899): the row is not offered there. */}
+          {settings.includeMedia !== undefined && (
+            <Row
+              anchor="backups.media"
+              label={t('backups.media')}
+              help={
+                data.mediaBytes === undefined
+                  ? t('backups.mediaHelpPlain')
+                  : t('backups.mediaHelp', { size: size(data.mediaBytes) })
+              }
+            >
+              <Switch
+                data-tour="backups-media"
+                aria-label={t('backups.media')}
+                checked={settings.includeMedia}
+                onChange={(e) => void save({ includeMedia: e.target.checked })}
+              />
+            </Row>
+          )}
         </div>
         {startError && (
           <p role="alert" className="settings-card__pad backup-settings__error">
@@ -210,6 +229,7 @@ export function BackupSettings() {
                     {[
                       t(`backups.trigger.${b.beforeUpgrade ? 'preUpgrade' : b.trigger}`),
                       size(b.size),
+                      b.media ? t('backups.withMedia', { count: b.media.count }) : null,
                       b.copiedToBucket ? t('backups.inBucket') : null,
                       !b.verification
                         ? null
@@ -251,7 +271,12 @@ export function BackupSettings() {
         )}
       </Card>
       <p className="settings-footnote">
-        {t(data.bucket ? 'backups.whereBucket' : 'backups.where')}{' '}
+        {data.directory
+          ? t(data.remote ? 'backups.whereIn' : 'backups.whereLocal', {
+              directory: data.directory,
+              bucket: data.remote,
+            })
+          : t(data.bucket ? 'backups.whereBucket' : 'backups.where')}{' '}
         <code className="settings-env">node /app/dist/main.js backup restore &lt;file&gt;</code>
       </p>
     </>

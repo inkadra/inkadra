@@ -4237,7 +4237,7 @@
   },
   "backups": {
     "title": "Backups",
-    "cardLead": "Each backup holds the whole database and is read back once written. Files stay where they are: back up the data volume or the bucket too. Deleted files are kept until no kept backup needs them.",
+    "cardLead": "Each backup holds the whole database and is read back once written. Files stay where they are unless you include them: back up the data volume or the bucket too. Deleted files are kept until no kept backup needs them.",
     "now": "Back up now",
     "running": "Backing up…",
     "busy": "A backup is already running.",
@@ -4256,8 +4256,13 @@
     "keepHelp": "Older backups are removed after a new one succeeds.",
     "keepCount_one": "the last backup",
     "keepCount_other": "the last {{count}} backups",
+    "media": "Include files",
+    "mediaHelp": "Uploaded files and their thumbnails go into each backup too: about {{size}} more now. Playable copies of videos are made again after a restore.",
+    "mediaHelpPlain": "Uploaded files and their thumbnails go into each backup too. Playable copies of videos are made again after a restore.",
     "history": "History",
     "inBucket": "copied to the bucket",
+    "withMedia_one": "with {{count}} file",
+    "withMedia_other": "with {{count}} files",
     "trigger": {
       "scheduled": "Nightly",
       "manual": "Manual",
@@ -4271,11 +4276,13 @@
     },
     "where": "Backups are not downloadable from the browser: copy them from DATA_DIR/backups on the server. Restore on an empty database with",
     "whereBucket": "Backups are not downloadable from the browser: copy them from DATA_DIR/backups or backups/ in the bucket. Restore on an empty database with",
+    "whereLocal": "Backups are not downloadable from the browser: copy them from {{directory}} on the server. Restore on an empty database with",
+    "whereIn": "Backups are not downloadable from the browser: copy them from {{directory}} on the server or from {{bucket}}. Restore on an empty database with",
     "failure": {
       "interrupted": "The server stopped while it ran. Start it again.",
       "stalled": "It stopped making progress and was cancelled. Check the server log for this backup.",
-      "no_space": "The data volume is full.",
-      "permission": "The server cannot write to its data folder (DATA_DIR/backups).",
+      "no_space": "Not enough free space in the backup folder.",
+      "permission": "The server cannot write to its backup folder (BACKUP_DIR).",
       "internal": "Something went wrong. The server log says what, with the id of this backup.",
       "inconsistent": "Some boards or comments point at each other in a loop, so they cannot be saved in order. The server log names the table.",
       "corrupt": "The archive did not read back as it was written, so it was not kept. Check the data volume."
@@ -5713,6 +5720,10 @@
           "2": {
             "title": "Right now",
             "text": "Make one now, before an update."
+          },
+          "3": {
+            "title": "Files too",
+            "text": "Put uploaded files in the backups, not only the database."
           }
         }
       },
