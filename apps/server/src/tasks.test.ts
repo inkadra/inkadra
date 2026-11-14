@@ -43,19 +43,36 @@ it('runs the full task check only for updates that can assign a task or set a du
   const item = addTodoItem(doc, todo, 'Permit')!;
   const card = doc.getMap('elements').get(todo) as Y.Map<unknown>;
   // Moving the card or ticking the item is not.
-  expect(mayTouchTasks(server, sent(() => card.set('x', 40)))).toBe(false);
-  expect(mayTouchTasks(server, sent(() => updateTodoItem(doc, todo, item, { done: true })))).toBe(
-    false,
-  );
+  expect(
+    mayTouchTasks(
+      server,
+      sent(() => card.set('x', 40)),
+    ),
+  ).toBe(false);
+  expect(
+    mayTouchTasks(
+      server,
+      sent(() => updateTodoItem(doc, todo, item, { done: true })),
+    ),
+  ).toBe(false);
   // A first assignee, then a new one: the second write names only the value it replaces.
   expect(
-    mayTouchTasks(server, sent(() => updateTodoItem(doc, todo, item, { assigneeId: id }))),
+    mayTouchTasks(
+      server,
+      sent(() => updateTodoItem(doc, todo, item, { assigneeId: id })),
+    ),
   ).toBe(true);
   expect(
-    mayTouchTasks(server, sent(() => updateTodoItem(doc, todo, item, { assigneeId: 'other' }))),
+    mayTouchTasks(
+      server,
+      sent(() => updateTodoItem(doc, todo, item, { assigneeId: 'other' })),
+    ),
   ).toBe(true);
   expect(
-    mayTouchTasks(server, sent(() => updateTodoItem(doc, todo, item, { dueDate: '2026-11-20' }))),
+    mayTouchTasks(
+      server,
+      sent(() => updateTodoItem(doc, todo, item, { dueDate: '2026-11-20' })),
+    ),
   ).toBe(true);
   // Edits made offline arrive merged: a later assignee replaces one in the same update.
   Y.applyUpdate(server, Y.encodeStateAsUpdate(doc));

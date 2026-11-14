@@ -139,10 +139,14 @@ export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
     const { structs } = Y.decodeUpdate(update);
     const sent = (id: Y.ID) =>
       structs.find(
-        (s) => s.id.client === id.client && s.id.clock <= id.clock && id.clock < s.id.clock + s.length,
+        (s) =>
+          s.id.client === id.client && s.id.clock <= id.clock && id.clock < s.id.clock + s.length,
       );
     /** The map key of an item, null when it is not a map value, undefined when unknown. */
-    const keyOf = (item: Y.Item | Y.GC | Y.Skip | undefined, depth = 0): string | null | undefined => {
+    const keyOf = (
+      item: Y.Item | Y.GC | Y.Skip | undefined,
+      depth = 0,
+    ): string | null | undefined => {
       if (!(item instanceof Y.Item) || depth > structs.length) return undefined;
       if (item.parentSub !== null) return item.parentSub;
       // Read from the document: a decoded item names neither its key nor its parent.

@@ -344,13 +344,22 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     const id = created.json().id as string;
     const doc = storyboard(id);
     const state = Y.encodeStateAsUpdate(doc);
-    await db.insert(boardDoc).values({ boardId: id, state, schemaVersion: 2, size: state.byteLength });
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state, schemaVersion: 2, size: state.byteLength });
     await db.transaction((tx) => writeBoardIndex(tx, id, doc));
     const old = new Date('2020-01-01T00:00:00Z');
-    await db.update(boardElementIndex).set({ updatedAt: old }).where(eq(boardElementIndex.boardId, id));
+    await db
+      .update(boardElementIndex)
+      .set({ updatedAt: old })
+      .where(eq(boardElementIndex.boardId, id));
     const rows = () =>
       db
-        .select({ elementId: boardElementIndex.elementId, text: boardElementIndex.text, updatedAt: boardElementIndex.updatedAt })
+        .select({
+          elementId: boardElementIndex.elementId,
+          text: boardElementIndex.text,
+          updatedAt: boardElementIndex.updatedAt,
+        })
         .from(boardElementIndex)
         .where(eq(boardElementIndex.boardId, id));
     const before = await rows();
