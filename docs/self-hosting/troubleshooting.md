@@ -74,8 +74,11 @@ slow requests: see the settings for your proxy in [Reverse proxy](reverse-proxy.
 page in the proxy's style (not Inkadra's) gives it away.
 
 **The container is "unhealthy".** `docker inspect --format '{{json .State.Health}}' <container>`
-shows what the health check saw. For `web` and `all` it calls `/api/v1/health`, for `collab`
-an HTTP check on the collaboration server's `/`; `worker` is healthy while it runs.
+shows what the health check saw. For `web` and `all` it calls `/livez` (the process answers),
+for `collab` an HTTP check on the collaboration server's `/`, and for `worker` a heartbeat file
+the worker rewrites every 10 seconds in `/tmp`, older than a minute when its event loop hangs.
+A database or Valkey outage does not make a container unhealthy: `/readyz` reports those. Plain
+Docker does not restart an unhealthy container; see [Monitoring](configuration.md#monitoring).
 
 Problem not listed here? Open a [discussion](https://github.com/inkadra/inkadra/discussions)
 with the relevant log lines, with secrets and private addresses removed.

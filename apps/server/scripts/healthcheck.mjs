@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 // Container health check for every role of the image (Dockerfile HEALTHCHECK).
 // The role is the last argument of the main process: `tini -- node /app/dist/main.js <role>`.
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 
 const ROLES = ['all', 'web', 'collab', 'worker', 'migrate'];
+/** Written every 10 s by the worker (main.ts, WORKER_HEARTBEAT). */
+const WORKER_HEARTBEAT = '/tmp/inkadra-worker-heartbeat';
+const WORKER_STALE_MS = 60_000;
 
 function role() {
   try {
@@ -22,12 +25,18 @@ async function check(url) {
 
 const current = role();
 try {
+  // Liveness only (#816): a database or Valkey outage must not mark the container unhealthy.
+  // /readyz says whether it can serve requests.
   if (current === 'all' || current === 'web') {
-    await check(`http://127.0.0.1:${process.env.PORT || 3000}/api/v1/health`);
+    await check(`http://127.0.0.1:${process.env.PORT || 3000}/livez`);
   } else if (current === 'collab') {
     await check(`http://127.0.0.1:${process.env.COLLAB_PORT || 3001}/`);
+  } else if (current === 'worker') {
+    // No port: its heartbeat file says the event loop still turns.
+    const age = Date.now() - statSync(WORKER_HEARTBEAT).mtimeMs;
+    if (age > WORKER_STALE_MS) throw new Error(`worker heartbeat ${Math.round(age / 1000)} s old`);
   }
-  // `worker` has no port and `migrate` exits when done: the process being alive is enough.
+  // `migrate` exits when done: the process being alive is enough.
   process.exit(0);
 } catch (err) {
   console.error(err instanceof Error ? err.message : err);

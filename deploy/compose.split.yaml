@@ -4,15 +4,26 @@
 # The proxy routes /collab to the `collab` service (port 3001) and everything else to `inkadra`.
 # Caddy and Nginx use INKADRA_COLLAB_UPSTREAM=collab:3001; Traefik needs its compose.split.yaml too.
 
+# Memory limits per role (#838): web and collab need little, the worker runs ffmpeg and the
+# other media tools (docs/self-hosting/configuration.md#resource-limits).
+
 services:
   inkadra:
     command: web
+    deploy:
+      resources:
+        limits:
+          memory: ${INKADRA_WEB_MEM_LIMIT:-2g}
 
   collab:
     extends:
       file: compose.yaml
       service: inkadra
     command: collab
+    deploy:
+      resources:
+        limits:
+          memory: ${INKADRA_COLLAB_MEM_LIMIT:-2g}
     ports: !override
       - "${INKADRA_BIND:-127.0.0.1}:${INKADRA_COLLAB_PORT:-3001}:3001"
     depends_on:
@@ -24,6 +35,10 @@ services:
       file: compose.yaml
       service: inkadra
     command: worker
+    deploy:
+      resources:
+        limits:
+          memory: ${INKADRA_WORKER_MEM_LIMIT:-6g}
     ports: !reset []
     depends_on:
       inkadra:

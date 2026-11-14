@@ -18,8 +18,12 @@ services:
         condition: service_completed_successfully
 
   rustfs:
-    image: rustfs/rustfs:1.0.4
+    image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2
     restart: unless-stopped
+    # Rotated like the services of compose.yaml (#837).
+    logging:
+      driver: json-file
+      options: { max-size: "${LOG_MAX_SIZE:-20m}", max-file: "${LOG_MAX_FILES:-5}" }
     environment:
       RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
       RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
@@ -36,7 +40,7 @@ services:
 
   # Creates the bucket once, then exits. curl signs the request itself (AWS SigV4).
   rustfs-bucket:
-    image: curlimages/curl:8.23.0
+    image: curlimages/curl:8.23.0@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
     restart: "no"
     environment:
       S3_BUCKET: ${S3_BUCKET:-inkadra}

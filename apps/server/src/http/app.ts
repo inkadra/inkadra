@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import fastifyStatic from '@fastify/static';
@@ -21,6 +22,7 @@ import { recordProblem, requestProblem } from '../monitor/problems.ts';
 import { type LatencyRecorder, recordsLatency } from '../monitor/sampler.ts';
 import type { ServerDeps } from '../monitor/status.ts';
 import { type MonitorStore, memoryStore } from '../monitor/store.ts';
+import { requestContext, requestIdFrom } from '../request-context.ts';
 import { rememberOrigin, requestIsSecure } from '../request-origin.ts';
 import { DocViews } from '../share-links.ts';
 import type { Storage } from '../storage.ts';
@@ -136,7 +138,8 @@ export async function createApp(deps: AppDeps) {
               method: req.method,
               url,
               hostname: req.hostname,
-              remoteAddress: req.ip,
+              // Personal data: logged only when the operator asks for it (#837).
+              ...(config.LOG_CLIENT_IP ? { remoteAddress: req.ip } : {}),
               ...(typeof client === 'string' &&
               /^[a-z][a-z0-9-]{0,31}\/[0-9][a-zA-Z0-9.+-]{0,63}$/.test(client)
                 ? { inkadraClient: client }
@@ -148,11 +151,19 @@ export async function createApp(deps: AppDeps) {
     ) as FastifyBaseLogger,
     trustProxy: config.TRUST_PROXY,
     bodyLimit: 2 * 1024 * 1024,
+    // Unique across replicas, or the proxy's own X-Request-ID, so one request can be followed
+    // through web, collab and the jobs it queues (#817).
+    genReqId: (req) => requestIdFrom(req.headers['x-request-id'], randomUUID),
   };
   const app = Fastify(options);
 
   registerCompression(app);
   app.setErrorHandler(errorHandler);
+  // Whatever the request starts (jobs above all) knows its id.
+  app.addHook('onRequest', (req, reply, done) => {
+    reply.header('x-request-id', req.id);
+    requestContext.run({ requestId: req.id }, done);
+  });
   app.addHook('onRequest', async (req, reply) => {
     try {
       rememberOrigin(req.raw, config.TRUST_PROXY);
