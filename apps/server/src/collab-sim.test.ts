@@ -26,7 +26,8 @@ import { testDeps } from './test-deps.ts';
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
 
-const duration = Number(process.env.COLLAB_SIM_DURATION_MS ?? 30_000);
+// CI passes an empty value outside the nightly run.
+const duration = Number(process.env.COLLAB_SIM_DURATION_MS || 30_000);
 if (!Number.isFinite(duration) || duration < 1000)
   throw new Error('Invalid COLLAB_SIM_DURATION_MS');
 const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
