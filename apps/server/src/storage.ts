@@ -219,7 +219,12 @@ function s3Storage(config: Config): Storage {
     copiesToLocal: true,
     ...(config.S3_PUBLIC_REDIRECT
       ? {
-          signedUrl: (key: string, ttlS: number, disposition?: string, contentType?: string) => {
+          signedUrl: async (
+            key: string,
+            ttlS: number,
+            disposition?: string,
+            contentType?: string,
+          ) => {
             checkKey(key);
             return getSignedUrl(
               publicClient,
