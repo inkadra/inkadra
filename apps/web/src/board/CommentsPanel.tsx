@@ -38,7 +38,7 @@ import { CommentsOnBoard } from './CommentsOnBoard.tsx';
 import { ContextMenu } from './chrome.tsx';
 import { commentPanelPosition } from './comment-panel-position.ts';
 import { GuestTag } from './GuestTag.tsx';
-import { plainText } from './note.tsx';
+import { plainText } from './note-text.ts';
 import { ReactionBar } from './ReactionBar.tsx';
 import { ReviewSection } from './ReviewSection.tsx';
 import {

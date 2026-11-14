@@ -1,7 +1,6 @@
 import type { BoardCount } from '@inkadra/shared';
-import { useSyncExternalStore } from 'react';
+import { lazy, Suspense, useSyncExternalStore } from 'react';
 import type { ImportPlan } from '../board/film/screenplay/plan.ts';
-import { ProjectSetupSeed } from './ProjectSetupSeed.tsx';
 
 /**
  * A board to fill from an imported screenplay once it syncs.
@@ -109,18 +108,25 @@ export function forgetSeededCounts(server: ReadonlyMap<string, BoardCount>) {
   emit();
 }
 
+// The board connection and store load with the first seed, not with every page (#774).
+const ProjectSetupSeed = lazy(async () => ({
+  default: (await import('./ProjectSetupSeed.tsx')).ProjectSetupSeed,
+}));
+
 /** Mounted once by the app layout. A board that fails to import stays empty. */
 export function SeedQueue() {
   const job = useSyncExternalStore(subscribe, () => queue[0]);
   if (!job) return null;
   return (
-    <ProjectSetupSeed
-      key={job.id}
-      boardId={job.boardId}
-      screenplay={job.screenplay}
-      userId={job.userId}
-      done={seededDone(job.boardId)}
-      failed={next}
-    />
+    <Suspense fallback={null}>
+      <ProjectSetupSeed
+        key={job.id}
+        boardId={job.boardId}
+        screenplay={job.screenplay}
+        userId={job.userId}
+        done={seededDone(job.boardId)}
+        failed={next}
+      />
+    </Suspense>
   );
 }

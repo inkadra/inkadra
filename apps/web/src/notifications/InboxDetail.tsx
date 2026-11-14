@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import {
   type BoardDetail,
@@ -9,21 +8,11 @@ import {
   notificationPath,
 } from '@inkadra/shared';
 import { Button, Icon, IconButton, kindStyle, ProjectGlyph } from '@inkadra/ui';
-import {
-  type FormEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { type FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import * as Y from 'yjs';
 import { pickVariant, useAsset } from '../board/assets.ts';
-import { useBoardConnection } from '../board/connection.ts';
 import { usePresetText } from '../board/film/fields.tsx';
-import { plainText, useFragment } from '../board/note.tsx';
 import {
   authorName,
   editableText,
@@ -44,7 +33,7 @@ import {
   relativeTime,
 } from './Notifications.tsx';
 
-type DetailProps = {
+export type DetailProps = {
   notification: Notification | null;
   onNavigate: () => void;
   onCount: () => Promise<void>;
@@ -63,6 +52,10 @@ export function InboxSkeleton() {
   );
 }
 
+const ConnectedInboxDetail = lazy(async () => ({
+  default: (await import('./InboxConnected.tsx')).ConnectedInboxDetail,
+}));
+
 export function InboxDetail(props: DetailProps) {
   if (props.notification?.type === 'feedback_received')
     return (
@@ -75,11 +68,14 @@ export function InboxDetail(props: DetailProps) {
       </div>
     );
   return props.notification?.boardId && props.notification.elementId ? (
-    <ConnectedInboxDetail
-      key={props.notification.boardId}
-      {...props}
-      boardId={props.notification.boardId}
-    />
+    // The board connection (Hocuspocus, the document) loads only for a card's notification.
+    <Suspense fallback={<InboxDetailWithElement {...props} syncing />}>
+      <ConnectedInboxDetail
+        key={props.notification.boardId}
+        {...props}
+        boardId={props.notification.boardId}
+      />
+    </Suspense>
   ) : (
     <InboxDetailWithElement {...props} />
   );
@@ -103,33 +99,7 @@ function FrameFacts({ frame }: { frame: Extract<Element, { type: 'frame' }> }) {
   );
 }
 
-function ConnectedInboxDetail(props: DetailProps & { boardId: string }) {
-  // Only observe the selected document. Never write through this connection.
-  const conn = useBoardConnection(props.boardId, false);
-  const snapshot = useSyncExternalStore(
-    conn?.store.subscribe ?? (() => () => {}),
-    conn?.store.getSnapshot ?? (() => null),
-  );
-  const element = snapshot?.byId.get(props.notification?.elementId ?? '');
-  const label =
-    element?.type === 'frame' && snapshot
-      ? frameLabels(storyboardOf([...snapshot.byId.values()])).get(element.id)
-      : undefined;
-  const body = element?.type === 'note' ? conn?.store.map(element.id)?.get('body') : null;
-  const fragment = body instanceof Y.XmlFragment ? body : null;
-  useFragment(fragment);
-  return (
-    <InboxDetailWithElement
-      {...props}
-      element={element}
-      elementLabel={label}
-      syncing={!conn || conn.status === 'connecting'}
-      excerpt={fragment ? plainText(fragment).slice(0, 240) : undefined}
-    />
-  );
-}
-
-function InboxDetailWithElement(
+export function InboxDetailWithElement(
   props: DetailProps & {
     element?: Element;
     elementLabel?: string;

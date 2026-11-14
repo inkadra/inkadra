@@ -5,8 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
-import { Toast } from './chrome.tsx';
 import type { BoardStore } from './store.ts';
+import { Toast } from './Toast.tsx';
 
 /** How long the toast waits for the version name before announcing the generic text. */
 const NAME_WAIT_MS = 1500;
