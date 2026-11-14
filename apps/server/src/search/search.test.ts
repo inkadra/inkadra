@@ -651,6 +651,16 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect(await backfillIndex(db)).toEqual({ indexed: 1 });
     expect(await backfillIndex(db)).toEqual({ indexed: 0 });
     expect((await get('owner', '/api/v1/search?q=85mm')).body.items).toHaveLength(1);
+    // The navigation counts are stored with the index, so the route need not decode the document.
+    const [stored] = await db
+      .select({ counts: boardDoc.counts })
+      .from(boardDoc)
+      .where(eq(boardDoc.boardId, boardId));
+    expect(stored?.counts?.elementCount).toBeGreaterThan(0);
+    const counted = await get('owner', `/api/v1/projects/${projectId}/board-counts`);
+    expect(counted.body.items.find((i: { boardId: string }) => i.boardId === boardId)).toMatchObject(
+      stored!.counts!,
+    );
   });
 
   it('finds the crew for project members and the location of shooting days', async () => {

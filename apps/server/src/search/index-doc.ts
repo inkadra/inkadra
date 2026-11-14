@@ -3,6 +3,7 @@ import { compareZ, type Element, readElement, roots } from '@inkadra/doc-schema'
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
+import { docCounts } from '../board-preview.ts';
 import { reviveUsed } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, boardElementIndex } from '../db/schema.ts';
@@ -289,7 +290,7 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
   // Keep updated_at as it is: it says when the document changed, not the index.
   await tx
     .update(boardDoc)
-    .set({ indexedAt: new Date(), updatedAt: sql`${boardDoc.updatedAt}` })
+    .set({ indexedAt: new Date(), counts: docCounts(doc), updatedAt: sql`${boardDoc.updatedAt}` })
     .where(eq(boardDoc.boardId, boardId));
   return entries.length;
 }
