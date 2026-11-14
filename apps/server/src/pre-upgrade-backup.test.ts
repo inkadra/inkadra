@@ -213,7 +213,8 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
     it(`backs up a ${release} database, which restores (${count} migrations)`, async () => {
       const { older } = migrationsUpTo(count);
       const fresh = await freshDatabase(url ?? '', `pre_upgrade_${release.replaceAll('.', '_')}`);
-      await runMigrations(fresh, older);
+      // The schema of that release: its data steps are not this version's.
+      await runMigrations(fresh, older, { schemaOnly: true });
       const { sql } = createDatabase(fresh, 1);
       try {
         await sql`insert into "user" (name, email) values ('Old', 'old@example.com')`;
