@@ -69,6 +69,25 @@ use powers of 1000. Boolean settings accept `true` or `false` unless stated othe
 | `IMPORT_MAX_SIZE`        | `20GB`      | Largest project archive an import accepts, compressed and in total uncompressed; `0` for no limit                                                            |
 | `HEIC_PREVIEWS`          | `true`      | `false` stops Inkadra decoding HEIC photos from iPhones: they are kept, without a preview                                                                    |
 
+## Board size limits
+
+| Variable                | Default | Meaning                                                                              |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `BOARD_MAX_STATE_BYTES` | `64MB`  | Encoded Yjs state per board, as bytes or with a unit (`64MB`, `1GB`; powers of 1024) |
+| `BOARD_MAX_ELEMENTS`    | `20000` | Elements per board, a positive integer                                               |
+
+Neither can be `0`: there is no setting without a limit.
+The demo retains its stricter limits. Set these on every collaboration process.
+
+Updates that exceed either limit are refused with a board-limit notice, and clips to a board
+at a limit with 409. Existing data is never truncated: even boards already over the limits
+remain readable and accept deletions, and restoring an older version is not limited.
+Yjs retains history metadata, so deleting visible content may not bring encoded state below
+the byte limit; an operator can raise it. The WebSocket message limit remains 16 MiB.
+
+With `REDIS_URL`, product rate limits share atomic budgets across processes. Without it,
+they use bounded in-memory windows, and so does each process while Valkey does not answer.
+
 ## Public demo
 
 `DEMO_MODE` defaults to `false`. Setting it to `true` enables temporary sandboxes and disables

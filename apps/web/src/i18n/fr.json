@@ -1917,7 +1917,9 @@
         "right": "Droite"
       },
       "drawFailed": "Impossible d’enregistrer le trait. Réessayez ; si le problème persiste, rechargez le tableau.",
-      "updateApp": "Ce tableau nécessite une version plus récente. Mettez à jour l’application pour le modifier ; vous pouvez continuer à le consulter."
+      "updateApp": "Ce tableau nécessite une version plus récente. Mettez à jour l’application pour le modifier ; vous pouvez continuer à le consulter.",
+      "sizeLimit": "Ce tableau a atteint sa limite de taille. Les ajouts n’ont pas été enregistrés ; le tableau a été rechargé. Vous pouvez supprimer du contenu pour libérer de la place.",
+      "sizeLimitReadOnly": "Ce tableau a atteint sa limite de taille et est en lecture seule. Les ajouts n’ont pas été enregistrés."
     },
     "sheet": {
       "edit": "Modifier",
@@ -5307,6 +5309,10 @@
           "4": {
             "title": "Les vues du tableau",
             "text": "Depuis le menu ⋯, activez le moodboard de ce tableau. Une vue désactivée garde ses données."
+          },
+          "5": {
+            "title": "Limites de taille du tableau",
+            "text": "Si ce tableau atteint sa limite de taille, les ajouts sont refusés et le tableau confirmé est rechargé. Supprimez du contenu pour libérer de la place ; si cela ne suffit pas, demandez à l’administrateur de relever la limite."
           }
         }
       },

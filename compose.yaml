@@ -42,6 +42,8 @@ services:
       FEEDBACK_GITHUB_TOKEN: ${FEEDBACK_GITHUB_TOKEN:-}
       # A single dash on purpose: an empty value must stay empty, it turns the relay off.
       FEEDBACK_RELAY_URL: ${FEEDBACK_RELAY_URL-https://relay.inkadra.com}
+      BOARD_MAX_STATE_BYTES: ${BOARD_MAX_STATE_BYTES:-64MB}
+      BOARD_MAX_ELEMENTS: ${BOARD_MAX_ELEMENTS:-20000}
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
       # Storage limits (decision 0081): empty leaves them to Settings → Storage.
       STORAGE_LIMIT: ${STORAGE_LIMIT:-}

@@ -22,7 +22,7 @@ const MAX_QUEUE_MS = 5_000;
  * ever talk to Inkadra. `key` is whose budget the request spends (a person or a guest).
  */
 export function createTileServer(config: Config) {
-  const limiter = new RateLimiter(TILES_PER_MINUTE, 60_000);
+  const limiter = new RateLimiter(TILES_PER_MINUTE, 60_000, 'map-tiles:limiter');
   const userAgent = mapUserAgent(config.PUBLIC_URL);
   return async function serveTile(req: FastifyRequest, reply: FastifyReply, key: string) {
     if (!config.MAPS) throw new HttpError('not_found', 'Maps are off on this server.');
@@ -30,7 +30,7 @@ export function createTileServer(config: Config) {
     const { layer } = MapTileQuery.parse(req.query);
     const tileUrl = layer === 'satellite' ? config.MAP_SATELLITE_TILE_URL : config.MAP_TILE_URL;
     if (!tileUrl) throw new HttpError('not_found', 'Tile source not configured.');
-    if (!limiter.take(key)) {
+    if (!(await limiter.take(key))) {
       reply.header('retry-after', limiter.retryAfterSeconds(key));
       throw new HttpError('rate_limited', 'Too many map tiles: wait a minute.');
     }

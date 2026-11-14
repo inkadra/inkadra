@@ -251,8 +251,8 @@ export function registerGuestCommentRoutes(
 ) {
   const { db, guests, afterWrite } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const perGuest = new RateLimiter(30, 60 * 60_000);
-  const perLink = new RateLimiter(300, 60 * 60_000);
+  const perGuest = new RateLimiter(30, 60 * 60_000, 'guest-comments:perGuest');
+  const perLink = new RateLimiter(300, 60 * 60_000, 'guest-comments:perLink');
 
   const visibleIds = async (ctx: GuestContext, boardId: string) =>
     (await guests.shown(ctx, boardId)).map((e) => e.id);
@@ -439,8 +439,8 @@ export function registerGuestCommentRoutes(
       await guests.requireElement(ctx, boardId, elementId);
     }
     guests.requireName(ctx);
-    guests.takeWrite(ctx, reply);
-    if (!perGuest.take(ctx.guest.id) || !perLink.take(ctx.link.id)) {
+    await guests.takeWrite(ctx, reply);
+    if (!(await perGuest.take(ctx.guest.id)) || !(await perLink.take(ctx.link.id))) {
       reply.header(
         'retry-after',
         Math.max(perGuest.retryAfterSeconds(ctx.guest.id), perLink.retryAfterSeconds(ctx.link.id)),
@@ -482,7 +482,7 @@ export function registerGuestCommentRoutes(
     const ctx = await guests.requireGuest(req, reply, linkId);
     guests.requireCan(ctx, 'write_comments');
     const row = await ownComment(ctx, commentId);
-    guests.takeWrite(ctx, reply);
+    await guests.takeWrite(ctx, reply);
     const [updated] = await db
       .update(comment)
       .set({ body, editedAt: new Date() })
@@ -512,7 +512,7 @@ export function registerGuestCommentRoutes(
     const ctx = await guests.requireGuest(req, reply, linkId);
     guests.requireCan(ctx, 'write_comments');
     const row = await ownComment(ctx, commentId);
-    guests.takeWrite(ctx, reply);
+    await guests.takeWrite(ctx, reply);
     await db.transaction(async (tx) => {
       if (row.threadId) {
         await tx.delete(comment).where(eq(comment.id, row.id));
@@ -574,7 +574,7 @@ export function registerGuestCommentRoutes(
           if (!visible) throw new HttpError('not_found', 'Comment not found.');
         }
         guests.requireName(ctx);
-        guests.takeWrite(ctx, reply);
+        await guests.takeWrite(ctx, reply);
         const changed = on
           ? await db
               .insert(commentReaction)

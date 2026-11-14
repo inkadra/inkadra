@@ -958,7 +958,7 @@ export function inlineJobs(
         if (opts?.regenerate && generation !== cancelled) return;
         return runProxy({ ...deps, log }, assetId, undefined, opts).then(
           (result) => {
-            if (!('skipped' in result)) event('video_ready', started);
+            if (!('skipped' in result)) void event('video_ready', started);
           },
           async (err) => {
             await markProxyFailed(deps.db, assetId);
@@ -967,7 +967,7 @@ export function inlineJobs(
               jobProblem('web', QUEUES.proxies, { name: 'make', data: { assetId } }, err),
               log,
             );
-            event('video_failed', started);
+            void event('video_failed', started);
             throw err;
           },
         );

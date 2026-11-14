@@ -5837,12 +5837,20 @@ button.card__play {
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
-  max-width: calc(100vw - 32px);
+  /* Centred with a transform, it would otherwise wrap at half the screen; clear of the sidebar. */
+  width: max-content;
+  max-width: min(640px, calc(100vw - 32px));
   padding: 12px;
   border: 1px solid var(--ink-border-strong);
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
+}
+/* On a phone, under the zoom row at the top of the board (12px + 44px + 12px below the header). */
+@media (width < 768px) {
+  .board-update-notice {
+    top: 124px;
+  }
 }
 
 .mcard__layer {
