@@ -33,7 +33,10 @@
       "title": "Se déconnecter et supprimer les modifications non enregistrées ?",
       "body_one": "{{count}} tableau a des modifications enregistrées uniquement sur cet appareil. La déconnexion les supprime. Restez connecté et ouvrez-le en ligne pour les enregistrer.",
       "body_other": "{{count}} tableaux ont des modifications enregistrées uniquement sur cet appareil. La déconnexion les supprime. Restez connecté et ouvrez-les en ligne pour les enregistrer.",
+      "kept_one": "{{count}} tableau a des modifications que le serveur n’a pas acceptées (taille maximale, aucun accès ou dans la corbeille). L’ouvrir ne les enregistre pas, et la déconnexion les supprime : téléchargez-les pour en garder une copie.",
+      "kept_other": "{{count}} tableaux ont des modifications que le serveur n’a pas acceptées (taille maximale, aucun accès ou dans la corbeille). Les ouvrir ne les enregistre pas, et la déconnexion les supprime : téléchargez-les pour en garder une copie.",
       "confirm": "Se déconnecter et supprimer",
+      "download": "Télécharger les modifications",
       "stay": "Rester connecté"
     },
     "errors": {
@@ -1929,7 +1932,10 @@
       "drawFailed": "Impossible d’enregistrer le trait. Réessayez ; si le problème persiste, rechargez le tableau.",
       "updateApp": "Ce tableau nécessite une version plus récente. Mettez à jour l’application pour le modifier ; vous pouvez continuer à le consulter.",
       "sizeLimit": "Ce tableau a atteint sa limite de taille. Les ajouts n’ont pas été enregistrés ; le tableau a été rechargé. Vous pouvez supprimer du contenu pour libérer de la place.",
-      "sizeLimitKept": "Ce tableau a atteint sa taille maximale. Les modifications faites sur cet appareil n’ont pas été enregistrées : elles sont conservées sur cet appareil, et le tableau a été rechargé. Vous pouvez supprimer du contenu pour faire de la place.",
+      "sizeLimitKept": "Ce tableau a atteint sa taille maximale. Les modifications faites sur cet appareil n’ont pas été enregistrées : elles sont conservées sur cet appareil, et le tableau a été rechargé. Téléchargez-les pour en garder une copie, ou supprimez-les. Vous pouvez supprimer du contenu pour faire de la place.",
+      "kept": "Les modifications de ce tableau que le serveur n’a pas acceptées sont conservées sur cet appareil. Elles ne sont pas dans le tableau : téléchargez-les pour en garder une copie, ou supprimez-les.",
+      "keptDownload": "Télécharger les modifications",
+      "keptDiscard": "Supprimer",
       "sizeLimitReadOnly": "Ce tableau a atteint sa limite de taille et est en lecture seule. Les ajouts n’ont pas été enregistrés."
     },
     "sheet": {

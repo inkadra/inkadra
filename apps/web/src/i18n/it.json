@@ -33,7 +33,10 @@
       "title": "Uscire ed eliminare le modifiche non salvate?",
       "body_one": "{{count}} board ha modifiche salvate solo su questo dispositivo. Uscendo vengono eliminate. Resta connesso e aprila online per salvarle.",
       "body_other": "{{count}} board hanno modifiche salvate solo su questo dispositivo. Uscendo vengono eliminate. Resta connesso e aprile online per salvarle.",
+      "kept_one": "{{count}} board ha modifiche che il server non ha accettato (limite di dimensione, nessun accesso o nel cestino). Aprirla non le salva e uscendo vengono eliminate: scaricale per tenerne una copia.",
+      "kept_other": "{{count}} board hanno modifiche che il server non ha accettato (limite di dimensione, nessun accesso o nel cestino). Aprirle non le salva e uscendo vengono eliminate: scaricale per tenerne una copia.",
       "confirm": "Esci ed elimina",
+      "download": "Scarica le modifiche",
       "stay": "Resta connesso"
     },
     "errors": {
@@ -1929,7 +1932,10 @@
       "drawFailed": "Impossibile salvare il tratto. Riprova; se il problema continua, ricarica la board.",
       "updateApp": "Questa board richiede una versione più recente. Aggiorna l’app per modificarla; puoi continuare a leggerla.",
       "sizeLimit": "La board ha raggiunto il limite di dimensione. Le aggiunte non sono state salvate; la board è stata ricaricata. Puoi eliminare contenuti per liberare spazio.",
-      "sizeLimitKept": "Questa board ha raggiunto il limite di dimensione. Le modifiche fatte su questo dispositivo non sono state salvate: restano su questo dispositivo e la board è stata ricaricata. Puoi eliminare contenuti per fare spazio.",
+      "sizeLimitKept": "Questa board ha raggiunto il limite di dimensione. Le modifiche fatte su questo dispositivo non sono state salvate: restano su questo dispositivo e la board è stata ricaricata. Scaricale per tenerne una copia, oppure scartale. Puoi eliminare contenuti per fare spazio.",
+      "kept": "Le modifiche a questa board che il server non ha accettato restano su questo dispositivo. Non sono nella board: scaricale per tenerne una copia, oppure scartale.",
+      "keptDownload": "Scarica le modifiche",
+      "keptDiscard": "Scarta",
       "sizeLimitReadOnly": "Questa board ha raggiunto il limite di dimensione ed è in sola lettura. Le aggiunte non sono state salvate."
     },
     "sheet": {

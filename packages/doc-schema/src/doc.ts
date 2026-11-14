@@ -143,6 +143,12 @@ type Migration = (doc: Y.Doc) => void;
 /**
  * migrations[n] upgrades a document from version n to n + 1.
  * Version 0 is an empty document that was never initialised.
+ *
+ * A step must be CRDT-idempotent: the same document is migrated by the server when it loads it
+ * and, independently, by each client that kept a copy on the device (#791), and the results are
+ * merged. Only `Y.Map#set` with values that follow from the document alone, and deletions; never
+ * insert into a `Y.Array` or a text, never create a new shared type in place of an existing one,
+ * and no random ids or timestamps: two runs would add the item twice or keep both.
  */
 const migrations: Record<number, Migration> = {
   // 2: scene, frame and arrow elements, `tags` on every element, `meta.aspect`. All additive,

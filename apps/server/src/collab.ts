@@ -710,7 +710,9 @@ export function createCollabServer(deps: {
         throw new Error('Origin not allowed');
       // A client that asks (`reasons=1`) is told a signed-out session and a lost access apart from
       // other refusals, with the reasons of the matching closes (#791): it deletes its copy of the
-      // board only for `Forbidden`. Others keep the generic "permission-denied" they know.
+      // board only for `Forbidden` (no access, an expired grant, or the board is in the trash and
+      // may be restored), setting edits it holds aside first. Others keep the generic
+      // "permission-denied" they know.
       const reasons = requestParameters.get('reasons') === '1';
       const refuse = (message: string, reason: 'Unauthorized' | 'Forbidden') =>
         Object.assign(new Error(message), reasons ? { reason } : {});

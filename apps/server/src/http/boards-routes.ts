@@ -91,8 +91,13 @@ const ProjectParams = z.object({ projectId: Id });
  * again (`rest`). A board larger than the budget still comes, alone.
  */
 export const SCHEDULE_SOURCES_BYTES = 8 * 1024 * 1024;
-/** Summaries of stored documents kept between requests, by board and save, up to this size. */
-const SUMMARY_CACHE_BYTES = 32 * 1024 * 1024;
+/**
+ * Summaries of stored documents kept between requests, by board and save, up to this size,
+ * measured as their JSON (UTF-16, 2 bytes a character): the stored Yjs binary is far smaller
+ * than the objects it decodes to. shortcut: the parsed objects take some more heap than their
+ * JSON; take a heap snapshot before raising the cap.
+ */
+const SUMMARY_CACHE_BYTES = 16 * 1024 * 1024;
 const BoardParams = z.object({ boardId: Id });
 
 export function toBoard(row: typeof board.$inferSelect, myRole: ProjectRole): Board {
@@ -657,7 +662,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       for (const doc of docs) {
         const summary = scheduleSource(doc.boardId, doc.state);
         content.set(doc.boardId, summary);
-        cacheSummary(keyOf(doc.boardId), summary, doc.state.byteLength);
+        cacheSummary(keyOf(doc.boardId), summary, JSON.stringify(summary).length * 2);
       }
     }
     const items = chosen.map(({ id, role }) => ({

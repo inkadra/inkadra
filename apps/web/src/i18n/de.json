@@ -33,7 +33,10 @@
       "title": "Abmelden und ungespeicherte Änderungen löschen?",
       "body_one": "{{count}} Board hat Änderungen, die nur auf diesem Gerät gespeichert sind. Beim Abmelden werden sie gelöscht. Bleib angemeldet und öffne es online, um sie zu speichern.",
       "body_other": "{{count}} Boards haben Änderungen, die nur auf diesem Gerät gespeichert sind. Beim Abmelden werden sie gelöscht. Bleib angemeldet und öffne sie online, um sie zu speichern.",
+      "kept_one": "{{count}} Board hat Änderungen, die der Server nicht angenommen hat (Größenbegrenzung, kein Zugriff oder im Papierkorb). Beim Öffnen werden sie nicht gespeichert, und beim Abmelden werden sie gelöscht: Lade sie herunter, um eine Kopie zu behalten.",
+      "kept_other": "{{count}} Boards haben Änderungen, die der Server nicht angenommen hat (Größenbegrenzung, kein Zugriff oder im Papierkorb). Beim Öffnen werden sie nicht gespeichert, und beim Abmelden werden sie gelöscht: Lade sie herunter, um eine Kopie zu behalten.",
       "confirm": "Abmelden und löschen",
+      "download": "Änderungen herunterladen",
       "stay": "Angemeldet bleiben"
     },
     "errors": {
@@ -1929,7 +1932,10 @@
       "drawFailed": "Der Strich konnte nicht gespeichert werden. Versuch es noch mal; falls das Problem bleibt, lade das Board neu.",
       "updateApp": "Dieses Board braucht eine neuere Version. Aktualisiere die App, um es zu bearbeiten; ansehen kannst du es weiterhin.",
       "sizeLimit": "Dieses Board hat seine Größenbegrenzung erreicht. Ergänzungen wurden nicht gespeichert; das Board wurde neu geladen. Du kannst Inhalte löschen, um Platz zu schaffen.",
-      "sizeLimitKept": "Dieses Board hat seine Größenbegrenzung erreicht. Auf diesem Gerät gemachte Änderungen wurden nicht gespeichert: Sie bleiben auf diesem Gerät, und das Board wurde neu geladen. Du kannst Inhalte löschen, um Platz zu schaffen.",
+      "sizeLimitKept": "Dieses Board hat seine Größenbegrenzung erreicht. Auf diesem Gerät gemachte Änderungen wurden nicht gespeichert: Sie bleiben auf diesem Gerät, und das Board wurde neu geladen. Lade sie herunter, um eine Kopie zu behalten, oder verwirf sie. Du kannst Inhalte löschen, um Platz zu schaffen.",
+      "kept": "Änderungen an diesem Board, die der Server nicht angenommen hat, bleiben auf diesem Gerät. Sie sind nicht im Board: Lade sie herunter, um eine Kopie zu behalten, oder verwirf sie.",
+      "keptDownload": "Änderungen herunterladen",
+      "keptDiscard": "Verwerfen",
       "sizeLimitReadOnly": "Dieses Board hat seine Größenbegrenzung erreicht und ist schreibgeschützt. Ergänzungen wurden nicht gespeichert."
     },
     "sheet": {

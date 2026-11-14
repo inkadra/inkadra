@@ -5,8 +5,12 @@ import { expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { installWebLocks } from '../test/web-locks.ts';
 import {
+  discardKept,
   dropLocalBoard,
+  hasKept,
   keepAside,
+  keptBoards,
+  keptFile,
   localBoardName,
   openLocalBoard,
   sweepLocalBoards,
@@ -127,4 +131,77 @@ it('sets refused edits aside, counted as unsaved', async () => {
   doc.getMap('meta').set('title', 'Too big');
   await keepAside('keeper', 'limited', doc);
   expect(await unsavedLocalBoards('keeper')).toEqual(['limited']);
+});
+
+it('keeps one copy set aside per board, merging later ones into it', async () => {
+  const first = new Y.Doc();
+  first.getMap('meta').set('title', 'First refusal');
+  await keepAside('merger', 'board', first);
+  const second = new Y.Doc();
+  second.getMap('meta').set('author', 'Second refusal');
+  await keepAside('merger', 'board', second);
+  const names = (await indexedDB.databases()).filter((db) => db.name?.includes('merger'));
+  expect(names).toHaveLength(1);
+  const { blob, name } = await keptFile('merger', 'board');
+  expect(name).toBe('inkadra-kept-changes-board.json');
+  const file = JSON.parse(await blob.text());
+  expect(file.content.meta).toEqual({ title: 'First refusal', author: 'Second refusal' });
+  // The update restores the same document.
+  const restored = new Y.Doc();
+  Y.applyUpdate(
+    restored,
+    Uint8Array.from(atob(file.update), (c) => c.charCodeAt(0)),
+  );
+  expect(restored.getMap('meta').get('author')).toBe('Second refusal');
+});
+
+it('stops counting edits set aside once discarded', async () => {
+  const doc = new Y.Doc();
+  doc.getMap('meta').set('title', 'Not wanted');
+  await keepAside('discarder', 'board', doc);
+  expect(await hasKept('discarder', 'board')).toBe(true);
+  await discardKept('discarder', 'board');
+  expect(await hasKept('discarder', 'board')).toBe(false);
+  expect(await keptBoards('discarder')).toEqual([]);
+  expect(await unsavedLocalBoards('discarder')).toEqual([]);
+});
+
+it('keeps the copy, still unsaved, when its edits could not be set aside', async () => {
+  const name = localBoardName('person', 'disk-full');
+  const doc = new Y.Doc();
+  const copy = await openLocalBoard(name, 'disk-full', doc, () => {});
+  doc.getMap('meta').set('title', 'Only here');
+  copy.mark(true);
+  // keepAside failed (QuotaExceededError, say): the deletion is called off.
+  await dropLocalBoard(name, Promise.all([copy.close(), Promise.reject(new Error('Quota'))]));
+  await sweepLocalBoards();
+  expect(await unsavedLocalBoards('person')).toContain('disk-full');
+  // Not merged again in this tab, where the server would refuse it again.
+  await expect(openLocalBoard(name, 'disk-full', new Y.Doc(), () => {})).rejects.toThrow();
+});
+
+it('says a copy is unsaved no later than it stores the first edit (#791)', async () => {
+  const edits = { before: () => false, is: (origin: unknown) => origin === 'here' };
+  const name = localBoardName('person', 'crash');
+  const doc = new Y.Doc();
+  const copy = await openLocalBoard(name, 'crash', doc, () => {}, edits);
+  // An edit made here, and the tab crashes before anything else runs: never marked by hand.
+  doc.transact(() => doc.getMap('meta').set('title', 'Before the crash'), 'here');
+  await turn();
+  expect(await unsavedLocalBoards('person')).toContain('crash');
+  // Closing writes nothing more: the flag was stored with the edit.
+  await copy.close();
+  await sweepLocalBoards();
+  expect(titleOf(await stored(name))).toBe('Before the crash');
+  // Edits made before the copy opened are flagged before they are stored.
+  const early = localBoardName('person', 'early');
+  const edited = new Y.Doc();
+  edited.getMap('meta').set('title', 'Typed while it opened');
+  const opened = await openLocalBoard(early, 'early', edited, () => {}, {
+    ...edits,
+    before: () => true,
+  });
+  await opened.close();
+  await sweepLocalBoards();
+  expect(titleOf(await stored(early, 'early'))).toBe('Typed while it opened');
 });

@@ -17,7 +17,10 @@ import { useSession } from '../lib/session.tsx';
 import { setBusy, setUnsaved } from '../pwa/busy.ts';
 import { refetchAsset } from './assets.ts';
 import {
+  discardKept,
+  downloadKept,
   dropLocalBoard,
+  hasKept,
   keepAside,
   LOCAL_ORIGIN,
   type LocalBoard,
@@ -35,9 +38,10 @@ export type ConnectionStatus = 'connecting' | 'synced' | 'offline' | 'denied' | 
 
 /**
  * Reasons the collab server gives when it closes or refuses a board (decision 0011). `Forbidden`
- * is an explicit loss of access (removed, or the board is in the trash): the only refusal that
- * deletes the board's copy on this device (#791). A refusal without a reason of its own may be a
- * passing failure, so the copy stays.
+ * is an explicit loss of access (removed, an expired grant, or the board is in the trash and may
+ * come back): the only refusal that deletes the board's copy on this device (#791), with the
+ * edits it holds set aside first. A refusal without a reason of its own may be a passing
+ * failure, so the copy stays.
  */
 const CLOSE_REASONS: Record<string, ConnectionStatus> = {
   Unauthorized: 'signedOut',
@@ -51,12 +55,18 @@ export interface BoardConnection {
   readOnly: boolean;
   schemaTooNew?: boolean;
   sizeLimited?: boolean;
-  /** Edits the size limit refused were set aside on this device (#791). */
-  sizeLimitKept?: boolean;
+  /** Edits of this board the server would not take are set aside on this device (#791). */
+  kept?: KeptChanges | null;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
   saves: SaveStore;
+}
+
+/** Edits set aside on this device for a board (#791): the person downloads or discards them. */
+export interface KeptChanges {
+  download(): Promise<void>;
+  discard(): Promise<void>;
 }
 
 export function collabUrl(): string {
@@ -284,11 +294,31 @@ export function useBoardConnection(
       marked = edited;
       local.mark(edited);
     };
-    /** Deletes the copy: the server said the person can no longer open the board. */
-    const drop = () => {
-      dropped = true;
+    /**
+     * Deletes the copy, its unsaved edits set aside first (`keepAside`): the server will not
+     * take them. If they cannot be set aside (a full disk), the copy stays, still unsaved.
+     */
+    const setAside = (closing: Promise<void> | undefined, unsaved: boolean) => {
       if (!localName) return;
-      void dropLocalBoard(localName, local?.close());
+      const kept = unsaved ? keepAside(userId, boardId, doc) : undefined;
+      const settled = Promise.all([closing, kept]);
+      if (kept)
+        settled.then(
+          () => setKeptBoard(boardId),
+          () => {},
+        );
+      void dropLocalBoard(localName, settled);
+    };
+    /**
+     * The server said the person can no longer open the board (removed, or the board is in the
+     * trash and may come back): the copy goes, and edits it holds are set aside.
+     */
+    const drop = () => {
+      if (dropped) return;
+      dropped = true;
+      // Not open yet: done once it is, with what it holds.
+      if (!local) return;
+      setAside(local.close(), edited || marked);
       local = null;
     };
     const hold = () => {
@@ -297,12 +327,19 @@ export function useBoardConnection(
       setUnsaved(cacheKey, edited && state.status !== 'denied');
     };
     if (localName)
-      void openLocalBoard(localName, boardId, doc, () => {
-        local = null;
-      })
+      void openLocalBoard(
+        localName,
+        boardId,
+        doc,
+        () => {
+          local = null;
+        },
+        // The same updates `onEdit` counts as edits made here.
+        { before: () => edited, is: (origin) => origin !== provider && origin !== LOCAL_ORIGIN },
+      )
         .then((opened) => {
           if (dropped) {
-            void dropLocalBoard(localName, opened.close());
+            setAside(opened.close(), edited || opened.unsaved);
             return;
           }
           if (!alive || refused) {
@@ -355,16 +392,8 @@ export function useBoardConnection(
           if (!roleReadOnly && !refused) {
             refused = true;
             // The refused edits stay on the device, set aside, and the person is told.
-            const closing = local?.close();
+            setAside(local?.close(), edited);
             local = null;
-            if (localName) {
-              const kept = edited ? keepAside(userId, boardId, doc) : undefined;
-              kept?.then(
-                () => setKeptBoard(boardId),
-                () => {},
-              );
-              void dropLocalBoard(localName, Promise.all([closing, kept]));
-            }
             setReload((value) => value + 1);
           }
         }
@@ -454,11 +483,28 @@ export function useBoardConnection(
     };
   }, [boardId, trackBusy, userId, reload]);
 
+  // Edits set aside earlier, in this tab or another session (#791).
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    void hasKept(userId, boardId).then((has) => {
+      if (alive && has) setKeptBoard(boardId);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [userId, boardId]);
   const sizeLimited = limitedBoard === boardId;
-  const sizeLimitKept = keptBoard === boardId;
-  // The same object until something changes: the board page's effects depend on it.
-  return useMemo(
-    () => (conn ? { ...conn, sizeLimited, sizeLimitKept } : null),
-    [conn, sizeLimited, sizeLimitKept],
+  const kept = useMemo<KeptChanges | null>(
+    () =>
+      keptBoard === boardId && userId
+        ? {
+            download: () => downloadKept(userId, boardId).then(() => setKeptBoard(null)),
+            discard: () => discardKept(userId, boardId).then(() => setKeptBoard(null)),
+          }
+        : null,
+    [keptBoard, boardId, userId],
   );
+  // The same object until something changes: the board page's effects depend on it.
+  return useMemo(() => (conn ? { ...conn, sizeLimited, kept } : null), [conn, sizeLimited, kept]);
 }

@@ -13,7 +13,7 @@ import {
   refusalStatus,
   useBoardConnection,
 } from './connection.ts';
-import { sweepLocalBoards, unsavedLocalBoards } from './local-boards.ts';
+import { keptBoards, sweepLocalBoards, unsavedLocalBoards } from './local-boards.ts';
 
 /** The copy of a board on the device (#791): a reload, a second account, signing out. */
 type Options = {
@@ -32,6 +32,16 @@ vi.mock('../lib/api.ts', async (original) => ({
   ...(await original<typeof import('../lib/api.ts')>()),
   api: me,
 }));
+// A full disk: setting refused edits aside fails.
+const diskFull = vi.hoisted(() => ({ on: false }));
+vi.mock('./local-boards.ts', async (original) => {
+  const actual = await original<typeof import('./local-boards.ts')>();
+  return {
+    ...actual,
+    keepAside: (...args: Parameters<typeof actual.keepAside>) =>
+      diskFull.on ? Promise.reject(new Error('QuotaExceededError')) : actual.keepAside(...args),
+  };
+});
 vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: person }) }));
 vi.mock('@hocuspocus/provider', () => ({
   HocuspocusProvider: class {
@@ -63,6 +73,7 @@ let connection: BoardConnection | null = null;
 afterEach(async () => {
   await close();
   person.id = 'person-a';
+  diskFull.on = false;
   vi.restoreAllMocks();
 });
 function Board({ id }: { id: string }) {
@@ -159,9 +170,25 @@ it('deletes the copy of a board the person can no longer open', async () => {
   expect(title()).toBe('No longer mine');
   await act(async () => provider.onAuthenticationFailed({ reason: 'Forbidden' }));
   expect(connection?.status).toBe('denied');
+  await settle();
   await reload();
   await open('revoked');
   expect(title()).toBeUndefined();
+  // Its unsaved edits were set aside first: the board may be in the trash and come back.
+  expect(await keptBoards(person.id)).toContain('revoked');
+  expect(connection?.kept).toBeTruthy();
+});
+
+it('deletes the copy of a lost board at once when nothing in it is unsaved', async () => {
+  const provider = await open('revoked-clean');
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'read-write' });
+    provider.onSynced();
+  });
+  await settle();
+  await act(async () => provider.onAuthenticationFailed({ reason: 'Forbidden' }));
+  await settle();
+  expect(await keptBoards(person.id)).not.toContain('revoked-clean');
 });
 
 it('keeps the copy when the refusal does not say the access is lost', async () => {
@@ -205,8 +232,34 @@ it('sets edits refused at the size limit aside and says so', async () => {
   // Reopened from what the server confirmed, with the person told the edits are on the device.
   expect(providers.at(-1)).not.toBe(provider);
   expect(title()).toBeUndefined();
-  expect(connection?.sizeLimitKept).toBe(true);
+  expect(connection?.kept).toBeTruthy();
   expect(await unsavedLocalBoards(person.id)).toContain('too-big');
+  // Discarded: it no longer counts, and the notice goes.
+  await act(async () => connection!.kept!.discard());
+  expect(connection?.kept).toBeNull();
+  expect(await unsavedLocalBoards(person.id)).not.toContain('too-big');
+});
+
+it('keeps the copy when refused edits cannot be set aside, without reopening into them', async () => {
+  await editOffline('too-big-full', 'Does not fit either');
+  await reload();
+  const provider = await open('too-big-full');
+  diskFull.on = true;
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'writeRefused', reason: 'frozen' }) }),
+  );
+  await settle();
+  // Reopened once, from the server: the copy is not merged again, so no refusal loop.
+  const reopened = providers.at(-1)!;
+  expect(reopened).not.toBe(provider);
+  expect(title()).toBeUndefined();
+  await settle();
+  expect(providers.at(-1)).toBe(reopened);
+  expect(connection?.kept).toBeFalsy();
+  // Still on the device, still unsaved: signing out asks first.
+  await reload();
+  await sweepLocalBoards();
+  expect(await unsavedLocalBoards(person.id)).toContain('too-big-full');
 });
 
 it('keeps the copy when the server fails rather than refuses', async () => {
