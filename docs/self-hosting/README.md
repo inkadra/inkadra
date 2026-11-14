@@ -15,6 +15,7 @@ release are marked below and in [Upgrades](upgrades.md#after-090-current-main).
 | [Upgrades](upgrades.md)               | Versions, updating, verifying images                 |
 | [Troubleshooting](troubleshooting.md) | What to check when something does not work           |
 | [Office previews](office.md)          | The optional LibreOffice worker                      |
+| [Capacity](capacity.md)               | Load test presets, how to run it, measured numbers   |
 
 ## What you need
 

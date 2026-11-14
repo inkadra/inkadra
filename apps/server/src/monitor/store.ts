@@ -57,6 +57,15 @@ export interface PresenceBoard {
   users: string[];
 }
 
+/** Board stores since the previous beat, in milliseconds (#902). */
+export interface BeatStores {
+  n: number;
+  p95: number;
+  max: number;
+  /** The longest wait for a pooled database connection. */
+  waitMax: number;
+}
+
 export interface Beat {
   role: ServerRole;
   host: string;
@@ -65,6 +74,8 @@ export interface Beat {
   cpu: number;
   memory: number;
   presence?: PresenceBoard[];
+  /** Collaboration roles only, when they stored boards since the previous beat. */
+  stores?: BeatStores;
   /** The external programs it runs now (ffmpeg, LibreOffice…); older beats lack it. */
   children?: BeatChild[];
 }
