@@ -88,9 +88,10 @@ files_digest() { # sha256 of every listed asset's file, as the API serves it
 # version loads the document there (and migrates it to this version's schema).
 open_boards() { # label
   local opened=0 broken=0 board code
-  # The limit of saved versions per person lives in Valkey and outlasts a restart: each step
-  # starts with the whole budget.
-  compose exec -T valkey sh -c "valkey-cli --scan --pattern '*versions-routes:saves*' | xargs -r valkey-cli del" >/dev/null
+  # The limit of saved versions per person lives in Valkey (a sorted set under a hashed name)
+  # and outlasts a restart: each step starts with the whole budget. Only this test's Valkey.
+  compose exec -T valkey sh -c "valkey-cli --scan --pattern 'inkadra:auth:*' --type zset | xargs -r valkey-cli del" >/dev/null ||
+    fail "could not reset the limits in Valkey"
   for board in $(sql "select id from board where deleted_at is null order by id limit $max_boards"); do
     code=$(c -o "$work/version.json" -w '%{http_code}' -b "$jar" -H 'Content-Type: application/json' \
       --data "{\"name\":\"$1\"}" "$url/api/v1/boards/$board/versions")
