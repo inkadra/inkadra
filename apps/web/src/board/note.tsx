@@ -1,4 +1,5 @@
 import { noteImageAssetIds } from '@inkadra/doc-schema';
+import { Checkbox } from '@inkadra/ui';
 import Collaboration from '@tiptap/extension-collaboration';
 import { Placeholder } from '@tiptap/extensions';
 import { TextSelection } from '@tiptap/pm/state';
@@ -99,11 +100,11 @@ function renderNode(node: unknown, key: number): ReactNode {
   if (node.nodeName === 'taskItem')
     return (
       <li key={key} data-type="taskItem">
-        <input
-          type="checkbox"
+        <Checkbox
           aria-label={plainText(node)}
           checked={String(node.getAttribute('checked')) === 'true'}
-          disabled
+          readOnly
+          tabIndex={-1}
         />
         <div>{children}</div>
       </li>

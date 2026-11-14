@@ -358,7 +358,7 @@ describe('file card family', () => {
       'video',
     );
     expect(html).toContain('board.file.preparing');
-    expect(html).toContain('width:42%');
+    expect(html).toContain('transform:scaleX(0.42)');
     expect(html).toContain('42%</span>');
     expect(html).not.toContain('fcard__play');
     expect(html).not.toContain('card__duration');

@@ -751,7 +751,10 @@ button.fcard__play:focus-visible {
   display: block;
   height: 100%;
   background: var(--ink-accent-soft-fg);
-  transition: width var(--ink-dur-slow) var(--ink-ease-out);
+  /* Progress moves by transform, not by re-laying out the width (#773). */
+  width: 100%;
+  transform-origin: left;
+  transition: transform var(--ink-dur-slow) var(--ink-ease-out);
 }
 .fcard__bar i.is-indeterminate {
   width: 30%;
@@ -4082,21 +4085,31 @@ button.crumb--editable:focus-visible {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #141416;
-  border: 1px solid #232327;
-  color: #ededed;
+  /* The viewer chrome follows the theme (#770), as its header and hints do. */
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  color: var(--ink-text-primary);
   display: grid;
   place-items: center;
   cursor: pointer;
   z-index: 5;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--ink-shadow-menu);
   transition:
-    background 0.15s,
-    transform 0.15s;
+    background var(--ink-dur-fast) var(--ink-ease-out),
+    transform var(--ink-dur-fast) var(--ink-ease-out);
 }
 .viewer__stage-nav:hover:not(:disabled) {
-  background: #202024;
+  background: var(--ink-surface-2);
   transform: translateY(-50%) scale(1.05);
+}
+@media (prefers-reduced-motion: reduce) {
+  .viewer__stage-nav,
+  .viewer__thumb {
+    transition: none;
+  }
+  .viewer__stage-nav:hover:not(:disabled) {
+    transform: translateY(-50%);
+  }
 }
 .viewer__stage-nav:disabled {
   opacity: 0.3;
@@ -4117,9 +4130,9 @@ button.crumb--editable:focus-visible {
   gap: 8px;
   padding: 6px 10px;
   border-radius: var(--ink-radius-md);
-  background: rgba(14, 14, 16, 0.85);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  box-shadow: var(--ink-shadow-menu);
   max-width: 90%;
   overflow-x: auto;
   z-index: 4;
@@ -4131,22 +4144,22 @@ button.crumb--editable:focus-visible {
   border-radius: var(--ink-radius-xs);
   overflow: hidden;
   border: 1px solid transparent;
-  background: #1c1c1f;
+  background: var(--ink-surface-2);
   padding: 0;
   cursor: pointer;
   flex: none;
   opacity: 0.6;
   transition:
-    opacity 0.15s,
-    border-color 0.15s;
+    opacity var(--ink-dur-fast) var(--ink-ease-out),
+    border-color var(--ink-dur-fast) var(--ink-ease-out);
 }
 .viewer__thumb:hover {
   opacity: 0.9;
 }
 .viewer__thumb.is-active {
   opacity: 1;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: var(--ink-accent-primary);
+  box-shadow: 0 0 0 1px var(--ink-accent-primary);
 }
 .viewer__thumb-img {
   width: 100%;
@@ -4157,17 +4170,18 @@ button.crumb--editable:focus-visible {
   display: block;
   width: 100%;
   height: 100%;
-  background: #232327;
+  background: var(--ink-surface-3);
 }
 .viewer__thumb-idx {
   position: absolute;
   right: 2px;
   bottom: 2px;
   font-size: 8px;
-  background: rgba(0, 0, 0, 0.6);
+  /* A dark chip over the picture in both themes, as a tooltip is. */
+  background: var(--ink-tooltip-bg);
   padding: 0 3px;
-  border-radius: 2px;
-  color: #ededed;
+  border-radius: var(--ink-radius-xs);
+  color: var(--ink-tooltip-fg);
 }
 .viewer__hints {
   position: absolute;
@@ -4239,7 +4253,7 @@ button.crumb--editable:focus-visible {
 .viewer__open-comments-btn {
   border: 0;
   background: transparent;
-  color: #3b82f6;
+  color: var(--ink-accent-primary);
   font:
     500 11px Inter,
     sans-serif;
@@ -5658,14 +5672,6 @@ button.card__play {
   list-style: none;
   padding-left: 1.4em;
 }
-.note-text li[data-type="taskItem"]::before {
-  content: "☐";
-  margin-left: -1.3em;
-  margin-right: 0.3em;
-}
-.note-text li[data-type="taskItem"][data-checked="true"]::before {
-  content: "☑";
-}
 
 .image-drawing {
   position: absolute;
@@ -5737,12 +5743,14 @@ button.card__play {
   align-items: baseline;
   gap: 6px;
 }
-.note-text li[data-type="taskItem"]::before {
-  content: none;
+.note-text li[data-type="taskItem"] > .ink-choice {
+  /* The box sits on the first line of the item, as the bullet of a list does. */
+  align-self: flex-start;
+  margin-top: 0.15em;
 }
-.note-text li[data-type="taskItem"] input {
-  flex: none;
-  accent-color: var(--ink-accent-primary);
+/* Read on the card, not ticked there: a press goes to the card. */
+.note-text .ink-choice > input[readonly] {
+  pointer-events: none;
 }
 
 .contextual-mobile-tools {

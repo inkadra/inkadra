@@ -1199,8 +1199,8 @@ html[data-view-direction]::view-transition-new(board-view) {
   gap: 8px;
   min-height: 200px;
   transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
+    border-color var(--ink-dur-fast) var(--ink-ease-out),
+    background var(--ink-dur-fast) var(--ink-ease-out);
 }
 
 .kanban__col.is-drop-target {
@@ -1244,8 +1244,6 @@ html[data-view-direction]::view-transition-new(board-view) {
   cursor: pointer;
   display: grid;
   place-items: center;
-  font-size: 14px;
-  line-height: 1;
 }
 
 .kanban__add:hover:not(:disabled) {
@@ -1290,8 +1288,8 @@ html[data-view-direction]::view-transition-new(board-view) {
   cursor: grab;
   user-select: none;
   transition:
-    transform 0.1s ease,
-    border-color 0.1s ease;
+    transform var(--ink-dur-fast) var(--ink-ease-out),
+    border-color var(--ink-dur-fast) var(--ink-ease-out);
 }
 
 .kanban__card:hover {
@@ -1484,13 +1482,13 @@ html[data-view-direction]::view-transition-new(board-view) {
 }
 
 .shots__chip-remove {
+  display: inline-grid;
+  place-items: center;
   background: none;
   border: none;
   color: inherit;
   cursor: pointer;
   padding: 0;
-  line-height: 1;
-  font-size: 14px;
 }
 
 .shots__table th.shots__select-col,
@@ -1504,11 +1502,12 @@ html[data-view-direction]::view-transition-new(board-view) {
 }
 
 .shots__group-toggle {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
   background: none;
   border: none;
   color: var(--ink-text-muted);
-  font: inherit;
-  font-size: 12px;
   cursor: pointer;
   padding: 2px 6px;
   margin-right: 4px;
@@ -1565,7 +1564,10 @@ html[data-view-direction]::view-transition-new(board-view) {
   font-size: 12px;
   padding: 4px 10px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition:
+    border-color var(--ink-dur-fast) var(--ink-ease-out),
+    color var(--ink-dur-fast) var(--ink-ease-out),
+    background var(--ink-dur-fast) var(--ink-ease-out);
 }
 
 .shots__add-row-btn:hover:not(:disabled) {
@@ -1730,6 +1732,8 @@ html[data-view-direction]::view-transition-new(board-view) {
 .moodboard {
   --moodboard-tile: 170px;
   --moodboard-row: 118px;
+  /* The room the colour picker of a new colour card opens in, beside the card. */
+  position: relative;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -1904,25 +1908,10 @@ html[data-view-direction]::view-transition-new(board-view) {
   background: var(--ink-surface-float);
   box-shadow: var(--ink-shadow-menu);
 }
-.moodboard__popover [role="menu"] {
-  display: flex;
-  flex-direction: column;
-}
-.moodboard__popover [role="menuitem"] {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-primary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.moodboard__popover [role="menuitem"]:hover {
-  background: var(--ink-surface-2);
+.moodboard__add > .menu {
+  top: calc(100% + 6px);
+  right: 0;
+  --ink-origin: top right;
 }
 .moodboard__popover .ink-input {
   width: 260px;
@@ -2517,7 +2506,7 @@ button.moodboard__card:focus-visible {
    on hover of its card, row or scene header, and on keyboard focus. */
 .guest-toggle:not([aria-pressed="true"]) {
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--ink-dur-fast) var(--ink-ease-out);
 }
 .story__tile:hover .guest-toggle,
 .story__tile:focus-within .guest-toggle,

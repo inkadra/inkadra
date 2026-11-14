@@ -221,7 +221,7 @@ export function useGroupMenu(group: ProjectGroup, onNewProject?: () => void) {
       aria-expanded={isOpen}
       onClick={(event) => (isOpen ? close() : open(event.currentTarget, event.currentTarget))}
     >
-      ⋯
+      <Icon name="more" size={16} />
     </button>
   );
   const onContextMenu = (event: MouseEvent<HTMLElement>) => {

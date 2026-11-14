@@ -1224,21 +1224,21 @@ select {
   position: relative;
 }
 .ink-dialog__actions > :not(.ink-dialog__confirm) {
-  transition: opacity 120ms;
+  transition: opacity var(--ink-dur-fast);
 }
 .ink-dialog__actions.is-confirming > :not(.ink-dialog__confirm) {
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 120ms,
-    visibility 0s 120ms;
+    opacity var(--ink-dur-fast),
+    visibility 0s var(--ink-dur-fast);
 }
 .ink-dialog__actions > .ink-dialog__confirm {
   position: absolute;
   inset: 0;
   padding: inherit;
   background: inherit;
-  animation: ink-dialog-confirm-in 120ms;
+  animation: ink-dialog-confirm-in var(--ink-dur-fast);
 }
 @keyframes ink-dialog-confirm-in {
   from {
@@ -1913,7 +1913,7 @@ select {
     border-width: 1px 0 0;
     border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
     padding-bottom: env(safe-area-inset-bottom);
-    animation: ink-select-sheet 160ms ease-out;
+    animation: ink-select-sheet var(--ink-dur-base) var(--ink-ease-out);
   }
   .ink-select__sheet-head {
     display: flex;
@@ -2111,8 +2111,8 @@ select {
   color: var(--ink-on-accent);
   pointer-events: none;
   transition:
-    background 120ms,
-    border-color 120ms;
+    background var(--ink-dur-fast),
+    border-color var(--ink-dur-fast);
 }
 .ink-choice:hover > input:not(:disabled) + .ink-choice__box {
   border-color: var(--ink-text-muted);
@@ -2165,7 +2165,7 @@ select {
   border-radius: var(--ink-radius-full);
   background: var(--ink-surface-3);
   pointer-events: none;
-  transition: background 120ms;
+  transition: background var(--ink-dur-fast);
 }
 .ink-switch__track::after {
   content: "";
@@ -2176,7 +2176,7 @@ select {
   height: 12px;
   border-radius: 50%;
   background: var(--ink-text-secondary);
-  transition: transform 120ms;
+  transition: transform var(--ink-dur-fast);
 }
 .ink-switch > input:checked + .ink-switch__track,
 .ink-switch.is-on > .ink-switch__track {
@@ -2286,8 +2286,8 @@ select {
   color: var(--ink-text-secondary);
   cursor: pointer;
   transition:
-    border-color 120ms,
-    background 120ms;
+    border-color var(--ink-dur-fast),
+    background var(--ink-dur-fast);
 }
 /* The radio covers its tile, invisible: clicks and focus land on the real control. */
 .ink-tile__input {

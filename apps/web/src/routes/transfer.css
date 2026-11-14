@@ -59,7 +59,10 @@
   height: 100%;
   border-radius: 2px;
   background: var(--ink-accent-primary);
-  transition: width 0.3s ease;
+  /* Progress moves by transform, not by re-laying out the width (#773). */
+  width: 100%;
+  transform-origin: left;
+  transition: transform var(--ink-dur-slow) var(--ink-ease-out);
 }
 .transfer-result {
   display: flex;

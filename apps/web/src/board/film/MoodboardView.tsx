@@ -27,10 +27,11 @@ import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
 import { useModules } from '../../lib/modules.ts';
 import { getCachedAsset, pickVariant, useAsset, useAssetPalettes } from '../assets.ts';
+import { ColorPicker } from '../ColorPicker.tsx';
 import { CroppedImage } from '../CroppedImage.tsx';
 import { CopyHexButton } from '../cards.tsx';
 import { ContextMenu, Toast, UploadPanel } from '../chrome.tsx';
-import { copyHex, hexToRgb } from '../colors.ts';
+import { copyHex, hexToRgb, swatchColors } from '../colors.ts';
 import { uploadBoardId } from '../frame-grab.ts';
 import { croppedRotatedSize, hasImageTransform } from '../image-crop.ts';
 import { fillLinkPreview, webUrl } from '../links.ts';
@@ -184,6 +185,8 @@ function freeSpot(elements: readonly Element[]) {
 }
 
 type Adding = null | 'menu' | 'link';
+/** The grey a new colour card starts from, before the picker beside it changes it. */
+const NEW_COLOR = '#808086';
 
 /** "+ Add": the three ways to put a reference on the board that the canvas already has. */
 function AddReferences({
@@ -191,12 +194,15 @@ function AddReferences({
   projectId,
   userId,
   onNotice,
+  onColor,
   inline = false,
 }: {
   store: BoardStore;
   projectId: string;
   userId: string;
   onNotice: (text: string) => void;
+  /** A colour card was added: the view opens Inkadra's picker beside it, as the canvas does. */
+  onColor: (id: string) => void;
   /** The three actions as buttons in the empty state, instead of the bar's "+ Add" menu. */
   inline?: boolean;
 }) {
@@ -206,14 +212,13 @@ function AddReferences({
   const [invalid, setInvalid] = useState(false);
   const root = useRef<HTMLDivElement | null>(null);
   const files = useRef<HTMLInputElement | null>(null);
-  const color = useRef<HTMLInputElement | null>(null);
-  const menuId = useId();
   const boardId = uploadBoardId(store) ?? '';
   const at = () => freeSpot([...store.getSnapshot().byId.values()]);
   const opts = { userId, origin: LOCAL };
 
+  // The link form: the menu itself closes through ContextMenu.
   useEffect(() => {
-    if (!adding) return;
+    if (adding !== 'link') return;
     const away = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setAdding(null);
     };
@@ -225,19 +230,6 @@ function AddReferences({
       document.removeEventListener('keydown', onKey);
     };
   }, [adding]);
-
-  // The native `change` fires when a color is chosen; React's onChange fires on every step of
-  // the picker's drag, which would add a card for each.
-  useEffect(() => {
-    const input = color.current;
-    if (!input) return;
-    const chosen = () => {
-      createElement(store.doc, 'color', at(), { hex: input.value.toUpperCase() }, opts);
-      store.undo.stopCapturing();
-    };
-    input.addEventListener('change', chosen);
-    return () => input.removeEventListener('change', chosen);
-  });
 
   const upload = (picked: File[]) => {
     picked.forEach((file, i) => {
@@ -286,29 +278,18 @@ function AddReferences({
   };
 
   const inputs = (
-    <>
-      <input
-        ref={files}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        data-testid="moodboard-files"
-        onChange={(event) => {
-          upload([...(event.target.files ?? [])]);
-          event.target.value = '';
-        }}
-      />
-      <input
-        ref={color}
-        type="color"
-        defaultValue="#808086"
-        hidden
-        tabIndex={-1}
-        aria-label={t('moodboard.addColor')}
-        data-testid="moodboard-color"
-      />
-    </>
+    <input
+      ref={files}
+      type="file"
+      accept="image/*"
+      multiple
+      hidden
+      data-testid="moodboard-files"
+      onChange={(event) => {
+        upload([...(event.target.files ?? [])]);
+        event.target.value = '';
+      }}
+    />
   );
   const linkForm = (
     <form
@@ -338,7 +319,9 @@ function AddReferences({
   };
   const pickColor = () => {
     setAdding(null);
-    color.current?.click();
+    const el = createElement(store.doc, 'color', at(), { hex: NEW_COLOR }, opts);
+    store.undo.stopCapturing();
+    onColor(el.id);
   };
 
   if (inline)
@@ -366,34 +349,28 @@ function AddReferences({
         icon="plus"
         aria-haspopup="menu"
         aria-expanded={adding !== null}
-        aria-controls={menuId}
         onClick={() => setAdding(adding ? null : 'menu')}
       >
         {t('moodboard.add')}
       </Button>
       {inputs}
-      {adding && (
-        <div className="moodboard__popover" id={menuId}>
-          {adding === 'menu' ? (
-            <div role="menu" aria-label={t('moodboard.add')}>
-              <button type="button" role="menuitem" onClick={pickImages}>
-                <Icon name="upload" size={16} />
-                {t('moodboard.addImage')}
-              </button>
-              <button type="button" role="menuitem" onClick={() => setAdding('link')}>
-                <Icon name="link" size={16} />
-                {t('moodboard.addLink')}
-              </button>
-              <button type="button" role="menuitem" onClick={pickColor}>
-                <Icon name="color" size={16} />
-                {t('moodboard.addColor')}
-              </button>
-            </div>
-          ) : (
-            linkForm
-          )}
-        </div>
+      {adding === 'menu' && (
+        <ContextMenu
+          label={t('moodboard.add')}
+          // Pressing the Add button inside it is left to the button, which toggles the menu.
+          anchor={root}
+          items={[
+            { label: t('moodboard.addImage'), icon: 'upload', action: pickImages },
+            { label: t('moodboard.addLink'), icon: 'link', action: () => setAdding('link') },
+            { label: t('moodboard.addColor'), icon: 'color', action: pickColor },
+          ]}
+          onClose={(reason) => {
+            setAdding(null);
+            if (reason === 'escape') root.current?.querySelector('button')?.focus();
+          }}
+        />
       )}
+      {adding === 'link' && <div className="moodboard__popover">{linkForm}</div>}
     </div>
   );
 }
@@ -509,12 +486,19 @@ export function MoodboardView({
   const [notice, setNotice] = useState('');
   const [copied, setCopied] = useState('');
   const closeCopied = useCallback(() => setCopied(''), []);
+  // The colour card just added from "Add colour", with Inkadra's picker open beside it.
+  const [pickingColor, setPickingColor] = useState<string | null>(null);
+  const closePicker = useCallback(() => setPickingColor(null), []);
   const opener = useRef<HTMLButtonElement | null>(null);
   const bar = useRef<HTMLFieldSetElement | null>(null);
   const root = useRef<HTMLElement | null>(null);
   // The group whose heading gets the focus back once a rename by keyboard ends.
   const refocusGroup = useRef<string | null>(null);
   const all = [...snapshot.byId.values()];
+  const colorOf = (id: string) => {
+    const el = snapshot.byId.get(id);
+    return el?.type === 'color' ? el.hex : undefined;
+  };
   const references = referencesOf(all);
   const tagIds = (el: Reference) =>
     (el.tags ?? []).map((value) => tagOption(value)?.id ?? normaliseTag(value));
@@ -703,6 +687,7 @@ export function MoodboardView({
       return (
         <article
           className="moodboard__card moodboard__card--color"
+          data-el={element.id}
           style={{ background: element.hex }}
           data-light={isLight(element.hex) || undefined}
         >
@@ -850,6 +835,7 @@ export function MoodboardView({
                 projectId={projectId}
                 userId={userId}
                 onNotice={setNotice}
+                onColor={setPickingColor}
               />
             )}
           </div>
@@ -887,6 +873,7 @@ export function MoodboardView({
                     projectId={projectId}
                     userId={userId}
                     onNotice={setNotice}
+                    onColor={setPickingColor}
                   />
                 ) : undefined
               }
@@ -1094,6 +1081,18 @@ export function MoodboardView({
             })),
             usedIn,
           }}
+        />
+      )}
+      {pickingColor && colorOf(pickingColor) && (
+        <ColorPicker
+          id={pickingColor}
+          hex={colorOf(pickingColor) ?? NEW_COLOR}
+          used={swatchColors(all)}
+          onChange={(hex) =>
+            updateElements(store.doc, [{ id: pickingColor, patch: { hex } }], LOCAL)
+          }
+          onCopied={setCopied}
+          onClose={closePicker}
         />
       )}
     </section>

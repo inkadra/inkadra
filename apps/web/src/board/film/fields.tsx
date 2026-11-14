@@ -1,6 +1,6 @@
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
 import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
-import { Select } from '@inkadra/ui';
+import { Icon, Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -306,7 +306,7 @@ export function TokenField({
               aria-label={removeLabel(value)}
               onClick={() => onChange(values.filter((v) => v !== value))}
             >
-              ×
+              <Icon name="close" size={12} />
             </button>
           )}
         </span>

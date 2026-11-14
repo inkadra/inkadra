@@ -342,7 +342,7 @@ export function useProjectMenu(
         aria-expanded={isOpen}
         onClick={(event) => (isOpen ? close() : open(event.currentTarget, event.currentTarget))}
       >
-        ⋯
+        <Icon name="more" size={16} />
       </button>
     );
   const layer = (
@@ -812,7 +812,7 @@ export function ProjectAppearanceDialog({
             disabled={busy}
             onClick={() => dialog.current?.requestClose()}
           >
-            ×
+            <Icon name="close" size={16} />
           </button>
           <div className="project-appearance__preview">
             <AppearanceTile appearance={appearance.shown} />

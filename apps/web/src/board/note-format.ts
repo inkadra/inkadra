@@ -107,8 +107,19 @@ export const TaskItem = Node.create({
       checkbox.checked = node.attrs.checked;
       checkbox.contentEditable = 'false';
       checkbox.setAttribute('aria-label', node.textContent);
+      // The design system's Checkbox, built here as the node view has no React: the same box
+      // the note shows when it is not being edited, and the to-do card shows.
+      const choice = document.createElement('span');
+      choice.className = 'ink-choice ink-checkbox';
+      choice.contentEditable = 'false';
+      const box = document.createElement('span');
+      box.className = 'ink-choice__box';
+      box.setAttribute('aria-hidden', 'true');
+      box.innerHTML =
+        '<svg class="ink-icon" viewBox="0 0 24 24" focusable="false" style="width:12px;height:12px"><path d="M5 12l4 4L19 6"/></svg>';
+      choice.append(checkbox, box);
       const contentDOM = document.createElement('div');
-      dom.append(checkbox, contentDOM);
+      dom.append(choice, contentDOM);
       checkbox.addEventListener('change', () => {
         const pos = getPos();
         if (typeof pos !== 'number' || !editor.isEditable) return;
