@@ -35,19 +35,49 @@ or any newer version, so it also carries data across an upgrade.
 
 When a new version starts and finds migrations to apply on a database that has data, it first
 writes a backup of the database, before changing anything: the usual archive
-(`/data/backups/inkadra-backup-pre-upgrade-<time>.zip`, copied to the bucket with S3 storage),
-read back and verified like the nightly one. Settings → Backups lists it as "Before upgrade".
-The two newest of these are kept apart from the nightly retention. A fresh install, and a
-restart with nothing to migrate, take none. It holds the database only: the files stay in the
-data volume or the bucket, which migrations do not touch.
+(`/data/backups/inkadra-backup-pre-upgrade-m<migrations>-<time>.zip`, copied to the bucket with
+S3 storage), read back to check every table, with a small sample of files looked up in
+storage. Settings → Backups lists it as "Before upgrade". The two newest of these are kept
+apart from the nightly retention. A fresh install, and a restart with nothing to migrate, take
+none. It holds the database only: the files stay in the data volume or the bucket, which
+migrations do not touch. It works from any release an upgrade may start from (0.6 and later).
 
 The backup takes about as long as `backup create` and needs free space in `/data/backups`;
 the server refuses to start when the disk has clearly too little (about half the size of the
-tables). If the backup fails, **nothing is migrated** and the server stops with the reason in
-the log: the database is as the previous version left it, so you can start that version again
-or fix the cause (free space, folder permissions) and retry. To upgrade without it, for
-example when you took a backup or a snapshot yourself, set `SKIP_PRE_MIGRATION_BACKUP=true` in
-`.env` for that start.
+live table data). If the backup fails, **nothing is migrated** and the server stops with the
+reason in the log: the database is as the previous version left it, so you can start that
+version again or fix the cause (free space, folder permissions) and retry. To upgrade without
+it, for example when you took a backup or a snapshot yourself, set
+`SKIP_PRE_MIGRATION_BACKUP=true` in `.env` for that start.
+
+If a **migration** fails after the backup, the server stops with the migration's error and
+writes no second copy at the next starts: a start within 30 minutes reuses the archive of the
+same database state, and a later one replaces it, so a restart loop never fills the disk. The
+log of each start has the migration error. If you went back to the older version and used it
+in between, retry after 30 minutes, or remove that archive first, so the backup holds what you
+did since. Archives the history does not list (those of failed starts, or still on disk after
+you [went back](#going-back-to-an-older-version) and restored) are listed at the next upgrade
+that migrates, and the retention above then removes the older ones; until then remove them by
+hand from `/data/backups` when you no longer need them.
+
+**How long the start takes.** During the backup and the migrations the web role answers
+`/livez` (so Docker's health check passes) but `/readyz`, `/api/v1/health` and every page
+answer `503`: the container is alive, not ready, and the proxy shows an error page meanwhile.
+On a large database, give `docker compose up -d --wait` enough time:
+`--wait-timeout 3600`, or follow it with `docker compose logs -f inkadra`.
+
+**Split mode and custom setups.** `collab` and `worker` wait until the web role has applied
+the migrations before they start working (their health checks pass meanwhile). To keep the
+wait out of `up`, run the migrations first, then start everything:
+
+```sh
+docker compose -f compose.yaml -f deploy/compose.split.yaml run --rm inkadra migrate
+docker compose -f compose.yaml -f deploy/compose.split.yaml up -d --wait
+```
+
+In setups that start roles without `depends_on` (other orchestrators, hand-made services),
+stop the old version's `worker` and `collab` before starting the new version: while the backup
+runs they would keep writing to the database, and what they write after the backup is not in it.
 
 ### Going back to an older version
 
@@ -65,7 +95,7 @@ docker compose exec postgres createdb -U inkadra inkadra
 # INKADRA_TAG back to the older version in .env, then:
 # The backup the upgrade wrote, newest last:
 docker compose run --rm --entrypoint ls inkadra /data/backups
-docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-pre-upgrade-<time>.zip
+docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-pre-upgrade-m<migrations>-<time>.zip
 docker compose up -d --wait
 ```
 

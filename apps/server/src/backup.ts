@@ -526,8 +526,8 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storag
 // Before an upgrade ------------------------------------------------------------
 
 /**
- * Free space a backup of `tableBytes` of table data needs, as far as start-up can tell: the
- * archive is COPY text compressed, mostly well under half the tables, plus a margin.
+ * Free space a backup of `tableBytes` of live table data needs, as far as start-up can tell:
+ * the archive is COPY text compressed, mostly well under half the tables, plus a margin.
  * shortcut: an estimate, not the size; a database of incompressible data may still fill the
  * disk (the backup then fails as no_space and nothing is migrated).
  */
@@ -535,15 +535,85 @@ export function preUpgradeSpaceNeeded(tableBytes: number) {
   return Math.ceil(tableBytes / 2) + 64 * 1024 * 1024;
 }
 
+/**
+ * Bytes of live rows in the `public` tables: each table's size (with TOAST) scaled by its
+ * share of live tuples, so dead rows and bloat a vacuum has not reclaimed do not count.
+ * Tables without statistics yet count whole.
+ */
+export async function liveTableBytes(sql: postgres.Sql) {
+  const [row] = await sql<{ n: string }[]>`
+    select coalesce(sum(
+      case when coalesce(t.n_live_tup, 0) + coalesce(t.n_dead_tup, 0) = 0
+        then pg_table_size(c.oid)
+        else pg_table_size(c.oid) * t.n_live_tup / (t.n_live_tup + t.n_dead_tup) end
+    ), 0)::bigint::text as n
+    from pg_class c join pg_namespace s on s.oid = c.relnamespace
+    left join pg_stat_user_tables t on t.relid = c.oid
+    where s.nspname = 'public' and c.relkind = 'r'`;
+  return Number(row?.n ?? 0);
+}
+
 const mib = (n: number) => `${Math.round(n / 1024 / 1024)} MiB`;
+
+const PRE_UPGRADE = 'inkadra-backup-pre-upgrade-';
+/** Archives of one schema state: `m<applied migrations>-`, then the time and id. */
+const preUpgradePrefix = (applied: number) => `${PRE_UPGRADE}m${applied}-`;
+/**
+ * A start that finds an archive this recent for the same schema state reuses it instead of
+ * writing another (#805): a migration that fails restarts the server in a loop, and each start
+ * would otherwise fill the disk with a new copy of the same database.
+ * shortcut: the database is assumed unchanged since; an older version run on it in between and
+ * a retry within this window keeps the earlier copy (logged with its time).
+ */
+export const PRE_UPGRADE_REUSE_MS = 30 * 60 * 1000;
+/**
+ * The verification of a backup before an upgrade: every table read back, and storage asked for
+ * an even sample of this many files only, within PRE_UPGRADE_VERIFY_MS. It is the way back for
+ * the database; the files stay where they are.
+ */
+const PRE_UPGRADE_VERIFY_SAMPLE = 100;
+const PRE_UPGRADE_VERIFY_MS = 5 * 60 * 1000;
+
+/**
+ * Lists archives written before an upgrade that the history does not know: those of a start
+ * whose migrations failed, or of a database restored since. Retention then keeps the newest.
+ */
+async function adoptPreUpgradeArchives(db: Database, dir: string) {
+  const names = (await readdir(dir).catch(() => [] as string[])).filter(
+    (n) => n.startsWith(PRE_UPGRADE) && n.endsWith('.zip'),
+  );
+  if (names.length === 0) return;
+  const known = new Set(
+    (
+      await db
+        .select({ fileName: instanceBackup.fileName })
+        .from(instanceBackup)
+        .where(inArray(instanceBackup.fileName, names))
+    ).map((r) => r.fileName),
+  );
+  for (const fileName of names) {
+    if (known.has(fileName)) continue;
+    const info = await stat(join(dir, fileName)).catch(() => null);
+    if (!info) continue;
+    await db.insert(instanceBackup).values({
+      trigger: 'pre-upgrade',
+      status: 'ready',
+      fileName,
+      size: info.size,
+      startedAt: info.mtime,
+      heartbeatAt: info.mtime,
+      finishedAt: info.mtime,
+    });
+  }
+}
 
 /**
  * The step `runMigrations` runs before pending migrations (#805): a database backup on the
  * schema as the previous version left it, in the usual format, read back and verified, in the
- * usual folder (and bucket). Its history row is written once the migrations applied (the
- * table may not have its newest columns before), with an audit event, both best effort. A
- * failure stops the start before anything is migrated; `skip` (SKIP_PRE_MIGRATION_BACKUP)
- * only logs.
+ * usual folder (and bucket). A recent archive of the same schema state is reused, and at most
+ * one per state kept. Its history row is written once the migrations applied (the table may
+ * not have its newest columns before), with an audit event, both best effort. A failure stops
+ * the start before anything is migrated; `skip` (SKIP_PRE_MIGRATION_BACKUP) only logs.
  */
 export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip?: boolean } = {}) {
   const { log } = deps;
@@ -558,22 +628,45 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
       );
       return undefined;
     }
+    const dir = backupsDir(deps.dataDir);
+    const prefix = preUpgradePrefix(pending.applied);
+    const listed = await readdir(dir).catch(() => [] as string[]);
+    // Under the migration lock no other start writes one: a `.partial` is from a killed start.
+    for (const name of listed)
+      if (name.startsWith(PRE_UPGRADE) && name.endsWith('.partial'))
+        await rm(join(dir, name), { force: true }).catch(() => {});
+    // Named with the time: the last in order is the newest.
+    const same = listed.filter((n) => n.startsWith(prefix) && n.endsWith('.zip')).sort();
+    const newest = same.at(-1);
+    const newestAt = newest ? (await stat(join(dir, newest)).catch(() => null))?.mtime : undefined;
+    const adopt = async (db: Database) => {
+      try {
+        await adoptPreUpgradeArchives(db, dir);
+        await applyBackupRetention({ db, storage: deps.storage, dataDir: deps.dataDir });
+      } catch (err) {
+        // The archives are complete on disk: only the history misses them.
+        log.error({ err, dir }, 'backups before the migrations written but not listed');
+      }
+    };
+    if (newest && newestAt && Date.now() - newestAt.getTime() < PRE_UPGRADE_REUSE_MS) {
+      log.warn(
+        { ...pending, file: join(dir, newest), writtenAt: newestAt.toISOString() },
+        'migrations pending: reusing the backup an earlier start wrote before them (that ' +
+          'start did not finish migrating: its log has the error)',
+      );
+      return adopt;
+    }
     log.info(pending, 'migrations pending: backing up the database before applying them');
     const id = randomUUID();
     const startedAt = new Date();
-    const dir = backupsDir(deps.dataDir);
-    const fileName = `inkadra-backup-pre-upgrade-${stamp(startedAt)}-${id.slice(0, 8)}.zip`;
+    const fileName = `${prefix}${stamp(startedAt)}-${id.slice(0, 8)}.zip`;
     const partial = join(dir, `${fileName}.partial`);
     let written: Awaited<ReturnType<typeof dumpDatabase>>;
     let verified: Awaited<ReturnType<typeof verifyBackup>>;
     try {
       await mkdir(dir, { recursive: true, mode: 0o700 });
       await chmod(dir, 0o700).catch(() => {});
-      const [tables] = await sql<{ n: string }[]>`
-        select coalesce(sum(pg_table_size(c.oid)), 0)::text as n
-        from pg_class c join pg_namespace s on s.oid = c.relnamespace
-        where s.nspname = 'public' and c.relkind = 'r'`;
-      const needed = preUpgradeSpaceNeeded(Number(tables?.n ?? 0));
+      const needed = preUpgradeSpaceNeeded(await liveTableBytes(sql));
       const disk = await statfs(dir);
       const free = Number(disk.bavail) * Number(disk.bsize);
       if (free < needed)
@@ -587,7 +680,8 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
         signal: new AbortController().signal,
       });
       verified = await verifyBackup(partial, deps.storage, {
-        signal: AbortSignal.timeout(deps.verifyBudgetMs ?? VERIFY_BUDGET_MS),
+        signal: AbortSignal.timeout(deps.verifyBudgetMs ?? PRE_UPGRADE_VERIFY_MS),
+        sample: PRE_UPGRADE_VERIFY_SAMPLE,
       });
       await rename(partial, join(dir, fileName));
     } catch (err) {
@@ -602,6 +696,8 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
         { cause: err },
       );
     }
+    // One archive per schema state: the new one replaces older copies of the same state.
+    for (const old of same) await rm(join(dir, old), { force: true }).catch(() => {});
     const copied = await copyToBucket(deps, id, fileName);
     const file = join(dir, fileName);
     log.info(
@@ -634,11 +730,10 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
           targetId: id,
           details: { kind: 'pre-upgrade', files: written.files.count, ...pending },
         }).catch((err) => log.error({ err }, 'audit of the backup before the migrations failed'));
-        await applyBackupRetention({ db, storage: deps.storage, dataDir: deps.dataDir });
       } catch (err) {
-        // The archive is complete on disk: only the history misses it.
         log.error({ err, file }, 'backup before the migrations written but not listed');
       }
+      await adopt(db);
     };
   };
 }
@@ -820,14 +915,20 @@ async function dumpDatabase(
         let count = 0;
         let bytes = 0;
         const filesHash = createHash('sha256');
+        // The backup before an upgrade (#805) dumps the schema of any older release: feedback
+        // attachments only exist from migration 0027 (0.9).
+        const [feedback] = await tx<{ ok: boolean }[]>`
+        select to_regclass('public.feedback_attachment') is not null as ok`;
         const pages = tx<{ key: string; size: string | null; sha256: string | null }[]>`
         select storage_key as key, size::text, sha256 from asset where status <> 'pending'
         union all
         select storage_key, null, null from asset_variant where size <> 'proxy'
-        union all
-        select 'feedback/' || id, bytes::text, null from feedback_attachment where expires_at > now()`.cursor(
-          1000,
-        );
+        ${
+          feedback?.ok
+            ? tx`union all
+        select 'feedback/' || id, bytes::text, null from feedback_attachment where expires_at > now()`
+            : tx``
+        }`.cursor(1000);
         async function* fileLines() {
           for await (const rows of pages) {
             let out = '';

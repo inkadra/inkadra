@@ -119,6 +119,34 @@ export async function runMigrations(
 }
 
 /**
+ * Waits until the database has every migration of this build (#805): a collab or worker role
+ * started next to a web role that is still backing up and migrating. Polls, telling the log
+ * once a minute; a database already newer passes too.
+ */
+export async function waitForMigrations(
+  databaseUrl: string,
+  migrationsFolder: string,
+  log: { info: (obj: object, msg: string) => void },
+  intervalMs = 5000,
+) {
+  const sql = postgres(databaseUrl, { max: 1, onnotice: () => {} });
+  try {
+    let toldAt = 0;
+    for (;;) {
+      const state = await pendingMigrations(sql, migrationsFolder);
+      if (state.pending === 0) return;
+      if (Date.now() - toldAt >= 60_000) {
+        log.info(state, 'waiting for the web role to apply the database migrations');
+        toldAt = Date.now();
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  } finally {
+    await sql.end({ timeout: 1 });
+  }
+}
+
+/**
  * Migrations applied to the database and those of this build still to apply. Drizzle's migrator
  * applies every journal entry newer than the last applied one, so that is what is pending.
  */
