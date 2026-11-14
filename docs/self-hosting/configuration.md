@@ -468,7 +468,7 @@ metadata, and the dialog says so. What people write and what is visible in a fil
 personal: the preview is there to check it.
 
 **Limits.** 10 MiB per image or file, 25 MiB per video, 32 MiB per report; direct GitHub keeps its
-100 MiB video limit. The relay accepts 40 reports a day per network and 60 a day in total, across
+100 MiB video limit. The relay accepts 20 reports (64 MiB of files) a day per network and 200 a day in total, across
 every instance that uses it: beyond that, reports wait in the local queue and leave by themselves. During an outage they wait too, and
 Settings says so. If the relay gives no answer to a write, the report is marked as not confirmed:
 trying again from Settings is safe, because the relay recognises a report it already has. GitHub

@@ -17,7 +17,8 @@
  *   milliseconds on a PC, so it slows casual abuse rather than stopping it);
  * - a wait before each further report that doubles each time, counted both per installation and
  *   per client IP (IPv6 by /64), so a fresh install id alone does not reset it;
- * - a daily cap per network (NETWORK_DAILY_LIMIT, IPv6 also by /48), so nobody can use up the rest;
+ * - a daily cap per network, in reports (NETWORK_DAILY_LIMIT) and in bytes (NETWORK_DAILY_BYTES), IPv6
+ *   also by /48, so nobody can use up the rest;
  * - a daily cap across all installations, in reports (DAILY_LIMIT) and in bytes (DAILY_BYTES);
  * - optionally, Cloudflare's rate limiter per client IP on /challenge and /report;
  * - the ticket and proof of work are checked before any of the body is read;
@@ -31,7 +32,7 @@
  *
  * Bindings: Durable Object `METER` (class `Meter`), optional rate limiter `RATE_LIMITER`; secrets
  * `GITHUB_TOKEN` (fine-grained: Issues + Contents on REPO) and `TICKET_SECRET`; vars `REPO`
- * ("owner/name") and optionally `DAILY_LIMIT`, `DAILY_BYTES`, `NETWORK_DAILY_LIMIT`, `POW_BITS`.
+ * ("owner/name") and optionally `DAILY_LIMIT`, `DAILY_BYTES`, `NETWORK_DAILY_LIMIT`, `NETWORK_DAILY_BYTES`, `POW_BITS`.
  */
 
 import { DurableObject } from 'cloudflare:workers';
@@ -219,6 +220,7 @@ async function report(request, env) {
     // price of never letting one ticket open two issues.
     const claim = await meter(env).claim(ticket.split('.')[1], meterKeys(payload.ih, who), dailyLimit(env), {
       networkLimit: networkLimit(env),
+      networkBytes: networkBytes(env),
       bytes: files.reduce((n, f) => n + f.size, 0),
       bytesLimit: dailyBytes(env),
     });
@@ -514,6 +516,7 @@ const meterKeys = (ih, who) => [
 const dailyLimit = (env) => Number(env.DAILY_LIMIT ?? 30);
 const networkLimit = (env) => Number(env.NETWORK_DAILY_LIMIT ?? 5);
 const dailyBytes = (env) => Number(env.DAILY_BYTES ?? 300 * MiB);
+const networkBytes = (env) => Number(env.NETWORK_DAILY_BYTES ?? 64 * MiB);
 /** The wait before a report, after `sent` reports in the current day. */
 const waitAfter = (sent) => Math.min(5 * 2 ** sent, MAX_WAIT);
 const utcDay = (seconds) => new Date(seconds * 1000).toISOString().slice(0, 10);
@@ -532,10 +535,14 @@ export class Meter extends DurableObject {
     this.sql = ctx.storage.sql;
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS used (id TEXT PRIMARY KEY, exp INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS counts (key TEXT PRIMARY KEY, count INTEGER NOT NULL, since INTEGER NOT NULL, last INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS counts (key TEXT PRIMARY KEY, count INTEGER NOT NULL, since INTEGER NOT NULL, last INTEGER NOT NULL, bytes INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS days (day TEXT PRIMARY KEY, total INTEGER NOT NULL, bytes INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS requests (key TEXT PRIMARY KEY, started INTEGER NOT NULL, number INTEGER, url TEXT);
     `);
+    // Storage from before the per-network byte share has `counts` without `bytes`.
+    if (!this.sql.exec('PRAGMA table_info(counts)').toArray().some((c) => c.name === 'bytes')) {
+      this.sql.exec('ALTER TABLE counts ADD COLUMN bytes INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   /** When the next report may go over `keys`, today's total, and how long a full network waits. */
@@ -565,10 +572,10 @@ export class Meter extends DurableObject {
 
   /**
    * Uses the ticket and counts the report, or says why not: 409 ticket already used, 503 daily cap
-   * or byte budget reached, 429 this network's day is full, 403 a report from the same installation or network came sooner than its wait allows
+   * or byte budget reached, 429 this network's day is full (reports or bytes), 403 a report from the same installation or network came sooner than its wait allows
    * (tickets fetched in parallel before any report was counted all carry the shortest wait).
    */
-  claim(ticketId, keys, limit, { networkLimit, bytes, bytesLimit }) {
+  claim(ticketId, keys, limit, { networkLimit, networkBytes, bytes, bytesLimit }) {
     const now = nowSeconds();
     this.#expire(now);
     if (this.sql.exec('SELECT 1 FROM used WHERE id = ?', ticketId).toArray().length) {
@@ -580,7 +587,7 @@ export class Meter extends DurableObject {
     if (bytes && this.#bytes(now) + bytes > bytesLimit) {
       return { ok: false, status: 503, error: 'daily bytes', retryAfter: Math.min(untilTomorrow(now), 6 * 60 * 60) };
     }
-    const networkFullFor = this.#networkFullFor(keys, now, networkLimit);
+    const networkFullFor = this.#networkFullFor(keys, now, networkLimit, bytes, networkBytes);
     if (networkFullFor) return { ok: false, status: 429, error: 'network limit', retryAfter: networkFullFor };
     let ready = now;
     for (const row of this.#rows(keys, now)) ready = Math.max(ready, row.last + waitAfter(row.count));
@@ -590,12 +597,13 @@ export class Meter extends DurableObject {
     for (const key of keys) {
       // A fixed day from the first report: later reports don't push the reset further away.
       this.sql.exec(
-        `INSERT INTO counts (key, count, since, last) VALUES (?1, 1, ?2, ?2)
+        `INSERT INTO counts (key, count, since, last, bytes) VALUES (?1, 1, ?2, ?2, ?4)
          ON CONFLICT (key) DO UPDATE SET
            count = CASE WHEN ?2 - since < ?3 THEN count + 1 ELSE 1 END,
+           bytes = CASE WHEN ?2 - since < ?3 THEN bytes + ?4 ELSE ?4 END,
            since = CASE WHEN ?2 - since < ?3 THEN since ELSE ?2 END,
            last = ?2`,
-        key, now, DAY,
+        key, now, DAY, bytes,
       );
     }
     this.sql.exec(
@@ -606,16 +614,19 @@ export class Meter extends DurableObject {
   }
 
   #rows(keys, now) {
-    return keys.flatMap((k) => this.sql.exec('SELECT count, since, last FROM counts WHERE key = ? AND ? - since < ?', k, now, DAY).toArray());
+    return keys.flatMap((k) => this.sql.exec('SELECT count, since, last, bytes FROM counts WHERE key = ? AND ? - since < ?', k, now, DAY).toArray());
   }
 
-  /** Seconds until a full network's day is over, or 0. Installations are free to invent, so they don't count. */
-  #networkFullFor(keys, now, limit) {
+  /**
+   * Seconds until a full network's day is over, or 0: full in reports, or in bytes for a report that
+   * carries `bytes`. Installations are free to invent, so they don't count.
+   */
+  #networkFullFor(keys, now, limit, bytes = 0, bytesLimit = Infinity) {
     let wait = 0;
     for (const key of keys) {
       if (key.startsWith('install:')) continue;
       for (const row of this.#rows([key], now)) {
-        if (row.count >= limit) wait = Math.max(wait, row.since + DAY - now);
+        if (row.count >= limit || (bytes && row.bytes + bytes > bytesLimit)) wait = Math.max(wait, row.since + DAY - now);
       }
     }
     return wait;
