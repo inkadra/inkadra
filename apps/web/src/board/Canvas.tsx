@@ -151,7 +151,6 @@ import {
   Minimap,
   TOOL_MIME,
   TOOLS,
-  Toast,
   Toolbar,
   type ToolType,
   UnsortedDrawer,
@@ -207,6 +206,7 @@ import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
 import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
+import { Toast } from './Toast.tsx';
 import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
 import { startUpload } from './uploads.ts';

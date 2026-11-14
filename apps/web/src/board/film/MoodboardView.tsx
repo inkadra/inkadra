@@ -30,7 +30,7 @@ import { getCachedAsset, pickVariant, useAsset, useAssetPalettes } from '../asse
 import { ColorPicker } from '../ColorPicker.tsx';
 import { CroppedImage } from '../CroppedImage.tsx';
 import { CopyHexButton } from '../cards.tsx';
-import { ContextMenu, Toast, UploadPanel } from '../chrome.tsx';
+import { ContextMenu, UploadPanel } from '../chrome.tsx';
 import { copyHex, hexToRgb, swatchColors } from '../colors.ts';
 import { uploadBoardId } from '../frame-grab.ts';
 import { croppedRotatedSize, hasImageTransform } from '../image-crop.ts';
@@ -38,6 +38,7 @@ import { fillLinkPreview, webUrl } from '../links.ts';
 import { PresentationView } from '../PresentationView.tsx';
 import { isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
+import { Toast } from '../Toast.tsx';
 import { normaliseTag } from '../tags.tsx';
 import { startUpload } from '../uploads.ts';
 import { MediaViewer } from '../viewer.tsx';

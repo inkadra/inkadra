@@ -252,6 +252,8 @@ export async function createApp(deps: AppDeps) {
       root: webDist,
       wildcard: false,
       index: false,
+      // The web build writes .br and .gz copies next to its files (apps/web/vite.config.ts).
+      preCompressed: true,
       setHeaders(res, file) {
         // Vite fingerprints everything under /assets, so those files never change.
         const immutable = file.includes(`${sep}assets${sep}`);
