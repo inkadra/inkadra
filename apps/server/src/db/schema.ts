@@ -1354,6 +1354,8 @@ export const projectTransfer = pgTable(
     projectName: text('project_name').notNull(),
     /** Thousandths of the work done. */
     progress: integer('progress').notNull().default(0),
+    /** Set by each claim: only the run that holds it may move or finish the row (#810). */
+    runId: uuid('run_id'),
     size: bigint('size', { mode: 'number' }),
     failure: text('failure'),
     summary: jsonb('summary').$type<import('@inkadra/shared').TransferSummary>(),
@@ -1400,6 +1402,8 @@ export const instanceBackup = pgTable(
      * blocks later backups through the unique index below.
      */
     heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Set when a worker claims the backup: only that run may move or finish the row (#810). */
+    runId: uuid('run_id'),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     /** Set once retention removed the archive. */
     removedAt: timestamp('removed_at', { withTimezone: true }),

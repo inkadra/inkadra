@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
@@ -13,7 +13,13 @@ import { backupsDir, restoreBackup, runBackup, startBackup } from './backup.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
-import { attachCollab, createCollabServer, DEMO_COLLAB_LIMITS } from './collab.ts';
+import {
+  attachCollab,
+  createCollabServer,
+  DEMO_COLLAB_LIMITS,
+  replayUnsavedBoards,
+  unsavedBoardsDir,
+} from './collab.ts';
 import { type Config, loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { startSandboxSweep } from './demo.ts';
@@ -229,7 +235,10 @@ async function main() {
       trustProxy: config.TRUST_PROXY,
       monitor: { store: monitor, role: command },
       ...(limits ? { limits } : {}),
+      unsavedDir: unsavedBoardsDir(config.DATA_DIR),
     });
+    // Before any board opens: what the last shutdown could not store (#795).
+    await replayUnsavedBoards(db, unsavedBoardsDir(config.DATA_DIR), log);
     const server = collab;
     closers.unshift(() => server.destroy());
     const backfill = startIndexBackfill(db, log);
@@ -443,6 +452,16 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
       log,
     });
     log.info(report, 'backup restored');
+    // Boards a shutdown kept on disk belong to the database just replaced: set aside, not
+    // replayed into the restored one (moved, never deleted).
+    const unsaved = unsavedBoardsDir(config.DATA_DIR);
+    const aside = `${unsaved}-before-restore-${Date.now()}`;
+    await rename(unsaved, aside).then(
+      () => log.warn({ dir: aside }, 'boards kept on disk before the restore set aside'),
+      (err: NodeJS.ErrnoException) => {
+        if (err.code !== 'ENOENT') throw err;
+      },
+    );
     if (report.files.missing > 0)
       log.warn(
         { missing: report.files.missing, examples: report.files.examples },

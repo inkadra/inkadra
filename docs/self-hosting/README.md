@@ -98,6 +98,10 @@ Open **Settings → General** to review setup and **Settings → Server status**
 > [What leaves your server](#what-leaves-your-server) and decide before you invite anyone.
 
 To stop Inkadra, run `docker compose stop`; to start it again, `docker compose up -d`.
+Stopping waits up to 30 seconds (`stop_grace_period` in `compose.yaml`) so open boards are
+saved; a board the database cannot take in time is kept in the data folder
+(`unsaved-boards/`) and stored at the next start. Keep that grace period if you write your own
+compose file.
 `docker compose down` also removes the containers, and keeps your data. Only
 `docker compose down -v` deletes the data, so do not use that one.
 
@@ -263,6 +267,9 @@ Split mode is for larger teams: you can restart or scale the parts on their own,
 worker does not slow down the web app. The proxy must send `/collab` to the `collab` container
 on port 3001: with the bundled proxies, set `INKADRA_COLLAB_UPSTREAM=collab:3001` (Caddy,
 Nginx) or add `deploy/proxy/traefik/compose.split.yaml` (Traefik).
+Run **one** `collab` container: boards are not yet shared between several collab processes
+([#790](https://github.com/inkadra/inkadra/issues/790)), and two of them would overwrite each
+other's edits. `web` and `worker` can be scaled.
 
 ```sh
 INKADRA_COLLAB_UPSTREAM=collab:3001 docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/proxy/caddy/compose.yaml up -d

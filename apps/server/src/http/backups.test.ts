@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { existsSync, readdirSync } from 'node:fs';
 import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -499,6 +500,38 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     expect(await runBackup({ ...backupDeps(), storage: meanwhile, bucket: true }, id)).toBeNull();
     const [after] = await db.select().from(instanceBackup).where(eq(instanceBackup.id, id));
     expect(after).toMatchObject({ status: 'failed', failure: 'interrupted' });
+    // No row points to the archive it wrote: it is removed rather than left outside retention.
+    expect(readdirSync(backupsDir(deps.root)).filter((n) => n.includes(id.slice(0, 8)))).toEqual(
+      [],
+    );
+  });
+
+  it('leaves a backup to the run that still beats for it, and takes over a silent one (#810)', async () => {
+    const row = await startBackup(db, 'manual', null);
+    const id = row?.id as string;
+    // Beaten by a run without a run id (an older version still running): skipped too.
+    await db
+      .update(instanceBackup)
+      .set({ heartbeatAt: sql`now() + interval '1 second'` })
+      .where(eq(instanceBackup.id, id));
+    expect(await runBackup(backupDeps(), id)).toBeNull();
+    // Claimed by a live run elsewhere: a job delivered again skips it.
+    await db
+      .update(instanceBackup)
+      .set({ runId: randomUUID(), heartbeatAt: new Date() })
+      .where(eq(instanceBackup.id, id));
+    expect(await runBackup(backupDeps(), id)).toBeNull();
+    expect(
+      (await db.select().from(instanceBackup).where(eq(instanceBackup.id, id)))[0],
+    ).toMatchObject({
+      status: 'running',
+    });
+    // That run went quiet a few minutes ago: its worker died, this one finishes the backup.
+    await db
+      .update(instanceBackup)
+      .set({ heartbeatAt: new Date(Date.now() - 5 * 60 * 1000) })
+      .where(eq(instanceBackup.id, id));
+    expect(await runBackup(backupDeps(), id)).toMatchObject({ status: 'ready' });
   });
 
   it('fails a backup that stops moving as stalled, with its reason', async () => {

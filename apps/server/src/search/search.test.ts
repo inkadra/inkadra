@@ -651,9 +651,40 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
   it('indexes boards stored before the index existed', async () => {
     await db.delete(boardElementIndex).where(eq(boardElementIndex.boardId, boardId));
     await db.update(boardDoc).set({ indexedAt: null }).where(eq(boardDoc.boardId, boardId));
-    expect(await backfillIndex(db)).toEqual({ indexed: 1 });
-    expect(await backfillIndex(db)).toEqual({ indexed: 0 });
+    expect(await backfillIndex(db)).toMatchObject({ indexed: 1, failed: [] });
+    expect(await backfillIndex(db)).toMatchObject({ indexed: 0, failed: [] });
     expect((await get('owner', '/api/v1/search?q=85mm')).body.items).toHaveLength(1);
+  });
+
+  it('goes past a board it cannot index instead of stopping at it (#815)', async () => {
+    const root = await get('owner', `/api/v1/projects/${projectId}`);
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: root.body.rootBoardId, kind: 'storyboard', title: 'Rotta' },
+    });
+    const broken = added.json().id as string;
+    // An empty update cannot be decoded.
+    await db
+      .insert(boardDoc)
+      .values({ boardId: broken, state: new Uint8Array(), schemaVersion: 2, size: 0 });
+    await db.delete(boardElementIndex).where(eq(boardElementIndex.boardId, boardId));
+    await db.update(boardDoc).set({ indexedAt: null }).where(eq(boardDoc.boardId, boardId));
+    // One board per call, as the hourly run goes through them in order, whichever comes first.
+    const failed: string[] = [];
+    let indexed = 0;
+    let after: string | undefined;
+    for (let i = 0; i < 10; i += 1) {
+      const batch = await backfillIndex(db, 1, after);
+      indexed += batch.indexed;
+      failed.push(...batch.failed.map((f) => f.boardId));
+      if (!batch.last) break;
+      after = batch.last;
+    }
+    expect({ indexed, failed }).toEqual({ indexed: 1, failed: [broken] });
+    expect((await get('owner', '/api/v1/search?q=85mm')).body.items).toHaveLength(1);
+    await db.delete(boardDoc).where(eq(boardDoc.boardId, broken));
   });
 
   it('finds the crew for project members and the location of shooting days', async () => {
