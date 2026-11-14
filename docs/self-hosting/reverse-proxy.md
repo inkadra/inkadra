@@ -13,26 +13,13 @@ proxy must
 5. not put its own login page in front of Inkadra: the mobile app, the browser extension and
    shared links call the API directly and cannot pass through it.
 
-`compose.yaml` publishes Inkadra on `127.0.0.1:3000`, so only a proxy on the same machine can
-reach it; the bundled proxies reach Inkadra inside the Docker network. To allow direct LAN
-or Tailscale access as well, publish the port on a selected private interface or set
-`INKADRA_BIND=0.0.0.0`. This publishes it on the LAN and every other host interface: firewall
-it from the public internet. Plain HTTP exposes credentials and content; Tailscale encrypts
-traffic between peers. No list of LAN addresses is required. `PUBLIC_URL` stays the public
-HTTPS address for external links and OAuth callbacks.
+`compose.yaml` binds port 3000 to `127.0.0.1`; bundled proxies use the Docker network.
+For direct private HTTP access and the required proxy trust restrictions, see
+[Direct LAN and Tailscale access](configuration.md#direct-lan-and-tailscale-access).
 
-> **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
-> container IP pinned with `ipv4_address`, for example `172.18.0.10`
-> or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
-> trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
-> `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
-> or bypassing address-based rate limits. Direct clients need no proxy trust.
-
-Set `TRUST_PROXY` to the actual proxy peer addresses, not all LAN clients. The proxy must
-overwrite forwarded host/protocol headers, preserve the original Host (or set
-X-Forwarded-Host), and send X-Forwarded-Proto. Direct untrusted clients cannot override the
-socket protocol with those headers. HSTS and CSP upgrade-insecure-requests are sent only
-on verified HTTPS responses. See [Security headers](#security-headers).
+The proxy must replace forwarded host and protocol headers and preserve `Host` (or set
+`X-Forwarded-Host`). Inkadra uses them only from a trusted peer. HSTS and CSP's
+`upgrade-insecure-requests` apply only to verified HTTPS responses.
 
 The configurations in [`deploy/proxy`](../../deploy/proxy) (Caddy, Traefik, Nginx) are tested by
 CI on every change, in all-in-one and split mode, with
@@ -42,8 +29,7 @@ interfaces, so CI cannot run them: their settings below follow the tested Nginx 
 
 ## Caddy
 
-The simplest choice: Caddy gets and renews certificates by itself and its defaults already meet
-every requirement.
+Caddy gets and renews certificates.
 
 ```caddy
 inkadra.example.com {
@@ -121,10 +107,9 @@ proxy_set_header X-Forwarded-Proto $scheme;
 In Docker, [`deploy/proxy/nginx`](../../deploy/proxy/nginx) fills in the template from `.env` and
 reads the certificate from `NGINX_CERTS`.
 
-Project imports send the whole archive in one request (uploads are sent in pieces), so a proxy
-limit on the request body also limits imports. Behind Cloudflare's proxy a request body can be
-at most 100 MB on the Free and Pro plans: import larger projects through a direct route (LAN
-address, Tailscale) or split them.
+Project imports send the whole archive in one request. A proxy's request-body limit must
+allow `IMPORT_MAX_SIZE`; if your provider imposes a lower limit, import over a direct private
+route. File uploads use resumable chunks of at most 50 MiB.
 
 ## Nginx Proxy Manager
 
@@ -167,20 +152,13 @@ WebSockets work without settings. Two things are on the VPS side and in Inkadra'
   `config/traefik/traefik_config.yml`, set `readTimeout` under
   `entryPoints.websecure.transport.respondingTimeouts` as shown under [Traefik](#traefik), and
   restart the stack.
-- `TRUST_PROXY` must accept the address requests come from. With Newt in the same Docker network
-  the default is enough; when the target is a Tailscale address, trust only the tailnet address
+- `TRUST_PROXY` must accept the address requests come from. With Newt in the same Docker network,
+  pin and trust only its container address; for a Tailscale target, trust only the tailnet address
   of the machine Newt runs on, e.g. `TRUST_PROXY=100.100.10.20`, not the whole Tailscale range.
 
-All-in-one mode is the easy fit for Pangolin: one target. For split mode, add a second target
+All-in-one mode needs one Pangolin target. For split mode, add a second target
 for the path prefix `/collab` on port `3001`, if your Pangolin version supports path-based
 targets.
-
-## Cloudflare
-
-If the domain goes through Cloudflare's proxy (orange cloud), its plan limits the size of a single
-request (100 MB on the free plan). Inkadra's apps upload in resumable chunks of at most 50 MiB,
-so large files still work; only scripts that send bigger requests to the API hit the limit. Keep WebSockets enabled in the
-Cloudflare dashboard (they are on by default).
 
 ## Security headers
 
@@ -246,8 +224,3 @@ proxy_set_header X-Forwarded-For $remote_addr;
 
 If Nginx sits behind another proxy or a CDN, keep `$proxy_add_x_forwarded_for` and configure
 `set_real_ip_from` for that proxy instead.
-
-Do not include the Docker gateway (e.g. `172.18.0.1`) or the whole subnet in TRUST_PROXY.
-Userland-proxy, hairpin, rootless or IPv6 forwarding can make direct LAN clients appear
-from that gateway, giving them proxy-header trust. Pin the proxy with `ipv4_address`
-and trust only that container IP; verify the actual peer in your deployment.
