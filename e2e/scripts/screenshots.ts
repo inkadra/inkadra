@@ -108,14 +108,12 @@ async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
   await save(page, file('comments'));
 
   // A frame's panel in the Storyboard view, then Draw on its annotated picture.
-  await page.setViewportSize({ width: 1440, height: 1700 });
   await page.goto(`/p/${project.id}/b/${storyboard.id}`);
   await page.locator('.story__side-item').nth(1).click();
   await page.locator('[data-story-frame]').first().click();
   await page.locator('.film-panel').waitFor();
   await page.locator('.ink-main').evaluate((el) => el.scrollTo(0, 0));
   await save(page, file('frame-panel'));
-  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Draw', exact: true }).last().click();
   await page.locator('.pen').waitFor();
   await save(page, file('draw'));
@@ -152,7 +150,6 @@ async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
     v.currentTime = 3;
     await new Promise((done) => v.addEventListener('seeked', done, { once: true }));
   });
-  await video.focus();
   await save(page, file('video-card'));
 
   // Administrators: classifications and reports. The dialog stops at its preview, nothing is sent.

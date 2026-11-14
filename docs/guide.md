@@ -107,10 +107,11 @@ playable copy, and a video gets a poster and its details.
 ## Storyboards, frames and Draw
 
 A storyboard is made of scenes and frames, and its other views show the same data: the shot list
-and the review, when they are on; the Production board schedules its frames. Double-click a frame to open its panel: action, shot size, angle, movement,
-lens, cast and status.
+and the review, when they are on; the Production board schedules its frames. Click a frame in the
+Storyboard view, or double-click one on a canvas, to open its panel: action, shot size, angle,
+movement, lens, cast and status.
 
-Drag a picture from the board onto a frame and it becomes the frame's picture and leaves the board,
+On a canvas, drag a picture onto a frame and it becomes the frame's picture and leaves the board,
 with an Undo. A card that holds strokes, a crop, a rotation or a caption stays, because a frame has
 no place for those. A still from a video comes from the original file on the server when the
 standard image is there, at full quality.
