@@ -457,6 +457,11 @@ export const boardDoc = pgTable('board_doc', {
   updatedAt: updatedAt(),
   /** When board_element_index was last rebuilt from `state`; null = never (backfill). */
   indexedAt: timestamp('indexed_at', { withTimezone: true }),
+  /**
+   * Navigation counts of `state`, written with the index; valid only while `indexed_at` is not
+   * older than `updated_at`, otherwise readers decode the document.
+   */
+  counts: jsonb('counts').$type<Omit<import('@inkadra/shared').BoardCount, 'boardId'>>(),
 });
 
 /**
@@ -962,6 +967,9 @@ export const notification = pgTable(
     // Comments are hard-deleted and cascade here.
     index('notification_comment_idx').on(t.commentId).where(sql`${t.commentId} is not null`),
     index('notification_share_link_idx').on(t.shareLinkId).where(sql`${t.shareLinkId} is not null`),
+    // Deleting a board or a project cascades here: without these each delete scans the table.
+    index('notification_board_idx').on(t.boardId).where(sql`${t.boardId} is not null`),
+    index('notification_project_idx').on(t.projectId).where(sql`${t.projectId} is not null`),
   ],
 );
 

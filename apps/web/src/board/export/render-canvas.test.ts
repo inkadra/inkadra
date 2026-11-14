@@ -44,4 +44,51 @@ describe('renderImages', () => {
     // A transparent PNG gets nothing under it.
     expect(fills).toEqual(['#161616']);
   });
+
+  it('decodes pictures kept as files for their page only, and closes them after it', async () => {
+    const closed: number[] = [];
+    let live = 0;
+    let peak = 0;
+    vi.stubGlobal('createImageBitmap', () => {
+      live += 1;
+      peak = Math.max(peak, live);
+      return Promise.resolve({
+        close() {
+          live -= 1;
+          closed.push(1);
+        },
+      });
+    });
+    vi.stubGlobal(
+      'OffscreenCanvas',
+      class {
+        getContext() {
+          return {
+            save() {},
+            restore() {},
+            setTransform() {},
+            fillRect() {},
+            drawImage() {},
+          };
+        }
+        convertToBlob() {
+          return Promise.resolve(new Blob());
+        }
+      },
+    );
+    const at = (key: string) => ({
+      width: 10,
+      height: 10,
+      background: null,
+      ops: [{ kind: 'image', key, x: 0, y: 0, w: 10, h: 10 }],
+    });
+    const images = new Map([
+      ['a', { width: 10, height: 10, blob: new Blob() }],
+      ['b', { width: 10, height: 10, blob: new Blob() }],
+    ]);
+    // biome-ignore lint/suspicious/noExplicitAny: a minimal page for the test
+    await renderImages([at('a'), at('b')] as any, [1, 1], images);
+    expect(closed.length).toBe(2);
+    expect(peak).toBe(1);
+  });
 });
