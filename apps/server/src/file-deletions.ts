@@ -78,7 +78,10 @@ export async function sweepDeletions(
       .where(lt(pendingFileDeletion.createdAt, before))
       .orderBy(asc(pendingFileDeletion.createdAt), asc(pendingFileDeletion.key))
       .limit(CHUNK + tried.size);
-    const keys = rows.map((r) => r.key).filter((k) => !tried.has(k)).slice(0, CHUNK);
+    const keys = rows
+      .map((r) => r.key)
+      .filter((k) => !tried.has(k))
+      .slice(0, CHUNK);
     if (keys.length === 0) break;
     for (const k of keys) tried.add(k);
     try {

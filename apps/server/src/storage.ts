@@ -285,7 +285,9 @@ function s3Storage(config: Config): Storage {
           if (await abortUpload(uploads, key)) all.push(`${key}.info`);
         }
       };
-      await Promise.all(Array.from({ length: Math.min(ABORT_CONCURRENCY, originals.length) }, worker));
+      await Promise.all(
+        Array.from({ length: Math.min(ABORT_CONCURRENCY, originals.length) }, worker),
+      );
       for (let i = 0; i < all.length; i += 1000) {
         await client.send(
           new DeleteObjectsCommand({
