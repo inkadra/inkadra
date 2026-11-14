@@ -3,8 +3,9 @@ import { Avatar, Button, Logo, Wordmark } from '@inkadra/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
-import { api, authApi, RequestError } from '../lib/api.ts';
+import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { signOut } from '../lib/sign-out.ts';
 import { SignInOptions } from './SignInOptions.tsx';
 import './login.css';
 
@@ -121,10 +122,7 @@ export function Join() {
         <button
           type="button"
           className="login__switch"
-          onClick={async () => {
-            await authApi.signOut();
-            await refresh();
-          }}
+          onClick={() => signOut().catch(() => setError(t('auth.signOutFailed')))}
         >
           {t('join.otherAccount')}
         </button>

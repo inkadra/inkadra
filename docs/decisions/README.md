@@ -138,3 +138,5 @@ A few numbers are shared by two decisions (0025, 0054, 0069, 0071, 0104): they w
 and accepted records are not renumbered.
 
 | [0129](0129-container-gpu-use.md) | GPU use from container DRM fdinfo inside the CPU chart; absent without driver counters |
+
+| [0130](0130-board-limits-and-shared-budgets.md) | Configurable board caps with deletion recovery; shared Valkey product budgets with in-memory fallback |

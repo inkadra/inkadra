@@ -878,38 +878,49 @@ it('reads a card again when its new writer differs from the old one only above 3
 it('finishes a progressive hydration from a snapshot under continuous edits', {
   timeout: 30_000,
 }, async () => {
-  const { update } = generateReferenceBoard('small', 3);
-  const first = new Y.Doc();
-  Y.applyUpdate(first, update);
-  const exporter = new BoardStore(first);
-  const text = exporter.exportValidatedSnapshot(BUILD)!;
-  exporter.destroy();
-  const doc = new Y.Doc();
-  Y.applyUpdate(doc, update);
-  const all = listElements(doc);
-  const note = all.find((el) => el.type === 'note')!;
-  const table = all.find((el) => el.type === 'table') as Extract<schema.Element, { type: 'table' }>;
-  const scheduler = manualScheduler();
-  const store = BoardStore.hydrate(doc, {
-    budgetMs: 0.02,
-    schedule: () => scheduler.schedule(),
-    snapshot: { text, build: BUILD },
-    priority: [note.id, table.id],
-    progressive: true,
-  });
-  store.subscribe(() => expectValidatedView(store, doc));
-  let edits = 0;
-  while (store.hydrating && edits < 20_000) {
-    core.setTableCell(doc, table.id, table.rows[0]!.id, table.columns[0]!.id, `typed ${edits}`);
-    updateElement(doc, note.id, { x: edits }, LOCAL);
-    edits++;
-    await scheduler.step();
+  // A fake clock that moves 0.01 ms per reading: a slice ends after a fixed number of steps,
+  // whatever the speed of the runner.
+  let ticks = 0;
+  const clock = vi.spyOn(performance, 'now').mockImplementation(() => (ticks += 0.01));
+  try {
+    const { update } = generateReferenceBoard('small', 3);
+    const first = new Y.Doc();
+    Y.applyUpdate(first, update);
+    const exporter = new BoardStore(first);
+    const text = exporter.exportValidatedSnapshot(BUILD)!;
+    exporter.destroy();
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, update);
+    const all = listElements(doc);
+    const note = all.find((el) => el.type === 'note')!;
+    const table = all.find((el) => el.type === 'table') as Extract<
+      schema.Element,
+      { type: 'table' }
+    >;
+    const scheduler = manualScheduler();
+    const store = BoardStore.hydrate(doc, {
+      budgetMs: 0.02,
+      schedule: () => scheduler.schedule(),
+      snapshot: { text, build: BUILD },
+      priority: [note.id, table.id],
+      progressive: true,
+    });
+    store.subscribe(() => expectValidatedView(store, doc));
+    let edits = 0;
+    while (store.hydrating && edits < 20_000) {
+      core.setTableCell(doc, table.id, table.rows[0]!.id, table.columns[0]!.id, `typed ${edits}`);
+      updateElement(doc, note.id, { x: edits }, LOCAL);
+      edits++;
+      await scheduler.step();
+    }
+    await store.whenHydrated;
+    expect(store.hydrating).toBe(false);
+    expectSameAsFresh(store, doc);
+    expect(store.getSnapshot().byId.get(note.id)?.x).toBe(edits - 1);
+    store.destroy();
+  } finally {
+    clock.mockRestore();
   }
-  await store.whenHydrated;
-  expect(store.hydrating).toBe(false);
-  expectSameAsFresh(store, doc);
-  expect(store.getSnapshot().byId.get(note.id)?.x).toBe(edits - 1);
-  store.destroy();
 });
 
 function findBench(doc: Y.Doc) {

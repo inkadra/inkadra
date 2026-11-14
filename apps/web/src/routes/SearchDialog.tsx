@@ -121,8 +121,10 @@ export function SearchDialog({
       .catch(() => {});
   }, [projects]);
 
+  const isTagInput = input.trimStart().startsWith('#');
+  // Tags are fetched once the person types '#': most searches never need them.
   useEffect(() => {
-    setAvailableTags([]);
+    if (!isTagInput) return;
     const ids = [
       ...new Set([
         ...(allProjects ?? []).map((p) => p.id),
@@ -131,15 +133,16 @@ export function SearchDialog({
     ];
     if (ids.length === 0) return;
     let alive = true;
-    loadTagsForProjects(ids).then((tags) => {
-      if (alive) setAvailableTags(tags);
-    });
+    loadTagsForProjects(ids)
+      .then((tags) => {
+        if (alive) setAvailableTags(tags);
+      })
+      .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [allProjects, shared]);
+  }, [isTagInput, allProjects, shared]);
 
-  const isTagInput = input.trimStart().startsWith('#');
   const rawAfterHash = input.trimStart().slice(1);
   const hasSpace = rawAfterHash.includes(' ');
   const tagQuery = normaliseTag(hasSpace ? (rawAfterHash.split(/\s+/)[0] ?? '') : rawAfterHash);

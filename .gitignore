@@ -12,3 +12,4 @@ playwright-report/
 .DS_Store
 e2e/perf-results.json
 packages/doc-schema/reference-boards/
+dump.rdb

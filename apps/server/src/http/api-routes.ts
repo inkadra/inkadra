@@ -30,7 +30,7 @@ import type { Mailer } from '../mailer.ts';
 import { mediaTools } from '../media/video.ts';
 import { myTasks } from '../tasks.ts';
 import { requireActor } from './auth-routes.ts';
-import { HttpError } from './errors.ts';
+import { HttpError, UNAVAILABLE_ERRORS_CAPABILITY } from './errors.ts';
 import type { LiveContext } from './hls.ts';
 
 interface Deps {
@@ -158,6 +158,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         CLASSIFICATION_DELETE_CAPABILITY,
         IDEMPOTENT_IMPORT_CAPABILITY,
         VIDEO_RENDITIONS_CAPABILITY,
+        UNAVAILABLE_ERRORS_CAPABILITY,
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).
         ...(deps.live && (await deps.live.settings()).live.enabled ? [VIDEO_LIVE_CAPABILITY] : []),
       ],

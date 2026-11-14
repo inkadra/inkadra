@@ -49,3 +49,19 @@ it('identifies edge revisions without changing release versions', async () => {
     vi.resetModules();
   }
 });
+
+it('defaults board caps and requires positive safe integers', () => {
+  expect(loadConfig(base).BOARD_MAX_STATE_BYTES).toBe(64 * 1024 * 1024);
+  expect(loadConfig(base).BOARD_MAX_ELEMENTS).toBe(20_000);
+  for (const key of ['BOARD_MAX_STATE_BYTES', 'BOARD_MAX_ELEMENTS']) {
+    for (const value of ['0', '-1', 'Infinity', 'lots', '9007199254740992', ''])
+      expect(() => loadConfig({ ...base, [key]: value })).toThrow(key);
+    expect(loadConfig({ ...base, [key]: '100' })[key as 'BOARD_MAX_ELEMENTS']).toBe(100);
+  }
+  expect(() => loadConfig({ ...base, BOARD_MAX_ELEMENTS: '1.5' })).toThrow('BOARD_MAX_ELEMENTS');
+  // The same spellings as the other sizes.
+  for (const value of ['64MB', '64MiB', '64 mb', '67108864'])
+    expect(loadConfig({ ...base, BOARD_MAX_STATE_BYTES: value }).BOARD_MAX_STATE_BYTES).toBe(
+      64 * 1024 * 1024,
+    );
+});

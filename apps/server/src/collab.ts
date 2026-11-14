@@ -1,7 +1,11 @@
+import { randomUUID } from 'node:crypto';
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import type { Server as HttpServer, IncomingMessage } from 'node:http';
+import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { type Connection, type Document, Server } from '@hocuspocus/server';
 import {
+  boardDocName,
   CURRENT_SCHEMA_VERSION,
   getSchemaVersion,
   LocalPresence,
@@ -23,7 +27,8 @@ import { noteWriter, type PendingWriters, storeWriters } from './board-writers.t
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
-import type { PresenceBoard } from './monitor/store.ts';
+import { boardProblem, recordProblem } from './monitor/problems.ts';
+import type { MonitorStore, PresenceBoard } from './monitor/store.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import {
@@ -84,9 +89,7 @@ function newItems(document: Y.Doc, update: Uint8Array): Array<[client: number, c
   let waiting: typeof sent | null = null;
   try {
     sent = Y.parseUpdateMeta(update);
-    const pending = document.store.pendingStructs;
-    // Yjs keeps them in its second update format.
-    if (pending) waiting = Y.parseUpdateMetaV2(pending.update);
+    waiting = waitingClocks(document);
   } catch {
     return [];
   }
@@ -113,6 +116,8 @@ export const ACCESS_RECHECK_MS = 30_000;
 export interface CollabLimits {
   /** Largest WebSocket message. */
   maxPayload: number;
+  /** Demo only: freeze all edits and skip storing oversized state. */
+  freeze?: boolean;
   /** Cards on one board. */
   elements: number;
   /** Size of a board's saved state. */
@@ -124,10 +129,183 @@ export interface CollabLimits {
  * would let one sandbox fill the memory or the database of a small server.
  */
 export const DEMO_COLLAB_LIMITS: CollabLimits = {
+  freeze: true,
   maxPayload: 1024 * 1024,
   elements: 500,
   stateBytes: 2 * 1024 * 1024,
 };
+
+/** First retry of a failed board store; doubled at each failure up to the maximum (#795). */
+const STORE_RETRY_FIRST_MS = 1000;
+const STORE_RETRY_MAX_MS = 60_000;
+const UNSAVED_SUFFIX = '.yupdate';
+/** A board store that takes longer fails and is retried (#795). */
+const STORE_TIMEOUT_MS = 15_000;
+/**
+ * At shutdown a store gets this long before the board is kept on disk instead: well inside
+ * Docker's stop grace period (`stop_grace_period` in the compose files).
+ */
+export const SHUTDOWN_STORE_MS = 3000;
+
+/** Rejects when the work takes longer than `ms`; the work itself goes on. */
+function within<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`no answer in ${ms} ms`)), ms);
+  });
+  return Promise.race([work, late]).finally(() => clearTimeout(timer));
+}
+
+/** Where boards that could not be stored at shutdown wait for the next start (#795). */
+export const unsavedBoardsDir = (dataDir: string) => join(dataDir, 'unsaved-boards');
+
+/** Clocks Yjs holds back until the items they follow arrive (pending structs), per client. */
+function waitingClocks(document: Y.Doc) {
+  const pending = document.store.pendingStructs;
+  // Yjs keeps them in its second update format.
+  return pending ? Y.parseUpdateMetaV2(pending.update) : null;
+}
+
+/**
+ * Whether a deletion names only items the document holds. Yjs would keep the rest as pending
+ * deletions, which are stored with the board but measured by nothing.
+ */
+function deletesKnownItems(document: Y.Doc, update: Uint8Array): boolean {
+  let deleted: ReturnType<typeof Y.decodeUpdate>['ds'];
+  let waiting: ReturnType<typeof waitingClocks>;
+  try {
+    deleted = Y.decodeUpdate(update).ds;
+    waiting = waitingClocks(document);
+  } catch {
+    return false;
+  }
+  const have = Y.decodeStateVector(Y.encodeStateVector(document));
+  for (const [client, ranges] of deleted.clients) {
+    const end = Math.max(have.get(client) ?? 0, waiting?.to.get(client) ?? 0);
+    if (ranges.some((range) => range.clock + range.len > end)) return false;
+  }
+  return true;
+}
+
+/** A board's encoded size: measured (`exact`), or that plus what was applied since. */
+export interface BoardSize {
+  bytes: number;
+  exact: boolean;
+}
+
+const grow = (sizes: WeakMap<Y.Doc, BoardSize>, document: Y.Doc, bytes: number) => {
+  const size = sizes.get(document);
+  if (size) sizes.set(document, { bytes: size.bytes + bytes, exact: false });
+};
+
+/** The board's size, measured for real only when the bound leaves no room for `extra` bytes. */
+function sizeFor(sizes: WeakMap<Y.Doc, BoardSize>, document: Y.Doc, extra: number, cap: number) {
+  let size = sizes.get(document);
+  if (!size || (!size.exact && size.bytes + extra > cap)) {
+    size = { bytes: Y.encodeStateAsUpdate(document).byteLength, exact: true };
+    sizes.set(document, size);
+  }
+  return size.bytes;
+}
+
+/**
+ * At most how many cards the board holds once the update is applied, read without applying it:
+ * the keys it sets on `elements` that are not live there (or whose live card it deletes), plus
+ * one for each item whose place cannot be told from the board and the update; live cards it
+ * deletes count off. Edits inside existing cards add nothing. Items Yjs holds back count too,
+ * as the update may be what they wait for.
+ */
+function cardsAfter(document: Y.Doc, update: Uint8Array): number {
+  const elements = document.getMap('elements');
+  const { store } = document;
+  let sent: ReturnType<typeof Y.decodeUpdate>;
+  let waiting: ReturnType<typeof Y.decodeUpdate>['structs'] = [];
+  try {
+    sent = Y.decodeUpdate(update);
+    if (store.pendingStructs) waiting = Y.decodeUpdateV2(store.pendingStructs.update).structs;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+  const items = [...sent.structs, ...waiting].filter(
+    (s): s is Y.Item =>
+      s instanceof Y.Item && s.id.clock + s.length > Y.getState(store, s.id.client),
+  );
+  const byClient = new Map<number, Y.Item[]>();
+  for (const item of items) {
+    const list = byClient.get(item.id.client);
+    if (list) list.push(item);
+    else byClient.set(item.id.client, [item]);
+  }
+  for (const list of byClient.values()) list.sort((a, b) => a.id.clock - b.id.clock);
+  const find = (id: Y.ID) => {
+    if (id.clock < Y.getState(store, id.client)) return Y.getItem(store, id);
+    const list = byClient.get(id.client);
+    try {
+      return list?.[Y.findIndexSS(list, id.clock)];
+    } catch {
+      return undefined;
+    }
+  };
+  // The key an item sets on `elements`; null: somewhere else; undefined: cannot tell.
+  const placed = new Map<Y.Item, string | null | undefined>();
+  const keyOf = (item: Y.Item, depth: number): string | null | undefined => {
+    if (placed.has(item)) return placed.get(item);
+    // Decoded items name a root type by its name, or the item of their parent type.
+    const parent = item.parent as Y.AbstractType<unknown> | Y.ID | string | null;
+    let key: string | null | undefined;
+    if (parent instanceof Y.AbstractType) key = parent === elements ? item.parentSub : null;
+    else if (typeof parent === 'string') key = parent === 'elements' ? item.parentSub : null;
+    else if (parent) key = null;
+    else {
+      // Yjs takes the parent from the item it follows, else from the one it precedes.
+      const next = item.origin ?? item.rightOrigin;
+      const neighbour = next && depth < 100 ? find(next) : undefined;
+      key = neighbour instanceof Y.Item ? keyOf(neighbour, depth + 1) : undefined;
+    }
+    placed.set(item, key);
+    return key;
+  };
+  const deleted = new Set<string>();
+  if (sent.ds.clients.size > 0)
+    for (const [key, item] of elements._map)
+      if (!item.deleted && Y.isDeleted(sent.ds, item.id)) deleted.add(key);
+  const added = new Set<string>();
+  let unknown = 0;
+  for (const item of items) {
+    const key = keyOf(item, 0);
+    if (key === undefined) unknown++;
+    else if (key !== null && (!elements.has(key) || deleted.has(key))) added.add(key);
+  }
+  return elements.size - deleted.size + added.size + unknown;
+}
+
+/**
+ * Admits an update to a board under limits, without applying it to a copy. Deletions of items
+ * the board holds always pass, including on boards saved before limits existed. An addition is
+ * refused when the board's size plus the update's, or the cards counted by `cardsAfter`, pass
+ * a cap: an update that would fit only thanks to what it also deletes is refused, and its
+ * deletions then pass on their own (the web client sends them again after a refusal).
+ *
+ * `sizes` keeps each board's encoded size: measured for real only when the bound says an
+ * addition may not fit, then reused until something else is applied, so refused additions cost
+ * no further encoding. Updates are counted here rather than on change, as one Yjs holds back
+ * until the items it follows arrive changes nothing yet but is stored with the board. Yjs may
+ * split an item an update edits inside, a few bytes the bound misses until the next measure.
+ */
+export function admitBoardUpdate(
+  document: Y.Doc,
+  update: Uint8Array,
+  limits: CollabLimits,
+  sizes: WeakMap<Y.Doc, BoardSize>,
+): boolean {
+  if (addsItems(document, update)) {
+    const bytes = sizeFor(sizes, document, update.byteLength, limits.stateBytes);
+    if (bytes + update.byteLength > limits.stateBytes) return false;
+    if (cardsAfter(document, update) > limits.elements) return false;
+  } else if (!deletesKnownItems(document, update)) return false;
+  grow(sizes, document, update.byteLength);
+  return true;
+}
 
 /** A board document written for a board row that no longer exists. */
 function boardGone(err: unknown): boolean {
@@ -136,6 +314,53 @@ function boardGone(err: unknown): boolean {
     if (code === '23503' && constraint_name === 'board_doc_board_id_board_id_fk') return true;
   }
   return false;
+}
+
+/**
+ * Stores the boards a shutdown kept on disk (#795), merged into what the database has, before any
+ * board opens. A file that cannot be stored stays for the next start.
+ */
+export async function replayUnsavedBoards(db: Database, dir: string, log: Logger) {
+  const names = await readdir(dir).catch((err: NodeJS.ErrnoException) => {
+    if (err.code !== 'ENOENT') log.error({ err, dir }, 'boards kept on disk not readable');
+    return [];
+  });
+  for (const name of names) {
+    // `<boardId>.yupdate`, or `<boardId>.<time>.yupdate` when the first one was unreadable.
+    const boardId = name.endsWith(UNSAVED_SUFFIX) ? name.split('.')[0] : null;
+    if (!boardId || parseBoardDocName(boardDocName(boardId)) !== boardId) continue;
+    const file = join(dir, name);
+    try {
+      const kept = await readFile(file);
+      await db.transaction(async (tx) => {
+        const [row] = await tx
+          .select({ state: boardDoc.state })
+          .from(boardDoc)
+          .where(eq(boardDoc.boardId, boardId))
+          .for('update');
+        const document = new Y.Doc();
+        if (row) Y.applyUpdate(document, row.state);
+        Y.applyUpdate(document, kept);
+        const state = Y.encodeStateAsUpdate(document);
+        const schemaVersion = getSchemaVersion(document);
+        await tx
+          .insert(boardDoc)
+          .values({ boardId, state, schemaVersion, size: state.byteLength })
+          .onConflictDoUpdate({
+            target: boardDoc.boardId,
+            set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
+          });
+      });
+      await rm(file, { force: true });
+      log.info({ boardId }, 'board kept on disk at the last shutdown: stored');
+    } catch (err) {
+      if (boardGone(err)) {
+        await rm(file, { force: true });
+        log.info({ boardId }, 'board kept on disk at the last shutdown was deleted: dropped');
+      } else
+        log.error({ err, boardId, file }, 'board kept on disk not stored: retried at next start');
+    }
+  }
 }
 
 export function createCollabServer(deps: {
@@ -147,13 +372,41 @@ export function createCollabServer(deps: {
   recheckMs?: number;
   /** Clock for automatic versions; tests move it forward. */
   now?: () => Date;
-  /** The demo's caps (DEMO_COLLAB_LIMITS); none elsewhere, where boards can grow large. */
+  /** Board caps; the demo additionally freezes all edits. */
   limits?: CollabLimits;
+  /**
+   * Where a board still not stored at shutdown is written, for replayUnsavedBoards at the next
+   * start (unsavedBoardsDir). Without it those edits are only logged as lost.
+   */
+  unsavedDir?: string;
   /** Oldest client schema that may write (decision 0102); tests lower it. */
   minWriterSchema?: number;
+  /** Where a board that cannot be saved or opened goes for the Server page (#514). */
+  monitor?: { store: MonitorStore; role: 'collab' | 'all' };
 }) {
   const { db, auth, log, limits } = deps;
   const minWriterSchema = deps.minWriterSchema ?? MIN_WRITER_SCHEMA;
+  const reportBoard = (
+    kind: 'board_save_failed' | 'board_load_failed',
+    boardId: string,
+    err: unknown,
+  ) => {
+    log.error(
+      { err, boardId },
+      kind === 'board_save_failed' ? 'board not stored' : 'board not loaded',
+    );
+    if (deps.monitor)
+      recordProblem(
+        deps.monitor.store,
+        boardProblem(
+          kind,
+          deps.monitor.role,
+          boardId,
+          err instanceof Error ? err : new Error(String(err)),
+        ),
+        log,
+      );
+  };
   /**
    * The oldest client schema that may write a document (decision 0102): the minimum for clients
    * that declare the strict card check, the current schema for the others. A document a newer
@@ -175,10 +428,20 @@ export function createCollabServer(deps: {
   /** Boards past a cap: nobody writes to them and they are not saved (decision 0084). */
   const frozen = new WeakSet<Y.Doc>();
   /**
-   * Bytes of a capped board: stored state plus what clients sent since, measured for real
-   * only past the cap, as encoding a whole board on every keystroke would cost too much.
+   * Bytes of a capped board: measured, plus what was applied since, measured for real again
+   * only near the cap, as encoding a whole board on every keystroke would cost too much.
    */
-  const grown = new WeakMap<Y.Doc, number>();
+  const grown = new WeakMap<Y.Doc, BoardSize>();
+  /**
+   * Whether the server may add a card to a board (clips, the share sheet) under the caps.
+   * shortcut: the card itself is not measured, so it may take the board past the byte cap by
+   * its own size (a few KB of text at most); measure it if server-side cards grow larger.
+   */
+  const hasRoom = (document: Y.Doc) =>
+    !limits ||
+    (!frozen.has(document) &&
+      document.getMap('elements').size < limits.elements &&
+      sizeFor(grown, document, 1, limits.stateBytes) < limits.stateBytes);
   const freeze = (document: Document, boardId: string | undefined) => {
     if (!frozen.has(document)) log.warn({ boardId }, 'board over the demo caps: read-only');
     frozen.add(document);
@@ -307,6 +570,73 @@ export function createCollabServer(deps: {
   };
   let timer: NodeJS.Timeout | undefined;
 
+  type StorePayload = Parameters<Server['hocuspocus']['storeDocumentHooks']>[1];
+  /**
+   * Boards whose last store failed (#795). Hocuspocus keeps such a document in memory but never
+   * stores it again unless it changes, and unloads it when the last person leaves: retry with
+   * backoff, and refuse to unload it until a store succeeds.
+   */
+  const unsaved = new Map<
+    Y.Doc,
+    { attempt: number; payload: StorePayload; timer?: NodeJS.Timeout }
+  >();
+  let closing = false;
+  const stored = (document: Y.Doc) => {
+    clearTimeout(unsaved.get(document)?.timer);
+    unsaved.delete(document);
+  };
+  const retryStore = (payload: StorePayload) => {
+    const { document, documentName } = payload;
+    const entry = unsaved.get(document) ?? { attempt: 0, payload };
+    unsaved.set(document, entry);
+    entry.attempt += 1;
+    entry.payload = payload;
+    clearTimeout(entry.timer);
+    const delay = Math.min(STORE_RETRY_MAX_MS, STORE_RETRY_FIRST_MS * 2 ** (entry.attempt - 1));
+    entry.timer = setTimeout(() => {
+      entry.timer = undefined;
+      if (server.hocuspocus.documents.get(documentName) !== document) return stored(document);
+      void server.hocuspocus.storeDocumentHooks(document, payload, true);
+    }, delay);
+    entry.timer.unref();
+    return delay;
+  };
+  /** At shutdown, after one last failed store: keep the board on disk for the next start. */
+  async function spill(boardId: string, document: Y.Doc) {
+    if (!deps.unsavedDir) {
+      log.error({ boardId }, 'board not stored at shutdown: its latest edits are lost');
+      return;
+    }
+    const file = join(deps.unsavedDir, `${boardId}${UNSAVED_SUFFIX}`);
+    try {
+      await mkdir(deps.unsavedDir, { recursive: true });
+      const update = Y.encodeStateAsUpdate(document);
+      // A file left by an earlier shutdown that could not be replayed yet: keep both.
+      let target = file;
+      let before: Uint8Array | null = null;
+      try {
+        before = await readFile(file);
+      } catch (err) {
+        // An unreadable earlier file is left as it is: these edits go to a file of their own.
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
+          target = join(deps.unsavedDir, `${boardId}.${Date.now()}${UNSAVED_SUFFIX}`);
+      }
+      const partial = `${target}.${randomUUID()}.partial`;
+      try {
+        await writeFile(partial, before ? Y.mergeUpdates([before, update]) : update);
+        await rename(partial, target);
+      } finally {
+        await rm(partial, { force: true });
+      }
+      log.warn(
+        { boardId, file: target },
+        'board not stored at shutdown: kept on disk for the next start',
+      );
+    } catch (err) {
+      log.error({ err, boardId }, 'board not stored at shutdown: its latest edits are lost');
+    }
+  }
+
   const server: Server<Context> = new Server<Context>({
     name: 'inkadra-collab',
     quiet: true,
@@ -423,22 +753,52 @@ export function createCollabServer(deps: {
         if (owner === socketId && key.startsWith(`${documentName}#`)) owners.delete(key);
     },
 
+    async beforeUnloadDocument({ document }) {
+      // Throwing keeps the document in memory: the retry timer stores it, then it unloads.
+      if (unsaved.has(document)) throw new Error('Board not stored yet: kept in memory');
+    },
+
     async onLoadDocument({ document, documentName }) {
       const boardId = parseBoardDocName(documentName);
       if (!boardId) throw new Error('Unknown document');
-      const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
-      if (row) Y.applyUpdate(document, row.state);
-      if (limits) grown.set(document, row?.state.byteLength ?? 0);
-      const steps = migrateBoardDoc(document, boardId);
-      if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
-      prepareImageDrawings(document);
-      assignments.set(document, assignedItems(document));
-      openedAt.set(document, Date.now());
-      return document;
+      try {
+        const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
+        if (row) Y.applyUpdate(document, row.state);
+        // Elsewhere the first addition measures it, after the migrations below.
+        if (limits?.freeze) {
+          grown.set(document, { bytes: row?.state.byteLength ?? 0, exact: false });
+        }
+        const steps = migrateBoardDoc(document, boardId);
+        if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
+        prepareImageDrawings(document);
+        assignments.set(document, assignedItems(document));
+        openedAt.set(document, Date.now());
+        return document;
+      } catch (err) {
+        reportBoard('board_load_failed', boardId, err);
+        throw err;
+      }
     },
 
     async beforeSync({ connection, document, context, type, payload }) {
       if (type !== 1 && type !== 2) return;
+      // A refused update only makes this message read-only. Re-evaluate on the next one,
+      // so deletions can still be applied without changing the person's editing role.
+      if (!limits?.freeze)
+        connection.readOnly =
+          !context.canEdit || context.supportedSchemaVersion < requiredSchema(context, document);
+      if (
+        !connection.readOnly &&
+        limits &&
+        !limits.freeze &&
+        !admitBoardUpdate(document, payload, limits, grown)
+      ) {
+        connection.readOnly = true;
+        connection.sendStateless(
+          JSON.stringify({ type: 'writeRefused', reason: 'frozen' } satisfies WriteRefusedMessage),
+        );
+        return;
+      }
       // Hocuspocus answers a read-only connection without applying what it sent. When it sent
       // changes, say why, so a client can tell "update the app" from the rest (decision 0102).
       if (connection.readOnly) {
@@ -470,13 +830,17 @@ export function createCollabServer(deps: {
           to = Y.parseUpdateMeta(update).to.get(document.clientID);
         } catch {}
         if (to !== undefined) noteWriter(writersOf(document), document.clientID, null, to - 1);
+        // Admission counted what clients sent; the server's own writes count here. Restoring
+        // an older version may take a board past the caps: it stays usable (decision 0130).
+        if (limits && !limits.freeze) grow(grown, document, update.byteLength);
       }
       // Checked on every change a client makes, so a board never grows far past the caps in
       // memory before the next store; the store measures it again.
-      if (limits && from && !frozen.has(document)) {
-        let bytes = (grown.get(document) ?? 0) + update.byteLength;
-        if (bytes > limits.stateBytes) bytes = Y.encodeStateAsUpdate(document).byteLength;
-        grown.set(document, bytes);
+      if (limits?.freeze && from && !frozen.has(document)) {
+        let bytes = (grown.get(document)?.bytes ?? 0) + update.byteLength;
+        const exact = bytes > limits.stateBytes;
+        if (exact) bytes = Y.encodeStateAsUpdate(document).byteLength;
+        grown.set(document, { bytes, exact });
         if (bytes > limits.stateBytes || document.getMap('elements').size > limits.elements)
           freeze(document, context?.boardId);
       }
@@ -510,35 +874,54 @@ export function createCollabServer(deps: {
       }
     },
 
-    async onStoreDocument({ document, documentName }) {
+    async onStoreDocument(payload) {
+      const { document, documentName } = payload;
       const boardId = parseBoardDocName(documentName);
       if (!boardId) return;
       const issues = validateBoardDoc(document);
       if (issues.length > 0) log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
-      if (frozen.has(document)) return;
+      if (frozen.has(document)) return stored(document);
       const pending = new Map(pendingAssignments.get(document));
       const state = Y.encodeStateAsUpdate(document);
-      if (limits && state.byteLength > limits.stateBytes) {
+      if (limits?.freeze && state.byteLength > limits.stateBytes) {
         freeze(document, boardId);
-        return;
+        return stored(document);
       }
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
       const elementCount = document.getMap('elements').size;
       try {
-        await db
-          .insert(boardDoc)
-          .values({ boardId, state, schemaVersion, size: state.byteLength })
-          .onConflictDoUpdate({
-            target: boardDoc.boardId,
-            set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
-          });
+        const write = db.transaction(async (tx) => {
+          // A database that stopped answering fails the store (retried) instead of holding it.
+          await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
+          await tx
+            .insert(boardDoc)
+            .values({ boardId, state, schemaVersion, size: state.byteLength })
+            .onConflictDoUpdate({
+              target: boardDoc.boardId,
+              set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
+            });
+        });
+        await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
       } catch (err) {
         // The board was deleted for good (its project, or emptied from the trash) while open:
         // there is nothing to keep it for. Returning lets Hocuspocus unload the document.
-        if (!boardGone(err)) throw err;
-        log.info({ boardId }, 'board deleted while open: document not stored');
-        return;
+        if (boardGone(err)) {
+          log.info({ boardId }, 'board deleted while open: document not stored');
+          return stored(document);
+        }
+        // The structured line and the Server page problem.
+        reportBoard('board_save_failed', boardId, err);
+        if (closing) {
+          stored(document);
+          log.error({ err, boardId }, 'board not stored at shutdown');
+          // Returning lets the shutdown finish instead of waiting for a store that cannot happen.
+          return spill(boardId, document);
+        }
+        const retryInMs = retryStore(payload);
+        log.error({ err, boardId, retryInMs }, 'board not stored: retrying');
+        throw err;
       }
+      stored(document);
       // Best effort (decision 0120): a failure loses who wrote, never the document.
       const written = writers.get(document);
       writers.delete(document);
@@ -596,6 +979,31 @@ export function createCollabServer(deps: {
   // map may unload.
   // shortcut: replaces a Hocuspocus method, drop it once upstream compares the document.
   const { hocuspocus } = server;
+  const destroy = server.destroy.bind(server);
+  /** One last store for each board still not stored, then spill what fails, then close. */
+  server.destroy = async () => {
+    closing = true;
+    for (const [document, { timer, payload }] of unsaved) {
+      clearTimeout(timer);
+      if (hocuspocus.documents.get(payload.documentName) === document)
+        void hocuspocus.storeDocumentHooks(payload.document, payload, true);
+      else stored(document);
+    }
+    // A store stuck on a database that stopped answering holds its board's save lock, so the
+    // shutdown would wait for SIGKILL: past the grace time every board still open goes to disk
+    // (a board stored meanwhile is merged twice at the next start, which changes nothing).
+    const closed = destroy();
+    try {
+      await within(closed, SHUTDOWN_STORE_MS + 1000);
+    } catch {
+      await Promise.all(
+        [...hocuspocus.documents].map(([name, document]) => {
+          const boardId = parseBoardDocName(name);
+          return boardId ? spill(boardId, document) : undefined;
+        }),
+      );
+    }
+  };
   const shouldUnload = hocuspocus.shouldUnloadDocument.bind(hocuspocus);
   hocuspocus.shouldUnloadDocument = (document) =>
     hocuspocus.documents.get(document.name) === document && shouldUnload(document);
@@ -618,7 +1026,7 @@ export function createCollabServer(deps: {
     return out;
   }
 
-  return Object.assign(server, { recheck: () => recheck(server), presence });
+  return Object.assign(server, { recheck: () => recheck(server), presence, hasRoom });
 }
 
 export type CollabServer = ReturnType<typeof createCollabServer>;

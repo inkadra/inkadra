@@ -28,6 +28,7 @@
     "passwordHint": "Almeno 10 caratteri",
     "createAdmin": "Crea account e accedi",
     "signOut": "Esci",
+    "signOutFailed": "Impossibile uscire. Controlla la connessione e riprova.",
     "errors": {
       "reauthRequired": "Accedi di nuovo per continuare.",
       "invalid": "Email o password non corrette.",
@@ -218,6 +219,10 @@
     "title": "Qualcosa non ha funzionato",
     "body": "La pagina ha smesso di funzionare. Le modifiche già sincronizzate sono salve; ricarica per riconnetterti.",
     "retry": "Riprova",
+    "unreachableTitle": "Il server non risponde",
+    "unreachableBody": "Inkadra riprova da solo. Controlla la connessione, o attendi un momento se il server si sta riavviando.",
+    "updateTitle": "Inkadra è stato aggiornato",
+    "updateBody": "Ricarica la pagina per aprire la nuova versione.",
     "copy": "Copia dettagli",
     "copied": "Dettagli copiati",
     "id": "ID errore {{id}}",
@@ -1912,7 +1917,9 @@
         "right": "Destra"
       },
       "drawFailed": "Impossibile salvare il tratto. Riprova; se il problema continua, ricarica la board.",
-      "updateApp": "Questa board richiede una versione più recente. Aggiorna l’app per modificarla; puoi continuare a leggerla."
+      "updateApp": "Questa board richiede una versione più recente. Aggiorna l’app per modificarla; puoi continuare a leggerla.",
+      "sizeLimit": "La board ha raggiunto il limite di dimensione. Le aggiunte non sono state salvate; la board è stata ricaricata. Puoi eliminare contenuti per liberare spazio.",
+      "sizeLimitReadOnly": "Questa board ha raggiunto il limite di dimensione ed è in sola lettura. Le aggiunte non sono state salvate."
     },
     "sheet": {
       "edit": "Modifica",
@@ -5302,6 +5309,10 @@
           "4": {
             "title": "Le viste della board",
             "text": "Dal menu ⋯ accendi la moodboard di questa board. Una vista spenta tiene i suoi dati."
+          },
+          "5": {
+            "title": "Limiti della board",
+            "text": "Se la board raggiunge il limite di dimensione, le aggiunte vengono rifiutate e si ricarica la board confermata. Elimina contenuti per liberare spazio; se non basta, chiedi all’amministratore di alzare il limite."
           }
         }
       },
@@ -6080,6 +6091,14 @@
         "server_error": {
           "title": "Il server ha dato un errore",
           "text": "Una richiesta non è andata a buon fine. Se si ripete, inviala agli sviluppatori."
+        },
+        "board_save_failed": {
+          "title": "Una board non è stata salvata",
+          "text": "Le ultime modifiche restano solo in memoria. Controlla il database: riavviare prima che torni le fa perdere."
+        },
+        "board_load_failed": {
+          "title": "Una board non si è aperta",
+          "text": "Al momento nessuno può aprirla. Controlla il database e il log del server."
         },
         "config_check": {
           "title": "Configurazione da sistemare",

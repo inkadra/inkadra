@@ -6,7 +6,7 @@ import {
   readBoardNotice,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
@@ -31,6 +31,7 @@ export interface BoardConnection {
   status: ConnectionStatus;
   readOnly: boolean;
   schemaTooNew?: boolean;
+  sizeLimited?: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
@@ -150,6 +151,13 @@ export async function refusalStatus(): Promise<ConnectionStatus> {
 // shortcut: memory only, so a closed or reloaded tab loses them; `setUnsaved` warns before
 // that. Upgrade to a persistent copy (IndexedDB) to survive it (#791).
 const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean; unsaved: boolean }>();
+/**
+ * Deletions made in a document that was reopened after a refusal, to make again once the
+ * reopened one has synced: a deletion is what still passes on a board at its size limit.
+ * shortcut: other edits sent with or just after the refused update are not carried over; it
+ * would need telling them apart from the refused additions.
+ */
+const refusedDeletions = new Map<string, Uint8Array>();
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
@@ -157,9 +165,16 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
   const userId = user?.id ?? '';
   const [conn, setConn] = useState<BoardConnection | null>(null);
 
+  const [reload, setReload] = useState(0);
+  const [limitedBoard, setLimitedBoard] = useState<string | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: A refusal must reopen the document even though its board id is unchanged.
   useEffect(() => {
+    let refused = false;
     const cacheKey = `${userId}:${boardId}`;
     const cached = cachedBoards.get(cacheKey);
+    let deletions = refusedDeletions.get(cacheKey);
+    refusedDeletions.delete(cacheKey);
     const doc = new Y.Doc();
     if (cached) Y.applyUpdate(doc, cached.update);
     const store = new BoardStore(doc);
@@ -186,7 +201,16 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       url: collabUrl(),
       name: boardDocName(boardId),
       document: doc,
-      onSynced: () => update({ status: 'synced' }),
+      onSynced: () => {
+        if (deletions) {
+          Y.applyUpdate(doc, deletions);
+          // Deletions of the refused additions name items the server never got: drop them,
+          // rather than keep them waiting and send them with the next sync.
+          doc.store.pendingDs = null;
+          deletions = undefined;
+        }
+        update({ status: 'synced' });
+      },
       onDisconnect: () => {
         if (state.status !== 'denied' && state.status !== 'signedOut')
           update({ status: 'offline' });
@@ -194,6 +218,15 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       // The server says when the role changes between editing and reading (decision 0011).
       onStateless: ({ payload }) => {
         const msg = readBoardNotice(payload);
+        if (msg?.type === 'writeRefused' && msg.reason === 'frozen') {
+          setLimitedBoard(boardId);
+          // A rejected Yjs struct leaves a clock gap. Reopen from confirmed state before
+          // sending further edits; never cache the unaccepted additions.
+          if (!roleReadOnly && !refused) {
+            refused = true;
+            setReload((value) => value + 1);
+          }
+        }
         if (msg?.type === 'access') update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
       },
       onClose: ({ event }) => {
@@ -235,8 +268,11 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     update({});
     return () => {
       alive = false;
+      // Only the deletions: an update from the document's own state vector holds no items.
+      if (refused)
+        refusedDeletions.set(cacheKey, Y.encodeStateAsUpdate(doc, Y.encodeStateVector(doc)));
       // Signed out keeps the edits: the same person signing in again in this tab gets them back.
-      if (state.status === 'denied') cachedBoards.delete(cacheKey);
+      if (refused || state.status === 'denied') cachedBoards.delete(cacheKey);
       else
         cachedBoards.set(cacheKey, {
           update: Y.encodeStateAsUpdate(doc),
@@ -252,7 +288,9 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       doc.destroy();
       setConn(null);
     };
-  }, [boardId, trackBusy, userId]);
+  }, [boardId, trackBusy, userId, reload]);
 
-  return conn;
+  const sizeLimited = limitedBoard === boardId;
+  // The same object until something changes: the board page's effects depend on it.
+  return useMemo(() => (conn ? { ...conn, sizeLimited } : null), [conn, sizeLimited]);
 }

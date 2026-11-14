@@ -12,10 +12,19 @@ import { and, asc, count, eq, inArray, like, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
-import { project, projectMember, projectTransfer, shootingDay, user } from './db/schema.ts';
+import {
+  instanceSetting,
+  project,
+  projectMember,
+  projectTransfer,
+  shootingDay,
+  user,
+} from './db/schema.ts';
+import { recordDeletions } from './file-deletions.ts';
 import { HttpError } from './http/errors.ts';
 import { projectFiles } from './http/projects-routes.ts';
 import type { Jobs } from './jobs.ts';
+import { removeFilesLater } from './queues.ts';
 import { safeFetch } from './safe-fetch.ts';
 import type { Storage } from './storage.ts';
 import { importProject } from './transfers/import.ts';
@@ -204,6 +213,11 @@ export async function readSandbox(
 
 /** Exports a sandbox made, failed ones aside. */
 export async function exportsOf(db: Pick<Database, 'select'>, userId: string) {
+  const [used] = await db
+    .select()
+    .from(instanceSetting)
+    .where(eq(instanceSetting.key, `demo-export:${userId}`));
+  if (used) return 1;
   const [row] = await db
     .select({ n: count() })
     .from(projectTransfer)
@@ -221,7 +235,10 @@ export async function exportsOf(db: Pick<Database, 'select'>, userId: string) {
  * Removes a sandbox: its projects with their files, its export archives, then the account,
  * whose sessions, memberships and notifications cascade. Only sandbox accounts are touched.
  */
-export async function endSandbox(deps: Pick<DemoDeps, 'db' | 'jobs' | 'config'>, userId: string) {
+export async function endSandbox(
+  deps: Pick<DemoDeps, 'db' | 'jobs' | 'config' | 'storage' | 'log'>,
+  userId: string,
+) {
   const { db } = deps;
   // An export under way stops at its next step, as when it is cancelled, and removes its own
   // archive (runTransfer): it finds its row gone below, whatever process runs it.
@@ -251,18 +268,22 @@ export async function endSandbox(deps: Pick<DemoDeps, 'db' | 'jobs' | 'config'>,
     const ids = own.map((p) => p.id);
     const files = await projectFiles(tx, ids);
     if (ids.length > 0) await tx.delete(project).where(inArray(project.id, ids));
+    await tx.delete(instanceSetting).where(eq(instanceSetting.key, `demo-export:${userId}`));
     await tx.delete(user).where(eq(user.id, userId));
+    await recordDeletions(tx, files);
     return files;
   });
   // Files after the rows, as for any project: a failure leaves orphan files, never rows.
-  if (keys.length > 0) await deps.jobs.deleteFiles(keys);
+  await removeFilesLater(deps, keys, deps.log);
   await Promise.all(
     archives.map((a) => rm(transferFile(deps.config.DATA_DIR, a.id), { force: true })),
   );
 }
 
 /** Removes every sandbox past DEMO_TTL; at start and then every minute. */
-export async function sweepSandboxes(deps: Pick<DemoDeps, 'db' | 'jobs' | 'config' | 'log'>) {
+export async function sweepSandboxes(
+  deps: Pick<DemoDeps, 'db' | 'jobs' | 'config' | 'storage' | 'log'>,
+) {
   const expired = await deps.db
     .select({ id: user.id })
     .from(user)
@@ -277,7 +298,9 @@ export async function sweepSandboxes(deps: Pick<DemoDeps, 'db' | 'jobs' | 'confi
   return expired.length;
 }
 
-export function startSandboxSweep(deps: Pick<DemoDeps, 'db' | 'jobs' | 'config' | 'log'>) {
+export function startSandboxSweep(
+  deps: Pick<DemoDeps, 'db' | 'jobs' | 'config' | 'storage' | 'log'>,
+) {
   const run = () =>
     sweepSandboxes(deps)
       .then((n) => n > 0 && deps.log?.info({ removed: n }, 'expired demo sandboxes removed'))

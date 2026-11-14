@@ -139,9 +139,7 @@ describe('the demo configuration (decision 0084)', () => {
       /script-src 'self' https:\/\/challenges\.cloudflare\.com/,
     );
     expect(headers['content-security-policy-report-only']).toBeUndefined();
-    expect(securityHeaders(loadConfig(base))['content-security-policy-report-only']).not.toMatch(
-      /cloudflare/,
-    );
+    expect(securityHeaders(loadConfig(base))['content-security-policy']).not.toMatch(/cloudflare/);
   });
 });
 
@@ -313,7 +311,12 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
   // Errors are kept: a sandbox ending under an export must not log a failed transfer.
   const errors: string[] = [];
   const log = pino({ level: 'error' }, { write: (line: string) => void errors.push(line) });
-  const limits = { maxPayload: 2 * 1024 * 1024, elements: 40, stateBytes: 256 * 1024 };
+  const limits = {
+    freeze: true,
+    maxPayload: 2 * 1024 * 1024,
+    elements: 40,
+    stateBytes: 256 * 1024,
+  };
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 6);
   const deps = testDeps(db, log);
   // Export archives where the in-process jobs write them, so endSandbox finds them.
@@ -830,6 +833,7 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
         timeout: 15_000,
       })
       .toBe('ready');
+    expect((await call(a.cookie, 'DELETE', `/api/v1/transfers/${id}`)).status).toBe(204);
     const second = await call(a.cookie, 'POST', `/api/v1/projects/${a.projectId}/exports`, {});
     expect(second.status).toBe(429);
     expect(second.json().error.details).toEqual({ reason: 'demo_export' });
@@ -870,7 +874,9 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       .update(user)
       .set({ createdAt: new Date(Date.now() - 2 * 3_600_000) })
       .where(eq(user.id, a.id));
-    expect(await sweepSandboxes({ db, jobs: deps.jobs, config, log })).toBe(1);
+    expect(await sweepSandboxes({ db, jobs: deps.jobs, storage: deps.storage, config, log })).toBe(
+      1,
+    );
     expect(await db.select().from(user).where(eq(user.id, a.id))).toHaveLength(0);
     expect(await db.select().from(project).where(inArray(project.id, own))).toHaveLength(0);
     expect(await db.select().from(session).where(eq(session.userId, a.id))).toHaveLength(0);
@@ -895,7 +901,9 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       role: 'member',
       createdAt: new Date(0),
     });
-    expect(await sweepSandboxes({ db, jobs: deps.jobs, config, log })).toBe(0);
+    expect(await sweepSandboxes({ db, jobs: deps.jobs, storage: deps.storage, config, log })).toBe(
+      0,
+    );
     expect(await db.select().from(user).where(eq(user.email, 'operator@example.com'))).toHaveLength(
       1,
     );

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
@@ -127,12 +128,20 @@ export function localStorage(root: string): Storage {
     async write(key, body) {
       const target = path(key);
       await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, body);
+      // Keys are cached forever: a crash mid-write must never leave a truncated file at the key.
+      // Each write has its own partial file, so two writes of one key never mix.
+      const partial = `${target}.${randomUUID()}.partial`;
+      try {
+        await writeFile(partial, body);
+        await rename(partial, target);
+      } finally {
+        await rm(partial, { force: true });
+      }
     },
     async writeStream(key, body) {
       const target = path(key);
       await mkdir(dirname(target), { recursive: true });
-      const partial = `${target}.partial`;
+      const partial = `${target}.${randomUUID()}.partial`;
       try {
         await pipeline(body, createWriteStream(partial));
         await rename(partial, target);
@@ -268,7 +277,26 @@ function s3Storage(config: Config): Storage {
     },
     async remove(keys) {
       for (const key of keys) checkKey(key);
-      const all = keys.flatMap((k) => (k.startsWith('originals/') ? [k, `${k}.info`] : [k]));
+      // An unfinished upload is an open multipart upload whose id only its `.info` holds: tus
+      // aborts it before the `.info` goes, or its parts stay billed in the bucket (#802). When
+      // the abort fails, remove throws: the `.info` stays with the id and the record is retried.
+      const all: string[] = [];
+      const originals: string[] = [];
+      for (const key of keys) {
+        all.push(key);
+        if (key.startsWith('originals/')) originals.push(key);
+      }
+      let next = 0;
+      const worker = async () => {
+        while (next < originals.length) {
+          const key = originals[next++] as string;
+          all.push(`${key}.part`);
+          if (await abortUpload(uploads, key)) all.push(`${key}.info`);
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(ABORT_CONCURRENCY, originals.length) }, worker),
+      );
       for (let i = 0; i < all.length; i += 1000) {
         await client.send(
           new DeleteObjectsCommand({
@@ -279,6 +307,23 @@ function s3Storage(config: Config): Storage {
       }
     },
   };
+}
+
+const ABORT_CONCURRENCY = 16;
+
+/**
+ * Aborts the multipart upload of an original and removes its `.info`, if any. Not found (no
+ * `.info`, an upload that finished) leaves nothing to abort. Any other error is thrown, so the
+ * caller keeps the `.info` and the deletion record and the job or sweep retries (remove is
+ * idempotent).
+ */
+export async function abortUpload(uploads: Pick<DataStore, 'remove'>, key: string) {
+  try {
+    await uploads.remove(key);
+  } catch (err) {
+    if ((err as { status_code?: number } | null)?.status_code !== 404) throw err;
+  }
+  return true;
 }
 
 /** The stream in pieces of `size` bytes (the last one shorter). */

@@ -77,7 +77,7 @@ interface Picture {
 
 export function createPlanSheets(deps: Deps) {
   const { db, storage } = deps;
-  const sheets = new RateLimiter(SHEETS_PER_MINUTE, 60_000);
+  const sheets = new RateLimiter(SHEETS_PER_MINUTE, 60_000, 'plan-sheet-routes:sheets');
   let running = 0;
 
   /**
@@ -152,7 +152,7 @@ export function createPlanSheets(deps: Deps) {
         { reason: 'busy' },
         BUSY_RETRY_SECONDS,
       );
-    sheets.require(sheet.who, 'Too many sheets: wait a minute.');
+    await sheets.require(sheet.who, 'Too many sheets: wait a minute.');
     running += 1;
     const signal = AbortSignal.timeout(RENDER_TIMEOUT_MS);
     try {

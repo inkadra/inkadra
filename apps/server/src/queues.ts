@@ -28,6 +28,7 @@ import { pruneWriters } from './board-writers.ts';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
 import { asset, clientAsset, creationRequest } from './db/schema.ts';
+import { removeFiles, sweepDeletions } from './file-deletions.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { recipesOf } from './media/ladder.ts';
@@ -128,7 +129,24 @@ export function createRedis(url: string) {
   return new IORedis(url, { maxRetriesPerRequest: null, lazyConnect: true });
 }
 
-export function createQueues(url: string, opts: { prefix?: string } = {}) {
+/**
+ * BullMQ re-emits every connection error of its Redis client, and prints the raw error when
+ * nothing listens. While Valkey is down that is a stack trace per queue per attempt: log one
+ * line a minute instead, with the code only (the driver error may carry the connection string).
+ */
+export function queueErrors(log: Pick<Logger, 'warn'>) {
+  let last = Number.NEGATIVE_INFINITY;
+  return (queue: string) => (err: Error & { code?: string }) => {
+    if (Date.now() - last < 60_000) return;
+    last = Date.now();
+    log.warn({ queue, code: err.code }, 'queue connection error');
+  };
+}
+
+export function createQueues(
+  url: string,
+  opts: { prefix?: string; log?: Pick<Logger, 'warn'> } = {},
+) {
   const connection = createRedis(url);
   const media = new Queue(QUEUES.media, { connection, prefix: opts.prefix });
   const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
@@ -136,6 +154,18 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
   const proxies = new Queue(QUEUES.proxies, { connection, prefix: opts.prefix });
   const office = new Queue(QUEUES.office, { connection, prefix: opts.prefix });
   const email = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
+  if (opts.log) {
+    const onError = queueErrors(opts.log);
+    for (const [name, q] of Object.entries({
+      media,
+      maintenance,
+      transfers,
+      proxies,
+      office,
+      email,
+    }))
+      q.on('error', onError(name));
+  }
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
@@ -320,6 +350,9 @@ export async function requeueStuckProxies(db: Database, jobs: Jobs) {
   return requeued;
 }
 
+/** How often a worker registers the recurring jobs again (#798). */
+const SCHEDULER_REFRESH_MS = 5 * 60 * 1000;
+
 /** The nightly backup at the time of the settings, in the server's time zone. */
 async function scheduleBackups(queue: Queue, settings: BackupSettings) {
   if (!settings.enabled) {
@@ -375,7 +408,8 @@ export async function startWorkers(
   opts: { prefix?: string } = {},
 ) {
   const connection = createRedis(url);
-  const queues = createQueues(url, opts);
+  const queues = createQueues(url, { ...opts, log });
+  const onError = queueErrors(log);
   const backupDeps: BackupDeps | undefined = deps.transfers && {
     db: deps.db,
     storage: deps.storage,
@@ -392,7 +426,7 @@ export async function startWorkers(
       if (job.name === 'ping') return { pong: Date.now() };
       if (job.name === 'delete-files') {
         const { keys } = job.data as JobPayloads['maintenance:delete-files'];
-        await deps.storage.remove(keys);
+        await removeFiles(deps.db, deps.storage, keys);
         return { removed: keys.length };
       }
       if (job.name === 'video-benchmark') {
@@ -409,6 +443,7 @@ export async function startWorkers(
         return {
           ...(await purgeUploads(deps.db, deps.storage, queues.jobs)),
           proxies: await requeueStuckProxies(deps.db, queues.jobs),
+          deletions: await sweepDeletions(deps.db, deps.storage, log),
         };
       if (job.name === 'version-retention') {
         const versions = await applyVersionRetention(deps.db);
@@ -532,37 +567,9 @@ export async function startWorkers(
   );
 
   const scheduler = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
-  await scheduler.upsertJobScheduler(
-    'purge-uploads',
-    { every: 60 * 60 * 1000 },
-    { name: 'purge-uploads', data: {}, opts: KEEP },
-  );
-  await scheduler.upsertJobScheduler(
-    'version-retention',
-    { every: 60 * 60 * 1000 },
-    { name: 'version-retention', data: {}, opts: KEEP },
-  );
-  await scheduler.upsertJobScheduler(
-    'purge-notifications',
-    { every: 24 * 60 * 60 * 1000 },
-    { name: 'purge-notifications', data: {}, opts: KEEP },
-  );
-  // Decision 0080: new releases on GitHub; the job does nothing while the check is off.
-  await scheduler.upsertJobScheduler(
-    'update-check',
-    { every: RETRY_MS },
-    { name: 'update-check', data: {}, opts: KEEP },
-  );
-  await scheduler.upsertJobScheduler(
-    'access-expiry',
-    { every: 60 * 1000 },
-    {
-      name: 'access-expiry',
-      data: {},
-      opts: { ...KEEP, removeOnComplete: { age: 600, count: 100 } },
-    },
-  );
+  scheduler.on('error', onError('scheduler'));
   const mailScheduler = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
+  mailScheduler.on('error', onError('mail-scheduler'));
   if (deps.mailer?.enabled)
     await enqueueReleaseNews(deps.db, VERSION, deps.mailer, async (version) => {
       const jobId = `release-news-${version}`;
@@ -580,22 +587,70 @@ export async function startWorkers(
       );
     });
   const QUIET = { removeOnComplete: { age: 600, count: 100 }, removeOnFail: { age: 86400 } };
-  await mailScheduler.upsertJobScheduler(
-    'notifications',
-    { every: 60 * 1000 },
-    { name: 'notifications', data: {}, opts: QUIET },
+  // Schedulers live in Valkey only: registered again every few minutes, so a flushed, evicted or
+  // replaced Valkey gets them back without a restart (#798). Upserting the same one is a no-op.
+  const registerSchedulers = async () => {
+    await scheduler.upsertJobScheduler(
+      'purge-uploads',
+      { every: 60 * 60 * 1000 },
+      { name: 'purge-uploads', data: {}, opts: KEEP },
+    );
+    await scheduler.upsertJobScheduler(
+      'version-retention',
+      { every: 60 * 60 * 1000 },
+      { name: 'version-retention', data: {}, opts: KEEP },
+    );
+    await scheduler.upsertJobScheduler(
+      'purge-notifications',
+      { every: 24 * 60 * 60 * 1000 },
+      { name: 'purge-notifications', data: {}, opts: KEEP },
+    );
+    // Decision 0080: new releases on GitHub; the job does nothing while the check is off.
+    await scheduler.upsertJobScheduler(
+      'update-check',
+      { every: RETRY_MS },
+      { name: 'update-check', data: {}, opts: KEEP },
+    );
+    await scheduler.upsertJobScheduler(
+      'access-expiry',
+      { every: 60 * 1000 },
+      {
+        name: 'access-expiry',
+        data: {},
+        opts: { ...KEEP, removeOnComplete: { age: 600, count: 100 } },
+      },
+    );
+    await mailScheduler.upsertJobScheduler(
+      'notifications',
+      { every: 60 * 1000 },
+      { name: 'notifications', data: {}, opts: QUIET },
+    );
+    await mailScheduler.upsertJobScheduler(
+      'digest',
+      { every: 60 * 60 * 1000 },
+      { name: 'digest', data: {}, opts: QUIET },
+    );
+    await scheduler.upsertJobScheduler(
+      'anonymise-guests',
+      { every: 60 * 60 * 1000 },
+      { name: 'anonymise-guests', data: {}, opts: KEEP },
+    );
+    if (deps.transfers) {
+      await scheduler.upsertJobScheduler(
+        'transfer-sweep',
+        { every: 60 * 60 * 1000 },
+        { name: 'transfer-sweep', data: {}, opts: KEEP },
+      );
+      await scheduleBackups(scheduler, await readBackupSettings(deps.db));
+    }
+  };
+  await registerSchedulers();
+  const reregister = setInterval(
+    () =>
+      void registerSchedulers().catch((err) => log.warn({ err }, 'job schedulers not registered')),
+    SCHEDULER_REFRESH_MS,
   );
-  await mailScheduler.upsertJobScheduler(
-    'digest',
-    { every: 60 * 60 * 1000 },
-    { name: 'digest', data: {}, opts: QUIET },
-  );
-
-  await scheduler.upsertJobScheduler(
-    'anonymise-guests',
-    { every: 60 * 60 * 1000 },
-    { name: 'anonymise-guests', data: {}, opts: KEEP },
-  );
+  reregister.unref();
 
   // Exports and imports read and write whole projects: one at a time.
   const transfers = new Worker(
@@ -612,19 +667,14 @@ export async function startWorkers(
     { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
   );
   if (deps.transfers) {
-    await scheduler.upsertJobScheduler(
-      'transfer-sweep',
-      { every: 60 * 60 * 1000 },
-      { name: 'transfer-sweep', data: {}, opts: KEEP },
-    );
     // Backups run only in workers: one left running by a worker that died is over.
     const reaped = await reapStaleBackups(deps.db, STARTUP_STALE_MS);
     if (reaped) log.warn({ reaped }, 'backups left running by a stopped worker marked interrupted');
-    await scheduleBackups(scheduler, await readBackupSettings(deps.db));
   }
 
   const monitor = deps.monitor;
   for (const w of [maintenance, media, proxies, email, transfers, ...(office ? [office] : [])]) {
+    w.on('error', onError(w.name));
     w.on('failed', (job, err) => {
       log.error({ queue: w.name, job: job?.id, err }, 'job failed');
       // Only once it gave up: a retry that works is not a problem.
@@ -655,6 +705,7 @@ export async function startWorkers(
   }
   return {
     async close() {
+      clearInterval(reregister);
       await Promise.all([
         maintenance.close(),
         media.close(),
@@ -697,6 +748,28 @@ const unknownIfStalled = (err: unknown) =>
  * never fails an add: it waits for the connection to come back.
  */
 export const ENQUEUE_TIMEOUT_MS = 2_000;
+
+/**
+ * Removes the files of rows a request just deleted, never failing it nor waiting long (#758):
+ * queued when the queue answers in time, otherwise removed here in the background. The rows' transaction
+ * recorded the keys (`recordDeletions`), so what fails here is removed by the hourly sweep.
+ */
+export async function removeFilesLater(
+  deps: { db: Pick<Database, 'delete'>; jobs: Pick<Jobs, 'deleteFiles'>; storage: Storage },
+  keys: string[],
+  log?: Pick<Logger, 'warn' | 'error'>,
+) {
+  if (keys.length === 0) return;
+  try {
+    await within(deps.jobs.deleteFiles(keys), ENQUEUE_TIMEOUT_MS, 'The job queue did not answer.');
+  } catch (err) {
+    log?.warn({ err, files: keys.length }, 'Files not queued for removal: removing them now');
+    // Not awaited: S3 removal checks each upload, and the keys are recorded for the sweep anyway.
+    void removeFiles(deps.db, deps.storage, keys).catch((e) =>
+      log?.error({ err: e, files: keys.length }, 'Files not removed: the sweep will retry'),
+    );
+  }
+}
 
 /** `promise`, or a rejection with `message` after `ms`. The work itself is not stopped. */
 export function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
@@ -925,7 +998,7 @@ export function inlineJobs(
         if (opts?.regenerate && generation !== cancelled) return;
         return runProxy({ ...deps, log }, assetId, undefined, opts).then(
           (result) => {
-            if (!('skipped' in result)) event('video_ready', started);
+            if (!('skipped' in result)) void event('video_ready', started);
           },
           async (err) => {
             await markProxyFailed(deps.db, assetId);
@@ -934,7 +1007,7 @@ export function inlineJobs(
               jobProblem('web', QUEUES.proxies, { name: 'make', data: { assetId } }, err),
               log,
             );
-            event('video_failed', started);
+            void event('video_failed', started);
             throw err;
           },
         );
@@ -959,7 +1032,7 @@ export function inlineJobs(
       cancelled += 1;
     },
     async deleteFiles(keys) {
-      track(deps.storage.remove(keys));
+      track(removeFiles(deps.db, deps.storage, keys));
     },
     ...(transfers
       ? {
