@@ -136,7 +136,8 @@ import {
   saveBoardGrid,
   saveTidyGap,
 } from './canvas-prefs.ts';
-import { Card, NOTE_COLORS } from './cards.tsx';
+import { ARROW_DIRECTIONS, firstCard, nextCard } from './card-focus.ts';
+import { Card, cardLabel, NOTE_COLORS } from './cards.tsx';
 import {
   type ArrangeCommand,
   BarButton,
@@ -527,6 +528,9 @@ export function Canvas({
     setViewportState(value);
   }, []);
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
+  /** The card with the keyboard focus (#825), and what the live region last said. */
+  const [cardFocus, setCardFocus] = useState<string | null>(null);
+  const [spoken, setSpoken] = useState('');
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [appearance, setAppearance] = useState<string | null>(null);
@@ -2603,6 +2607,32 @@ export function Canvas({
       e.preventDefault();
       return;
     }
+    // A card with the keyboard focus (#825): the arrows walk the cards until one is selected,
+    // Enter or Space selects it, Escape with nothing selected hands the keyboard to the canvas.
+    const focused =
+      e.target instanceof HTMLElement &&
+      e.target.matches('.card--free[data-el]') &&
+      snap.byId.get(e.target.dataset.el ?? '');
+    if (e.type === 'keydown' && focused && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const direction = ARROW_DIRECTIONS[e.key];
+      if ((e.key === ' ' || e.key === 'Enter') && !selection.has(focused.id)) {
+        select([focused.id]);
+        setSpoken(t('board.a11y.selected', { card: cardLabel(focused, (key) => t(key)) }));
+        e.preventDefault();
+        return;
+      }
+      if (direction && !selection.has(focused.id)) {
+        const next = nextCard(focusBoxes(), focused.id, direction);
+        if (next) focusCardEl(next);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'Escape' && selection.size === 0 && !editing) {
+        rootRef.current?.focus({ preventScroll: true });
+        e.preventDefault();
+        return;
+      }
+    }
     // After the note branches: a space typed before the new note has focus is text, not a pan.
     if (e.key === ' ' && canSpacePan(e.target)) {
       spaceDown.current = e.type === 'keydown';
@@ -3726,7 +3756,20 @@ export function Canvas({
     return el ? store.rectOf(el) : null;
   };
 
+  // Roving focus (#825): Tab reaches one card, the focused, the selected or the first one.
+  const focusBoxes = () =>
+    visible.filter((el) => el.parent === null).map((el) => ({ id: el.id, ...store.rectOf(el) }));
+  const focusCardEl = (id: string) =>
+    rootRef.current
+      ?.querySelector<HTMLElement>(`.card--free[data-el="${CSS.escape(id)}"]`)
+      ?.focus({ preventScroll: true });
+  const tabStop =
+    (cardFocus && visible.some((el) => el.id === cardFocus) && cardFocus) ||
+    (selection.size === 1 && visible.find((el) => selection.has(el.id))?.id) ||
+    firstCard(focusBoxes());
+
   const drawsOutline = (el: Element) =>
+    el.id === cardFocus ||
     selection.has(el.id) ||
     !!overlay.moving?.has(el.id) ||
     (isContainer(el) && !!snap.columns.get(el.id)?.some((c) => selection.has(c.id)));
@@ -3769,7 +3812,16 @@ export function Canvas({
         data-testid="canvas"
         aria-label={t('board.canvas')}
         role="application"
+        onFocus={(e) => {
+          const id = (e.target as HTMLElement).matches('.card--free[data-el]')
+            ? (e.target as HTMLElement).dataset.el
+            : undefined;
+          if (id) setCardFocus(id);
+        }}
       >
+        <span className="ink-sr-only" aria-live="polite">
+          {spoken}
+        </span>
         {dots && <Dots viewport={viewport} />}
         {bounded && size.w > 0 && (
           <AreaEdges
@@ -3806,6 +3858,7 @@ export function Canvas({
               selection={isContainer(el) ? selection : undefined}
               draggingIds={isContainer(el) ? draggingNested : undefined}
               zoom={drawsOutline(el) ? viewport.zoom : undefined}
+              tabStop={el.id === tabStop}
             />
           ))}
           {!readOnly &&

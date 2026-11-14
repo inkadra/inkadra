@@ -15,6 +15,7 @@ import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { setBusy, setUnsaved } from '../pwa/busy.ts';
+import { refetchAsset } from './assets.ts';
 import { BoardStore } from './store.ts';
 
 /**
@@ -287,6 +288,7 @@ export function useBoardConnection(
             setReload((value) => value + 1);
           }
         }
+        if (msg?.type === 'asset') refetchAsset(msg.assetId);
         if (msg?.type === 'access') update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
       },
       onClose: ({ event }) => {

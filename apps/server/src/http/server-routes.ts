@@ -1,3 +1,4 @@
+import { monitorEventLoopDelay } from 'node:perf_hooks';
 import {
   API_PREFIX,
   type DiagnosticCheck,
@@ -8,7 +9,9 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth.ts';
 import { saveServerAlerts } from '../monitor/alerts.ts';
+import { collectMetrics, renderMetrics } from '../monitor/metrics.ts';
 import { retryProblem, type ServerDeps, serverLive, serverStatus } from '../monitor/status.ts';
+import { safeEqual } from '../secrets.ts';
 import type { Storage } from '../storage.ts';
 import { requireSession } from './auth-routes.ts';
 import { runChecks } from './diagnostics.ts';
@@ -30,6 +33,19 @@ export function registerServerRoutes(
     return actor;
   };
   let checks: { at: number; list: DiagnosticCheck[] } | null = null;
+
+  // Prometheus (#817): only with METRICS_TOKEN set, and only for that bearer token.
+  const metricsToken = deps.config.METRICS_TOKEN;
+  const loop = metricsToken ? monitorEventLoopDelay() : undefined;
+  loop?.enable();
+  app.get('/metrics', { logLevel: 'warn' }, async (req, reply) => {
+    if (!metricsToken) throw new HttpError('not_found', 'Not found.');
+    if (!safeEqual(req.headers.authorization ?? '', `Bearer ${metricsToken}`))
+      throw new HttpError('unauthorized', 'A valid metrics token is required.');
+    return reply
+      .type('text/plain; version=0.0.4; charset=utf-8')
+      .send(renderMetrics(await collectMetrics(deps, loop)));
+  });
 
   app.get(`${API_PREFIX}/instance/server`, async (req) => {
     const actor = await admin(req);

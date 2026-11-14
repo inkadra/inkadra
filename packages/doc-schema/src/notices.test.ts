@@ -19,6 +19,10 @@ describe('board notices', () => {
       type: 'versions',
       versionId: threadId,
     });
+    expect(readBoardNotice(JSON.stringify({ type: 'asset', assetId: threadId }))).toEqual({
+      type: 'asset',
+      assetId: threadId,
+    });
     expect(readBoardNotice('{"type":"writeRefused","reason":"schema","schemaVersion":22}')).toEqual(
       { type: 'writeRefused', reason: 'schema', schemaVersion: 22 },
     );
@@ -29,5 +33,6 @@ describe('board notices', () => {
     expect(readBoardNotice('{"type":"fireworks"}')).toBeNull();
     expect(readBoardNotice('{"type":"restored","versionId":"nope"}')).toBeNull();
     expect(readBoardNotice('{"type":"versions"}')).toBeNull();
+    expect(readBoardNotice('{"type":"asset","assetId":"nope"}')).toBeNull();
   });
 });

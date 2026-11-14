@@ -325,6 +325,9 @@
       "organize": "Organisieren und planen"
     },
     "canvas": "Board-Canvas",
+    "a11y": {
+      "selected": "Ausgewählt: {{card}}"
+    },
     "toolbar": "Hinzufügen",
     "contextBar": "Aktionen für die Auswahl",
     "minimap": "Minimap: zum Springen klicken",
@@ -3498,10 +3501,10 @@
       "declined": "Kann nicht",
       "waiting": "Ausstehend"
     },
-    "ready": "Ready to shoot",
-    "pause": "Break",
+    "ready": "Drehbereit",
+    "pause": "Pause",
     "cameraWrap": "Camera wrap",
-    "crewWrap": "Crew wrap",
+    "crewWrap": "Drehschluss Team",
     "times": "Key times",
     "place": "Place",
     "locationNumber": "Loc. {{n}}",

@@ -325,6 +325,9 @@
       "organize": "Organiser et planifier"
     },
     "canvas": "Canevas du tableau",
+    "a11y": {
+      "selected": "Sélection : {{card}}"
+    },
     "toolbar": "Ajouter",
     "contextBar": "Actions sur la sélection",
     "minimap": "Mini-carte : cliquez pour vous déplacer",
@@ -3498,10 +3501,10 @@
       "declined": "Ne peut pas",
       "waiting": "En attente"
     },
-    "ready": "Ready to shoot",
-    "pause": "Break",
+    "ready": "Prêts à tourner",
+    "pause": "Pause",
     "cameraWrap": "Camera wrap",
-    "crewWrap": "Crew wrap",
+    "crewWrap": "Fin équipe",
     "times": "Key times",
     "place": "Place",
     "locationNumber": "Loc. {{n}}",

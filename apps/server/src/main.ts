@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdir, rename } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
@@ -69,6 +69,8 @@ const COMMANDS = [
 type Command = (typeof COMMANDS)[number];
 
 const here = dirname(fileURLToPath(import.meta.url));
+/** Kept in step with scripts/healthcheck.mjs. */
+const WORKER_HEARTBEAT = '/tmp/inkadra-worker-heartbeat';
 // In the image the bundle sits in dist/ next to drizzle/; in development main.ts is in src/.
 const migrationsFolder = process.env.MIGRATIONS_DIR ?? join(here, '..', 'drizzle');
 
@@ -244,9 +246,18 @@ async function main() {
   if (monitorConnection) closers.push(async () => monitorConnection.disconnect());
   const latency = command === 'web' || command === 'all' ? new LatencyRecorder() : undefined;
 
+  // Boards told when a regeneration remakes their videos' copies (#787): through the collab
+  // queue from a worker of its own, straight to the collaboration server below with `all`.
+  let workerNotices: BoardNotifier | undefined;
+  if (command === 'worker' && config.REDIS_URL) {
+    const queued = queuedBoardNotifier(config.REDIS_URL, log);
+    workerNotices = queued.notifier;
+    closers.unshift(() => queued.close());
+  }
   if (command === 'worker' || command === 'all') {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
     const workers = await startWorkers(config.REDIS_URL, log, {
+      notices: { notify: (boardId, notice) => workerNotices?.notify(boardId, notice) },
       ...media,
       proxyConcurrency:
         config.VIDEO_PROXY_CONCURRENCY ?? (encoder && encoder.backend !== 'software' ? 2 : 1),
@@ -286,6 +297,7 @@ async function main() {
     // Before any board opens: what the last shutdown could not store (#795).
     await replayUnsavedBoards(db, unsavedBoardsDir(config.DATA_DIR), log);
     const server = collab;
+    if (command === 'all') workerNotices = directBoardNotifier(server);
     // With the web role the HTTP server carries the WebSockets: both close together (below).
     if (command === 'collab') closers.unshift(() => server.destroy());
     const backfill = startIndexBackfill(db, log);
@@ -347,7 +359,7 @@ async function main() {
       versions = directVersionWriter(collab, db, log, config.DEMO_MODE ? limits : undefined);
       notices = directBoardNotifier(collab);
     } else if (config.REDIS_URL) {
-      const queued = queuedBoardWriter(config.REDIS_URL);
+      const queued = queuedBoardWriter(config.REDIS_URL, { log });
       boards = queued.writer;
       boardReader = queued.reader;
       versions = queued.versions;
@@ -465,6 +477,15 @@ async function main() {
     ...(collab ? { presence: collab.presence } : {}),
   });
   closers.unshift(async () => sampler.stop());
+  if (command === 'worker') {
+    // Read by the container health check (scripts/healthcheck.mjs, #816): a worker whose event
+    // loop hangs stops writing it, though its process is still alive. Never on the shared /data.
+    const beat = () => void writeFile(WORKER_HEARTBEAT, String(Date.now())).catch(() => {});
+    beat();
+    const heartbeat = setInterval(beat, 10_000);
+    heartbeat.unref();
+    closers.unshift(async () => clearInterval(heartbeat));
+  }
 
   const shutdown = async (signal: string) => {
     log.info({ signal }, 'shutting down');

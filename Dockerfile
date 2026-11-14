@@ -1,24 +1,34 @@
 # syntax=docker/dockerfile:1.7
 # One image, several roles: `inkadra all` (default), `web`, `collab`, `worker`, `migrate`.
 
-ARG NODE_VERSION=26.13
+# Pinned by digest so a commit always builds from the same base (#840); Dependabot moves the tag
+# and the digest together every week. The runtime stage still installs Debian's security updates
+# published since (`apt-get upgrade`): the image scan fails on fixed high-severity CVEs.
+FROM node:26.13-trixie-slim@sha256:e6bedef217677b276c591795e169840edd9096dbf13f29df8ef8d1856b8820bc AS node-base
 
-FROM node:${NODE_VERSION}-trixie-slim AS base
+FROM node-base AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
 # Node 26 no longer ships corepack; keep this version in sync with packageManager in package.json.
 RUN npm install -g pnpm@12.17.0
 WORKDIR /src
 
-FROM base AS build
+# Dependencies first, from the lockfile alone (#843): a source change reuses this layer, so only
+# a lockfile change downloads packages again. The store stays in the layer (no cache mount), so the
+# build cache of CI carries it too.
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .pnpmfile.cjs ./
+COPY patches ./patches
+RUN pnpm fetch
+
+FROM deps AS build
 COPY . .
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --offline
 RUN pnpm turbo run build --filter=@inkadra/server --filter=@inkadra/web
 # The server writes the set plan's sheet with the patched fontkit (decisions 0038, 0122): every
 # patch in patches/ must apply here, so an unused one fails the build.
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm --filter @inkadra/server deploy --prod --legacy /out
+RUN pnpm --filter @inkadra/server deploy --prod --legacy /out
 
-FROM node:${NODE_VERSION}-trixie-slim AS runtime
+FROM node-base AS runtime
 ARG VERSION=0.0.0-dev
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="Inkadra" \

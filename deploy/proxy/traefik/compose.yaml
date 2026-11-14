@@ -8,8 +8,12 @@
 
 services:
   traefik:
-    image: traefik:v3.7
+    image: traefik:v3.7@sha256:b7b1b31e6440de0b1f7c4e0f6cf0a0f3f004866761d30c025fe00c80daaf7d9c
     restart: unless-stopped
+    # Rotated like the services of compose.yaml (#837).
+    logging:
+      driver: json-file
+      options: { max-size: "${LOG_MAX_SIZE:-20m}", max-file: "${LOG_MAX_FILES:-5}" }
     command:
       # The routes are fixed, so they come from the files below: Traefik gets no access to
       # the Docker socket, which would let it control every container on the host.

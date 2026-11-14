@@ -325,6 +325,9 @@
       "organize": "Organizar e planejar"
     },
     "canvas": "Canvas do quadro",
+    "a11y": {
+      "selected": "Seleção: {{card}}"
+    },
     "toolbar": "Adicionar",
     "contextBar": "Ações da seleção",
     "minimap": "Minimapa: clique para ir até lá",
@@ -2233,8 +2236,8 @@
       "textPlaceholder": "Digite e pressione Enter",
       "fullShapes": "Formas demais: apague algumas.",
       "view": "Visualização",
-      "onion": "Onion skin",
-      "onionOf": "Onion skin · {{label}}",
+      "onion": "Papel cebola",
+      "onionOf": "Papel cebola · {{label}}",
       "guides": "Guias",
       "layers": "Camadas",
       "layerDrawing": "Desenho",
@@ -3498,10 +3501,10 @@
       "declined": "Não pode",
       "waiting": "Em espera"
     },
-    "ready": "Ready to shoot",
-    "pause": "Break",
+    "ready": "Prontos para gravar",
+    "pause": "Pausa",
     "cameraWrap": "Camera wrap",
-    "crewWrap": "Crew wrap",
+    "crewWrap": "Fim da equipe",
     "times": "Key times",
     "place": "Place",
     "locationNumber": "Loc. {{n}}",

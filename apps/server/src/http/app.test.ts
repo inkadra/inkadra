@@ -66,6 +66,17 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     expect((await app.inject('/api/v1/instance/version')).statusCode).toBe(401);
   });
 
+  it('answers liveness and readiness apart, with request ids (#816, #817)', async () => {
+    expect((await app.inject('/livez')).json()).toEqual({ status: 'ok' });
+    const ready = await app.inject({ url: '/readyz', headers: { 'x-request-id': 'proxy-1' } });
+    expect(ready.statusCode).toBe(200);
+    expect(ready.json().checks.database).toBe('ok');
+    expect(ready.headers['x-request-id']).toBe('proxy-1');
+    const fresh = (await app.inject('/livez')).headers['x-request-id'];
+    expect(fresh).toMatch(/^[0-9a-f-]{36}$/);
+    expect((await app.inject('/metrics')).statusCode).toBe(404);
+  });
+
   it('asks for setup until the first account exists', async () => {
     expect((await app.inject('/api/v1/instance')).json()).toMatchObject({
       setupRequired: true,
@@ -112,6 +123,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'board-restore-marker',
         'board-restore-history',
         'token-proof',
+        'asset-notices',
         'board-writers',
         'plan-sheet-pdf',
         'transfer-cancel',

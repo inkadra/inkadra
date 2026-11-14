@@ -226,6 +226,11 @@ GPL is compatible with distributing Inkadra under the AGPL-3.0, and the server o
 The office variant is the standard image plus LibreOffice, for the worker role only, when you
 enable [Office document previews](office.md).
 
+Every role runs the same image, media tools included, although only `worker` and `all` use them
+(the `web` role reads which tools the image has). A slimmer image for `web` and `collab`, without
+them, is not published yet. Base images are pinned by digest and moved weekly, and the build
+installs Debian's security updates of the day.
+
 ### Roles
 
 The image's command selects the role. Each role has its own health check.

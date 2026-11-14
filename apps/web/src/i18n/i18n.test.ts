@@ -25,6 +25,8 @@ const flat = (messages: object) =>
 
 /** Not text: the kinds of element that take a feminine word, empty where no word changes. */
 const MAY_BE_EMPTY = ['board.added.feminine'];
+/** Phrases that read the same in every language: industry search words and the licence line. */
+const SAME_AS_ENGLISH = ['board.plan.synonyms.array', 'app.footer'];
 
 describe.each(LOCALES.filter((locale) => locale !== 'it'))('the %s catalogue', (locale) => {
   const reference = flat(itMessages);
@@ -45,6 +47,21 @@ describe.each(LOCALES.filter((locale) => locale !== 'it'))('the %s catalogue', (
       (key) => tokens(messages[key]).join() !== tokens(reference[key]).join(),
     );
     expect(differ).toEqual([]);
+  });
+
+  it.skipIf(locale === 'en')('translates every phrase instead of copying the English one', () => {
+    // Single words and patterns may match English (Storyboard, Zoom, {{a}} → {{b}});
+    // three or more words equal to English are an English placeholder left behind.
+    const english = flat(en);
+    const words = (text = '') =>
+      text.replace(/\{\{[^}]+\}\}|\$t\([^)]*\)/g, '').match(/\p{L}{2,}/gu)?.length ?? 0;
+    const copied = Object.keys(reference).filter(
+      (key) =>
+        messages[key] === english[key] &&
+        words(english[key]) >= 3 &&
+        !SAME_AS_ENGLISH.includes(key),
+    );
+    expect(copied).toEqual([]);
   });
 
   it('leaves no text empty', () => {
