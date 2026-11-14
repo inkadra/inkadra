@@ -325,6 +325,9 @@
       "organize": "Organizar y planificar"
     },
     "canvas": "Lienzo del tablero",
+    "a11y": {
+      "selected": "Selección: {{card}}"
+    },
     "toolbar": "Añadir",
     "contextBar": "Acciones de la selección",
     "minimap": "Minimapa: haz clic para ir allí",
@@ -6594,11 +6597,11 @@
     "mbPerMinuteAbout": "unos {{size}} MB/min",
     "about": "unos",
     "rungs": {
+      "title": "Resoluciones",
       "480": "480p",
       "720": "720p",
       "1080": "1080p",
       "2160": "2160p (4K)",
-      "title": "Resoluciones",
       "480Help": "Para conexiones lentas y datos del móvil.",
       "720Help": "HD: la calidad de las tarjetas en el board.",
       "1080Help": "Full HD, a pantalla completa.",

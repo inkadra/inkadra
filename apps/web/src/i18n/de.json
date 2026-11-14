@@ -325,6 +325,9 @@
       "organize": "Organisieren und planen"
     },
     "canvas": "Board-Canvas",
+    "a11y": {
+      "selected": "Ausgewählt: {{card}}"
+    },
     "toolbar": "Hinzufügen",
     "contextBar": "Aktionen für die Auswahl",
     "minimap": "Minimap: zum Springen klicken",
@@ -6594,11 +6597,11 @@
     "mbPerMinuteAbout": "etwa {{size}} MB/min",
     "about": "etwa",
     "rungs": {
+      "title": "Auflösungen",
       "480": "480p",
       "720": "720p",
       "1080": "1080p",
       "2160": "2160p (4K)",
-      "title": "Auflösungen",
       "480Help": "Für langsame Verbindungen und mobile Daten.",
       "720Help": "HD: die Qualität der Karten auf dem Board.",
       "1080Help": "Full HD, im Vollbild.",
