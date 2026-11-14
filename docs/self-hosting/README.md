@@ -65,6 +65,11 @@ second one, `.env`, in the same folder. Run every `docker compose` command from 
    For a server, use its HTTPS address, such as `https://inkadra.example.com`, without a path or
    a trailing slash.
 
+   For real work, also pin a version: put the number of the latest
+   [release](https://github.com/inkadra/inkadra/releases) in `INKADRA_TAG`, such as
+   `INKADRA_TAG=0.9.0`. Without it, the image is `latest`, and any `docker compose pull` (or an
+   automatic updater) moves you to a new version whose database migrations cannot be undone.
+
 4. **Start it.** The first start downloads the images. The `--wait`
    option returns when everything is ready.
 
