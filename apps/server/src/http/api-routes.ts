@@ -158,6 +158,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         CLASSIFICATION_DELETE_CAPABILITY,
         IDEMPOTENT_IMPORT_CAPABILITY,
         VIDEO_RENDITIONS_CAPABILITY,
+        // Optional `limit` and `cursor` on the member lists (#804).
+        'list-pages',
         UNAVAILABLE_ERRORS_CAPABILITY,
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).
         ...(deps.live && (await deps.live.settings()).live.enabled ? [VIDEO_LIVE_CAPABILITY] : []),

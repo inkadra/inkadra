@@ -30,7 +30,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { boardAccess } from '../access.ts';
+import { boardRolesForPeople } from '../access.ts';
 import type { Database } from '../db/client.ts';
 import { comment, commentReaction, shareGuest, user } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
@@ -188,12 +188,12 @@ async function namesFor(db: Database, ctx: GuestContext, boardId: string, rows: 
   const userNames = new Map(users.map((u) => [u.id, u.name]));
   // Mentions show only people who can still read the board; the others become `@…`.
   const mentionNames = new Map<string, string>();
-  for (const id of mentioned) {
-    const name = userNames.get(id);
-    if (!name) continue;
-    const access = await boardAccess(db, { id }, boardId);
-    if (access?.role) mentionNames.set(id, name);
-  }
+  const readers = await boardRolesForPeople(
+    db,
+    boardId,
+    [...mentioned].filter((id) => userNames.has(id)),
+  );
+  for (const id of readers.keys()) mentionNames.set(id, userNames.get(id) as string);
   return { userNames, guestNames: new Map(guests.map((g) => [g.id, g.name])), mentionNames };
 }
 

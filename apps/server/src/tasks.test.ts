@@ -1,6 +1,7 @@
 import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, it } from 'vitest';
+import { openTasks } from './board-preview.ts';
 import { tasksInDoc } from './tasks.ts';
 
 it('returns only open items assigned to this person with their card link and date', () => {
@@ -14,7 +15,12 @@ it('returns only open items assigned to this person with their card link and dat
     { ...place, elementId: todo.id, itemId: item, text: 'Permit', dueDate: '2026-11-14' },
   ]);
   expect(tasksInDoc(doc, 'someone-else', place)).toEqual([]);
+  // What the index stores for every assignee (#803).
+  expect(openTasks(doc)).toEqual([
+    { elementId: todo.id, itemId: item, text: 'Permit', assigneeId: id, dueDate: '2026-11-14' },
+  ]);
   updateTodoItem(doc, todo.id, item, { done: true });
   expect(tasksInDoc(doc, id, place)).toEqual([]);
+  expect(openTasks(doc)).toEqual([]);
   doc.destroy();
 });

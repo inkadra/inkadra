@@ -391,23 +391,37 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       const role = roles.get(r.id);
       return role && atLeast(role, CAPABILITY_ROLE.edit);
     });
+    // The tray stored at the last indexing (#803); only documents stored since are decoded,
+    // and boards whose stored tray is empty are not read at all.
+    const fresh = sql`(coalesce(${boardDoc.indexedAt} >= ${boardDoc.updatedAt}, false)
+      and ${boardDoc.unsorted} is not null)`;
     const docs = placeable.length
       ? await db
-          .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+          .select({
+            boardId: boardDoc.boardId,
+            unsorted: sql<{
+              count: number;
+              assetIds: string[];
+            } | null>`case when ${fresh} then ${boardDoc.unsorted} end`,
+            state: sql<Uint8Array | null>`case when ${fresh} then null else ${boardDoc.state} end`,
+          })
           .from(boardDoc)
           .where(
-            inArray(
-              boardDoc.boardId,
-              placeable.map((r) => r.id),
+            and(
+              inArray(
+                boardDoc.boardId,
+                placeable.map((r) => r.id),
+              ),
+              sql`(not ${fresh} or (${boardDoc.unsorted}->>'count')::int > 0)`,
             ),
           )
       : [];
-    const states = new Map(docs.map((d) => [d.boardId, d.state]));
+    const stored = new Map(docs.map((d) => [d.boardId, d]));
     const editable = placeable
       .flatMap((r) => {
-        const state = states.get(r.id);
-        if (!state) return [];
-        const unsorted = unsortedOf(state);
+        const doc = stored.get(r.id);
+        if (!doc) return [];
+        const unsorted = doc.unsorted ?? unsortedOf(doc.state ?? undefined);
         return unsorted.count > 0 ? [{ ...r, unsorted }] : [];
       })
       .sort((a, b) => b.unsorted.count - a.unsorted.count || a.id.localeCompare(b.id))
@@ -487,7 +501,9 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       const role = roles.get(r.board.id)?.role;
       return role ? [{ ...toBoard(r.board, role), editedAt: iso(new Date(r.editedAt)) }] : [];
     });
-    return { items };
+    // shortcut: roles follow the whole tree, so the list is never split; page it if projects
+    // grow past a few thousand boards (#804).
+    return { items, nextCursor: null };
   });
 
   app.get(v1('/projects/:projectId/board-counts'), async (req) => {

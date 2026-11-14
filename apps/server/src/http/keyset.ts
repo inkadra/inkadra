@@ -29,6 +29,25 @@ function validTimestamp(value: string): boolean {
   return Number.isFinite(Date.parse(normalized)) && Number(value.slice(11, 13)) < 24;
 }
 
+/** Cursor of a list ordered by a text key (position, name), then id. */
+export const encodeTextCursor = (key: string, id: string) =>
+  Buffer.from(JSON.stringify([key, id])).toString('base64url');
+
+export function decodeTextCursor(cursor: string): [string, string] {
+  try {
+    const value = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+    if (
+      Array.isArray(value) &&
+      value.length === 2 &&
+      typeof value[0] === 'string' &&
+      typeof value[1] === 'string' &&
+      UUID.test(value[1])
+    )
+      return value as [string, string];
+  } catch {}
+  throw new HttpError('bad_request', 'Invalid cursor.');
+}
+
 export function encodeCursor(k: Keyset): string {
   return Buffer.from(JSON.stringify([k.at, k.id])).toString('base64url');
 }

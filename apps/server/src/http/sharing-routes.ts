@@ -23,6 +23,7 @@ import {
   activeMember,
   atLeast,
   boardAccess,
+  boardChains,
   effectiveRole,
   higher,
   live,
@@ -384,14 +385,22 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       )
       .orderBy(asc(board.title));
     const granted = new Set(rows.map((r) => r.board.id));
+    // One query for every board, not one access check each (#760).
+    const chains = await boardChains(
+      db,
+      actor,
+      rows.map((r) => r.board.id),
+    );
     const items = [];
     for (const { board: row } of rows) {
-      const access = await boardAccess(db, actor, row.id);
+      const access = chains.get(row.id);
+      const role = access && effectiveRole(access.chain, access.grants, access.projectRole).role;
       // Only the top of each shared subtree, and nothing whose ancestor is in the trash.
-      if (!access?.role || access.chain.slice(1).some((c) => granted.has(c.id))) continue;
-      items.push(toBoard(row, access.role));
+      if (!access || !role || access.chain.slice(1).some((id) => granted.has(id))) continue;
+      items.push(toBoard(row, role));
     }
-    return { items };
+    // shortcut: the tops of shared subtrees need every grant, so the list is never split (#804).
+    return { items, nextCursor: null };
   });
 
   app.get(v1('/users/search'), async (req) => {

@@ -21,6 +21,13 @@ const Env = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   PUBLIC_URL: z.url().transform((u) => u.replace(/\/+$/, '')),
   DATABASE_URL: z.string().min(1),
+  /** Connections of the main pool of each process (#800); collab gets its own in `all`. */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(200).default(10),
+  DATABASE_COLLAB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(4),
+  /** Session limits of those pools in milliseconds; 0 turns one off. */
+  DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(0).default(60_000),
+  DATABASE_LOCK_TIMEOUT_MS: z.coerce.number().int().min(0).default(15_000),
+  DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS: z.coerce.number().int().min(0).default(60_000),
   REDIS_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
   AUTH_SECRET_PREVIOUS: z.preprocess(

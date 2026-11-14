@@ -6,6 +6,7 @@ import {
   defaultProjectIcon,
   Id,
   MAX_PROJECT_GROUPS,
+  ListPage,
   PageQuery,
   type Project,
   type ProjectGroup,
@@ -63,6 +64,14 @@ import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { renditionFiles } from './hls.ts';
 import { idempotentCreation } from './idempotency.ts';
+import {
+  afterCursor,
+  atText,
+  decodeCursor,
+  decodeTextCursor,
+  encodeTextCursor,
+  pageOf,
+} from './keyset.ts';
 
 interface Deps {
   config: Config;
@@ -122,19 +131,6 @@ async function ownGroup(db: Pick<Database, 'select'>, actor: Actor, groupId: str
   return row;
 }
 
-/** Opaque keyset cursor over (position, id). */
-const encodeCursor = (position: string, id: string) =>
-  Buffer.from(JSON.stringify([position, id])).toString('base64url');
-
-function decodeCursor(cursor: string): [string, string] {
-  try {
-    const value = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
-    if (Array.isArray(value) && value.length === 2 && value.every((v) => typeof v === 'string'))
-      return value as [string, string];
-  } catch {}
-  throw new HttpError('bad_request', 'Invalid cursor.');
-}
-
 async function loadProject(db: Database, actor: Actor, projectId: string) {
   const [row] = await db
     .select({ project, role: projectMember.role, rootBoardId: board.id })
@@ -160,19 +156,39 @@ async function loadProject(db: Database, actor: Actor, projectId: string) {
   return toProject(row.project, row.rootBoardId, row.role, !!pin, group ?? null);
 }
 
-async function listMembers(db: Database, projectId: string): Promise<ProjectMember[]> {
+/** The members of a project in the order they joined; a page of them with `limit` (#804). */
+async function listMembers(
+  db: Database,
+  projectId: string,
+  page: { limit?: number; cursor?: string } = {},
+): Promise<{ items: ProjectMember[]; nextCursor: string | null }> {
+  const after = page.cursor ? decodeCursor(page.cursor) : null;
   const rows = await db
-    .select({ member: projectMember, user })
+    .select({ member: projectMember, user, at: atText(projectMember.addedAt) })
     .from(projectMember)
     .innerJoin(user, eq(user.id, projectMember.userId))
-    .where(and(eq(projectMember.projectId, projectId), activeMember()))
-    .orderBy(asc(projectMember.addedAt));
-  return rows.map((r) => ({
-    user: { id: r.user.id, name: r.user.name, image: r.user.image },
-    role: r.member.role,
-    addedAt: iso(r.member.addedAt),
-    expiresAt: r.member.expiresAt ? iso(r.member.expiresAt) : null,
-  }));
+    .where(
+      and(
+        eq(projectMember.projectId, projectId),
+        activeMember(),
+        after ? afterCursor(projectMember.addedAt, projectMember.userId, after, 'asc') : undefined,
+      ),
+    )
+    .orderBy(asc(projectMember.addedAt), asc(projectMember.userId))
+    .limit(page.limit === undefined ? Number.MAX_SAFE_INTEGER : page.limit + 1);
+  const { rows: items, nextCursor } = pageOf(
+    rows.map((r) => ({ ...r, id: r.user.id })),
+    page.limit ?? rows.length,
+  );
+  return {
+    items: items.map((r) => ({
+      user: { id: r.user.id, name: r.user.name, image: r.user.image },
+      role: r.member.role,
+      addedAt: iso(r.member.addedAt),
+      expiresAt: r.member.expiresAt ? iso(r.member.expiresAt) : null,
+    })),
+    nextCursor,
+  };
 }
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -277,7 +293,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       .select()
       .from(projectGroupItem)
       .where(eq(projectGroupItem.userId, actor.id));
-    const after = query.cursor ? decodeCursor(query.cursor) : null;
+    const after = query.cursor ? decodeTextCursor(query.cursor) : null;
     const rows = await db
       .select({ project, role: projectMember.role, rootBoardId: board.id })
       .from(projectMember)
@@ -312,7 +328,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       ),
       nextCursor:
         rows.length > query.limit && last
-          ? encodeCursor(last.project.position, last.project.id)
+          ? encodeTextCursor(last.project.position, last.project.id)
           : null,
     };
   });
@@ -601,7 +617,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'viewer');
-    return { items: await listMembers(db, projectId) };
+    return listMembers(db, projectId, ListPage.parse(req.query ?? {}));
   });
 
   app.put(v1('/projects/:projectId/members/:userId'), async (req) => {
@@ -652,7 +668,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
           },
         });
     });
-    const member = (await listMembers(db, projectId)).find((m) => m.user.id === userId);
+    const member = (await listMembers(db, projectId)).items.find((m) => m.user.id === userId);
     if (!member) throw new Error('Member vanished after upsert');
     return member;
   });

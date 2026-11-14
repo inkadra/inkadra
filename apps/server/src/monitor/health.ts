@@ -4,7 +4,7 @@ import { readBackupSettings } from '../backup.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset, instanceBackup } from '../db/schema.ts';
-import { readLimits, usedBytes } from '../storage-limits.ts';
+import { readLimits, reservedBytes } from '../storage-limits.ts';
 import { type AlertDeps, sendServerAlert } from './alerts.ts';
 import { type Beat, DAY_MS, lastHour, type StoredProblem } from './store.ts';
 
@@ -135,8 +135,8 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
   // The instance total past its warning share (decision 0081): at most once a day.
   const limits = await readLimits(db, config);
   if (limits.total !== null) {
-    const used = await usedBytes(db);
-    const bytes = used.originals + used.derived;
+    // The running total (#799), uploads still arriving included: no sum over every file.
+    const bytes = await reservedBytes(db);
     if (
       bytes >= (limits.total * limits.warnPercent) / 100 &&
       (await store.once('storage-limit', DAY_MS / 1000))
