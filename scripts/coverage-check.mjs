@@ -16,18 +16,23 @@ export function check(floors, summaries) {
     else
       for (const metric of ['lines', 'branches']) {
         const pct = summary.total[metric].pct;
-        if (pct < floor[metric]) problems.push(`${dir}: ${metric} ${pct}% < floor ${floor[metric]}%`);
+        if (pct < floor[metric])
+          problems.push(`${dir}: ${metric} ${pct}% < floor ${floor[metric]}%`);
       }
   }
   return problems;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const floors = JSON.parse(readFileSync(new URL('./coverage-floors.json', import.meta.url), 'utf8'));
+  const floors = JSON.parse(
+    readFileSync(new URL('./coverage-floors.json', import.meta.url), 'utf8'),
+  );
   const summaries = {};
   for (const dir of process.argv.slice(2)) {
     try {
-      summaries[dir] = JSON.parse(readFileSync(join(dir, 'coverage', 'coverage-summary.json'), 'utf8'));
+      summaries[dir] = JSON.parse(
+        readFileSync(join(dir, 'coverage', 'coverage-summary.json'), 'utf8'),
+      );
       const { lines, branches } = summaries[dir].total;
       console.log(`${dir}: lines ${lines.pct}%, branches ${branches.pct}%`);
     } catch {

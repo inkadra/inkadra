@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs';
 import {
   createServer,
   type IncomingMessage,
@@ -5,7 +6,6 @@ import {
   type Server,
   type ServerResponse,
 } from 'node:http';
-import { readdirSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1224,7 +1224,13 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     await deps.storage.write(rung, Buffer.from('rung'), 'video/mp4');
     await db
       .insert(assetRendition)
-      .values({ assetId: ids[0] as string, name: '480', status: 'ready', recipe: 'x', storageKey: rung });
+      .values({
+        assetId: ids[0] as string,
+        name: '480',
+        status: 'ready',
+        recipe: 'x',
+        storageKey: rung,
+      });
     const files = () =>
       readdirSync(join(deps.root, 'files'), { recursive: true, withFileTypes: true })
         .filter((f) => f.isFile())

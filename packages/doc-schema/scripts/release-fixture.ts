@@ -96,7 +96,9 @@ function sample(t: Zod, key: string, last: boolean, n: number): unknown {
       return ok(t, value) ? value : undefined;
     }
     case 'record': {
-      const value = { [String(sample(d.keyType, 'id', last, n))]: sample(d.valueType, key, last, n) };
+      const value = {
+        [String(sample(d.keyType, 'id', last, n))]: sample(d.valueType, key, last, n),
+      };
       return ok(t, value) ? value : {};
     }
     case 'object':
@@ -156,7 +158,7 @@ for (const option of def(element).options as Zod[]) {
       createdBy: null,
       createdAt: 1_760_000_000_000,
     };
-    const map = schema.addElement(doc, card);
+    const map = schema.addElement(doc, card as Parameters<typeof schema.addElement>[1]);
     const body = map.get('body');
     if (body instanceof Y.XmlFragment) {
       const paragraph = new Y.XmlElement('paragraph');

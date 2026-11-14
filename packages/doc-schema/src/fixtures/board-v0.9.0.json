@@ -11,9 +11,7 @@
       "z": "a1",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 11"
-      ],
+      "tags": ["tag 11"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -29,9 +27,7 @@
       "z": "a2",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 21"
-      ],
+      "tags": ["tag 21"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -47,9 +43,7 @@
       "z": "a3",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 31"
-      ],
+      "tags": ["tag 31"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -67,10 +61,7 @@
           "color": "#C9A36A",
           "width": 120,
           "opacity": 1,
-          "points": [
-            120,
-            120
-          ]
+          "points": [120, 120]
         }
       ],
       "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000030",
@@ -86,9 +77,7 @@
       "z": "a4",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 41"
-      ],
+      "tags": ["tag 41"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -106,10 +95,7 @@
           "color": "#C9A36A",
           "width": 120,
           "opacity": 1,
-          "points": [
-            120,
-            120
-          ]
+          "points": [120, 120]
         }
       ],
       "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000040",
@@ -125,9 +111,7 @@
       "z": "a5",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 51"
-      ],
+      "tags": ["tag 51"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -149,9 +133,7 @@
       "z": "a6",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 61"
-      ],
+      "tags": ["tag 61"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -173,9 +155,7 @@
       "z": "a7",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 71"
-      ],
+      "tags": ["tag 71"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -193,9 +173,7 @@
       "z": "a8",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 81"
-      ],
+      "tags": ["tag 81"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -213,9 +191,7 @@
       "z": "a9",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 91"
-      ],
+      "tags": ["tag 91"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -242,9 +218,7 @@
       "z": "a10",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 101"
-      ],
+      "tags": ["tag 101"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -271,9 +245,7 @@
       "z": "a11",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 111"
-      ],
+      "tags": ["tag 111"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -291,9 +263,7 @@
       "z": "a12",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 121"
-      ],
+      "tags": ["tag 121"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -311,9 +281,7 @@
       "z": "a13",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 131"
-      ],
+      "tags": ["tag 131"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -331,9 +299,7 @@
       "z": "a14",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 141"
-      ],
+      "tags": ["tag 141"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -351,9 +317,7 @@
       "z": "a15",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 151"
-      ],
+      "tags": ["tag 151"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -369,9 +333,7 @@
       "z": "a16",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 161"
-      ],
+      "tags": ["tag 161"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -387,9 +349,7 @@
       "z": "a17",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 171"
-      ],
+      "tags": ["tag 171"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -412,9 +372,7 @@
       "z": "a18",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 181"
-      ],
+      "tags": ["tag 181"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -437,9 +395,7 @@
       "z": "a19",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 191"
-      ],
+      "tags": ["tag 191"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -462,9 +418,7 @@
       "dialogue": "dialogue 190",
       "notes": "notes 190",
       "location": "location 190",
-      "cast": [
-        "cast 191"
-      ],
+      "cast": ["cast 191"],
       "status": "draft",
       "approved": true,
       "strokes": [
@@ -474,10 +428,7 @@
           "color": "#C9A36A",
           "width": 120,
           "opacity": 1,
-          "points": [
-            120,
-            120
-          ]
+          "points": [120, 120]
         }
       ],
       "shapes": [
@@ -504,9 +455,7 @@
       "z": "a20",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 201"
-      ],
+      "tags": ["tag 201"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -529,9 +478,7 @@
       "dialogue": "dialogue 200",
       "notes": "notes 200",
       "location": "location 200",
-      "cast": [
-        "cast 201"
-      ],
+      "cast": ["cast 201"],
       "status": "retake",
       "approved": false,
       "strokes": [
@@ -541,10 +488,7 @@
           "color": "#C9A36A",
           "width": 120,
           "opacity": 1,
-          "points": [
-            120,
-            120
-          ]
+          "points": [120, 120]
         }
       ],
       "shapes": [
@@ -571,9 +515,7 @@
       "z": "a21",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 211"
-      ],
+      "tags": ["tag 211"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -602,9 +544,7 @@
       "z": "a22",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 221"
-      ],
+      "tags": ["tag 221"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -633,9 +573,7 @@
       "z": "a23",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 231"
-      ],
+      "tags": ["tag 231"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -654,9 +592,7 @@
       "fears": "fears 230",
       "arc": "arc 230",
       "costume": "costume 230",
-      "references": [
-        "reference 231"
-      ],
+      "references": ["reference 231"],
       "relations": [
         {
           "characterId": "0193f0a4-6c1e-7b9a-9c51-000000000231",
@@ -665,9 +601,7 @@
       ],
       "contact": "contact 230",
       "notes": "notes 230",
-      "scenes": [
-        "scene 231"
-      ]
+      "scenes": ["scene 231"]
     },
     "character_last_fixture": {
       "id": "character_last_fixture",
@@ -678,9 +612,7 @@
       "z": "a24",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 241"
-      ],
+      "tags": ["tag 241"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -699,9 +631,7 @@
       "fears": "fears 240",
       "arc": "arc 240",
       "costume": "costume 240",
-      "references": [
-        "reference 241"
-      ],
+      "references": ["reference 241"],
       "relations": [
         {
           "characterId": "0193f0a4-6c1e-7b9a-9c51-000000000241",
@@ -710,9 +640,7 @@
       ],
       "contact": "contact 240",
       "notes": "notes 240",
-      "scenes": [
-        "scene 241"
-      ]
+      "scenes": ["scene 241"]
     },
     "location_first_fixture": {
       "id": "location_first_fixture",
@@ -723,9 +651,7 @@
       "z": "a25",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 251"
-      ],
+      "tags": ["tag 251"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -739,9 +665,7 @@
       "availability": "availability 250",
       "contact": "contact 250",
       "notes": "notes 250",
-      "scenes": [
-        "scene 251"
-      ]
+      "scenes": ["scene 251"]
     },
     "location_last_fixture": {
       "id": "location_last_fixture",
@@ -752,9 +676,7 @@
       "z": "a26",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 261"
-      ],
+      "tags": ["tag 261"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -768,9 +690,7 @@
       "availability": "availability 260",
       "contact": "contact 260",
       "notes": "notes 260",
-      "scenes": [
-        "scene 261"
-      ]
+      "scenes": ["scene 261"]
     },
     "section_first_fixture": {
       "id": "section_first_fixture",
@@ -781,9 +701,7 @@
       "z": "a27",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 271"
-      ],
+      "tags": ["tag 271"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -807,9 +725,7 @@
       "z": "a28",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 281"
-      ],
+      "tags": ["tag 281"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -833,9 +749,7 @@
       "z": "a29",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 291"
-      ],
+      "tags": ["tag 291"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -866,9 +780,7 @@
       "z": "a30",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 301"
-      ],
+      "tags": ["tag 301"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -899,9 +811,7 @@
       "z": "a31",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 311"
-      ],
+      "tags": ["tag 311"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -923,9 +833,7 @@
       "z": "a32",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 321"
-      ],
+      "tags": ["tag 321"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -947,9 +855,7 @@
       "z": "a33",
       "parent": null,
       "locked": true,
-      "tags": [
-        "tag 331"
-      ],
+      "tags": ["tag 331"],
       "guestHidden": true,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -962,10 +868,7 @@
           "color": "#C9A36A",
           "width": 120,
           "opacity": 1,
-          "points": [
-            120,
-            120
-          ],
+          "points": [120, 120],
           "layer": "set",
           "group": "2026-03-14"
         }
@@ -1023,17 +926,11 @@
           "group": "2026-03-14"
         }
       ],
-      "sceneIds": [
-        "0193f0a4-6c1e-7b9a-9c51-000000000331"
-      ],
+      "sceneIds": ["0193f0a4-6c1e-7b9a-9c51-000000000331"],
       "variantOf": "2026-03-14",
       "variant": "variant 330",
-      "hiddenLayers": [
-        "set"
-      ],
-      "lockedLayers": [
-        "set"
-      ],
+      "hiddenLayers": ["set"],
+      "lockedLayers": ["set"],
       "scale": 120,
       "grid": "1",
       "rulers": true,
@@ -1049,9 +946,7 @@
       "z": "a34",
       "parent": null,
       "locked": false,
-      "tags": [
-        "tag 341"
-      ],
+      "tags": ["tag 341"],
       "guestHidden": false,
       "createdBy": null,
       "createdAt": 1760000000000,
@@ -1064,10 +959,7 @@
           "color": "#C9A36A",
           "width": 120,
           "opacity": 1,
-          "points": [
-            120,
-            120
-          ],
+          "points": [120, 120],
           "layer": "notes",
           "group": "2026-03-14"
         }
@@ -1125,17 +1017,11 @@
           "group": "2026-03-14"
         }
       ],
-      "sceneIds": [
-        "0193f0a4-6c1e-7b9a-9c51-000000000341"
-      ],
+      "sceneIds": ["0193f0a4-6c1e-7b9a-9c51-000000000341"],
       "variantOf": "2026-03-14",
       "variant": "variant 340",
-      "hiddenLayers": [
-        "notes"
-      ],
-      "lockedLayers": [
-        "notes"
-      ],
+      "hiddenLayers": ["notes"],
+      "lockedLayers": ["notes"],
       "scale": 120,
       "grid": "0.5",
       "rulers": false,
