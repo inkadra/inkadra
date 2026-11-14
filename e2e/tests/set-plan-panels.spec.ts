@@ -119,7 +119,8 @@ test('set plan panels: circuits on every setup, the base renamed, identical lamp
     const name = editor.getByRole('textbox', { name: 'Nome del setup' });
     // The tablist holds its tabs only, the field lies over the tab outside it.
     await expect(tabs.getByRole('textbox')).toHaveCount(0);
-    await expect(tabs.locator(':scope > *:not([role="tab"])')).toHaveCount(0);
+    // Only the tabs, and the sliding line hidden from assistive technology.
+    await expect(tabs.locator(':scope > *:not([role="tab"], [aria-hidden="true"])')).toHaveCount(0);
     await name.fill('Master');
     await name.press('Enter');
     await expect(tabs.getByRole('tab')).toHaveText(['1 · Master', '2 · PP Anna']);

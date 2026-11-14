@@ -191,12 +191,14 @@ export function PlanEditor(props: PlanEditorProps) {
     // The setup tabs: the arrows move the focus between setups (Enter or Space switches, #455),
     // F2 renames the current one. Here, since this listener stops every key before the tabs'
     // own handlers would see it.
-    if (target?.closest('.plan-setups [role="tab"]') && e.key === 'F2') {
+    const onSetupTab = target?.closest('.plan-setups [role="tab"]');
+    if (onSetupTab && e.key === 'F2') {
       e.preventDefault();
       setRenaming(true);
       return;
     }
-    if (target?.closest('[role="tablist"]') && moveTabFocus(e)) return;
+    // The side panel's tabs leave the arrows to the drawing: they nudge the selection.
+    if (onSetupTab && moveTabFocus(e)) return;
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     const { selection, item } = ed;
