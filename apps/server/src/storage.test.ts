@@ -1,11 +1,21 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
+import { ListMultipartUploadsCommand, S3Client } from '@aws-sdk/client-s3';
+import { Upload } from '@tus/utils';
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from './config.ts';
 import { officeFiles } from './media/office.ts';
-import { createStorage, localStorage, readAll, type Storage, variantKey } from './storage.ts';
+import {
+  abortUpload,
+  createStorage,
+  localStorage,
+  readAll,
+  type Storage,
+  variantKey,
+} from './storage.ts';
 
 const s3Endpoint = process.env.S3_TEST_ENDPOINT;
 
@@ -54,21 +64,55 @@ contract('local storage', () => localStorage(mkdtempSync(join(tmpdir(), 'inkadra
 
 // Run against an S3 server with S3_TEST_ENDPOINT, S3_TEST_BUCKET, S3_TEST_ACCESS_KEY_ID and
 // S3_TEST_SECRET_ACCESS_KEY, for example RustFS as in deploy/.
+const s3Config = () =>
+  loadConfig({
+    PUBLIC_URL: 'http://localhost:3000',
+    DATABASE_URL: 'postgres://unused',
+    AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+    STORAGE_DRIVER: 's3',
+    S3_ENDPOINT: s3Endpoint,
+    S3_BUCKET: process.env.S3_TEST_BUCKET ?? 'inkadra',
+    S3_ACCESS_KEY_ID: process.env.S3_TEST_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: process.env.S3_TEST_SECRET_ACCESS_KEY,
+    S3_FORCE_PATH_STYLE: 'true',
+  });
+
 describe.skipIf(!s3Endpoint)('s3 storage (needs S3_TEST_ENDPOINT)', () => {
-  contract('s3', () =>
-    createStorage(
-      loadConfig({
-        PUBLIC_URL: 'http://localhost:3000',
-        DATABASE_URL: 'postgres://unused',
-        AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
-        STORAGE_DRIVER: 's3',
-        S3_ENDPOINT: s3Endpoint,
-        S3_BUCKET: process.env.S3_TEST_BUCKET ?? 'inkadra',
-        S3_ACCESS_KEY_ID: process.env.S3_TEST_ACCESS_KEY_ID,
-        S3_SECRET_ACCESS_KEY: process.env.S3_TEST_SECRET_ACCESS_KEY,
-        S3_FORCE_PATH_STYLE: 'true',
-      }),
-    ),
+  contract('s3', () => createStorage(s3Config()));
+
+  it('aborts the multipart upload of an unfinished upload it removes (#802)', async () => {
+    const config = s3Config();
+    const storage = createStorage(config);
+    const key = `originals/${randomUUID()}`;
+    await storage.uploads.create(new Upload({ id: key, size: 32 * 1024 * 1024, offset: 0 }));
+    const client = new S3Client({
+      region: config.S3_REGION,
+      endpoint: config.S3_ENDPOINT,
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: config.S3_ACCESS_KEY_ID as string,
+        secretAccessKey: config.S3_SECRET_ACCESS_KEY as string,
+      },
+    });
+    const open = async () =>
+      (
+        await client.send(
+          new ListMultipartUploadsCommand({ Bucket: config.S3_BUCKET, Prefix: key }),
+        )
+      ).Uploads ?? [];
+    expect(await open()).toHaveLength(1);
+    await storage.remove([key]);
+    expect(await open()).toEqual([]);
+    expect(await storage.size(`${key}.info`)).toBeNull();
+  });
+});
+
+it('keeps the upload record when the bucket refuses the abort', async () => {
+  const notFound = Object.assign(new Error('gone'), { status_code: 404 });
+  expect(await abortUpload({ remove: async () => {} }, 'originals/a')).toBe(true);
+  expect(await abortUpload({ remove: () => Promise.reject(notFound) }, 'originals/a')).toBe(true);
+  expect(await abortUpload({ remove: () => Promise.reject(new Error('503')) }, 'originals/a')).toBe(
+    false,
   );
 });
 

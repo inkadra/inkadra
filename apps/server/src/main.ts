@@ -350,7 +350,7 @@ async function main() {
     });
     if (config.DEMO_MODE) {
       // The only automatic deletion of Inkadra: sandboxes past their hour, now and every minute.
-      const stopDemo = startSandboxSweep({ db, jobs, config, log });
+      const stopDemo = startSandboxSweep({ db, jobs, config, storage, log });
       closers.unshift(async () => stopDemo());
       // Production refuses to start without them (loadConfig); development and tests say so.
       if (!config.TURNSTILE_SECRET)

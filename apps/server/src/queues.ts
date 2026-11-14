@@ -28,6 +28,7 @@ import { pruneWriters } from './board-writers.ts';
 import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
 import { asset, clientAsset, creationRequest } from './db/schema.ts';
+import { removeFiles, sweepDeletions } from './file-deletions.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { recipesOf } from './media/ladder.ts';
@@ -392,7 +393,7 @@ export async function startWorkers(
       if (job.name === 'ping') return { pong: Date.now() };
       if (job.name === 'delete-files') {
         const { keys } = job.data as JobPayloads['maintenance:delete-files'];
-        await deps.storage.remove(keys);
+        await removeFiles(deps.db, deps.storage, keys);
         return { removed: keys.length };
       }
       if (job.name === 'video-benchmark') {
@@ -409,6 +410,7 @@ export async function startWorkers(
         return {
           ...(await purgeUploads(deps.db, deps.storage, queues.jobs)),
           proxies: await requeueStuckProxies(deps.db, queues.jobs),
+          deletions: await sweepDeletions(deps.db, deps.storage),
         };
       if (job.name === 'version-retention') {
         const versions = await applyVersionRetention(deps.db);
@@ -698,6 +700,27 @@ const unknownIfStalled = (err: unknown) =>
  */
 export const ENQUEUE_TIMEOUT_MS = 2_000;
 
+/**
+ * Removes the files of rows a request just deleted, never failing it nor waiting long (#758):
+ * queued when the queue answers in time, otherwise removed here. The rows' transaction
+ * recorded the keys (`recordDeletions`), so what fails here is removed by the hourly sweep.
+ */
+export async function removeFilesLater(
+  deps: { db: Pick<Database, 'delete'>; jobs: Pick<Jobs, 'deleteFiles'>; storage: Storage },
+  keys: string[],
+  log?: Pick<Logger, 'warn' | 'error'>,
+) {
+  if (keys.length === 0) return;
+  try {
+    await within(deps.jobs.deleteFiles(keys), ENQUEUE_TIMEOUT_MS, 'The job queue did not answer.');
+  } catch (err) {
+    log?.warn({ err, files: keys.length }, 'Files not queued for removal: removing them now');
+    await removeFiles(deps.db, deps.storage, keys).catch((e) =>
+      log?.error({ err: e, files: keys.length }, 'Files not removed: the sweep will retry'),
+    );
+  }
+}
+
 /** `promise`, or a rejection with `message` after `ms`. The work itself is not stopped. */
 export function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
@@ -959,7 +982,7 @@ export function inlineJobs(
       cancelled += 1;
     },
     async deleteFiles(keys) {
-      track(deps.storage.remove(keys));
+      track(removeFiles(deps.db, deps.storage, keys));
     },
     ...(transfers
       ? {

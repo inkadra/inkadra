@@ -21,6 +21,7 @@ import type { Jobs } from '../jobs.ts';
 import { designExtension } from '../media/design.ts';
 import { sniffImage } from '../media/heic.ts';
 import { rawTypeOf } from '../media/raw.ts';
+import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { lockUpload, originalKey, type Storage } from '../storage.ts';
 import { reserveSpace, StorageFullError } from '../storage-limits.ts';
 import { requireActor } from './auth-routes.ts';
@@ -227,7 +228,12 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
         await datastore.remove(upload.id);
         throw tusError(415, 'The file is not what its type says.');
       }
-      await jobs.processAsset(assetId);
+      // Never waits for a queue that is down: the upload purge queues it a day later (#758).
+      await within(
+        jobs.processAsset(assetId),
+        ENQUEUE_TIMEOUT_MS,
+        'The job queue did not answer.',
+      ).catch((err) => app.log.error({ err, assetId }, 'upload not queued for processing'));
       return {};
     },
   });

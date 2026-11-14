@@ -337,6 +337,13 @@
       "when": 1794572226982,
       "tag": "0047_asset_media_info",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794614721243,
+      "tag": "0049_pending_file_deletion",
+      "breakpoints": true
     }
   ]
 }

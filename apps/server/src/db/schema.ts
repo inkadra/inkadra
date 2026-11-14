@@ -1501,3 +1501,18 @@ export const creationRequest = pgTable(
   },
   (t) => [index('creation_request_expiry_idx').on(t.expiresAt)],
 );
+
+/**
+ * Stored files whose rows are gone, recorded in the transaction that deletes the rows (#801).
+ * The removal clears the record; `sweepDeletions` removes what is still listed a day later
+ * (a crash after the commit, Redis down or emptied, a removal job that gave up). An import
+ * lists its files before writing them and clears them with the rows that use them.
+ */
+export const pendingFileDeletion = pgTable(
+  'pending_file_deletion',
+  {
+    key: text('key').primaryKey(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('pending_file_deletion_created_idx').on(t.createdAt)],
+);
