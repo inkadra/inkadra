@@ -37,6 +37,8 @@ services:
 | `WEB_DIST`             |                                  | Folder of the built web app; unset for the default next to the server                             |
 | `TRUST_PROXY`          | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address: set it to your proxy. See [below](#trust_proxy)        |
 | `LOG_LEVEL`            | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                              |
+| `LOG_CLIENT_IP`        | `false`                          | `true` adds the client's address to request logs (personal data). See [Logs](#logs)              |
+| `METRICS_TOKEN`        | unset                            | At least 32 characters: turns on `GET /metrics` for this bearer token. See [Monitoring](#monitoring) |
 
 `INSTANCE_NAME` and `REGISTRATION` are installation defaults; saved administrator choices
 in Settings override them.
@@ -165,7 +167,8 @@ that copy is made again with libx264: a video never ends up without its copy bec
 Whenever the CPU decodes the source, whatever encodes it, ffmpeg keeps the 4 GiB
 address-space cap of software copies. When the GPU decodes, VAAPI and Quick Sync, which map GPU
 surfaces into the process, get 8 GiB, and NVENC 64 GiB (CUDA reserves much more virtual memory
-than it uses): bound what it really uses with a `mem_limit` on the container. The worker also
+than it uses): bound what it really uses with the container's memory limit
+([resource limits](#resource-limits)). The worker also
 tests the GPU decode when it starts, on a short H.264 clip; if that fails it decodes on the CPU
 for its whole life (`CPU decode` in the label), so no file pays a failed GPU decode first. All
 attempts of one copy, fallbacks included, share its time limit (at most 4 hours).
@@ -206,9 +209,10 @@ on the host, then use [`deploy/compose.nvidia.yaml`](../../deploy/compose.nvidia
 ```yaml
 services:
   inkadra: # `worker` in split mode
-    mem_limit: 8g # bounds what NVENC copies really use (see above)
     deploy:
       resources:
+        limits:
+          memory: 8g # bounds what NVENC copies really use (see above)
         reservations:
           devices:
             - driver: nvidia
@@ -293,6 +297,65 @@ These change `compose.yaml` itself, not the server.
 | `NGINX_CERTS`             | `./certs`                 | Folder with `fullchain.pem` and `privkey.pem`, for the bundled Nginx           |
 
 [data-disks]: storage.md#data-on-different-disks
+
+### Resource limits
+
+`compose.yaml` bounds every container (#838), so a burst of video copies or a malformed file
+cannot push the host into the kernel's out-of-memory killer, which may pick PostgreSQL. Raise
+them in `.env` on a larger machine; a limit above the host's memory only means no limit.
+
+| Variable                   | Default | Container                                                                   |
+| -------------------------- | ------- | --------------------------------------------------------------------------- |
+| `INKADRA_MEM_LIMIT`        | `6g`    | `inkadra` (8g with `deploy/compose.nvidia.yaml`): the server plus ffmpeg     |
+| `INKADRA_CPUS`             | `0`     | `inkadra` CPU cores, such as `4`; `0` is no limit                           |
+| `INKADRA_PIDS_LIMIT`       | `1024`  | `inkadra` processes and threads                                             |
+| `INKADRA_TMPFS_SIZE`       | `512m`  | `/tmp` of `inkadra`, kept in memory (large scratch files go to `/data/tmp`) |
+| `INKADRA_WEB_MEM_LIMIT`    | `2g`    | `inkadra` (the web role) in split mode                                      |
+| `INKADRA_COLLAB_MEM_LIMIT` | `2g`    | `collab` in split mode                                                      |
+| `INKADRA_WORKER_MEM_LIMIT` | `6g`    | `worker` in split mode                                                      |
+| `POSTGRES_MEM_LIMIT`       | `2g`    | `postgres`; `POSTGRES_CPUS` as above                                        |
+| `POSTGRES_SHARED_BUFFERS`  | `256MB` | PostgreSQL's `shared_buffers`: about a quarter of its memory limit          |
+| `POSTGRES_MAX_CONNECTIONS` | `100`   | PostgreSQL's `max_connections`                                              |
+| `VALKEY_MEM_LIMIT`         | `1g`    | `valkey`; `VALKEY_CPUS` as above                                            |
+
+Size the worker for itself plus `VIDEO_PROXY_CONCURRENCY` copies of ffmpeg, 1 to 2 GB each at
+1080p. A copy that needs more is stopped by the limit and made again with the next attempt.
+
+### Logs
+
+Docker keeps at most 5 log files of 20 MB per container (`LOG_MAX_FILES`, `LOG_MAX_SIZE`): its
+default `json-file` driver would grow until the disk is full. If your Docker daemon sends logs
+elsewhere (journald, Loki…), put `logging: !reset {}` under each service in a
+`compose.override.yaml` to keep the daemon's choice.
+
+Request logs leave out the client's address unless `LOG_CLIENT_IP=true`: it is personal data,
+and the logs are kept as long as the files above. Every request has an id, taken from the
+proxy's `X-Request-ID` header when it sends a plain one and new otherwise; the answer carries it
+back in `X-Request-ID`, and a failed job logs the `requestId` of the request that queued it.
+
+### Monitoring
+
+The server answers three addresses meant for machines:
+
+- `GET /livez`: the process answers. Use it for liveness probes: it stays `200` while the
+  database or Valkey is unreachable, so an outage of those does not restart Inkadra.
+- `GET /readyz`: `200` when the database and the job queue answer, `503` otherwise (the same
+  answer as `/api/v1/health`). Use it for load balancers and uptime monitors.
+- `GET /metrics`: Prometheus metrics, only with `METRICS_TOKEN` set and sent as
+  `Authorization: Bearer <token>`. They include the heartbeat of every role
+  (`inkadra_process_up`, also for `worker` and `collab`), queue depth and failures, the free
+  space of the data disk, the database size and the time of the last good backup.
+
+The alerts of **Settings → Server status** are sent by the web role itself, so they stop with
+it. Watch Inkadra from outside as well: an uptime monitor on `/readyz`, and with Prometheus,
+alerts such as `inkadra_process_up == 0`, a growing `inkadra_queue_jobs{state="waiting"}`, and
+`time() - inkadra_backup_last_success_timestamp_seconds > 2 * 86400` while backups are on.
+
+Inkadra's disk alert sees only the disk of `DATA_DIR`. The database, Valkey, the images and the
+container logs live under Docker's own folder (`/var/lib/docker`): watch that disk on the host
+too (node exporter, your NAS's alerts). Plain Docker does not restart a container that turns
+unhealthy; an orchestrator, or a tool such as autoheal, does. Tracing (OpenTelemetry) is not
+built in yet.
 
 ## Sign-in and email
 

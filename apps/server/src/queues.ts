@@ -40,6 +40,7 @@ import { jobProblem, recordProblem } from './monitor/problems.ts';
 import type { MonitorStore } from './monitor/store.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
+import { withRequestId } from './request-context.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { lockUpload, type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import type { StorageEnv } from './storage-limits.ts';
@@ -171,7 +172,7 @@ export function createQueues(
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
       await media.add(
         'process',
-        { assetId },
+        withRequestId({ assetId }),
         { jobId: `process-${assetId}`, ...ATTEMPTS, ...KEEP },
       );
     },
@@ -184,7 +185,7 @@ export function createQueues(
       // Two tries: a copy that fails twice is a source ffmpeg cannot read, not bad luck.
       await proxies.add(
         'make',
-        { assetId, ...(opts?.regenerate ? { regenerate: true } : {}) },
+        withRequestId({ assetId, ...(opts?.regenerate ? { regenerate: true } : {}) }),
         {
           jobId,
           attempts: 2,
@@ -198,14 +199,14 @@ export function createQueues(
     async runVideoBenchmark() {
       await maintenance.add(
         'video-benchmark',
-        {},
+        withRequestId({}),
         { jobId: `video-benchmark-${Date.now()}`, ...KEEP },
       );
     },
     async runVideoBackfill(delayMs = 0) {
       await maintenance.add(
         'video-backfill',
-        {},
+        withRequestId({}),
         { jobId: `video-backfill-${Date.now()}`, delay: delayMs, ...KEEP },
       );
     },
@@ -228,22 +229,28 @@ export function createQueues(
       const jobId = `office-${assetId}`;
       const old = await office.getJob(jobId);
       if (old && ['completed', 'failed'].includes(await old.getState())) await old.remove();
-      await office.add('convert', { assetId }, { jobId, ...ATTEMPTS, ...KEEP });
+      await office.add('convert', withRequestId({ assetId }), { jobId, ...ATTEMPTS, ...KEEP });
     },
     async deleteFiles(keys) {
       for (let i = 0; i < keys.length; i += 500)
         await maintenance.add(
           'delete-files',
-          { keys: keys.slice(i, i + 500) },
+          withRequestId({ keys: keys.slice(i, i + 500) }),
           { ...ATTEMPTS, ...KEEP },
         );
     },
     async runTransfer(transferId) {
       // Not retried: a failure is written to the row and the person starts again.
-      await transfers.add('run', { transferId }, { jobId: `transfer-${transferId}`, ...KEEP });
+      await transfers.add('run', withRequestId({ transferId }), {
+        jobId: `transfer-${transferId}`,
+        ...KEEP,
+      });
     },
     async runBackup(backupId) {
-      await maintenance.add('backup', { backupId }, { jobId: `backup-${backupId}`, ...KEEP });
+      await maintenance.add('backup', withRequestId({ backupId }), {
+        jobId: `backup-${backupId}`,
+        ...KEEP,
+      });
     },
     async scheduleBackups(settings) {
       await scheduleBackups(maintenance, settings);
@@ -676,7 +683,8 @@ export async function startWorkers(
   for (const w of [maintenance, media, proxies, email, transfers, ...(office ? [office] : [])]) {
     w.on('error', onError(w.name));
     w.on('failed', (job, err) => {
-      log.error({ queue: w.name, job: job?.id, err }, 'job failed');
+      const requestId = (job?.data as { requestId?: string } | undefined)?.requestId;
+      log.error({ queue: w.name, job: job?.id, requestId, err }, 'job failed');
       // Only once it gave up: a retry that works is not a problem.
       const final =
         job && (job.attemptsMade >= (job.opts.attempts ?? 1) || err instanceof UnrecoverableError);
@@ -793,7 +801,13 @@ export function within<T>(promise: Promise<T>, ms: number, message: string): Pro
  */
 export function queuedBoardWriter(
   url: string,
-  opts: { prefix?: string; timeoutMs?: number; graceMs?: number } = {},
+  opts: {
+    prefix?: string;
+    timeoutMs?: number;
+    graceMs?: number;
+    /** Where connection errors go; without it BullMQ prints them to the console. */
+    log?: Pick<Logger, 'warn'>;
+  } = {},
 ) {
   const timeoutMs = opts.timeoutMs ?? ADD_CARD_TIMEOUT_MS;
   const graceMs = opts.graceMs ?? ADD_CARD_GRACE_MS;
@@ -804,6 +818,11 @@ export function queuedBoardWriter(
     connection: createRedis(url),
     prefix: opts.prefix,
   });
+  if (opts.log) {
+    const onError = queueErrors(opts.log);
+    queue.on('error', onError(QUEUES.collab));
+    events.on('error', onError(`${QUEUES.collab}-events`));
+  }
 
   async function run<T>(
     name: CollabJob,
@@ -935,6 +954,7 @@ export function startBoardWorker(
   worker.on('failed', (job, err) =>
     log.error({ queue: worker.name, job: job?.id, err }, 'job failed'),
   );
+  worker.on('error', queueErrors(log)(worker.name));
   return {
     async close() {
       await worker.close();
@@ -1078,6 +1098,7 @@ export function queuedBoardNotifier(url: string, log: Logger, opts: { prefix?: s
     enableOfflineQueue: false,
   });
   const queue = new Queue(QUEUES.collab, { connection, prefix: opts.prefix });
+  queue.on('error', queueErrors(log)(QUEUES.collab));
   const notifier: BoardNotifier = {
     notify(boardId, notice) {
       if (connection.status !== 'ready') {
