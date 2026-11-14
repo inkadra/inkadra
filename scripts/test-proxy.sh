@@ -32,6 +32,8 @@ INKADRA_TAG=${INKADRA_TAG:-edge}
 INKADRA_IMAGE=${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}
 NGINX_CERTS=$work/certs
 TRAEFIK_CERTRESOLVER=
+# Off by default (#837): the address check below reads it from the request log.
+LOG_CLIENT_IP=true
 ENV
 [[ $mode == split ]] && echo "INKADRA_COLLAB_UPSTREAM=collab:3001" >>"$work/.env"
 
