@@ -126,7 +126,8 @@ const value = (v: unknown) => (v === null || v === undefined ? '–' : String(v)
 export function detailText(e: AuditEvent): string {
   const parts: string[] = [];
   const { changes } = e.details as { changes?: Record<string, [unknown, unknown]> };
-  for (const key of SHOWN) if (e.details[key] !== undefined) parts.push(value(e.details[key]));
+  for (const key of SHOWN)
+    if (e.details[key] !== undefined && e.details[key] !== null) parts.push(value(e.details[key]));
   if (changes)
     for (const [key, [from, to]] of Object.entries(changes))
       parts.push(`${key}: ${value(from)} → ${value(to)}`);

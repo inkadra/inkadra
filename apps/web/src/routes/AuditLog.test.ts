@@ -21,6 +21,6 @@ describe('detailText (#806)', () => {
     expect(detailText(event({ changes: { storageLimit: [null, 1024] } }))).toBe(
       'storageLimit: – → 1024',
     );
-    expect(detailText(event({ userId: 'x' }))).toBe('');
+    expect(detailText(event({ userId: 'x', role: null }))).toBe('');
   });
 });
