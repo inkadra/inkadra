@@ -25,7 +25,7 @@ async function violations(page: Page, name: string): Promise<string[]> {
       if (v.impact !== 'serious' && v.impact !== 'critical') continue;
       const where = v.nodes
         .slice(0, 3)
-        .map((n) => n.target.join(' '))
+        .map((n) => `${n.target.join(' ')} ${n.html.slice(0, 160)}`)
         .join(', ');
       found.push(`${name} (${theme}): ${v.id} on ${v.nodes.length} node(s): ${where}`);
     }

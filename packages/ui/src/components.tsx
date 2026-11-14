@@ -213,10 +213,13 @@ export function Avatar({
   name,
   image,
   size = 28,
+  'aria-hidden': hidden,
 }: {
   name: string;
   image?: string | null;
   size?: number;
+  /** In a control that has its own label: the initials are not read with it. */
+  'aria-hidden'?: boolean;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
   const initials = name
@@ -230,6 +233,7 @@ export function Avatar({
   return (
     <span
       className="ink-avatar"
+      aria-hidden={hidden || undefined}
       data-ink-tooltip={name}
       style={{ width: size, height: size, fontSize: Math.max(8, size * 0.36) }}
     >
