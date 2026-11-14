@@ -71,6 +71,16 @@ it('solves the relay challenge, redacts logs and sends only selected report fiel
   expect(await sendRelay(base, form, ticket)).toBe(7);
   expect(bodies).toHaveLength(2);
 });
+it('sends the report the relay expects (fixture shared with relay/test)', async () => {
+  const fixture = JSON.parse(
+    await readFile(
+      new URL('../../../relay/test/fixtures/server-report.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  expect(relayMetadata(fixture.feedback, fixture.publicUrl)).toEqual(fixture.report);
+});
+
 it('marks ambiguous relay writes uncertain and permanent refusals refused', async () => {
   for (const [status, permanent, uncertain] of [
     [502, false, true],

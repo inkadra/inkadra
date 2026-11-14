@@ -12,10 +12,9 @@
 # and installed without install scripts; actions are pinned by commit.
 name: Report relay
 
+# Pull requests run the relay's tests in ci.yml (job "Report relay tests"), so they report on
+# every pull request; this workflow tests again before it deploys.
 on:
-  # Pull requests run the tests only: the deploy job is skipped.
-  pull_request:
-    paths: ["relay/**", ".github/workflows/report-relay.yml"]
   workflow_dispatch:
 
 permissions:

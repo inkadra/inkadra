@@ -30,6 +30,27 @@ export function assignShards(files, weights, count) {
   return shards.map((shard) => shard.files.sort());
 }
 
+/**
+ * Specs in a random order, dealt to the shards in turn (#857): the nightly run puts each spec next
+ * to other ones than the pull requests do, so a spec that needs another one's data fails there.
+ * The seed is printed, so a failing composition can be run again.
+ */
+export function shuffledShards(files, count, seed) {
+  let state = seed >>> 0;
+  const random = () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 2 ** 32;
+  };
+  const order = [...files].sort();
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const shards = Array.from({ length: count }, () => []);
+  for (const [i, file] of order.entries()) shards[i % count].push(file);
+  return shards;
+}
+
 export function fileFilter(file) {
   // Playwright matches regexes against absolute paths: anchor both the directory and suffix.
   return `(^|[/\\\\])${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('/', '[/\\\\]')}$`;
@@ -40,6 +61,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (!Number.isInteger(index) || index < 1 || index > count) {
     throw new Error('Shard index must be between 1 and the shard count');
   }
+  const seed = process.env.E2E_SHARD_SEED;
+  if (seed) console.error(`Shards dealt at random, seed ${seed} (E2E_SHARD_SEED)`);
+  const shards = seed
+    ? shuffledShards(specFiles(), count, Number(seed))
+    : assignShards(specFiles(), durations, count);
   // --project=chromium in test:e2e pulls in the unfiltered first-run dependency first.
-  console.log(assignShards(specFiles(), durations, count)[index - 1].map(fileFilter).join('\n'));
+  console.log(shards[index - 1].map(fileFilter).join('\n'));
 }

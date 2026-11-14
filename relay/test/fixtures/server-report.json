@@ -1,0 +1,22 @@
+{
+  "comment": "The report the Inkadra server sends (apps/server/src/feedback-relay.ts relayMetadata) and the relay must keep whole. Both test suites read this file: change it in one PR with both sides.",
+  "publicUrl": "https://inkadra.example",
+  "feedback": {
+    "requestId": "00000000-0000-4000-8000-000000000000",
+    "type": "question",
+    "area": "board",
+    "title": "Help with the board",
+    "description": "Details",
+    "attachments": [],
+    "diagnostics": { "app": "0.9.0", "browser": "Firefox 140", "console": "W boom" }
+  },
+  "report": {
+    "requestId": "00000000-0000-4000-8000-000000000000",
+    "kind": "question",
+    "area": "board",
+    "title": "Help with the board",
+    "description": "Details",
+    "device": { "app": "0.9.0", "browser": "Firefox 140" },
+    "logExcerpt": "W boom"
+  }
+}

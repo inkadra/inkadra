@@ -11,7 +11,16 @@ logs; new files use the median duration. See its comment to refresh the table. P
 excluded. Playwright's `chromium` project dependency runs all of `first-run.spec.ts` first on
 each empty database, even with CLI file filters. Specs may rely on its administrator Giulia
 Bianchi (`giulia@example.com`), the project "Ultima corsa" and its board story (including the
-notes "Sopralluogo al porto" and "Casting comparse"), never on another spec. Independent shell and upload regressions
+notes "Sopralluogo al porto" and "Casting comparse"), never on another spec. The nightly CI run
+deals the specs to the shards at random (`E2E_SHARD_SEED`, printed in the log; rerun a shard with
+`E2E_SHARD_SEED=<seed> node scripts/e2e-shards.mjs <n> 6`), so a spec that needs another one's
+data fails there.
+
+**Browsers and time zones.** The `firefox-smoke` and `webkit-smoke` projects run a smoke subset
+(sign-in, board, upload, export, guest link, date field) in Europe/Rome, and
+`dates-los-angeles` runs the date-heavy specs in America/Los_Angeles: run one with
+`pnpm --filter @inkadra/e2e exec playwright test --project=<name>` on an empty database. CI
+runs each on its own database. Independent shell and upload regressions
 live in `shell-and-uploads.spec.ts` and run once.
 
 **Service worker network events.** `playwright.config.ts` sets
