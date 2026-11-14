@@ -149,10 +149,7 @@ export async function refusalStatus(): Promise<ConnectionStatus> {
 // Keep reopened boards and their last authenticated role available while this tab is offline.
 // shortcut: memory only, so a closed or reloaded tab loses them; `setUnsaved` warns before
 // that. Upgrade to a persistent copy (IndexedDB) to survive it (#791).
-const cachedBoards = new Map<
-  string,
-  { update: Uint8Array; readOnly: boolean; unsaved: boolean }
->();
+const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean; unsaved: boolean }>();
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {

@@ -238,9 +238,10 @@ export function ScheduleView({
   const { t, i18n } = useTranslation();
   const slugline = useSlugline();
   const [callSheetOpen, setCallSheetOpen] = useState(false);
-  // A saved-version preview is read only: it neither takes nor keeps the live drafts.
-  const keepKey = `${userId ?? ''}:${boardId}`;
-  const kept = readOnly ? undefined : keptDrafts.get(keepKey);
+  // Drafts are kept for a known person only. A saved-version preview is read only: it neither
+  // takes nor keeps the live drafts.
+  const keepKey = userId ? `${userId}:${boardId}` : '';
+  const kept = readOnly || !keepKey ? undefined : keptDrafts.get(keepKey);
   const [days, setDays] = useState<ShootingDay[]>(() => kept?.days ?? []);
   // Unsaved edits per day, with the revision they started from. A draft is never dropped when
   // the server has a newer revision: it is flagged as stale until the user picks a version.
@@ -307,6 +308,7 @@ export function ScheduleView({
   // Closing the live schedule keeps its unsaved drafts for when it opens again.
   useEffect(
     () => () => {
+      if (!keepKey) return;
       if (Object.keys(draftsRef.current).length > 0)
         keptDrafts.set(keepKey, { days: daysRef.current, drafts: draftsRef.current });
       else if (!readOnlyRef.current) keptDrafts.delete(keepKey);
