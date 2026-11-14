@@ -7,21 +7,21 @@ release candidate (`X.Y.Z-rc.N`) and recorded in the issue or discussion of the 
 
 ## Automated (CI on every pull request, `main` and tag)
 
-| Gate | Job | What it proves |
-| --- | --- | --- |
-| Lint, types, unit and server tests | `tests` | Code, migrations from an empty database, restores of a backup made by the same build |
-| Migration locks | `tests` (`db/migration-locks.test.ts`) | No new migration blocks a table without a stated reason |
-| Older database refused | `tests` (`db/client.test.ts`) | A server does not start on a database a newer version migrated |
-| End-to-end, Chromium | `e2e` | The product in a browser |
-| Firefox and WebKit smoke | `e2e-browsers` | The main paths in Firefox and WebKit (Safari's engine) |
-| Upgrade from the last release | `release-upgrade` (`scripts/test-release-upgrade.sh`) | The last release's data (sample projects with files, schedule, a saved version) after the upgrade: rows, file bytes, every board opening in the collaboration server |
-| Restore of the last release's backup | `release-upgrade` | A backup of the last release restored by this version, newer migrations applied on real rows |
-| Rollback | `release-upgrade` | The last release restores its own backup into a new database (docs/self-hosting/upgrades.md#going-back-to-an-older-version) |
-| PostgreSQL 16 to 18 | `postgres-upgrade` | The database upgrade of the guide, both ways, and its rollback |
-| Reverse proxies, data folder owner | `proxy`, `data-dir` | The deployment files of the repository |
-| Image vulnerabilities | `scan` | No fixable high or critical vulnerability |
-| Every published image starts | `publish` (tags and `main`) | amd64 and arm64, standard and `-office`, each started and scanned before it is tagged |
-| Release notes present | Release workflow | `docs/releases/X.Y.Z.en.md` exists; without it the workflow stops before tagging |
+| Gate                                 | Job                                                   | What it proves                                                                                                                                                       |
+| ------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lint, types, unit and server tests   | `tests`                                               | Code, migrations from an empty database, restores of a backup made by the same build                                                                                 |
+| Migration locks                      | `tests` (`db/migration-locks.test.ts`)                | No new migration blocks a table without a stated reason                                                                                                              |
+| Older database refused               | `tests` (`db/client.test.ts`)                         | A server does not start on a database a newer version migrated                                                                                                       |
+| End-to-end, Chromium                 | `e2e`                                                 | The product in a browser                                                                                                                                             |
+| Firefox and WebKit smoke             | `e2e-browsers`                                        | The main paths in Firefox and WebKit (Safari's engine)                                                                                                               |
+| Upgrade from the last release        | `release-upgrade` (`scripts/test-release-upgrade.sh`) | The last release's data (sample projects with files, schedule, a saved version) after the upgrade: rows, file bytes, every board opening in the collaboration server |
+| Restore of the last release's backup | `release-upgrade`                                     | A backup of the last release restored by this version, newer migrations applied on real rows                                                                         |
+| Rollback                             | `release-upgrade`                                     | The last release restores its own backup into a new database (docs/self-hosting/upgrades.md#going-back-to-an-older-version)                                          |
+| PostgreSQL 16 to 18                  | `postgres-upgrade`                                    | The database upgrade of the guide, both ways, and its rollback                                                                                                       |
+| Reverse proxies, data folder owner   | `proxy`, `data-dir`                                   | The deployment files of the repository                                                                                                                               |
+| Image vulnerabilities                | `scan`                                                | No fixable high or critical vulnerability                                                                                                                            |
+| Every published image starts         | `publish` (tags and `main`)                           | amd64 and arm64, standard and `-office`, each started and scanned before it is tagged                                                                                |
+| Release notes present                | Release workflow                                      | `docs/releases/X.Y.Z.en.md` exists; without it the workflow stops before tagging                                                                                     |
 
 ## By hand, on the release candidate
 

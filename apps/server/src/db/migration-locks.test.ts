@@ -70,9 +70,7 @@ describe('migration locks (#805)', () => {
         'CREATE TABLE "fresh" ("id" uuid);--> statement-breakpoint\nCREATE INDEX "f_idx" ON "fresh" ("id");',
       ),
     ).toEqual([]);
-    expect(
-      heavyLocks('ALTER TABLE "board" ALTER COLUMN "title" SET NOT NULL;'),
-    ).toHaveLength(1);
+    expect(heavyLocks('ALTER TABLE "board" ALTER COLUMN "title" SET NOT NULL;')).toHaveLength(1);
     expect(
       heavyLocks(
         'ALTER TABLE "asset" ADD CONSTRAINT "c" FOREIGN KEY ("u") REFERENCES "user"("id") NOT VALID;',
@@ -85,9 +83,7 @@ describe('migration locks (#805)', () => {
     const folder = fileURLToPath(new URL('../../drizzle', import.meta.url));
     const problems = readdirSync(folder)
       .filter((f) => /^\d{4}_.*\.sql$/.test(f) && Number(f.slice(0, 4)) > BASELINE)
-      .flatMap((f) =>
-        heavyLocks(readFileSync(join(folder, f), 'utf8')).map((p) => `${f}: ${p}`),
-      );
+      .flatMap((f) => heavyLocks(readFileSync(join(folder, f), 'utf8')).map((p) => `${f}: ${p}`));
     expect(problems).toEqual([]);
   });
 });
