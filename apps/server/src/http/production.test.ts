@@ -462,8 +462,19 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
   it('serves the cards a schedule reads of the storyboards the caller can open (#826)', async () => {
     const base = { x: 0, y: 0, w: 240, z: 'a0', parent: null, createdBy: null, createdAt: 0 };
     const doc = createBoardDoc(ids.sa);
-    addElement(doc, { ...base, id: 'scene-sum-1', type: 'scene', number: '4', title: 'Rain' } as Element);
-    addElement(doc, { ...base, id: 'frame-sum-1', type: 'frame', parent: 'scene-sum-1' } as Element);
+    addElement(doc, {
+      ...base,
+      id: 'scene-sum-1',
+      type: 'scene',
+      number: '4',
+      title: 'Rain',
+    } as Element);
+    addElement(doc, {
+      ...base,
+      id: 'frame-sum-1',
+      type: 'frame',
+      parent: 'scene-sum-1',
+    } as Element);
     addElement(doc, { ...base, id: 'note-sum-1', type: 'note' } as Element);
     const state = Y.encodeStateAsUpdate(doc);
     await db

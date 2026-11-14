@@ -16,7 +16,9 @@ export function AdminEnrollment({ children, setup }: { children: ReactNode; setu
     <main className="settings-page admin-enrollment">
       <p role="alert">{t('settings.twoFactor.requiredAdmin')}</p>
       {setup}
-      <Button onClick={() => signOut(user?.id).catch(() => setFailed(true))}>{t('auth.signOut')}</Button>
+      <Button onClick={() => signOut(user?.id).catch(() => setFailed(true))}>
+        {t('auth.signOut')}
+      </Button>
       {failed && <p role="alert">{t('auth.signOutFailed')}</p>}
     </main>
   );

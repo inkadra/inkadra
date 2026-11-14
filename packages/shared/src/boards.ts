@@ -325,12 +325,14 @@ export const ScheduleSource = z
   })
   .openapi('ScheduleSource');
 export type ScheduleSource = z.infer<typeof ScheduleSource>;
-export const ScheduleSources = z.object({ items: z.array(ScheduleSource) }).openapi('ScheduleSources', {
-  description:
-    'A read-only copy of what the Production board shows of its storyboards (#826), for the ' +
-    'requested boards the caller can open; the others are left out. Open the board document ' +
-    'to edit or to follow changes live.',
-});
+export const ScheduleSources = z
+  .object({ items: z.array(ScheduleSource) })
+  .openapi('ScheduleSources', {
+    description:
+      'A read-only copy of what the Production board shows of its storyboards (#826), for the ' +
+      'requested boards the caller can open; the others are left out. Open the board document ' +
+      'to edit or to follow changes live.',
+  });
 export type ScheduleSources = z.infer<typeof ScheduleSources>;
 
 /** Personal clip destinations, independent of edits by other people. */

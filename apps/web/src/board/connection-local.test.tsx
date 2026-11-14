@@ -6,7 +6,12 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
 import { authApi, RequestError } from '../lib/api.ts';
 import { signOut } from '../lib/sign-out.ts';
-import { type BoardConnection, cachedBoards, refusalStatus, useBoardConnection } from './connection.ts';
+import {
+  type BoardConnection,
+  cachedBoards,
+  refusalStatus,
+  useBoardConnection,
+} from './connection.ts';
 
 /** The copy of a board on the device (#791): a reload, a second account, signing out. */
 type Options = {
