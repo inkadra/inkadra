@@ -126,7 +126,8 @@ describe('PresentationView', () => {
     const host = await mount(view(store));
     const counter = () => {
       const bar = host.querySelector<HTMLElement>('.present-progress__bar');
-      return `${host.querySelectorAll('.present-thumb.is-active').length}:${Math.round(Number.parseFloat(bar?.style.width ?? '0'))}`;
+      const scale = /scaleX\((.*)\)/.exec(bar?.style.transform ?? '')?.[1] ?? '0';
+      return `${host.querySelectorAll('.present-thumb.is-active').length}:${Math.round(Number(scale) * 100)}`;
     };
     expect(host.textContent).toContain('Antonio scende dal taxi');
     expect(counter()).toBe('1:50');
@@ -216,7 +217,7 @@ describe('PresentationView', () => {
     expect(host.textContent).toContain('Frame visibile');
     expect(host.textContent).not.toContain('Frame nascosto');
     expect(host.querySelectorAll('.present-thumb')).toHaveLength(0);
-    expect(host.querySelector('.present-progress__bar')?.getAttribute('style')).toContain('100%');
+    expect(host.querySelector('.present-progress__bar')?.getAttribute('style')).toContain('scaleX(1)');
   });
 
   it('puts the body inside the dialog fullscreen, right in the click, and back', async () => {

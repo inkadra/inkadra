@@ -430,7 +430,7 @@ function RungsProgress({
           >
             <span>{rungLabel(r.name)}</span>
             <span className="fcard__bar">
-              <i style={{ width: `${r.status === 'ready' ? 100 : (r.progress ?? 0)}%` }} />
+              <i style={{ transform: `scaleX(${r.status === 'ready' ? 1 : (r.progress ?? 0) / 100})` }} />
             </span>
           </span>
         ))}
@@ -570,7 +570,7 @@ function VideoPreview({
               <span className="fcard__bar" aria-hidden="true">
                 <i
                   className={percent === null ? 'is-indeterminate' : undefined}
-                  style={percent === null ? undefined : { width: `${percent}%` }}
+                  style={percent === null ? undefined : { transform: `scaleX(${percent / 100})` }}
                 />
               </span>
               {percent !== null && <span className="fcard__percent">{percent}%</span>}

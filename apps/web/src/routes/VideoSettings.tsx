@@ -226,7 +226,7 @@ function ExistingVideos({
             aria-label={t('videoSettings.existing.meter')}
           >
             <i
-              style={{ width: `${run.total ? Math.min(100, (run.done / run.total) * 100) : 0}%` }}
+              style={{ transform: `scaleX(${run.total ? Math.min(1, run.done / run.total) : 0})` }}
             />
           </div>
           <div className="video-run__line">
@@ -761,7 +761,7 @@ function AdvancedCard({
                   aria-valuemax={100}
                   aria-valuenow={percent}
                 >
-                  <i style={{ width: `${percent}%` }} />
+                  <i style={{ transform: `scaleX(${percent / 100})` }} />
                 </div>
               )}
             </div>

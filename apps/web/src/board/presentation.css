@@ -100,8 +100,8 @@
   cursor: pointer;
   text-decoration: none;
   transition:
-    background 0.15s,
-    border-color 0.15s;
+    background var(--ink-dur-fast) var(--ink-ease-out),
+    border-color var(--ink-dur-fast) var(--ink-ease-out);
 }
 
 .present-header__btn:hover {
@@ -284,7 +284,7 @@
   background: var(--ink-surface-2);
   box-shadow: 0 0 0 1px var(--ink-border-default);
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--ink-dur-fast) var(--ink-ease-out);
 }
 
 .present-thumb:hover {
@@ -312,7 +312,10 @@
   height: 100%;
   background: var(--present-accent, var(--ink-text-primary));
   border-radius: var(--ink-radius-full);
-  transition: width 0.2s ease-out;
+  /* Progress moves by transform, not by re-laying out the width (#773). */
+  width: 100%;
+  transform-origin: left;
+  transition: transform var(--ink-dur-base) var(--ink-ease-out);
 }
 
 .present-toolbar {

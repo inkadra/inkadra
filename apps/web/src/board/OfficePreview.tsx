@@ -220,19 +220,17 @@ export function OfficeStage({
           variant="ghost"
           disabled={zoom <= 50}
           aria-label={t('office.zoomOut')}
+          icon="minus"
           onClick={() => setZoom(zoom - 25)}
-        >
-          −
-        </Button>
+        />
         <span>{zoom}%</span>
         <Button
           variant="ghost"
           disabled={zoom >= 200}
           aria-label={t('office.zoomIn')}
+          icon="plus"
           onClick={() => setZoom(zoom + 25)}
-        >
-          +
-        </Button>
+        />
       </div>
     </div>
   );

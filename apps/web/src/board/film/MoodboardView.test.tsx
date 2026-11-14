@@ -537,20 +537,28 @@ it('offers the existing ways to add a reference to editors only, in the bar and 
   );
   expect(images).toEqual(['asset-1']);
 
-  // Color: the picked hex is stored in capitals, as the schema wants.
-  const color = host.querySelector<HTMLInputElement>('[data-testid="moodboard-color"]');
+  // Colour: a grey card is added and Inkadra's picker opens beside it (#764), not the
+  // browser's; the picked hex is stored in capitals, as the schema wants.
+  await click(items()[2] ?? null);
+  const stored = () => [...store.getSnapshot().byId.values()].find((el) => el.type === 'color');
+  expect(stored()?.type === 'color' && stored()?.hex).toBe('#808086');
+  expect(host.querySelector('input[type="color"]')).toBeNull();
+  const hex = host.querySelector<HTMLInputElement>(
+    '.colorpicker input[aria-label="board.color.hex"]',
+  );
   await act(async () => {
-    if (color) {
-      color.value = '#aabbcc';
-      color.dispatchEvent(new Event('change', { bubbles: true }));
+    if (hex) {
+      hex.value = '#aabbcc';
+      hex.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
     }
   });
-  const stored = [...store.getSnapshot().byId.values()].find((el) => el.type === 'color');
-  expect(stored?.type === 'color' && stored.hex).toBe('#AABBCC');
+  expect(stored()?.type === 'color' && stored()?.hex).toBe('#AABBCC');
   expect(host.querySelector('.moodboard__empty')).toBeNull();
+  await key('Escape', hex ?? window);
+  expect(host.querySelector('.colorpicker')).toBeNull();
 
   // Link: a bare domain becomes https, and the preview is asked for.
-  expect(host.querySelector('.moodboard__popover')).not.toBeNull();
+  await click(add ?? null);
   await click(items()[1] ?? null);
   const field = host.querySelector<HTMLInputElement>('.moodboard__popover input');
   await act(async () => {

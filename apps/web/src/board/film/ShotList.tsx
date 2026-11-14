@@ -633,7 +633,7 @@ export function ShotList({
           aria-label={isCollapsed ? t('film.list.expandGroup') : t('film.list.collapseGroup')}
           onClick={() => toggleCollapse(g.id)}
         >
-          {isCollapsed ? '▸' : '▾'}
+          <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} size={14} />
         </button>
         {g.scene ? (
           <>
@@ -871,7 +871,7 @@ export function ShotList({
                 aria-label={t('film.list.removeFilter')}
                 onClick={() => setSelectedScene('')}
               >
-                ×
+                <Icon name="close" size={12} />
               </button>
             </span>
           )}
@@ -884,7 +884,7 @@ export function ShotList({
                 aria-label={t('film.list.removeFilter')}
                 onClick={() => setSelectedLocation('')}
               >
-                ×
+                <Icon name="close" size={12} />
               </button>
             </span>
           )}
@@ -897,7 +897,7 @@ export function ShotList({
                 aria-label={t('film.list.removeFilter')}
                 onClick={() => setSelectedCast('')}
               >
-                ×
+                <Icon name="close" size={12} />
               </button>
             </span>
           )}
@@ -910,7 +910,7 @@ export function ShotList({
                 aria-label={t('film.list.removeFilter')}
                 onClick={() => setStatus('')}
               >
-                ×
+                <Icon name="close" size={12} />
               </button>
             </span>
           )}

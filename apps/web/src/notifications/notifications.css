@@ -826,7 +826,7 @@
   gap: 4px;
   background: var(--ink-bg-panel);
   touch-action: pan-y;
-  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--ink-dur-base) var(--ink-ease-out);
 }
 .notifications:not(.notifications--fixed) .swipe-row__front {
   background: var(--ink-surface-float);

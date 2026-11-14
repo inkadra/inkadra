@@ -9,10 +9,11 @@
   min-width: 0;
 }
 .project-navigation__options {
+  display: grid;
+  place-items: center;
   border: 0;
   background: transparent;
   color: var(--ink-text-muted);
-  font-size: 20px;
   min-width: 36px;
   min-height: 36px;
   cursor: pointer;
@@ -299,7 +300,8 @@
   border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
-  font-size: 22px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
 }
 .project-appearance__close:hover {

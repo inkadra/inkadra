@@ -2,7 +2,7 @@
 import type { SceneElement } from '@inkadra/canvas-core';
 import { TODO_LISTS, type TodoList } from '@inkadra/doc-schema';
 import type { Person } from '@inkadra/shared';
-import { Avatar, Checkbox, Segmented } from '@inkadra/ui';
+import { Avatar, Checkbox, Icon, Segmented } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { type CSSProperties, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,7 +78,7 @@ export function NeededItems({
         ) : (
           <>
             <span className="needed__plus" aria-hidden="true">
-              +
+              <Icon name="plus" size={12} />
             </span>
             {!phone && t('needed.who')}
           </>

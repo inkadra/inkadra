@@ -73,7 +73,7 @@ export function TransferProgress({
         aria-valuemax={100}
         aria-valuenow={value}
       >
-        <span style={{ width: `${value}%` }} />
+        <span style={{ transform: `scaleX(${value / 100})` }} />
       </div>
     </div>
   );

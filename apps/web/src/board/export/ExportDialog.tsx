@@ -999,7 +999,7 @@ export function ExportDialog(props: ExportDialogProps) {
                 >
                   <span
                     style={{
-                      width: progress?.total ? `${(progress.done / progress.total) * 100}%` : '0%',
+                      transform: `scaleX(${progress?.total ? progress.done / progress.total : 0})`,
                     }}
                   />
                 </div>

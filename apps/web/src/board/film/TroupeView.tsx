@@ -15,6 +15,7 @@ import {
   Dialog,
   DialogActions,
   EmptyState,
+  Icon,
   RadioGroup,
 } from '@inkadra/ui';
 import {
@@ -419,7 +420,7 @@ function CrewRow({
           setMenu(menu ? null : { x: rect.left, y: rect.bottom });
         }}
       >
-        ⋯
+        <Icon name="more" size={16} />
       </button>
       {menu && (
         <ContextMenu

@@ -152,7 +152,7 @@ export function ShotlistKanban({
                   data-ink-tooltip={t('film.list.addInStatus', { status: t(col.labelKey) })}
                   onClick={() => onAddFrame(col.key)}
                 >
-                  +
+                  <Icon name="plus" size={14} />
                 </button>
               )}
             </div>

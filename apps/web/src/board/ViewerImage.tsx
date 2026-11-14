@@ -110,22 +110,20 @@ export function ViewerImage({ children, onClose }: { children: ReactNode; onClos
       </div>
       <fieldset className="viewer__image-tools" aria-label={t('viewer.zoom')}>
         <Button
+          icon="minus"
           aria-label={t('viewer.zoomOut')}
           disabled={view.zoom === 1}
           onClick={() => zoom(1 / 1.5)}
-        >
-          −
-        </Button>
+        />
         <Button onClick={() => setView({ zoom: 1, x: 0, y: 0 })}>
           {Math.round(view.zoom * 100)}%
         </Button>
         <Button
+          icon="plus"
           aria-label={t('viewer.zoomIn')}
           disabled={view.zoom === 8}
           onClick={() => zoom(1.5)}
-        >
-          +
-        </Button>
+        />
       </fieldset>
     </div>
   );
