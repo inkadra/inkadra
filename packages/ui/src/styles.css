@@ -290,7 +290,7 @@ select {
   align-items: center;
 }
 .ink-time__seg {
-  width: calc(2ch + 4px);
+  width: 2ch;
   height: auto;
   margin: 0;
   padding: 1px 2px;
