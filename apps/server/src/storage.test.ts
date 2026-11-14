@@ -13,6 +13,7 @@ import {
   createStorage,
   localStorage,
   readAll,
+  redirectWarnings,
   type Storage,
   variantKey,
 } from './storage.ts';
@@ -228,3 +229,21 @@ function s3EnvForSigning() {
     S3_FORCE_PATH_STYLE: 'true',
   };
 }
+
+it('warns at startup about bucket addresses browsers cannot use (#839)', () => {
+  const base = {
+    STORAGE_DRIVER: 's3' as const,
+    S3_PUBLIC_REDIRECT: true,
+    S3_ENDPOINT: 'http://rustfs:9000',
+    S3_PUBLIC_ENDPOINT: undefined,
+    PUBLIC_URL: 'https://inkadra.example.com',
+  };
+  expect(redirectWarnings(base)).toHaveLength(2);
+  expect(redirectWarnings({ ...base, S3_PUBLIC_ENDPOINT: 'https://files.example.com' })).toEqual(
+    [],
+  );
+  expect(redirectWarnings({ ...base, S3_PUBLIC_ENDPOINT: 'http://files.example.com' })).toEqual([
+    expect.stringMatching(/plain http/),
+  ]);
+  expect(redirectWarnings({ ...base, S3_PUBLIC_REDIRECT: false })).toEqual([]);
+});

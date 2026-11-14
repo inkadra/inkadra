@@ -5,6 +5,28 @@ import { acquireLease, LeaseTakenError, leaseKey } from './lease.ts';
 
 const log = { warn: vi.fn(), error: vi.fn() };
 
+// A Valkey that answers only after `down` refused calls (a host reboot that starts it late).
+const lateValkey = (down: number) => {
+  let calls = 0;
+  return {
+    eval: async () => {
+      calls += 1;
+      if (calls <= down) throw new Error('connect ECONNREFUSED');
+      return 1;
+    },
+  } as never;
+};
+
+it('waits for a Valkey that is not up yet, then gives up after a bound', async () => {
+  const onLost = vi.fn();
+  const lease = await acquireLease(lateValkey(2), 'web', log, { host: 'a', onLost });
+  expect(log.warn).toHaveBeenCalledWith(expect.anything(), expect.stringMatching(/retrying/));
+  await lease.release();
+  await expect(
+    acquireLease(lateValkey(1e9), 'web', log, { host: 'a', onLost, unavailableMs: 600 }),
+  ).rejects.toThrow(/ECONNREFUSED/);
+});
+
 describe.skipIf(!process.env.REDIS_URL)('single-process lease (#790, #819)', () => {
   const redis = new IORedis(process.env.REDIS_URL!);
   // A role name of its own, so parallel runs on one Valkey never meet.
@@ -54,5 +76,21 @@ describe.skipIf(!process.env.REDIS_URL)('single-process lease (#790, #819)', () 
     await lease.release();
     expect(await redis.get(leaseKey(role))).toBe('intruder/1/x');
     await redis.del(leaseKey(role));
+  });
+
+  it('keeps the lease when a holder long gone comes back for less than a TTL', async () => {
+    const onLost = vi.fn();
+    const lease = await acquireLease(redis, role, log, {
+      host: 'r',
+      onLost,
+      ttlMs: 400,
+      renewMs: 50,
+    });
+    // An append-only file restored after a Valkey crash: the old key, with its remaining life.
+    await redis.set(leaseKey(role), 'gone/1/x', 'PX', 150);
+    await new Promise((r) => setTimeout(r, 600));
+    expect(onLost).not.toHaveBeenCalled();
+    expect(await redis.get(leaseKey(role))).toMatch(/^r\//);
+    await lease.release();
   });
 });

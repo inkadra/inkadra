@@ -290,7 +290,9 @@ in Valkey while it runs, and a second one with the same role refuses to start wi
 the lease ends by itself within 30 seconds, and a new process waits for it; the same container
 restarting takes it back at once. On an orchestrator,
 update by recreating (stop the old process, then start the new one), not by a rolling update.
-Only `worker` can run as several replicas.
+Only `worker` can run as several replicas. The restart takeover tells processes apart by host
+name: never `--scale` web or collab with a fixed `hostname:` or with host networking. Replicas
+sharing one host name take the lease from each other in turn instead of refusing to start.
 
 ```sh
 INKADRA_COLLAB_UPSTREAM=collab:3001 docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/proxy/caddy/compose.yaml up -d

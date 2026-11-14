@@ -20,6 +20,7 @@ it('redirects browsers to the bucket and streams to token clients', async () => 
     reply.header('content-disposition', 'inline; filename="a.mp4"');
     return sendRanged(req, reply, storage, 'originals/a', 5);
   });
+  app.get('/kept', (req, reply) => sendRanged(req, reply, storage, 'renditions/a', 5, false));
   const browser = await app.inject({ url: '/f', headers: { range: 'bytes=0-1' } });
   expect(browser.statusCode).toBe(302);
   expect(browser.headers.location).toContain('https://files.example.com/');
@@ -27,6 +28,10 @@ it('redirects browsers to the bucket and streams to token clients', async () => 
   expect(asked).toEqual([
     ['originals/a', SIGNED_URL_TTL_S, 'inline; filename="a.mp4"', 'video/mp4'],
   ]);
+  // A guest who may not download a rung: the bytes, never a bucket link.
+  const kept = await app.inject({ url: '/kept' });
+  expect(kept.statusCode).toBe(200);
+  expect(kept.body).toBe('bytes');
   const app2 = await app.inject({ url: '/f', headers: { authorization: 'Bearer ink_x' } });
   expect(app2.statusCode).toBe(200);
   expect(app2.body).toBe('bytes');

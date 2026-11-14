@@ -42,12 +42,20 @@ export interface Lease {
   release(): Promise<void>;
 }
 
+/** How long an unreachable Valkey is retried at startup (a host reboot starts it late). */
+export const LEASE_UNAVAILABLE_MS = 5 * 60_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Takes the lease of `role` or throws `LeaseTakenError`. A held lease is waited for, a little
  * longer than it lives: the process before this one may have been killed before releasing it
  * (`docker compose down` past its grace period, a crash), and Valkey keeps it across restarts.
- * While held it is renewed every
- * `renewMs`; `onLost` runs when another process holds it at a renewal (this one must stop).
+ * An unreachable Valkey is retried with backoff for `unavailableMs` (Docker may start it after
+ * this process, whatever `depends_on` says), then its error is thrown.
+ * While held it is renewed every `renewMs`; `onLost` runs when another process has held it for
+ * a whole TTL (this one must stop). A foreign value seen once is not enough: after a Valkey crash
+ * an append-only file can bring back the key of a holder long gone, which expires on its own.
  * A Valkey outage only logs: the lease is renewed again once it is back.
  */
 export async function acquireLease(
@@ -60,30 +68,57 @@ export async function acquireLease(
     renewMs?: number;
     /** How long a held lease is waited for; by default its whole life and 5 s more. */
     waitMs?: number;
+    /** How long an unreachable Valkey is retried. */
+    unavailableMs?: number;
     onLost: () => void;
   },
 ): Promise<Lease> {
   const host = opts.host ?? hostname();
-  const ttl = String(opts.ttlMs ?? LEASE_TTL_MS);
+  const ttlMs = opts.ttlMs ?? LEASE_TTL_MS;
+  const ttl = String(ttlMs);
   const me = `${host}/${process.pid}/${randomUUID()}`;
   const key = leaseKey(role);
-  const until = Date.now() + (opts.waitMs ?? Number(ttl) + 5_000);
-  let got = await redis.eval(ACQUIRE, 1, key, me, ttl, `${host}/`);
-  if (got !== 1) log.warn({ role }, `waiting for the ${role} lease held by another process`);
-  while (got !== 1 && Date.now() < until) {
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
-    got = await redis.eval(ACQUIRE, 1, key, me, ttl, `${host}/`);
+  const waitMs = opts.waitMs ?? ttlMs + 5_000;
+  const giveUp = Date.now() + (opts.unavailableMs ?? LEASE_UNAVAILABLE_MS);
+  let heldSince: number | undefined;
+  let backoff = 500;
+  for (;;) {
+    let got: unknown;
+    try {
+      got = await redis.eval(ACQUIRE, 1, key, me, ttl, `${host}/`);
+    } catch (err) {
+      if (Date.now() >= giveUp) throw err;
+      log.warn({ role, err: String(err) }, 'Valkey unavailable: retrying the single-process lease');
+      await sleep(backoff);
+      backoff = Math.min(backoff * 2, 10_000);
+      continue;
+    }
+    if (got === 1) break;
+    if (heldSince === undefined) {
+      heldSince = Date.now();
+      log.warn({ role }, `waiting for the ${role} lease held by another process`);
+    }
+    if (Date.now() - heldSince >= waitMs)
+      throw new LeaseTakenError(
+        `Another inkadra process with the ${role} role is running (${String(got).split('/')[0]}). ` +
+          `Inkadra supports exactly one ${role} process per instance: stop the other one, or ` +
+          `start this one again if it has just stopped.`,
+      );
+    await sleep(1_000);
   }
-  if (got !== 1)
-    throw new LeaseTakenError(
-      `Another inkadra process with the ${role} role is running (${String(got).split('/')[0]}). ` +
-        `Inkadra supports exactly one ${role} process per instance: stop the other one, or ` +
-        `start this one again if it has just stopped.`,
-    );
+  let foreignSince: number | undefined;
   const timer = setInterval(() => {
     redis.eval(RENEW, 1, key, me, ttl).then(
       (ok) => {
-        if (ok === 1) return;
+        if (ok === 1) {
+          foreignSince = undefined;
+          return;
+        }
+        foreignSince ??= Date.now();
+        if (Date.now() - foreignSince < ttlMs) {
+          log.warn({ role }, `the ${role} lease is held by another process: waiting for it to end`);
+          return;
+        }
         clearInterval(timer);
         log.error({ role }, `another ${role} process took over: only one is supported`);
         opts.onLost();

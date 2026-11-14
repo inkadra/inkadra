@@ -51,8 +51,14 @@ import {
 } from './queues.ts';
 import { configureRateLimits } from './rate-limits.ts';
 import { startIndexBackfill } from './search/index-doc.ts';
-import { closeAll, SHUTDOWN_DEADLINE_MS, settledWithin, WORKER_CLOSE_MS } from './shutdown.ts';
-import { createStorage } from './storage.ts';
+import {
+  closeAll,
+  SHUTDOWN_DEADLINE_MS,
+  settledWithin,
+  shutdownOnce,
+  WORKER_CLOSE_MS,
+} from './shutdown.ts';
+import { createStorage, redirectWarnings } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
 import { cachedVideoSettings } from './video-settings.ts';
 
@@ -134,6 +140,15 @@ async function main() {
     return;
   }
 
+  // Filled in once everything to close is known; a lost lease before then waits for it.
+  const closers: Array<() => Promise<unknown>> = [];
+  const stop = shutdownOnce(async (signal) => {
+    log.info({ signal }, 'shutting down');
+    const done = await closeAll(closers, log);
+    if (!done) log.error({ deadlineMs: SHUTDOWN_DEADLINE_MS }, 'shutdown deadline passed');
+    process.exit(done ? 0 : 1);
+  });
+
   // One process per role (#790, #819), taken before migrations so a second web never runs them.
   const leases: Lease[] = [];
   let leaseRedis: IORedis | undefined;
@@ -150,7 +165,7 @@ async function main() {
       for (const role of leaseRoles)
         leases.push(
           await acquireLease(leaseRedis, role, log, {
-            onLost: () => process.kill(process.pid, 'SIGTERM'),
+            onLost: () => stop.request('lease lost'),
           }),
         );
     } catch (err) {
@@ -179,6 +194,7 @@ async function main() {
   const mailer = createMailer(config, log);
   const auth = createAuth(config, db, { mailer, log });
   const storage = createStorage(config);
+  for (const warning of redirectWarnings(config)) log.warn(warning);
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
   // Scratch folders of media jobs a crash left behind (not those of a job still running).
@@ -234,11 +250,11 @@ async function main() {
   };
   const transfers = transferDeps(config);
   const closeRateLimits = await configureRateLimits(config, log);
-  const closers: Array<() => Promise<unknown>> = [
+  closers.push(
     async () => closeRateLimits(),
     async () => auth.closeSecurity(),
     () => sql.end({ timeout: 5 }),
-  ];
+  );
 
   // The Server page (#514): every role samples itself and tells the others it is alive.
   const monitorConnection = config.REDIS_URL ? monitorRedis(config.REDIS_URL, log) : undefined;
@@ -487,14 +503,10 @@ async function main() {
     closers.unshift(async () => clearInterval(heartbeat));
   }
 
-  const shutdown = async (signal: string) => {
-    log.info({ signal }, 'shutting down');
-    const done = await closeAll(closers, log);
-    if (!done) log.error({ deadlineMs: SHUTDOWN_DEADLINE_MS }, 'shutdown deadline passed');
-    process.exit(done ? 0 : 1);
-  };
-  process.once('SIGTERM', () => void shutdown('SIGTERM'));
-  process.once('SIGINT', () => void shutdown('SIGINT'));
+  // `on`, not `once`: a second signal while boards are stored must not kill the process.
+  process.on('SIGTERM', () => stop.request('SIGTERM'));
+  process.on('SIGINT', () => stop.request('SIGINT'));
+  stop.ready();
 }
 
 function transferDeps(config: Config) {
