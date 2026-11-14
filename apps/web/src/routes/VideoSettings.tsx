@@ -1049,9 +1049,9 @@ export function VideoSettings() {
               </dd>
             </div>
           </dl>
-        {liveOnly.length > 0 && (
-          <p className="settings-row__help">{t('videoSettings.totals.liveNote')}</p>
-        )}
+          {liveOnly.length > 0 && (
+            <p className="settings-row__help">{t('videoSettings.totals.liveNote')}</p>
+          )}
         </div>
       </Card>
       <p className="video-note">{t('videoSettings.rungs.note')}</p>

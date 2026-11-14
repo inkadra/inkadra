@@ -304,7 +304,9 @@ export async function videoLibrary(
   for (const row of rows) {
     if (!row.width || !row.height || !row.durationMs) continue;
     const short = Math.min(row.width, row.height);
-    const sum = sums.get(short > 1080 ? '2160' : short > 720 ? '1080' : short > 480 ? '720' : '480');
+    const sum = sums.get(
+      short > 1080 ? '2160' : short > 720 ? '1080' : short > 480 ? '720' : '480',
+    );
     if (!sum) continue;
     const minutes = row.durationMs / 60000;
     const fast = (row.frameRate ?? 0) > 30.5 ? minutes : 0;

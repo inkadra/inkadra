@@ -47,8 +47,22 @@ const view = (patch: Partial<VideoSettingsView> = {}): VideoSettingsView => ({
   library: [
     { side: '480', minutes: 0, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 0 },
     { side: '720', minutes: 0, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 0 },
-    { side: '1080', minutes: 60, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 3 },
-    { side: '2160', minutes: 60, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 2 },
+    {
+      side: '1080',
+      minutes: 60,
+      fastMinutes: 0,
+      noLiveMinutes: 0,
+      noLiveFastMinutes: 0,
+      videos: 3,
+    },
+    {
+      side: '2160',
+      minutes: 60,
+      fastMinutes: 0,
+      noLiveMinutes: 0,
+      noLiveFastMinutes: 0,
+      videos: 2,
+    },
   ],
   copiesBytes: 0,
   freeBytes: null,
@@ -268,7 +282,14 @@ it('says live is off when the sessions are 0, and offers each chosen resolution 
 
 it('counts a live-only resolution for the videos this server cannot encode live', () => {
   const library = [
-    { side: '1080' as const, minutes: 60, fastMinutes: 0, noLiveMinutes: 30, noLiveFastMinutes: 0, videos: 2 },
+    {
+      side: '1080' as const,
+      minutes: 60,
+      fastMinutes: 0,
+      noLiveMinutes: 30,
+      noLiveFastMinutes: 0,
+      videos: 2,
+    },
   ];
   const data = view({ library });
   const per = (rungs: VideoRung[]) => copiesMbPerMinute('balanced', rungs, 1080);
