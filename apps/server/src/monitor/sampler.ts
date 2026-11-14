@@ -11,6 +11,7 @@ import {
   readGpu,
 } from './resources.ts';
 import {
+  type BeatStores,
   type MonitorStore,
   type Point,
   type PresenceBoard,
@@ -62,6 +63,37 @@ export class LatencyRecorder {
     this.times = [];
     this.requests = 0;
     this.errors = 0;
+    return out;
+  }
+}
+
+/**
+ * Board stores of the collaboration server since the last heartbeat (#902): how long each took,
+ * and how long it waited for a pooled database connection before its transaction began.
+ */
+export class StoreRecorder {
+  private totals: number[] = [];
+  private waitMax = 0;
+
+  record(waitMs: number, totalMs: number) {
+    // shortcut: past 10 000 stores in 5 s the rest are dropped; nothing near that was measured.
+    if (this.totals.length >= 10_000) return;
+    this.totals.push(totalMs);
+    this.waitMax = Math.max(this.waitMax, waitMs);
+  }
+
+  take(): BeatStores | undefined {
+    const sorted = this.totals.sort((a, b) => a - b);
+    const out = sorted.length
+      ? {
+          n: sorted.length,
+          p95: sorted[Math.ceil(sorted.length * 0.95) - 1]!,
+          max: sorted[sorted.length - 1]!,
+          waitMax: this.waitMax,
+        }
+      : undefined;
+    this.totals = [];
+    this.waitMax = 0;
     return out;
   }
 }
@@ -161,6 +193,7 @@ export function startSampler(opts: {
   log: Pick<Logger, 'warn'>;
   latency?: LatencyRecorder;
   presence?: () => PresenceBoard[];
+  stores?: StoreRecorder;
   intervalMs?: number;
 }) {
   const host = hostname();
@@ -182,6 +215,7 @@ export function startSampler(opts: {
     const rss = process.memoryUsage.rss();
     const presence = opts.presence?.();
     const children = await tools.sample(at);
+    const stores = opts.stores?.take();
     if (previous) {
       const point = pointFrom(at, at - previous.at, previous, { container, cpu, rss });
       point.g = gpu;
@@ -200,6 +234,7 @@ export function startSampler(opts: {
         cpu: point.pc,
         memory: rss,
         ...(presence ? { presence } : {}),
+        ...(stores ? { stores } : {}),
         ...(children.length ? { children } : {}),
       });
     } else {

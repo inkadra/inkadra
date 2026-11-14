@@ -68,6 +68,42 @@ export async function collectMetrics(
       values: beats.map((b) => ({ labels: who(b), value: (now - b.at) / 1000 })),
     },
     {
+      name: 'inkadra_process_resident_memory_bytes',
+      help: 'Resident memory of the process at its last heartbeat.',
+      values: beats.map((b) => ({ labels: who(b), value: b.memory })),
+    },
+    {
+      name: 'inkadra_collab_open_boards',
+      help: 'Boards open with someone signed in on them, at the last heartbeat of a collaboration role.',
+      values: beats.flatMap((b) =>
+        b.presence ? [{ labels: who(b), value: b.presence.length }] : [],
+      ),
+    },
+    {
+      name: 'inkadra_board_stores',
+      help: 'Board saves to the database between the last two heartbeats.',
+      values: beats.flatMap((b) => (b.stores ? [{ labels: who(b), value: b.stores.n }] : [])),
+    },
+    {
+      name: 'inkadra_board_store_seconds',
+      help: 'Time of the board saves between the last two heartbeats (95th percentile and slowest).',
+      values: beats.flatMap((b) =>
+        b.stores
+          ? [
+              { labels: { ...who(b), stat: 'p95' }, value: b.stores.p95 / 1000 },
+              { labels: { ...who(b), stat: 'max' }, value: b.stores.max / 1000 },
+            ]
+          : [],
+      ),
+    },
+    {
+      name: 'inkadra_board_store_pool_wait_seconds',
+      help: 'Longest wait of a board save for a pooled database connection, between the last two heartbeats.',
+      values: beats.flatMap((b) =>
+        b.stores ? [{ labels: who(b), value: b.stores.waitMax / 1000 }] : [],
+      ),
+    },
+    {
       name: 'inkadra_queue_jobs',
       help: 'Jobs in the queue, by state.',
       values: queues.flatMap((q) => [

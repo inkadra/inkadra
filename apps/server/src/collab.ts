@@ -28,6 +28,7 @@ import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
 import { boardProblem, recordProblem } from './monitor/problems.ts';
+import { StoreRecorder } from './monitor/sampler.ts';
 import type { MonitorStore, PresenceBoard } from './monitor/store.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
@@ -606,6 +607,7 @@ export function createCollabServer(deps: {
     { attempt: number; payload: StorePayload; timer?: NodeJS.Timeout }
   >();
   let closing = false;
+  const storeTimes = new StoreRecorder();
   const stored = (document: Y.Doc) => {
     clearTimeout(unsaved.get(document)?.timer);
     unsaved.delete(document);
@@ -923,7 +925,10 @@ export function createCollabServer(deps: {
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
       const elementCount = document.getMap('elements').size;
       try {
+        const asked = performance.now();
+        let began = 0;
         const write = db.transaction(async (tx) => {
+          began = performance.now();
           // A database that stopped answering fails the store (retried) instead of holding it.
           await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
           await tx
@@ -935,6 +940,7 @@ export function createCollabServer(deps: {
             });
         });
         await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
+        storeTimes.record(began - asked, performance.now() - asked);
       } catch (err) {
         // The board was deleted for good (its project, or emptied from the trash) while open:
         // there is nothing to keep it for. Returning lets Hocuspocus unload the document.
@@ -1059,7 +1065,12 @@ export function createCollabServer(deps: {
     return out;
   }
 
-  return Object.assign(server, { recheck: () => recheck(server), presence, hasRoom });
+  return Object.assign(server, {
+    recheck: () => recheck(server),
+    presence,
+    hasRoom,
+    stores: storeTimes,
+  });
 }
 
 export type CollabServer = ReturnType<typeof createCollabServer>;
