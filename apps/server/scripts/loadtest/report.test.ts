@@ -92,6 +92,12 @@ describe('load test report (#902)', () => {
     });
   });
 
+  it('gives no memory per board without a baseline', () => {
+    const empty = readServer(parseMetrics('inkadra_database_connections 3'));
+    const peak = readServer(parseMetrics(metrics(150 * MiB, 20)));
+    expect(summarizeServer(empty, [peak]).perBoardMiB).toBeNull();
+  });
+
   it('passes within the limits of the preset', () => {
     expect(evaluate(result(), PRESETS.small.limits)).toEqual([]);
   });

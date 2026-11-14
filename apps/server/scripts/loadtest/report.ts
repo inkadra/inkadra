@@ -170,7 +170,8 @@ const maxOf = (values: Array<number | null>) => {
 };
 
 /**
- * The baseline is read before any board opens. Memory per board is the growth at the peak over
+ * The baseline is read before any board opens; without it (no board role alive yet) there is no
+ * memory per board. Memory per board is the growth at the peak over
  * the boards open then; it includes the sockets and presence of the people on them.
  * shortcut: each scrape sees the last 5 s of saves only; scrapes every 5 s may miss a window.
  */
@@ -182,7 +183,7 @@ export function summarizeServer(baseline: ServerReading, readings: ServerReading
     peakRssMiB: peak.rssBytes / MiB,
     peakOpenBoards,
     perBoardMiB:
-      peak.openBoards > 0
+      peak.openBoards > 0 && baseline.rssBytes > 0
         ? Math.max(0, peak.rssBytes - baseline.rssBytes) / MiB / peak.openBoards
         : null,
     storeP95Ms: maxOf(readings.map((r) => r.storeP95Ms)),

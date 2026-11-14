@@ -338,6 +338,12 @@ async function main(): Promise<number> {
   try {
     await signIn();
     baseline = await scrape();
+    // A collab role started a moment ago may not have sent its first heartbeat: wait for it,
+    // or memory per board would count the whole process.
+    for (let i = 0; baseline && baseline.rssBytes === 0 && i < 15; i++) {
+      await pause(2000);
+      baseline = await scrape();
+    }
     const project = (await (
       await api('POST', '/api/v1/projects', { name: `Load test ${run}` })
     ).json()) as { id: string; rootBoardId: string };
