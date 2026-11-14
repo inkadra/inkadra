@@ -6081,6 +6081,14 @@
           "title": "Der Server hatte einen Fehler",
           "text": "Eine Anfrage ist schiefgegangen. Wenn es sich wiederholt, sende es an die Entwickler."
         },
+        "board_save_failed": {
+          "title": "Ein Board wurde nicht gespeichert",
+          "text": "Die letzten Änderungen liegen nur im Arbeitsspeicher. Prüfe die Datenbank; ein Neustart davor verliert sie."
+        },
+        "board_load_failed": {
+          "title": "Ein Board ließ sich nicht öffnen",
+          "text": "Im Moment kann es niemand öffnen. Prüfe die Datenbank und das Serverprotokoll."
+        },
         "config_check": {
           "title": "Konfiguration zu beheben",
           "text": "Die Prüfung unten sagt, was zu beheben ist."

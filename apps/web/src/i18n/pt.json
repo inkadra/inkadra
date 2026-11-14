@@ -6081,6 +6081,14 @@
           "title": "O servidor deu um erro",
           "text": "Um pedido não correu bem. Se se repetir, envie-o aos programadores."
         },
+        "board_save_failed": {
+          "title": "Um quadro não foi guardado",
+          "text": "As últimas alterações estão só na memória. Verifique a base de dados; reiniciar antes de ela voltar perde-as."
+        },
+        "board_load_failed": {
+          "title": "Um quadro não abriu",
+          "text": "Neste momento ninguém o consegue abrir. Verifique a base de dados e o registo do servidor."
+        },
         "config_check": {
           "title": "Configuração por corrigir",
           "text": "A verificação abaixo diz o que corrigir."

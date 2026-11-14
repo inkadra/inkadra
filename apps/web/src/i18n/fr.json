@@ -6081,6 +6081,14 @@
           "title": "Le serveur a eu une erreur",
           "text": "Une requête n’a pas abouti. Si cela se répète, envoyez-la aux développeurs."
         },
+        "board_save_failed": {
+          "title": "Un tableau n’a pas été enregistré",
+          "text": "Ses dernières modifications ne sont qu’en mémoire. Vérifiez la base de données ; redémarrer avant son retour les perd."
+        },
+        "board_load_failed": {
+          "title": "Un tableau ne s’est pas ouvert",
+          "text": "Personne ne peut l’ouvrir pour le moment. Vérifiez la base de données et le journal du serveur."
+        },
         "config_check": {
           "title": "Configuration à corriger",
           "text": "Le contrôle ci-dessous dit quoi corriger."

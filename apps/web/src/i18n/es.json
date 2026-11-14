@@ -6081,6 +6081,14 @@
           "title": "El servidor ha dado un error",
           "text": "Una petición no ha salido bien. Si se repite, envíala a los desarrolladores."
         },
+        "board_save_failed": {
+          "title": "Un tablero no se guardó",
+          "text": "Sus últimos cambios solo están en memoria. Revisa la base de datos; reiniciar antes de que vuelva los pierde."
+        },
+        "board_load_failed": {
+          "title": "Un tablero no se abrió",
+          "text": "Ahora mismo nadie puede abrirlo. Revisa la base de datos y el registro del servidor."
+        },
         "config_check": {
           "title": "Configuración por arreglar",
           "text": "La comprobación de abajo dice qué arreglar."

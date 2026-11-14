@@ -6081,6 +6081,14 @@
           "title": "Il server ha dato un errore",
           "text": "Una richiesta non è andata a buon fine. Se si ripete, inviala agli sviluppatori."
         },
+        "board_save_failed": {
+          "title": "Una board non è stata salvata",
+          "text": "Le ultime modifiche restano solo in memoria. Controlla il database: riavviare prima che torni le fa perdere."
+        },
+        "board_load_failed": {
+          "title": "Una board non si è aperta",
+          "text": "Al momento nessuno può aprirla. Controlla il database e il log del server."
+        },
         "config_check": {
           "title": "Configurazione da sistemare",
           "text": "Il controllo qui sotto dice cosa sistemare."
