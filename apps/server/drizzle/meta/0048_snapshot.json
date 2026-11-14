@@ -1,5 +1,5 @@
 {
-  "id": "3eafe889-7cc4-4af5-a605-255f37951ddd",
+  "id": "22a67f34-3adb-43fd-b083-f22f3d8824a3",
   "prevId": "c5941fbb-e7dd-4996-b6de-7558f3bdfd56",
   "version": "7",
   "dialect": "postgresql",
@@ -3728,6 +3728,12 @@
           "notNull": true,
           "default": "now()"
         },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "finished_at": {
           "name": "finished_at",
           "type": "timestamp with time zone",
@@ -4456,48 +4462,6 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.pending_file_deletion": {
-      "name": "pending_file_deletion",
-      "schema": "",
-      "columns": {
-        "key": {
-          "name": "key",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "pending_file_deletion_created_idx": {
-          "name": "pending_file_deletion_created_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -5279,6 +5243,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "size": {
           "name": "size",

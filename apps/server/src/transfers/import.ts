@@ -157,6 +157,8 @@ export async function importProject(
   path: string,
   userId: string,
   progress: (done: number) => Promise<void> | void = () => {},
+  /** Runs first in the import's transaction; throws when the import must not commit (#810). */
+  fence: (tx: Pick<Database, 'select'>) => Promise<void> = async () => {},
 ): Promise<{
   projectId: string;
   projectName: string;
@@ -361,6 +363,7 @@ export async function importProject(
     const commentIds = new Map(comments.map((c) => [c.id, randomUUID()]));
     let elements = 0;
     const created = await db.transaction(async (tx) => {
+      await fence(tx);
       // The files belong to the rows made here: no longer to remove.
       await clearDeletions(tx, written);
       await tx.insert(project).values({

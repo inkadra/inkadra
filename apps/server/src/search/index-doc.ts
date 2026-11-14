@@ -1,6 +1,6 @@
 import { linkedLocation, linkedPlan } from '@inkadra/canvas-core';
 import { compareZ, type Element, readElement, roots } from '@inkadra/doc-schema';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import { reviveUsed } from '../classifications.ts';
@@ -296,22 +296,40 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
 
 /**
  * Indexes boards stored before the index existed, or whose last indexing failed; at most
- * `limit` boards per call.
+ * `limit` boards per call, in board order after `after`. A board that cannot be indexed is
+ * listed in `failed` and skipped (#815): pass `last` as `after` to go on with the next ones.
  */
-export async function backfillIndex(db: Database, limit = 200) {
+export async function backfillIndex(db: Database, limit = 200, after?: string) {
   const stale = await db
     .select({ boardId: boardDoc.boardId, state: boardDoc.state })
     .from(boardDoc)
-    .where(sql`${boardDoc.indexedAt} is null or ${boardDoc.indexedAt} < ${boardDoc.updatedAt}`)
+    .where(
+      and(
+        sql`(${boardDoc.indexedAt} is null or ${boardDoc.indexedAt} < ${boardDoc.updatedAt})`,
+        after ? gt(boardDoc.boardId, after) : undefined,
+      ),
+    )
+    .orderBy(boardDoc.boardId)
     .limit(limit);
+  let indexed = 0;
+  const failed: Array<{ boardId: string; err: unknown }> = [];
   for (const row of stale) {
     const doc = new Y.Doc();
-    Y.applyUpdate(doc, row.state);
-    await db.transaction((tx) => writeBoardIndex(tx, row.boardId, doc));
-    doc.destroy();
+    try {
+      Y.applyUpdate(doc, row.state);
+      await db.transaction((tx) => writeBoardIndex(tx, row.boardId, doc));
+      indexed += 1;
+    } catch (err) {
+      failed.push({ boardId: row.boardId, err });
+    } finally {
+      doc.destroy();
+    }
   }
-  return { indexed: stale.length };
+  return { indexed, failed, last: stale.at(-1)?.boardId };
 }
+
+/** Session lock key: one search-index backfill at a time across processes (#815). */
+const BACKFILL_LOCK = 10895;
 
 /**
  * Run by the collaboration server, which writes the index: catches up at start, then every
@@ -319,17 +337,38 @@ export async function backfillIndex(db: Database, limit = 200) {
  */
 export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 * 1000) {
   let stopped = false;
+  let running = false;
   const run = async () => {
+    // Several collab or all-in-one processes share the database: one backfill at a time
+    // (#815). The lock lives in the session of one reserved connection.
+    if (running) return;
+    running = true;
+    let reserved: Awaited<ReturnType<Database['$client']['reserve']>> | undefined;
     try {
+      reserved = await db.$client.reserve();
+      const [lock] = await reserved<
+        { ok: boolean }[]
+      >`select pg_try_advisory_lock(${BACKFILL_LOCK}) as ok`;
+      if (!lock?.ok) return;
       let total = 0;
+      let after: string | undefined;
       for (;;) {
-        const { indexed } = await backfillIndex(db);
-        total += indexed;
-        if (indexed === 0 || stopped) break;
+        const batch = await backfillIndex(db, 200, after);
+        total += batch.indexed;
+        for (const { boardId, err } of batch.failed)
+          log.error({ err, boardId }, 'board not indexed for search: retried in an hour');
+        if (!batch.last || stopped) break;
+        after = batch.last;
       }
       if (total > 0) log.info({ boards: total }, 'board search index caught up');
     } catch (err) {
       log.error({ err }, 'board search index backfill failed');
+    } finally {
+      if (reserved) {
+        await reserved`select pg_advisory_unlock_all()`.catch(() => {});
+        reserved.release();
+      }
+      running = false;
     }
   };
   void run();

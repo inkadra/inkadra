@@ -157,6 +157,26 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
         ],
       },
     }),
+    // Every rung offered only live: no stored copy exists or is coming.
+    liveOnly: (real: Asset) => ({
+      ...real,
+      proxy: { status: 'skipped', progress: null, url: null },
+      playback: {
+        ...real.playback,
+        renditions: ['480', '720', '1080'].map((name) => ({
+          name,
+          status: 'queued',
+          progress: null,
+          width: null,
+          height: null,
+          bitrate: null,
+          size: null,
+          url: null,
+          live: true,
+          liveOnly: true,
+        })),
+      },
+    }),
     prores: (real: Asset) => ({
       ...real,
       proxy: { status: 'processing', progress: 35, url: null },
@@ -179,13 +199,21 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
     const json = change(real);
     await page.route(`**/api/v1/assets/${assetId}`, (route) => route.fulfill({ json }));
     await page.goto(boardUrl);
-    await expect(card.locator('.fcard__prep')).toBeVisible();
+    if (name === 'liveOnly') {
+      await expect(card.locator('button[data-play-link]')).toBeVisible();
+      await expect(card.locator('.fcard__prep')).toHaveCount(0);
+    } else await expect(card.locator('.fcard__prep')).toBeVisible();
     await shoot(page, `ladder-card-${name}`);
-    if (name === 'live') {
+    if (name === 'live' || name === 'liveOnly') {
       await card.locator('.fcard__footer').dblclick();
       await page.locator('.viewer-quality__button').click();
       await expect(page.locator('.viewer-quality__note')).toBeVisible();
-      await shoot(page, 'ladder-viewer-live');
+      if (name === 'liveOnly') {
+        await expect(page.locator('.viewer-quality__note')).toContainText(
+          'senza salvare una copia',
+        );
+      }
+      await shoot(page, `ladder-viewer-${name}`);
     }
     await page.unroute(`**/api/v1/assets/${assetId}`);
   }

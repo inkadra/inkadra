@@ -12,7 +12,14 @@ import { and, asc, count, eq, inArray, like, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
-import { project, projectMember, projectTransfer, shootingDay, user } from './db/schema.ts';
+import {
+  instanceSetting,
+  project,
+  projectMember,
+  projectTransfer,
+  shootingDay,
+  user,
+} from './db/schema.ts';
 import { recordDeletions } from './file-deletions.ts';
 import { HttpError } from './http/errors.ts';
 import { projectFiles } from './http/projects-routes.ts';
@@ -206,6 +213,11 @@ export async function readSandbox(
 
 /** Exports a sandbox made, failed ones aside. */
 export async function exportsOf(db: Pick<Database, 'select'>, userId: string) {
+  const [used] = await db
+    .select()
+    .from(instanceSetting)
+    .where(eq(instanceSetting.key, `demo-export:${userId}`));
+  if (used) return 1;
   const [row] = await db
     .select({ n: count() })
     .from(projectTransfer)
@@ -256,6 +268,7 @@ export async function endSandbox(
     const ids = own.map((p) => p.id);
     const files = await projectFiles(tx, ids);
     if (ids.length > 0) await tx.delete(project).where(inArray(project.id, ids));
+    await tx.delete(instanceSetting).where(eq(instanceSetting.key, `demo-export:${userId}`));
     await tx.delete(user).where(eq(user.id, userId));
     await recordDeletions(tx, files);
     return files;

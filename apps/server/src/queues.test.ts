@@ -19,6 +19,7 @@ vi.mock('bullmq', () => ({
     upsertJobScheduler = harness.schedule;
     add = (...args: unknown[]) => harness.add(this.name, ...args);
     getJob = vi.fn();
+    on = vi.fn();
     close = vi.fn();
   },
   Worker: class {

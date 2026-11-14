@@ -116,9 +116,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db, auth, config, storage } = deps;
   const github = new GitHubFeedback(config, deps.feedbackGitHubUrl);
   const guests = createGuestAuth({ ...deps, docs: new DocViews() });
-  const uploads = new RateLimiter(30, HOUR);
-  const guestUploads = new RateLimiter(6, HOUR);
-  const instanceUploads = new RateLimiter(300, HOUR);
+  const uploads = new RateLimiter(30, HOUR, 'feedback-routes:uploads');
+  const guestUploads = new RateLimiter(6, HOUR, 'feedback-routes:guestUploads');
+  const instanceUploads = new RateLimiter(300, HOUR, 'feedback-routes:instanceUploads');
   async function settings() {
     const [row] = await db
       .select()
@@ -318,11 +318,11 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         if (req.routeOptions.url?.endsWith('/attachments')) {
           const who = identities.get(req) as Reporter;
           const budget = guest ? guestUploads : uploads;
-          if (!budget.take(who.owner)) {
+          if (!(await budget.take(who.owner))) {
             reply.header('retry-after', budget.retryAfterSeconds(who.owner));
             throw new HttpError('rate_limited', 'Too many uploads.');
           }
-          if (!instanceUploads.take('instance')) {
+          if (!(await instanceUploads.take('instance'))) {
             reply.header('retry-after', instanceUploads.retryAfterSeconds('instance'));
             throw new HttpError('rate_limited', 'Too many uploads.');
           }

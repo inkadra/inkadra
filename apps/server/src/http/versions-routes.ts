@@ -126,9 +126,13 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     }
   };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const saves = new RateLimiter(SAVES_PER_HOUR, 60 * 60 * 1000);
-  const restores = new RateLimiter(RESTORES_PER_HOUR, 60 * 60 * 1000);
-  const writerLookups = new RateLimiter(WRITER_LOOKUPS_PER_MINUTE, 60_000);
+  const saves = new RateLimiter(SAVES_PER_HOUR, 60 * 60 * 1000, 'versions-routes:saves');
+  const restores = new RateLimiter(RESTORES_PER_HOUR, 60 * 60 * 1000, 'versions-routes:restores');
+  const writerLookups = new RateLimiter(
+    WRITER_LOOKUPS_PER_MINUTE,
+    60_000,
+    'versions-routes:writerLookups',
+  );
 
   /** One version of the board, or 404: the id must belong to the board of the path. */
   async function findVersion(boardId: string, versionId: string) {
@@ -189,7 +193,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     const input = CreateBoardVersion.parse(req.body);
     await requireBoardRole(db, actor, boardId, 'editor');
     const versions = writer();
-    saves.require(actor.id, 'Too many saved versions: wait a while.');
+    await saves.require(actor.id, 'Too many saved versions: wait a while.');
     let saved: Awaited<ReturnType<VersionWriter['save']>>;
     try {
       saved = await versions.save({ boardId, name: input.name, userId: actor.id });
@@ -315,7 +319,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     const { boardId } = BoardParams.parse(req.params);
     await requireBoardRole(db, actor, boardId, 'viewer');
     const { items } = BoardWritersQuery.parse(req.body);
-    writerLookups.require(actor.id, 'Too many writer lookups: wait a minute.');
+    await writerLookups.require(actor.id, 'Too many writer lookups: wait a minute.');
     const body: BoardWriters = { items: await findWriters(db, boardId, items) };
     return body;
   });
@@ -326,7 +330,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     await requireBoardRole(db, actor, boardId, 'editor');
     const restored = await findVersion(boardId, versionId);
     const versions = writer();
-    restores.require(boardId, 'Too many restores of this board: wait a while.');
+    await restores.require(boardId, 'Too many restores of this board: wait a while.');
     let result: Awaited<ReturnType<VersionWriter['restore']>>;
     try {
       result = await versions.restore({ boardId, versionId, userId: actor.id });

@@ -204,10 +204,10 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
   }
   const guests = createGuestAuth({ config, db, docs });
   const serveTile = createTileServer(config);
-  const previews = new RateLimiter(60, 60_000);
-  const wrongPasswords = new Failures(10, 15 * 60_000);
-  const linkPasswords = new Failures(100, 15 * 60_000);
-  const newGuests = new RateLimiter(10, 60 * 60_000);
+  const previews = new RateLimiter(60, 60_000, 'guest-routes:previews');
+  const wrongPasswords = new Failures(10, 15 * 60_000, 'guest-routes:wrongPasswords');
+  const linkPasswords = new Failures(100, 15 * 60_000, 'guest-routes:linkPasswords');
+  const newGuests = new RateLimiter(10, 60 * 60_000, 'guest-routes:newGuests');
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const assetPath = (linkId: string, assetId: string) => `${guestPath(linkId)}/assets/${assetId}`;
 
@@ -563,7 +563,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     });
 
     scope.get(v1('/guest/by-token/:token'), async (req, reply) => {
-      if (!previews.take(addressBucket(req.ip))) {
+      if (!(await previews.take(addressBucket(req.ip)))) {
         reply.header('retry-after', previews.retryAfterSeconds(addressBucket(req.ip)));
         throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
       }
@@ -614,22 +614,23 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           );
           return new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
         };
-        if (wrongPasswords.blocked(key) || linkPasswords.blocked(link.id)) throw passwordLimit();
+        if ((await wrongPasswords.blocked(key)) || (await linkPasswords.blocked(link.id)))
+          throw passwordLimit();
         if (!input.password)
           throw guestDenied('forbidden', 'password_required', 'This link needs a password.');
         // Reserve before the asynchronous hash check: simultaneous wrong passwords must
         // not all pass the limit while earlier checks are still running.
-        if (!linkPasswords.begin(link.id)) throw passwordLimit();
-        if (!wrongPasswords.begin(key)) {
-          linkPasswords.finish(link.id, false);
+        if (!(await linkPasswords.begin(link.id))) throw passwordLimit();
+        if (!(await wrongPasswords.begin(key))) {
+          await linkPasswords.finish(link.id, false);
           throw passwordLimit();
         }
         let valid = false;
         try {
           valid = await verifyPassword({ hash: link.passwordHash, password: input.password });
         } finally {
-          wrongPasswords.finish(key, !valid);
-          linkPasswords.finish(link.id, !valid);
+          await wrongPasswords.finish(key, !valid);
+          await linkPasswords.finish(link.id, !valid);
         }
         if (!valid) {
           throw guestDenied('forbidden', 'wrong_password', 'Wrong password.');
@@ -637,7 +638,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       }
       const returning = await guests.cookieGuest(req, link.id);
       const addressKey = `${link.id}|${addressBucket(req.ip)}`;
-      if (!returning && !newGuests.take(addressKey)) {
+      if (!returning && !(await newGuests.take(addressKey))) {
         reply.header('retry-after', newGuests.retryAfterSeconds(addressKey));
         throw new HttpError('rate_limited', 'Too many new guests: try again later.');
       }
@@ -705,7 +706,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       const { linkId } = LinkParams.parse(req.params);
       const { name } = UpdateGuestSession.parse(req.body ?? {});
       const ctx = await guests.requireGuest(req, reply, linkId);
-      guests.takeWrite(ctx, reply);
+      await guests.takeWrite(ctx, reply);
       const [guest] = await db
         .update(shareGuest)
         .set({ name })
@@ -884,7 +885,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         guests.requireBoard(ctx, boardId);
         await guests.requireElement(ctx, boardId, elementId);
         guests.requireName(ctx);
-        guests.takeWrite(ctx, reply);
+        await guests.takeWrite(ctx, reply);
         const change = await db.transaction(async (tx) => {
           // One decision per link and card at a time.
           await tx.execute(
@@ -977,7 +978,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         const picture = pictureAssetId(el);
         if (!picture) throw new HttpError('bad_request', 'Only pictures can be picked.');
         guests.requireName(ctx);
-        guests.takeWrite(ctx, reply);
+        await guests.takeWrite(ctx, reply);
         const key = and(
           eq(sharePick.guestId, ctx.guest.id),
           eq(sharePick.boardId, boardId),

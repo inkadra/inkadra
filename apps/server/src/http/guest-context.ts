@@ -53,7 +53,7 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
   const { db, docs } = deps;
   const nameFor = (req: FastifyRequest) =>
     requestOrigin(req).startsWith('https:') ? `__Secure-${GUEST_COOKIE}` : GUEST_COOKIE;
-  const writes = new RateLimiter(60, 60_000);
+  const writes = new RateLimiter(60, 60_000, 'guest-context:writes');
 
   /** Server expiry is capped by the link; the cookie survives extensions of that cap. */
   const sessionEnd = (link: ShareLinkRow, now: Date) =>
@@ -185,8 +185,8 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
     },
 
     /** Guest writes: 60 a minute per guest. */
-    takeWrite(ctx: GuestContext, reply: FastifyReply) {
-      if (!writes.take(ctx.guest.id)) {
+    async takeWrite(ctx: GuestContext, reply: FastifyReply) {
+      if (!(await writes.take(ctx.guest.id))) {
         reply.header('retry-after', writes.retryAfterSeconds(ctx.guest.id));
         throw new HttpError('rate_limited', 'Too many changes: wait a minute.');
       }

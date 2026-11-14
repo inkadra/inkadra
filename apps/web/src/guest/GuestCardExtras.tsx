@@ -65,7 +65,7 @@ export function PickControls({ elementId, compact }: { elementId: string; compac
         await actions.pick(elementId, body);
         actions.notify(null);
       } catch (err) {
-        actions.notify(err instanceof Error ? err.message : t('guest.errors.generic'));
+        actions.notify(actions.fail(err));
       } finally {
         setBusy(false);
       }

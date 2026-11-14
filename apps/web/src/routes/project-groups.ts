@@ -54,6 +54,23 @@ subscribeProjects(() => {
   if (!getCachedProjects() && cache) set(null);
 });
 
+/**
+ * A move into a group, or a reorder or fold, that could not be saved (#776). The shell says
+ * so for a while, wherever the drop happened; the next save that works clears it.
+ */
+let saveFailed = false;
+let saveFailedTimer: ReturnType<typeof setTimeout> | undefined;
+function setSaveFailed(value: boolean) {
+  clearTimeout(saveFailedTimer);
+  if (value) saveFailedTimer = setTimeout(() => setSaveFailed(false), GROUP_ERROR_MS);
+  if (saveFailed === value) return;
+  saveFailed = value;
+  for (const l of listeners) l();
+}
+export const GROUP_ERROR_MS = 8000;
+export const reportGroupError = () => setSaveFailed(true);
+export const useGroupSaveFailed = () => useSyncExternalStore(subscribe, () => saveFailed);
+
 export async function createGroup(input: CreateProjectGroup): Promise<ProjectGroup> {
   const group = await api.post<ProjectGroup>('/project-groups', input);
   set([...(cache ?? []), group]);
@@ -69,6 +86,7 @@ export async function updateGroup(id: string, patch: UpdateProjectGroup): Promis
     const group = await api.patch<ProjectGroup>(`/project-groups/${id}`, patch);
     if (patch.before !== undefined) await refreshGroups();
     else set(cache?.map((g) => (g.id === id ? group : g)) ?? null);
+    setSaveFailed(false);
   } catch (error) {
     set(before);
     throw error;
@@ -89,6 +107,7 @@ export async function moveToGroup(
   before?: string,
 ): Promise<Project> {
   const project = await api.put<Project>(`/projects/${projectId}/group`, { groupId, before });
+  setSaveFailed(false);
   const projects = getCachedProjects();
   if (projects) setCachedProjects(projects.map((p) => (p.id === projectId ? project : p)));
   return project;

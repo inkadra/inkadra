@@ -3,22 +3,24 @@
 # Needs INKADRA_DOMAIN and ACME_EMAIL in .env and ports 80 and 443 free.
 # Split mode: docker compose -f compose.yaml -f deploy/compose.split.yaml \
 #   -f deploy/proxy/traefik/compose.yaml -f deploy/proxy/traefik/compose.split.yaml up -d
-# If Traefik already runs on this host, copy only the labels of `inkadra` (and `collab`)
-# and put the services on the network Traefik watches.
+# If Traefik already runs on this host, give `inkadra` (and `collab`) the labels shown in
+# docs/self-hosting/reverse-proxy.md#traefik and put them on the network Traefik watches.
 
 services:
   traefik:
     image: traefik:v3.7
     restart: unless-stopped
     command:
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
+      # The routes are fixed, so they come from the files below: Traefik gets no access to
+      # the Docker socket, which would let it control every container on the host.
+      - --providers.file.directory=/etc/traefik/dynamic
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
       - --entrypoints.websecure.address=:443
-      # Uploads of large files take longer than the 60 s default.
-      - --entrypoints.websecure.transport.respondingtimeouts.readtimeout=0
+      # Uploads arrive in resumable pieces of at most 50 MiB, but a project import is one
+      # request of up to IMPORT_MAX_SIZE (20 GB by default): 12 hours lets it arrive at 4 Mbit/s.
+      - --entrypoints.websecure.transport.respondingtimeouts.readtimeout=12h
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
@@ -26,21 +28,52 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # Read-only access to the Docker API, to read the labels below.
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-acme:/letsencrypt
+    configs:
+      - source: traefik-inkadra
+        target: /etc/traefik/dynamic/inkadra.yaml
     security_opt: ["no-new-privileges:true"]
+    depends_on:
+      - inkadra
+    networks:
+      default:
+        # The one address TRUST_PROXY trusts below.
+        ipv4_address: 10.212.47.2
 
   inkadra:
     # Reached through Traefik only.
     ports: !reset []
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.inkadra.rule=Host(`${INKADRA_DOMAIN:?set INKADRA_DOMAIN in .env}`)
-      - traefik.http.routers.inkadra.entrypoints=websecure
-      - traefik.http.routers.inkadra.tls=true
-      - traefik.http.routers.inkadra.tls.certresolver=${TRAEFIK_CERTRESOLVER-letsencrypt}
-      - traefik.http.services.inkadra.loadbalancer.server.port=3000
+    environment:
+      # Only Traefik may say who the client is, unless .env names another proxy.
+      TRUST_PROXY: ${TRUST_PROXY:-10.212.47.2}
+
+configs:
+  traefik-inkadra:
+    content: |
+      http:
+        routers:
+          inkadra:
+            rule: "Host(`${INKADRA_DOMAIN:?set INKADRA_DOMAIN in .env}`)"
+            entryPoints: [websecure]
+            service: inkadra
+            tls:
+              certResolver: "${TRAEFIK_CERTRESOLVER-letsencrypt}"
+        services:
+          inkadra:
+            loadBalancer:
+              servers:
+                - url: http://inkadra:3000
+
+networks:
+  # A fixed subnet, so the proxy has a fixed address that TRUST_PROXY can name. Containers
+  # without a fixed address get one from the upper half. If Docker says the pool overlaps with
+  # another network, pick a free subnet here and change the two addresses above.
+  default:
+    ipam:
+      config:
+        - subnet: 10.212.47.0/24
+          gateway: 10.212.47.1
+          ip_range: 10.212.47.128/25
 
 volumes:
   traefik-acme:

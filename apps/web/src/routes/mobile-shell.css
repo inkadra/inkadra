@@ -402,3 +402,11 @@ body:has(.viewer) .mobile-bottom-nav {
     display: none;
   }
 }
+
+/* A change of the sidebar that was not saved, or a sign-out that failed (#776, #831). */
+.shell-alert {
+  margin: 8px 4px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-danger-fg);
+}

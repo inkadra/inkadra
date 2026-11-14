@@ -2,7 +2,6 @@
 #   docker compose -f compose.yaml -f deploy/compose.rustfs.yaml up -d
 # Set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in .env (any random values, they are only
 # shared by Inkadra and RustFS). Nothing is published on the host: only Inkadra reaches it.
-# Upstream MinIO no longer publishes container images; RustFS speaks the same API.
 
 services:
   inkadra:

@@ -17,16 +17,13 @@
 </p>
 
 <p align="center">
-  <a href="https://inkadra.com">Website</a> ·
   <a href="https://demo.inkadra.com">Try the demo</a> ·
-  <a href="#run-it">Run it</a> ·
-  <a href="https://github.com/inkadra/inkadra/wiki">Documentation</a> ·
-  <a href="docs/self-hosting">Self-hosting guide</a> ·
+  <a href="https://inkadra.com">Website</a> ·
   <a href="docs/guide.md">Tour</a> ·
-  <a href="#develop">Develop</a> ·
+  <a href="docs/self-hosting">Self-hosting guide</a> ·
+  <a href="https://github.com/inkadra/inkadra/wiki">Documentation</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
-  <a href="docs/decisions">Decisions</a> ·
-  <a href="#support">Support</a>
+  <a href="#support-the-project">Support the project</a>
 </p>
 
 <p align="center">
@@ -36,54 +33,49 @@
   </picture>
 </p>
 
-Inkadra is a free, open source visual workspace for people who make films and photographs:
-moodboards, storyboards, shot lists and client review on an infinite canvas, running on your
+Inkadra is a free, open source workspace for people who make films and photographs:
+moodboards, storyboards, shot lists, set plans and client review on an infinite canvas, on your
 own server.
 
 **[Try the demo](https://demo.inkadra.com)** in your browser, with no account: a private sandbox
-for one hour with two sample projects, a short film and a photo shoot. More on
-[inkadra.com](https://inkadra.com).
+for one hour with two sample projects, a short film and a photo shoot.
 
 > [!NOTE]
-> **Early development.** Inkadra is moving fast towards 1.0 and is good for trying out, but
-> not yet for work you cannot afford to lose. Releases before 1.0 may change things between
-> minor versions: read the notes in [Upgrades](docs/self-hosting/upgrades.md) before updating.
+> Inkadra is not at 1.0 yet. Try it, but keep backups of work you cannot afford to lose, and
+> read [Upgrades](docs/self-hosting/upgrades.md) before updating: versions before 1.0 may
+> change things between minor releases.
 
 ## What it does
 
-- **Boards on an infinite canvas.** Notes, images, files, links, to-do lists, colour swatches,
-  tables, maps, voice notes, columns, sections, arrows and boards inside boards. A dock holds the
-  tools, and a toolbar above each card follows what you select. Uploaded videos and YouTube and Vimeo
+- Boards on an infinite canvas: notes, images, files, links, to-do lists, colours, tables, maps,
+  voice notes, columns, arrows and boards inside boards. Uploaded videos and YouTube and Vimeo
   links play inside their card.
-- **Storyboards, shot lists and schedules.** Scenes and frames with shot size, angle, movement,
-  lens, cast and status. Draw on a frame full screen, drag a picture into it, or take a
-  still from a video. The shot list is the same data as a table you can filter and export to CSV;
-  the shooting schedule plans the days from the same shots.
-- **Set plans and character sheets.** Draw the location with cameras, actors, lights and movement
-  paths, to scale. Keep each character's story, relations, references and costume on a card, with
-  the scenes they appear in worked out from the frames.
-- **A home for every project.** Home opens on your recent boards, today's shooting day and what
-  changed. Each project has its own colour, shape or emoji, and every kind of canvas keeps one
-  colour across the app: storyboards purple, shot lists green, moodboards orange, schedules
-  teal, reviews pink. The tools that add cards have colours of their own, kept apart from those.
-- **Together, live.** Everyone on a board sees changes as they happen. Roles per project and per
-  board, invitations, comments with mentions, review status, and an inbox for notifications.
-- **Client review.** Share a board through a link, with or without comments and picks, and keep
-  some cards for the team only. Every comment shows who reads it: the team, or also the guests.
-  Named versions let you go back to any earlier state, or bring back a single deleted element.
-- **Capture from the web.** The [Inkadra Clipper](apps/clipper) extension saves images, quotes
-  and links from Chrome, Edge, Brave and Arc straight onto a board. Install it from the
-  [Chrome Web Store](https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh);
-  it needs a server on 0.9 or later.
-- **Your server, your files.** Docker images for amd64 and arm64. Files on a volume, a host folder,
-  a disk of their own or any S3 storage. Email, Google or your own OIDC provider for sign-in, with
-  two-factor authentication on every method and sign-in limits that survive restarts. Administrators
-  set the instance's lists of project types, tags and shot data. Installs as an app from the browser.
-- **Take it with you.** Export a project as an open zip archive (boards, original files,
-  comments, reviews, schedule) and import it on any Inkadra server. Nightly backups of the
-  database, with a restore command that also carries data across upgrades.
+- Storyboards of scenes and frames, with shot size, angle, movement, lens, cast and status. Draw
+  on a frame, drop a picture on it or take a still from a video. Import a screenplay (Fountain,
+  Final Draft or PDF), and update the storyboard when the script is revised.
+- The shot list is the same frames as a table, with filters and CSV and PDF export.
+- A Production board per project: the shooting schedule of every storyboard, the crew and the
+  call sheets.
+- Set plans drawn to scale, with cameras, lights, actors and movement, and the kit list. Character
+  sheets with story, relations, references and costume.
+- Live collaboration: roles per project and board, comments with mentions, an inbox for
+  notifications, and named versions to go back to.
+- Client review through a share link, with or without comments and picks; some cards can stay
+  for the team only.
+- The [Inkadra Clipper](apps/clipper) saves images, quotes and links from Chrome, Edge, Brave and
+  Arc onto a board. Install it from the
+  [Chrome Web Store](https://chromewebstore.google.com/detail/inkadra-clipper/hdajoikapihpjfbgioeagenmoalckjkh)
+  (it needs a server on 0.9 or later).
+- Docker images for amd64 and arm64. Files on a volume, a host folder or S3 storage. Sign-in with
+  email, Google or your own OIDC provider, with two-factor authentication.
+- Export a project as an open zip archive and import it on any Inkadra server. Nightly backups of
+  the database.
+- Works in a phone's browser and installs as an app. Interface in English, Italian, Spanish,
+  German, French and Brazilian Portuguese.
 
-[A tour of the tools](docs/guide.md), with pictures.
+Storyboard, Production, Moodboard, Client review and Set plan are modules: each person can turn
+off the ones they do not use in **Settings → Modules**. [The tour](docs/guide.md) shows each tool
+with pictures.
 
 <table>
   <tr>
@@ -115,7 +107,7 @@ for one hour with two sample projects, a short film and a photo shoot. More on
 
 ## Run it
 
-You need a machine with Docker and Compose. To try Inkadra on your own computer, that is all:
+You need a machine with Docker and Compose. To try Inkadra on your own computer:
 
 ```sh
 mkdir inkadra && cd inkadra
@@ -126,76 +118,45 @@ sed -i "s#^PUBLIC_URL=.*#PUBLIC_URL=http://localhost:3000#" .env
 docker compose up -d --wait
 ```
 
-Open <http://localhost:3000>: the first account you create becomes the administrator. For real work
-you need a domain and HTTPS, and a reverse proxy for it is included if you do not have one.
+Open <http://localhost:3000>: the first account you create becomes the administrator.
 
-**[The self-hosting guide](docs/self-hosting)** starts from zero, for someone who has never used
-Compose: prerequisites, each step, the first sign-in, updating, backups, which of the three images to
-choose, and troubleshooting. It also covers reverse proxies (Caddy, Traefik, Nginx, Nginx Proxy
-Manager, Pangolin), sign-in, [data on different disks](docs/self-hosting/storage.md#data-on-different-disks),
-S3 and split mode. Images are published for amd64 and arm64 as `ghcr.io/inkadra/inkadra`.
-
-To pin a release instead of following `latest`, set `INKADRA_TAG=0.9.0` (or `0.9` for its patch
-releases) in `.env`.
+For real work you need a domain and HTTPS. [The self-hosting guide](docs/self-hosting) starts
+from zero and covers reverse proxies, sign-in, storage, backups, upgrades and troubleshooting.
 
 > [!IMPORTANT]
-> **Reports go to the developers by default.** People can report a problem from inside the app.
-> Unless an administrator chooses otherwise, a report that someone writes, previews and sends goes to
-> the Inkadra developers through a relay on Cloudflare. Nothing leaves without that. Inkadra sends no
-> telemetry. [What leaves your server, and how to turn it off](docs/self-hosting/README.md#what-leaves-your-server).
+> People can report a problem from inside the app. Unless an administrator turns it off, a report
+> that someone writes, previews and sends goes to the Inkadra developers through a relay on
+> Cloudflare. Nothing else is sent: Inkadra has no telemetry.
+> [What leaves your server](docs/self-hosting/README.md#what-leaves-your-server) explains how to
+> turn it off.
 
-## Develop
+## Contributing
 
-Requirements: Node 26 or newer, pnpm 12 (`npm i -g pnpm@12.17.0`), Postgres 16 or newer (18 is what `compose.yaml` runs) and Valkey or Redis.
-
-```sh
-pnpm install
-cat > apps/server/.env <<'ENV'
-PUBLIC_URL=http://localhost:5173
-DATABASE_URL=postgres://inkadra:inkadra@localhost:5432/inkadra
-REDIS_URL=redis://localhost:6379
-AUTH_SECRET=change-me-to-32-random-characters-or-more
-ENV
-pnpm dev     # API on :3000, web app on http://localhost:5173
-```
-
-| Path                   | What it is                                                              |
-| ---------------------- | ----------------------------------------------------------------------- |
-| `apps/web`             | Desktop web app (React, Vite)                                           |
-| `apps/server`          | API, auth, collaboration and background jobs: one image, several roles  |
-| `apps/clipper`         | Browser extension for Chrome, Edge, Brave and Arc                       |
-| `apps/mobile`          | Android and iOS app (planned)                                           |
-| `relay`                | Worker that passes in-app reports to the developers' private repository |
-| `packages/shared`      | API contract (Zod schemas, OpenAPI) and domain rules shared by clients  |
-| `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)             |
-| `packages/canvas-core` | Canvas math and board rules shared by web and mobile                    |
-| `packages/ui`          | Design tokens, card measures and interface components                   |
-| `packages/print`       | Printed pages as drawing operations: model, text, measure, layout, PDF  |
-| `e2e`                  | End-to-end tests (Playwright)                                           |
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and
-[docs/decisions](docs/decisions) for the reasoning behind the main choices. Security problems
-go through [private advisories](SECURITY.md), not public issues.
+Read [CONTRIBUTING.md](CONTRIBUTING.md): it covers the setup, the layout of the repository and
+the rules for pull requests. [docs/decisions](docs/decisions) records why the main choices were
+made. Report security problems through a [private advisory](SECURITY.md), not a public issue.
 
 ## AI-assisted development
 
-Much of Inkadra's code, tests and reviews are written with AI coding agents, under the direction of
-the maintainer. Changes go through CI, tests and review before they are merged. That does not rule
-out mistakes: Inkadra is early software, so keep backups and
-[report what you find](https://github.com/inkadra/inkadra/issues/new/choose).
+Much of Inkadra's code, tests and reviews are written with AI coding agents, directed by the
+maintainer. Every change goes through CI, tests and review before it is merged, but mistakes are
+still possible: keep backups and [report what you find](https://github.com/inkadra/inkadra/issues/new/choose).
 
-## Support
+## Support the project
 
-Inkadra is free, with no ads and no tracking. If it helps your work, you can
-[buy me a coffee on Ko-fi](https://ko-fi.com/teovader). Starring the repository, reporting bugs and
-telling other filmmakers and photographers about it help just as much.
+Inkadra is free, with no paid features, no ads and no tracking, and one person develops it in the
+open. If it is useful to you, a donation on [Ko-fi](https://ko-fi.com/teovader) helps keep it
+going. Telling us what works and what doesn't helps as much: write in
+[Discussions](https://github.com/inkadra/inkadra/discussions), open an issue, or use
+**Report a problem** in the app. A star on GitHub helps other people find it.
 
 ## Licence
 
-The server and web app are under the [GNU Affero General Public License v3.0](LICENSE): if you
-run a modified Inkadra for other people over a network, you must offer them the source of your
-version. The shared packages in `packages/`, the mobile app and the browser extension are
-under the [Mozilla Public License 2.0](packages/shared/LICENSE). See
+The server, the web app and the rest of this repository are under the
+[GNU Affero General Public License v3.0](LICENSE): if you run a modified Inkadra for other people
+over a network, you must offer them the source of your version. The shared packages in
+`packages/` and the browser extension are under the
+[Mozilla Public License 2.0](packages/shared/LICENSE), and so will be the mobile app. See
 [decision 0008](docs/decisions/0008-licences-per-component.md).
 
 The name "Inkadra" and the logo are not covered by these licences: a modified version or a

@@ -30,6 +30,13 @@ const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
   fromDriver: (value) => new Uint8Array(value),
 });
 
+/**
+ * Fractional-index keys (`fractional-indexing`) compare by code unit, so the database must order
+ * them by bytes too, whatever the collation of the instance (`en_US.UTF-8` folds case).
+ */
+const position = () =>
+  customType<{ data: string }>({ dataType: () => 'text COLLATE "C"' })('position').notNull();
+
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 const updatedAt = () =>
   timestamp('updated_at', { withTimezone: true })
@@ -234,7 +241,7 @@ export const project = pgTable('project', {
   })
     .notNull()
     .default('neutral'),
-  position: text('position').notNull(),
+  position: position(),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   type: text('type'),
   /** IANA zone of the shooting times; null when never set (read as UTC by the calendar feed). */
@@ -304,7 +311,7 @@ export const projectGroup = pgTable(
     color: text('color', {
       enum: ['blue', 'orange', 'purple', 'green', 'teal', 'pink'],
     }).notNull(),
-    position: text('position').notNull(),
+    position: position(),
     collapsed: boolean('collapsed').notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -323,7 +330,7 @@ export const projectGroupItem = pgTable(
     userId: uuid('user_id').notNull(),
     projectId: uuid('project_id').notNull(),
     groupId: uuid('group_id').notNull(),
-    position: text('position').notNull(),
+    position: position(),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.projectId] }),
@@ -359,7 +366,7 @@ export const board = pgTable(
      */
     views: jsonb('views').$type<import('@inkadra/shared').BoardOptionalView[]>(),
     title: text('title').notNull(),
-    position: text('position').notNull(),
+    position: position(),
     coverAssetId: uuid('cover_asset_id').references(() => asset.id, { onDelete: 'set null' }),
     /** Board card icon (symbol or emoji and colour, as projects); null = the default icon. */
     icon: jsonb('icon').$type<import('@inkadra/shared').Board['icon']>(),
@@ -1354,6 +1361,8 @@ export const projectTransfer = pgTable(
     projectName: text('project_name').notNull(),
     /** Thousandths of the work done. */
     progress: integer('progress').notNull().default(0),
+    /** Set by each claim: only the run that holds it may move or finish the row (#810). */
+    runId: uuid('run_id'),
     size: bigint('size', { mode: 'number' }),
     failure: text('failure'),
     summary: jsonb('summary').$type<import('@inkadra/shared').TransferSummary>(),
@@ -1400,6 +1409,8 @@ export const instanceBackup = pgTable(
      * blocks later backups through the unique index below.
      */
     heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Set when a worker claims the backup: only that run may move or finish the row (#810). */
+    runId: uuid('run_id'),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     /** Set once retention removed the archive. */
     removedAt: timestamp('removed_at', { withTimezone: true }),

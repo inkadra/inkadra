@@ -101,16 +101,16 @@ export async function searchMapPlaces(
 export function registerMapPreviews(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, storage, jobs } = deps;
   // Each preview can fetch a short link, a geocoder answer and about twenty tiles.
-  const limiter = new RateLimiter(20, 60_000);
+  const limiter = new RateLimiter(20, 60_000, 'map-previews:limiter');
   const allowAddresses = deps.allowAddresses ?? [];
   const userAgent = mapUserAgent(config.PUBLIC_URL);
 
-  const searchLimiter = new RateLimiter(60, 60_000);
+  const searchLimiter = new RateLimiter(60, 60_000, 'map-previews:searchLimiter');
   app.post(`${API_PREFIX}/map-search`, async (req): Promise<MapSearchResults> => {
     const actor = await requireActor(auth, req, db);
     const input = SearchMapPlaces.parse(req.body);
     await requireWriteAccess(db, actor, input.projectId, input.boardId);
-    searchLimiter.require(actor.id, 'Too many address searches: wait a minute.');
+    await searchLimiter.require(actor.id, 'Too many address searches: wait a minute.');
     if (!config.MAP_GEOCODER_URL)
       throw new HttpError('bad_request', 'Address search is not configured.');
     if (new URL(config.MAP_GEOCODER_URL).hostname === 'nominatim.openstreetmap.org')
@@ -137,7 +137,7 @@ export function registerMapPreviews(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const input = CreateMapPreview.parse(req.body);
     await requireWriteAccess(db, actor, input.projectId, input.boardId);
-    limiter.require(actor.id, 'Too many map previews: wait a minute.');
+    await limiter.require(actor.id, 'Too many map previews: wait a minute.');
 
     let url = input.url ?? null;
     let place = url ? parseMapLink(url) : null;

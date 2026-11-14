@@ -119,6 +119,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'classification-delete',
         'idempotent-import',
         'video-renditions',
+        'unavailable-errors',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();

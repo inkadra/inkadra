@@ -278,14 +278,14 @@ export async function pagePreview(
 export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage, jobs } = deps;
   // A few previews a minute per person: each one makes the server fetch two URLs.
-  const limiter = new RateLimiter(20, 60_000);
+  const limiter = new RateLimiter(20, 60_000, 'link-previews:limiter');
   const allowAddresses = deps.allowAddresses ?? [];
 
   app.post(`${API_PREFIX}/link-previews`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const input = CreateLinkPreview.parse(req.body);
     await requireWriteAccess(db, actor, input.projectId, input.boardId);
-    limiter.require(actor.id, 'Too many link previews: wait a minute.');
+    await limiter.require(actor.id, 'Too many link previews: wait a minute.');
 
     let page: Awaited<ReturnType<typeof safeFetch>>;
     try {

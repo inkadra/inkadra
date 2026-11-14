@@ -1,8 +1,7 @@
 # Sign-in
 
-Out of the box people sign in with email and password. This page adds Google, your own
-OpenID Connect provider (Authentik, Keycloak, Authelia, Pocket ID, Zitadel…) and email, and
-explains invitations. Put the variables in `.env` and run `docker compose up -d` again;
+Out of the box people sign in with email and password. You can also enable Google, an
+OpenID Connect provider or email links. Put the variables in `.env` and run `docker compose up -d` again;
 the buttons appear on the sign-in page by themselves.
 
 ## Who can create an account
@@ -10,6 +9,8 @@ the buttons appear on the sign-in page by themselves.
 The first account becomes the administrator. After that `REGISTRATION=invite` (the default)
 lets in only people who open an invitation, whatever method they use to sign up, including
 Google. `REGISTRATION=open` lets anyone with access to the address sign up.
+`REGISTRATION=closed` refuses new accounts even with an invitation. The first administrator
+can still be created on an empty instance.
 
 Invitations are made from the **Share** dialog of a board or project (editors and owners) or,
 by administrators, for the instance alone. An invitation by email works once; an invitation
@@ -34,8 +35,8 @@ link then reads as used, so send a new invitation.
 3. Copy the client id and secret into `.env`:
 
    ```sh
-   GOOGLE_CLIENT_ID=1234567890-abc.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=GOCSPX-…
+   GOOGLE_CLIENT_ID=<your-client-id>
+   GOOGLE_CLIENT_SECRET=<your-client-secret>
    # optional: only accounts of your Google Workspace domain(s)
    GOOGLE_ALLOWED_DOMAINS=studio.it
    ```
@@ -43,9 +44,9 @@ link then reads as used, so send a new invitation.
 With `GOOGLE_ALLOWED_DOMAINS`, Google must vouch for the Workspace domain (`hd`) on every
 sign-in: personal `@gmail.com` accounts are refused, even when they were linked before.
 
-People who already have an account can also add Google from **Settings → Sign-in methods**.
+People who already have an account can also add Google from **Settings → Account → Sign-in methods**.
 Signing in with Google with the same address links it to the existing account automatically,
-but only when that account's email is verified — otherwise the sign-in is refused and you
+but only when that account's email is verified; otherwise the sign-in is refused and you
 link it yourself from the settings page. An email becomes verified when its owner signs in
 once with a link by email or accepts an invitation sent by email (both need email
 configured); accounts created with Google start verified. An OIDC provider is auto-linked the
@@ -60,7 +61,7 @@ In your provider, create an application (client) of type _confidential_ / _web_ 
 - scopes `openid email profile`;
 - authorization code flow (PKCE is used and can be required).
 
-Then:
+Set these in `.env`:
 
 ```sh
 OIDC_NAME=Authentik
@@ -104,7 +105,7 @@ someone else yet: keep the backup codes.
 ## The browser clipper and the mobile app
 
 They sign in through the browser (`/authorize`) and get a token that shows in **Settings →
-Account → Apps and tokens**, where it can be revoked. Self-built clippers need their
+Connected apps**, where it can be revoked. Self-built clippers need their
 extension id in `CLIPPER_EXTENSION_IDS`.
 
 A clipper built from source or loaded unpacked has its own extension id, shown in its
@@ -119,36 +120,11 @@ Without it the `/authorize` page refuses the request: only the redirect address
 `https://<id>.chromiumapp.org/auth` of an allowed id receives a code. See
 [apps/clipper](../../apps/clipper/README.md) to build and load the extension.
 
-## HTTPS cookies in 0.4.2
-
-HTTPS installations use `__Host-inkadra.*` authentication cookies, with Secure,
-Path=/ and no Domain. Better Auth's automatic `__Secure-` prefix is disabled so
-it cannot prepend a second prefix. HTTP development keeps the plain `inkadra.*` names.
-
-Upgrading an HTTPS installation requires everyone to sign in once again, and pending
-invitations must be claimed again from their original links. Old sessions remain subject
-to their normal expiry/revocation, but their old cookie names are no longer accepted.
-Accepting the legacy cookie indefinitely would retain the sibling-subdomain cookie
-injection risk this change addresses. Bearer tokens are unaffected.
-
-## Mobile redirect schemes
-
-The server allows the custom redirect `inkadra://auth` for the planned mobile app;
-`apps/mobile` currently contains planning documentation only. Another application can register
-that scheme and intercept the authorization redirect. PKCE binds code redemption to the
-initiating app's verifier, but does not prove ownership of the redirect handler or prevent
-interception and denial of service. Do not treat a custom scheme as a verified app identity.
-
-The plan is verified HTTPS Android App Links (`assetlinks.json`) and iOS Universal Links
-(`apple-app-site-association`) with platform association checks, exact redirect allowlists,
-and PKCE retained. Self-hosted origins need their own association files. Until those are
-implemented, this risk remains; do not broaden the redirect allowlist as a workaround.
-
 ## Administrator enrollment policy
 
-The `requireAdminTwoFactor` administration setting defaults to false. When enabled,
-administrators without two-step verification can read their identity and enroll through
-Better Auth, but cannot use product APIs, administrator APIs, tokens or collaboration.
+**Require two-step verification for administrators**, in **Settings → Access and permissions**,
+is off by default. When it is on, administrators without two-step verification can read their
+identity and enroll through Better Auth, but cannot use product APIs, administrator APIs, tokens or collaboration.
 They see an enrollment banner instead of the workspace. Keep backup codes for recovery. Accounts without a credential password enroll using their
 authenticated provider session; accounts with a password must confirm it. Bootstrap stays available on an empty instance; an existing
 policy applies to the first administrator immediately after signup.
@@ -168,97 +144,10 @@ their password. While enrollment is required, signing out, listing and revoking 
 sessions and tokens remain available. These read-only lists never expose session tokens
 or token secrets; they do not allow reading or revoking another account’s credentials.
 
-## Public instance metadata in 0.4.2
-
-`GET /api/v1/health` and `GET /api/v1/instance` no longer return `version`. Integrations
-must tolerate its absence. Signed-in clients can use `GET /api/v1/instance/version`;
-administrator diagnostics retain their version field. This is an intentional security
-change to v1 in 0.4.2 (issue #225).
-
 ## Signing in through a private address
 
-The same instance supports its public HTTPS URL and direct HTTP LAN/Tailscale addresses
-(such as `http://nas:7340`) without listing them in configuration. Publish the port on the
-appropriate interface; `INKADRA_BIND=0.0.0.0` makes it reachable on the LAN. Keep
-`PUBLIC_URL` set to the public HTTPS address. Email/password, sessions, uploads and
-collaboration use the current browser address. Sign in once per hostname.
-
-Google and SSO buttons are hidden away from the canonical address, with a link to sign in
-there: their registered callback URI and state cookies belong to the public address.
-Magic links, invitation and share links also open the canonical address. To use an invitation
-or share link privately, replace just its origin with the private address, preserving its
-path and token. Plain HTTP sends credentials in clear text; use a trusted LAN or Tailscale.
-Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is needed.
-
-### Authenticated client compatibility
-
-`GET /api/v1/instance/version` returns the software `version`, `api` (`v1`),
-`docSchemaVersion` and `capabilities`. The initial capability names are `boards`
-(board REST operations), `comments` (board comments) and `resumable-uploads` (tus);
-`idempotent-creations` means the `Idempotency-Key` retries below are supported for boards and
-comments, `idempotent-project-creations` that they are also supported for projects, crew
-members and shooting days, `token-invalid-reasons` that a 401 may say why a token stopped
-working, and `client-asset-ids` that tus creations accept `clientAssetId` (see Storage).
-`min-writer-schema` means the response has `minWriterSchema`: the oldest board document schema
-whose clients may still write a document of `docSchemaVersion`, if they run the strict card check
-and say so on the collaboration socket (`strictCards=1` beside `schemaVersion`); other clients
-write only at `docSchemaVersion`. A read-only connection that sends changes gets the stateless
-notice `writeRefused` with the reason (`schema`, `role`, `frozen`) (decision 0102). Without the
-capability, `minWriterSchema` is `docSchemaVersion`.
-`board-restore-marker` means a restore of a saved version increments `meta.restores` in the
-board document in the restore's own transaction (decision 0109).
-`board-restore-history` means `GET /boards/{boardId}/restores?after=<count>` lists the last 50
-restores of a board after that count, newest first: who restored it and to which version, with the
-version's name and time as they were at the restore. Viewers and commenters get only the counts
-and times (decision 0112).
-`board-writers` means `POST /boards/{boardId}/writers` names who wrote under some Yjs client ids
-of a board (decision 0120). The server records, for 30 days after the last write and at most
-2000 ids per board, which account wrote under each id and about when; viewers of the board may
-ask. Removed members are named; deleted accounts read `deleted`, never their email.
-Clients must ignore unknown capability names and tolerate missing fields on older servers.
-`minClient`, when present, maps platform names to minimum client versions; no minimum
-is currently imposed. Capabilities describe implemented protocols, not a user's permissions.
-These fields are never added to the public instance or health responses.
-
-Clients may send `Inkadra-Client: ios/1.2.0` (or another platform/version). Well-formed
-values are recorded only as the structured request log field `inkadraClient`; malformed
-values are ignored. The header does not change authentication or request handling.
-
-### Retrying offline creations
-
-Authenticated `POST /api/v1/projects/{projectId}/boards` and
-`POST /api/v1/boards/{boardId}/comments` (capability `idempotent-creations`), and
-`POST /api/v1/projects`, `POST /api/v1/projects/{projectId}/crew` and
-`POST /api/v1/boards/{boardId}/schedule` (capability `idempotent-project-creations`) accept
-an optional `Idempotency-Key` header (1–128 printable ASCII characters, without spaces). Reuse the same key and body for
-retries: a retry creates nothing and sends no notification. It answers 201 with the
-created resource **as it is now**, read like a `GET` would read it (current title,
-role, edits and reactions); if the resource has since been deleted or moved out of reach,
-the retry answers 404 and the client should drop the queued creation. Only the id of the
-created resource is remembered, never a copy of the response.
-Keys are scoped to the authenticated user and endpoint, retained for seven days, and
-purged by upload housekeeping. Reusing a key with a different validated body returns 409;
-invalid keys return 400. Authorization and rate limits are checked on every attempt, before
-the key is looked up. Checks of the current state of what a new resource links to (a crew
-member's account or card) run only when something is created, so a retry answers with the row
-it made. The bulk crew paste, share links, invitations, versions, clips and uploads do not
-take the key. After expiry the key may create a new resource. Requests without a key keep
-their existing behavior.
-
-Rate-limit refusals (429) of per-user, per-address and per-link budgets return `Retry-After`
-in whole seconds (at least 1) until another attempt is allowed; clients should wait that
-long before retrying with the same creation key. Refusals because the server is at capacity
-(busy media workers, a full demo) may omit it: retry with backoff.
-
-### Recognizable invalid tokens
-
-A REST 401 for a bearer token may add `error.details.reason` (schema `InvalidToken`):
-`token_revoked` (revoked by its owner, a password change or a reset), `token_expired` or
-`account_deactivated`. Only a request presenting the exact token the server issued gets a
-reason; unknown tokens stay generic. Revoking a token deletes it as before; its hash and
-reason go to a separate table for 30 days, then upload housekeeping purges them. Only
-hashes are stored, and deleting an account removes them at once. Reactivating an account
-does not bring its old tokens back. The collaboration socket is unchanged (4401
-`Unauthorized`): ask a REST endpoint for the reason. These signals do not request or
-authorize deletion of client data. Servers that send reasons list the
-`token-invalid-reasons` capability.
+For password sign-in over a private HTTP address, see
+[Direct LAN and Tailscale access](configuration.md#direct-lan-and-tailscale-access), including
+cookie and proxy trust precautions. Google and OIDC sign-in use the canonical `PUBLIC_URL`.
+Email, invitation and share links also point there; to open one privately, replace only its
+origin, keeping its path and token.
