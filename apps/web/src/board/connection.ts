@@ -263,7 +263,7 @@ export function useBoardConnection(
     const mark = () => {
       if (!local || marked === edited) return;
       marked = edited;
-      void local.set('unsaved', edited).catch(() => {});
+      void local.set('unsaved', edited ? 1 : 0).catch(() => {});
     };
     /** Deletes the copy at once: no access to the board, or a refused write. */
     const dropLocal = () => {
@@ -287,7 +287,7 @@ export function useBoardConnection(
           const [, unsaved] = await Promise.all([opened.whenSynced, opened.get('unsaved')]);
           if (!alive || local !== opened) return;
           localReady = true;
-          marked = unsaved === true;
+          marked = unsaved === 1;
           // Edits a closed tab left on the device: the server confirms them once it has them.
           if (marked && !edited && (state.status !== 'synced' || unsynced > 0)) {
             edited = true;
