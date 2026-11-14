@@ -503,7 +503,10 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
         .select({
           board,
           // The stored counts when the index is current, else the document to decode.
-          counts: sql<Omit<BoardCount, 'boardId'> | null>`case when ${boardDoc.indexedAt} >= ${boardDoc.updatedAt} then ${boardDoc.counts} end`,
+          counts: sql<Omit<
+            BoardCount,
+            'boardId'
+          > | null>`case when ${boardDoc.indexedAt} >= ${boardDoc.updatedAt} then ${boardDoc.counts} end`,
           state: sql<Uint8Array | null>`case when ${boardDoc.indexedAt} >= ${boardDoc.updatedAt} and ${boardDoc.counts} is not null then null else ${boardDoc.state} end`,
         })
         .from(board)

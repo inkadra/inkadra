@@ -658,9 +658,9 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       .where(eq(boardDoc.boardId, boardId));
     expect(stored?.counts?.elementCount).toBeGreaterThan(0);
     const counted = await get('owner', `/api/v1/projects/${projectId}/board-counts`);
-    expect(counted.body.items.find((i: { boardId: string }) => i.boardId === boardId)).toMatchObject(
-      stored!.counts!,
-    );
+    expect(
+      counted.body.items.find((i: { boardId: string }) => i.boardId === boardId),
+    ).toMatchObject(stored!.counts!);
   });
 
   it('finds the crew for project members and the location of shooting days', async () => {
