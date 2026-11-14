@@ -71,16 +71,16 @@ start.
 Inkadra load test · preset small · http://localhost:3902
 5 editors, 2 readers, 50 boards, 60 s
 
-Edits                 298 (13 board switches, 7 uploads, 0 failed)
-Edit round trip       p50 1.2 ms · p95 2.1 ms · p99 4.4 ms (285 samples)   limit p95 500 ms, p99 1500 ms
-Delivery to readers   p50 1.8 ms · p95 3.5 ms · p99 5.2 ms (136 samples)   limit p95 1000 ms
+Edits                 299 (12 board switches, 6 uploads, 0 failed)
+Edit round trip       p50 0.7 ms · p95 1 ms · p99 1.4 ms (287 samples)   limit p95 500 ms, p99 1500 ms
+Delivery to readers   p50 1.2 ms · p95 1.8 ms · p99 2.3 ms (116 samples)   limit p95 1000 ms
 Errors                0   limit 0
 Reconnects            0   limit 5
-Board saves           p95 197 ms · slowest 197 ms   limit p95 1000 ms
-Pool wait (saves)     slowest 44.6 ms   limit 1000 ms
+Board saves           p95 25.5 ms · slowest 27.1 ms   limit p95 1000 ms
+Pool wait (saves)     slowest 17.7 ms   limit 1000 ms
 Database connections  peak 14
-Memory (board roles)  250 MiB before → peak 263 MiB   limit 1024 MiB
-Per open board        3.4 MiB over 5 boards   limit 8 MiB
+Memory (board roles)  245 MiB before → peak 264 MiB   limit 1024 MiB
+Per open board        3.7 MiB over 5 boards   limit 8 MiB
 
 PASSED
 ```
@@ -114,6 +114,6 @@ image of `main` on a GitHub runner (4 cores, 16 GB), with the bundled Postgres a
 
 | Run                           | Edit round trip p50 / p95 / p99 | Board save p95 | Pool wait | Memory before → peak | Per open board |
 | ----------------------------- | ------------------------------- | -------------- | --------- | -------------------- | -------------- |
-| `small`, `all`, workstation\* | 1.2 / 2.1 / 4.4 ms              | 197 ms         | 45 ms     | 250 → 263 MiB        | 3.4 MiB        |
+| `small`, `all`, workstation\* | 0.7 / 1 / 1.4 ms                | 26 ms          | 18 ms     | 245 → 264 MiB        | 3.7 MiB        |
 
 \* Windows 11, server run from source; first run, 14 November 2026.
