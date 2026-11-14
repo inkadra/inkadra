@@ -136,10 +136,10 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
     const id = await video({ proxyStatus: 'skipped' });
     const other = await video({ proxyStatus: 'skipped' });
     const [shows, lacks] = [randomUUID(), randomUUID()];
-    await db.insert(board).values([
-      { id: shows, projectId, title: 'Shows', position: 'a0' },
-      { id: lacks, projectId, title: 'Lacks', position: 'a1' },
-    ]);
+    await db.insert(board).values({ id: shows, projectId, title: 'Shows', position: 'a0' });
+    await db
+      .insert(board)
+      .values({ id: lacks, projectId, parentBoardId: shows, title: 'Lacks', position: 'a1' });
     await db.insert(boardElementIndex).values([
       { boardId: shows, elementId: 'a', projectId, type: 'file', assetId: id },
       { boardId: shows, elementId: 'b', projectId, type: 'file', assetId: id },
