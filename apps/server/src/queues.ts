@@ -170,11 +170,11 @@ export function createQueues(
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
-      await media.add(
-        'process',
-        withRequestId({ assetId }),
-        { jobId: `process-${assetId}`, ...ATTEMPTS, ...KEEP },
-      );
+      await media.add('process', withRequestId({ assetId }), {
+        jobId: `process-${assetId}`,
+        ...ATTEMPTS,
+        ...KEEP,
+      });
     },
     async makeProxy(assetId, opts) {
       // A finished or failed job keeps its id for a while, and an add with that id would do
@@ -197,18 +197,17 @@ export function createQueues(
       );
     },
     async runVideoBenchmark() {
-      await maintenance.add(
-        'video-benchmark',
-        withRequestId({}),
-        { jobId: `video-benchmark-${Date.now()}`, ...KEEP },
-      );
+      await maintenance.add('video-benchmark', withRequestId({}), {
+        jobId: `video-benchmark-${Date.now()}`,
+        ...KEEP,
+      });
     },
     async runVideoBackfill(delayMs = 0) {
-      await maintenance.add(
-        'video-backfill',
-        withRequestId({}),
-        { jobId: `video-backfill-${Date.now()}`, delay: delayMs, ...KEEP },
-      );
+      await maintenance.add('video-backfill', withRequestId({}), {
+        jobId: `video-backfill-${Date.now()}`,
+        delay: delayMs,
+        ...KEEP,
+      });
     },
     async regenerationsWaiting() {
       return proxies.getPrioritizedCount();
@@ -233,11 +232,10 @@ export function createQueues(
     },
     async deleteFiles(keys) {
       for (let i = 0; i < keys.length; i += 500)
-        await maintenance.add(
-          'delete-files',
-          withRequestId({ keys: keys.slice(i, i + 500) }),
-          { ...ATTEMPTS, ...KEEP },
-        );
+        await maintenance.add('delete-files', withRequestId({ keys: keys.slice(i, i + 500) }), {
+          ...ATTEMPTS,
+          ...KEEP,
+        });
     },
     async runTransfer(transferId) {
       // Not retried: a failure is written to the row and the person starts again.
