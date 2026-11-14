@@ -2011,7 +2011,8 @@
       "original": "Original",
       "live": "on the fly",
       "liveCopy": "Kopie bei {{percent}} %",
-      "liveNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um; ist die Kopie fertig, wird zu ihr gewechselt."
+      "liveNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um; ist die Kopie fertig, wird zu ihr gewechselt.",
+      "liveOnlyNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um, ohne eine Kopie zu speichern."
     }
   },
   "search": {

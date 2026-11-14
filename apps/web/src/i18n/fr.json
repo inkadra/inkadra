@@ -2011,7 +2011,8 @@
       "original": "Original",
       "live": "à la volée",
       "liveCopy": "copie à {{percent}} %",
-      "liveNote": "Les qualités «à la volée» sont converties par la carte graphique pendant que vous regardez ; quand la copie est prête, on passe à elle."
+      "liveNote": "Les qualités «à la volée» sont converties par la carte graphique pendant que vous regardez ; quand la copie est prête, on passe à elle.",
+      "liveOnlyNote": "Les qualités «à la volée» sont converties par la carte graphique pendant que vous regardez, sans enregistrer de copie."
     }
   },
   "search": {
