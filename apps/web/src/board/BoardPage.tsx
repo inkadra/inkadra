@@ -498,7 +498,6 @@ function BoardScreen({
   // Edits set aside, back into the board (#898): from this device or from a downloaded file.
   const [restoring, setRestoring] = useState(false);
   const [restoreToast, setRestoreToast] = useState<{ text: string; ok: boolean } | null>(null);
-  const restoreInput = useRef<HTMLInputElement>(null);
   const restoreKept = useCallback(
     (run: () => Promise<void>) => {
       setRestoring(true);
@@ -521,7 +520,22 @@ function BoardScreen({
     },
     [t],
   );
-  const restoreFromFile = useCallback(() => restoreInput.current?.click(), []);
+  const merge = conn?.merge;
+  // A picker made when asked: no file input stays on the page beside the board's own.
+  const restoreFromFile = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      restoreKept(async () => {
+        if (!merge) throw new RestoreError('notWritable');
+        await merge(keptFileUpdate(await file.text(), boardId));
+      });
+    };
+    input.click();
+  }, [merge, boardId, restoreKept]);
   const [preview, setPreview] = useState<VersionPreview | null>(null);
   const rememberSelection = useCallback((ids: ReadonlySet<string>) => {
     liveSelection.current = ids;
@@ -1339,22 +1353,6 @@ function BoardScreen({
           onClose={() => setImportingScript(false)}
         />
       )}
-      <input
-        ref={restoreInput}
-        type="file"
-        accept=".json,application/json"
-        hidden
-        onChange={(event) => {
-          const file = event.currentTarget.files?.[0];
-          event.currentTarget.value = '';
-          const merge = conn.merge;
-          if (!file) return;
-          restoreKept(async () => {
-            if (!merge) throw new RestoreError('notWritable');
-            await merge(keptFileUpdate(await file.text(), boardId));
-          });
-        }}
-      />
       {restoreToast && (
         <Toast
           text={restoreToast.text}
