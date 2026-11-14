@@ -166,8 +166,9 @@ jobs:
           image=$(grep -o 'rustfs/rustfs:[^ ]*' deploy/compose.rustfs.yaml)
           docker run -d --name rustfs -p 9000:9000 --tmpfs /data:uid=10001,gid=10001 -e RUSTFS_VOLUMES=/data \
             -e "RUSTFS_ACCESS_KEY=$S3_TEST_ACCESS_KEY_ID" -e "RUSTFS_SECRET_KEY=$S3_TEST_SECRET_ACCESS_KEY" "$image"
-          for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:9000/health >/dev/null && break; sleep 1; done
-          curl -fsS -X PUT --aws-sigv4 aws:amz:us-east-1:s3 \
+          # /health answers before the S3 API does (503 for a few seconds): both wait, at most a minute.
+          curl -fsS --retry 60 --retry-delay 1 --retry-all-errors -o /dev/null http://127.0.0.1:9000/health
+          curl -fsS --retry 60 --retry-delay 1 --retry-all-errors -X PUT --aws-sigv4 aws:amz:us-east-1:s3 \
             --user "$S3_TEST_ACCESS_KEY_ID:$S3_TEST_SECRET_ACCESS_KEY" http://127.0.0.1:9000/inkadra
         env:
           S3_TEST_ENDPOINT: http://127.0.0.1:9000

@@ -58,6 +58,22 @@ function tokenMs(value: string, fallback: number): number {
 }
 
 /**
+ * Starts `observer` on `targets` in the next frame. A bar can mount while another observer's
+ * callback runs (a card's measured height re-renders the board): observed at once, its first
+ * sizes would be skipped by the browser and logged as "ResizeObserver loop completed with
+ * undelivered notifications". Returns the cleanup.
+ */
+function observeNextFrame(observer: ResizeObserver, targets: Element[]): () => void {
+  const frame = requestAnimationFrame(() => {
+    for (const target of targets) observer.observe(target);
+  });
+  return () => {
+    cancelAnimationFrame(frame);
+    observer.disconnect();
+  };
+}
+
+/**
  * Puts the indicator of a bar (`.ink-tabs__ind`, a line or a raised thumb) under its chosen
  * item, and slides and stretches it there from where it was when `key` changes: transform only,
  * `--ink-dur-base` with `--ink-ease-out`; under reduced motion it jumps. `selected` finds the
@@ -108,10 +124,7 @@ export function useSlidingIndicator(
   useEffect(() => {
     const list = bar.current;
     if (!list || typeof ResizeObserver !== 'function') return;
-    const observer = new ResizeObserver(() => place(false));
-    observer.observe(list);
-    for (const child of list.children) observer.observe(child);
-    return () => observer.disconnect();
+    return observeNextFrame(new ResizeObserver(() => place(false)), [list, ...list.children]);
   }, []);
 }
 
@@ -201,11 +214,13 @@ export function Tabs<T extends string>({
     };
     clip();
     el.addEventListener('scroll', clip, { passive: true });
-    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(clip) : null;
-    observer?.observe(el);
+    const stop =
+      typeof ResizeObserver === 'function'
+        ? observeNextFrame(new ResizeObserver(clip), [el])
+        : null;
     return () => {
       el.removeEventListener('scroll', clip);
-      observer?.disconnect();
+      stop?.();
     };
   }, [variant]);
   return (
