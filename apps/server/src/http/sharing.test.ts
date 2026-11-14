@@ -526,6 +526,13 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       .update(invitationTable)
       .set({ lastSentAt: new Date(Date.now() - 120_000) })
       .where(eq(invitationTable.id, invitation.id));
+    // A failed send answers 503 and keeps the earlier link working.
+    vi.spyOn(mailer, 'send').mockRejectedValueOnce(new Error('SMTP down'));
+    const failed = await call('editor', 'POST', again);
+    expect(failed.status).toBe(503);
+    expect(failed.body.error.code).toBe('unavailable');
+    const oldToken = invitation.url.split('/join/')[1];
+    expect((await call(null, 'GET', `/api/v1/invitations/by-token/${oldToken}`)).status).toBe(200);
     const resent = await call('editor', 'POST', again);
     expect(resent.status).toBe(200);
     expect(resent.body.url).not.toBe(invitation.url);

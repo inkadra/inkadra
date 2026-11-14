@@ -13,11 +13,13 @@ export { greyPixels } from '@inkadra/print';
  */
 export interface LoadedImage extends ImageInfo {
   bitmap?: ImageBitmap;
+  /** The encoded file, decoded page by page by `renderImages` so a long export holds few bitmaps. */
+  blob?: Blob;
   bytes?: Uint8Array;
   type?: 'jpeg' | 'png';
 }
 
-export type ImageMode = 'bitmap' | 'pdf';
+export type ImageMode = 'bitmap' | 'blob' | 'pdf';
 
 /** At most this many pictures are fetched and decoded at once. */
 export const IMAGE_CONCURRENCY = 6;
@@ -61,6 +63,10 @@ export async function decodeImage(
   const bitmap = await createImageBitmap(blob);
   const { width, height } = bitmap;
   if (mode === 'bitmap') return { bitmap, width, height };
+  if (mode === 'blob') {
+    bitmap.close();
+    return { width, height, blob };
+  }
   try {
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d');

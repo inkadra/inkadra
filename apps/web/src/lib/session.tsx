@@ -12,6 +12,10 @@ export interface SessionState {
   loading: boolean;
   version?: string;
   enrollmentRequired?: boolean;
+  /** The first load could not reach the server (#821); it tries again by itself. */
+  unreachable?: boolean;
+  /** Tries the first load again now. */
+  retry?: () => void;
   refresh: () => Promise<void>;
 }
 
@@ -67,13 +71,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    void refresh();
+  // A failed first load (server restarting, network down, proxy error) is counted, so the
+  // page can say so and try again on its own instead of staying blank (#821).
+  const [failures, setFailures] = useState(0);
+  const retry = useCallback(() => {
+    refresh().then(
+      () => setFailures(0),
+      () => setFailures((n) => n + 1),
+    );
   }, [refresh]);
+  useEffect(retry, [retry]);
+  useEffect(() => {
+    if (!failures || !loading) return;
+    // 2 s, 4 s, 8 s… up to 30 s; at once when the network comes back.
+    const timer = setTimeout(retry, Math.min(30_000, 1000 * 2 ** failures));
+    window.addEventListener('online', retry);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('online', retry);
+    };
+  }, [failures, loading, retry]);
 
   return (
     <SessionContext.Provider
-      value={{ instance, user, loading, refresh, enrollmentRequired, version }}
+      value={{
+        instance,
+        user,
+        loading,
+        refresh,
+        enrollmentRequired,
+        version,
+        unreachable: loading && failures > 0,
+        retry,
+      }}
     >
       {children}
     </SessionContext.Provider>

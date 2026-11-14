@@ -50,7 +50,8 @@ services:
           pids: 512
           cpus: "1.25"
           memory: 4g
-    networks:
+    # Only these two: not the `default` network of compose.yaml.
+    networks: !override
       edge:
         # Fixed too: left to Docker, Inkadra can start first and take cloudflared's address.
         ipv4_address: 172.31.250.3

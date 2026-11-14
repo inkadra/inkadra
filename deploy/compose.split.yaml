@@ -2,7 +2,7 @@
 # Use together with compose.yaml:
 #   docker compose -f compose.yaml -f deploy/compose.split.yaml up -d
 # The proxy routes /collab to the `collab` service (port 3001) and everything else to `inkadra`.
-# The proxy examples in deploy/proxy do it when INKADRA_COLLAB_UPSTREAM=collab:3001.
+# Caddy and Nginx use INKADRA_COLLAB_UPSTREAM=collab:3001; Traefik needs its compose.split.yaml too.
 
 services:
   inkadra:

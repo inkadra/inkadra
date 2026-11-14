@@ -1030,6 +1030,13 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       rows: 0,
     });
     expect(await send(late, 'tardi.png')).toEqual({ status: 500, details: undefined, rows: 0 });
+    const full: BoardWriter = {
+      async addCard() {
+        return { ok: false, reason: 'full' };
+      },
+    };
+    // A board at its size limit: a conflict, and the files go.
+    expect(await send(full, 'piena.png')).toEqual({ status: 409, details: undefined, rows: 0 });
   });
 
   it('answers 429 after 30 clips a minute', async () => {

@@ -366,6 +366,45 @@ describe('file card family', () => {
     expect(html).toContain('DNxHD · 6K');
   });
 
+  it('shows a video offered only live as playable, without rungs being made', () => {
+    const rung = (name: string, over: Record<string, unknown> = {}) => ({
+      name,
+      status: 'queued',
+      progress: null,
+      width: null,
+      height: null,
+      bitrate: null,
+      size: null,
+      url: null,
+      live: true,
+      ...over,
+    });
+    const video = (renditions: unknown[]) =>
+      ready(
+        {
+          kind: 'video',
+          mime: 'video/mp4',
+          filename: 'drone-4k.mp4',
+          width: 3840,
+          height: 2160,
+          durationMs: 60_000,
+          proxy: { status: 'skipped', progress: null, url: null, mime: 'video/mp4' },
+          playback: { hls: '/api/v1/assets/a/hls/master.m3u8?v=1-l', original: false, renditions },
+        },
+        'video',
+      );
+    const liveOnly = video(['480', '720', '1080'].map((n) => rung(n, { liveOnly: true })));
+    expect(liveOnly).toContain('<button type="button" class="card__play fcard__play"');
+    expect(liveOnly).toContain('<span class="card__duration">1:00</span>');
+    expect(liveOnly).not.toContain('fcard__prep');
+    expect(liveOnly).not.toContain('board.file.live.liveNowText');
+    // Live while its copy is made (mockup of decision 0128): the rungs and "al volo" stay.
+    const making = video([rung('480', { status: 'processing', progress: 30 })]);
+    expect(making).toContain('board.file.watchable');
+    expect(making).toContain('board.file.live.liveNowText');
+    expect(making).toContain('fcard__rungs');
+  });
+
   it.each(['skipped', 'failed'] as const)(
     'shows unavailable instead of a play button for a %s MKV copy',
     (status) => {

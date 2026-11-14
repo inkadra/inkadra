@@ -65,6 +65,8 @@ export const ErrorCode = z.enum([
   'payload_too_large',
   'rate_limited',
   'internal',
+  /** 503 with `Retry-After`: the database is unreachable or busy; try again (capability `unavailable-errors`). */
+  'unavailable',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

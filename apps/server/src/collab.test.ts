@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync, readdirSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
@@ -21,7 +24,12 @@ import * as Y from 'yjs';
 import { createAuth } from './auth.ts';
 import { directBoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
 import { directBoardWriter } from './board-writer.ts';
-import { attachCollab, createCollabServer } from './collab.ts';
+import {
+  attachCollab,
+  createCollabServer,
+  replayUnsavedBoards,
+  SHUTDOWN_STORE_MS,
+} from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { boardDoc, boardElementIndex, notification, projectMember } from './db/schema.ts';
@@ -59,7 +67,9 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const auth = createAuth(config, db);
+  const limits = { stateBytes: 64 * 1024 * 1024, elements: 20_000, maxPayload: 16 * 1024 * 1024 };
   const collab = createCollabServer({
+    limits,
     db,
     auth,
     log,
@@ -169,6 +179,70 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     });
   }
 
+  it('loads an existing oversized board, refuses additions and persists deletions', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Existing large board' },
+    });
+    const id = created.json().rootBoardId as string;
+    const saved = new Y.Doc();
+    roots(saved).meta.set('schemaVersion', CURRENT_SCHEMA_VERSION);
+    const first = column('Keep');
+    const second = column('Delete');
+    addElement(saved, first);
+    addElement(saved, second);
+    const state = Y.encodeStateAsUpdate(saved);
+    await db.insert(boardDoc).values({
+      boardId: id,
+      state,
+      size: state.byteLength,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+    });
+    limits.elements = 1;
+    try {
+      const writer = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+      await writer.synced;
+      expect(roots(writer.doc).elements.size).toBe(2);
+      // The server's own additions (clips) keep to the same caps.
+      const clip = await directBoardWriter(collab).addCard({
+        boardId: id,
+        userId: people.owner?.id ?? '',
+        card: { type: 'note', fields: {} },
+      });
+      expect(clip).toEqual({ ok: false, reason: 'full' });
+      const notices: string[] = [];
+      writer.provider.on('stateless', ({ payload }: { payload: string }) => notices.push(payload));
+      addElement(writer.doc, column('Refused'));
+      await vi.waitFor(() =>
+        expect(notices).toContain(JSON.stringify({ type: 'writeRefused', reason: 'frozen' })),
+      );
+      // The open document: closing the last connection may unload it and the next one reload it.
+      const live = () => collab.hocuspocus.documents.get(boardDocName(id))!;
+      expect(roots(live()).elements.size).toBe(2);
+      // Reopen from confirmed state, as the web client does on the refusal notice.
+      writer.close();
+      const clean = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+      await clean.synced;
+      roots(clean.doc).elements.delete(second.id);
+      await vi.waitFor(() => expect(roots(live()).elements.size).toBe(1));
+      expect(roots(live()).elements.has(first.id)).toBe(true);
+      clean.close();
+      collab.hocuspocus.flushPendingStores();
+      await vi.waitFor(async () => {
+        const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, id));
+        const persisted = new Y.Doc();
+        Y.applyUpdate(persisted, row!.state);
+        expect(roots(persisted).elements.size).toBe(1);
+        persisted.destroy();
+      });
+    } finally {
+      limits.elements = 20_000;
+      saved.destroy();
+    }
+  });
+
   it('syncs a board between two clients and stores it', async () => {
     const a = connect(as('owner'));
     const b = connect(as('owner'));
@@ -238,6 +312,102 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       errors.mockRestore();
       logged.mockRestore();
     }
+  });
+
+  it('retries a failed board store, keeps the board until it is stored, and keeps it on disk at shutdown', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Flaky database' },
+    });
+    const flakyBoard: string = created.json().rootBoardId;
+    const name = boardDocName(flakyBoard);
+    // The board_doc write fails while `down` is set, as when Postgres restarts.
+    let down = true;
+    const flaky = failingInserts(db, () => down);
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const other = createCollabServer({
+      db: flaky,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      unsavedDir: dir,
+    });
+    const isStored = async (id: string) => {
+      const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, flakyBoard));
+      const doc = new Y.Doc();
+      if (row) Y.applyUpdate(doc, row.state);
+      return doc.getMap('elements').has(id);
+    };
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const kept = column('Kept');
+      const first = await other.hocuspocus.openDirectConnection(name);
+      await first.transact((doc) => addElement(doc, kept));
+      // Leaving stores at once: the store fails, and the board must not unload with it.
+      await first.disconnect();
+      expect(other.hocuspocus.documents.has(name)).toBe(true);
+      expect(await isStored(kept.id)).toBe(false);
+      down = false;
+      await expect.poll(() => isStored(kept.id), { timeout: 5000 }).toBe(true);
+      await expect.poll(() => other.hocuspocus.documents.has(name), { timeout: 5000 }).toBe(false);
+
+      // Shutdown while the database is still down: one last try, then the board goes to disk
+      // and the shutdown ends instead of waiting for a store that cannot happen.
+      down = true;
+      const spilled = column('Spilled');
+      const second = await other.hocuspocus.openDirectConnection(name);
+      await second.transact((doc) => addElement(doc, spilled));
+      await second.disconnect();
+      await other.destroy();
+      expect(readdirSync(dir)).toEqual([`${flakyBoard}.yupdate`]);
+      expect(await isStored(spilled.id)).toBe(false);
+      // The next start stores it, merged with what the database has.
+      await replayUnsavedBoards(db, dir, log);
+      expect(await isStored(spilled.id)).toBe(true);
+      expect(await isStored(kept.id)).toBe(true);
+      expect(readdirSync(dir)).toEqual([]);
+    } finally {
+      down = false;
+      errors.mockRestore();
+      await other.destroy();
+    }
+  });
+
+  it('keeps a board on disk when its store hangs at shutdown', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Hung database' },
+    });
+    const hungBoard: string = created.json().rootBoardId;
+    const name = boardDocName(hungBoard);
+    let hung = false;
+    // A database that stopped answering: the store's transaction never settles.
+    const stuck = new Proxy(db, {
+      get(target, key) {
+        if (key === 'transaction' && hung) return () => new Promise(() => {});
+        const value = Reflect.get(target, key);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const other = createCollabServer({
+      db: stuck,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      unsavedDir: dir,
+    });
+    const connection = await other.hocuspocus.openDirectConnection(name);
+    hung = true;
+    await connection.transact((doc) => addElement(doc, column('Hung')));
+    const started = Date.now();
+    await other.destroy();
+    expect(Date.now() - started).toBeLessThan(SHUTDOWN_STORE_MS + 3000);
+    expect(readdirSync(dir)).toEqual([`${hungBoard}.yupdate`]);
   });
 
   it.each([
@@ -839,3 +1009,23 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     );
   }
 });
+
+/** `db` whose inserts throw while `down()` holds, inside transactions too. */
+function failingInserts<T extends object>(target: T, down: () => boolean): T {
+  return new Proxy(target, {
+    get(t, key) {
+      if (key === 'insert' && down())
+        return () => {
+          throw new Error('database down');
+        };
+      if (key === 'transaction')
+        return (fn: (tx: object) => unknown, ...rest: unknown[]) =>
+          (t as { transaction: (...a: unknown[]) => unknown }).transaction(
+            (tx: object) => fn(failingInserts(tx, down)),
+            ...rest,
+          );
+      const value = Reflect.get(t, key);
+      return typeof value === 'function' ? value.bind(t) : value;
+    },
+  });
+}

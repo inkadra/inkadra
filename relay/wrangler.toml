@@ -9,11 +9,15 @@ routes = [{ pattern = "relay.inkadra.com", custom_domain = true }]
 
 [vars]
 REPO = "inkadra/inkadra-feedback"
-DAILY_LIMIT = "60"
-# One network can't use up the day for everyone; IPv6 also counts by /48.
-NETWORK_DAILY_LIMIT = "40"
+# Reports a day for every installation together.
+DAILY_LIMIT = "200"
+# A network's share, a tenth of the day, so one network can't use it up for the others; IPv6 also
+# counts by /48.
+NETWORK_DAILY_LIMIT = "20"
 # 300 MiB a day of attachments in the repository.
 DAILY_BYTES = "314572800"
+# A network's share of those bytes, 64 MiB: two of the largest reports.
+NETWORK_DAILY_BYTES = "67108864"
 # About a second on a phone, milliseconds on a PC: a speed bump, not a wall.
 POW_BITS = "16"
 

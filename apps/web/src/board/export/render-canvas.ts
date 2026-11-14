@@ -4,7 +4,8 @@ import { imagePlacement, type Op, type Page, roundedRectPath } from './pages.ts'
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
-type Images = ReadonlyMap<string, { bitmap?: ImageBitmap; width: number; height: number }>;
+type Image = { bitmap?: ImageBitmap; blob?: Blob; width: number; height: number };
+type Images = ReadonlyMap<string, Image>;
 
 /**
  * Draws a page on a 2D canvas at `scale` pixels per point, on its background, `offsetY` pixels down;
@@ -126,6 +127,34 @@ function drawOps(ctx: Ctx, ops: readonly Op[], images: Images, heading: string) 
   }
 }
 
+function pageKeys(ops: readonly Op[], into: Set<string>) {
+  for (const op of ops) {
+    if (op.kind === 'image') into.add(op.key);
+    if (op.kind === 'clip') pageKeys(op.ops, into);
+  }
+}
+
+/** The pictures of a page with their bitmaps decoded; `bitmaps` are the ones to close after. */
+async function openPageImages(page: Page, images: Images) {
+  const keys = new Set<string>();
+  pageKeys(page.ops, keys);
+  const bitmaps: ImageBitmap[] = [];
+  let out: Map<string, Image> | null = null;
+  for (const key of keys) {
+    const img = images.get(key);
+    if (!img?.blob || img.bitmap) continue;
+    out ??= new Map(images);
+    try {
+      const bitmap = await createImageBitmap(img.blob);
+      bitmaps.push(bitmap);
+      out.set(key, { ...img, bitmap });
+    } catch {
+      // Drawn as missing, like a picture that failed to load.
+    }
+  }
+  return { images: out ?? images, bitmaps };
+}
+
 /** One picture per page, drawn `scales[n]` pixels per point; canvases encode in sRGB. */
 export async function renderImages(
   pages: readonly Page[],
@@ -154,7 +183,13 @@ export async function renderImages(
     );
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('No 2D context');
-    drawPage(ctx, page, scale, images, 0, heading);
+    // Pictures kept encoded are decoded for this page only and closed right after it.
+    const opened = await openPageImages(page, images);
+    try {
+      drawPage(ctx, page, scale, opened.images, 0, heading);
+    } finally {
+      for (const b of opened.bitmaps) b.close();
+    }
     blobs.push(
       await canvas.convertToBlob(
         format === 'jpeg' ? { type: 'image/jpeg', quality: 0.9 } : { type: 'image/png' },

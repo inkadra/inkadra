@@ -323,8 +323,9 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         try {
           await store('cache002');
           expect(taking).toHaveBeenCalledTimes(1);
-          // Only search indexing transacts; automatic versioning performs no DB work.
-          expect(transactions).toHaveBeenCalledTimes(1);
+          // Only the board store (with its statement timeout) and search indexing transact;
+          // automatic versioning performs no DB work.
+          expect(transactions).toHaveBeenCalledTimes(2);
         } finally {
           transactions.mockRestore();
         }

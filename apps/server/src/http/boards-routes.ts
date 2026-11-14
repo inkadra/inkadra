@@ -5,6 +5,7 @@ import {
   atLeast,
   type Board,
   type BoardColumns,
+  type BoardCount,
   type BoardDetail,
   type BoardPreview,
   CAPABILITY_ROLE,
@@ -499,7 +500,15 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     if (!pRole && grants.size === 0) throw new HttpError('not_found', 'Project not found.');
     const [rows, links] = await Promise.all([
       db
-        .select({ board, state: boardDoc.state })
+        .select({
+          board,
+          // The stored counts when the index is current, else the document to decode.
+          counts: sql<Omit<
+            BoardCount,
+            'boardId'
+          > | null>`case when ${boardDoc.indexedAt} >= ${boardDoc.updatedAt} then ${boardDoc.counts} end`,
+          state: sql<Uint8Array | null>`case when ${boardDoc.indexedAt} >= ${boardDoc.updatedAt} and ${boardDoc.counts} is not null then null else ${boardDoc.state} end`,
+        })
         .from(board)
         .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
         .where(and(eq(board.projectId, projectId), isNull(board.deletedAt))),
@@ -528,7 +537,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
         ? [
             {
               boardId: r.board.id,
-              ...boardCounts(r.state ?? undefined),
+              ...(r.counts ?? boardCounts(r.state ?? undefined)),
               clientReview: reviewing.has(r.board.id),
             },
           ]

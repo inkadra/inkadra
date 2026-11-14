@@ -146,6 +146,30 @@ it('keeps an edit that could not be saved, says so and tries again', async () =>
   expect(host.textContent).not.toContain('schedule.statusUnsaved');
 });
 
+it('keeps an unsaved draft when the schedule closes, and saves it when it opens again', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const put = vi.spyOn(api, 'put').mockRejectedValue(new Error('offline'));
+  const host = await mount(<ScheduleView store={store()} boardId="kept" userId="me" />);
+  await openDayView(host);
+  await type(notesOf(host), 'Moved offline');
+  await settle();
+  expect(put).toHaveBeenCalledOnce();
+  // Another board opens: this schedule unmounts with its draft not saved.
+  disposals.pop()?.();
+  // A saved-version preview of the board does not take the live draft.
+  const preview = await mount(<ScheduleView store={store()} boardId="kept" userId="me" readOnly />);
+  await openDayView(preview);
+  expect(notesOf(preview)?.value ?? '').toBe('');
+  disposals.pop()?.();
+  put.mockImplementation(async (_path, body) => ({ ...day, ...(body as object), revision: 2 }));
+  const again = await mount(<ScheduleView store={store()} boardId="kept" userId="me" />);
+  await openDayView(again);
+  expect(notesOf(again)?.value).toBe('Moved offline');
+  await settle();
+  expect(put).toHaveBeenCalledTimes(2);
+  expect(put.mock.calls[1]?.[1]).toMatchObject({ notes: 'Moved offline', revision: 1 });
+});
+
 it('keeps a draft when the day changes elsewhere and lets the user save it over', async () => {
   const put = vi
     .spyOn(api, 'put')

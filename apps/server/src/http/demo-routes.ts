@@ -197,20 +197,20 @@ export function registerDemoRoutes(app: FastifyInstance, deps: Deps) {
   };
   // One sandbox per address (an IPv6 /64) every ten minutes. A refusal (a failed check, a full
   // demo) does not spend that turn, but has its own budget: nobody hammers Turnstile from here.
-  const perAddress = new Failures(1, 10 * 60 * 1000);
-  const refusals = new Failures(DEMO_REFUSALS, 10 * 60 * 1000);
+  const perAddress = new Failures(1, 10 * 60 * 1000, 'demo-routes:perAddress');
+  const refusals = new Failures(DEMO_REFUSALS, 10 * 60 * 1000, 'demo-routes:refusals');
   const limited = config.NODE_ENV === 'production' || config.AUTH_RATE_LIMITS !== 'off';
   const hostname = new URL(config.PUBLIC_URL).hostname;
 
   app.post(v1('/demo/sandbox'), async (req, reply) => {
     const { turnstileToken } = CreateDemoSandbox.parse(req.body ?? {});
     const key = addressBucket(req.ip);
-    if (limited && !refusals.begin(key)) {
+    if (limited && !(await refusals.begin(key))) {
       reply.header('retry-after', String(Math.max(1, refusals.retryAfterSeconds(key))));
       throw refuse('rate_limited', 'demo_wait');
     }
-    if (limited && !perAddress.begin(key)) {
-      refusals.finish(key, false);
+    if (limited && !(await perAddress.begin(key))) {
+      await refusals.finish(key, false);
       reply.header('retry-after', String(Math.max(1, perAddress.retryAfterSeconds(key))));
       throw refuse('rate_limited', 'demo_wait');
     }
@@ -240,8 +240,8 @@ export function registerDemoRoutes(app: FastifyInstance, deps: Deps) {
       return reply.status(201).send(sandbox);
     } finally {
       if (limited) {
-        perAddress.finish(key, made);
-        refusals.finish(key, !made);
+        await perAddress.finish(key, made);
+        await refusals.finish(key, !made);
       }
     }
   });
