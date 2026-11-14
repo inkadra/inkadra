@@ -26,7 +26,13 @@ async function seedBoard(page: Page, base: string) {
   const doc = createBoardDoc(project.rootBoardId);
   const opts = { userId: null } as const;
   const first = createElement(doc, 'note', { x: 60, y: 80 }, { w: 220 }, opts);
-  const right = createElement(doc, 'color', { x: 420, y: 80 }, { hex: '#D9774B', label: 'Tramonto' }, opts);
+  const right = createElement(
+    doc,
+    'color',
+    { x: 420, y: 80 },
+    { hex: '#D9774B', label: 'Tramonto' },
+    opts,
+  );
   const below = createElement(doc, 'note', { x: 60, y: 400 }, { w: 220 }, opts);
   await pushBoardDoc(base, cookie, project.rootBoardId, doc);
   return { boardUrl: `/p/${project.id}/b/${project.rootBoardId}`, first, right, below };
