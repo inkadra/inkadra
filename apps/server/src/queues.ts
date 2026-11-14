@@ -17,7 +17,7 @@ import {
   sweepPartialBackups,
 } from './backup.ts';
 import type { BoardReader, StoredElement } from './board-content.ts';
-import { type BoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
+import { type BoardNotifier, NOTICE_TTL_MS, noticeAssetBoards } from './board-notices.ts';
 import {
   type AddCard,
   type AddCardResult,
@@ -404,6 +404,8 @@ export async function startWorkers(
     instanceName?: string;
     /** Where failures go for the Server page (#514), as `role`. */
     monitor?: { store: MonitorStore; role: 'worker' | 'all' };
+    /** Open boards told when a regeneration remakes the copies of their files (#787). */
+    notices?: BoardNotifier;
   },
   opts: { prefix?: string } = {},
 ) {
@@ -520,9 +522,17 @@ export async function startWorkers(
     async (job) => {
       if (job.name !== 'make') throw new Error(`Unknown job ${job.name}`);
       const { assetId, regenerate } = job.data as JobPayloads['media-proxies:make'];
+      const notices = regenerate ? deps.notices : undefined;
       try {
         return await runProxy({ ...deps, log }, assetId, (percent) => job.updateProgress(percent), {
           regenerate: regenerate === true,
+          // Its boards poll the file once told, until the copies are ready: no notice at the end.
+          ...(notices && {
+            onStart: () =>
+              noticeAssetBoards(deps.db, notices, assetId).catch((err) =>
+                log.warn({ err, assetId }, 'asset notice not sent'),
+              ),
+          }),
         });
       } catch (err) {
         // A copy that ran out of time would run out of time again.

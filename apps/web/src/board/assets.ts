@@ -142,24 +142,27 @@ function lacksCopy(value: Asset | 'missing' | undefined): boolean {
 }
 
 /**
- * Asks again about the videos without a copy: shown ones once now (then polled while their
- * copies are made), the others are forgotten so their cards fetch them when they mount. Called
- * when this tab starts a regeneration and when a board comes back into view.
- * shortcut: no push reaches asset changes, so a board kept in view in another tab or browser
- * only learns once it is hidden and shown again; upgrade with an asset notice on the board
- * channel (board-notices.ts) if that matters.
+ * Asks again about a file: once now if a card shows it (then polled while its copies are made),
+ * otherwise it is forgotten so its cards fetch it when they mount. Called for the `asset` notice
+ * of an open board, sent when a regeneration starts making the file's copies (#787).
+ */
+export function refetchAsset(id: string) {
+  if (!listeners.has(id)) {
+    cache.delete(id);
+    return;
+  }
+  pollers.get(id)?.stop();
+  pollers.delete(id);
+  startPolling(id, true);
+}
+
+/**
+ * Asks again about the videos without a copy, as refetchAsset does. Called when this tab starts
+ * a regeneration and when a board comes back into view, which covers servers without the
+ * `asset` notice.
  */
 export function refetchVideosWithoutCopy() {
-  for (const [id, value] of cache) {
-    if (!lacksCopy(value)) continue;
-    if (!listeners.has(id)) {
-      cache.delete(id);
-      continue;
-    }
-    pollers.get(id)?.stop();
-    pollers.delete(id);
-    startPolling(id, true);
-  }
+  for (const [id, value] of cache) if (lacksCopy(value)) refetchAsset(id);
 }
 
 function onVisibilityChange() {

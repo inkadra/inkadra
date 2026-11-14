@@ -7,6 +7,7 @@ import { RequestError } from '../lib/api.ts';
 import {
   getCachedAsset,
   primeAsset,
+  refetchAsset,
   refetchVideosWithoutCopy,
   resetAssetCache,
   setAssetLoader,
@@ -142,6 +143,23 @@ describe('mounted asset polling', () => {
     // Coming back into view asks only about videos still without a copy.
     await event(document, 'visibilitychange');
     expect(api.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('follows a file named by an asset notice of the board, even one that looked settled', async () => {
+    const ready = { ...asset, status: 'ready' as const };
+    primeAsset(ready);
+    primeAsset({ ...ready, id: 'unmounted' });
+    await render();
+    expect(api.get).not.toHaveBeenCalled();
+
+    api.get.mockResolvedValueOnce({ ...ready, status: 'processing' }).mockResolvedValue(ready);
+    await act(async () => refetchAsset(asset.id));
+    expect(container.textContent).toBe('processing');
+    await advance(4000);
+    expect(container.textContent).toBe('ready');
+    // A file no card shows is forgotten, so its cards fetch it when they mount.
+    refetchAsset('unmounted');
+    expect(getCachedAsset('unmounted')).toBeUndefined();
   });
 
   it('never polls for rungs offered only live, only for copies being made', async () => {

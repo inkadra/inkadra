@@ -1,9 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import type { BoardNotice } from '@inkadra/doc-schema';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { noticeAssetBoards } from './board-notices.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { asset, assetRendition, assetVariant, project } from './db/schema.ts';
+import {
+  asset,
+  assetRendition,
+  assetVariant,
+  board,
+  boardElementIndex,
+  project,
+} from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { recipesFor } from './media/ladder.ts';
 import {
@@ -121,5 +130,23 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
     await stopBackfill(db, jobs);
     expect((await readBackfill(db, jobs))?.status).toBe('stopped');
     expect(await stepBackfill(db, jobs, RECIPE)).toBe(false);
+  });
+
+  it('tells the boards that show a video when its copies are made again (#787)', async () => {
+    const id = await video({ proxyStatus: 'skipped' });
+    const other = await video({ proxyStatus: 'skipped' });
+    const [shows, lacks] = [randomUUID(), randomUUID()];
+    await db.insert(board).values([
+      { id: shows, projectId, title: 'Shows', position: 'a0' },
+      { id: lacks, projectId, title: 'Lacks', position: 'a1' },
+    ]);
+    await db.insert(boardElementIndex).values([
+      { boardId: shows, elementId: 'a', projectId, type: 'file', assetId: id },
+      { boardId: shows, elementId: 'b', projectId, type: 'file', assetId: id },
+      { boardId: lacks, elementId: 'c', projectId, type: 'file', assetId: other },
+    ]);
+    const sent: Array<[string, BoardNotice]> = [];
+    await noticeAssetBoards(db, { notify: (b, n) => sent.push([b, n]) }, id);
+    expect(sent).toEqual([[shows, { type: 'asset', assetId: id }]]);
   });
 });
