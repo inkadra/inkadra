@@ -119,3 +119,35 @@ it('chooses on a click only, links each tab to the panel and keeps the panel mou
   expect(changes).toHaveBeenCalledTimes(1);
   act(() => root.unmount());
 });
+
+it('observes its sizes from the next frame, not while another observer reports', async () => {
+  // Mounted inside another ResizeObserver's callback, an element observed at once has its first
+  // sizes skipped and logged as a ResizeObserver loop (card-resize.spec.ts).
+  const observed: Element[] = [];
+  const frames: FrameRequestCallback[] = [];
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe(el: Element) {
+        observed.push(el);
+      }
+      disconnect() {}
+    },
+  );
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
+  vi.stubGlobal('cancelAnimationFrame', () => {});
+  try {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => root.render(<Bar changes={() => {}} />));
+    expect(observed).toEqual([]);
+    for (const frame of frames.splice(0)) frame(0);
+    const list = host.querySelector('[role="tablist"]');
+    expect(observed).toContain(list);
+    expect(observed).toContain(list?.querySelector('.ink-tabs__ind'));
+    act(() => root.unmount());
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
