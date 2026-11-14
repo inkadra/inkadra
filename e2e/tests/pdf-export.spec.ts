@@ -1025,8 +1025,9 @@ test('bands take the chosen colour in any theme, and a selection downloads its f
 const pixelOf = (page: Page, bytes: Buffer, x: number, y: number) =>
   page.evaluate(
     async ([data, px, py]) => {
-      const res = await fetch(`data:image/png;base64,${data}`);
-      const bitmap = await createImageBitmap(await res.blob());
+      // Decoded here, not fetched: the page's CSP has no data: in connect-src.
+      const png = Uint8Array.from(atob(data as string), (c) => c.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([png], { type: 'image/png' }));
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
       const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
       ctx.drawImage(bitmap, 0, 0);

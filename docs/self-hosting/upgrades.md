@@ -91,6 +91,45 @@ These changes are on `main`, not in 0.9.0.
 
   Days created on the Production board after the move stay on it, in the trash with the board.
 
+### Safer defaults in the deployment files
+
+Take the new `compose.yaml` and `deploy/` files with this version (see [Updating](#updating)).
+Your current `.env` keeps working; what changes, and what to do:
+
+- **The Content-Security-Policy is enforced.** Until now the browser only reported what the
+  policy would block. If your proxy injects scripts or styles, or files in S3 come from an
+  address other than `S3_ENDPOINT`, something can stop loading (the browser's console says
+  `Refused to load…`): set `CSP_ENFORCE=false` in `.env` and run `docker compose up -d`, then
+  see [Trying CSP enforcement](#trying-csp-enforcement). An existing `CSP_ENFORCE=false` stays.
+- **HSTS is on** when `PUBLIC_URL` is https: Inkadra sends `Strict-Transport-Security` on
+  requests that reach it over HTTPS (through a proxy that `TRUST_PROXY` accepts), never on plain
+  HTTP, so LAN and Tailscale addresses over HTTP keep working. If you also use plain HTTP on the
+  **same host name** as `PUBLIC_URL`, set `HSTS_ENABLED=false` before upgrading: browsers keep
+  HSTS for a year. An existing `HSTS_ENABLED=false` stays.
+- **Postgres and Valkey are on their own network**, `backend`, which has no way out and which
+  only Inkadra joins: the bundled proxies and anything else you put on the stack's `default`
+  network can no longer reach them. A container of your own that talks to the database (a
+  backup job, for example) must join `backend` too. `docker compose up -d` creates the network
+  and recreates the three containers; data stays in its volumes.
+- **Valkey can ask for a password.** New `.env` files have `VALKEY_PASSWORD`; without it Valkey
+  starts without one, as before. To turn it on, add `VALKEY_PASSWORD=` with a value from
+  `openssl rand -hex 32` (letters and digits only, it is part of a URL) and run
+  `docker compose up -d`: Inkadra and Valkey restart with it. Jobs that were queued stay.
+- **The bundled proxies are the only peer Inkadra trusts for client addresses.** Caddy, Nginx
+  and Traefik in `deploy/proxy` now run at a fixed address, `10.212.47.2`, on a fixed subnet
+  `10.212.47.0/24` of the stack's network, and set `TRUST_PROXY` to that address unless `.env`
+  sets one. If your `.env` has a `TRUST_PROXY` line written for a bundled proxy, remove it or
+  change it to `10.212.47.2`: with the old address Inkadra no longer trusts the proxy, sees
+  every request as plain HTTP from one client and sends no HSTS. Compose recreates the network on `up -d`; if your version of Compose asks for it,
+  run `docker compose down` (without `-v`) first. If the subnet is taken on your machine, choose
+  another one in the proxy's compose file. Without a bundled proxy nothing changes, but set
+  `TRUST_PROXY` to your proxy's address (see [TRUST_PROXY](configuration.md#trust_proxy)).
+- **The bundled Traefik no longer reads the Docker socket.** Its routes come from a file
+  defined in `deploy/proxy/traefik/compose.yaml` (and `compose.split.yaml`), with the same rules
+  as the old labels; labels you added to `inkadra` for it are ignored. The read timeout of the
+  HTTPS entry point is now 12 hours instead of none: uploads are in pieces of at most 50 MiB,
+  but a project import is one request and must arrive within that time.
+
 ## Upgrading to 0.9
 
 - **Reports go to the Inkadra developers by default,** also on an instance where they were off, unless
@@ -387,17 +426,20 @@ docker compose exec inkadra node /app/dist/main.js unlock-auth person@example.co
 
 ### Trying CSP enforcement
 
-Start with `CSP_ENFORCE=false` (report-only). Use each sign-in method and board media type,
-and check the browser console for `[Report Only] Refused to load…`. Fix blocked sources
-before setting `CSP_ENFORCE=true` and recreating the container. Revert to `false` if needed.
-For a reporting endpoint, use `CSP_REPORT_URI` as described in
+0.4 to 0.9 send the policy in report-only mode by default; 0.10 enforces it. To try enforcement
+on an older version, or after turning it off, start with `CSP_ENFORCE=false` (report-only). Use
+each sign-in method and board media type, and check the browser console for
+`[Report Only] Refused to load…`. Fix blocked sources before setting `CSP_ENFORCE=true` and
+recreating the container. Revert to `false` if needed. For a reporting endpoint, use
+`CSP_REPORT_URI` as described in
 [Browser security headers](configuration.md#browser-security-headers).
 
 ### HSTS
 
-HSTS is off in Inkadra by default; set it at the proxy (see
+In 0.4 to 0.9 HSTS is off in Inkadra by default; set it at the proxy (see
 [Security headers](reverse-proxy.md#security-headers)) or with `HSTS_ENABLED=true`. Turn it on
-only when HTTPS works for good: browsers remember it for a year.
+only when HTTPS works for good: browsers remember it for a year. From 0.10 it is on by default
+(see [Safer defaults](#safer-defaults-in-the-deployment-files)).
 
 ## Upgrading to Valkey 9
 

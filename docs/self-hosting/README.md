@@ -48,11 +48,11 @@ second one, `.env`, in the same folder. Run every `docker compose` command from 
    curl -fsSL -o .env https://raw.githubusercontent.com/inkadra/inkadra/main/.env.example
    ```
 
-2. **Fill in the two secrets.** This writes random values into `.env` (on macOS, use
+2. **Fill in the three secrets.** This writes random values into `.env` (on macOS, use
    `sed -i ''`). Keep the file private: anyone who reads it can get into the database.
 
    ```sh
-   sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
+   sed -i "s/^AUTH_SECRET=.*/AUTH_SECRET=$(openssl rand -hex 32)/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/; s/^VALKEY_PASSWORD=.*/VALKEY_PASSWORD=$(openssl rand -hex 32)/" .env
    ```
 
 3. **Set the address** people will use, in `PUBLIC_URL`, with any text editor. To try Inkadra on

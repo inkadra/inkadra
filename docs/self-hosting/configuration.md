@@ -34,7 +34,7 @@ services:
 | `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                   |
 | `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                             |
 | `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                             |
-| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                              |
+| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address: set it to your proxy. See [below](#trust_proxy)        |
 | `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                              |
 
 `INSTANCE_NAME` and `REGISTRATION` are installation defaults; saved administrator choices
@@ -262,6 +262,7 @@ These change `compose.yaml` itself, not the server.
 | `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume. See [Storage][data-disks]       |
 | `POSTGRES_PASSWORD`       | required                  | Password of the bundled Postgres                                               |
 | `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database (or the name of another volume)                   |
+| `VALKEY_PASSWORD`         |                           | Password of the bundled Valkey, letters and digits (`openssl rand -hex 32`)    |
 | `POSTGRES_MAJOR`          | `16`                      | PostgreSQL version, only with `deploy/compose.postgres-old-layout.yaml`        |
 | `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey. See [Storage][data-disks]                              |
 | `RUSTFS_DATA`             | volume `rustfs-data`      | Host folder for the bundled RustFS                                             |
@@ -318,11 +319,14 @@ attempts and appears in the logs, so a wrong value either blocks everyone at onc
 looks like one client) or lets anyone fake an address.
 
 The value is `false`, or a comma-separated list of addresses, CIDR ranges and the presets
-`loopback`, `linklocal` and `uniquelocal` (private networks). The default trusts loopback and
-every private network, which works for a proxy on the same machine or in the same Docker
-network. It is a starting point, not the safest setting: anything else on those networks could
-claim any client address. Once the proxy works, narrow it to **the proxy's own address**:
+`loopback`, `linklocal` and `uniquelocal` (private networks). Without a value Inkadra trusts
+loopback and every private network, which works for a proxy on the same machine or in the same
+Docker network. It is a starting point, not the safest setting: anything else on those networks
+could claim any client address. Set it to **the proxy's own address**:
 
+- a bundled proxy (`deploy/proxy/*`): nothing to do. It runs at a fixed address,
+  `10.212.47.2`, and its compose file sets `TRUST_PROXY` to it unless `.env` sets another value.
+  In split mode with Caddy or Nginx, the `collab` container keeps the general value;
 - a proxy in the same Docker network: its single container IP, e.g.
   `TRUST_PROXY=172.18.0.10`. Pin it with `ipv4_address: 172.18.0.10` in compose
   (and configure network IPAM for that address);
@@ -369,20 +373,27 @@ of other addresses.
 
 ## Browser security headers
 
-Inkadra sends `Content-Security-Policy`, `Permissions-Policy` and
-`Cross-Origin-Opener-Policy: same-origin` on its pages. Two of them are opt-in, because a wrong
-setting can break an installation in ways the server cannot see:
+Inkadra sends `Content-Security-Policy`, `Permissions-Policy`,
+`Cross-Origin-Opener-Policy: same-origin` and, over HTTPS, `Strict-Transport-Security` on its
+pages. Each of the two variables below is an off switch, for a setup that a header breaks:
 
-| Variable         | Default | Meaning                                                                                                        |
-| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------- |
-| `CSP_ENFORCE`    | `false` | `false` sends the policy as `Content-Security-Policy-Report-Only`; `true` enforces it                          |
-| `CSP_REPORT_URI` |         | Absolute address that receives violation reports, e.g. `https://reports.example.com/csp`                       |
-| `HSTS_ENABLED`   | `false` | `true` sends `Strict-Transport-Security: max-age=31536000`, only on requests whose verified transport is HTTPS |
+| Variable         | Default | Meaning                                                                                                                                                                                      |
+| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CSP_ENFORCE`    | `true`  | `true` enforces the policy; `false` sends it as `Content-Security-Policy-Report-Only`, so the browser only reports what it would block                                                       |
+| `CSP_REPORT_URI` |         | Absolute address that receives violation reports, e.g. `https://reports.example.com/csp`                                                                                                     |
+| `HSTS_ENABLED`   | `true`  | Sends `Strict-Transport-Security: max-age=31536000` when `PUBLIC_URL` is https, only on requests whose verified transport is HTTPS (never on a plain-HTTP LAN address). `false` turns it off |
 
 The policy allows the instance itself, its WebSocket, the S3 bucket when files are in S3,
-Google profile pictures and the privacy-enhanced YouTube player. To move to enforcement, see
-[Upgrades](upgrades.md#trying-csp-enforcement). HSTS is usually better set at the proxy, which
-also redirects HTTP to HTTPS: see [Reverse proxy](reverse-proxy.md#security-headers).
+Google profile pictures and the privacy-enhanced YouTube player. If something you use is
+blocked, the browser's console says `Refused to load…`: set `CSP_ENFORCE=false`, run
+`docker compose up -d`, and please open an issue; see also
+[Upgrades](upgrades.md#trying-csp-enforcement).
+
+HSTS tells browsers to use only HTTPS for the host name of `PUBLIC_URL` (and any other host
+name the instance answers over HTTPS) for a year. If you also reach Inkadra over plain HTTP **on
+the same host name** (for example a different port), set `HSTS_ENABLED=false`: other host names
+and IP addresses, such as a LAN or Tailscale address, are not affected. The proxy can send
+HSTS too: see [Reverse proxy](reverse-proxy.md#security-headers).
 
 ## Personal tokens and second factor
 

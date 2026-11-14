@@ -139,9 +139,7 @@ describe('the demo configuration (decision 0084)', () => {
       /script-src 'self' https:\/\/challenges\.cloudflare\.com/,
     );
     expect(headers['content-security-policy-report-only']).toBeUndefined();
-    expect(securityHeaders(loadConfig(base))['content-security-policy-report-only']).not.toMatch(
-      /cloudflare/,
-    );
+    expect(securityHeaders(loadConfig(base))['content-security-policy']).not.toMatch(/cloudflare/);
   });
 });
 
