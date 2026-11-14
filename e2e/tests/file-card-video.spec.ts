@@ -195,8 +195,10 @@ test('the card plays the converted copy once ready and stays as it is while prep
   const { asset, assetId, boardUrl } = await seedVideos(page, baseURL as string);
   const copy = `${asset.url}${asset.url.includes('?') ? '&' : '?'}copy=1`;
   let proxy: unknown = { status: 'processing', progress: 42, url: null };
+  // No ladder: the worker may have made its rungs by the time the seed read the asset, and a
+  // ready rung plays at once (decision 0128), so the card would never show "preparing" (#744).
   await page.route(`**/api/v1/assets/${assetId}`, (route) =>
-    route.fulfill({ json: { ...asset, proxy } }),
+    route.fulfill({ json: { ...asset, proxy, playback: null } }),
   );
   await page.goto(boardUrl);
   const first = page.locator('.card--file').first();

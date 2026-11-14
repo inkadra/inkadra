@@ -104,6 +104,18 @@ interface CardProps {
    * that draw them get it: a zoom change then restyles a handful of cards, not the board.
    */
   zoom?: number | undefined;
+  /** The card Tab reaches on the canvas (roving focus, #825); the others take focus by arrow. */
+  tabStop?: boolean;
+}
+
+/** What a screen reader calls a card: its kind, then its title or name when it has one. */
+export function cardLabel(element: Element, t: (key: string) => string): string {
+  const kind = t(`board.types.${element.type}`);
+  const fields = element as unknown as Record<string, unknown>;
+  const title = ['title', 'name', 'label', 'text']
+    .map((key) => fields[key])
+    .find((value): value is string => typeof value === 'string' && value.trim() !== '');
+  return title ? `${kind}: ${title.trim().slice(0, 80)}` : kind;
 }
 
 export const Card = memo(function Card({
@@ -117,6 +129,7 @@ export const Card = memo(function Card({
   selection,
   draggingIds,
   zoom,
+  tabStop,
 }: CardProps) {
   const { store, editing, cropping } = useBoard();
   const extras = useContext(CardExtrasContext);
@@ -186,6 +199,13 @@ export const Card = memo(function Card({
       data-type={element.type}
       data-nested={nested ? '' : undefined}
       data-tour="card"
+      {...(nested
+        ? {}
+        : {
+            role: 'group',
+            'aria-label': cardLabel(element, (key) => t(key)),
+            tabIndex: tabStop ? 0 : -1,
+          })}
     >
       <CardBody
         element={element}

@@ -112,6 +112,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'board-restore-marker',
         'board-restore-history',
         'token-proof',
+        'asset-notices',
         'board-writers',
         'plan-sheet-pdf',
         'transfer-cancel',

@@ -63,7 +63,7 @@ export async function makeLadder(
   info: VideoInfo,
   plan: Extract<VideoPlan, { kind: 'ladder' }>,
   onProgress?: (percent: number) => void | Promise<void>,
-  opts: { regenerate?: boolean } = {},
+  opts: { regenerate?: boolean; onStart?: () => Promise<void> } = {},
 ) {
   const { db, storage } = deps;
   const settings = deps.proxies ?? DEFAULT_PROXY_SETTINGS;
@@ -104,6 +104,7 @@ export async function makeLadder(
       });
   }
   if (aggregate) await setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: 0 });
+  await opts.onStart?.();
 
   // Progress of the whole ladder, weighted by the pixels of each rung.
   const weight = (name: VideoRung) => rungSide(info, settings, name) ** 2;

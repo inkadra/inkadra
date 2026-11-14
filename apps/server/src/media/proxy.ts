@@ -59,7 +59,11 @@ export async function runProxy(
   assetId: string,
   onProgress?: (percent: number) => void | Promise<void>,
   /** A regeneration (decision 0128): makes the ladder over a copy of before. */
-  opts: { regenerate?: boolean } = {},
+  opts: {
+    regenerate?: boolean;
+    /** Once the asset shows its copies as being made, for the boards that show it (#787). */
+    onStart?: () => Promise<void>;
+  } = {},
 ) {
   // Read once per job: changing the preset needs no restart of the worker.
   const deps = { ...given, proxies: await proxySettings(given) };
@@ -98,7 +102,7 @@ export async function runProxy(
     try {
       const source = await privateInput(dir, copy.path);
       return await withToolLabel(row.filename, () =>
-        transcode(deps, row, container, source, dir, onProgress, opts.regenerate),
+        transcode(deps, row, container, source, dir, onProgress, opts),
       );
     } finally {
       await copy.done();
@@ -113,8 +117,9 @@ async function transcode(
   source: string,
   dir: string,
   onProgress?: (percent: number) => void | Promise<void>,
-  regenerate = false,
+  opts: { regenerate?: boolean; onStart?: () => Promise<void> } = {},
 ) {
+  const regenerate = opts.regenerate === true;
   const { db, storage } = deps;
   const assetId = row.id;
   const settings = deps.proxies ?? DEFAULT_PROXY_SETTINGS;
@@ -130,9 +135,17 @@ async function transcode(
       .where(eq(asset.id, assetId));
   const plan = videoPlan(container, info, row.size, settings);
   if (plan.kind === 'ladder') {
-    const result = await makeLadder(deps, row, container, source, dir, info, plan, onProgress, {
-      regenerate,
-    });
+    const result = await makeLadder(
+      deps,
+      row,
+      container,
+      source,
+      dir,
+      info,
+      plan,
+      onProgress,
+      opts,
+    );
     // The ladder is in: the single copy of before goes (decision 0128).
     if (regenerate && !('skipped' in result && result.skipped === 'gone'))
       await dropOldCopy(db, storage, assetId);
@@ -155,6 +168,7 @@ async function transcode(
   }
   await ensureFreeSpace(dir, proxyMaxBytes(info, settings, row.size), 'the playable copy');
   await setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: 0 });
+  await opts.onStart?.();
   let written = 0;
   let shown = 0;
   let writing: Promise<unknown> = Promise.resolve();

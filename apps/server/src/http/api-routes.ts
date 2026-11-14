@@ -151,6 +151,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'board-restore-marker',
         'board-restore-history',
         'token-proof',
+        // Board notice `asset`: a file's copies are being made again (#787).
+        'asset-notices',
         BOARD_WRITERS_CAPABILITY,
         PLAN_SHEET_PDF_CAPABILITY,
         TRANSFER_CANCEL_CAPABILITY,

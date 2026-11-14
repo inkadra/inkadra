@@ -325,6 +325,9 @@
       "organize": "Organize and plan"
     },
     "canvas": "Board canvas",
+    "a11y": {
+      "selected": "Selected: {{card}}"
+    },
     "toolbar": "Add",
     "contextBar": "Selection actions",
     "minimap": "Minimap: click to move there",

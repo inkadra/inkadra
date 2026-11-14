@@ -41,6 +41,13 @@ export const WriteRefusedNotice = z.object({
   schemaVersion: z.int().min(1).optional(),
 });
 
+/**
+ * The playable copies of a file shown on the board are being made again (a regeneration from
+ * Settings → Video), so its cards fetch the file again and follow it until the copies are
+ * ready. Servers send it only with the `asset-notices` capability; older clients ignore it.
+ */
+export const AssetNotice = z.object({ type: z.literal('asset'), assetId: z.uuid() });
+
 export const BoardNotice = z.discriminatedUnion('type', [
   AccessNotice,
   WriteRefusedNotice,
@@ -48,6 +55,7 @@ export const BoardNotice = z.discriminatedUnion('type', [
   ReviewNotice,
   RestoredNotice,
   VersionsNotice,
+  AssetNotice,
 ]);
 export type BoardNotice = z.infer<typeof BoardNotice>;
 
