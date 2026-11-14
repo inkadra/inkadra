@@ -61,7 +61,6 @@ import {
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu, type MenuItem } from './chrome.tsx';
-import { Toast } from './Toast.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState } from './DeniedState.tsx';
 import type { ExportWhat } from './export/engine.ts';
@@ -82,6 +81,7 @@ import { useLiveBoardCounts } from './live-counts.ts';
 import { RestoredToast } from './RestoredToast.tsx';
 import { isMac } from './shortcuts.ts';
 import { LOCAL, REPAIR } from './store.ts';
+import { Toast } from './Toast.tsx';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import { beginViewSwitch, slideTabPill, type ViewSwitchMotion } from './view-switch.ts';
 import {
@@ -1203,29 +1203,29 @@ function BoardScreen({
         >
           <Suspense fallback={null}>
             <ScheduleView
-            active={view === 'schedule'}
-            key={`${boardId}-${preview?.version.id ?? 'live'}`}
-            store={preview?.store ?? conn.store}
-            boardTitle={crumbs.at(-1)?.title ?? ''}
-            projectName={projectName}
-            projectId={projectId}
-            timeZone={shootingZone(projectTimeZone)}
-            shootingStart={listed?.shootingStart}
-            datesStatus={datesStatus}
-            canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
-            boardId={boardId}
-            userId={user.id}
-            readOnly={!!preview || !editable}
-            boards={boards}
-            across={kind === 'production'}
-            onSources={kind === 'production' ? setScheduleSources : undefined}
-            onOpenScene={(sceneId, from) =>
-              navigate(
-                `${from === boardId ? '' : boardPath(projectId, from, rootBoardId)}?view=storyboard&scene=${encodeURIComponent(sceneId)}`,
-              )
-            }
-            onOpenTroupe={() => navigate('?view=troupe')}
-          />
+              active={view === 'schedule'}
+              key={`${boardId}-${preview?.version.id ?? 'live'}`}
+              store={preview?.store ?? conn.store}
+              boardTitle={crumbs.at(-1)?.title ?? ''}
+              projectName={projectName}
+              projectId={projectId}
+              timeZone={shootingZone(projectTimeZone)}
+              shootingStart={listed?.shootingStart}
+              datesStatus={datesStatus}
+              canEditCrew={!!projectRole && atLeast(projectRole, 'editor')}
+              boardId={boardId}
+              userId={user.id}
+              readOnly={!!preview || !editable}
+              boards={boards}
+              across={kind === 'production'}
+              onSources={kind === 'production' ? setScheduleSources : undefined}
+              onOpenScene={(sceneId, from) =>
+                navigate(
+                  `${from === boardId ? '' : boardPath(projectId, from, rootBoardId)}?view=storyboard&scene=${encodeURIComponent(sceneId)}`,
+                )
+              }
+              onOpenTroupe={() => navigate('?view=troupe')}
+            />
           </Suspense>
         </div>
       )}
@@ -1293,33 +1293,34 @@ function BoardScreen({
       )}
       {exporting && (
         <Suspense fallback={null}>
-        <ExportDialog
-          source={exporting.source}
-          initialWhat={exporting.what}
-          imageEntry={exporting.imageEntry}
-          pdfEntry={exporting.pdfEntry}
-          store={preview?.store ?? conn.store}
-          projectId={projectId}
-          boardId={boardId}
-          projectName={projectName}
-          timeZone={shootingZone(projectTimeZone)}
-          boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
-          boards={boards}
-          selection={exporting.selection}
-          visible={exporting.visible}
-          role={detail?.myRole ?? projectRole}
-          across={
-            kind === 'production' && scheduleSources.current
-              ? {
-                  get labels() {
-                    return (scheduleSources.current as ScheduleSources).labels;
-                  },
-                  elementsOf: (day) => dayElements(day, scheduleSources.current as ScheduleSources),
-                }
-              : undefined
-          }
-          onClose={() => setExporting(null)}
-        />
+          <ExportDialog
+            source={exporting.source}
+            initialWhat={exporting.what}
+            imageEntry={exporting.imageEntry}
+            pdfEntry={exporting.pdfEntry}
+            store={preview?.store ?? conn.store}
+            projectId={projectId}
+            boardId={boardId}
+            projectName={projectName}
+            timeZone={shootingZone(projectTimeZone)}
+            boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
+            boards={boards}
+            selection={exporting.selection}
+            visible={exporting.visible}
+            role={detail?.myRole ?? projectRole}
+            across={
+              kind === 'production' && scheduleSources.current
+                ? {
+                    get labels() {
+                      return (scheduleSources.current as ScheduleSources).labels;
+                    },
+                    elementsOf: (day) =>
+                      dayElements(day, scheduleSources.current as ScheduleSources),
+                  }
+                : undefined
+            }
+            onClose={() => setExporting(null)}
+          />
         </Suspense>
       )}
       <RestoredToast

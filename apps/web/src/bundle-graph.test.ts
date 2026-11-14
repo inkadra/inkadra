@@ -23,7 +23,9 @@ function resolveImport(from: string, spec: string): string | undefined {
     if (typeof target !== 'string') return undefined;
     base = join(packages, name ?? '', target);
   } else return undefined;
-  return EXTENSIONS.map((ext) => base + ext).find((path) => /\.tsx?$/.test(path) && existsSync(path));
+  return EXTENSIONS.map((ext) => base + ext).find(
+    (path) => /\.tsx?$/.test(path) && existsSync(path),
+  );
 }
 
 /** Files and npm packages statically reachable from `entry`. */

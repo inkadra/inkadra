@@ -49,6 +49,7 @@ import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { headingFamily, loadHeadingFont } from '../theme.ts';
 import { ExportCache } from './cache.ts';
+import { calendarDate } from './calendar-date.ts';
 import type {
   ExportEnv,
   ExportFormat,
@@ -73,7 +74,6 @@ import {
 } from './image-format.ts';
 import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize } from './layout.ts';
 import type { OriginalFile, OriginalsPlan } from './originals.ts';
-import { calendarDate } from './calendar-date.ts';
 import {
   DEPARTMENTS,
   type Department,

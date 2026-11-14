@@ -8,15 +8,7 @@ import {
   notificationPath,
 } from '@inkadra/shared';
 import { Button, Icon, IconButton, kindStyle, ProjectGlyph } from '@inkadra/ui';
-import {
-  type FormEvent,
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type FormEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { pickVariant, useAsset } from '../board/assets.ts';
