@@ -114,6 +114,10 @@ image of `main` on a GitHub runner (4 cores, 16 GB), with the bundled Postgres a
 
 | Run                           | Edit round trip p50 / p95 / p99 | Board save p95 | Pool wait | Memory before → peak | Per open board |
 | ----------------------------- | ------------------------------- | -------------- | --------- | -------------------- | -------------- |
+| `medium`, `all`, CI           | 0.7 / 1.1 / 1.4 ms              | 17 ms          | 17 ms     | 253 → 308 MiB        | 3.1 MiB        |
+| `medium`, split, CI†          | 0.8 / 1.2 / 1.5 ms              | 18 ms          | 19 ms     | 190 → 240 MiB        | 2.6 MiB        |
 | `small`, `all`, workstation\* | 0.7 / 1 / 1.4 ms                | 26 ms          | 18 ms     | 245 → 264 MiB        | 3.7 MiB        |
 
-\* Windows 11, server run from source; first run, 14 November 2026.
+First runs, 14 November 2026. In both CI runs: 20 editors made about 3600 edits, 65 uploads and
+130 board switches without an error or a reconnect; peak database connections 14 (`all`) and 23
+(split). † Memory of the `collab` role only. \* Windows 11, server run from source.
