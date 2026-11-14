@@ -6,23 +6,22 @@ page has the rules of the demo, for visitors, and how to run one, for whoever ho
 
 ## Rules of the demo
 
-- **"Try the demo" opens a sandbox for one hour**, with copies of two sample projects: the short
-  film "Last Train" (moodboard, storyboard, shot list, shooting schedule) and the photo shoot
+- "Try the demo" opens a sandbox for one hour, with copies of two sample projects: the short film
+  "Last Train" (moodboard, storyboard, shot list, shooting schedule) and the photo shoot
   "Low Tide" (moodboard, shot list by look, the day of the shoot, the selects). When the hour is
-  over the sandbox is deleted with every file in it. Nobody can bring it back.
-- **Up to 100 MB of files, 10 MB each**: pictures (JPEG, PNG, WebP, GIF), PDFs and plain text.
-- **Only you see your sandbox.** Sharing, invitations, guest and review links, calendar feeds
-  and reports are off. The clients of the sample projects reviewed and proofed through links that
-  have ended: their decisions and picks are there to read, the links no longer open. Do not upload personal data or your clients' material.
-- **Keep your work** with "Download the project" before the end: one archive per sandbox, of the
-  project you have open, which you can import into your own Inkadra.
-- **No account, no email, no tracking cookies.** The demo sets the session cookie that keeps you
-  signed in to your sandbox; Cloudflare Turnstile checks that you are a person.
-- Opening many sandboxes, uploading what is not yours or using the demo to host files is not
-  allowed: one sandbox per address every ten minutes, a few refused attempts per address, and
-  the demo stops taking new ones past 50 at once. A sandbox has at most 30 boards.
-- **"Start over" deletes your sandbox at once**, after asking: download the project first if you
-  want to keep it.
+  over the sandbox is deleted with every file in it, for good.
+- You can upload up to 100 MB of files, 10 MB each: pictures (JPEG, PNG, WebP, GIF), PDFs and
+  plain text. Do not upload personal data or your clients' material.
+- Only you see your sandbox. Sharing, invitations, guest and review links, calendar feeds and
+  reports are off. The sample clients' decisions and picks are there to read, but their links no
+  longer open.
+- "Download the project" saves the project you have open as an archive, once per sandbox, which
+  you can import into your own Inkadra. "Start over" deletes your sandbox at once, after asking.
+- No account, no email, no tracking cookies. The demo sets a session cookie for your sandbox, and
+  Cloudflare Turnstile checks that you are a person.
+- Opening many sandboxes, uploading what is not yours or hosting files is not allowed. Each
+  address opens one sandbox every ten minutes, the demo takes at most 50 at once, and a sandbox
+  has at most 30 boards.
 
 ## Running a demo
 

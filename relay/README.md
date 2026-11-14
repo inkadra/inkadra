@@ -1,8 +1,8 @@
 # Inkadra report relay
 
-Copied from Piuma Mail's relay (itself adapted from Finalish), with Inkadra's #420 text
-neutralisation rules. No GitHub credential ships in Inkadra. The instance saves reports in its
-existing durable queue and sends selected fields/files here, without reporter or instance metadata.
+A Cloudflare Worker that turns in-app reports into issues of the developers' private repository.
+No GitHub credential ships in Inkadra. The instance keeps reports in its own queue and sends the
+selected fields and files here, without reporter or instance metadata.
 
 ## Protocol and limits
 
@@ -28,8 +28,7 @@ Install and IP keys are stored only as HMACs. Request bodies are bounded even wi
 Content-Length. Up to 8 files and 32 MiB per report, of a closed list of types: PNG, JPEG, WebP, GIF
 (shown inline, 10 MiB); plain text and PDF (linked, 10 MiB); MP4, WebM, QuickTime (linked, 25 MiB).
 Other types are dropped and the issue says how many. Files are stored as `attachment-N.ext` from
-their type, whatever the client calls them. Logs keep their newest 6,000 characters, as in Piuma:
-the instance keeps the rest.
+their type, whatever the client calls them. Logs keep their newest 6,000 characters; the instance keeps the rest.
 
 Every public request is untrusted. Invisible control/format/default-ignorable characters are
 removed, mentions/references/links/hashes neutralised, Markdown/HTML escaped, logs fenced with
@@ -55,9 +54,9 @@ during the issue write may have opened it, so it answers `uncertain: true`. Send
 safe: the relay remembers each `requestId` for seven days, answers with the same issue, and after
 10 minutes looks for its marker among the newest issues.
 
-## Coordinator deployment (manual only)
+## Deployment (manual only)
 
-No deploy runs on push or merge. No deployment was performed during implementation.
+No deploy runs on push or merge.
 
 1. Confirm the private repository `inkadra/inkadra-feedback` and the labels above. It must have at
    least one commit: GitHub's git data API answers 409 on an empty repository, and the attachments
@@ -77,10 +76,9 @@ No deploy runs on push or merge. No deployment was performed during implementati
    (32 random bytes in hex) only if absent. Preserve TICKET_SECRET on subsequent deploys.
    Bindings/vars are in wrangler.toml: METER, RATE_LIMITER, REPO, DAILY_LIMIT, DAILY_BYTES,
    NETWORK_DAILY_LIMIT, NETWORK_DAILY_BYTES, POW_BITS.
-5. Check the workflow's /health result and URL. The app defaults to
+5. Check the workflow's `/health` result and URL. The app defaults to
    `https://relay.inkadra.com`, a custom domain of the Worker set in `wrangler.toml`; another
    relay needs `FEEDBACK_RELAY_URL` on its instances. Empty disables this route.
-
 6. **Try the largest report before relying on it.** Send one with a 25 MiB video and a 6 MiB image
    and watch the Worker's logs. Parsing the form and base64-encoding 31 MiB take CPU time well
    beyond the Free plan's 10 ms per request, so the Workers Paid plan is expected. A 1102 error in

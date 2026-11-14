@@ -5,7 +5,7 @@ import { type Browser, type BrowserContext, chromium, type Page } from '@playwri
 import { signIn } from '../tests/perf/seed.ts';
 
 /**
- * Screenshots of expiring access and project creation rights (docs/screenshots/0.6-access),
+ * Screenshots of expiring access and project creation rights (e2e/test-results/screenshots/0.6-access),
  * desktop and phone, dark and light, on an empty instance with open registration and a
  * fictional project:
  *
@@ -15,7 +15,7 @@ import { signIn } from '../tests/perf/seed.ts';
  */
 
 const base = (process.env.SHOTS_BASE_URL ?? 'http://localhost:3100').replace(/\/+$/, '');
-const out = fileURLToPath(new URL('../../docs/screenshots/0.6-access', import.meta.url));
+const out = fileURLToPath(new URL('../test-results/screenshots/0.6-access', import.meta.url));
 const PASSWORD = 'correct-horse-battery';
 const admin = { name: 'Giulia Bianchi', email: 'giulia@example.com', password: PASSWORD };
 const DAY = 86_400_000;
