@@ -1917,7 +1917,9 @@
         "right": "Rechts"
       },
       "drawFailed": "Der Strich konnte nicht gespeichert werden. Versuch es noch mal; falls das Problem bleibt, lade das Board neu.",
-      "updateApp": "Dieses Board braucht eine neuere Version. Aktualisiere die App, um es zu bearbeiten; ansehen kannst du es weiterhin."
+      "updateApp": "Dieses Board braucht eine neuere Version. Aktualisiere die App, um es zu bearbeiten; ansehen kannst du es weiterhin.",
+      "sizeLimit": "Dieses Board hat seine Größenbegrenzung erreicht. Ergänzungen wurden nicht gespeichert; das Board wurde neu geladen. Du kannst Inhalte löschen, um Platz zu schaffen.",
+      "sizeLimitReadOnly": "Dieses Board hat seine Größenbegrenzung erreicht und ist schreibgeschützt. Ergänzungen wurden nicht gespeichert."
     },
     "sheet": {
       "edit": "Bearbeiten",
@@ -5307,6 +5309,10 @@
           "4": {
             "title": "Die Ansichten des Boards",
             "text": "Im Menü ⋯ schaltest du das Moodboard dieses Boards ein. Eine ausgeschaltete Ansicht behält ihre Daten."
+          },
+          "5": {
+            "title": "Größenbegrenzung des Boards",
+            "text": "Erreicht dieses Board seine Größenbegrenzung, werden Ergänzungen abgelehnt und das bestätigte Board wird neu geladen. Lösche Inhalte, um Platz zu schaffen; reicht das nicht, bitte deinen Admin, die Grenze anzuheben."
           }
         }
       },

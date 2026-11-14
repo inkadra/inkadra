@@ -85,9 +85,7 @@ function newItems(document: Y.Doc, update: Uint8Array): Array<[client: number, c
   let waiting: typeof sent | null = null;
   try {
     sent = Y.parseUpdateMeta(update);
-    const pending = document.store.pendingStructs;
-    // Yjs keeps them in its second update format.
-    if (pending) waiting = Y.parseUpdateMetaV2(pending.update);
+    waiting = waitingClocks(document);
   } catch {
     return [];
   }
@@ -114,6 +112,8 @@ export const ACCESS_RECHECK_MS = 30_000;
 export interface CollabLimits {
   /** Largest WebSocket message. */
   maxPayload: number;
+  /** Demo only: freeze all edits and skip storing oversized state. */
+  freeze?: boolean;
   /** Cards on one board. */
   elements: number;
   /** Size of a board's saved state. */
@@ -125,10 +125,159 @@ export interface CollabLimits {
  * would let one sandbox fill the memory or the database of a small server.
  */
 export const DEMO_COLLAB_LIMITS: CollabLimits = {
+  freeze: true,
   maxPayload: 1024 * 1024,
   elements: 500,
   stateBytes: 2 * 1024 * 1024,
 };
+
+/** Clocks Yjs holds back until the items they follow arrive (pending structs), per client. */
+function waitingClocks(document: Y.Doc) {
+  const pending = document.store.pendingStructs;
+  // Yjs keeps them in its second update format.
+  return pending ? Y.parseUpdateMetaV2(pending.update) : null;
+}
+
+/**
+ * Whether a deletion names only items the document holds. Yjs would keep the rest as pending
+ * deletions, which are stored with the board but measured by nothing.
+ */
+function deletesKnownItems(document: Y.Doc, update: Uint8Array): boolean {
+  let deleted: ReturnType<typeof Y.decodeUpdate>['ds'];
+  let waiting: ReturnType<typeof waitingClocks>;
+  try {
+    deleted = Y.decodeUpdate(update).ds;
+    waiting = waitingClocks(document);
+  } catch {
+    return false;
+  }
+  const have = Y.decodeStateVector(Y.encodeStateVector(document));
+  for (const [client, ranges] of deleted.clients) {
+    const end = Math.max(have.get(client) ?? 0, waiting?.to.get(client) ?? 0);
+    if (ranges.some((range) => range.clock + range.len > end)) return false;
+  }
+  return true;
+}
+
+/** A board's encoded size: measured (`exact`), or that plus what was applied since. */
+export interface BoardSize {
+  bytes: number;
+  exact: boolean;
+}
+
+const grow = (sizes: WeakMap<Y.Doc, BoardSize>, document: Y.Doc, bytes: number) => {
+  const size = sizes.get(document);
+  if (size) sizes.set(document, { bytes: size.bytes + bytes, exact: false });
+};
+
+/** The board's size, measured for real only when the bound leaves no room for `extra` bytes. */
+function sizeFor(sizes: WeakMap<Y.Doc, BoardSize>, document: Y.Doc, extra: number, cap: number) {
+  let size = sizes.get(document);
+  if (!size || (!size.exact && size.bytes + extra > cap)) {
+    size = { bytes: Y.encodeStateAsUpdate(document).byteLength, exact: true };
+    sizes.set(document, size);
+  }
+  return size.bytes;
+}
+
+/**
+ * At most how many cards the board holds once the update is applied, read without applying it:
+ * the keys it sets on `elements` that are not live there (or whose live card it deletes), plus
+ * one for each item whose place cannot be told from the board and the update; live cards it
+ * deletes count off. Edits inside existing cards add nothing. Items Yjs holds back count too,
+ * as the update may be what they wait for.
+ */
+function cardsAfter(document: Y.Doc, update: Uint8Array): number {
+  const elements = document.getMap('elements');
+  const { store } = document;
+  let sent: ReturnType<typeof Y.decodeUpdate>;
+  let waiting: ReturnType<typeof Y.decodeUpdate>['structs'] = [];
+  try {
+    sent = Y.decodeUpdate(update);
+    if (store.pendingStructs) waiting = Y.decodeUpdateV2(store.pendingStructs.update).structs;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+  const items = [...sent.structs, ...waiting].filter(
+    (s): s is Y.Item =>
+      s instanceof Y.Item && s.id.clock + s.length > Y.getState(store, s.id.client),
+  );
+  const byClient = new Map<number, Y.Item[]>();
+  for (const item of items) {
+    const list = byClient.get(item.id.client);
+    if (list) list.push(item);
+    else byClient.set(item.id.client, [item]);
+  }
+  for (const list of byClient.values()) list.sort((a, b) => a.id.clock - b.id.clock);
+  const find = (id: Y.ID) => {
+    if (id.clock < Y.getState(store, id.client)) return Y.getItem(store, id);
+    const list = byClient.get(id.client);
+    try {
+      return list?.[Y.findIndexSS(list, id.clock)];
+    } catch {
+      return undefined;
+    }
+  };
+  // The key an item sets on `elements`; null: somewhere else; undefined: cannot tell.
+  const placed = new Map<Y.Item, string | null | undefined>();
+  const keyOf = (item: Y.Item, depth: number): string | null | undefined => {
+    if (placed.has(item)) return placed.get(item);
+    // Decoded items name a root type by its name, or the item of their parent type.
+    const parent = item.parent as Y.AbstractType<unknown> | Y.ID | string | null;
+    let key: string | null | undefined;
+    if (parent instanceof Y.AbstractType) key = parent === elements ? item.parentSub : null;
+    else if (typeof parent === 'string') key = parent === 'elements' ? item.parentSub : null;
+    else if (parent) key = null;
+    else {
+      // Yjs takes the parent from the item it follows, else from the one it precedes.
+      const next = item.origin ?? item.rightOrigin;
+      const neighbour = next && depth < 100 ? find(next) : undefined;
+      key = neighbour instanceof Y.Item ? keyOf(neighbour, depth + 1) : undefined;
+    }
+    placed.set(item, key);
+    return key;
+  };
+  const deleted = new Set<string>();
+  if (sent.ds.clients.size > 0)
+    for (const [key, item] of elements._map)
+      if (!item.deleted && Y.isDeleted(sent.ds, item.id)) deleted.add(key);
+  const added = new Set<string>();
+  let unknown = 0;
+  for (const item of items) {
+    const key = keyOf(item, 0);
+    if (key === undefined) unknown++;
+    else if (key !== null && (!elements.has(key) || deleted.has(key))) added.add(key);
+  }
+  return elements.size - deleted.size + added.size + unknown;
+}
+
+/**
+ * Admits an update to a board under limits, without applying it to a copy. Deletions of items
+ * the board holds always pass, including on boards saved before limits existed. An addition is
+ * refused when the board's size plus the update's, or the cards counted by `cardsAfter`, pass
+ * a cap: an update that would fit only thanks to what it also deletes is refused, and its
+ * deletions then pass on their own (the web client sends them again after a refusal).
+ *
+ * `sizes` keeps each board's encoded size: measured for real only when the bound says an
+ * addition may not fit, then reused until something else is applied, so refused additions cost
+ * no further encoding. Updates are counted here rather than on change, as one Yjs holds back
+ * until the items it follows arrive changes nothing yet but is stored with the board. Yjs may
+ * split an item an update edits inside, a few bytes the bound misses until the next measure.
+ */
+export function admitBoardUpdate(
+  document: Y.Doc,
+  update: Uint8Array,
+  limits: CollabLimits,
+  sizes: WeakMap<Y.Doc, BoardSize>,
+): boolean {
+  if (addsItems(document, update)) {
+    const bytes = sizeFor(sizes, document, update.byteLength, limits.stateBytes);
+    if (bytes + update.byteLength > limits.stateBytes) return false;
+    if (cardsAfter(document, update) > limits.elements) return false;
+  } else if (!deletesKnownItems(document, update)) return false;
+  grow(sizes, document, update.byteLength);
+  return true;
+}
 
 /** A board document written for a board row that no longer exists. */
 function boardGone(err: unknown): boolean {
@@ -148,7 +297,7 @@ export function createCollabServer(deps: {
   recheckMs?: number;
   /** Clock for automatic versions; tests move it forward. */
   now?: () => Date;
-  /** The demo's caps (DEMO_COLLAB_LIMITS); none elsewhere, where boards can grow large. */
+  /** Board caps; the demo additionally freezes all edits. */
   limits?: CollabLimits;
   /** Oldest client schema that may write (decision 0102); tests lower it. */
   minWriterSchema?: number;
@@ -199,10 +348,20 @@ export function createCollabServer(deps: {
   /** Boards past a cap: nobody writes to them and they are not saved (decision 0084). */
   const frozen = new WeakSet<Y.Doc>();
   /**
-   * Bytes of a capped board: stored state plus what clients sent since, measured for real
-   * only past the cap, as encoding a whole board on every keystroke would cost too much.
+   * Bytes of a capped board: measured, plus what was applied since, measured for real again
+   * only near the cap, as encoding a whole board on every keystroke would cost too much.
    */
-  const grown = new WeakMap<Y.Doc, number>();
+  const grown = new WeakMap<Y.Doc, BoardSize>();
+  /**
+   * Whether the server may add a card to a board (clips, the share sheet) under the caps.
+   * shortcut: the card itself is not measured, so it may take the board past the byte cap by
+   * its own size (a few KB of text at most); measure it if server-side cards grow larger.
+   */
+  const hasRoom = (document: Y.Doc) =>
+    !limits ||
+    (!frozen.has(document) &&
+      document.getMap('elements').size < limits.elements &&
+      sizeFor(grown, document, 1, limits.stateBytes) < limits.stateBytes);
   const freeze = (document: Document, boardId: string | undefined) => {
     if (!frozen.has(document)) log.warn({ boardId }, 'board over the demo caps: read-only');
     frozen.add(document);
@@ -453,7 +612,10 @@ export function createCollabServer(deps: {
       try {
         const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
         if (row) Y.applyUpdate(document, row.state);
-        if (limits) grown.set(document, row?.state.byteLength ?? 0);
+        // Elsewhere the first addition measures it, after the migrations below.
+        if (limits?.freeze) {
+          grown.set(document, { bytes: row?.state.byteLength ?? 0, exact: false });
+        }
         const steps = migrateBoardDoc(document, boardId);
         if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
         prepareImageDrawings(document);
@@ -468,6 +630,23 @@ export function createCollabServer(deps: {
 
     async beforeSync({ connection, document, context, type, payload }) {
       if (type !== 1 && type !== 2) return;
+      // A refused update only makes this message read-only. Re-evaluate on the next one,
+      // so deletions can still be applied without changing the person's editing role.
+      if (!limits?.freeze)
+        connection.readOnly =
+          !context.canEdit || context.supportedSchemaVersion < requiredSchema(context, document);
+      if (
+        !connection.readOnly &&
+        limits &&
+        !limits.freeze &&
+        !admitBoardUpdate(document, payload, limits, grown)
+      ) {
+        connection.readOnly = true;
+        connection.sendStateless(
+          JSON.stringify({ type: 'writeRefused', reason: 'frozen' } satisfies WriteRefusedMessage),
+        );
+        return;
+      }
       // Hocuspocus answers a read-only connection without applying what it sent. When it sent
       // changes, say why, so a client can tell "update the app" from the rest (decision 0102).
       if (connection.readOnly) {
@@ -499,13 +678,17 @@ export function createCollabServer(deps: {
           to = Y.parseUpdateMeta(update).to.get(document.clientID);
         } catch {}
         if (to !== undefined) noteWriter(writersOf(document), document.clientID, null, to - 1);
+        // Admission counted what clients sent; the server's own writes count here. Restoring
+        // an older version may take a board past the caps: it stays usable (decision 0130).
+        if (limits && !limits.freeze) grow(grown, document, update.byteLength);
       }
       // Checked on every change a client makes, so a board never grows far past the caps in
       // memory before the next store; the store measures it again.
-      if (limits && from && !frozen.has(document)) {
-        let bytes = (grown.get(document) ?? 0) + update.byteLength;
-        if (bytes > limits.stateBytes) bytes = Y.encodeStateAsUpdate(document).byteLength;
-        grown.set(document, bytes);
+      if (limits?.freeze && from && !frozen.has(document)) {
+        let bytes = (grown.get(document)?.bytes ?? 0) + update.byteLength;
+        const exact = bytes > limits.stateBytes;
+        if (exact) bytes = Y.encodeStateAsUpdate(document).byteLength;
+        grown.set(document, { bytes, exact });
         if (bytes > limits.stateBytes || document.getMap('elements').size > limits.elements)
           freeze(document, context?.boardId);
       }
@@ -547,7 +730,7 @@ export function createCollabServer(deps: {
       if (frozen.has(document)) return;
       const pending = new Map(pendingAssignments.get(document));
       const state = Y.encodeStateAsUpdate(document);
-      if (limits && state.byteLength > limits.stateBytes) {
+      if (limits?.freeze && state.byteLength > limits.stateBytes) {
         freeze(document, boardId);
         return;
       }
@@ -652,7 +835,7 @@ export function createCollabServer(deps: {
     return out;
   }
 
-  return Object.assign(server, { recheck: () => recheck(server), presence });
+  return Object.assign(server, { recheck: () => recheck(server), presence, hasRoom });
 }
 
 export type CollabServer = ReturnType<typeof createCollabServer>;

@@ -92,7 +92,6 @@ import {
   type BoardView,
   boardViews,
   defaultView,
-  hasOutsideCards,
   headerViews,
   isBoardView,
   kindIcon,
@@ -1153,6 +1152,11 @@ function BoardScreen({
         ? { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${view}` }
         : {})}
     >
+      {conn.sizeLimited && !conn.schemaTooNew && (
+        <div role="alert" className="board-update-notice">
+          {t(conn.readOnly ? 'board.contextual.sizeLimitReadOnly' : 'board.contextual.sizeLimit')}
+        </div>
+      )}
       {conn.schemaTooNew && (
         <div role="alert" className="board-update-notice">
           {t('board.contextual.updateApp')}

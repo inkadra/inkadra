@@ -3410,6 +3410,10 @@ registry.registerPath({
   responses: {
     201: { description: 'Card created', ...json(ClipResult) },
     ...errors,
+    409: {
+      description: 'The board is at its size limit (BOARD_MAX_ELEMENTS, BOARD_MAX_STATE_BYTES)',
+      ...json(ApiError),
+    },
     413: {
       description: 'File larger than the instance limit (Instance.limits)',
       ...json(ApiError),

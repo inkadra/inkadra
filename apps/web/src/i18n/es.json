@@ -1917,7 +1917,9 @@
         "right": "Derecha"
       },
       "drawFailed": "No se pudo guardar el trazo. Inténtalo de nuevo; si el problema continúa, recarga el tablero.",
-      "updateApp": "Este tablero requiere una versión más reciente. Actualiza la app para editarlo; puedes seguir leyéndolo."
+      "updateApp": "Este tablero requiere una versión más reciente. Actualiza la app para editarlo; puedes seguir leyéndolo.",
+      "sizeLimit": "Este tablero ha alcanzado su límite de tamaño. Las adiciones no se guardaron; el tablero se ha recargado. Puedes eliminar contenido para liberar espacio.",
+      "sizeLimitReadOnly": "Este tablero ha alcanzado su límite de tamaño y es de solo lectura. Las adiciones no se guardaron."
     },
     "sheet": {
       "edit": "Editar",
@@ -5307,6 +5309,10 @@
           "4": {
             "title": "Las vistas del tablero",
             "text": "Desde el menú ⋯ activas el moodboard de este tablero. Una vista apagada conserva sus datos."
+          },
+          "5": {
+            "title": "Límites de tamaño del tablero",
+            "text": "Si este tablero alcanza su límite de tamaño, las adiciones se rechazan y el tablero confirmado se recarga. Elimina contenido para liberar espacio; si aun así no cabe, pide a tu administrador que aumente el límite."
           }
         }
       },

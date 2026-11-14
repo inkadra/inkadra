@@ -148,7 +148,7 @@ export function registerGuestReviewRoutes(app: FastifyInstance, deps: Deps) {
     guests.requireCan(ctx, 'review');
     guests.requireBoard(ctx, boardId);
     guests.requireName(ctx);
-    guests.takeWrite(ctx, reply);
+    await guests.takeWrite(ctx, reply);
     const visible = (await guests.shown(ctx, boardId)).map((el) => el.id);
     const decisions =
       visible.length === 0
