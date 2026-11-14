@@ -178,7 +178,7 @@ it.skipIf(!process.env.REDIS_URL)(
 );
 
 it.skipIf(!process.env.REDIS_URL)(
-  'fails open for product traffic and closed for password checks on storage errors',
+  'falls back to per-process limits, password checks included, when Valkey fails',
   async () => {
     const { default: IORedis } = await import('ioredis');
     const { configureRateLimits } = await import('./rate-limits.ts');
@@ -195,8 +195,21 @@ it.skipIf(!process.env.REDIS_URL)(
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       vi.spyOn(IORedis.prototype, 'eval').mockRejectedValue(new Error('Unavailable'));
-      expect(await new RateLimiter(1, 1000, 'outage').take('person')).toBe(true);
-      expect(await new Failures(1, 1000, 'outage-password').begin('person')).toBe(false);
+      const limiter = new RateLimiter(1, 60_000, 'outage');
+      expect(await limiter.take('person')).toBe(true);
+      expect(await limiter.take('person')).toBe(false);
+      await expect(limiter.require('person', 'Wait.')).rejects.toMatchObject({
+        code: 'rate_limited',
+        retryAfter: 60,
+      });
+      const passwords = new Failures(1, 60_000, 'outage-password');
+      expect(await passwords.begin('person')).toBe(true);
+      expect(await passwords.blocked('person')).toBe(true);
+      await passwords.finish('person', false);
+      expect(await passwords.blocked('person')).toBe(false);
+      expect(await passwords.begin('person')).toBe(true);
+      await passwords.finish('person', true);
+      expect(await passwords.begin('person')).toBe(false);
       expect(log).toHaveBeenCalledOnce();
     } finally {
       close();
@@ -204,3 +217,27 @@ it.skipIf(!process.env.REDIS_URL)(
     }
   },
 );
+
+it('starts with per-process limits when Valkey does not answer', async () => {
+  const { configureRateLimits } = await import('./rate-limits.ts');
+  const { loadConfig } = await import('./config.ts');
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  // Nothing listens on port 9 (discard) in the test environment.
+  const close = await configureRateLimits(
+    loadConfig({
+      NODE_ENV: 'test',
+      REDIS_URL: 'redis://127.0.0.1:9',
+      PUBLIC_URL: 'https://example.com',
+      DATABASE_URL: 'unused',
+      AUTH_SECRET: 'test-secret-test-secret-test-secret',
+    }),
+  );
+  try {
+    const limiter = new RateLimiter(1, 60_000, 'down');
+    expect(await limiter.take('person')).toBe(true);
+    expect(await limiter.take('person')).toBe(false);
+    expect(log).toHaveBeenCalled();
+  } finally {
+    close();
+  }
+});

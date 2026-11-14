@@ -56,10 +56,10 @@ services:
 
 ## Board size limits
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
+| Variable                | Default    | Meaning                                        |
+| ----------------------- | ---------- | ---------------------------------------------- |
 | `BOARD_MAX_STATE_BYTES` | `67108864` | Encoded Yjs state per board, in bytes (64 MiB) |
-| `BOARD_MAX_ELEMENTS` | `20000` | Elements per board |
+| `BOARD_MAX_ELEMENTS`    | `20000`    | Elements per board                             |
 
 Both must be positive integers.
 The demo retains its stricter limits. Set these on every collaboration process.
@@ -70,8 +70,7 @@ Yjs retains history metadata, so deleting visible content may not bring encoded 
 the byte limit; an operator can raise it. The WebSocket message limit remains 16 MiB.
 
 With `REDIS_URL`, product rate limits share atomic budgets across processes. Without it,
-they use bounded in-memory windows. Storage failures fail closed for password checks and
-fail open for ordinary product endpoints, as authentication budgets do for those categories.
+they use bounded in-memory windows, and so does each process while Valkey does not answer.
 
 ## Public demo
 

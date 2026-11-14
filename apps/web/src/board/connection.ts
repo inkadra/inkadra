@@ -6,7 +6,7 @@ import {
   readBoardNotice,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as Y from 'yjs';
 import { useSession } from '../lib/session.tsx';
 import { setBusy } from '../pwa/busy.ts';
@@ -133,6 +133,13 @@ export function watchDocumentSchema(
 // Keep reopened boards and their last authenticated role available while this tab is offline.
 // The application shell currently has no persistent offline navigation/document cache.
 const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean }>();
+/**
+ * Deletions made in a document that was reopened after a refusal, to make again once the
+ * reopened one has synced: a deletion is what still passes on a board at its size limit.
+ * shortcut: other edits sent with or just after the refused update are not carried over; it
+ * would need telling them apart from the refused additions.
+ */
+const refusedDeletions = new Map<string, Uint8Array>();
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
@@ -148,6 +155,8 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     let refused = false;
     const cacheKey = `${userId}:${boardId}`;
     const cached = cachedBoards.get(cacheKey);
+    let deletions = refusedDeletions.get(cacheKey);
+    refusedDeletions.delete(cacheKey);
     const doc = new Y.Doc();
     if (cached) Y.applyUpdate(doc, cached.update);
     const store = new BoardStore(doc);
@@ -168,7 +177,16 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       url: collabUrl(),
       name: boardDocName(boardId),
       document: doc,
-      onSynced: () => update({ status: 'synced' }),
+      onSynced: () => {
+        if (deletions) {
+          Y.applyUpdate(doc, deletions);
+          // Deletions of the refused additions name items the server never got: drop them,
+          // rather than keep them waiting and send them with the next sync.
+          doc.store.pendingDs = null;
+          deletions = undefined;
+        }
+        update({ status: 'synced' });
+      },
       onDisconnect: () => {
         if (state.status !== 'denied' && state.status !== 'signedOut')
           update({ status: 'offline' });
@@ -211,6 +229,9 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     });
     update({});
     return () => {
+      // Only the deletions: an update from the document's own state vector holds no items.
+      if (refused)
+        refusedDeletions.set(cacheKey, Y.encodeStateAsUpdate(doc, Y.encodeStateVector(doc)));
       if (refused || state.status === 'denied' || state.status === 'signedOut')
         cachedBoards.delete(cacheKey);
       else
@@ -225,5 +246,7 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     };
   }, [boardId, trackBusy, userId, reload]);
 
-  return conn ? { ...conn, sizeLimited: limitedBoard === boardId } : null;
+  const sizeLimited = limitedBoard === boardId;
+  // The same object until something changes: the board page's effects depend on it.
+  return useMemo(() => (conn ? { ...conn, sizeLimited } : null), [conn, sizeLimited]);
 }

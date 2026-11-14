@@ -84,9 +84,7 @@ function newItems(document: Y.Doc, update: Uint8Array): Array<[client: number, c
   let waiting: typeof sent | null = null;
   try {
     sent = Y.parseUpdateMeta(update);
-    const pending = document.store.pendingStructs;
-    // Yjs keeps them in its second update format.
-    if (pending) waiting = Y.parseUpdateMetaV2(pending.update);
+    waiting = waitingClocks(document);
   } catch {
     return [];
   }
@@ -132,19 +130,53 @@ export const DEMO_COLLAB_LIMITS: CollabLimits = {
   stateBytes: 2 * 1024 * 1024,
 };
 
-/** Pure deletions always pass, including on boards saved before limits existed. */
+/** Clocks Yjs holds back until the items they follow arrive (pending structs), per client. */
+function waitingClocks(document: Y.Doc) {
+  const pending = document.store.pendingStructs;
+  // Yjs keeps them in its second update format.
+  return pending ? Y.parseUpdateMetaV2(pending.update) : null;
+}
+
+/**
+ * Whether a deletion names only items the document holds. Yjs would keep the rest as pending
+ * deletions, which are stored with the board but measured by nothing.
+ */
+function deletesKnownItems(document: Y.Doc, update: Uint8Array): boolean {
+  let deleted: ReturnType<typeof Y.decodeUpdate>['ds'];
+  let waiting: ReturnType<typeof waitingClocks>;
+  try {
+    deleted = Y.decodeUpdate(update).ds;
+    waiting = waitingClocks(document);
+  } catch {
+    return false;
+  }
+  const have = Y.decodeStateVector(Y.encodeStateVector(document));
+  for (const [client, ranges] of deleted.clients) {
+    const end = Math.max(have.get(client) ?? 0, waiting?.to.get(client) ?? 0);
+    if (ranges.some((range) => range.clock + range.len > end)) return false;
+  }
+  return true;
+}
+
+/**
+ * Deletions of items the board holds always pass, including on boards saved before limits
+ * existed. `upperBytes` bounds the encoded state from above; the real size is measured only
+ * when it is not enough.
+ */
 export function boardUpdateFits(
   document: Y.Doc,
   update: Uint8Array,
   limits: CollabLimits,
   upperBytes?: number,
 ): boolean {
-  if (!addsItems(document, update)) return true;
+  if (!addsItems(document, update)) return deletesKnownItems(document, update);
   const bytes = upperBytes ?? Y.encodeStateAsUpdate(document).byteLength;
   const count = document.getMap('elements').size;
-  // Each new element needs at least one new struct. Avoid cloning ordinary small updates.
-  const meta = Y.parseUpdateMeta(update);
-  const structs = [...meta.to].reduce((n, [id, to]) => n + to - (meta.from.get(id) ?? 0), 0);
+  // Each new element needs at least one new struct, sent now or already waiting to be joined.
+  // Avoid cloning ordinary small updates.
+  const clocks = (meta: { from: Map<number, number>; to: Map<number, number> } | null) =>
+    [...(meta?.to ?? [])].reduce((n, [id, to]) => n + to - (meta?.from.get(id) ?? 0), 0);
+  const structs = clocks(Y.parseUpdateMeta(update)) + clocks(waitingClocks(document));
   if (bytes + update.byteLength <= limits.stateBytes && count + structs <= limits.elements)
     return true;
   const candidate = new Y.Doc();
@@ -158,6 +190,31 @@ export function boardUpdateFits(
   } finally {
     candidate.destroy();
   }
+}
+
+/**
+ * Admits an update to a board under limits. `totals` keeps an upper bound of each board's
+ * encoded size: its stored state plus every update admitted since. It is counted here rather
+ * than on change, as an update Yjs holds back until the items it follows arrive changes nothing
+ * yet but is stored with the board.
+ */
+export function admitBoardUpdate(
+  document: Y.Doc,
+  update: Uint8Array,
+  limits: CollabLimits,
+  totals: WeakMap<Y.Doc, number>,
+): boolean {
+  let bytes = totals.get(document);
+  // The bound only grows: measure for real when it says an addition may not fit.
+  if (
+    bytes === undefined ||
+    (bytes + update.byteLength > limits.stateBytes && addsItems(document, update))
+  )
+    bytes = Y.encodeStateAsUpdate(document).byteLength;
+  totals.set(document, bytes);
+  if (!boardUpdateFits(document, update, limits, bytes)) return false;
+  totals.set(document, bytes + update.byteLength);
+  return true;
 }
 
 /** A board document written for a board row that no longer exists. */
@@ -479,7 +536,7 @@ export function createCollabServer(deps: {
         !connection.readOnly &&
         limits &&
         !limits.freeze &&
-        !boardUpdateFits(document, payload, limits, grown.get(document))
+        !admitBoardUpdate(document, payload, limits, grown)
       ) {
         connection.readOnly = true;
         connection.sendStateless(
@@ -528,8 +585,6 @@ export function createCollabServer(deps: {
         if (bytes > limits.stateBytes || document.getMap('elements').size > limits.elements)
           freeze(document, context?.boardId);
       }
-      if (limits && !limits.freeze)
-        grown.set(document, (grown.get(document) ?? 0) + update.byteLength);
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
           (connection.context

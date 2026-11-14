@@ -203,15 +203,16 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       await vi.waitFor(() =>
         expect(notices).toContain(JSON.stringify({ type: 'writeRefused', reason: 'frozen' })),
       );
-      const live = collab.hocuspocus.documents.get(boardDocName(id))!;
-      expect(roots(live).elements.size).toBe(2);
+      // The open document: closing the last connection may unload it and the next one reload it.
+      const live = () => collab.hocuspocus.documents.get(boardDocName(id))!;
+      expect(roots(live()).elements.size).toBe(2);
       // Reopen from confirmed state, as the web client does on the refusal notice.
       writer.close();
       const clean = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
       await clean.synced;
       roots(clean.doc).elements.delete(second.id);
-      await vi.waitFor(() => expect(roots(live).elements.size).toBe(1));
-      expect(roots(live).elements.has(first.id)).toBe(true);
+      await vi.waitFor(() => expect(roots(live()).elements.size).toBe(1));
+      expect(roots(live()).elements.has(first.id)).toBe(true);
       clean.close();
       collab.hocuspocus.flushPendingStores();
       await vi.waitFor(async () => {

@@ -166,7 +166,8 @@ let shared: ReturnType<typeof authSecurity> | undefined;
 export async function configureRateLimits(config: Config, log?: Logger) {
   shared?.close();
   shared = config.REDIS_URL ? authSecurity(config, log) : undefined;
-  await shared?.ready();
+  // Waits for Valkey a few seconds at most; until it answers, the per-process counters apply.
+  await shared?.ready().catch(() => shared?.reportError());
   const store = shared;
   return () => {
     store?.close();
@@ -174,6 +175,14 @@ export async function configureRateLimits(config: Config, log?: Logger) {
   };
 }
 
+/** A reservation kept by the per-process counters because the shared store was unavailable. */
+const IN_MEMORY = '';
+
+/**
+ * Shared through Valkey when it is configured. When Valkey does not answer, each process falls
+ * back to its own counters, the limits of an instance without Valkey, rather than letting
+ * everything through or refusing everyone.
+ */
 export class RateLimiter {
   protected memory: MemoryRateLimiter;
   protected retry = new Map<string, number>();
@@ -187,10 +196,12 @@ export class RateLimiter {
   protected async budget(
     key: string,
     operation: 'check' | 'take' | 'refund' | 'fail',
-    token: string = randomUUID(),
-    sensitive = false,
+    token: string,
+    fallback: { allowed: () => boolean; retryAfterSeconds: (key: string) => number },
   ) {
-    if (!shared) throw new Error('No shared store');
+    if (!shared) return fallback.allowed();
+    let allowed: boolean;
+    let retryAfter: number;
     try {
       const result = await shared.sliding(
         `${this.scope}:${key}`,
@@ -199,21 +210,26 @@ export class RateLimiter {
         operation,
         token,
       );
-      // Only the immediately following error response needs the retry time; keep memory bounded.
-      if (this.retry.size >= MAX_KEYS) this.retry.clear();
-      this.retry.set(key, result.retryAfter);
-      return result.allowed;
+      allowed = result.allowed;
+      retryAfter = result.retryAfter;
     } catch {
       shared.reportError();
-      // Match auth: ordinary traffic remains available, password checks fail closed.
-      return !sensitive;
+      allowed = fallback.allowed();
+      retryAfter = fallback.retryAfterSeconds(key);
     }
+    // Only the immediately following error response needs the retry time; keep memory bounded.
+    if (this.retry.size >= MAX_KEYS) this.retry.clear();
+    this.retry.set(key, retryAfter);
+    return allowed;
   }
   retryAfterSeconds(key: string) {
     return shared ? (this.retry.get(key) ?? 1) : this.memory.retryAfterSeconds(key);
   }
   async take(key: string) {
-    return shared ? this.budget(key, 'take') : this.memory.take(key);
+    return this.budget(key, 'take', randomUUID(), {
+      allowed: () => this.memory.take(key),
+      retryAfterSeconds: (k) => this.memory.retryAfterSeconds(k),
+    });
   }
   async require(key: string, message: string) {
     if (!(await this.take(key)))
@@ -236,14 +252,31 @@ export class Failures extends RateLimiter {
   override retryAfterSeconds(key: string) {
     return shared ? super.retryAfterSeconds(key) : this.failures.retryAfterSeconds(key);
   }
+  private fallback(allowed: () => boolean) {
+    return { allowed, retryAfterSeconds: (key: string) => this.failures.retryAfterSeconds(key) };
+  }
   async blocked(key: string) {
-    return shared ? !(await this.budget(key, 'check', '', true)) : this.failures.blocked(key);
+    return !(await this.budget(
+      key,
+      'check',
+      '',
+      this.fallback(() => !this.failures.blocked(key)),
+    ));
   }
   async begin(key: string) {
     if (!shared) return this.failures.begin(key);
     if (!this.reservations.has(key) && this.reservations.size >= MAX_KEYS) return false;
-    const token = randomUUID();
-    if (!(await this.budget(key, 'take', token, true))) return false;
+    let token: string = randomUUID();
+    const allowed = await this.budget(
+      key,
+      'take',
+      token,
+      this.fallback(() => {
+        token = IN_MEMORY;
+        return this.failures.begin(key);
+      }),
+    );
+    if (!allowed) return false;
     this.reservations.set(key, [...(this.reservations.get(key) ?? []), token]);
     return true;
   }
@@ -252,6 +285,13 @@ export class Failures extends RateLimiter {
     const tokens = this.reservations.get(key);
     const token = tokens?.shift();
     if (!tokens?.length) this.reservations.delete(key);
-    if (token) await this.budget(key, failed ? 'fail' : 'refund', token, true);
+    if (token === IN_MEMORY) this.failures.finish(key, failed);
+    else if (token)
+      await this.budget(
+        key,
+        failed ? 'fail' : 'refund',
+        token,
+        this.fallback(() => true),
+      );
   }
 }

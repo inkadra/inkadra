@@ -9,7 +9,9 @@ demo. Product request budgets must follow a person across web replicas, as auth 
 
 Normal boards default to 64 MiB of encoded Yjs state and 20,000 elements, configurable with
 `BOARD_MAX_STATE_BYTES` and `BOARD_MAX_ELEMENTS`. Refuse updates that exceed a cap before
-applying them. Always admit pure deletions, including for boards already oversized at upgrade.
+applying them. Always admit deletions of items the board holds, including on boards already oversized at
+upgrade; a deletion naming items the board lacks is refused, as Yjs would store it unmeasured.
+Updates Yjs holds back until the items they follow arrive count towards both caps.
 Do not truncate stored data or freeze editing roles. The demo keeps its existing full freeze.
 Keep the 16 MiB normal WebSocket message allowance and existing validation and persistence.
 
@@ -21,13 +23,15 @@ Clients of the collaboration protocol should follow the same recovery path. No s
 With Valkey, product budgets use atomic sliding windows in the existing instance-scoped,
 hashed auth storage. Each limiter has a stable distinct scope. Password checks reserve a slot
 before checking and refund successful checks; other callers retain their counts and responses.
-Without Valkey, retain the bounded in-memory windows. Match auth's outage policy: ordinary
-product requests fail open for availability, password checks fail closed. Startup still waits
-for configured Valkey. No new dependency.
+Without Valkey, retain the bounded in-memory windows. When a configured Valkey does not answer,
+each process falls back to those same in-memory windows, password checks included: the limits
+of an instance without Valkey, rather than letting every request through or refusing every
+guest. Startup waits a few seconds for Valkey, then starts with that fallback. No new dependency.
 
 ## Consequences
 
 Older oversized boards load and deletions are saved. Yjs history metadata can keep encoded
 state over its byte cap after content is deleted; operators may raise that cap. Rejected local
-additions are discarded when reopening confirmed state, and the notice explicitly says so.
+additions are discarded when reopening confirmed state, and the notice explicitly says so; the
+deletions made in the discarded copy are made again once the reopened one has synced.
 Limits cover collaboration updates; storage accounting and version/export budgets are separate.
