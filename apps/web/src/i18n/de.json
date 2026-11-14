@@ -5306,8 +5306,8 @@
             "text": "Im Menü ⋯ schaltest du das Moodboard dieses Boards ein. Eine ausgeschaltete Ansicht behält ihre Daten."
           },
           "5": {
-            "title": "Board size limits",
-            "text": "If this board reaches its size limit, additions are refused and the confirmed board reloads. Delete content to make room; if it still does not fit, ask the administrator to raise the limit."
+            "title": "Größenbegrenzung des Boards",
+            "text": "Erreicht dieses Board seine Größenbegrenzung, werden Ergänzungen abgelehnt und das bestätigte Board wird neu geladen. Lösche Inhalte, um Platz zu schaffen; reicht das nicht, bitte deinen Admin, die Grenze anzuheben."
           }
         }
       },

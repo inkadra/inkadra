@@ -34,7 +34,8 @@ export interface AddCard {
 
 export type AddCardResult =
   | { ok: true; elementId: string }
-  | { ok: false; reason: 'column' | 'expired' };
+  /** `full`: the board is at its size limit (decision 0130). */
+  | { ok: false; reason: 'column' | 'expired' | 'full' };
 
 /** The edit certainly did not reach the document: it could not even be opened. */
 export class BoardEditNotStarted extends Error {}
@@ -136,7 +137,7 @@ export function directBoardWriter(collab: CollabServer, log?: Logger): BoardWrit
       let result: AddCardResult = { ok: false, reason: 'column' };
       try {
         await connection.transact((doc) => {
-          result = placeCard(doc, input);
+          result = collab.hasRoom(doc) ? placeCard(doc, input) : { ok: false, reason: 'full' };
         });
       } finally {
         try {

@@ -56,16 +56,17 @@ services:
 
 ## Board size limits
 
-| Variable                | Default    | Meaning                                        |
-| ----------------------- | ---------- | ---------------------------------------------- |
-| `BOARD_MAX_STATE_BYTES` | `67108864` | Encoded Yjs state per board, in bytes (64 MiB) |
-| `BOARD_MAX_ELEMENTS`    | `20000`    | Elements per board                             |
+| Variable                | Default | Meaning                                                                              |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `BOARD_MAX_STATE_BYTES` | `64MB`  | Encoded Yjs state per board, as bytes or with a unit (`64MB`, `1GB`; powers of 1024) |
+| `BOARD_MAX_ELEMENTS`    | `20000` | Elements per board, a positive integer                                               |
 
-Both must be positive integers.
+Neither can be `0`: there is no setting without a limit.
 The demo retains its stricter limits. Set these on every collaboration process.
 
-Updates that exceed either limit are refused with a board-limit notice. Existing data is
-never truncated: even boards already over the limits remain readable and accept deletions.
+Updates that exceed either limit are refused with a board-limit notice, and clips to a board
+at a limit with 409. Existing data is never truncated: even boards already over the limits
+remain readable and accept deletions, and restoring an older version is not limited.
 Yjs retains history metadata, so deleting visible content may not bring encoded state below
 the byte limit; an operator can raise it. The WebSocket message limit remains 16 MiB.
 

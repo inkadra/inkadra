@@ -437,7 +437,9 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
         if (!placed.ok)
           throw placed.reason === 'column'
             ? new HttpError('bad_request', 'The column is not on this board.')
-            : new HttpError('internal', 'The board could not be reached in time: try again.');
+            : placed.reason === 'full'
+              ? new HttpError('conflict', 'This board has reached its size limit.')
+              : new HttpError('internal', 'The board could not be reached in time: try again.');
         // On the board now: from here the assets are the card's, and the clip has succeeded.
         await process(created.splice(0), req.log);
         // A history failure must never turn a confirmed clip into a retryable failure.

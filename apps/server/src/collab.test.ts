@@ -197,6 +197,13 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       const writer = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
       await writer.synced;
       expect(roots(writer.doc).elements.size).toBe(2);
+      // The server's own additions (clips) keep to the same caps.
+      const clip = await directBoardWriter(collab).addCard({
+        boardId: id,
+        userId: people.owner?.id ?? '',
+        card: { type: 'note', fields: {} },
+      });
+      expect(clip).toEqual({ ok: false, reason: 'full' });
       const notices: string[] = [];
       writer.provider.on('stateless', ({ payload }: { payload: string }) => notices.push(payload));
       addElement(writer.doc, column('Refused'));

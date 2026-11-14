@@ -31783,6 +31783,16 @@
               }
             }
           },
+          "409": {
+            "description": "The board is at its size limit (BOARD_MAX_ELEMENTS, BOARD_MAX_STATE_BYTES)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "413": {
             "description": "File larger than the instance limit (Instance.limits)",
             "content": {

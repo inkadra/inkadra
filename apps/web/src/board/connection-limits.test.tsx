@@ -102,6 +102,27 @@ it('makes the deletions of the refused document again once the reopened one has 
   }
 });
 
+it('keeps a board the demo froze read-only, with the size limit as the reason', async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  mocks.providers.length = 0;
+  const root = createRoot(document.createElement('div'));
+  try {
+    await act(async () => root.render(<Board />));
+    const first = mocks.providers[0]!;
+    // The demo freezes the board for everyone, then refuses what an editor still sends.
+    await act(async () => {
+      first.options.onStateless({ payload: JSON.stringify({ type: 'access', readOnly: true }) });
+      first.options.onStateless({
+        payload: JSON.stringify({ type: 'writeRefused', reason: 'frozen' }),
+      });
+    });
+    expect(mocks.providers).toHaveLength(1);
+    expect(connection).toMatchObject({ sizeLimited: true, readOnly: true });
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
 const seen = new Set<BoardConnection | null>();
 // The board page's effects depend on this object: a new one on every render reruns them.
 function Probe(_: { render: number }) {
