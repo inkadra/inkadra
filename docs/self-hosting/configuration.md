@@ -20,24 +20,24 @@ services:
 
 ## Server
 
-| Variable               | Default                          | Meaning                                                                                           |
-| ---------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`             | `production`                     | `development`, `production` or `test`                                                             |
-| `PUBLIC_URL`           | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path          |
-| `AUTH_SECRET_PREVIOUS` | unset                            | Optional previous encryption secret (at least 32 characters); see rotation below                  |
-| `AUTH_SECRET`          | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out             |
-| `DATABASE_URL`         | set by compose                   | Postgres connection string                                                                        |
-| `REDIS_URL`            | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`  |
-| `INSTANCE_NAME`        | `Inkadra`                        | Name shown in the app                                                                             |
-| `REGISTRATION`         | `invite`                         | `invite`: invitation required; `open`: anyone; `closed`: no new accounts, even with an invitation |
-| `HOST`                 | `0.0.0.0`                        | Interface the web server listens on                                                               |
-| `PORT`                 | `3000`                           | Port of the web server                                                                            |
-| `COLLAB_PORT`          | `3001`                           | Port of the collaboration server, in split mode                                                   |
-| `DATA_DIR`             | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                             |
-| `WEB_DIST`             |                                  | Folder of the built web app; unset for the default next to the server                             |
-| `TRUST_PROXY`          | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address: set it to your proxy. See [below](#trust_proxy)        |
-| `LOG_LEVEL`            | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                              |
-| `LOG_CLIENT_IP`        | `false`                          | `true` adds the client's address to request logs (personal data). See [Logs](#logs)              |
+| Variable               | Default                          | Meaning                                                                                              |
+| ---------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`             | `production`                     | `development`, `production` or `test`                                                                |
+| `PUBLIC_URL`           | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path             |
+| `AUTH_SECRET_PREVIOUS` | unset                            | Optional previous encryption secret (at least 32 characters); see rotation below                     |
+| `AUTH_SECRET`          | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out                |
+| `DATABASE_URL`         | set by compose                   | Postgres connection string                                                                           |
+| `REDIS_URL`            | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`     |
+| `INSTANCE_NAME`        | `Inkadra`                        | Name shown in the app                                                                                |
+| `REGISTRATION`         | `invite`                         | `invite`: invitation required; `open`: anyone; `closed`: no new accounts, even with an invitation    |
+| `HOST`                 | `0.0.0.0`                        | Interface the web server listens on                                                                  |
+| `PORT`                 | `3000`                           | Port of the web server                                                                               |
+| `COLLAB_PORT`          | `3001`                           | Port of the collaboration server, in split mode                                                      |
+| `DATA_DIR`             | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                                |
+| `WEB_DIST`             |                                  | Folder of the built web app; unset for the default next to the server                                |
+| `TRUST_PROXY`          | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address: set it to your proxy. See [below](#trust_proxy)           |
+| `LOG_LEVEL`            | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                                 |
+| `LOG_CLIENT_IP`        | `false`                          | `true` adds the client's address to request logs (personal data). See [Logs](#logs)                  |
 | `METRICS_TOKEN`        | unset                            | At least 32 characters: turns on `GET /metrics` for this bearer token. See [Monitoring](#monitoring) |
 
 `INSTANCE_NAME` and `REGISTRATION` are installation defaults; saved administrator choices
@@ -306,7 +306,7 @@ them in `.env` on a larger machine; a limit above the host's memory only means n
 
 | Variable                   | Default | Container                                                                   |
 | -------------------------- | ------- | --------------------------------------------------------------------------- |
-| `INKADRA_MEM_LIMIT`        | `6g`    | `inkadra` (8g with `deploy/compose.nvidia.yaml`): the server plus ffmpeg     |
+| `INKADRA_MEM_LIMIT`        | `6g`    | `inkadra` (8g with `deploy/compose.nvidia.yaml`): the server plus ffmpeg    |
 | `INKADRA_CPUS`             | `0`     | `inkadra` CPU cores, such as `4`; `0` is no limit                           |
 | `INKADRA_PIDS_LIMIT`       | `1024`  | `inkadra` processes and threads                                             |
 | `INKADRA_TMPFS_SIZE`       | `512m`  | `/tmp` of `inkadra`, kept in memory (large scratch files go to `/data/tmp`) |
