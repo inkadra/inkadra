@@ -1,5 +1,6 @@
 import { APIError } from 'better-auth';
 import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { symmetricDecrypt, symmetricEncrypt } from 'better-auth/crypto';
 import { twoFactor } from 'better-auth/plugins';
 import { FRESH_SIGN_IN_MS } from './auth-session.ts';
 
@@ -84,4 +85,26 @@ export function hardenedTwoFactor(issuer: string) {
       ],
     },
   };
+}
+
+/** Adapt old ciphertext for upstream 2FA reads, without changing storage or session signing. */
+export async function readableTwoFactor<T>(row: T, current: string, previous?: string): Promise<T> {
+  if (!previous || !row || typeof row !== 'object') return row;
+  const fields = row as Record<string, unknown>;
+  const result = { ...fields };
+  for (const field of ['secret', 'backupCodes']) {
+    const data = fields[field];
+    if (typeof data !== 'string') continue;
+    try {
+      await symmetricDecrypt({ key: current, data });
+    } catch {
+      try {
+        const plain = await symmetricDecrypt({ key: previous, data });
+        result[field] = await symmetricEncrypt({ key: current, data: plain });
+      } catch {
+        // Leave invalid ciphertext to the upstream validation/error handling.
+      }
+    }
+  }
+  return result as T;
 }

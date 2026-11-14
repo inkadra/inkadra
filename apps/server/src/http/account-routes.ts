@@ -327,7 +327,12 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   app.post(v1('/me/token-proof-key'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     if (!actor.tokenId) throw new HttpError('forbidden', 'Only an app token has a proof key.');
-    const key = await proofKeyFor(db, config.AUTH_SECRET, actor.tokenId);
+    const key = await proofKeyFor(
+      db,
+      config.AUTH_SECRET,
+      actor.tokenId,
+      config.AUTH_SECRET_PREVIOUS,
+    );
     if (key === 'not_app') throw new HttpError('forbidden', 'Only an app token has a proof key.');
     if (!key) throw new HttpError('unauthorized', 'The token is not valid any more.');
     reply.header('cache-control', 'no-store');
@@ -339,7 +344,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     await proofLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const input = TokenProofRequest.parse(req.body ?? {});
     await proofKeyLimiter.require(input.keyId, 'Too many requests: wait a minute.');
-    const proof = await proveNonce(db, config.AUTH_SECRET, input.keyId, input.nonce);
+    const proof = await proveNonce(
+      db,
+      config.AUTH_SECRET,
+      input.keyId,
+      input.nonce,
+      config.AUTH_SECRET_PREVIOUS,
+    );
     // Unknown, revoked and expired keys alike: one query, one answer, nothing logged about them.
     if (!proof) throw new HttpError('not_found', 'Unknown key.');
     reply.header('cache-control', 'no-store');

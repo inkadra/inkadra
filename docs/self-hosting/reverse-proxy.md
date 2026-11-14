@@ -13,26 +13,13 @@ proxy must
 5. not put its own login page in front of Inkadra: the mobile app, the browser extension and
    shared links call the API directly and cannot pass through it.
 
-`compose.yaml` publishes Inkadra on `127.0.0.1:3000`, so only a proxy on the same machine can
-reach it; the bundled proxies reach Inkadra inside the Docker network. To allow direct LAN
-or Tailscale access as well, publish the port on a selected private interface or set
-`INKADRA_BIND=0.0.0.0`. This publishes it on the LAN and every other host interface: firewall
-it from the public internet. Plain HTTP exposes credentials and content; Tailscale encrypts
-traffic between peers. No list of LAN addresses is required. `PUBLIC_URL` stays the public
-HTTPS address for external links and OAuth callbacks.
+`compose.yaml` binds port 3000 to `127.0.0.1`; bundled proxies use the Docker network.
+For direct private HTTP access and the required proxy trust restrictions, see
+[Direct LAN and Tailscale access](configuration.md#direct-lan-and-tailscale-access).
 
-> **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
-> container IP pinned with `ipv4_address`, for example `172.18.0.10`
-> or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
-> trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
-> `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
-> or bypassing address-based rate limits. Direct clients need no proxy trust.
-
-Set `TRUST_PROXY` to the actual proxy peer addresses, not all LAN clients. The proxy must
-overwrite forwarded host/protocol headers, preserve the original Host (or set
-X-Forwarded-Host), and send X-Forwarded-Proto. Direct untrusted clients cannot override the
-socket protocol with those headers. HSTS and CSP upgrade-insecure-requests are sent only
-on verified HTTPS responses. See [Security headers](#security-headers).
+The proxy must replace forwarded host and protocol headers and preserve `Host` (or set
+`X-Forwarded-Host`). Inkadra uses them only from a trusted peer. HSTS and CSP's
+`upgrade-insecure-requests` apply only to verified HTTPS responses.
 
 The configurations in [`deploy/proxy`](../../deploy/proxy) (Caddy, Traefik, Nginx) are tested by
 CI on every change, in all-in-one and split mode, with
@@ -42,8 +29,7 @@ interfaces, so CI cannot run them: their settings below follow the tested Nginx 
 
 ## Caddy
 
-The simplest choice: Caddy gets and renews certificates by itself and its defaults already meet
-every requirement.
+Caddy gets and renews certificates.
 
 ```caddy
 inkadra.example.com {
@@ -74,6 +60,9 @@ set `INKADRA_DOMAIN` and `ACME_EMAIL`, then
 docker compose -f compose.yaml -f deploy/proxy/traefik/compose.yaml up -d
 ```
 
+The bundled Traefik reads its two routes from a file, not from Docker labels, so it never gets
+the Docker socket: access to the socket, even mounted `:ro`, is full control of the host.
+
 If Traefik already runs on the machine, add only the labels to the `inkadra` service, use your
 own entry point and certificate resolver names, attach the service to the network Traefik
 watches, and remove its `ports`:
@@ -88,19 +77,30 @@ labels:
 ```
 
 Traefik v3 cuts requests that take longer than 60 seconds to read. Raise it on the HTTPS entry
-point, in the static configuration:
+point, in the static configuration. Uploads arrive in resumable pieces of at most 50 MiB, but a
+project import is one request of up to `IMPORT_MAX_SIZE` (20 GB by default) and must arrive
+within that time: the bundled Traefik uses `12h`, enough for 20 GB at 4 Mbit/s:
 
 ```yaml
 entryPoints:
   websecure:
     transport:
       respondingTimeouts:
-        readTimeout: 0 # or a generous value such as 30m
+        readTimeout: 12h
 ```
 
 WebSockets and `X-Forwarded-*` headers need nothing. For split mode, add a second router for
-`PathPrefix(`/collab`)` pointing at the `collab` service on port 3001, as in
-[`compose.split.yaml`](../../deploy/proxy/traefik/compose.split.yaml).
+`/collab` pointing at the `collab` service on port 3001, as the bundled
+[`compose.split.yaml`](../../deploy/proxy/traefik/compose.split.yaml) does:
+
+```yaml
+labels: # on the collab service
+  - traefik.enable=true
+  - traefik.http.routers.inkadra-collab.rule=Host(`inkadra.example.com`) && PathPrefix(`/collab`)
+  - traefik.http.routers.inkadra-collab.entrypoints=websecure
+  - traefik.http.routers.inkadra-collab.tls.certresolver=letsencrypt
+  - traefik.http.services.inkadra-collab.loadbalancer.server.port=3001
+```
 
 ## Nginx
 
@@ -121,10 +121,9 @@ proxy_set_header X-Forwarded-Proto $scheme;
 In Docker, [`deploy/proxy/nginx`](../../deploy/proxy/nginx) fills in the template from `.env` and
 reads the certificate from `NGINX_CERTS`.
 
-Project imports send the whole archive in one request (uploads are sent in pieces), so a proxy
-limit on the request body also limits imports. Behind Cloudflare's proxy a request body can be
-at most 100 MB on the Free and Pro plans: import larger projects through a direct route (LAN
-address, Tailscale) or split them.
+Project imports send the whole archive in one request. A proxy's request-body limit must
+allow `IMPORT_MAX_SIZE`; if your provider imposes a lower limit, import over a direct private
+route. File uploads use resumable chunks of at most 50 MiB.
 
 ## Nginx Proxy Manager
 
@@ -167,37 +166,31 @@ WebSockets work without settings. Two things are on the VPS side and in Inkadra'
   `config/traefik/traefik_config.yml`, set `readTimeout` under
   `entryPoints.websecure.transport.respondingTimeouts` as shown under [Traefik](#traefik), and
   restart the stack.
-- `TRUST_PROXY` must accept the address requests come from. With Newt in the same Docker network
-  the default is enough; when the target is a Tailscale address, trust only the tailnet address
+- `TRUST_PROXY` must accept the address requests come from. With Newt in the same Docker network,
+  pin and trust only its container address; for a Tailscale target, trust only the tailnet address
   of the machine Newt runs on, e.g. `TRUST_PROXY=100.100.10.20`, not the whole Tailscale range.
 
-All-in-one mode is the easy fit for Pangolin: one target. For split mode, add a second target
+All-in-one mode needs one Pangolin target. For split mode, add a second target
 for the path prefix `/collab` on port `3001`, if your Pangolin version supports path-based
 targets.
-
-## Cloudflare
-
-If the domain goes through Cloudflare's proxy (orange cloud), its plan limits the size of a single
-request (100 MB on the free plan). Inkadra's apps upload in resumable chunks of at most 50 MiB,
-so large files still work; only scripts that send bigger requests to the API hit the limit. Keep WebSockets enabled in the
-Cloudflare dashboard (they are on by default).
 
 ## Security headers
 
 Whatever the proxy, finish with these four:
 
 1. **`TRUST_PROXY` lists only the proxy**: its single pinned container IP,
-   not every private network and not the whole Tailscale range. See
-   [`TRUST_PROXY`](configuration.md#trust_proxy).
+   not every private network and not the whole Tailscale range. The bundled proxies in
+   `deploy/proxy` do this for you. See [`TRUST_PROXY`](configuration.md#trust_proxy).
 2. **Port 3000 stays private**: inside the Docker network, or bound to `127.0.0.1`. Never publish
    it on a public interface.
 3. **The proxy sets the forwarding headers itself**, replacing what the client sent, and serves
    only HTTPS: a permanent redirect (301 or 308) from HTTP to HTTPS.
-4. **HSTS at the proxy**, once HTTPS works for good: browsers then refuse plain HTTP for that
-   domain for a year. Add `includeSubDomains` only if every subdomain of it serves HTTPS.
+4. **HSTS**, once HTTPS works for good: browsers then refuse plain HTTP for that domain for a
+   year. Inkadra sends it by default when `PUBLIC_URL` is https, on HTTPS requests only; the
+   proxy can send it too. Add `includeSubDomains` only if every subdomain of it serves HTTPS.
 
-Inkadra can send HSTS itself with `HSTS_ENABLED=true`, and sends its own
-`Content-Security-Policy` (report-only until `CSP_ENFORCE=true`), `Permissions-Policy` and
+Inkadra sends HSTS itself (`HSTS_ENABLED`, on by default), and its own enforced
+`Content-Security-Policy` (report-only with `CSP_ENFORCE=false`), `Permissions-Policy` and
 `Cross-Origin-Opener-Policy`: see [Browser security headers](configuration.md#browser-security-headers).
 Do not add a second `Content-Security-Policy` at the proxy; the browser would apply both.
 
@@ -246,8 +239,3 @@ proxy_set_header X-Forwarded-For $remote_addr;
 
 If Nginx sits behind another proxy or a CDN, keep `$proxy_add_x_forwarded_for` and configure
 `set_real_ip_from` for that proxy instead.
-
-Do not include the Docker gateway (e.g. `172.18.0.1`) or the whole subnet in TRUST_PROXY.
-Userland-proxy, hairpin, rootless or IPv6 forwarding can make direct LAN clients appear
-from that gateway, giving them proxy-header trust. Pin the proxy with `ipv4_address`
-and trust only that container IP; verify the actual peer in your deployment.
