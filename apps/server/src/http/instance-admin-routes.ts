@@ -231,11 +231,7 @@ export function registerInstanceAdminRoutes(
       })
       .from(user)
       .leftJoin(storageTotal, eq(storageTotal.userId, user.id))
-      .where(
-        after
-          ? sql`(${user.name}, ${user.id}) > (${after[0]}, ${after[1]}::uuid)`
-          : undefined,
-      )
+      .where(after ? sql`(${user.name}, ${user.id}) > (${after[0]}, ${after[1]}::uuid)` : undefined)
       .orderBy(asc(user.name), asc(user.id))
       .limit(page.limit === undefined ? Number.MAX_SAFE_INTEGER : page.limit + 1);
     const items = page.limit === undefined ? rows : rows.slice(0, page.limit);

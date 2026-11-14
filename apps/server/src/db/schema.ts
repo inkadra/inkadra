@@ -450,20 +450,20 @@ export const invitation = pgTable(
 export const boardDoc = pgTable(
   'board_doc',
   {
-  boardId: uuid('board_id')
-    .primaryKey()
-    .references(() => board.id, { onDelete: 'cascade' }),
-  state: bytea('state').notNull(),
-  schemaVersion: integer('schema_version').notNull(),
-  size: integer('size').notNull(),
-  updatedAt: updatedAt(),
-  /** When board_element_index was last rebuilt from `state`; null = never (backfill). */
-  indexedAt: timestamp('indexed_at', { withTimezone: true }),
-  /**
-   * Navigation counts of `state`, written with the index; valid only while `indexed_at` is not
-   * older than `updated_at`, otherwise readers decode the document.
-   */
-  counts: jsonb('counts').$type<Omit<import('@inkadra/shared').BoardCount, 'boardId'>>(),
+    boardId: uuid('board_id')
+      .primaryKey()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    state: bytea('state').notNull(),
+    schemaVersion: integer('schema_version').notNull(),
+    size: integer('size').notNull(),
+    updatedAt: updatedAt(),
+    /** When board_element_index was last rebuilt from `state`; null = never (backfill). */
+    indexedAt: timestamp('indexed_at', { withTimezone: true }),
+    /**
+     * Navigation counts of `state`, written with the index; valid only while `indexed_at` is not
+     * older than `updated_at`, otherwise readers decode the document.
+     */
+    counts: jsonb('counts').$type<Omit<import('@inkadra/shared').BoardCount, 'boardId'>>(),
     /** Open assigned to-do items of `state`, written with the index under the same rule (#803). */
     tasks: jsonb('tasks').$type<import('../board-preview.ts').OpenTask[]>(),
     /** Cards in the unsorted tray of `state`, written with the index under the same rule. */

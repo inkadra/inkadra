@@ -58,13 +58,13 @@ Each process (`all`, `web`, `collab`, `worker`) keeps its own pool of Postgres c
 `all`, the collaboration server has a small pool of its own, so a slow request or job never holds
 up the saving of boards.
 
-| Variable                                  | Default  | Meaning                                                                                  |
-| ----------------------------------------- | -------- | ---------------------------------------------------------------------------------------- |
-| `DATABASE_POOL_MAX`                       | `10`     | Connections of each process's main pool                                                  |
-| `DATABASE_COLLAB_POOL_MAX`                | `4`      | Connections of the collaboration pool, in `all` only                                     |
-| `DATABASE_STATEMENT_TIMEOUT_MS`           | `60000`  | A query running longer is cancelled and the request fails. `0` turns the limit off       |
-| `DATABASE_LOCK_TIMEOUT_MS`                | `15000`  | Longest wait for a row or table lock before the query fails. `0` turns the limit off     |
-| `DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS` | `60000`  | A transaction left open without work is ended. `0` turns the limit off                   |
+| Variable                                  | Default | Meaning                                                                              |
+| ----------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `DATABASE_POOL_MAX`                       | `10`    | Connections of each process's main pool                                              |
+| `DATABASE_COLLAB_POOL_MAX`                | `4`     | Connections of the collaboration pool, in `all` only                                 |
+| `DATABASE_STATEMENT_TIMEOUT_MS`           | `60000` | A query running longer is cancelled and the request fails. `0` turns the limit off   |
+| `DATABASE_LOCK_TIMEOUT_MS`                | `15000` | Longest wait for a row or table lock before the query fails. `0` turns the limit off |
+| `DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS` | `60000` | A transaction left open without work is ended. `0` turns the limit off               |
 
 Size Postgres's `max_connections` for every process: with the defaults, one `all` process uses up
 to 14 connections, a split installation 10 per process. Board saves keep their own shorter
