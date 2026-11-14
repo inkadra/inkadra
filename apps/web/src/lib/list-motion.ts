@@ -82,7 +82,12 @@ export function easeList(
     if (!old) {
       if (few)
         item.animate(
-          still ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1 }],
+          still
+            ? [{ opacity: 0 }, { opacity: 1 }]
+            : [
+                { opacity: 0, scale: 0.96 },
+                { opacity: 1, scale: 1 },
+              ],
           { duration, easing: easePop },
         );
       continue;

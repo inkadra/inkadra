@@ -39,9 +39,9 @@ import { authorName, groupByDay, type Page, reviewKey } from '../board/review-mo
 import { canComment } from '../board/review-store.ts';
 import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
+import { useListMotion } from '../lib/list-motion.ts';
 import { signedInId } from '../lib/me.ts';
 import { moveTabFocus } from '../lib/tabs.ts';
-import { useListMotion } from '../lib/list-motion.ts';
 import { MyTasksTab } from '../routes/MyTasks.tsx';
 import { useProjects } from '../routes/projects-context.ts';
 import { formatStorage } from '../routes/StorageCharts.tsx';

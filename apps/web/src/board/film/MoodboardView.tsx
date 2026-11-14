@@ -25,8 +25,8 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
-import { useModules } from '../../lib/modules.ts';
 import { useListMotion } from '../../lib/list-motion.ts';
+import { useModules } from '../../lib/modules.ts';
 import { getCachedAsset, pickVariant, useAsset, useAssetPalettes } from '../assets.ts';
 import { ColorPicker } from '../ColorPicker.tsx';
 import { CroppedImage } from '../CroppedImage.tsx';

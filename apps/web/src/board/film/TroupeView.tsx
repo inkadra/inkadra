@@ -29,9 +29,9 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
+import { useListMotion } from '../../lib/list-motion.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { SessionContext } from '../../lib/session-context.ts';
-import { useListMotion } from '../../lib/list-motion.ts';
 import { PeoplePicker } from '../../people/PeoplePicker.tsx';
 import { ContextMenu } from '../chrome.tsx';
 import type { BoardStore } from '../store.ts';

@@ -21,9 +21,9 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
+import { useListMotion } from '../../lib/list-motion.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { moveTabFocus } from '../../lib/tabs.ts';
-import { useListMotion } from '../../lib/list-motion.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
 import { SetupChips } from '../plan/SetupChips.tsx';
