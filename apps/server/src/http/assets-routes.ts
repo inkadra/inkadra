@@ -206,14 +206,43 @@ export function fileHeaders(reply: FastifyReply, etag: string) {
   reply.header('cross-origin-resource-policy', 'same-origin');
 }
 
-/** Sends a stored file, or the single byte range asked for. */
+/**
+ * How long a redirect to the bucket stays valid. A `<video>` keeps asking ranges of the URL it
+ * was redirected to while it plays: long enough for a long review session. The link stays valid
+ * until then even if access is revoked (docs/self-hosting/storage.md).
+ */
+export const SIGNED_URL_TTL_S = 4 * 60 * 60;
+/** The video player (hls.js) asks the server again for every segment: a short link is enough. */
+export const HLS_SIGNED_URL_TTL_S = 10 * 60;
+
+/**
+ * Sends a stored file, or the single byte range asked for. `redirectTtlS` is how long a redirect
+ * to the bucket lives; `false` always sends the bytes from here.
+ */
 export async function sendRanged(
   req: FastifyRequest,
   reply: FastifyReply,
   storage: Storage,
   key: string,
   size: number,
+  redirectTtlS: number | false = SIGNED_URL_TTL_S,
 ) {
+  // Browsers (a session cookie, no token) get the file from the bucket itself (#839); apps with
+  // a token keep this path, since a token must never travel with the redirect.
+  if (storage.signedUrl && redirectTtlS !== false && !req.headers.authorization) {
+    const header = (name: string) => {
+      const value = reply.getHeader(name);
+      return typeof value === 'string' ? value : undefined;
+    };
+    const url = await storage.signedUrl(
+      key,
+      redirectTtlS,
+      header('content-disposition'),
+      header('content-type'),
+    );
+    reply.header('cache-control', 'private, no-store');
+    return reply.redirect(url, 302);
+  }
   reply.header('accept-ranges', 'bytes');
   const range = parseRange(req.headers.range, size);
   if (range === undefined) {
@@ -264,7 +293,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       file,
       {
         notFound: (r) => sendError(r, 'not_found', 'This video has no such copy.'),
-        ranged: (key, size) => sendRanged(req, reply, storage, key, size),
+        ranged: (key, size) => sendRanged(req, reply, storage, key, size, HLS_SIGNED_URL_TTL_S),
         fileHeaders,
       },
       deps.live && {

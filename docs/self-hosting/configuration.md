@@ -79,20 +79,22 @@ parameters (Postgres directly, or PgBouncer in session mode).
 
 ## Files and uploads
 
-| Variable                 | Default     | Meaning                                                                                                                                                      |
-| ------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `STORAGE_DRIVER`         | `local`     | `local`: files in the data volume. `s3`: files in a bucket. See [Storage](storage.md)                                                                        |
-| `S3_ENDPOINT`            | AWS         | Address of an S3-compatible service, e.g. `https://s3.example.com`                                                                                           |
-| `S3_REGION`              | `us-east-1` | Region of the bucket                                                                                                                                         |
-| `S3_BUCKET`              |             | Required with `STORAGE_DRIVER=s3`. Bucket name                                                                                                               |
-| `S3_ACCESS_KEY_ID`       |             | Access key                                                                                                                                                   |
-| `S3_SECRET_ACCESS_KEY`   |             | Secret key                                                                                                                                                   |
-| `S3_FORCE_PATH_STYLE`    | `false`     | `true` for MinIO, RustFS, Garage and most self-hosted stores                                                                                                 |
-| `UPLOAD_MAX_SIZE`        | `20GB`      | Largest file anyone can upload, as bytes or with a unit (`500MB`, `4GB`); `0` for no limit                                                                   |
-| `STORAGE_LIMIT`          |             | Space of the whole instance (`500GB`, in powers of 1000 as Settings shows sizes). Set, it wins over Settings → Storage and locks the field; `0` for no limit |
-| `STORAGE_LIMIT_PER_USER` |             | Default space of each person (`5GB`), set and locked the same way. Administrators can lower it for a person, never raise it                                  |
-| `IMPORT_MAX_SIZE`        | `20GB`      | Largest project archive an import accepts, compressed and in total uncompressed; `0` for no limit                                                            |
-| `HEIC_PREVIEWS`          | `true`      | `false` stops Inkadra decoding HEIC photos from iPhones: they are kept, without a preview                                                                    |
+| Variable                 | Default       | Meaning                                                                                                                                                             |
+| ------------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STORAGE_DRIVER`         | `local`       | `local`: files in the data volume. `s3`: files in a bucket. See [Storage](storage.md)                                                                               |
+| `S3_ENDPOINT`            | AWS           | Address of an S3-compatible service, e.g. `https://s3.example.com`                                                                                                  |
+| `S3_REGION`              | `us-east-1`   | Region of the bucket                                                                                                                                                |
+| `S3_BUCKET`              |               | Required with `STORAGE_DRIVER=s3`. Bucket name                                                                                                                      |
+| `S3_ACCESS_KEY_ID`       |               | Access key                                                                                                                                                          |
+| `S3_SECRET_ACCESS_KEY`   |               | Secret key                                                                                                                                                          |
+| `S3_FORCE_PATH_STYLE`    | `false`       | `true` for MinIO, RustFS, Garage and most self-hosted stores                                                                                                        |
+| `S3_PUBLIC_REDIRECT`     | `false`       | `true`: browsers fetch originals, playable copies and video segments from the bucket through signed links. See [Storage](storage.md#browsers-fetch-from-the-bucket) |
+| `S3_PUBLIC_ENDPOINT`     | `S3_ENDPOINT` | The bucket's address as browsers reach it, when it is not `S3_ENDPOINT`                                                                                             |
+| `UPLOAD_MAX_SIZE`        | `20GB`        | Largest file anyone can upload, as bytes or with a unit (`500MB`, `4GB`); `0` for no limit                                                                          |
+| `STORAGE_LIMIT`          |               | Space of the whole instance (`500GB`, in powers of 1000 as Settings shows sizes). Set, it wins over Settings → Storage and locks the field; `0` for no limit        |
+| `STORAGE_LIMIT_PER_USER` |               | Default space of each person (`5GB`), set and locked the same way. Administrators can lower it for a person, never raise it                                         |
+| `IMPORT_MAX_SIZE`        | `20GB`        | Largest project archive an import accepts, compressed and in total uncompressed; `0` for no limit                                                                   |
+| `HEIC_PREVIEWS`          | `true`        | `false` stops Inkadra decoding HEIC photos from iPhones: they are kept, without a preview                                                                           |
 
 ## Board size limits
 

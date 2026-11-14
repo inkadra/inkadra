@@ -27,7 +27,7 @@ describe('original storage usage', () => {
         userId: null,
         userName: null,
         userImage: null,
-        derivedBytes: 0,
+        derivedBytes: 70,
       },
       {
         mime: 'video/mp4',
@@ -82,9 +82,17 @@ describe('original storage usage', () => {
     expect(result.byType.reduce((n, row) => n + row.bytes, 0)).toBe(1150);
     expect(result.byProject.reduce((n, row) => n + row.bytes, 0)).toBe(1150);
     expect(result.byProject).toEqual([
-      { projectId: null, name: null, scope: 'restricted', bytes: 700 },
-      { projectId: 'visible', name: 'Shoot', scope: 'project', bytes: 400, color: 'teal' },
-      { projectId: null, name: null, scope: 'unassigned', bytes: 50 },
+      { projectId: null, name: null, scope: 'restricted', bytes: 700, derivedBytes: 0 },
+      // Derived bytes metered per project too (#841), renditions included.
+      {
+        projectId: 'visible',
+        name: 'Shoot',
+        scope: 'project',
+        bytes: 400,
+        derivedBytes: 70,
+        color: 'teal',
+      },
+      { projectId: null, name: null, scope: 'unassigned', bytes: 50, derivedBytes: 0 },
     ]);
     expect(JSON.stringify(result)).not.toMatch(/secret|"red"|"pink"/i);
   });

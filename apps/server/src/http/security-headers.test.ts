@@ -63,6 +63,19 @@ describe('browser security policy', () => {
         }),
       )['content-security-policy'],
     ).toContain('https://media.objects.example:9000');
+    // The address browsers are sent to (#839), not the one the server uses.
+    const media = securityHeaders(
+      config({
+        STORAGE_DRIVER: 's3',
+        S3_BUCKET: 'media',
+        S3_ENDPOINT: 'http://rustfs:9000',
+        S3_PUBLIC_ENDPOINT: 'https://files.example',
+        S3_PUBLIC_REDIRECT: 'true',
+        S3_FORCE_PATH_STYLE: 'true',
+      }),
+    )['content-security-policy'];
+    expect(media).toContain("media-src 'self' blob: https://files.example");
+    expect(media).not.toContain('rustfs');
   });
   it('never sends HSTS or upgrades insecure requests on local HTTP', () => {
     const h = securityHeaders(config({ CSP_ENFORCE: 'true', HSTS_ENABLED: 'true' }), false);
