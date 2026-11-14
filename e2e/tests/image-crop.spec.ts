@@ -15,7 +15,7 @@ test.describe.configure({ mode: 'serial' });
 
 const admin = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 const screenshotDir = fileURLToPath(
-  new URL('../../docs/screenshots/0.7-image-crop', import.meta.url),
+  new URL('../test-results/screenshots/0.7-image-crop', import.meta.url),
 );
 
 interface Seeded {

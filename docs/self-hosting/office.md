@@ -1,7 +1,6 @@
 # Office document previews
 
-Office previews are optional. The standard image does not install
-LibreOffice. Without conversion, DOCX/XLSX/PPTX/ODT/ODS/ODP/CSV retain their type icon and
+Office previews are optional. The standard image excludes LibreOffice. Without conversion, DOCX/XLSX/PPTX/ODT/ODS/ODP/CSV retain their type icon and
 original download. CSV and XLSX grid previews and first-sheet-to-table work without conversion.
 
 ## The worker image
@@ -12,13 +11,13 @@ fonts, Poppler, bubblewrap and `prlimit`, everything the converter needs. It is 
 and published like the other variants, for linux/amd64 and linux/arm64. Pin the version you run,
 with `-office`.
 
-To build it yourself instead, one build argument is enough:
+To build the worker image:
 
 ```sh
 docker build --build-arg OFFICE=true -t inkadra-office-worker .
 ```
 
-Media tools are always included. Use the image for an extra **worker** role
+After 0.9.0, Office images also include all media tools. Use the image for an extra **worker** role
 only, with your existing database, Redis and storage settings. The web/collab roles keep their
 ordinary image.
 
@@ -71,7 +70,7 @@ is written: do not use the downloaded file.
 Then add the worker next to the single container of the default install (`command: all`):
 
 ```yaml
-# compose.office.yaml — docker compose -f compose.yaml -f compose.office.yaml up -d
+# compose.office.yaml: docker compose -f compose.yaml -f compose.office.yaml up -d
 services:
   inkadra:
     environment:
@@ -83,6 +82,8 @@ services:
     # Same version as the other roles; set INKADRA_TAG without a suffix (for example 0.9.0).
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
     command: worker
+    user: "1000:1000" # the main container has already prepared /data
+    cap_add: !reset []
     ports: !reset []
     depends_on:
       inkadra:
@@ -99,9 +100,11 @@ split layout (`deploy/compose.split.yaml`), give the `worker` role the image ins
 `OFFICE_PREVIEWS: "true"` to any other worker you run):
 
 ```yaml
-# compose.office.yaml — docker compose -f compose.yaml -f deploy/compose.split.yaml -f compose.office.yaml up -d
+# compose.office.yaml: docker compose -f compose.yaml -f deploy/compose.split.yaml -f compose.office.yaml up -d
 services:
   worker:
+    user: "1000:1000" # /data must already belong to this user
+    cap_add: !reset []
     # Same version as the other roles; set INKADRA_TAG without a suffix (for example 0.9.0).
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
     environment:
@@ -165,9 +168,8 @@ of at most 64 MiB, and copies it before Poppler reads it.
 
 ## Operating notes
 
-Only newly processed files gain previews. Requeue existing assets using your normal worker
-operations if needed; pages of a reprocessed document get a new URL, so browsers never show the
-old ones. Conversion errors, encrypted files, excessive pages and archive bombs leave the original
+Only newly processed files gain Office previews; enabling the worker does not reprocess
+existing documents. Pages of a reprocessed document get a new URL. Conversion errors, encrypted files, excessive pages and archive bombs leave the original
 intact. Font/layout substitution may occur: the viewer's Info panel explains this and always
 offers the original download.
 
