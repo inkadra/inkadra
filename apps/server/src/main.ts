@@ -10,7 +10,13 @@ import { startInlineExpirySweep } from './access-expiry.ts';
 import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
-import { backupsDir, restoreBackup, runBackup, startBackup } from './backup.ts';
+import {
+  backupBeforeMigrating,
+  backupsDir,
+  restoreBackup,
+  runBackup,
+  startBackup,
+} from './backup.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
@@ -22,11 +28,12 @@ import {
   unsavedBoardsDir,
 } from './collab.ts';
 import { type Config, loadConfig, VERSION } from './config.ts';
-import { createDatabase, runMigrations } from './db/client.ts';
+import { createDatabase, runMigrations, waitForMigrations } from './db/client.ts';
 import { startSandboxSweep } from './demo.ts';
 import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
 import type { LiveContext } from './http/hls.ts';
+import { startingListener } from './http/starting.ts';
 import type { Jobs } from './jobs.ts';
 import { acquireLease, type Lease, type LeaseRole } from './lease.ts';
 import { createMailer } from './mailer.ts';
@@ -177,12 +184,54 @@ async function main() {
     log.warn('REDIS_URL is not set: run only one inkadra process for this instance');
 
   if (command === 'migrate' || command === 'web' || command === 'all') {
-    await runMigrations(config.DATABASE_URL, migrationsFolder, {
-      productionBoards: config.PRODUCTION_BOARD_MOVE,
-      log,
-    });
+    // Alive, not ready, while the backup before an upgrade and the migrations run (#805): a
+    // long backup must not get the container marked unhealthy and restarted.
+    const starting =
+      command === 'migrate'
+        ? undefined
+        : await startingListener({
+            host: config.HOST,
+            port: config.PORT,
+            reason: 'database migrations (and the backup before them)',
+            live: ['/livez'],
+          });
+    try {
+      await runMigrations(config.DATABASE_URL, migrationsFolder, {
+        productionBoards: config.PRODUCTION_BOARD_MOVE,
+        log,
+        beforeMigrating: backupBeforeMigrating(
+          { storage: createStorage(config), log, ...transferDeps(config) },
+          { skip: config.SKIP_PRE_MIGRATION_BACKUP },
+        ),
+      });
+    } finally {
+      await starting?.close();
+    }
     log.info('database migrations applied');
     if (command === 'migrate') return;
+  } else if (command === 'collab' || command === 'worker') {
+    // Started next to a web role that may still be backing up and migrating (#805): its code
+    // needs the new schema. Alive meanwhile for the container health check. The data steps
+    // after the migrations (mergeCastLinks, moveToProductionBoards) may still run in the web
+    // role: both are idempotent (advisory lock / per-project transaction, rows marked done),
+    // and this role does not depend on their result.
+    const starting =
+      command === 'collab'
+        ? await startingListener({
+            port: config.COLLAB_PORT,
+            reason: 'waiting for the database migrations',
+            live: ['/', '/livez'],
+          })
+        : undefined;
+    const beat = () => void writeFile(WORKER_HEARTBEAT, String(Date.now())).catch(() => {});
+    const heartbeat = command === 'worker' ? setInterval(beat, 10_000) : undefined;
+    if (heartbeat) beat();
+    try {
+      await waitForMigrations(config.DATABASE_URL, migrationsFolder, log);
+    } finally {
+      clearInterval(heartbeat);
+      await starting?.close();
+    }
   }
 
   const timeouts = {

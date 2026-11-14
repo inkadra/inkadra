@@ -4260,7 +4260,8 @@
     "inBucket": "copiato nel bucket",
     "trigger": {
       "scheduled": "Notturno",
-      "manual": "Manuale"
+      "manual": "Manuale",
+      "preUpgrade": "Prima dell’aggiornamento"
     },
     "status": {
       "running": "In corso",

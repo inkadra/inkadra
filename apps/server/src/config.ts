@@ -273,6 +273,11 @@ const Env = z.object({
    * its days there (decision 0123). `false` skips it; it runs at the next start set to `true`.
    */
   PRODUCTION_BOARD_MOVE: bool('true'),
+  /**
+   * At start, when migrations are pending on a database that has data, a database backup is
+   * written first and the server refuses to migrate if it fails (#805). `true` skips it.
+   */
+  SKIP_PRE_MIGRATION_BACKUP: bool('false'),
 
   /**
    * The public demo (decision 0084): "Try the demo" makes a sandbox without an account, which

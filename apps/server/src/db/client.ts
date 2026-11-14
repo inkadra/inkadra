@@ -71,6 +71,15 @@ export async function runMigrations(
      */
     schemaOnly?: boolean;
     log?: Parameters<typeof moveToProductionBoards>[1];
+    /**
+     * Runs under the lock, before anything is applied, when migrations are pending on a
+     * database that already has some (not a fresh install): the pre-upgrade backup (#805).
+     * Throwing stops the start before any migration. What it returns runs once they applied.
+     */
+    beforeMigrating?: (
+      sql: postgres.Sql,
+      pending: { applied: number; pending: number },
+    ) => Promise<((db: Database) => Promise<void>) | undefined>;
   } = {},
 ) {
   // One connection (max 1) that is never recycled: the session lock holds until sql.end() below.
@@ -92,7 +101,13 @@ export async function runMigrations(
       await sql`select pg_advisory_lock(${MIGRATION_LOCK})`;
     }
     await refuseNewerDatabase(sql, migrationsFolder);
+    const pending = opts.beforeMigrating ? await pendingMigrations(sql, migrationsFolder) : null;
+    const after =
+      pending && pending.applied > 0 && pending.pending > 0
+        ? await opts.beforeMigrating?.(sql, pending)
+        : undefined;
     await migrate(db, { migrationsFolder });
+    await after?.(db);
     if (opts.schemaOnly) return;
     // Data that only code can move: the old board cast links become crew rows (decision 0091).
     await mergeCastLinks(db);
@@ -101,6 +116,59 @@ export async function runMigrations(
   } finally {
     await sql.end();
   }
+}
+
+/**
+ * Waits until the database has every migration of this build (#805): a collab or worker role
+ * started next to a web role that is still backing up and migrating. Polls, telling the log
+ * once a minute; a database already newer passes too.
+ */
+export async function waitForMigrations(
+  databaseUrl: string,
+  migrationsFolder: string,
+  log: { info: (obj: object, msg: string) => void },
+  intervalMs = 5000,
+) {
+  const sql = postgres(databaseUrl, { max: 1, onnotice: () => {} });
+  try {
+    let toldAt = 0;
+    for (;;) {
+      const state = await pendingMigrations(sql, migrationsFolder);
+      if (state.pending === 0) return;
+      // shortcut: no timeout, a backup before a large upgrade may take hours and a role that
+      // gave up would restart in a loop; an operator sees this line and the web role's log.
+      if (Date.now() - toldAt >= 60_000) {
+        log.info(
+          state,
+          'waiting for the database migrations: a web or migrate role of this version must run to apply them',
+        );
+        toldAt = Date.now();
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  } finally {
+    await sql.end({ timeout: 1 });
+  }
+}
+
+/**
+ * Migrations applied to the database and those of this build still to apply. Drizzle's migrator
+ * applies every journal entry newer than the last applied one, so that is what is pending.
+ */
+export async function pendingMigrations(sql: postgres.Sql, migrationsFolder: string) {
+  const journal = JSON.parse(
+    await readFile(join(migrationsFolder, 'meta', '_journal.json'), 'utf8'),
+  ) as { entries: { when: number }[] };
+  const [table] = await sql<{ ok: boolean }[]>`
+    select to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+  if (!table?.ok) return { applied: 0, pending: journal.entries.length };
+  const [row] = await sql<{ n: number; last: string | null }[]>`
+    select count(*)::int as n, max(created_at)::text as last from drizzle.__drizzle_migrations`;
+  const last = row?.last === null || row?.last === undefined ? -1 : Number(row.last);
+  return {
+    applied: row?.n ?? 0,
+    pending: journal.entries.filter((e) => e.when > last).length,
+  };
 }
 
 /**

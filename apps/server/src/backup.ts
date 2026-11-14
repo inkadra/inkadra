@@ -10,6 +10,7 @@ import {
   rename,
   rm,
   stat,
+  statfs,
   writeFile,
 } from 'node:fs/promises';
 import { basename, join } from 'node:path';
@@ -26,9 +27,10 @@ import {
   type InstanceBackup,
   BackupSettings as Settings,
 } from '@inkadra/shared';
-import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import postgres from 'postgres';
+import { recordAudit } from './audit.ts';
 import { VERSION } from './config.ts';
 import { createDatabase, type Database, runMigrations, UNLIMITED_SESSION } from './db/client.ts';
 import { instanceBackup, instanceSetting } from './db/schema.ts';
@@ -143,7 +145,9 @@ export type BackupRow = typeof instanceBackup.$inferSelect;
 export function toBackup(row: BackupRow): InstanceBackup {
   return {
     id: row.id,
-    trigger: row.trigger,
+    // Older clients know two triggers: a backup before an upgrade is the server's own.
+    trigger: row.trigger === 'pre-upgrade' ? 'scheduled' : row.trigger,
+    ...(row.trigger === 'pre-upgrade' ? { beforeUpgrade: true } : {}),
     status: row.status,
     fileName: row.removedAt ? null : row.fileName,
     size: row.size,
@@ -392,22 +396,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
     await rename(partial, join(dir, fileName));
     // The archive on the data volume is a complete backup on its own: a failed copy to the
     // bucket keeps it, reported as not copied (`copiedToBucket: false`) and logged.
-    let copied = false;
-    if (deps.bucket) {
-      try {
-        await deps.storage.writeStream(
-          `${BUCKET_PREFIX}${fileName}`,
-          createReadStream(join(dir, fileName)),
-          'application/zip',
-        );
-        copied = true;
-      } catch (err) {
-        log.error(
-          { err, backup: id, fileName },
-          'backup kept on the data volume, bucket copy failed',
-        );
-      }
-    }
+    const copied = await copyToBucket(deps, id, fileName);
     // Only a backup still running becomes ready: never one another process marked over.
     const [row] = await db
       .update(instanceBackup)
@@ -462,7 +451,36 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   }
 }
 
-/** Keeps the newest `retention` successful backups; removes older archives and old rows. */
+/** Copies a written archive to the bucket when files live there; false when it failed. */
+async function copyToBucket(
+  deps: Pick<BackupDeps, 'bucket' | 'storage' | 'dataDir' | 'log'>,
+  id: string,
+  fileName: string,
+) {
+  if (!deps.bucket) return false;
+  try {
+    await deps.storage.writeStream(
+      `${BUCKET_PREFIX}${fileName}`,
+      createReadStream(join(backupsDir(deps.dataDir), fileName)),
+      'application/zip',
+    );
+    return true;
+  } catch (err) {
+    deps.log.error(
+      { err, backup: id, fileName },
+      'backup kept on the data volume, bucket copy failed',
+    );
+    return false;
+  }
+}
+
+/** Backups taken before an upgrade (#805) kept, apart from the nightly `retention`. */
+export const PRE_UPGRADE_KEEP = 2;
+
+/**
+ * Keeps the newest `retention` successful backups, and the newest `PRE_UPGRADE_KEEP` taken
+ * before an upgrade; removes older archives and old rows.
+ */
 export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storage' | 'dataDir'>) {
   const { db } = deps;
   const { retention } = await readBackupSettings(db);
@@ -471,7 +489,10 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storag
     .from(instanceBackup)
     .where(and(eq(instanceBackup.status, 'ready'), isNull(instanceBackup.removedAt)))
     .orderBy(desc(instanceBackup.startedAt));
-  const old = kept.slice(retention);
+  const old = [
+    ...kept.filter((r) => r.trigger !== 'pre-upgrade').slice(retention),
+    ...kept.filter((r) => r.trigger === 'pre-upgrade').slice(PRE_UPGRADE_KEEP),
+  ];
   for (const row of old) {
     if (row.fileName) {
       await rm(join(backupsDir(deps.dataDir), row.fileName), { force: true });
@@ -490,10 +511,268 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'storag
         ),
       );
   await reapStaleBackups(db);
+  // Rows of archives still kept stay, however old: without them nothing would remove the file.
   await db
     .delete(instanceBackup)
-    .where(lt(instanceBackup.startedAt, new Date(Date.now() - 180 * 86400 * 1000)));
+    .where(
+      and(
+        lt(instanceBackup.startedAt, new Date(Date.now() - 180 * 86400 * 1000)),
+        or(ne(instanceBackup.status, 'ready'), isNotNull(instanceBackup.removedAt)),
+      ),
+    );
   return { removed: old.length };
+}
+
+// Before an upgrade ------------------------------------------------------------
+
+/**
+ * Free space a backup of `tableBytes` of live table data needs, as far as start-up can tell:
+ * the archive is COPY text compressed, mostly well under half the tables, plus a margin.
+ * shortcut: an estimate, not the size; a database of incompressible data may still fill the
+ * disk (the backup then fails as no_space and nothing is migrated).
+ */
+export function preUpgradeSpaceNeeded(tableBytes: number) {
+  return Math.ceil(tableBytes / 2) + 64 * 1024 * 1024;
+}
+
+/**
+ * Bytes of live rows in the `public` tables: each table's size (with TOAST) scaled by its
+ * share of live tuples, so dead rows and bloat a vacuum has not reclaimed do not count.
+ * Tables without statistics yet count whole.
+ */
+export async function liveTableBytes(sql: postgres.Sql) {
+  const [row] = await sql<{ n: string }[]>`
+    select coalesce(sum(
+      case when coalesce(t.n_live_tup, 0) + coalesce(t.n_dead_tup, 0) = 0
+        then pg_table_size(c.oid)
+        else pg_table_size(c.oid)::numeric * t.n_live_tup / (t.n_live_tup + t.n_dead_tup) end
+    ), 0)::bigint::text as n
+    from pg_class c join pg_namespace s on s.oid = c.relnamespace
+    left join pg_stat_user_tables t on t.relid = c.oid
+    where s.nspname = 'public' and c.relkind = 'r'`;
+  return Number(row?.n ?? 0);
+}
+
+const mib = (n: number) => `${Math.round(n / 1024 / 1024)} MiB`;
+
+const PRE_UPGRADE = 'inkadra-backup-pre-upgrade-';
+/**
+ * Archives of one schema state of one database: `m<applied migrations>-<database>-`, then the
+ * time and id. The database part keeps another database (a restore, a swapped volume) from
+ * having its state mistaken for this one's.
+ */
+const preUpgradePrefix = (applied: number, database: string) =>
+  `${PRE_UPGRADE}m${applied}-${database}-`;
+
+/**
+ * Short id of this database: its cluster `system_identifier` and name. Where the role may not
+ * call `pg_control_system()` (some managed services), the oldest migration's time stands in
+ * for the cluster: the same name and first migration on another cluster is not told apart.
+ */
+async function databaseFingerprint(sql: postgres.Sql) {
+  let ident: string;
+  try {
+    const [row] = await sql<{ id: string }[]>`
+      select system_identifier::text || '/' || current_database() as id from pg_control_system()`;
+    ident = row?.id ?? '';
+  } catch {
+    const [row] = await sql<{ id: string }[]>`
+      select current_database() || '/' || coalesce(min(created_at)::text, '') as id
+      from drizzle.__drizzle_migrations`;
+    ident = row?.id ?? '';
+  }
+  return createHash('sha256').update(ident).digest('hex').slice(0, 8);
+}
+/**
+ * A start that finds an archive this recent for the same schema state reuses it instead of
+ * writing another (#805): a migration that fails restarts the server in a loop, and each start
+ * would otherwise fill the disk with a new copy of the same database.
+ * shortcut: the database is assumed unchanged since; an older version run on it in between and
+ * a retry within this window keeps the earlier copy (logged with its time).
+ */
+export const PRE_UPGRADE_REUSE_MS = 30 * 60 * 1000;
+/**
+ * The verification of a backup before an upgrade: every table read back, and storage asked for
+ * an even sample of this many files only, within PRE_UPGRADE_VERIFY_MS. It is the way back for
+ * the database; the files stay where they are.
+ */
+const PRE_UPGRADE_VERIFY_SAMPLE = 100;
+const PRE_UPGRADE_VERIFY_MS = 5 * 60 * 1000;
+
+/**
+ * Lists archives written before an upgrade that the history does not know: those of a start
+ * whose migrations failed, or of a database restored since. Retention then keeps the newest.
+ */
+async function adoptPreUpgradeArchives(
+  db: Database,
+  dir: string,
+  deps: Pick<BackupDeps, 'bucket' | 'storage'>,
+) {
+  const names = (await readdir(dir).catch(() => [] as string[])).filter(
+    (n) => n.startsWith(PRE_UPGRADE) && n.endsWith('.zip'),
+  );
+  if (names.length === 0) return;
+  const known = new Set(
+    (
+      await db
+        .select({ fileName: instanceBackup.fileName })
+        .from(instanceBackup)
+        .where(inArray(instanceBackup.fileName, names))
+    ).map((r) => r.fileName),
+  );
+  for (const fileName of names) {
+    if (known.has(fileName)) continue;
+    const info = await stat(join(dir, fileName)).catch(() => null);
+    if (!info) continue;
+    // Retention removes the bucket copy only when the row says there is one.
+    const copiedToBucket = deps.bucket
+      ? (await deps.storage.size(`${BUCKET_PREFIX}${fileName}`).catch(() => null)) !== null
+      : false;
+    await db.insert(instanceBackup).values({
+      trigger: 'pre-upgrade',
+      status: 'ready',
+      fileName,
+      copiedToBucket,
+      size: info.size,
+      startedAt: info.mtime,
+      heartbeatAt: info.mtime,
+      finishedAt: info.mtime,
+    });
+  }
+}
+
+/**
+ * The step `runMigrations` runs before pending migrations (#805): a database backup on the
+ * schema as the previous version left it, in the usual format, read back and verified, in the
+ * usual folder (and bucket). A recent archive of the same schema state is reused, and at most
+ * one per state kept. Its history row is written once the migrations applied (the table may
+ * not have its newest columns before), with an audit event, both best effort. A failure stops
+ * the start before anything is migrated; `skip` (SKIP_PRE_MIGRATION_BACKUP) only logs.
+ */
+export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip?: boolean } = {}) {
+  const { log } = deps;
+  return async (
+    sql: postgres.Sql,
+    pending: { applied: number; pending: number },
+  ): Promise<((db: Database) => Promise<void>) | undefined> => {
+    if (opts.skip) {
+      log.warn(
+        pending,
+        'migrations pending: backup before them skipped (SKIP_PRE_MIGRATION_BACKUP)',
+      );
+      return undefined;
+    }
+    const dir = backupsDir(deps.dataDir);
+    const prefix = preUpgradePrefix(pending.applied, await databaseFingerprint(sql));
+    const listed = await readdir(dir).catch(() => [] as string[]);
+    // Under the migration lock no other start writes one: a `.partial` is from a killed start.
+    for (const name of listed)
+      if (name.startsWith(PRE_UPGRADE) && name.endsWith('.partial'))
+        await rm(join(dir, name), { force: true }).catch(() => {});
+    // Named with the time: the last in order is the newest.
+    const same = listed.filter((n) => n.startsWith(prefix) && n.endsWith('.zip')).sort();
+    const newest = same.at(-1);
+    const newestAt = newest ? (await stat(join(dir, newest)).catch(() => null))?.mtime : undefined;
+    const adopt = async (db: Database) => {
+      try {
+        await adoptPreUpgradeArchives(db, dir, deps);
+        await applyBackupRetention({ db, storage: deps.storage, dataDir: deps.dataDir });
+      } catch (err) {
+        // The archives are complete on disk: only the history misses them.
+        log.error({ err, dir }, 'backups before the migrations written but not listed');
+      }
+    };
+    if (newest && newestAt && Date.now() - newestAt.getTime() < PRE_UPGRADE_REUSE_MS) {
+      log.warn(
+        { ...pending, file: join(dir, newest), writtenAt: newestAt.toISOString() },
+        'migrations pending: reusing the backup an earlier start wrote before them (that ' +
+          'start did not finish migrating: its log has the error)',
+      );
+      return adopt;
+    }
+    log.info(pending, 'migrations pending: backing up the database before applying them');
+    const id = randomUUID();
+    const startedAt = new Date();
+    const fileName = `${prefix}${stamp(startedAt)}-${id.slice(0, 8)}.zip`;
+    const partial = join(dir, `${fileName}.partial`);
+    let written: Awaited<ReturnType<typeof dumpDatabase>>;
+    let verified: Awaited<ReturnType<typeof verifyBackup>>;
+    try {
+      await mkdir(dir, { recursive: true, mode: 0o700 });
+      await chmod(dir, 0o700).catch(() => {});
+      const needed = preUpgradeSpaceNeeded(await liveTableBytes(sql));
+      const disk = await statfs(dir);
+      const free = Number(disk.bavail) * Number(disk.bsize);
+      if (free < needed)
+        throw new Error(
+          `not enough free space in ${dir}: about ${mib(needed)} needed, ${mib(free)} free`,
+        );
+      // Timeouts 0 (UNLIMITED_SESSION) on its own connection. No stall watch: start-up waits.
+      written = await dumpDatabase(deps, partial, {
+        moved: () => {},
+        connected: () => {},
+        signal: new AbortController().signal,
+      });
+      verified = await verifyBackup(partial, deps.storage, {
+        signal: AbortSignal.timeout(deps.verifyBudgetMs ?? PRE_UPGRADE_VERIFY_MS),
+        sample: PRE_UPGRADE_VERIFY_SAMPLE,
+      });
+      await rename(partial, join(dir, fileName));
+    } catch (err) {
+      await rm(partial, { force: true }).catch(() => {});
+      log.error({ err }, 'backup before the migrations failed: nothing migrated');
+      throw new Error(
+        `The backup before the database upgrade failed (${(err as Error).message}). Nothing ` +
+          'was migrated: the database is as the previous version left it. Fix the cause and ' +
+          'start again, or set SKIP_PRE_MIGRATION_BACKUP=true to upgrade without it (take a ' +
+          'backup yourself first): see ' +
+          'https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/upgrades.md#the-backup-before-an-upgrade',
+        { cause: err },
+      );
+    }
+    // One archive per schema state: the new one replaces older copies of the same state.
+    for (const old of same) {
+      await rm(join(dir, old), { force: true }).catch(() => {});
+      if (deps.bucket) await deps.storage.remove([`${BUCKET_PREFIX}${old}`]).catch(() => {});
+    }
+    const copied = await copyToBucket(deps, id, fileName);
+    const file = join(dir, fileName);
+    log.info(
+      { file, size: written.size, complete: verified.complete, missing: verified.missing.count },
+      'backup before the migrations written',
+    );
+    return async (db) => {
+      try {
+        await db.insert(instanceBackup).values({
+          id,
+          trigger: 'pre-upgrade',
+          status: 'ready',
+          fileName,
+          size: written.size,
+          copiedToBucket: copied,
+          fileCount: written.files.count,
+          fileBytes: written.files.bytes,
+          startedAt,
+          heartbeatAt: startedAt,
+          finishedAt: new Date(),
+          verifiedAt: new Date(),
+          missingFiles: verified.missing.count,
+          checkedFiles: verified.checked,
+          unverifiedFiles: verified.unverified,
+          verifyComplete: verified.complete,
+        });
+        await recordAudit(db, {
+          action: 'backup.started',
+          targetType: 'backup',
+          targetId: id,
+          details: { kind: 'pre-upgrade', files: written.files.count, ...pending },
+        }).catch((err) => log.error({ err }, 'audit of the backup before the migrations failed'));
+      } catch (err) {
+        log.error({ err, file }, 'backup before the migrations written but not listed');
+      }
+      await adopt(db);
+    };
+  };
 }
 
 /** Counts rows of COPY text output: one line each, newlines inside values are escaped. */
@@ -595,7 +874,7 @@ export function copyWritable(
 }
 
 async function dumpDatabase(
-  deps: BackupDeps,
+  deps: Pick<BackupDeps, 'databaseUrl' | 'migrationsFolder'>,
   path: string,
   hooks: { moved: () => void; connected: (pid: number) => void; signal: AbortSignal },
 ) {
@@ -673,14 +952,20 @@ async function dumpDatabase(
         let count = 0;
         let bytes = 0;
         const filesHash = createHash('sha256');
+        // The backup before an upgrade (#805) dumps the schema of any older release: feedback
+        // attachments only exist from migration 0027 (0.9).
+        const [feedback] = await tx<{ ok: boolean }[]>`
+        select to_regclass('public.feedback_attachment') is not null as ok`;
         const pages = tx<{ key: string; size: string | null; sha256: string | null }[]>`
         select storage_key as key, size::text, sha256 from asset where status <> 'pending'
         union all
         select storage_key, null, null from asset_variant where size <> 'proxy'
-        union all
-        select 'feedback/' || id, bytes::text, null from feedback_attachment where expires_at > now()`.cursor(
-          1000,
-        );
+        ${
+          feedback?.ok
+            ? tx`union all
+        select 'feedback/' || id, bytes::text, null from feedback_attachment where expires_at > now()`
+            : tx``
+        }`.cursor(1000);
         async function* fileLines() {
           for await (const rows of pages) {
             let out = '';

@@ -4752,6 +4752,13 @@
               "manual"
             ]
           },
+          "beforeUpgrade": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Written at start before the migrations of an upgrade (#805), with `trigger` `scheduled`. Kept apart from the nightly retention (the two newest). Absent otherwise and on older servers."
+          },
           "status": {
             "type": "string",
             "enum": [

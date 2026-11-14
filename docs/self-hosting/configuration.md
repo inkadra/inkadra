@@ -46,10 +46,11 @@ in Settings override them.
 `TZ` sets the container time zone used for scheduled backups (UTC unless configured). It is
 not forwarded by default. The image bundles Node 26.13; the host does not need Node.
 
-| Variable                | Default | Meaning                                                                                                               |
-| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| `PRODUCTION_BOARD_MOVE` | `true`  | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main) |
-| `OFFICE_PREVIEWS`       | off     | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md)          |
+| Variable                    | Default | Meaning                                                                                                                                    |
+| --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PRODUCTION_BOARD_MOVE`     | `true`  | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main)                      |
+| `SKIP_PRE_MIGRATION_BACKUP` | `false` | `true` or `false` only. `true` starts an upgrade without the [database backup before migrations](upgrades.md#the-backup-before-an-upgrade) |
+| `OFFICE_PREVIEWS`           | off     | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md)                               |
 
 Upload and import size units below use powers of 1024 (`1GB` = 1 GiB). Storage quota units
 use powers of 1000. Boolean settings accept `true` or `false` unless stated otherwise.

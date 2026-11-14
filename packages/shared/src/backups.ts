@@ -35,6 +35,15 @@ export const InstanceBackup = z
   .object({
     id: Id,
     trigger: z.enum(['scheduled', 'manual']),
+    beforeUpgrade: z
+      .literal(true)
+      .optional()
+      .openapi({
+        description:
+          'Written at start before the migrations of an upgrade (#805), with `trigger` ' +
+          '`scheduled`. Kept apart from the nightly retention (the two newest). Absent otherwise ' +
+          'and on older servers.',
+      }),
     status: z.enum(['running', 'ready', 'failed']),
     fileName: z.string().nullable().openapi({
       description: 'Name of the archive in `DATA_DIR/backups` (and `backups/` of the bucket).',
