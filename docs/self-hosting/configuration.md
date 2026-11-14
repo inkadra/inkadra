@@ -55,7 +55,7 @@ not forwarded by default. The image bundles Node 26.13; the host does not need N
 | `BACKUP_S3_ENDPOINT`                                     | AWS                  | Address of that S3-compatible service                                                                                                      |
 | `BACKUP_S3_REGION`                                       | `us-east-1`          | Region of that bucket                                                                                                                      |
 | `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` |                      | Keys of that bucket, set together. Only here: never stored in the database nor logged                                                      |
-| `BACKUP_S3_PREFIX`                                       | `backups/`           | Folder in the bucket, ending with `/`; the first part in lower-case letters only                                                                                    |
+| `BACKUP_S3_PREFIX`                                       | `backups/`           | Folder in the bucket, ending with `/`; the first part in lower-case letters only                                                           |
 | `BACKUP_S3_FORCE_PATH_STYLE`                             | `false`              | `true` for MinIO, RustFS, Garage and most self-hosted stores                                                                               |
 | `OFFICE_PREVIEWS`                                        | off                  | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md)                               |
 
