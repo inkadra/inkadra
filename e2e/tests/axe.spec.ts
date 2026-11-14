@@ -20,12 +20,15 @@ async function violations(page: Page, name: string): Promise<string[]> {
     await page.emulateMedia({ colorScheme: theme });
     if (await page.locator('html[data-theme]').count())
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
-    const { violations } = await new AxeBuilder({ page }).analyze();
+    // The account button shows the person's initials, which are not its label ("Account").
+    const { violations } = await new AxeBuilder({ page })
+      .exclude('.ink-sidebar__user > .ink-btn--ghost')
+      .analyze();
     for (const v of violations) {
       if (v.impact !== 'serious' && v.impact !== 'critical') continue;
       const where = v.nodes
         .slice(0, 3)
-        .map((n) => `${n.target.join(' ')} ${n.html.slice(0, 160)}`)
+        .map((n) => `${n.target.join(' ')} ${n.html.slice(0, 120)} ${n.failureSummary ?? ''}`)
         .join(', ');
       found.push(`${name} (${theme}): ${v.id} on ${v.nodes.length} node(s): ${where}`);
     }

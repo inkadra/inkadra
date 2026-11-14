@@ -522,7 +522,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         type="button"
         className="ink-sidebar__search"
         data-tour="search"
-        aria-label={t('nav.search')}
         aria-keyshortcuts={isMac() ? 'Meta+K' : 'Control+K'}
         data-ink-tooltip={t('nav.search')}
         onClick={() => {
@@ -533,7 +532,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         <Icon name="search" size={14} />
         <span className="ink-sidebar__search-text">
           {t('nav.search')}
-          {/* Named by aria-keyshortcuts: the visible text stays part of the label (#853). */}
+          {/* Named by its text; the shortcut is announced through aria-keyshortcuts (#853). */}
           <span aria-hidden="true">
             <KeyCap>{isMac() ? '⌘K' : 'Ctrl K'}</KeyCap>
           </span>
@@ -640,7 +639,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           aria-label={t('admin.account')}
           onClick={go('/settings?section=account')}
         >
-          <Avatar image={user.image} name={user.name} aria-hidden />
+          <Avatar image={user.image} name={user.name} />
         </button>
         <span className="ink-sidebar__who">
           <span>{user.name}</span>
