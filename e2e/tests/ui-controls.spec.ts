@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './perf/seed.ts';
 
-const out = fileURLToPath(new URL('../../docs/screenshots/ui-controls-2/', import.meta.url));
+const out = fileURLToPath(new URL('../test-results/screenshots/ui-controls-2/', import.meta.url));
 const account = {
   name: 'Giulia Bianchi',
   email: 'giulia@example.com',

@@ -89,6 +89,35 @@ export function authSecurity(config: Config, log?: Logger) {
   }
   return {
     reportError,
+    /** Atomic sliding product windows, including refundable in-flight password checks. */
+    async sliding(
+      id: string,
+      max: number,
+      windowMs: number,
+      operation: 'check' | 'take' | 'refund' | 'fail',
+      token: string,
+    ) {
+      if (!redis) throw new Error('Shared budgets need Valkey');
+      const result = (await redis.eval(
+        `local t=redis.call('TIME'); local now=t[1]*1000+math.floor(t[2]/1000)
+         redis.call('ZREMRANGEBYSCORE',KEYS[1],'-inf',now-ARGV[1])
+         if ARGV[3]=='refund' then redis.call('ZREM',KEYS[1],ARGV[4]) end
+         if ARGV[3]=='fail' and redis.call('ZSCORE',KEYS[1],ARGV[4]) then redis.call('ZADD',KEYS[1],now,ARGV[4]); redis.call('PEXPIRE',KEYS[1],ARGV[1]) end
+         local n=redis.call('ZCARD',KEYS[1]); local allowed=n<tonumber(ARGV[2])
+         if allowed and ARGV[3]=='take' then
+           redis.call('ZADD',KEYS[1],now,ARGV[4]); redis.call('PEXPIRE',KEYS[1],ARGV[1])
+         end
+         local oldest=redis.call('ZRANGE',KEYS[1],0,0,'WITHSCORES')
+         return {allowed and 1 or 0, (not allowed and oldest[2]) and math.max(1,math.ceil((oldest[2]+ARGV[1]-now)/1000)) or 0}`,
+        1,
+        key(`product:${id}`),
+        windowMs,
+        max,
+        operation,
+        token,
+      )) as [number, number];
+      return { allowed: result[0] === 1, retryAfter: result[1] };
+    },
     async ready() {
       if (!redis || redis.status === 'ready') return;
       await new Promise<void>((resolve, reject) => {

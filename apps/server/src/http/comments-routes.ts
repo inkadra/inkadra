@@ -272,7 +272,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     ? (boardId: string, elementId: string) => boardReader.element(boardId, elementId)
     : (boardId: string, elementId: string) => storedElement(db, boardId, elementId);
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const limiter = new RateLimiter(COMMENTS_PER_MINUTE, 60_000);
+  const limiter = new RateLimiter(COMMENTS_PER_MINUTE, 60_000, 'comments-routes:limiter');
 
   async function readableBoard(actor: Actor, boardId: string) {
     const access = await boardAccess(db, actor, boardId);
@@ -350,7 +350,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     const viewer: Viewer = { actorId: actor.id, role: access.role };
     requireWriter(viewer);
     // Before any lookup, retries included: a flood must not cost queries.
-    limiter.require(actor.id, 'Too many comments: wait a minute.');
+    await limiter.require(actor.id, 'Too many comments: wait a minute.');
 
     const pendingCard =
       input.elementId && !input.parentId ? await readElement(boardId, input.elementId) : null;
@@ -507,7 +507,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     if (row.authorId !== actor.id)
       throw new HttpError('forbidden', 'Only the author can edit a comment.');
     requireWriter(viewer);
-    limiter.require(actor.id, 'Too many comment writes: wait a minute.');
+    await limiter.require(actor.id, 'Too many comment writes: wait a minute.');
     const mentions = await readableMentions(db, row.boardId, input.body);
     const [updated] = await db
       .update(comment)
@@ -603,7 +603,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     });
   }
 
-  const reactionsPerMinute = new RateLimiter(120, 60_000);
+  const reactionsPerMinute = new RateLimiter(120, 60_000, 'comments-routes:reactionsPerMinute');
   for (const on of [true, false]) {
     app.route({
       method: on ? 'PUT' : 'DELETE',
@@ -614,7 +614,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         const { row, viewer } = await readableComment(actor, commentId);
         requireWriter(viewer);
         if (row.deletedAt) throw new HttpError('not_found', 'Comment not found.');
-        reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
+        await reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
         const changed = on
           ? await db
               .insert(commentReaction)
@@ -650,7 +650,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
         // Taking a reaction back works on a card that has since been removed.
         if (on && !(await readElement(boardId, elementId)))
           throw new HttpError('not_found', 'Card not found.');
-        reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
+        await reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
         const changed = on
           ? await db
               .insert(elementReaction)

@@ -10,7 +10,7 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts'
 
 const out =
   process.env.FRAMES_SCREENSHOTS ??
-  fileURLToPath(new URL('../../docs/screenshots/0.6-frame-grab/', import.meta.url));
+  fileURLToPath(new URL('../test-results/screenshots/0.6-frame-grab/', import.meta.url));
 
 /** The clip must outlast the seek target plus a few frame steps, however loaded the runner is. */
 const MIN_FOOTAGE_SECONDS = 1;

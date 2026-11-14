@@ -3,12 +3,12 @@ import { Avatar, Icon, type IconName } from '@inkadra/ui';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { api, authApi } from '../lib/api.ts';
+import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { signOut } from '../lib/sign-out.ts';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { usePendingUpdate } from '../lib/updates.ts';
 import { useInstanceSettings, useStorageUsage } from './InstanceSettings.tsx';
-import { setCachedProjects } from './projects.ts';
 import { SettingsSearch } from './SettingsSearch.tsx';
 import { setupAttention } from './SettingsShell.tsx';
 import { formatStorage } from './StorageCharts.tsx';
@@ -132,7 +132,7 @@ function AdminGroups({ setup }: { setup: Setup }) {
  */
 export function SettingsHome({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
-  const { user, refresh, version } = useSession();
+  const { user, version } = useSession();
   const { preference, choose } = useTheme();
   const [email, setEmail] = useState<NotificationPreferences['email'] | null>(null);
   useEffect(() => {
@@ -145,11 +145,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
       alive = false;
     };
   }, []);
-  async function signOut() {
-    await authApi.signOut();
-    setCachedProjects(null);
-    await refresh();
-  }
+  const [signOutFailed, setSignOutFailed] = useState(false);
   const admin = user?.role === 'admin';
   return (
     <div className="settings-home">
@@ -189,9 +185,18 @@ export function SettingsHome({ setup }: { setup: Setup }) {
           />
         </Group>
         {admin && <AdminGroups setup={setup} />}
-        <button type="button" className="settings-home__signout" onClick={() => void signOut()}>
+        <button
+          type="button"
+          className="settings-home__signout"
+          onClick={() => signOut().catch(() => setSignOutFailed(true))}
+        >
           {t('auth.signOut')}
         </button>
+        {signOutFailed && (
+          <p role="alert" className="settings-home__signout-error">
+            {t('auth.signOutFailed')}
+          </p>
+        )}
         <p className="settings-home__version">Inkadra {version} · AGPL-3.0</p>
       </SettingsSearch>
     </div>

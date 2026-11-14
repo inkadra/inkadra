@@ -252,7 +252,7 @@ function ReviewSection({ elementId }: { elementId: string }) {
           actions.notify(t(`guest.review.done.${value}`));
         }
       } catch (err) {
-        actions.notify(err instanceof Error ? err.message : t('guest.errors.generic'));
+        actions.notify(actions.fail(err));
       } finally {
         setBusy(false);
       }

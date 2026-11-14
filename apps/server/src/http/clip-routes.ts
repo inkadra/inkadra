@@ -186,7 +186,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     config: deps.config,
   };
   // Each clip can fetch two addresses or store a large file.
-  const limiter = new RateLimiter(30, 60_000);
+  const limiter = new RateLimiter(30, 60_000, 'clip-routes:limiter');
   const imageMax =
     deps.uploadMaxSize > 0 ? Math.min(deps.uploadMaxSize, FETCHED_IMAGE_MAX) : FETCHED_IMAGE_MAX;
 
@@ -356,7 +356,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
       const boards = deps.boards;
       if (!boards)
         throw new HttpError('internal', 'Clips need the collaboration server: set REDIS_URL.');
-      limiter.require(actor.id, 'Too many clips: wait a minute.');
+      await limiter.require(actor.id, 'Too many clips: wait a minute.');
 
       const checked = new Map<string, ReturnType<typeof requireBoardRole>>();
       const check = (boardId: string) => {
@@ -437,7 +437,9 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
         if (!placed.ok)
           throw placed.reason === 'column'
             ? new HttpError('bad_request', 'The column is not on this board.')
-            : new HttpError('internal', 'The board could not be reached in time: try again.');
+            : placed.reason === 'full'
+              ? new HttpError('conflict', 'This board has reached its size limit.')
+              : new HttpError('internal', 'The board could not be reached in time: try again.');
         // On the board now: from here the assets are the card's, and the clip has succeeded.
         await process(created.splice(0), req.log);
         // A history failure must never turn a confirmed clip into a retryable failure.

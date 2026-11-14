@@ -28,6 +28,7 @@
     "passwordHint": "At least 10 characters",
     "createAdmin": "Create account and sign in",
     "signOut": "Sign out",
+    "signOutFailed": "Could not sign out. Check the connection and try again.",
     "errors": {
       "reauthRequired": "Sign in again to continue.",
       "invalid": "Wrong email or password.",
@@ -218,6 +219,10 @@
     "title": "Something went wrong",
     "body": "The page stopped working. Changes already synced are safe; reload to reconnect.",
     "retry": "Try again",
+    "unreachableTitle": "Can’t reach the server",
+    "unreachableBody": "Inkadra will try again by itself. Check the connection, or wait a moment if the server is restarting.",
+    "updateTitle": "Inkadra has been updated",
+    "updateBody": "Reload the page to open the new version.",
     "copy": "Copy details",
     "copied": "Details copied",
     "id": "Error ID {{id}}",
@@ -1912,7 +1917,9 @@
         "right": "Right"
       },
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
-      "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it."
+      "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it.",
+      "sizeLimit": "This board has reached its size limit. Additions were not saved; the board has been reloaded. You can delete content to make room.",
+      "sizeLimitReadOnly": "This board has reached its size limit and is read-only. Additions were not saved."
     },
     "sheet": {
       "edit": "Edit",
@@ -2011,7 +2018,8 @@
       "original": "Original",
       "live": "live",
       "liveCopy": "copy at {{percent}}%",
-      "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it."
+      "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it.",
+      "liveOnlyNote": "«Live» qualities are converted by the graphics card as you watch, without storing a copy."
     }
   },
   "search": {
@@ -5301,6 +5309,10 @@
           "4": {
             "title": "The board’s views",
             "text": "Turn on this board’s moodboard from the ⋯ menu. A view that is off keeps its data."
+          },
+          "5": {
+            "title": "Board size limits",
+            "text": "If this board reaches its size limit, additions are refused and the confirmed board reloads. Delete content to make room; if it still does not fit, ask the administrator to raise the limit."
           }
         }
       },
@@ -6079,6 +6091,14 @@
         "server_error": {
           "title": "The server had an error",
           "text": "A request did not go through. If it keeps happening, send it to the developers."
+        },
+        "board_save_failed": {
+          "title": "A board was not saved",
+          "text": "Its latest edits are kept in memory only. Check the database; restarting before it is back loses them."
+        },
+        "board_load_failed": {
+          "title": "A board did not open",
+          "text": "People cannot open it right now. Check the database and the server log."
         },
         "config_check": {
           "title": "Configuration to fix",

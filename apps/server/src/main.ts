@@ -47,6 +47,7 @@ import {
   startBoardWorker,
   startWorkers,
 } from './queues.ts';
+import { configureRateLimits } from './rate-limits.ts';
 import { startIndexBackfill } from './search/index-doc.ts';
 import { closeAll, SHUTDOWN_DEADLINE_MS, settledWithin, WORKER_CLOSE_MS } from './shutdown.ts';
 import { createStorage } from './storage.ts';
@@ -77,8 +78,13 @@ async function main() {
   }
 
   const config = loadConfig();
-  /** The demo's caps on boards and their versions (decision 0084); none elsewhere. */
-  const limits = config.DEMO_MODE ? DEMO_COLLAB_LIMITS : undefined;
+  const limits = config.DEMO_MODE
+    ? DEMO_COLLAB_LIMITS
+    : {
+        maxPayload: 16 * 1024 * 1024,
+        stateBytes: config.BOARD_MAX_STATE_BYTES,
+        elements: config.BOARD_MAX_ELEMENTS,
+      };
   const log = pino({ level: config.LOG_LEVEL, base: { service: command } });
   log.info({ version: VERSION }, 'starting inkadra');
 
@@ -191,7 +197,9 @@ async function main() {
       : {}),
   };
   const transfers = transferDeps(config);
+  const closeRateLimits = await configureRateLimits(config, log);
   const closers: Array<() => Promise<unknown>> = [
+    async () => closeRateLimits(),
     async () => auth.closeSecurity(),
     () => sql.end({ timeout: 5 }),
   ];
@@ -230,6 +238,7 @@ async function main() {
       log,
       publicUrl: config.PUBLIC_URL,
       trustProxy: config.TRUST_PROXY,
+      monitor: { store: monitor, role: command },
       ...(limits ? { limits } : {}),
       unsavedDir: unsavedBoardsDir(config.DATA_DIR),
     });
@@ -248,7 +257,7 @@ async function main() {
           directBoardWriter(server, log),
           log,
           {
-            versions: directVersionWriter(server, db, log, limits),
+            versions: directVersionWriter(server, db, log, config.DEMO_MODE ? limits : undefined),
             notices: directBoardNotifier(server),
             reader: directBoardReader(server, db),
           },
@@ -265,7 +274,7 @@ async function main() {
     let jobs: Jobs;
     let queueHandles: ReturnType<typeof createQueues> | undefined;
     if (config.REDIS_URL) {
-      const queues = createQueues(config.REDIS_URL);
+      const queues = createQueues(config.REDIS_URL, { log });
       queueHandles = queues;
       jobs = queues.jobs;
       closers.unshift(() => queues.close());
@@ -294,7 +303,7 @@ async function main() {
     if (collab) {
       boards = directBoardWriter(collab, log);
       boardReader = directBoardReader(collab, db);
-      versions = directVersionWriter(collab, db, log, limits);
+      versions = directVersionWriter(collab, db, log, config.DEMO_MODE ? limits : undefined);
       notices = directBoardNotifier(collab);
     } else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
@@ -485,6 +494,10 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
 }
 
 main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+  // pino's `err` serializer keeps the stack and the `cause` chain (a failed migration's real
+  // PostgreSQL error is the cause of drizzle's "Failed query"). The configured logger may not
+  // exist yet (a config error), so this one is standalone.
+  const log = pino({ base: { service: process.argv[2] ?? 'all' } });
+  log.fatal({ err }, 'inkadra failed to start');
   process.exit(1);
 });

@@ -18,7 +18,7 @@ import { signIn } from '../tests/perf/seed.ts';
 const base = (process.env.SHOTS_BASE_URL ?? 'http://localhost:3100').replace(/\/+$/, '');
 const out =
   process.env.SHOTS_OUT ??
-  fileURLToPath(new URL('../../docs/screenshots/0.9.0-server-page', import.meta.url));
+  fileURLToPath(new URL('../test-results/screenshots/0.9.0-server-page', import.meta.url));
 const account = {
   name: 'Giulia Bianchi',
   email: 'giulia@example.com',
