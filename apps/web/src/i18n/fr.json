@@ -3103,7 +3103,7 @@
       "body": "Supprime le compte et les projets où il n’y a personne d’autre. Cette action est irréversible.",
       "open": "Supprimer le compte…",
       "confirmTitle": "Supprimer le compte ?",
-      "confirmBody": "Les projets dont vous êtes le seul membre sont supprimés avec tous leurs fichiers. Dans les projets partagés, le travail reste, sans vous.",
+      "confirmBody": "Les projets dont vous êtes le seul membre sont supprimés avec tous leurs fichiers. Dans les projets partagés, le travail reste, sans vous. Les fichiers supprimés restent dans les sauvegardes du serveur jusqu’à la fin de leur conservation (7 sauvegardes nocturnes par défaut, 91 jours au plus).",
       "fresh": "Par sécurité, vous devez vous être connecté au cours des 15 dernières minutes : déconnectez-vous et reconnectez-vous si besoin.",
       "blocked": "Vous êtes le seul propriétaire de ces projets partagés : nommez d’abord un autre propriétaire.",
       "confirm": "Supprimer définitivement"
@@ -3753,7 +3753,8 @@
       "apps": "Ce qui se connecte à votre compte depuis l’extérieur : calendrier, extension du navigateur, jetons.",
       "instance": "Le nom de l’instance et ce qu’il reste pour terminer la configuration.",
       "reports": "Où vont les signalements envoyés depuis « Signaler un problème », et ceux reçus.",
-      "video": "Inkadra prépare des copies plus légères des vidéos, en plusieurs résolutions : chacun reçoit celle qui convient à sa connexion. Les originaux ne sont jamais modifiés."
+      "video": "Inkadra prépare des copies plus légères des vidéos, en plusieurs résolutions : chacun reçoit celle qui convient à sa connexion. Les originaux ne sont jamais modifiés.",
+      "audit": "Qui a changé les rôles, les membres, le partage, les réglages et les jetons, ce qui a été supprimé ou sauvegardé, et quelles connexions ont échoué."
     },
     "autosave": {
       "idle": "Enregistrement automatique",
@@ -4236,7 +4237,7 @@
   },
   "backups": {
     "title": "Sauvegardes",
-    "cardLead": "Chaque sauvegarde contient toute la base de données. Les fichiers restent à leur place : sauvegardez aussi le volume de données ou le bucket.",
+    "cardLead": "Chaque sauvegarde contient toute la base de données et est relue après écriture. Les fichiers restent où ils sont : sauvegardez aussi le volume de données ou le bucket. Les fichiers supprimés restent tant qu’une sauvegarde gardée en a besoin.",
     "now": "Sauvegarder maintenant",
     "running": "Sauvegarde en cours…",
     "busy": "Une sauvegarde est déjà en cours.",
@@ -4275,9 +4276,18 @@
       "no_space": "Le volume de données est plein.",
       "permission": "Le serveur ne peut pas écrire dans son dossier de données (DATA_DIR/backups).",
       "internal": "Une erreur s’est produite. Le journal du serveur en indique la cause, avec l’id de cette sauvegarde.",
-      "inconsistent": "Des tableaux ou des commentaires se référencent en boucle et ne peuvent pas être enregistrés dans l’ordre. Le journal du serveur indique la table."
+      "inconsistent": "Des tableaux ou des commentaires se référencent en boucle et ne peuvent pas être enregistrés dans l’ordre. Le journal du serveur indique la table.",
+      "corrupt": "L’archive relue ne correspond pas à ce qui a été écrit : elle n’a pas été gardée. Vérifiez le volume de données."
     },
-    "notInBucket": "Conservée uniquement sur le serveur : la copie dans le bucket a échoué."
+    "notInBucket": "Conservée uniquement sur le serveur : la copie dans le bucket a échoué.",
+    "verified": "vérifiée",
+    "missingFiles_one": "{{count}} fichier listé manque dans le stockage : une restauration ne l’aurait pas.",
+    "missingFiles_other": "{{count}} fichiers listés manquent dans le stockage : une restauration ne les aurait pas.",
+    "verifyIncomplete": "vérification incomplète",
+    "verifiedSample_one": "vérifiée sur un échantillon de {{count}} fichier",
+    "verifiedSample_other": "vérifiée sur un échantillon de {{count}} fichiers",
+    "unverifiedFiles_one": "{{count}} fichier listé n’a pas pu être vérifié : le stockage a répondu par une erreur.",
+    "unverifiedFiles_other": "{{count}} fichiers listés n’ont pas pu être vérifiés : le stockage a répondu par une erreur."
   },
   "export": {
     "title": "Exporter",
@@ -5907,6 +5917,23 @@
             "text": "Pour les experts : refaites le test de la carte, changez les sessions à la volée et les valeurs de chaque résolution. «Rétablir» revient au conseillé."
           }
         }
+      },
+      "audit": {
+        "name": "Journal d’activité",
+        "steps": {
+          "0": {
+            "title": "Qui a fait quoi",
+            "text": "Les changements de personnes, de partage et de réglages, avec qui et quand."
+          },
+          "1": {
+            "title": "Affiner",
+            "text": "N’afficher que les personnes, le partage, les connexions ou les données."
+          },
+          "2": {
+            "title": "Gardé un an",
+            "text": "Les événements plus anciens s’effacent seuls."
+          }
+        }
       }
     }
   },
@@ -6763,6 +6790,47 @@
       "customPreset": "Personnalisée",
       "customNote": "Certaines valeurs ont été changées dans les paramètres avancés.",
       "resetAll": "Revenir aux valeurs du niveau"
+    }
+  },
+  "audit": {
+    "title": "Journal d’activité",
+    "filter": "Afficher",
+    "events": "Événements",
+    "none": "Rien d’enregistré pour l’instant.",
+    "loadError": "Le journal d’activité n’a pas pu être chargé.",
+    "more": "Afficher les précédents",
+    "nobody": "Quelqu’un de non connecté",
+    "deletedAccount": "Un compte supprimé",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Les événements sont gardés {{count}} jour.",
+    "retention_other": "Les événements sont gardés {{count}} jours.",
+    "groups": {
+      "all": "Tout",
+      "members": "Personnes",
+      "sharing": "Partage",
+      "security": "Connexion et jetons",
+      "data": "Données et réglages"
+    },
+    "actions": {
+      "member_updated": "Membre modifié",
+      "settings_changed": "Réglages modifiés",
+      "project_deleted": "Projet supprimé",
+      "project_member_set": "Membre du projet ajouté ou modifié",
+      "project_member_removed": "Membre du projet retiré",
+      "board_grant_set": "Accès au tableau donné",
+      "board_grant_removed": "Accès au tableau retiré",
+      "invitation_created": "Invitation créée",
+      "invitation_revoked": "Invitation révoquée",
+      "share_link_created": "Lien de partage créé",
+      "share_link_changed": "Lien de partage modifié",
+      "share_link_removed": "Lien de partage désactivé",
+      "token_created": "Jeton créé",
+      "token_revoked": "Jeton révoqué",
+      "account_deleted": "Compte supprimé",
+      "backup_started": "Sauvegarde lancée",
+      "backup_restored": "Sauvegarde restaurée",
+      "auth_sign_in_failed": "Connexion échouée",
+      "auth_locked_out": "Connexion bloquée"
     }
   }
 }

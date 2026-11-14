@@ -1,9 +1,9 @@
 import { statfs } from 'node:fs/promises';
-import { desc, eq, gt, sql } from 'drizzle-orm';
+import { count, desc, eq, gt, max, sql } from 'drizzle-orm';
 import { readBackupSettings } from '../backup.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { asset, instanceBackup } from '../db/schema.ts';
+import { asset, instanceBackup, notification } from '../db/schema.ts';
 import { readLimits, reservedBytes } from '../storage-limits.ts';
 import { type AlertDeps, sendServerAlert } from './alerts.ts';
 import { type Beat, DAY_MS, lastHour, type StoredProblem } from './store.ts';
@@ -190,6 +190,46 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
         true,
       );
     }
+  }
+
+  // The verification found files the backup lists but storage lacks (#794): the backup is
+  // complete, a restore of it would not be. A warning on the Server page, no alert email.
+  if (backup?.status === 'ready' && backup.missingFiles && backup.finishedAt) {
+    const id = `backup_files_missing:${backup.id}`;
+    if (!problems.has(id) && now - backup.finishedAt.getTime() < 7 * DAY_MS)
+      await store.record({
+        id,
+        kind: 'backup_failed',
+        severity: 'warning',
+        role: 'worker',
+        technical: `worker · maintenance · backup\n${backup.missingFiles} listed files missing from storage`,
+        assetId: null,
+        service: null,
+        job: null,
+        at: backup.finishedAt.getTime(),
+      });
+  }
+
+  // Notification emails given up after every retry (#812): never sent, so a warning on the
+  // Server page, one a day while it goes on.
+  const [givenUp] = await db
+    .select({ n: count(), last: max(notification.emailFailedAt) })
+    .from(notification)
+    .where(gt(notification.emailFailedAt, new Date(now - DAY_MS)));
+  if (givenUp?.n && givenUp.last) {
+    const id = `email_given_up:${new Date(now).toISOString().slice(0, 10)}`;
+    if (!problems.has(id))
+      await store.record({
+        id,
+        kind: 'email_failed',
+        severity: 'warning',
+        role: 'worker',
+        technical: `worker · notifications\n${givenUp.n} notification emails given up after every retry`,
+        assetId: null,
+        service: null,
+        job: null,
+        at: new Date(givenUp.last).getTime(),
+      });
   }
 
   // Schedulers live in Valkey: a flushed or evicted Valkey stops the nightly backup without a

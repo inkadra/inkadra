@@ -3103,7 +3103,7 @@
       "body": "Elimina l’account e i progetti in cui non c’è nessun altro. Non si può annullare.",
       "open": "Elimina account…",
       "confirmTitle": "Eliminare l’account?",
-      "confirmBody": "I progetti in cui sei da solo vengono eliminati con tutti i file. Nei progetti condivisi resta il lavoro, senza di te.",
+      "confirmBody": "I progetti in cui sei da solo vengono eliminati con tutti i file. Nei progetti condivisi resta il lavoro, senza di te. I file eliminati restano nei backup del server finché escono dalla conservazione dei backup (7 backup notturni di default, al massimo 91 giorni).",
       "fresh": "Per sicurezza, l’accesso deve essere avvenuto negli ultimi 15 minuti: se serve, esci e rientra.",
       "blocked": "Sei l’unico proprietario di questi progetti condivisi: nomina un altro proprietario prima.",
       "confirm": "Elimina definitivamente"
@@ -3753,7 +3753,8 @@
       "apps": "Quello che si collega al tuo account da fuori: calendario, estensione del browser, token.",
       "instance": "Il nome dell’istanza e quanto manca per finire la configurazione.",
       "reports": "Dove vanno le segnalazioni che le persone inviano da «Segnala un problema», e quelle ricevute.",
-      "video": "Inkadra prepara copie più leggere dei video, in più risoluzioni: chi guarda riceve quella adatta alla sua connessione. Gli originali non vengono mai toccati."
+      "video": "Inkadra prepara copie più leggere dei video, in più risoluzioni: chi guarda riceve quella adatta alla sua connessione. Gli originali non vengono mai toccati.",
+      "audit": "Chi ha cambiato ruoli, membri, condivisioni, impostazioni e token, cosa è stato eliminato o salvato, e quali accessi sono falliti."
     },
     "autosave": {
       "idle": "Salvataggio automatico",
@@ -4236,7 +4237,7 @@
   },
   "backups": {
     "title": "Backup",
-    "cardLead": "Ogni backup contiene l'intero database. I file restano dove sono: fai il backup anche del volume dati o del bucket.",
+    "cardLead": "Ogni backup contiene l'intero database e viene riletto dopo la scrittura. I file restano dove sono: fai il backup anche del volume dati o del bucket. I file eliminati restano finché un backup conservato ne ha bisogno.",
     "now": "Esegui backup ora",
     "running": "Backup in corso…",
     "busy": "C'è già un backup in corso.",
@@ -4275,9 +4276,18 @@
       "no_space": "Il volume dei dati è pieno.",
       "permission": "Il server non può scrivere nella sua cartella dati (DATA_DIR/backups).",
       "internal": "Qualcosa è andato storto. Il log del server dice cosa, con l'id di questo backup.",
-      "inconsistent": "Alcune board o commenti si indicano a vicenda in un ciclo e non si possono salvare in ordine. Il log del server indica la tabella."
+      "inconsistent": "Alcune board o commenti si indicano a vicenda in un ciclo e non si possono salvare in ordine. Il log del server indica la tabella.",
+      "corrupt": "L'archivio riletto non corrisponde a quanto scritto, quindi non è stato conservato. Controlla il volume dei dati."
     },
-    "notInBucket": "Conservato solo sul server: la copia nel bucket non è riuscita."
+    "notInBucket": "Conservato solo sul server: la copia nel bucket non è riuscita.",
+    "verified": "verificato",
+    "missingFiles_one": "Manca {{count}} file elencato nello spazio di archiviazione: un ripristino ne sarebbe privo.",
+    "missingFiles_other": "Mancano {{count}} file elencati nello spazio di archiviazione: un ripristino ne sarebbe privo.",
+    "verifyIncomplete": "verifica incompleta",
+    "verifiedSample_one": "verificato su un campione di {{count}} file",
+    "verifiedSample_other": "verificato su un campione di {{count}} file",
+    "unverifiedFiles_one": "{{count}} file elencato non è stato controllato: lo spazio di archiviazione ha risposto con un errore.",
+    "unverifiedFiles_other": "{{count}} file elencati non sono stati controllati: lo spazio di archiviazione ha risposto con un errore."
   },
   "export": {
     "title": "Esporta",
@@ -5907,6 +5917,23 @@
             "text": "Per esperti: rifai il test della scheda, cambia le sessioni al volo e i valori di ogni risoluzione. «Ripristina» torna al consigliato."
           }
         }
+      },
+      "audit": {
+        "name": "Registro attività",
+        "steps": {
+          "0": {
+            "title": "Chi ha fatto cosa",
+            "text": "Modifiche a persone, condivisioni e impostazioni, con chi e quando."
+          },
+          "1": {
+            "title": "Restringi",
+            "text": "Mostra solo persone, condivisione, accessi o dati."
+          },
+          "2": {
+            "title": "Resta un anno",
+            "text": "Gli eventi più vecchi si rimuovono da soli."
+          }
+        }
       }
     }
   },
@@ -6763,6 +6790,47 @@
       "customPreset": "Personalizzata",
       "customNote": "Alcuni valori sono cambiati nelle impostazioni avanzate.",
       "resetAll": "Torna ai valori della preset"
+    }
+  },
+  "audit": {
+    "title": "Registro attività",
+    "filter": "Mostra",
+    "events": "Eventi",
+    "none": "Ancora nessun evento registrato.",
+    "loadError": "Non è stato possibile caricare il registro attività.",
+    "more": "Mostra i precedenti",
+    "nobody": "Qualcuno non connesso",
+    "deletedAccount": "Un account eliminato",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Gli eventi restano per {{count}} giorno.",
+    "retention_other": "Gli eventi restano per {{count}} giorni.",
+    "groups": {
+      "all": "Tutto",
+      "members": "Persone",
+      "sharing": "Condivisione",
+      "security": "Accessi e token",
+      "data": "Dati e impostazioni"
+    },
+    "actions": {
+      "member_updated": "Membro modificato",
+      "settings_changed": "Impostazioni modificate",
+      "project_deleted": "Progetto eliminato",
+      "project_member_set": "Membro del progetto aggiunto o modificato",
+      "project_member_removed": "Membro del progetto rimosso",
+      "board_grant_set": "Accesso alla board concesso",
+      "board_grant_removed": "Accesso alla board rimosso",
+      "invitation_created": "Invito creato",
+      "invitation_revoked": "Invito revocato",
+      "share_link_created": "Link di condivisione creato",
+      "share_link_changed": "Link di condivisione modificato",
+      "share_link_removed": "Link di condivisione disattivato",
+      "token_created": "Token creato",
+      "token_revoked": "Token revocato",
+      "account_deleted": "Account eliminato",
+      "backup_started": "Backup avviato",
+      "backup_restored": "Backup ripristinato",
+      "auth_sign_in_failed": "Accesso non riuscito",
+      "auth_locked_out": "Accesso bloccato"
     }
   }
 }

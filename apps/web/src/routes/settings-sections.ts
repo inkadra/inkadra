@@ -48,6 +48,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
   page('access', 'workspace', 'lock', 'settingsUi.pages.access'),
   page('classifications', 'workspace', 'tag', 'admin.classifications', 'catalogs.scope'),
   page('reports', 'workspace', 'report', 'settingsUi.pages.reports'),
+  page('audit', 'workspace', 'eye', 'audit.title'),
   page('instance', 'server', 'home', 'settingsUi.pages.general'),
   page('workspace', 'server', 'disk', 'admin.storage', 'settingsUi.leads.storage'),
   page('video', 'server', 'film', 'settingsUi.pages.video'),
@@ -139,6 +140,12 @@ export const SETTINGS: SettingEntry[] = [
   s('reports.allowGuests', 'feedback.allowGuests'),
   s('reports.retention', 'feedback.retention'),
   s('reports.received', 'feedback.received'),
+  s('audit.filter', 'audit.filter', ['audit.title']),
+  s('audit.events', 'audit.events', [
+    'audit.groups.members',
+    'audit.groups.sharing',
+    'audit.groups.security',
+  ]),
   s('instance.setup', 'settingsUi.general.setup'),
   s('instance.name', 'admin.instanceName'),
   s('instance.url', 'settingsUi.about.url'),
@@ -249,7 +256,8 @@ export function isSettingsPath(pathname: string): boolean {
 
 /** Pages whose changes save themselves; the window header reports their progress. */
 export function autosaves(id: string): boolean {
-  return id !== 'classifications';
+  // The activity log only reads.
+  return id !== 'classifications' && id !== 'audit';
 }
 
 /** Plain `/settings` is the phone settings home; every page has an explicit section. */

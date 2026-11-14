@@ -15,6 +15,7 @@ import {
   VariantQuery,
   VideoFrameQuery,
 } from './assets.ts';
+import { AuditEvents, AuditEventsQuery } from './audit.ts';
 import {
   BackupSettings,
   InstanceBackup,
@@ -1504,6 +1505,19 @@ registry.registerPath({
     409: { description: 'A backup is already running', ...json(ApiError) },
     ...errors,
   },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/audit'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: the audit log (#806), newest first. Role and ' +
+    'member changes, invitations, sharing, share links, tokens, settings, backups, deleted ' +
+    'projects and accounts, failed sign-ins and lockouts. Kept for `retentionDays`.',
+  request: { query: AuditEventsQuery },
+  responses: { 200: { description: 'Audit events', ...json(AuditEvents) }, ...errors },
 });
 
 // Server page (#514) ----------------------------------------------------------

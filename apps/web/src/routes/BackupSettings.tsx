@@ -211,6 +211,13 @@ export function BackupSettings() {
                       t(`backups.trigger.${b.trigger}`),
                       size(b.size),
                       b.copiedToBucket ? t('backups.inBucket') : null,
+                      !b.verification
+                        ? null
+                        : !b.verification.complete
+                          ? t('backups.verifyIncomplete')
+                          : b.files && b.verification.checkedFiles < b.files.count
+                            ? t('backups.verifiedSample', { count: b.verification.checkedFiles })
+                            : t('backups.verified'),
                     ]
                       .filter(Boolean)
                       .join(' · ')}
@@ -218,6 +225,20 @@ export function BackupSettings() {
                   {b.status === 'failed' && (
                     <span className="backup-list__failure">{failureText(t, b.failure)}</span>
                   )}
+                  {b.status === 'ready' &&
+                    b.fileName &&
+                    (b.verification?.missingFiles ?? 0) > 0 && (
+                      <span className="backup-list__failure">
+                        {t('backups.missingFiles', { count: b.verification?.missingFiles })}
+                      </span>
+                    )}
+                  {b.status === 'ready' &&
+                    b.fileName &&
+                    (b.verification?.unverifiedFiles ?? 0) > 0 && (
+                      <span className="backup-list__failure">
+                        {t('backups.unverifiedFiles', { count: b.verification?.unverifiedFiles })}
+                      </span>
+                    )}
                   {data.bucket && b.status === 'ready' && b.fileName && !b.copiedToBucket && (
                     <span className="backup-list__failure">{t('backups.notInBucket')}</span>
                   )}
@@ -237,7 +258,15 @@ export function BackupSettings() {
   );
 }
 
-const FAILURES = ['interrupted', 'stalled', 'inconsistent', 'no_space', 'permission', 'internal'];
+const FAILURES = [
+  'interrupted',
+  'stalled',
+  'inconsistent',
+  'corrupt',
+  'no_space',
+  'permission',
+  'internal',
+];
 
 /** Why a backup failed, in words; reasons this version does not know read as `internal`. */
 function failureText(t: (key: string) => string, failure: string | null) {

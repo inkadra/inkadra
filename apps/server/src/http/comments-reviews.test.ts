@@ -40,6 +40,8 @@ import { memoryMailer, noMailer } from '../mailer.ts';
 import * as notifications from '../notifications.ts';
 import {
   EMAIL_GROUP_DELAY_MS,
+  MAX_EMAIL_ATTEMPTS,
+  notificationMessageId,
   purgeNotifications,
   sendDigests,
   sendImmediateEmails,
@@ -345,7 +347,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       .set({ createdAt: new Date(Date.now() - EMAIL_GROUP_DELAY_MS - 1000) });
     const mailer = memoryMailer();
     const mailDeps = { db, log, mailer, publicUrl: config.PUBLIC_URL, instanceName: 'Studio' };
-    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0 });
+    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0, failed: 0 });
     const [row] = await db
       .select()
       .from(notification)
@@ -1434,33 +1436,97 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     await call('commenter', 'PATCH', `/comments/${first.id}`, {
       body: `Current @{${people.owner.id}} <script>`,
     });
-    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 1 });
+    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 1, failed: 0 });
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0]?.to).toBe('owner@example.com');
     expect(mailer.sent[0]?.text).toContain('Current @owner <script>');
     expect(mailer.sent[0]?.html).toContain('&#60;script&#62;');
-    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0 });
+    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0, failed: 0 });
     const pending = await addNotification('owner', root, {
       createdAt: new Date(Date.now() - 600000),
     });
-    expect(await sendImmediateEmails({ ...mailDeps, mailer: noMailer })).toEqual({ sent: 0 });
-    await sendImmediateEmails({
-      ...mailDeps,
-      mailer: {
-        enabled: true,
-        async send() {
-          throw new Error('SMTP unavailable');
-        },
-      },
+    expect(await sendImmediateEmails({ ...mailDeps, mailer: noMailer })).toEqual({
+      sent: 0,
+      failed: 0,
     });
-    expect(
-      (await db.select().from(notification).where(eq(notification.id, pending.id)))[0]?.emailedAt,
-    ).toBeNull();
-    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 1 });
+    // A broken SMTP fails the job, so the Server page shows it (#812).
+    await expect(
+      sendImmediateEmails({
+        ...mailDeps,
+        mailer: {
+          enabled: true,
+          async send() {
+            throw new Error('SMTP unavailable');
+          },
+        },
+      }),
+    ).rejects.toThrow('1 of 1 notification emails not sent: SMTP unavailable');
+    const [retried] = await db.select().from(notification).where(eq(notification.id, pending.id));
+    expect(retried?.emailedAt).toBeNull();
+    expect(retried?.emailAttempts).toBe(1);
+    // Tried again after two minutes, not at once.
+    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0, failed: 0 });
+    expect(await sendImmediateEmails(mailDeps, new Date(Date.now() + 2 * 60_000 + 1000))).toEqual({
+      sent: 1,
+      failed: 0,
+    });
     const fresh = await addNotification('owner');
-    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0 });
+    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0, failed: 0 });
     await call('owner', 'POST', `/me/notifications/${fresh.id}/read`);
-    expect(await sendImmediateEmails(mailDeps, new Date(Date.now() + 600000))).toEqual({ sent: 0 });
+    expect(await sendImmediateEmails(mailDeps, new Date(Date.now() + 600000))).toEqual({
+      sent: 0,
+      failed: 0,
+    });
+  });
+
+  it('sends again an email whose claim ran out: at least once, with a stable Message-ID (#812)', async () => {
+    const mailer = memoryMailer();
+    const mailDeps = { db, log, mailer, publicUrl: config.PUBLIC_URL, instanceName: 'Studio' };
+    const stuck = await addNotification('owner', root, {
+      createdAt: new Date(Date.now() - 600000),
+      // Claimed by a worker that died before sending.
+      emailLeaseUntil: new Date(Date.now() + 60_000),
+    });
+    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0, failed: 0 });
+    expect(await sendImmediateEmails(mailDeps, new Date(Date.now() + 61_000))).toEqual({
+      sent: 1,
+      failed: 0,
+    });
+    expect(mailer.sent[0]?.messageId).toBe(notificationMessageId([stuck.id], config.PUBLIC_URL));
+    const [row] = await db.select().from(notification).where(eq(notification.id, stuck.id));
+    expect(row?.emailedAt).not.toBeNull();
+    expect(row?.emailLeaseUntil).toBeNull();
+  });
+
+  it('gives up after MAX_EMAIL_ATTEMPTS as failed, never as sent (#812)', async () => {
+    const mailDeps = { db, log, publicUrl: config.PUBLIC_URL, instanceName: 'Studio' };
+    const last = await addNotification('owner', root, {
+      createdAt: new Date(Date.now() - 600000),
+      emailAttempts: MAX_EMAIL_ATTEMPTS - 1,
+    });
+    await expect(
+      sendImmediateEmails({
+        ...mailDeps,
+        mailer: {
+          enabled: true,
+          async send() {
+            throw new Error('421 too many connections');
+          },
+        },
+      }),
+    ).rejects.toThrow('421 too many connections');
+    const [row] = await db.select().from(notification).where(eq(notification.id, last.id));
+    expect(row?.emailedAt).toBeNull();
+    expect(row?.emailFailedAt).not.toBeNull();
+    // Not picked up again by later runs.
+    await sendImmediateEmails(
+      { ...mailDeps, mailer: memoryMailer() },
+      new Date(Date.now() + 2 * 3_600_000),
+    );
+    const [later] = await db.select().from(notification).where(eq(notification.id, last.id));
+    expect(later?.emailedAt).toBeNull();
+    expect(later?.emailAttempts).toBe(MAX_EMAIL_ATTEMPTS);
+    await db.delete(notification).where(eq(notification.id, last.id));
   });
 
   it('pages mail past inaccessible notifications and retains older unread entries for delivery', async () => {
@@ -1483,7 +1549,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
         publicUrl: config.PUBLIC_URL,
         instanceName: 'Studio',
       }),
-    ).toEqual({ sent: 1 });
+    ).toEqual({ sent: 1, failed: 0 });
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0]?.text).toContain('Root');
     expect(mailer.sent[0]?.text).not.toContain('Foreign');
@@ -1498,7 +1564,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
         publicUrl: config.PUBLIC_URL,
         instanceName: 'Studio',
       }),
-    ).toEqual({ sent: 0 });
+    ).toEqual({ sent: 0, failed: 0 });
   });
 
   it.each(['immediate', 'daily'] as const)(
@@ -1514,6 +1580,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       const send = email === 'daily' ? sendDigests : sendImmediateEmails;
       expect(await send(mailDeps, new Date(Date.now() + EMAIL_GROUP_DELAY_MS + 1000))).toEqual({
         sent: 1,
+        failed: 0,
       });
       expect(mailer.sent).toHaveLength(1);
       expect(mailer.sent[0]?.text.match(/Root/g) ?? []).toHaveLength(1);
@@ -1557,7 +1624,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
           publicUrl: config.PUBLIC_URL,
           instanceName: 'Studio',
         }),
-      ).toEqual({ sent: 0 });
+      ).toEqual({ sent: 0, failed: 0 });
       expect((await db.select().from(notificationPreference))[0]?.lastDigestAt).toBeNull();
     } finally {
       race.mockRestore();
@@ -1571,19 +1638,27 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     const old = new Date(Date.now() - 600000);
     await addNotification('owner', root, { createdAt: old });
     await addNotification('viewer', root, { createdAt: old, readAt: new Date() });
-    await sendDigests({
-      ...mailDeps,
-      mailer: {
-        enabled: true,
-        async send() {
-          throw new Error('SMTP unavailable');
+    await expect(
+      sendDigests({
+        ...mailDeps,
+        mailer: {
+          enabled: true,
+          async send() {
+            throw new Error('SMTP unavailable');
+          },
         },
-      },
+      }),
+    ).rejects.toThrow('digest emails not sent');
+    expect(await sendDigests(mailDeps, new Date(Date.now() + 2 * 60_000 + 1000))).toEqual({
+      sent: 1,
+      failed: 0,
     });
-    expect(await sendDigests(mailDeps)).toEqual({ sent: 1 });
     await addNotification('owner');
-    expect(await sendDigests(mailDeps)).toEqual({ sent: 0 });
-    expect(await sendDigests(mailDeps, new Date(Date.now() + 25 * 3600000))).toEqual({ sent: 1 });
+    expect(await sendDigests(mailDeps)).toEqual({ sent: 0, failed: 0 });
+    expect(await sendDigests(mailDeps, new Date(Date.now() + 25 * 3600000))).toEqual({
+      sent: 1,
+      failed: 0,
+    });
     const expired = await addNotification('owner', root, {
       createdAt: new Date(Date.now() - 91 * 86400000),
     });

@@ -6,6 +6,7 @@ import { genericOAuth, magicLink } from 'better-auth/plugins';
 import { and, count, eq, lt, ne, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { z } from 'zod';
+import { recordSignInEvent } from './audit.ts';
 import { DEVICE_AGE, DEVICE_COOKIE, knownDevices } from './auth-device.ts';
 import { authSecurity, authSource } from './auth-security.ts';
 import { hardenedTwoFactor, readableTwoFactor } from './auth-two-factor.ts';
@@ -22,7 +23,7 @@ import {
   readCookie,
   reserveInvitationUse,
 } from './invitations.ts';
-import { type Mailer, securityNotification, sendDetached } from './mailer.ts';
+import { type Mailer, maskAddress, securityNotification, sendDetached } from './mailer.ts';
 import { magicLinkMail, resetMail } from './mails.ts';
 import { ORIGIN_HEADER } from './request-origin.ts';
 import { revokeTokens as revokeStoredTokens } from './tokens.ts';
@@ -168,6 +169,42 @@ function createAuthInstance(
       { message: 'Too many attempts.' },
       { 'retry-after': String(Math.max(1, retryAfter)) },
     );
+  // Audit (#806): failed sign-ins and lockouts of existing accounts only, the address masked,
+  // aggregated per account and IP and capped per hour (`recordSignInEvent`). One lockout event
+  // per window, not one per refused attempt.
+  const accountOf = async (address: string) =>
+    address
+      ? ((
+          await db
+            .select({ id: schema.user.id })
+            .from(schema.user)
+            .where(eq(schema.user.email, address))
+        )[0]?.id ?? null)
+      : null;
+  const auditSignIn = async (
+    action: 'auth.sign_in_failed' | 'auth.locked_out',
+    ip: string,
+    who: { address?: string; userId?: string | null },
+    details: Record<string, unknown> = {},
+  ) => {
+    const userId = who.userId ?? (await accountOf(who.address ?? ''));
+    if (!userId) return;
+    recordSignInEvent(db, {
+      action,
+      userId,
+      ip,
+      details: { ...(who.address ? { email: maskAddress(who.address) } : {}), ...details },
+    }).catch((err) => deps.log?.error({ err }, 'audit event not recorded'));
+  };
+  const lockedOut = async (
+    key: string,
+    seconds: number,
+    ip: string,
+    who: { address?: string; userId?: string | null },
+  ) => {
+    if (await security.take(`audit:${key}`, 1, seconds))
+      await auditSignIn('auth.locked_out', ip, who, { seconds });
+  };
   const revokeTokens = async (
     user: { id: string; email: string; locale?: string | null },
     all = false,
@@ -261,6 +298,7 @@ function createAuthInstance(
               if (!result.allowed) {
                 await Promise.all(held.map((key) => security.refund(key)));
                 delete (ctx.context as BudgetContext).inkadraReservations;
+                await lockedOut(id, seconds, ip, { address }).catch(() => {});
                 throw tooManyAttempts(result.retryAfter);
               }
             }
@@ -276,6 +314,7 @@ function createAuthInstance(
             if (userId) {
               const result = await security.consume(`totp:${userId}`, 10, 300);
               if (!result.allowed) {
+                await lockedOut(`totp:${userId}`, 300, ip, { userId }).catch(() => {});
                 throw tooManyAttempts(result.retryAfter);
               }
             }
@@ -303,6 +342,20 @@ function createAuthInstance(
             )
           )
             await Promise.all(held.map((id) => security.refund(id)));
+          if (
+            ctx.request &&
+            ctx.path === '/sign-in/email' &&
+            ctx.context.returned instanceof APIError &&
+            ctx.context.returned.status === 'UNAUTHORIZED'
+          ) {
+            const address =
+              typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
+            await auditSignIn(
+              'auth.sign_in_failed',
+              ctx.headers?.get(CLIENT_IP_HEADER) ?? 'unknown',
+              { address },
+            ).catch((err) => deps.log?.error({ err }, 'audit event not recorded'));
+          }
           const verifiedUser = ctx.context.newSession?.user ?? ctx.context.session?.user;
           if (enabled && ok && ctx.path.startsWith('/two-factor/verify-') && verifiedUser) {
             const user = verifiedUser;

@@ -1,6 +1,7 @@
 import { CURRENT_SCHEMA_VERSION, MIN_WRITER_SCHEMA } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
+  AUDIT_CAPABILITY,
   BOARD_WRITERS_CAPABILITY,
   CLASSIFICATION_DELETE_CAPABILITY,
   COLLAB_PATH,
@@ -170,6 +171,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'list-pages',
         UNAVAILABLE_ERRORS_CAPABILITY,
         SCHEDULE_SOURCES_CAPABILITY,
+        // GET /instance/audit: administrative and security actions (#806).
+        AUDIT_CAPABILITY,
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).
         ...(deps.live && (await deps.live.settings()).live.enabled ? [VIDEO_LIVE_CAPABILITY] : []),
       ],

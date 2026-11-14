@@ -7,7 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc } from '@inkadra/doc-schema';
 import { InstanceBackups } from '@inkadra/shared';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import pino from 'pino';
 import postgres from 'postgres';
@@ -27,11 +27,20 @@ import {
   runBackup,
   STALE_MS,
   startBackup,
+  toBackup,
+  verifyBackup,
 } from '../backup.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
-import { board, boardDoc, comment, instanceBackup, instanceSetting } from '../db/schema.ts';
+import {
+  board,
+  boardDoc,
+  comment,
+  feedbackAttachment,
+  instanceBackup,
+  instanceSetting,
+} from '../db/schema.ts';
 import { createStorage } from '../storage.ts';
 import { freshDatabase, testDeps } from '../test-deps.ts';
 import { readZip, writeZip } from '../transfers/zip.ts';
@@ -179,6 +188,8 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
   });
   afterAll(async () => {
     await app?.close();
+    // Kept backups hold back file removals (#794): leave none to the next test files.
+    await db.execute(sql`truncate table instance_backup`);
     await client.end({ timeout: 1 });
   });
 
@@ -213,6 +224,130 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     expect(latest).toMatchObject({ trigger: 'manual', status: 'ready', copiedToBucket: false });
     expect(latest?.size).toBeGreaterThan(0);
     expect(existsSync(join(backupsDir(deps.root), latest?.fileName ?? ''))).toBe(true);
+    // Read back and checked against storage before it counts (#794).
+    expect(latest?.verification).toMatchObject({ missingFiles: 0 });
+    const audit = (await request('admin', 'GET', '/instance/audit?action=backup.started')).json();
+    expect(audit.items[0]).toMatchObject({
+      action: 'backup.started',
+      actor: { id: people.admin?.id, name: 'admin' },
+      targetId: latest?.id,
+    });
+  });
+
+  it('finds an archive that does not read back as written, and files storage lacks (#794)', async () => {
+    const row = await startBackup(db, 'manual', null);
+    const done = await runBackup(backupDeps(), row?.id as string);
+    const file = join(backupsDir(deps.root), done?.fileName ?? '');
+    const zip = await readZip(file, {
+      entries: 10_000,
+      totalBytes: Number.MAX_SAFE_INTEGER,
+      compressionRatio: 10_000,
+    });
+    const manifest = JSON.parse((await zip.buffer('manifest.json', 1 << 26)).toString('utf8'));
+    const tampered = join(deps.root, `tampered-${randomUUID()}.zip`);
+    const out = writeZip(tampered);
+    for (const name of zip.names())
+      if (name === 'manifest.json') {
+        manifest.tables[0].rows += 1;
+        await out.addJson(name, manifest);
+      } else await out.addBuffer(name, await zip.buffer(name, Number.MAX_SAFE_INTEGER));
+    await out.close();
+    zip.close();
+    await expect(verifyBackup(tampered, deps.storage)).rejects.toThrow('does not read back');
+
+    const absent = {
+      ...deps.storage,
+      size: async () => null,
+    };
+    const checked = await verifyBackup(file, absent);
+    expect(checked.missing.count).toBe(checked.files);
+  });
+
+  it('samples long file lists, counts storage errors apart and stops in time as incomplete (#794)', async () => {
+    const ids = [randomUUID(), randomUUID(), randomUUID()];
+    await db.insert(feedbackAttachment).values(
+      ids.map((id) => ({
+        id,
+        owner: 'test',
+        kind: 'file' as const,
+        name: 'a.txt',
+        mime: 'text/plain',
+        bytes: 1,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      })),
+    );
+    for (const id of ids)
+      await deps.storage.write(`feedback/${id}`, Buffer.from('x'), 'text/plain');
+    try {
+      const row = await startBackup(db, 'manual', null);
+      const done = await runBackup(backupDeps(), row?.id as string);
+      expect(done).toMatchObject({ status: 'ready', verifyComplete: true, unverifiedFiles: 0 });
+      expect(done?.checkedFiles).toBe(done?.fileCount);
+      const file = join(backupsDir(deps.root), done?.fileName ?? '');
+
+      // Above the sample size, an even sample is looked up.
+      const sampled = await verifyBackup(file, deps.storage, { sample: 1 });
+      expect(sampled.files).toBeGreaterThanOrEqual(3);
+      expect(sampled).toMatchObject({ checked: 1, complete: true });
+
+      // An error is tried once more, then counted as unverified, never as missing.
+      let calls = 0;
+      const failing = {
+        ...deps.storage,
+        size: async () => {
+          calls += 1;
+          throw new Error('503 Slow Down');
+        },
+      };
+      const erred = await verifyBackup(file, failing);
+      expect(erred).toMatchObject({ checked: 0, unverified: erred.files, missing: { count: 0 } });
+      expect(calls).toBe(2 * erred.files);
+      let first = true;
+      const flaky = {
+        ...deps.storage,
+        size: async (key: string) => {
+          if (first) {
+            first = false;
+            throw new Error('timeout');
+          }
+          return deps.storage.size(key);
+        },
+      };
+      expect(await verifyBackup(file, flaky)).toMatchObject({ unverified: 0, complete: true });
+
+      // A storage that never answers: past the budget the backup is kept, unchecked, and the
+      // next one can start.
+      const hanging = { ...deps.storage, size: () => new Promise<number | null>(() => {}) };
+      const slow = await startBackup(db, 'manual', null);
+      const kept = await runBackup(
+        { ...backupDeps(), storage: hanging, verifyBudgetMs: 300 },
+        slow?.id as string,
+      );
+      expect(kept).toMatchObject({ status: 'ready', verifyComplete: false });
+      expect(toBackup(kept as NonNullable<typeof kept>).verification).toMatchObject({
+        complete: false,
+      });
+      const next = await startBackup(db, 'manual', null);
+      expect(next).not.toBeNull();
+      await runBackup(backupDeps(), next?.id as string);
+    } finally {
+      await db.delete(feedbackAttachment).where(inArray(feedbackAttachment.id, ids));
+    }
+  });
+
+  it('starts a backup even when its audit record fails (#806)', async () => {
+    await db.execute(sql`alter table audit_event rename to audit_event_off`);
+    try {
+      const started = await request('admin', 'POST', '/instance/backups');
+      expect(started.statusCode).toBe(202);
+      await deps.jobs.idle();
+      const [latest] = InstanceBackups.parse(
+        (await request('admin', 'GET', '/instance/backups')).json(),
+      ).items;
+      expect(latest).toMatchObject({ id: started.json().id, status: 'ready' });
+    } finally {
+      await db.execute(sql`alter table audit_event_off rename to audit_event`);
+    }
   });
 
   it('runs one backup at a time', async () => {
@@ -771,6 +906,7 @@ describe.skipIf(!url || !s3Endpoint)('backups with files in S3 (needs S3_TEST_EN
       expect(await deps.storage.size(key)).toBeNull();
       await deps.storage.remove([`${BUCKET_PREFIX}${next?.fileName}`]);
     } finally {
+      await db.execute(sql`truncate table instance_backup`);
       await client.end({ timeout: 1 });
     }
   });

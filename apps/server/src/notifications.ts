@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   type Notification,
   NotificationChannelType,
@@ -37,6 +38,16 @@ export const NOTIFICATION_RETENTION_DAYS = 90;
 /** Email of `immediate` waits this long after the first unread one, to group what follows. */
 export const EMAIL_GROUP_DELAY_MS = 3 * 60_000;
 const MAX_PER_EMAIL = 50;
+/**
+ * A claimed email waits this long before another run may send it again (#812): a worker that
+ * died between the claim and the send leaves it to the next run, so it goes out at least once.
+ * Longer than the SMTP timeouts of the mailer.
+ */
+export const EMAIL_LEASE_MS = 10 * 60_000;
+/** Failed sends of a notification before it is given up (#812). */
+export const MAX_EMAIL_ATTEMPTS = 6;
+/** People handled at once by the email jobs (#812). */
+const EMAIL_BATCH = 8;
 // Like the write limiters, per process. Bound amplification from large threads as well as edits.
 const fanoutLimiters = new WeakMap<Database, RateLimiter>();
 
@@ -314,6 +325,7 @@ async function sendTo(
   userId: string,
   pending: NotificationRow[],
   kind: 'immediate' | 'daily',
+  now: Date,
 ) {
   const { db, mailer } = deps;
   const [preference] = await db
@@ -328,10 +340,10 @@ async function sendTo(
   await skipHiddenMail(db, pending, visible);
   const shown = pending.filter(visible);
   if (shown.length === 0) return false;
-  const now = new Date();
+  // A lease, not the final mark (#812): marked sent only once the server took the email.
   const claimed = await db
     .update(notification)
-    .set({ emailedAt: now })
+    .set({ emailLeaseUntil: new Date(+now + EMAIL_LEASE_MS) })
     .where(
       and(
         inArray(
@@ -339,7 +351,9 @@ async function sendTo(
           shown.map((n) => n.id),
         ),
         isNull(notification.emailedAt),
+        isNull(notification.emailFailedAt),
         isNull(notification.readAt),
+        unleased(now),
       ),
     )
     .returning({ id: notification.id });
@@ -353,30 +367,87 @@ async function sendTo(
       .where(eq(user.id, userId));
     if (!me) return false;
     const items = await renderNotifications(db, userId, rows);
-    await mailer.send(
-      notificationMail({
+    await mailer.send({
+      ...notificationMail({
         to: me.email,
         recipient: { id: userId, locale: me.locale },
         notifications: items,
         daily: kind === 'daily',
         instance: deps,
       }),
-    );
+      messageId: notificationMessageId([...ids], deps.publicUrl),
+    });
   } catch (err) {
+    // Tried again after 2, 4, 8… minutes (at most an hour); given up after MAX_EMAIL_ATTEMPTS.
+    const attempts = sql`${notification.emailAttempts} + 1`;
     await db
       .update(notification)
-      .set({ emailedAt: null })
-      .where(and(inArray(notification.id, [...ids]), eq(notification.emailedAt, now)));
+      .set({
+        emailAttempts: attempts,
+        emailLeaseUntil: sql`${now.toISOString()}::timestamptz + make_interval(mins => least(60, power(2, ${attempts})::int))`,
+        // Given up, never marked sent: counted on the Server page instead (`checkHealth`).
+        emailFailedAt: sql`case when ${attempts} >= ${MAX_EMAIL_ATTEMPTS} then ${now.toISOString()}::timestamptz end`,
+      })
+      .where(
+        and(
+          inArray(notification.id, [...ids]),
+          isNull(notification.emailedAt),
+          isNull(notification.emailFailedAt),
+        ),
+      );
     throw err;
   }
+  await db
+    .update(notification)
+    .set({ emailedAt: now, emailLeaseUntil: null })
+    .where(inArray(notification.id, [...ids]));
   return true;
 }
 
+/** Not claimed by a run that may still be sending it (#812). */
+const unleased = (now: Date) =>
+  or(isNull(notification.emailLeaseUntil), lt(notification.emailLeaseUntil, now));
+
+/**
+ * The same notifications give the same Message-ID (#812): an email sent again after a crash
+ * between the send and its mark is one message for clients that deduplicate.
+ */
+export function notificationMessageId(ids: string[], publicUrl: string) {
+  const digest = createHash('sha256')
+    .update([...ids].sort().join(','))
+    .digest('hex')
+    .slice(0, 32);
+  return `<notifications.${digest}@${new URL(publicUrl).hostname}>`;
+}
+
+/** Runs `work` over `items`, `size` at a time. */
+async function inBatches<T>(items: T[], size: number, work: (item: T) => Promise<void>) {
+  for (let i = 0; i < items.length; i += size)
+    await Promise.all(items.slice(i, i + size).map(work));
+}
+
+/**
+ * Failed sends are counted, not hidden (#812): when as many fail as go out, the job fails, so
+ * the Server page shows an email problem instead of users finding out.
+ */
+function failIfBroken(kind: string, sent: number, failed: number, first: unknown) {
+  if (failed === 0 || failed < sent) return;
+  const reason = first instanceof Error ? first.message : String(first);
+  throw new Error(`${failed} of ${sent + failed} ${kind} emails not sent: ${reason}`);
+}
+
 /** Pending unread mail, bounded per person and paged past inaccessible boards. */
-async function pendingByPerson(db: Database, kind: 'immediate' | 'daily', since: Date) {
+async function pendingByPerson(
+  db: Database,
+  kind: 'immediate' | 'daily',
+  since: Date,
+  now = new Date(),
+) {
   const eligible = and(
     isNull(notification.emailedAt),
+    isNull(notification.emailFailedAt),
     isNull(notification.readAt),
+    unleased(now),
     gt(notification.createdAt, since),
     kind === 'immediate'
       ? or(isNull(notificationPreference.email), eq(notificationPreference.email, 'immediate'))
@@ -399,7 +470,9 @@ async function pendingByPerson(db: Database, kind: 'immediate' | 'daily', since:
           and(
             eq(notification.userId, userId),
             isNull(notification.emailedAt),
+            isNull(notification.emailFailedAt),
             isNull(notification.readAt),
+            unleased(now),
             gt(notification.createdAt, since),
             cursor
               ? afterCursor(notification.createdAt, notification.id, cursor, 'asc')
@@ -424,37 +497,46 @@ async function pendingByPerson(db: Database, kind: 'immediate' | 'daily', since:
  * the first unread notification. Run every minute by the worker.
  */
 export async function sendImmediateEmails(deps: NotificationMailDeps, now = new Date()) {
-  if (!deps.mailer.enabled) return { sent: 0 };
+  if (!deps.mailer.enabled) return { sent: 0, failed: 0 };
   const byPerson = await pendingByPerson(
     deps.db,
     'immediate',
     new Date(+now - NOTIFICATION_RETENTION_DAYS * 86_400_000),
+    now,
   );
   let sent = 0;
-  for (const [userId, pending] of byPerson) {
-    // Grouping waits from the first notification the person may see.
-    const visible = await visibility(deps.db, userId, pending);
-    const first = pending.find(visible);
-    if (!first || +now - +first.createdAt < EMAIL_GROUP_DELAY_MS) continue;
+  let failed = 0;
+  let firstError: unknown;
+  await inBatches([...byPerson], EMAIL_BATCH, async ([userId, pending]) => {
+    // Grouping waits from the first notification the person may see: `pendingByPerson` keeps
+    // only those, oldest first.
+    const first = pending[0];
+    if (!first || +now - +first.createdAt < EMAIL_GROUP_DELAY_MS) return;
     try {
-      if (await sendTo(deps, userId, pending, 'immediate')) sent += 1;
+      if (await sendTo(deps, userId, pending, 'immediate', now)) sent += 1;
     } catch (err) {
+      failed += 1;
+      firstError ??= err;
       deps.log.error({ err }, 'notification email not sent');
     }
-  }
-  return { sent };
+  });
+  failIfBroken('notification', sent, failed, firstError);
+  return { sent, failed };
 }
 
 /** `daily`: one digest a day of what is still unread. Run every hour by the worker. */
 export async function sendDigests(deps: NotificationMailDeps, now = new Date()) {
-  if (!deps.mailer.enabled) return { sent: 0 };
+  if (!deps.mailer.enabled) return { sent: 0, failed: 0 };
   const byPerson = await pendingByPerson(
     deps.db,
     'daily',
     new Date(+now - NOTIFICATION_RETENTION_DAYS * 86_400_000),
+    now,
   );
   let sent = 0;
-  for (const [userId, pending] of byPerson) {
+  let failed = 0;
+  let firstError: unknown;
+  await inBatches([...byPerson], EMAIL_BATCH, async ([userId, pending]) => {
     // A digest at most every 24 hours, give or take the hourly run.
     const due = new Date(+now - 24 * 3_600_000);
     const claimed = await deps.db
@@ -470,12 +552,14 @@ export async function sendDigests(deps: NotificationMailDeps, now = new Date()) 
         ),
       )
       .returning({ userId: notificationPreference.userId });
-    if (claimed.length === 0) continue;
+    if (claimed.length === 0) return;
     let delivered = false;
     try {
-      delivered = await sendTo(deps, userId, pending, 'daily');
+      delivered = await sendTo(deps, userId, pending, 'daily', now);
       if (delivered) sent += 1;
     } catch (err) {
+      failed += 1;
+      firstError ??= err;
       deps.log.error({ err }, 'notification digest not sent');
     } finally {
       if (!delivered)
@@ -489,8 +573,9 @@ export async function sendDigests(deps: NotificationMailDeps, now = new Date()) 
             ),
           );
     }
-  }
-  return { sent };
+  });
+  failIfBroken('digest', sent, failed, firstError);
+  return { sent, failed };
 }
 
 /** Retention: notifications go after 90 days. */

@@ -3103,7 +3103,7 @@
       "body": "Exclui a conta e os projetos em que não há mais ninguém. Não é possível desfazer.",
       "open": "Excluir conta…",
       "confirmTitle": "Excluir a conta?",
-      "confirmBody": "Os projetos em que você está sozinho são excluídos com todos os arquivos. Nos projetos compartilhados, o trabalho fica, sem você.",
+      "confirmBody": "Os projetos em que você está sozinho são excluídos com todos os arquivos. Nos projetos compartilhados, o trabalho fica, sem você. Os arquivos excluídos ficam nos backups do servidor até saírem da retenção de backups (7 backups noturnos por padrão, no máximo 91 dias).",
       "fresh": "Por segurança, você precisa ter entrado nos últimos 15 minutos: se necessário, saia e entre de novo.",
       "blocked": "Você é o único proprietário destes projetos compartilhados: torne outra pessoa proprietária primeiro.",
       "confirm": "Excluir definitivamente"
@@ -3753,7 +3753,8 @@
       "apps": "O que se conecta à sua conta de fora: calendário, extensão do navegador, tokens.",
       "instance": "O nome da instância e o que falta para terminar a configuração.",
       "reports": "Para onde vão os relatos enviados em «Relatar um problema», e os recebidos.",
-      "video": "O Inkadra prepara cópias mais leves dos vídeos, em várias resoluções: quem assiste recebe a adequada à sua ligação. Os originais nunca são alterados."
+      "video": "O Inkadra prepara cópias mais leves dos vídeos, em várias resoluções: quem assiste recebe a adequada à sua ligação. Os originais nunca são alterados.",
+      "audit": "Quem mudou funções, membros, compartilhamento, configurações e tokens, o que foi excluído ou salvo em backup e quais acessos falharam."
     },
     "autosave": {
       "idle": "Salvamento automático ativado",
@@ -4236,7 +4237,7 @@
   },
   "backups": {
     "title": "Backups",
-    "cardLead": "Cada backup contém o banco de dados inteiro. Os arquivos ficam onde estão: faça backup também do volume de dados ou do bucket.",
+    "cardLead": "Cada backup contém todo o banco de dados e é relido depois de escrito. Os arquivos ficam onde estão: faça backup também do volume de dados ou do bucket. Arquivos excluídos são mantidos enquanto um backup guardado precisar deles.",
     "now": "Fazer backup agora",
     "running": "Fazendo backup…",
     "busy": "Já há um backup em andamento.",
@@ -4275,9 +4276,18 @@
       "no_space": "O volume de dados está cheio.",
       "permission": "O servidor não consegue gravar na pasta de dados (DATA_DIR/backups).",
       "internal": "Algo deu errado. O log do servidor explica o quê, com o id deste backup.",
-      "inconsistent": "Alguns quadros ou comentários apontam uns para os outros em um ciclo e não podem ser salvos em ordem. O log do servidor indica a tabela."
+      "inconsistent": "Alguns quadros ou comentários apontam uns para os outros em um ciclo e não podem ser salvos em ordem. O log do servidor indica a tabela.",
+      "corrupt": "O arquivo não foi relido como foi escrito, por isso não foi mantido. Verifique o volume de dados."
     },
-    "notInBucket": "Guardado só no servidor: a cópia para o bucket falhou."
+    "notInBucket": "Guardado só no servidor: a cópia para o bucket falhou.",
+    "verified": "verificado",
+    "missingFiles_one": "Falta {{count}} arquivo listado no armazenamento: uma restauração não o teria.",
+    "missingFiles_other": "Faltam {{count}} arquivos listados no armazenamento: uma restauração não os teria.",
+    "verifyIncomplete": "verificação incompleta",
+    "verifiedSample_one": "verificado em uma amostra de {{count}} arquivo",
+    "verifiedSample_other": "verificado em uma amostra de {{count}} arquivos",
+    "unverifiedFiles_one": "{{count}} arquivo listado não pôde ser verificado: o armazenamento respondeu com um erro.",
+    "unverifiedFiles_other": "{{count}} arquivos listados não puderam ser verificados: o armazenamento respondeu com um erro."
   },
   "export": {
     "title": "Exportar",
@@ -5907,6 +5917,23 @@
             "text": "Para especialistas: repita o teste da placa, altere as sessões em tempo real e os valores de cada resolução. «Repor» volta ao recomendado."
           }
         }
+      },
+      "audit": {
+        "name": "Registro de atividade",
+        "steps": {
+          "0": {
+            "title": "Quem fez o quê",
+            "text": "Mudanças em pessoas, compartilhamento e configurações, com quem e quando."
+          },
+          "1": {
+            "title": "Filtrar",
+            "text": "Mostre só pessoas, compartilhamento, acessos ou dados."
+          },
+          "2": {
+            "title": "Guardado por um ano",
+            "text": "Eventos mais antigos são removidos sozinhos."
+          }
+        }
       }
     }
   },
@@ -6763,6 +6790,47 @@
       "customPreset": "Personalizada",
       "customNote": "Alguns valores foram alterados nas definições avançadas.",
       "resetAll": "Voltar aos valores do nível"
+    }
+  },
+  "audit": {
+    "title": "Registro de atividade",
+    "filter": "Mostrar",
+    "events": "Eventos",
+    "none": "Nada registrado ainda.",
+    "loadError": "Não foi possível carregar o registro de atividade.",
+    "more": "Mostrar anteriores",
+    "nobody": "Alguém sem sessão",
+    "deletedAccount": "Uma conta excluída",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Os eventos ficam guardados por {{count}} dia.",
+    "retention_other": "Os eventos ficam guardados por {{count}} dias.",
+    "groups": {
+      "all": "Tudo",
+      "members": "Pessoas",
+      "sharing": "Compartilhamento",
+      "security": "Acesso e tokens",
+      "data": "Dados e configurações"
+    },
+    "actions": {
+      "member_updated": "Membro alterado",
+      "settings_changed": "Configurações alteradas",
+      "project_deleted": "Projeto excluído",
+      "project_member_set": "Membro do projeto adicionado ou alterado",
+      "project_member_removed": "Membro do projeto removido",
+      "board_grant_set": "Acesso ao quadro concedido",
+      "board_grant_removed": "Acesso ao quadro removido",
+      "invitation_created": "Convite criado",
+      "invitation_revoked": "Convite revogado",
+      "share_link_created": "Link de compartilhamento criado",
+      "share_link_changed": "Link de compartilhamento alterado",
+      "share_link_removed": "Link de compartilhamento desativado",
+      "token_created": "Token criado",
+      "token_revoked": "Token revogado",
+      "account_deleted": "Conta excluída",
+      "backup_started": "Backup iniciado",
+      "backup_restored": "Backup restaurado",
+      "auth_sign_in_failed": "Falha ao entrar",
+      "auth_locked_out": "Acesso bloqueado"
     }
   }
 }

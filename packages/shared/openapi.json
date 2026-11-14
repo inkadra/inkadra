@@ -4804,7 +4804,47 @@
               "string",
               "null"
             ],
-            "description": "Why it failed, for the log. `interrupted`: the worker stopped and the backup made no progress for 15 minutes; it no longer blocks the next one."
+            "description": "Why it failed, for the log. `interrupted`: the worker stopped and the backup made no progress for 15 minutes; it no longer blocks the next one. `corrupt`: the archive did not read back as written."
+          },
+          "verification": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-11-02T09:30:00.000Z"
+              },
+              "missingFiles": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Listed files that storage did not have (or had with another size)."
+              },
+              "checkedFiles": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Files looked up in storage: all of them, or an even sample on large instances (fewer than `files.count`)."
+              },
+              "unverifiedFiles": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Files storage gave an error for, twice: neither found nor missing."
+              },
+              "complete": {
+                "type": "boolean",
+                "description": "False when the verification ran out of time or stalled: the backup is kept, checked only as far as it got."
+              }
+            },
+            "required": [
+              "at",
+              "missingFiles",
+              "checkedFiles",
+              "unverifiedFiles",
+              "complete"
+            ],
+            "description": "The check run on the archive after it was written (#794): every table read back and counted, every listed file looked up in storage. Absent on older servers."
           },
           "startedAt": {
             "type": "string",
@@ -4853,6 +4893,141 @@
           }
         },
         "additionalProperties": false
+      },
+      "AuditEvents": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            },
+            "description": "Newest first."
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "retentionDays": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "retentionDays"
+        ]
+      },
+      "AuditEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "member.updated",
+              "settings.changed",
+              "project.deleted",
+              "project.member_set",
+              "project.member_removed",
+              "board.grant_set",
+              "board.grant_removed",
+              "invitation.created",
+              "invitation.revoked",
+              "share_link.created",
+              "share_link.changed",
+              "share_link.removed",
+              "token.created",
+              "token.revoked",
+              "account.deleted",
+              "backup.started",
+              "backup.restored",
+              "auth.sign_in_failed",
+              "auth.locked_out"
+            ]
+          },
+          "actor": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+                "description": "Null once the account is deleted."
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Name at the time of the action."
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "description": "Null for actions without a signed-in person (failed sign-ins) and for a deleted account, whose events keep an opaque id in `details.actor` instead (pseudonymized)."
+          },
+          "targetType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "projectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "ip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "action",
+          "actor",
+          "targetType",
+          "targetId",
+          "projectId",
+          "ip",
+          "details"
+        ]
       },
       "ServerStatus": {
         "type": "object",
@@ -20304,6 +20479,158 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BackupSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/audit": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session: the audit log (#806), newest first. Role and member changes, invitations, sharing, share links, tokens, settings, backups, deleted projects and accounts, failed sign-ins and lockouts. Kept for `retentionDays`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "members",
+                "sharing",
+                "security",
+                "data"
+              ]
+            },
+            "required": false,
+            "name": "group",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "member.updated",
+                "settings.changed",
+                "project.deleted",
+                "project.member_set",
+                "project.member_removed",
+                "board.grant_set",
+                "board.grant_removed",
+                "invitation.created",
+                "invitation.revoked",
+                "share_link.created",
+                "share_link.changed",
+                "share_link.removed",
+                "token.created",
+                "token.revoked",
+                "account.deleted",
+                "backup.started",
+                "backup.restored",
+                "auth.sign_in_failed",
+                "auth.locked_out"
+              ]
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": false,
+            "name": "actorId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEvents"
                 }
               }
             }

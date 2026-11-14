@@ -386,7 +386,10 @@ built in yet.
 
 Setup instructions are in [Sign-in](sign-in.md). Leave unused providers unset. Set Google
 client id and secret together; OIDC needs discovery URL, client id and secret together.
-`SMTP_URL` requires `MAIL_FROM`.
+`SMTP_URL` requires `MAIL_FROM`. Connections, greetings and silent sockets time out after
+30 seconds unless the URL sets its own (`?socketTimeout=60000`). A notification email that fails
+is tried again after 2, 4, 8… minutes (at most an hour, six times); when as many fail as go out,
+**Settings → Server** shows an email problem.
 
 | Variable                 | Default                | Meaning                                                                           |
 | ------------------------ | ---------------------- | --------------------------------------------------------------------------------- |

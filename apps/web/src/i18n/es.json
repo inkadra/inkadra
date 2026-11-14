@@ -3103,7 +3103,7 @@
       "body": "Elimina la cuenta y los proyectos en los que no hay nadie más. No se puede deshacer.",
       "open": "Eliminar cuenta…",
       "confirmTitle": "¿Eliminar la cuenta?",
-      "confirmBody": "Los proyectos en los que estás solo se eliminan con todos sus archivos. En los proyectos compartidos el trabajo se queda, sin ti.",
+      "confirmBody": "Los proyectos en los que estás solo se eliminan con todos sus archivos. En los proyectos compartidos el trabajo se queda, sin ti. Los archivos eliminados siguen en las copias de seguridad del servidor hasta que salen de su conservación (7 copias nocturnas por defecto, 91 días como máximo).",
       "fresh": "Por seguridad, debes haber iniciado sesión en los últimos 15 minutos: si hace falta, sal y vuelve a entrar.",
       "blocked": "Eres el único propietario de estos proyectos compartidos: nombra antes a otro propietario.",
       "confirm": "Eliminar definitivamente"
@@ -3753,7 +3753,8 @@
       "apps": "Lo que se conecta a tu cuenta desde fuera: calendario, extensión del navegador, tokens.",
       "instance": "El nombre de la instancia y lo que falta para terminar la configuración.",
       "reports": "Adónde van los informes que se envían desde «Informar de un problema», y los recibidos.",
-      "video": "Inkadra prepara copias más ligeras de los vídeos en varias resoluciones: quien mira recibe la adecuada para su conexión. Los originales nunca se tocan."
+      "video": "Inkadra prepara copias más ligeras de los vídeos en varias resoluciones: quien mira recibe la adecuada para su conexión. Los originales nunca se tocan.",
+      "audit": "Quién cambió roles, miembros, uso compartido, ajustes y tokens, qué se eliminó o se copió y qué inicios de sesión fallaron."
     },
     "autosave": {
       "idle": "Guardado automático",
@@ -4236,7 +4237,7 @@
   },
   "backups": {
     "title": "Copias de seguridad",
-    "cardLead": "Cada copia contiene toda la base de datos. Los archivos se quedan donde están: haz también copia del volumen de datos o del bucket.",
+    "cardLead": "Cada copia contiene toda la base de datos y se relee tras escribirse. Los archivos se quedan donde están: haz también copia del volumen de datos o del bucket. Los archivos eliminados se conservan mientras una copia guardada los necesite.",
     "now": "Hacer copia ahora",
     "running": "Haciendo copia…",
     "busy": "Ya hay una copia en curso.",
@@ -4275,9 +4276,18 @@
       "no_space": "El volumen de datos está lleno.",
       "permission": "El servidor no puede escribir en su carpeta de datos (DATA_DIR/backups).",
       "internal": "Algo salió mal. El registro del servidor indica qué, con el id de esta copia.",
-      "inconsistent": "Algunos tableros o comentarios se apuntan entre sí en un bucle y no se pueden guardar en orden. El registro del servidor indica la tabla."
+      "inconsistent": "Algunos tableros o comentarios se apuntan entre sí en un bucle y no se pueden guardar en orden. El registro del servidor indica la tabla.",
+      "corrupt": "El archivo no se pudo releer tal como se escribió, así que no se conservó. Revisa el volumen de datos."
     },
-    "notInBucket": "Conservada solo en el servidor: falló la copia al bucket."
+    "notInBucket": "Conservada solo en el servidor: falló la copia al bucket.",
+    "verified": "verificada",
+    "missingFiles_one": "Falta {{count}} archivo de la lista en el almacenamiento: una restauración no lo tendría.",
+    "missingFiles_other": "Faltan {{count}} archivos de la lista en el almacenamiento: una restauración no los tendría.",
+    "verifyIncomplete": "verificación incompleta",
+    "verifiedSample_one": "verificada con una muestra de {{count}} archivo",
+    "verifiedSample_other": "verificada con una muestra de {{count}} archivos",
+    "unverifiedFiles_one": "{{count}} archivo de la lista no se pudo comprobar: el almacenamiento respondió con un error.",
+    "unverifiedFiles_other": "{{count}} archivos de la lista no se pudieron comprobar: el almacenamiento respondió con un error."
   },
   "export": {
     "title": "Exportar",
@@ -5907,6 +5917,23 @@
             "text": "Para expertos: repite la prueba de la tarjeta, cambia las sesiones al vuelo y los valores de cada resolución. «Restablecer» vuelve a lo recomendado."
           }
         }
+      },
+      "audit": {
+        "name": "Registro de actividad",
+        "steps": {
+          "0": {
+            "title": "Quién hizo qué",
+            "text": "Cambios en personas, uso compartido y ajustes, con quién y cuándo."
+          },
+          "1": {
+            "title": "Acota",
+            "text": "Muestra solo personas, compartir, accesos o datos."
+          },
+          "2": {
+            "title": "Un año",
+            "text": "Los eventos más antiguos se quitan solos."
+          }
+        }
       }
     }
   },
@@ -6763,6 +6790,47 @@
       "customPreset": "Personalizada",
       "customNote": "Algunos valores se cambiaron en los ajustes avanzados.",
       "resetAll": "Volver a los valores del nivel"
+    }
+  },
+  "audit": {
+    "title": "Registro de actividad",
+    "filter": "Mostrar",
+    "events": "Eventos",
+    "none": "Aún no hay nada registrado.",
+    "loadError": "No se pudo cargar el registro de actividad.",
+    "more": "Mostrar anteriores",
+    "nobody": "Alguien sin sesión",
+    "deletedAccount": "Una cuenta eliminada",
+    "line": "{{what}} · {{who}}",
+    "retention_one": "Los eventos se guardan {{count}} día.",
+    "retention_other": "Los eventos se guardan {{count}} días.",
+    "groups": {
+      "all": "Todo",
+      "members": "Personas",
+      "sharing": "Compartir",
+      "security": "Acceso y tokens",
+      "data": "Datos y ajustes"
+    },
+    "actions": {
+      "member_updated": "Miembro modificado",
+      "settings_changed": "Ajustes modificados",
+      "project_deleted": "Proyecto eliminado",
+      "project_member_set": "Miembro del proyecto añadido o modificado",
+      "project_member_removed": "Miembro del proyecto quitado",
+      "board_grant_set": "Acceso a la pizarra concedido",
+      "board_grant_removed": "Acceso a la pizarra quitado",
+      "invitation_created": "Invitación creada",
+      "invitation_revoked": "Invitación revocada",
+      "share_link_created": "Enlace compartido creado",
+      "share_link_changed": "Enlace compartido modificado",
+      "share_link_removed": "Enlace compartido desactivado",
+      "token_created": "Token creado",
+      "token_revoked": "Token revocado",
+      "account_deleted": "Cuenta eliminada",
+      "backup_started": "Copia iniciada",
+      "backup_restored": "Copia restaurada",
+      "auth_sign_in_failed": "Inicio de sesión fallido",
+      "auth_locked_out": "Inicio de sesión bloqueado"
     }
   }
 }

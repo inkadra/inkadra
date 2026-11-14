@@ -1,5 +1,6 @@
 import {
   API_PREFIX,
+  AuditEventsQuery,
   ClassificationCatalogs,
   ClassificationsQuery,
   Id,
@@ -15,6 +16,7 @@ import {
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { live } from '../access.ts';
+import { changes, listAudit, recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import {
   deletedIds,
@@ -106,7 +108,16 @@ export function registerInstanceAdminRoutes(
             reason: 'admin_two_factor_enrollment_required_to_enable',
           },
         );
-      const settings = { ...(await readInstanceSettings(tx, config)), ...patch };
+      const before = await readInstanceSettings(tx, config);
+      const settings = { ...before, ...patch };
+      await recordAudit(tx, {
+        action: 'settings.changed',
+        actorId: actor.id,
+        targetType: 'settings',
+        targetId: 'administration',
+        ip: req.ip,
+        details: { changes: changes(before, patch) },
+      });
       await tx
         .insert(instanceSetting)
         .values({ key: 'administration', value: settings })
@@ -155,6 +166,14 @@ export function registerInstanceAdminRoutes(
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
+      await recordAudit(tx, {
+        action: 'settings.changed',
+        actorId: actor.id,
+        targetType: 'settings',
+        targetId: 'storage-limits',
+        ip: req.ip,
+        details: { patch },
+      });
       return storageLimits(await saveLimits(tx, config, patch));
     });
   });
@@ -171,11 +190,19 @@ export function registerInstanceAdminRoutes(
     return videoView();
   });
   app.patch(`${API_PREFIX}/instance/video-settings`, async (req) => {
-    await admin(req);
+    const actor = await admin(req);
     const patch = UpdateVideoSettings.parse(req.body ?? {});
     await db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(10893)`);
       await saveVideoSettings(tx, config, patch);
+      await recordAudit(tx, {
+        action: 'settings.changed',
+        actorId: actor.id,
+        targetType: 'settings',
+        targetId: 'video',
+        ip: req.ip,
+        details: { patch },
+      });
     });
     return videoView();
   });
@@ -250,6 +277,12 @@ export function registerInstanceAdminRoutes(
       nextCursor: rows.length > items.length && last ? encodeTextCursor(last.name, last.id) : null,
     };
   });
+  // The audit log (#806): administrators only, from a signed-in session.
+  app.get(`${API_PREFIX}/instance/audit`, async (req, reply) => {
+    await admin(req);
+    reply.header('cache-control', 'private, no-store');
+    return listAudit(db, AuditEventsQuery.parse(req.query ?? {}));
+  });
   app.patch(`${API_PREFIX}/instance/members/:userId`, async (req) => {
     const actor = await admin(req);
     const { userId } = z.object({ userId: Id }).parse(req.params);
@@ -298,6 +331,25 @@ export function registerInstanceAdminRoutes(
                 : target.deactivatedAt,
         })
         .where(eq(user.id, userId));
+      await recordAudit(tx, {
+        action: 'member.updated',
+        actorId: actor.id,
+        targetType: 'user',
+        targetId: userId,
+        ip: req.ip,
+        details: {
+          name: target.name,
+          changes: changes(
+            {
+              role: target.role,
+              canCreateProjects: target.canCreateProjects,
+              storageLimit: target.storageLimit,
+              active: !target.deactivatedAt,
+            },
+            patch,
+          ),
+        },
+      });
       if (patch.active === false) {
         await tx.delete(session).where(eq(session.userId, userId));
         await revokeTokens(tx, eq(personalToken.userId, userId), 'account_deactivated');

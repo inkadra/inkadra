@@ -509,4 +509,26 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
       await db.delete(instanceBackup);
     }
   });
+
+  it('warns about notification emails given up after every retry (#812)', async () => {
+    const now = Date.now();
+    const [given] = await db
+      .insert(notification)
+      .values({
+        userId: people.admin?.id as string,
+        type: 'review',
+        emailAttempts: 6,
+        emailFailedAt: new Date(now - 60_000),
+      })
+      .returning();
+    try {
+      const own = memoryStore(() => now);
+      await checkHealth({ ...alertDeps(), store: own }, now);
+      const problems = (await own.problems()).filter((p) => p.id.startsWith('email_given_up:'));
+      expect(problems).toMatchObject([{ kind: 'email_failed', severity: 'warning' }]);
+      expect(problems[0]?.technical).toContain('1 notification emails given up');
+    } finally {
+      await db.delete(notification).where(eq(notification.id, given?.id as string));
+    }
+  });
 });
