@@ -33,8 +33,8 @@ services:
     ports: !reset []
     environment:
       OFFICE_PREVIEWS: "true"
+    # no-new-privileges comes from compose.yaml with the rest of the settings.
     security_opt:
-      - no-new-privileges:true
       # Docker's default profile plus the calls bubblewrap needs to build its namespaces
       # (never seccomp=unconfined). Where it comes from: docs/self-hosting/office.md.
       - seccomp=./deploy/office-seccomp.json
