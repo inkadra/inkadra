@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { eq, inArray } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createDatabase, type Database, runMigrations } from './db/client.ts';
 import { asset, pendingFileDeletion, project, projectTransfer, user } from './db/schema.ts';
 import { assetIdOf, DELETION_GRACE_MS, recordDeletions, sweepDeletions } from './file-deletions.ts';
@@ -55,8 +55,10 @@ describe.skipIf(!url)('recorded file removals (needs DATABASE_URL)', () => {
       log,
     );
     expect(Date.now() - started).toBeLessThan(10_000);
-    expect(await storage.size(key)).toBeNull();
-    expect(await keysIn([key])).toEqual([]);
+    await vi.waitFor(async () => {
+      expect(await storage.size(key)).toBeNull();
+      expect(await keysIn([key])).toEqual([]);
+    });
   });
 
   it('sweeps removals a day old, keeping the files of assets that exist again (#801)', async () => {
@@ -100,5 +102,39 @@ describe.skipIf(!url)('recorded file removals (needs DATABASE_URL)', () => {
     expect(await storage.size(kept)).not.toBeNull();
     expect(await storage.size(fresh)).not.toBeNull();
     expect(await keysIn([gone, fresh, kept])).toEqual([fresh]);
+  });
+
+  it('keeps going when a chunk fails and ignores an import that stopped answering', async () => {
+    const [u] = await db
+      .insert(user)
+      .values({ name: 'Stale', email: `${randomUUID()}@example.com` })
+      .returning();
+    const stale = new Date(Date.now() - 60 * 60 * 1000);
+    const [t] = await db
+      .insert(projectTransfer)
+      .values({
+        kind: 'import',
+        status: 'running',
+        userId: u?.id as string,
+        projectName: 'Dead',
+        updatedAt: stale,
+      })
+      .returning();
+    const key = `feedback/${randomUUID()}`;
+    await write(key);
+    await recordDeletions(db, [key]);
+    await db
+      .update(pendingFileDeletion)
+      .set({ createdAt: new Date(Date.now() - DELETION_GRACE_MS - 60_000) })
+      .where(eq(pendingFileDeletion.key, key));
+    const broken: Storage = {
+      ...storage,
+      remove: () => Promise.reject(new Error('bucket down')),
+    };
+    await expect(sweepDeletions(db, broken, log)).resolves.toBe(0);
+    expect(await keysIn([key])).toEqual([key]);
+    await sweepDeletions(db, storage, log);
+    expect(await keysIn([key])).toEqual([]);
+    await db.delete(projectTransfer).where(eq(projectTransfer.id, t?.id as string));
   });
 });

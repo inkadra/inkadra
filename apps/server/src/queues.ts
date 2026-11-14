@@ -410,7 +410,7 @@ export async function startWorkers(
         return {
           ...(await purgeUploads(deps.db, deps.storage, queues.jobs)),
           proxies: await requeueStuckProxies(deps.db, queues.jobs),
-          deletions: await sweepDeletions(deps.db, deps.storage),
+          deletions: await sweepDeletions(deps.db, deps.storage, log),
         };
       if (job.name === 'version-retention') {
         const versions = await applyVersionRetention(deps.db);
@@ -702,7 +702,7 @@ export const ENQUEUE_TIMEOUT_MS = 2_000;
 
 /**
  * Removes the files of rows a request just deleted, never failing it nor waiting long (#758):
- * queued when the queue answers in time, otherwise removed here. The rows' transaction
+ * queued when the queue answers in time, otherwise removed here in the background. The rows' transaction
  * recorded the keys (`recordDeletions`), so what fails here is removed by the hourly sweep.
  */
 export async function removeFilesLater(
@@ -715,7 +715,8 @@ export async function removeFilesLater(
     await within(deps.jobs.deleteFiles(keys), ENQUEUE_TIMEOUT_MS, 'The job queue did not answer.');
   } catch (err) {
     log?.warn({ err, files: keys.length }, 'Files not queued for removal: removing them now');
-    await removeFiles(deps.db, deps.storage, keys).catch((e) =>
+    // Not awaited: S3 removal checks each upload, and the keys are recorded for the sweep anyway.
+    void removeFiles(deps.db, deps.storage, keys).catch((e) =>
       log?.error({ err: e, files: keys.length }, 'Files not removed: the sweep will retry'),
     );
   }

@@ -270,14 +270,22 @@ function s3Storage(config: Config): Storage {
       for (const key of keys) checkKey(key);
       // An unfinished upload is an open multipart upload whose id only its `.info` holds: tus
       // aborts it before the `.info` goes, or its parts stay billed in the bucket (#802). When
-      // the abort fails, the `.info` stays with the id, for the bucket's lifecycle rule.
+      // the abort fails, remove throws: the `.info` stays with the id and the record is retried.
       const all: string[] = [];
+      const originals: string[] = [];
       for (const key of keys) {
         all.push(key);
-        if (!key.startsWith('originals/')) continue;
-        all.push(`${key}.part`);
-        if (await abortUpload(uploads, key)) all.push(`${key}.info`);
+        if (key.startsWith('originals/')) originals.push(key);
       }
+      let next = 0;
+      const worker = async () => {
+        while (next < originals.length) {
+          const key = originals[next++] as string;
+          all.push(`${key}.part`);
+          if (await abortUpload(uploads, key)) all.push(`${key}.info`);
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(ABORT_CONCURRENCY, originals.length) }, worker));
       for (let i = 0; i < all.length; i += 1000) {
         await client.send(
           new DeleteObjectsCommand({
@@ -290,18 +298,21 @@ function s3Storage(config: Config): Storage {
   };
 }
 
+const ABORT_CONCURRENCY = 16;
+
 /**
- * Aborts the multipart upload of an original and removes its `.info`, if any. False when the
- * bucket refused: the caller keeps the `.info`. Not found (no `.info`, an upload that finished)
- * leaves nothing to abort.
+ * Aborts the multipart upload of an original and removes its `.info`, if any. Not found (no
+ * `.info`, an upload that finished) leaves nothing to abort. Any other error is thrown, so the
+ * caller keeps the `.info` and the deletion record and the job or sweep retries (remove is
+ * idempotent).
  */
 export async function abortUpload(uploads: Pick<DataStore, 'remove'>, key: string) {
   try {
     await uploads.remove(key);
-    return true;
   } catch (err) {
-    return (err as { status_code?: number } | null)?.status_code === 404;
+    if ((err as { status_code?: number } | null)?.status_code !== 404) throw err;
   }
+  return true;
 }
 
 /** The stream in pieces of `size` bytes (the last one shorter). */

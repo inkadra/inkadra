@@ -1,4 +1,5 @@
-import { and, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, lt } from 'drizzle-orm';
+import type { Logger } from 'pino';
 import type { Database } from './db/client.ts';
 import { asset, pendingFileDeletion, projectTransfer } from './db/schema.ts';
 import type { Storage } from './storage.ts';
@@ -7,6 +8,8 @@ import type { Storage } from './storage.ts';
 export const DELETION_GRACE_MS = 24 * 60 * 60 * 1000;
 
 const CHUNK = 1000;
+/** An import silent for this long (as in `STALLED_MS`) is taken for dead and no longer holds the sweep. */
+const IMPORT_STALE_MS = 15 * 60 * 1000;
 
 /**
  * Records stored files to remove. Called in the transaction that deletes their rows, so the
@@ -44,20 +47,51 @@ export function assetIdOf(key: string): string | null {
  * files are recorded before its rows exist. A key whose asset has a row again (an upload
  * restarted with the same id) is dropped from the list and its file kept.
  */
-export async function sweepDeletions(db: Database, storage: Storage) {
+export async function sweepDeletions(
+  db: Database,
+  storage: Storage,
+  log?: Pick<Logger, 'warn' | 'error'>,
+) {
   const [importing] = await db
     .select({ id: projectTransfer.id })
     .from(projectTransfer)
-    .where(and(eq(projectTransfer.kind, 'import'), eq(projectTransfer.status, 'running')))
+    .where(
+      and(
+        eq(projectTransfer.kind, 'import'),
+        eq(projectTransfer.status, 'running'),
+        gt(projectTransfer.updatedAt, new Date(Date.now() - IMPORT_STALE_MS)),
+      ),
+    )
     .limit(1);
-  if (importing) return 0;
-  const rows = await db
-    .select({ key: pendingFileDeletion.key })
-    .from(pendingFileDeletion)
-    .where(lt(pendingFileDeletion.createdAt, new Date(Date.now() - DELETION_GRACE_MS)))
-    .limit(CHUNK);
-  if (rows.length === 0) return 0;
-  const keys = rows.map((r) => r.key);
+  if (importing) {
+    log?.warn({ import: importing.id }, 'Deletion sweep paused: an import is running');
+    return 0;
+  }
+  // Oldest first, a chunk at a time: a chunk that fails is logged and skipped, not the sweep.
+  const before = new Date(Date.now() - DELETION_GRACE_MS);
+  let removed = 0;
+  const tried = new Set<string>();
+  for (;;) {
+    const rows = await db
+      .select({ key: pendingFileDeletion.key })
+      .from(pendingFileDeletion)
+      .where(lt(pendingFileDeletion.createdAt, before))
+      .orderBy(asc(pendingFileDeletion.createdAt), asc(pendingFileDeletion.key))
+      .limit(CHUNK + tried.size);
+    const keys = rows.map((r) => r.key).filter((k) => !tried.has(k)).slice(0, CHUNK);
+    if (keys.length === 0) break;
+    for (const k of keys) tried.add(k);
+    try {
+      removed += await sweepChunk(db, storage, keys);
+    } catch (err) {
+      log?.error({ err, files: keys.length }, 'Deletion sweep: a chunk failed, retrying next time');
+    }
+    if (tried.size >= 10 * CHUNK) break; // shortcut: bounded per run, the rest waits for the next
+  }
+  return removed;
+}
+
+async function sweepChunk(db: Database, storage: Storage, keys: string[]) {
   const ids = [...new Set(keys.map(assetIdOf).filter((id): id is string => id !== null))];
   const live = new Set(
     ids.length === 0

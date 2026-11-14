@@ -107,13 +107,13 @@ describe.skipIf(!s3Endpoint)('s3 storage (needs S3_TEST_ENDPOINT)', () => {
   });
 });
 
-it('keeps the upload record when the bucket refuses the abort', async () => {
+it('throws when the bucket refuses the abort, so the record is retried', async () => {
   const notFound = Object.assign(new Error('gone'), { status_code: 404 });
   expect(await abortUpload({ remove: async () => {} }, 'originals/a')).toBe(true);
   expect(await abortUpload({ remove: () => Promise.reject(notFound) }, 'originals/a')).toBe(true);
-  expect(await abortUpload({ remove: () => Promise.reject(new Error('503')) }, 'originals/a')).toBe(
-    false,
-  );
+  await expect(
+    abortUpload({ remove: () => Promise.reject(new Error('503')) }, 'originals/a'),
+  ).rejects.toThrow('503');
 });
 
 it('removes only the keys it is given; Office derivatives are listed for Office assets only', async () => {
