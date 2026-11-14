@@ -1172,7 +1172,13 @@ function BoardScreen({
     >
       {conn.sizeLimited && !conn.schemaTooNew && (
         <div role="alert" className="board-update-notice">
-          {t(conn.readOnly ? 'board.contextual.sizeLimitReadOnly' : 'board.contextual.sizeLimit')}
+          {t(
+            conn.readOnly
+              ? 'board.contextual.sizeLimitReadOnly'
+              : conn.sizeLimitKept
+                ? 'board.contextual.sizeLimitKept'
+                : 'board.contextual.sizeLimit',
+          )}
         </div>
       )}
       {conn.schemaTooNew && (

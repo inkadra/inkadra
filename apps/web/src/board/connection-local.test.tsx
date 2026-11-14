@@ -6,12 +6,14 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
 import { authApi, RequestError } from '../lib/api.ts';
 import { signOut } from '../lib/sign-out.ts';
+import { installWebLocks } from '../test/web-locks.ts';
 import {
   type BoardConnection,
   cachedBoards,
   refusalStatus,
   useBoardConnection,
 } from './connection.ts';
+import { sweepLocalBoards, unsavedLocalBoards } from './local-boards.ts';
 
 /** The copy of a board on the device (#791): a reload, a second account, signing out. */
 type Options = {
@@ -20,6 +22,7 @@ type Options = {
   onSynced: () => void;
   onDisconnect: () => void;
   onAuthenticationFailed: (event: { reason: string }) => void;
+  onStateless: (event: { payload: string }) => void;
 };
 type Provider = Options & { emit: (event: string, payload: unknown) => void };
 const person = vi.hoisted(() => ({ id: 'person-a' }));
@@ -53,6 +56,7 @@ vi.mock('@hocuspocus/provider', () => ({
   },
 }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+installWebLocks();
 
 let root: ReturnType<typeof createRoot> | undefined;
 let connection: BoardConnection | null = null;
@@ -109,8 +113,9 @@ it('brings back offline edits after a reload and lets them go once the server ha
     provider.emit('unsyncedChanges', { number: 0 });
   });
   await settle();
-  // Confirmed: the copy on the device is deleted when the board closes.
+  // Confirmed: the copy stays while a view may have it open, and goes at the next sweep.
   await reload();
+  await sweepLocalBoards();
   await open('trip');
   expect(title()).toBeUndefined();
 });
@@ -157,6 +162,51 @@ it('deletes the copy of a board the person can no longer open', async () => {
   await reload();
   await open('revoked');
   expect(title()).toBeUndefined();
+});
+
+it('keeps the copy when the refusal does not say the access is lost', async () => {
+  await editOffline('flaky-auth', 'Kept through a refusal');
+  await reload();
+  // The collab server's generic refusal (a database error, say), and the account still works.
+  const provider = await open('flaky-auth');
+  await act(async () => provider.onAuthenticationFailed({ reason: 'permission-denied' }));
+  await settle();
+  expect(connection?.status).toBe('denied');
+  await reload();
+  await sweepLocalBoards();
+  await open('flaky-auth');
+  expect(title()).toBe('Kept through a refusal');
+});
+
+it('keeps edits a read-only connection was answered without applying', async () => {
+  const provider = await open('read-only');
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'readonly' });
+    provider.onSynced();
+    connection!.store.doc.getMap('meta').set('title', 'Typed as the role changed');
+    provider.emit('unsyncedChanges', { number: 1 });
+    provider.emit('unsyncedChanges', { number: 0 });
+  });
+  await settle();
+  await reload();
+  await sweepLocalBoards();
+  await open('read-only');
+  expect(title()).toBe('Typed as the role changed');
+});
+
+it('sets edits refused at the size limit aside and says so', async () => {
+  await editOffline('too-big', 'Does not fit');
+  await reload();
+  const provider = await open('too-big');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'writeRefused', reason: 'frozen' }) }),
+  );
+  await settle();
+  // Reopened from what the server confirmed, with the person told the edits are on the device.
+  expect(providers.at(-1)).not.toBe(provider);
+  expect(title()).toBeUndefined();
+  expect(connection?.sizeLimitKept).toBe(true);
+  expect(await unsavedLocalBoards(person.id)).toContain('too-big');
 });
 
 it('keeps the copy when the server fails rather than refuses', async () => {

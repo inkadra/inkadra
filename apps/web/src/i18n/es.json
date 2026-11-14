@@ -29,6 +29,13 @@
     "createAdmin": "Crear cuenta y entrar",
     "signOut": "Cerrar sesión",
     "signOutFailed": "No se pudo cerrar la sesión. Comprueba la conexión e inténtalo de nuevo.",
+    "signOutUnsaved": {
+      "title": "¿Cerrar sesión y eliminar los cambios sin guardar?",
+      "body_one": "{{count}} tablero tiene cambios guardados solo en este dispositivo. Al cerrar sesión se eliminan. Mantén la sesión y ábrelo con conexión para guardarlos.",
+      "body_other": "{{count}} tableros tienen cambios guardados solo en este dispositivo. Al cerrar sesión se eliminan. Mantén la sesión y ábrelos con conexión para guardarlos.",
+      "confirm": "Cerrar sesión y eliminar",
+      "stay": "Mantener la sesión"
+    },
     "errors": {
       "reauthRequired": "Inicia sesión de nuevo para continuar.",
       "invalid": "Correo o contraseña incorrectos.",
@@ -1922,6 +1929,7 @@
       "drawFailed": "No se pudo guardar el trazo. Inténtalo de nuevo; si el problema continúa, recarga el tablero.",
       "updateApp": "Este tablero requiere una versión más reciente. Actualiza la app para editarlo; puedes seguir leyéndolo.",
       "sizeLimit": "Este tablero ha alcanzado su límite de tamaño. Las adiciones no se guardaron; el tablero se ha recargado. Puedes eliminar contenido para liberar espacio.",
+      "sizeLimitKept": "Este tablero ha alcanzado su límite de tamaño. Los cambios hechos en este dispositivo no se guardaron: se conservan en este dispositivo y el tablero se ha recargado. Puedes eliminar contenido para hacer espacio.",
       "sizeLimitReadOnly": "Este tablero ha alcanzado su límite de tamaño y es de solo lectura. Las adiciones no se guardaron."
     },
     "sheet": {
@@ -3527,6 +3535,7 @@
     "pickupAt": "recogida {{pickup}}"
   },
   "needed": {
+    "locked": "Aquí solo lectura: su storyboard no está abierto para editar.",
     "title": "Para llevar",
     "progress": "{{ready}} de {{total}} listos",
     "mine": "Solo los míos",

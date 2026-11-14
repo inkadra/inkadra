@@ -708,11 +708,17 @@ export function createCollabServer(deps: {
       const origin = requestHeaders.get('origin');
       if (origin && !allowedOrigin(origin, requestHeaders.get(ORIGIN_HEADER) ?? '', deps.publicUrl))
         throw new Error('Origin not allowed');
+      // A client that asks (`reasons=1`) is told a signed-out session and a lost access apart from
+      // other refusals, with the reasons of the matching closes (#791): it deletes its copy of the
+      // board only for `Forbidden`. Others keep the generic "permission-denied" they know.
+      const reasons = requestParameters.get('reasons') === '1';
+      const refuse = (message: string, reason: 'Unauthorized' | 'Forbidden') =>
+        Object.assign(new Error(message), reasons ? { reason } : {});
       const signed = await signedIn(token, requestHeaders);
-      if (!signed) throw new Error('Not signed in');
+      if (!signed) throw refuse('Not signed in', 'Unauthorized');
       const { actor } = signed;
       const access = await boardRole(db, actor, boardId);
-      if (!access?.role) throw new Error('Not allowed');
+      if (!access?.role) throw refuse('Not allowed', 'Forbidden');
       const [me] = await db
         .select({ name: user.name, image: user.image })
         .from(user)

@@ -29,6 +29,13 @@
     "createAdmin": "Create account and sign in",
     "signOut": "Sign out",
     "signOutFailed": "Could not sign out. Check the connection and try again.",
+    "signOutUnsaved": {
+      "title": "Sign out and delete unsaved edits?",
+      "body_one": "{{count}} board has edits saved only on this device. Signing out deletes them. Stay signed in and open it while online to save them.",
+      "body_other": "{{count}} boards have edits saved only on this device. Signing out deletes them. Stay signed in and open them while online to save them.",
+      "confirm": "Sign out and delete",
+      "stay": "Stay signed in"
+    },
     "errors": {
       "reauthRequired": "Sign in again to continue.",
       "invalid": "Wrong email or password.",
@@ -1922,6 +1929,7 @@
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
       "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it.",
       "sizeLimit": "This board has reached its size limit. Additions were not saved; the board has been reloaded. You can delete content to make room.",
+      "sizeLimitKept": "This board has reached its size limit. Changes made on this device were not saved: they are kept on this device, and the board has been reloaded. You can delete content to make room.",
       "sizeLimitReadOnly": "This board has reached its size limit and is read-only. Additions were not saved."
     },
     "sheet": {
@@ -3527,6 +3535,7 @@
     "pickupAt": "pick-up {{pickup}}"
   },
   "needed": {
+    "locked": "Read only here: its storyboard is not open for editing.",
     "title": "To bring",
     "progress": "{{ready}} of {{total}} ready",
     "mine": "Only mine",

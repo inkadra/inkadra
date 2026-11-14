@@ -29,6 +29,13 @@
     "createAdmin": "Crea account e accedi",
     "signOut": "Esci",
     "signOutFailed": "Impossibile uscire. Controlla la connessione e riprova.",
+    "signOutUnsaved": {
+      "title": "Uscire ed eliminare le modifiche non salvate?",
+      "body_one": "{{count}} board ha modifiche salvate solo su questo dispositivo. Uscendo vengono eliminate. Resta connesso e aprila online per salvarle.",
+      "body_other": "{{count}} board hanno modifiche salvate solo su questo dispositivo. Uscendo vengono eliminate. Resta connesso e aprile online per salvarle.",
+      "confirm": "Esci ed elimina",
+      "stay": "Resta connesso"
+    },
     "errors": {
       "reauthRequired": "Accedi di nuovo per continuare.",
       "invalid": "Email o password non corrette.",
@@ -1922,6 +1929,7 @@
       "drawFailed": "Impossibile salvare il tratto. Riprova; se il problema continua, ricarica la board.",
       "updateApp": "Questa board richiede una versione più recente. Aggiorna l’app per modificarla; puoi continuare a leggerla.",
       "sizeLimit": "La board ha raggiunto il limite di dimensione. Le aggiunte non sono state salvate; la board è stata ricaricata. Puoi eliminare contenuti per liberare spazio.",
+      "sizeLimitKept": "Questa board ha raggiunto il limite di dimensione. Le modifiche fatte su questo dispositivo non sono state salvate: restano su questo dispositivo e la board è stata ricaricata. Puoi eliminare contenuti per fare spazio.",
       "sizeLimitReadOnly": "Questa board ha raggiunto il limite di dimensione ed è in sola lettura. Le aggiunte non sono state salvate."
     },
     "sheet": {
@@ -3527,6 +3535,7 @@
     "pickupAt": "pick-up {{pickup}}"
   },
   "needed": {
+    "locked": "Qui è in sola lettura: il suo storyboard non è aperto in modifica.",
     "title": "Da portare",
     "progress": "{{ready}} di {{total}} pronti",
     "mine": "Solo i miei",

@@ -29,6 +29,13 @@
     "createAdmin": "Criar conta e entrar",
     "signOut": "Sair",
     "signOutFailed": "Não foi possível terminar a sessão. Verifique a ligação e tente novamente.",
+    "signOutUnsaved": {
+      "title": "Terminar sessão e eliminar as alterações não guardadas?",
+      "body_one": "{{count}} quadro tem alterações guardadas apenas neste dispositivo. Terminar a sessão elimina-as. Mantenha a sessão e abra-o com ligação para as guardar.",
+      "body_other": "{{count}} quadros têm alterações guardadas apenas neste dispositivo. Terminar a sessão elimina-as. Mantenha a sessão e abra-os com ligação para as guardar.",
+      "confirm": "Terminar sessão e eliminar",
+      "stay": "Manter a sessão"
+    },
     "errors": {
       "reauthRequired": "Entre novamente para continuar.",
       "invalid": "E-mail ou senha incorretos.",
@@ -1922,6 +1929,7 @@
       "drawFailed": "Não foi possível salvar o traço. Tente novamente; se o problema continuar, recarregue o quadro.",
       "updateApp": "Este quadro requer uma versão mais recente. Atualize o app para editá-lo; você pode continuar visualizando.",
       "sizeLimit": "Este quadro atingiu o limite de tamanho. As adições não foram salvas; o quadro foi recarregado. Você pode excluir conteúdo para liberar espaço.",
+      "sizeLimitKept": "Este quadro atingiu o limite de tamanho. As alterações feitas neste dispositivo não foram guardadas: ficam neste dispositivo e o quadro foi recarregado. Pode eliminar conteúdo para libertar espaço.",
       "sizeLimitReadOnly": "Este quadro atingiu o limite de tamanho e está em modo somente leitura. As adições não foram salvas."
     },
     "sheet": {
@@ -3527,6 +3535,7 @@
     "pickupAt": "recolha {{pickup}}"
   },
   "needed": {
+    "locked": "Só de leitura aqui: o seu storyboard não está aberto para edição.",
     "title": "A levar",
     "progress": "{{ready}} de {{total}} prontos",
     "mine": "Só os meus",

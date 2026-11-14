@@ -11,13 +11,20 @@ import {
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useMemo, useState } from 'react';
-import { IndexeddbPersistence } from 'y-indexeddb';
 import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { setBusy, setUnsaved } from '../pwa/busy.ts';
 import { refetchAsset } from './assets.ts';
-import { closeLocalBoard, localBoardName, openLocalBoard } from './local-boards.ts';
+import {
+  dropLocalBoard,
+  keepAside,
+  LOCAL_ORIGIN,
+  type LocalBoard,
+  localBoardName,
+  openLocalBoard,
+  sweepLocalBoards,
+} from './local-boards.ts';
 import { BoardStore } from './store.ts';
 
 /**
@@ -26,7 +33,12 @@ import { BoardStore } from './store.ts';
  */
 export type ConnectionStatus = 'connecting' | 'synced' | 'offline' | 'denied' | 'signedOut';
 
-/** Reasons the collab server gives when it closes a board (decision 0011). */
+/**
+ * Reasons the collab server gives when it closes or refuses a board (decision 0011). `Forbidden`
+ * is an explicit loss of access (removed, or the board is in the trash): the only refusal that
+ * deletes the board's copy on this device (#791). A refusal without a reason of its own may be a
+ * passing failure, so the copy stays.
+ */
 const CLOSE_REASONS: Record<string, ConnectionStatus> = {
   Unauthorized: 'signedOut',
   Forbidden: 'denied',
@@ -39,6 +51,8 @@ export interface BoardConnection {
   readOnly: boolean;
   schemaTooNew?: boolean;
   sizeLimited?: boolean;
+  /** Edits the size limit refused were set aside on this device (#791). */
+  sizeLimitKept?: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
@@ -47,7 +61,8 @@ export interface BoardConnection {
 
 export function collabUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${scheme}://${window.location.host}${COLLAB_PATH}?schemaVersion=${CURRENT_SCHEMA_VERSION}`;
+  // `reasons=1`: refusals say `Forbidden` or `Unauthorized` when they are (#791).
+  return `${scheme}://${window.location.host}${COLLAB_PATH}?schemaVersion=${CURRENT_SCHEMA_VERSION}&reasons=1`;
 }
 
 export interface SaveState {
@@ -149,7 +164,8 @@ export async function refusalStatus(): Promise<ConnectionStatus> {
     await api.get('/me');
     return 'denied';
   } catch (err) {
-    // A server error is not a lost access: the board's copy on this device must stay (#791).
+    // A server error is not a lost access. Denied or not, a refusal without the collab server's
+    // own `Forbidden` (a proxy's 403 here) keeps the board's copy on this device (#791).
     if (err instanceof RequestError)
       return err.status === 401 ? 'signedOut' : err.status >= 500 ? 'offline' : 'denied';
     return 'offline';
@@ -230,6 +246,7 @@ export function useBoardConnection(
 
   const [reload, setReload] = useState(0);
   const [limitedBoard, setLimitedBoard] = useState<string | null>(null);
+  const [keptBoard, setKeptBoard] = useState<string | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: A refusal must reopen the document even though its board id is unchanged.
   useEffect(() => {
@@ -256,18 +273,22 @@ export function useBoardConnection(
     let edited = cached?.unsaved ?? false;
     let alive = true;
     // The board's copy on this device (#791): opened once a deletion of it is done.
-    let local: IndexeddbPersistence | null = null;
-    let localReady = false;
+    const localName = userId ? localBoardName(userId, boardId) : '';
+    let local: LocalBoard | null = null;
     let marked = false;
+    // The person lost access: the copy is deleted, also when it opens later.
+    let dropped = false;
     /** Says on the device whether the copy holds edits the server has not confirmed. */
     const mark = () => {
       if (!local || marked === edited) return;
       marked = edited;
-      void local.set('unsaved', edited ? 1 : 0).catch(() => {});
+      local.mark(edited);
     };
-    /** Deletes the copy at once: no access to the board, or a refused write. */
-    const dropLocal = () => {
-      if (local) void closeLocalBoard(local, true);
+    /** Deletes the copy: the server said the person can no longer open the board. */
+    const drop = () => {
+      dropped = true;
+      if (!localName) return;
+      void dropLocalBoard(localName, local?.close());
       local = null;
     };
     const hold = () => {
@@ -275,19 +296,27 @@ export function useBoardConnection(
       setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
       setUnsaved(cacheKey, edited && state.status !== 'denied');
     };
-    if (userId)
-      void openLocalBoard(localBoardName(userId, boardId), doc)
-        .then(async (opened) => {
-          if (!alive || state.status === 'denied') {
-            void closeLocalBoard(opened, refused || state.status === 'denied');
+    if (localName)
+      void openLocalBoard(localName, boardId, doc, () => {
+        local = null;
+      })
+        .then((opened) => {
+          if (dropped) {
+            void dropLocalBoard(localName, opened.close());
+            return;
+          }
+          if (!alive || refused) {
+            void opened.close();
+            return;
+          }
+          // Written by a newer build: kept for it, and this one only reads the board.
+          if (opened.tooNew) {
+            copyTooNew = true;
+            update({});
             return;
           }
           local = opened;
-          mark();
-          const [, unsaved] = await Promise.all([opened.whenSynced, opened.get('unsaved')]);
-          if (!alive || local !== opened) return;
-          localReady = true;
-          marked = unsaved === 1;
+          marked = opened.unsaved;
           // Edits a closed tab left on the device: the server confirms them once it has them.
           if (marked && !edited && (state.status !== 'synced' || unsynced > 0)) {
             edited = true;
@@ -325,7 +354,17 @@ export function useBoardConnection(
           // sending further edits; never cache the unaccepted additions.
           if (!roleReadOnly && !refused) {
             refused = true;
-            dropLocal();
+            // The refused edits stay on the device, set aside, and the person is told.
+            const closing = local?.close();
+            local = null;
+            if (localName) {
+              const kept = edited ? keepAside(userId, boardId, doc) : undefined;
+              kept?.then(
+                () => setKeptBoard(boardId),
+                () => {},
+              );
+              void dropLocalBoard(localName, Promise.all([closing, kept]));
+            }
             setReload((value) => value + 1);
           }
         }
@@ -334,11 +373,13 @@ export function useBoardConnection(
       },
       onClose: ({ event }) => {
         const status = CLOSE_REASONS[event.reason];
+        if (status === 'denied') drop();
         if (status) update({ status });
       },
       onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
       onAuthenticationFailed: ({ reason }) => {
         const status = CLOSE_REASONS[reason];
+        if (status === 'denied') drop();
         if (status) update({ status });
         else
           void refusalStatus().then((next) => {
@@ -348,7 +389,7 @@ export function useBoardConnection(
     });
     const onEdit = (_update: Uint8Array, origin: unknown) => {
       // The copy on the device loading is not an edit: its own flag says if it holds some.
-      if (origin === provider || origin instanceof IndexeddbPersistence || edited) return;
+      if (origin === provider || origin === LOCAL_ORIGIN || edited) return;
       edited = true;
       mark();
       hold();
@@ -357,19 +398,28 @@ export function useBoardConnection(
     // A provider on a shared socket is not attached by itself.
     if (socket) provider.attach();
     let roleReadOnly = cached?.readOnly ?? false;
+    let docTooNew = false;
+    let copyTooNew = false;
     function update(patch: Partial<typeof state>) {
       if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
+      const was = state.status;
       state = { ...state, ...patch };
-      state.readOnly = roleReadOnly || state.schemaTooNew === true;
-      if (state.status === 'denied') dropLocal();
+      state.schemaTooNew = docTooNew || copyTooNew;
+      state.readOnly = roleReadOnly || state.schemaTooNew;
+      // The session ended: copies with nothing unsaved go, so none stays on a shared computer.
+      if (state.status === 'signedOut' && was !== 'signedOut') void sweepLocalBoards();
       hold();
       setConn({ store, provider, saves, ...state });
     }
-    const stopSchema = watchDocumentSchema(doc, (schemaTooNew) => update({ schemaTooNew }));
+    const stopSchema = watchDocumentSchema(doc, (tooNew) => {
+      docTooNew = tooNew;
+      update({});
+    });
     // The provider sends nothing before the socket opens, so no count is missed here.
     const stopSaves = watchSaves(provider, (next) => {
       unsynced = next.pending;
-      if (unsynced === 0) edited = false;
+      // A read-only connection is answered without its edits being applied: they stay unsaved.
+      if (unsynced === 0 && !state.readOnly) edited = false;
       mark();
       saves.set(next);
       hold();
@@ -377,12 +427,9 @@ export function useBoardConnection(
     update({});
     return () => {
       alive = false;
-      // Everything confirmed: the copy on the device is no longer needed.
-      if (local)
-        void closeLocalBoard(
-          local,
-          refused || (localReady && state.status === 'synced' && unsynced === 0 && !edited),
-        );
+      // Kept: another view may have it open. Once all is confirmed, `sweepLocalBoards` deletes it.
+      mark();
+      void local?.close();
       // Only the deletions: an update from the document's own state vector holds no items.
       if (refused)
         refusedDeletions.set(cacheKey, Y.encodeStateAsUpdate(doc, Y.encodeStateVector(doc)));
@@ -408,6 +455,10 @@ export function useBoardConnection(
   }, [boardId, trackBusy, userId, reload]);
 
   const sizeLimited = limitedBoard === boardId;
+  const sizeLimitKept = keptBoard === boardId;
   // The same object until something changes: the board page's effects depend on it.
-  return useMemo(() => (conn ? { ...conn, sizeLimited } : null), [conn, sizeLimited]);
+  return useMemo(
+    () => (conn ? { ...conn, sizeLimited, sizeLimitKept } : null),
+    [conn, sizeLimited, sizeLimitKept],
+  );
 }

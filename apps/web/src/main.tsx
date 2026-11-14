@@ -4,6 +4,7 @@ import { TooltipProvider } from '@inkadra/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
+import { sweepLocalBoards } from './board/local-boards.ts';
 import { installFeedbackDiagnostics } from './feedback/diagnostics.ts';
 import { i18nReady } from './i18n/index.ts';
 import { lazyRoute, reloadOnPreloadError } from './lib/chunks.ts';
@@ -100,3 +101,5 @@ void i18nReady.then(() => {
   );
 });
 registerServiceWorker();
+// Copies of boards with nothing unsaved, that no tab has open, leave the device (#791).
+void sweepLocalBoards().catch(() => {});
