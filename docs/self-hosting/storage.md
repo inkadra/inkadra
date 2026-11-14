@@ -8,8 +8,10 @@ Inkadra keeps three kinds of data:
 | Uploaded files and their previews    | `/data/files` in Inkadra, or a bucket | Yes                                     |
 | Jobs waiting to run, sign-in limits  | Valkey (`valkey-data`)                | With the rest, though it can be rebuilt |
 
-If Valkey's data is lost, the queues are rebuilt when the server starts: only jobs that were
-waiting to run are lost, and the sign-in counters start again.
+If Valkey's data is lost, the queues are rebuilt: only jobs that were waiting to run are lost,
+and the sign-in counters start again. The worker registers the recurring jobs (nightly backup,
+emails, clean-ups) again within five minutes, and the Server page alerts administrators when no
+backup has succeeded for two days while backups are on.
 
 Uploaded files are immutable; back them up incrementally.
 
