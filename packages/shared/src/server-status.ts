@@ -249,6 +249,8 @@ export const ServerProblemKind = z
     'disk_full',
     'service_down',
     'server_error',
+    'board_save_failed',
+    'board_load_failed',
     'config_check',
   ])
   .openapi({

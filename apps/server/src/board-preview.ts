@@ -170,15 +170,7 @@ export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
   let result = empty;
   try {
     Y.applyUpdate(doc, state);
-    result = contentCounts(
-      [...roots(doc).elements.values()]
-        .filter((el) => el instanceof Y.Map)
-        .map((el) => ({
-          type: el.get('type'),
-          status: el.get('status'),
-          sceneIds: el.get('sceneIds'),
-        })),
-    );
+    result = docCounts(doc);
   } catch {
     return empty;
   } finally {
@@ -187,6 +179,19 @@ export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
   if (counts.size >= 256) counts.delete(counts.keys().next().value ?? '');
   counts.set(key, result);
   return { ...result };
+}
+
+/** The navigation counts of a loaded document; stored with it so lists need not decode it. */
+export function docCounts(doc: Y.Doc): ReturnType<typeof contentCounts> {
+  return contentCounts(
+    [...roots(doc).elements.values()]
+      .filter((el) => el instanceof Y.Map)
+      .map((el) => ({
+        type: el.get('type'),
+        status: el.get('status'),
+        sceneIds: el.get('sceneIds'),
+      })),
+  );
 }
 
 const unsorted = new Map<string, { count: number; assetIds: string[] }>();

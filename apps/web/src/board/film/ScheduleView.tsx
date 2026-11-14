@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { formatClock } from '../../lib/datetime.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { setUnsaved } from '../../pwa/busy.ts';
 import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { plansOfScene } from '../plan/scenes.tsx';
 import { dayBySetup, shotSetups } from '../plan/setups.ts';
@@ -146,6 +147,13 @@ function nextDate(days: readonly ShootingDay[], first: string): string {
 }
 
 type Drafts = Record<string, { revision: number; draft: ShootingDayInput | null }>;
+
+/**
+ * Drafts not saved when the live schedule closed (another board, a version preview), with the
+ * days they belong to, per person and board: reopening it brings them back and saves them.
+ * shortcut: memory only, like offline board edits; a closed tab loses them after the warning.
+ */
+const keptDrafts = new Map<string, { days: ShootingDay[]; drafts: Drafts }>();
 /** One step of undo: the days it changed, before and after. */
 interface Step {
   key: string | undefined;
@@ -230,10 +238,14 @@ export function ScheduleView({
   const { t, i18n } = useTranslation();
   const slugline = useSlugline();
   const [callSheetOpen, setCallSheetOpen] = useState(false);
-  const [days, setDays] = useState<ShootingDay[]>([]);
+  // Drafts are kept for a known person only. A saved-version preview is read only: it neither
+  // takes nor keeps the live drafts.
+  const keepKey = userId ? `${userId}:${boardId}` : '';
+  const kept = readOnly || !keepKey ? undefined : keptDrafts.get(keepKey);
+  const [days, setDays] = useState<ShootingDay[]>(() => kept?.days ?? []);
   // Unsaved edits per day, with the revision they started from. A draft is never dropped when
   // the server has a newer revision: it is flagged as stale until the user picks a version.
-  const [drafts, setDrafts] = useState<Drafts>({});
+  const [drafts, setDrafts] = useState<Drafts>(() => kept?.drafts ?? {});
   const [selection, setSelection] = useState<{ day: string | null; block: string | null }>({
     day: null,
     block: null,
@@ -291,6 +303,18 @@ export function ScheduleView({
   daysRef.current = days;
   const draftsRef = useRef(drafts);
   draftsRef.current = drafts;
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
+  // Closing the live schedule keeps its unsaved drafts for when it opens again.
+  useEffect(
+    () => () => {
+      if (!keepKey) return;
+      if (Object.keys(draftsRef.current).length > 0)
+        keptDrafts.set(keepKey, { days: daysRef.current, drafts: draftsRef.current });
+      else if (!readOnlyRef.current) keptDrafts.delete(keepKey);
+    },
+    [keepKey],
+  );
   // The boards the blocks point to: on the Production board, the storyboards it opens.
   const referencedKey = [
     ...new Set(
@@ -699,13 +723,11 @@ export function ScheduleView({
     return () => window.removeEventListener('online', online);
   }, []);
   const unsaved = Object.keys(drafts).length > 0;
-  // Closing the tab with edits not yet on the server asks first.
+  // Closing the tab with edits not yet on the server asks first, also once this view is closed
+  // and its drafts are kept: no cleanup, the next view of this board clears it once saved.
   useEffect(() => {
-    if (!unsaved) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [unsaved]);
+    if (!readOnly) setUnsaved(`schedule:${keepKey}`, unsaved);
+  }, [unsaved, keepKey, readOnly]);
   const staleCount = drafted.filter((d) => d.stale).length;
   const savingAny = Object.keys(saving).length > 0;
 

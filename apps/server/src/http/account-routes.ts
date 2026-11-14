@@ -38,10 +38,13 @@ import {
   userAvatar,
   verification,
 } from '../db/schema.ts';
+import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, securityNotification } from '../mailer.ts';
+import { removeFilesLater } from '../queues.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
+import type { Storage } from '../storage.ts';
 import { largestFiles, myStorage } from '../storage-limits.ts';
 import { proofKeyFor, proveNonce } from '../token-proof.ts';
 import { issueToken, revokeTokens, toPersonalToken } from '../tokens.ts';
@@ -55,6 +58,7 @@ interface Deps {
   db: Database;
   auth: Auth;
   jobs: Jobs;
+  storage: Storage;
   mailer?: Mailer;
 }
 
@@ -100,13 +104,13 @@ export async function normalizeAvatar(bytes: Buffer): Promise<Buffer> {
 }
 
 export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
-  const { config, db, auth, jobs } = deps;
+  const { config, db, auth, jobs, storage } = deps;
   const mailInstance = { instanceName: config.INSTANCE_NAME, publicUrl: config.PUBLIC_URL };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const exchangeLimiter = new RateLimiter(20, 60_000);
+  const exchangeLimiter = new RateLimiter(20, 60_000, 'account-routes:exchangeLimiter');
   // The proof needs no token: limited per address and per key (decision 0113).
-  const proofLimiter = new RateLimiter(30, 60_000);
-  const proofKeyLimiter = new RateLimiter(10, 60_000);
+  const proofLimiter = new RateLimiter(30, 60_000, 'account-routes:proofLimiter');
+  const proofKeyLimiter = new RateLimiter(10, 60_000, 'account-routes:proofKeyLimiter');
 
   // A normalized avatar belongs to the account row, not project storage. Replacements
   // are atomic and bounded to one image; failed writes cannot leave orphan objects.
@@ -327,7 +331,12 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   app.post(v1('/me/token-proof-key'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     if (!actor.tokenId) throw new HttpError('forbidden', 'Only an app token has a proof key.');
-    const key = await proofKeyFor(db, config.AUTH_SECRET, actor.tokenId);
+    const key = await proofKeyFor(
+      db,
+      config.AUTH_SECRET,
+      actor.tokenId,
+      config.AUTH_SECRET_PREVIOUS,
+    );
     if (key === 'not_app') throw new HttpError('forbidden', 'Only an app token has a proof key.');
     if (!key) throw new HttpError('unauthorized', 'The token is not valid any more.');
     reply.header('cache-control', 'no-store');
@@ -336,10 +345,16 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
 
   // No token: this is what a client asks before it decides to send one. Reads only.
   app.post(v1('/token-proof'), { bodyLimit: 1024 }, async (req, reply) => {
-    proofLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
+    await proofLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const input = TokenProofRequest.parse(req.body ?? {});
-    proofKeyLimiter.require(input.keyId, 'Too many requests: wait a minute.');
-    const proof = await proveNonce(db, config.AUTH_SECRET, input.keyId, input.nonce);
+    await proofKeyLimiter.require(input.keyId, 'Too many requests: wait a minute.');
+    const proof = await proveNonce(
+      db,
+      config.AUTH_SECRET,
+      input.keyId,
+      input.nonce,
+      config.AUTH_SECRET_PREVIOUS,
+    );
     // Unknown, revoked and expired keys alike: one query, one answer, nothing logged about them.
     if (!proof) throw new HttpError('not_found', 'Unknown key.');
     reply.header('cache-control', 'no-store');
@@ -390,7 +405,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/app-authorizations/token'), async (req) => {
-    exchangeLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
+    await exchangeLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const input = ExchangeAppCode.parse(req.body ?? {});
     // Deleting it first makes the code single use even with concurrent requests.
     const [row] = await db
@@ -503,9 +518,10 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       if (alone.length > 0) await tx.delete(project).where(inArray(project.id, alone));
       // Sessions, accounts, memberships, grants, tokens and two-factor data cascade.
       await tx.delete(user).where(eq(user.id, userId));
+      await recordDeletions(tx, files);
       return files;
     });
-    if (keys.length > 0) await jobs.deleteFiles(keys);
+    await removeFilesLater({ db, jobs, storage }, keys, req.log);
     return reply.status(204).send();
   });
 }

@@ -41,8 +41,8 @@ export function registerCalendarRoutes(
   app: FastifyInstance,
   { db, auth, config }: Pick<AppDeps, 'db' | 'auth' | 'config'>,
 ) {
-  const network = new RateLimiter(60, 60_000);
-  const users = new RateLimiter(30, 60_000);
+  const network = new RateLimiter(60, 60_000, 'calendar-routes:network');
+  const users = new RateLimiter(30, 60_000, 'calendar-routes:users');
   for (const method of ['GET', 'POST'] as const)
     app.route({
       method,
@@ -81,7 +81,7 @@ export function registerCalendarRoutes(
       .header('cache-control', 'private, no-cache')
       .header('referrer-policy', 'no-referrer')
       .header('x-robots-tag', 'noindex, nofollow');
-    if (!network.take(addressBucket(req.ip)))
+    if (!(await network.take(addressBucket(req.ip))))
       return reply
         .code(429)
         .header('retry-after', Math.max(1, network.retryAfterSeconds(addressBucket(req.ip))))
@@ -111,7 +111,7 @@ export function registerCalendarRoutes(
       !settings.calendarFeedEnabled
     )
       throw new HttpError('not_found', 'Calendar not found.');
-    if (!users.take(credential.feed.userId))
+    if (!(await users.take(credential.feed.userId)))
       return reply
         .code(429)
         .header('retry-after', Math.max(1, users.retryAfterSeconds(credential.feed.userId)))

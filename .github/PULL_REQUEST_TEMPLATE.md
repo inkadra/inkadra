@@ -19,4 +19,5 @@
 
 ## Screens
 
-<!-- For visible changes: before and after, dark and light theme. Delete if not applicable. -->
+<!-- For visible changes: before and after, dark and light theme. Show only the data of the demo
+projects (Last Train, Low Tide), never real projects, names or addresses. Delete if not applicable. -->

@@ -341,22 +341,27 @@ export function registerScheduleRoutes(
     const { boardId, dayId } = DayParams.parse(req.params);
     const access = await requireBoardRole(db, actor, boardId, 'viewer');
     const { status } = SetDayAttendance.parse(req.body);
-    const [day] = await db
-      .select({ blocks: shootingDay.blocks })
-      .from(shootingDay)
-      .where(and(eq(shootingDay.id, dayId), eq(shootingDay.boardId, boardId)));
-    if (!day) throw new HttpError('not_found', 'Shooting day not found.');
-    const links = await castLinksOf(db, boardReader, access.board.projectId, actor.id, actor);
-    const cast = new Set(day.blocks.flatMap((block) => block.cast.map(castNameKey)));
-    if (!links.some((link) => cast.has(link.castKey)))
-      throw new HttpError('forbidden', 'Only people called on this day can answer.');
-    await db
-      .insert(shootingDayAttendance)
-      .values({ dayId, userId: actor.id, status })
-      .onConflictDoUpdate({
-        target: [shootingDayAttendance.dayId, shootingDayAttendance.userId],
-        set: { status, updatedAt: sql`now()` },
-      });
+    // The day stays locked until the answer is stored: an edit that moves the call time either
+    // commits first (and the answer is checked against the new day) or waits and then clears it.
+    await db.transaction(async (tx) => {
+      const [day] = await tx
+        .select({ blocks: shootingDay.blocks })
+        .from(shootingDay)
+        .where(and(eq(shootingDay.id, dayId), eq(shootingDay.boardId, boardId)))
+        .for('share');
+      if (!day) throw new HttpError('not_found', 'Shooting day not found.');
+      const links = await castLinksOf(tx, boardReader, access.board.projectId, actor.id, actor);
+      const cast = new Set(day.blocks.flatMap((block) => block.cast.map(castNameKey)));
+      if (!links.some((link) => cast.has(link.castKey)))
+        throw new HttpError('forbidden', 'Only people called on this day can answer.');
+      await tx
+        .insert(shootingDayAttendance)
+        .values({ dayId, userId: actor.id, status })
+        .onConflictDoUpdate({
+          target: [shootingDayAttendance.dayId, shootingDayAttendance.userId],
+          set: { status, updatedAt: sql`now()` },
+        });
+    });
     return { dayId, userId: actor.id, status };
   });
   const updateDay = async (

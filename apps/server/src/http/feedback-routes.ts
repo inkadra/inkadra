@@ -49,11 +49,12 @@ import {
   relayVideo,
   sendRelay,
 } from '../feedback-relay.ts';
+import { recordDeletions } from '../file-deletions.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { sniffImage } from '../media/heic.ts';
 import { mediaTools } from '../media/tools.ts';
 import { sniffVideo } from '../media/video.ts';
-import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
+import { removeFilesLater } from '../queues.ts';
 import { RateLimiter } from '../rate-limits.ts';
 import { DocViews } from '../share-links.ts';
 import type { AppDeps } from './app.ts';
@@ -115,9 +116,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db, auth, config, storage } = deps;
   const github = new GitHubFeedback(config, deps.feedbackGitHubUrl);
   const guests = createGuestAuth({ ...deps, docs: new DocViews() });
-  const uploads = new RateLimiter(30, HOUR);
-  const guestUploads = new RateLimiter(6, HOUR);
-  const instanceUploads = new RateLimiter(300, HOUR);
+  const uploads = new RateLimiter(30, HOUR, 'feedback-routes:uploads');
+  const guestUploads = new RateLimiter(6, HOUR, 'feedback-routes:guestUploads');
+  const instanceUploads = new RateLimiter(300, HOUR, 'feedback-routes:instanceUploads');
   async function settings() {
     const [row] = await db
       .select()
@@ -235,21 +236,11 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         .returning({ id: attachment.id });
       const [gone] = await tx.delete(report).where(eq(report.id, id)).returning({ id: report.id });
       if (!gone) throw new HttpError('not_found', 'No such report.');
-      return removed.map((file) => key(file.id));
+      const files = removed.map((file) => key(file.id));
+      await recordDeletions(tx, files);
+      return files;
     });
-    if (files.length)
-      try {
-        await within(
-          deps.jobs.deleteFiles(files),
-          ENQUEUE_TIMEOUT_MS,
-          'The job queue did not answer.',
-        );
-      } catch (err) {
-        req.log.warn({ err, report: id }, 'Feedback files not queued for removal: removing now');
-        await storage
-          .remove(files)
-          .catch((e) => req.log.error({ err: e, report: id }, 'Feedback files not removed'));
-      }
+    await removeFilesLater({ db, jobs: deps.jobs, storage }, files, req.log);
     return reply.code(204).send();
   });
   app.get(`${API_PREFIX}/feedback/reports`, async (req, reply) => {
@@ -327,11 +318,11 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         if (req.routeOptions.url?.endsWith('/attachments')) {
           const who = identities.get(req) as Reporter;
           const budget = guest ? guestUploads : uploads;
-          if (!budget.take(who.owner)) {
+          if (!(await budget.take(who.owner))) {
             reply.header('retry-after', budget.retryAfterSeconds(who.owner));
             throw new HttpError('rate_limited', 'Too many uploads.');
           }
-          if (!instanceUploads.take('instance')) {
+          if (!(await instanceUploads.take('instance'))) {
             reply.header('retry-after', instanceUploads.retryAfterSeconds('instance'));
             throw new HttpError('rate_limited', 'Too many uploads.');
           }

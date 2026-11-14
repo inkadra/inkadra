@@ -474,4 +474,24 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
     const status = ServerStatus.parse((await request('admin', 'GET', '/instance/server')).json());
     expect(status.services.find((s) => s.id === 'worker')?.status).toBe('down');
   });
+
+  it('alerts when nightly backups stopped without a failed one (#798)', async () => {
+    const [ready] = await db
+      .insert(instanceBackup)
+      .values({ trigger: 'scheduled', status: 'ready', finishedAt: new Date() })
+      .returning();
+    const check = async (now: number) => {
+      const own = memoryStore(() => now);
+      await checkHealth({ ...alertDeps(), store: own, config: { ...config, REDIS_URL: 'r' } }, now);
+      return (await own.problems()).filter((p) => p.id.startsWith('backup_missing:'));
+    };
+    try {
+      expect(await check(Date.now())).toEqual([]);
+      expect(await check(Date.now() + 3 * 86_400_000)).toMatchObject([
+        { id: `backup_missing:${ready?.id}`, kind: 'backup_failed' },
+      ]);
+    } finally {
+      await db.delete(instanceBackup);
+    }
+  });
 });

@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
@@ -33,6 +34,7 @@ import { useProjectMenu } from './ProjectAppearance.tsx';
 import {
   GroupChevron,
   GroupDot,
+  GroupSaveError,
   ProjectGroupDialog,
   useDropTarget,
   useGroupMenu,
@@ -41,6 +43,7 @@ import {
 import {
   groupProjects,
   moveToGroup,
+  reportGroupError,
   updateGroup,
   useDragging,
   useProjectGroups,
@@ -62,6 +65,8 @@ export function Projects() {
   const { t, i18n } = useTranslation();
   const { user } = useSession();
   const { openNewProject, openImportProject, canCreateProjects } = useProjects();
+  // The sidebar says when a group change was not saved; on a phone it is out of sight.
+  const phone = useIsPhone();
   const [items, setItems] = useState<ProjectOverview[] | null>(null);
   const known = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -317,6 +322,7 @@ export function Projects() {
           ))}
         </div>
       </div>
+      {phone && <GroupSaveError />}
       {error && (
         <p role="alert">
           {t('home.loadError')}{' '}
@@ -413,7 +419,7 @@ function GroupSection({
           onContextMenu={onContextMenu}
           aria-expanded={open}
           aria-controls={body}
-          onClick={() => void updateGroup(group.id, { collapsed: open }).catch(() => {})}
+          onClick={() => void updateGroup(group.id, { collapsed: open }).catch(reportGroupError)}
         >
           <GroupChevron />
           <GroupDot color={group.color} />

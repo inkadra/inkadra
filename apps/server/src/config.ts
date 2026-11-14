@@ -23,6 +23,10 @@ const Env = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
+  AUTH_SECRET_PREVIOUS: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(32).optional(),
+  ),
   FEEDBACK_RELAY_URL: z
     .union([
       z.literal(''),
@@ -39,13 +43,27 @@ const Env = z.object({
   AUTH_RATE_LIMITS: z.enum(['on', 'off']).default('on'),
   /** Empty when unset: compose passes every variable, set or not. */
   CSP_REPORT_URI: z.preprocess(emptyToUndefined, z.url().optional()),
-  CSP_ENFORCE: bool('false'),
-  HSTS_ENABLED: bool('false'),
+  /** `false` sends the page policy as report-only, an escape hatch while a setup is fixed. */
+  CSP_ENFORCE: bool('true'),
+  /** Sent only on HTTPS requests of an instance whose PUBLIC_URL is https; `false` turns it off. */
+  HSTS_ENABLED: bool('true'),
   OIDC_ALLOWED_DOMAINS: list,
   REGISTRATION: z.enum(['invite', 'open', 'closed']).default('invite'),
   HOST: z.string().default('0.0.0.0'),
   PORT: z.coerce.number().int().default(3000),
   COLLAB_PORT: z.coerce.number().int().default(3001),
+  /** Bytes or a size such as `64MB` (powers of 1024, as UPLOAD_MAX_SIZE). */
+  BOARD_MAX_STATE_BYTES: z
+    .string()
+    .default('64MB')
+    .transform(parseSize)
+    .pipe(z.number().int().positive().max(Number.MAX_SAFE_INTEGER)),
+  BOARD_MAX_ELEMENTS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(Number.MAX_SAFE_INTEGER)
+    .default(20_000),
   DATA_DIR: z.string().default('/data'),
   WEB_DIST: z.string().optional(),
   /** Largest file an upload may have: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */

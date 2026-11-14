@@ -6,6 +6,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { userAvatar } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
+import type { Storage } from '../storage.ts';
 import { registerAccountRoutes } from './account-routes.ts';
 import { errorHandler } from './errors.ts';
 
@@ -87,6 +88,7 @@ function setup() {
     auth: {} as Auth,
     config: { PUBLIC_URL: 'http://localhost' } as Config,
     jobs: {} as Jobs,
+    storage: {} as Storage,
   });
   return {
     app,

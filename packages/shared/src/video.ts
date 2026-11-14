@@ -179,6 +179,20 @@ export const VideoLibrary = z
     side: VideoRung,
     minutes: z.number().nonnegative(),
     fastMinutes: z.number().nonnegative().openapi({ description: 'Of which above 30 fps.' }),
+    noLiveMinutes: z
+      .number()
+      .nonnegative()
+      .openapi({
+        description:
+          'Of which this server cannot encode live (ProRes, HDR, rotated, ...): a resolution ' +
+          'set to live only is stored for them all the same. Optional: older servers omit it.',
+      })
+      .optional(),
+    noLiveFastMinutes: z
+      .number()
+      .nonnegative()
+      .openapi({ description: 'Of noLiveMinutes, above 30 fps.' })
+      .optional(),
     videos: z.int().min(0),
   })
   .openapi('VideoLibrary');
@@ -290,6 +304,14 @@ export const AssetRendition = z
         description:
           'The master playlist offers this rung encoded while watched until it is ready, or ' +
           'for good when it is not stored. Only from servers with `video-live`.',
+      }),
+    liveOnly: z
+      .literal(true)
+      .optional()
+      .openapi({
+        description:
+          'Offered only live: no stored copy is being made or will be (its `status` stays ' +
+          '`queued`), so there is nothing to wait for. Absent on rungs that have or get a file.',
       }),
   })
   .openapi('AssetRendition');

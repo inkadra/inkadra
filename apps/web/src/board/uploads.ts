@@ -2,7 +2,7 @@ import { isRawImageType, StorageFull } from '@inkadra/shared';
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { useSyncExternalStore } from 'react';
 import { Upload } from 'tus-js-client';
-import { setBusy } from '../pwa/busy.ts';
+import { setBusy, setUnsaved } from '../pwa/busy.ts';
 import { isDesignFile } from './file-kinds.ts';
 
 export interface UploadItem {
@@ -66,10 +66,12 @@ const BUSY = 'uploads';
 function changed() {
   // A reload for a new version waits for uploads that can still run (running, paused offline,
   // failed and retryable): their File is in memory only, and reloading would lose it.
-  setBusy(
-    BUSY,
-    items.some((i) => i.state === 'uploading' || i.state === 'offline' || i.state === 'failed'),
+  const live = items.some(
+    (i) => i.state === 'uploading' || i.state === 'offline' || i.state === 'failed',
   );
+  setBusy(BUSY, live);
+  // Closing the tab now asks first, for the same reason.
+  setUnsaved(BUSY, live);
   for (const l of listeners) l();
 }
 
@@ -123,6 +125,13 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     for (const item of items) if (item.state === 'offline') retryUpload(item.key);
   });
+}
+
+/** The key tus stores an interrupted upload under, to resume it in the same place only. */
+export function resumeKey(projectId: string, boardId: string, file: File): string {
+  return ['inkadra', projectId, boardId, file.name, file.type, file.size, file.lastModified].join(
+    '|',
+  );
 }
 
 /**
@@ -204,6 +213,9 @@ export function startUpload({
       if (retry) patch(key, { reconnecting: true });
       return retry;
     },
+    // tus keys the resume entry by file and endpoint only, the same for every project: without
+    // the project and board, the same file dropped elsewhere would resume into the first one.
+    fingerprint: () => Promise.resolve(resumeKey(projectId, boardId, file)),
     storeFingerprintForResuming: true,
     removeFingerprintOnSuccess: true,
     metadata: {

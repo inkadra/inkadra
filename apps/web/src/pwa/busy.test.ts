@@ -1,5 +1,6 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { isBusy, setBusy, whenIdle } from './busy.ts';
+import { hasUnsaved, isBusy, setBusy, setUnsaved, whenIdle } from './busy.ts';
 
 describe('waiting for the board and uploads', () => {
   it('runs at once when nothing is busy', () => {
@@ -31,5 +32,25 @@ describe('waiting for the board and uploads', () => {
     whenIdle(run)();
     setBusy('uploads', false);
     expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe('leaving the tab', () => {
+  const leave = () => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+
+  it('asks first only while something exists only in this tab', () => {
+    expect(leave()).toBe(false);
+    setUnsaved('board', true);
+    setUnsaved('uploads', true);
+    setUnsaved('board', false);
+    expect(hasUnsaved()).toBe(true);
+    expect(leave()).toBe(true);
+    setUnsaved('uploads', false);
+    expect(hasUnsaved()).toBe(false);
+    expect(leave()).toBe(false);
   });
 });
