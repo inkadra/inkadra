@@ -34,6 +34,9 @@ jobs:
         run: |
           echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "Not a semver version: $VERSION"; exit 1; }
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then echo "v$VERSION already exists"; exit 1; fi
+          # The notes are the body of the release and of every instance's Updates page (#851).
+          [ -f "docs/releases/$VERSION.en.md" ] || [ -f "docs/releases/${VERSION%%-*}.en.md" ] ||
+            { echo "No docs/releases/${VERSION%%-*}.en.md: write the release notes first (docs/releases/CHECKLIST.md)"; exit 1; }
       # Only a commit whose CI passed on main is tagged; rerun CI there if it failed by chance.
       - name: Check that CI passed on this commit
         run: |
@@ -68,9 +71,6 @@ jobs:
               cp "$f" "$RUNNER_TEMP/notes/release-notes.$lang.md"
               files+=("$RUNNER_TEMP/notes/release-notes.$lang.md")
             done
-          else
-            echo "::warning::No docs/releases/$VERSION.en.md: the release has no notes for the Updates page"
-            args+=(--generate-notes)
           fi
           gh release create "v$VERSION" "${files[@]}" "${args[@]}"
       - name: Build and publish the image
