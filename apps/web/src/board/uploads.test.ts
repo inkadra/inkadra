@@ -82,6 +82,20 @@ afterEach(() => vi.useRealTimers());
 const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe('the reload guard and tus uploads', () => {
+  it('resumes an interrupted upload only in the project and board it was dropped into', async () => {
+    const file = pdf('take.pdf');
+    const keys: unknown[] = [];
+    for (const [projectId, boardId] of [
+      ['p1', 'b1'],
+      ['p2', 'b1'],
+      ['p1', 'b2'],
+    ] as const) {
+      cancelUpload(startUpload({ file, projectId, boardId, onAsset: vi.fn() }));
+      keys.push(await FakeUpload.all.at(-1)!.options.fingerprint!());
+    }
+    expect(new Set(keys).size).toBe(3);
+  });
+
   it.each([
     ['poster.psd', 'image/vnd.adobe.photoshop'],
     ['sample.NEF', 'image/x-nikon-nef'],

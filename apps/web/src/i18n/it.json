@@ -712,7 +712,7 @@
       "saving": "Sincronizzazione…",
       "online_one": "{{count}} online",
       "online_other": "{{count}} online",
-      "offline": "Offline · le modifiche restano qui",
+      "offline": "Offline · tieni aperta la scheda",
       "denied": "Accesso negato",
       "readOnly": "Sola lettura",
       "signedOut": "Disconnesso"

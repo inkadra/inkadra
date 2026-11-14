@@ -8,8 +8,9 @@ import {
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
+import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
-import { setBusy } from '../pwa/busy.ts';
+import { setBusy, setUnsaved } from '../pwa/busy.ts';
 import { BoardStore } from './store.ts';
 
 /**
@@ -129,9 +130,29 @@ export function watchDocumentSchema(
   return () => meta.unobserve(check);
 }
 
+/**
+ * Why the collab server refused the board when it gives no reason of its own. A reconnection
+ * after sleep or a network loss reaches the server with an expired session, and the server
+ * answers that with its generic "permission denied": ask the API which one it is. Signed out
+ * (401) is not a lost access, and an unreachable API is an offline board, not a denied one.
+ */
+export async function refusalStatus(): Promise<ConnectionStatus> {
+  try {
+    await api.get('/me');
+    return 'denied';
+  } catch (err) {
+    if (err instanceof RequestError) return err.status === 401 ? 'signedOut' : 'denied';
+    return 'offline';
+  }
+}
+
 // Keep reopened boards and their last authenticated role available while this tab is offline.
-// The application shell currently has no persistent offline navigation/document cache.
-const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean }>();
+// shortcut: memory only, so a closed or reloaded tab loses them; `setUnsaved` warns before
+// that. Upgrade to a persistent copy (IndexedDB) to survive it (#791).
+const cachedBoards = new Map<
+  string,
+  { update: Uint8Array; readOnly: boolean; unsaved: boolean }
+>();
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
@@ -155,9 +176,15 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     // Changes the server has not confirmed yet: a reload for a new version waits for them.
     const busy = {};
     let unsynced = 0;
-    const hold = () =>
-      trackBusy &&
+    // Edits made here that the server has not confirmed: closing the tab would lose them.
+    // Kept under the board's key, so edits cached when the board closed still warn.
+    let edited = cached?.unsaved ?? false;
+    let alive = true;
+    const hold = () => {
+      if (!trackBusy) return;
       setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
+      setUnsaved(cacheKey, edited && state.status !== 'denied');
+    };
     const provider = new HocuspocusProvider({
       url: collabUrl(),
       name: boardDocName(boardId),
@@ -177,8 +204,21 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
         if (status) update({ status });
       },
       onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
-      onAuthenticationFailed: () => update({ status: 'denied' }),
+      onAuthenticationFailed: ({ reason }) => {
+        const status = CLOSE_REASONS[reason];
+        if (status) update({ status });
+        else
+          void refusalStatus().then((next) => {
+            if (alive) update({ status: next });
+          });
+      },
     });
+    const onEdit = (_update: Uint8Array, origin: unknown) => {
+      if (origin === provider || edited) return;
+      edited = true;
+      hold();
+    };
+    doc.on('update', onEdit);
     let roleReadOnly = cached?.readOnly ?? false;
     function update(patch: Partial<typeof state>) {
       if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
@@ -191,14 +231,22 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     // The provider sends nothing before the socket opens, so no count is missed here.
     const stopSaves = watchSaves(provider, (next) => {
       unsynced = next.pending;
+      if (unsynced === 0) edited = false;
       saves.set(next);
       hold();
     });
     update({});
     return () => {
-      if (state.status === 'denied' || state.status === 'signedOut') cachedBoards.delete(cacheKey);
+      alive = false;
+      // Signed out keeps the edits: the same person signing in again in this tab gets them back.
+      if (state.status === 'denied') cachedBoards.delete(cacheKey);
       else
-        cachedBoards.set(cacheKey, { update: Y.encodeStateAsUpdate(doc), readOnly: roleReadOnly });
+        cachedBoards.set(cacheKey, {
+          update: Y.encodeStateAsUpdate(doc),
+          readOnly: roleReadOnly,
+          unsaved: edited,
+        });
+      doc.off('update', onEdit);
       stopSchema();
       stopSaves();
       setBusy(busy, false);
