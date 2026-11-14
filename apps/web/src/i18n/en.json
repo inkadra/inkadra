@@ -720,7 +720,7 @@
       "saving": "Saving…",
       "online_one": "{{count}} online",
       "online_other": "{{count}} online",
-      "offline": "Offline · changes saved on this device",
+      "offline": "Offline · saved on this device",
       "denied": "Access denied",
       "readOnly": "Read only",
       "signedOut": "Signed out"
