@@ -45,7 +45,8 @@ export interface Lease {
 /**
  * Takes the lease of `role` or throws `LeaseTakenError`. A held lease is waited for, a little
  * longer than it lives: the process before this one may have been killed before releasing it
- * (`docker compose down` past its grace period, a crash), and Valkey keeps it across restarts. While held it is renewed every
+ * (`docker compose down` past its grace period, a crash), and Valkey keeps it across restarts.
+ * While held it is renewed every
  * `renewMs`; `onLost` runs when another process holds it at a renewal (this one must stop).
  * A Valkey outage only logs: the lease is renewed again once it is back.
  */

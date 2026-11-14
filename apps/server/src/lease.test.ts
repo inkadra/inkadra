@@ -26,7 +26,9 @@ describe.skipIf(!process.env.REDIS_URL)('single-process lease (#790, #819)', () 
     // A restart of the same container after a crash: taken back at once.
     const again = await acquireLease(redis, role, log, { host: 'a', onLost });
     await first.release(); // not the holder any more: leaves the lease alone
-    await expect(acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 })).rejects.toThrow();
+    await expect(
+      acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 }),
+    ).rejects.toThrow();
     await again.release();
     const other = await acquireLease(redis, role, log, { host: 'b', onLost, ttlMs: 200 });
     // A crashed holder (never renewed, never released): free once its time is over.
