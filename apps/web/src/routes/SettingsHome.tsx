@@ -4,8 +4,8 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
+import { useSignOut } from '../lib/SignOut.tsx';
 import { useSession } from '../lib/session.tsx';
-import { signOut } from '../lib/sign-out.ts';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { usePendingUpdate } from '../lib/updates.ts';
 import { useInstanceSettings, useStorageUsage } from './InstanceSettings.tsx';
@@ -146,6 +146,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
     };
   }, []);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const leave = useSignOut(user?.id, () => setSignOutFailed(true));
   const admin = user?.role === 'admin';
   return (
     <div className="settings-home">
@@ -185,13 +186,10 @@ export function SettingsHome({ setup }: { setup: Setup }) {
           />
         </Group>
         {admin && <AdminGroups setup={setup} />}
-        <button
-          type="button"
-          className="settings-home__signout"
-          onClick={() => signOut().catch(() => setSignOutFailed(true))}
-        >
+        <button type="button" className="settings-home__signout" onClick={leave.start}>
           {t('auth.signOut')}
         </button>
+        {leave.dialog}
         {signOutFailed && (
           <p role="alert" className="settings-home__signout-error">
             {t('auth.signOutFailed')}

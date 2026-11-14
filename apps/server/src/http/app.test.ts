@@ -133,6 +133,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'video-renditions',
         'list-pages',
         'unavailable-errors',
+        'schedule-sources',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();

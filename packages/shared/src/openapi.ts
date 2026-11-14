@@ -31,6 +31,8 @@ import {
   CreateBoard,
   RecentBoard,
   RecentBoardQuery,
+  ScheduleSources,
+  ScheduleSourcesQuery,
   UnsortedSummary,
   UpdateBoard,
 } from './boards.ts';
@@ -3494,6 +3496,18 @@ registry.registerPath({
   summary: 'Element and frame counts of the project boards the caller can open.',
   request: { params: z.object({ projectId: Id }) },
   responses: { 200: { description: 'Board counts', ...json(BoardCounts) }, ...errors },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/projects/{projectId}/schedule-sources'),
+  tags: ['Schedule'],
+  security: secured,
+  summary:
+    'Read-only copy of the cards a schedule reads from the requested storyboards the caller can ' +
+    "open; capability 'schedule-sources'.",
+  request: { params: z.object({ projectId: Id }), query: ScheduleSourcesQuery },
+  responses: { 200: { description: 'Schedule sources', ...json(ScheduleSources) }, ...errors },
 });
 
 registry.registerPath({

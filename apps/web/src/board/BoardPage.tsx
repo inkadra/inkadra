@@ -1170,9 +1170,31 @@ function BoardScreen({
         ? { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${view}` }
         : {})}
     >
-      {conn.sizeLimited && !conn.schemaTooNew && (
+      {(conn.sizeLimited || conn.kept) && !conn.schemaTooNew && (
         <div role="alert" className="board-update-notice">
-          {t(conn.readOnly ? 'board.contextual.sizeLimitReadOnly' : 'board.contextual.sizeLimit')}
+          {t(
+            !conn.sizeLimited
+              ? 'board.contextual.kept'
+              : conn.readOnly
+                ? 'board.contextual.sizeLimitReadOnly'
+                : conn.kept
+                  ? 'board.contextual.sizeLimitKept'
+                  : 'board.contextual.sizeLimit',
+          )}
+          {conn.kept && (
+            <div className="board-update-notice__actions">
+              <Button
+                variant="primary"
+                icon="download"
+                onClick={() => void conn.kept?.download().catch(() => {})}
+              >
+                {t('board.contextual.keptDownload')}
+              </Button>
+              <Button onClick={() => void conn.kept?.discard().catch(() => {})}>
+                {t('board.contextual.keptDiscard')}
+              </Button>
+            </div>
+          )}
         </div>
       )}
       {conn.schemaTooNew && (

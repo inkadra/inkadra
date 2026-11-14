@@ -12336,6 +12336,66 @@
           "framesToShoot"
         ]
       },
+      "ScheduleSources": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleSource"
+            }
+          },
+          "rest": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "description": "Requested boards the caller can open that did not fit in this answer, which is bounded in bytes: ask for them in another request."
+          }
+        },
+        "required": [
+          "items",
+          "rest"
+        ],
+        "description": "A read-only copy of what the Production board shows of its storyboards (#826), for the requested boards the caller can open; the others are left out. Open the board document to edit or to follow changes live."
+      },
+      "ScheduleSource": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "readOnly": {
+            "type": "boolean",
+            "description": "The caller may only read this board."
+          },
+          "aspect": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The board's frame aspect ratio."
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "description": "The cards a schedule reads, as the board document stores them: scenes, frames, characters, locations, set plans and to-do lists. Other cards are left out."
+          }
+        },
+        "required": [
+          "boardId",
+          "readOnly",
+          "aspect",
+          "elements"
+        ]
+      },
       "BoardPreview": {
         "type": "object",
         "properties": {
@@ -33675,6 +33735,106 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BoardCounts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/schedule-sources": {
+      "get": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read-only copy of the cards a schedule reads from the requested storyboards the caller can open; capability 'schedule-sources'.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated ids of the project's boards to read, at most 50."
+            },
+            "required": true,
+            "description": "Comma-separated ids of the project's boards to read, at most 50.",
+            "name": "boards",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule sources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSources"
                 }
               }
             }

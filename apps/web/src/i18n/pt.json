@@ -29,6 +29,16 @@
     "createAdmin": "Criar conta e entrar",
     "signOut": "Sair",
     "signOutFailed": "Não foi possível terminar a sessão. Verifique a ligação e tente novamente.",
+    "signOutUnsaved": {
+      "title": "Terminar sessão e eliminar as alterações não guardadas?",
+      "body_one": "{{count}} quadro tem alterações guardadas apenas neste dispositivo. Terminar a sessão elimina-as. Mantenha a sessão e abra-o com ligação para as guardar.",
+      "body_other": "{{count}} quadros têm alterações guardadas apenas neste dispositivo. Terminar a sessão elimina-as. Mantenha a sessão e abra-os com ligação para as guardar.",
+      "kept_one": "{{count}} quadro tem alterações que o servidor não aceitou (limite de tamanho, sem acesso ou no lixo). Abri-lo não as guarda e terminar a sessão elimina-as: transfira-as para guardar uma cópia.",
+      "kept_other": "{{count}} quadros têm alterações que o servidor não aceitou (limite de tamanho, sem acesso ou no lixo). Abri-los não as guarda e terminar a sessão elimina-as: transfira-as para guardar uma cópia.",
+      "confirm": "Terminar sessão e eliminar",
+      "download": "Transferir as alterações",
+      "stay": "Manter a sessão"
+    },
     "errors": {
       "reauthRequired": "Entre novamente para continuar.",
       "invalid": "E-mail ou senha incorretos.",
@@ -720,7 +730,7 @@
       "saving": "Sincronizando…",
       "online_one": "{{count}} on-line",
       "online_other": "{{count}} on-line",
-      "offline": "Off-line · mantenha a aba aberta",
+      "offline": "Off-line · salvo no dispositivo",
       "denied": "Acesso negado",
       "readOnly": "Somente leitura",
       "signedOut": "Desconectado"
@@ -1922,6 +1932,10 @@
       "drawFailed": "Não foi possível salvar o traço. Tente novamente; se o problema continuar, recarregue o quadro.",
       "updateApp": "Este quadro requer uma versão mais recente. Atualize o app para editá-lo; você pode continuar visualizando.",
       "sizeLimit": "Este quadro atingiu o limite de tamanho. As adições não foram salvas; o quadro foi recarregado. Você pode excluir conteúdo para liberar espaço.",
+      "sizeLimitKept": "Este quadro atingiu o limite de tamanho. As alterações feitas neste dispositivo não foram guardadas: ficam neste dispositivo e o quadro foi recarregado. Transfira-as para guardar uma cópia ou descarte-as. Pode eliminar conteúdo para libertar espaço.",
+      "kept": "As alterações a este quadro que o servidor não aceitou ficam neste dispositivo. Não estão no quadro: transfira-as para guardar uma cópia ou descarte-as.",
+      "keptDownload": "Transferir as alterações",
+      "keptDiscard": "Descartar",
       "sizeLimitReadOnly": "Este quadro atingiu o limite de tamanho e está em modo somente leitura. As adições não foram salvas."
     },
     "sheet": {
@@ -3527,6 +3541,7 @@
     "pickupAt": "recolha {{pickup}}"
   },
   "needed": {
+    "locked": "Só de leitura aqui: o seu storyboard não está aberto para edição.",
     "title": "A levar",
     "progress": "{{ready}} de {{total}} prontos",
     "mine": "Só os meus",

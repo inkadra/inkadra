@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import { api, RequestError } from '../lib/api.ts';
+import { useSignOut } from '../lib/SignOut.tsx';
 import { useSession } from '../lib/session.tsx';
-import { signOut } from '../lib/sign-out.ts';
 import { SignInOptions } from './SignInOptions.tsx';
 import './login.css';
 
@@ -28,6 +28,7 @@ export function Join() {
   const [preview, setPreview] = useState<InvitationPreview | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const leave = useSignOut(user?.id, () => setError(t('auth.signOutFailed')));
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(true);
   // The claim sets the cookie a sign-up needs: the form waits for it, or a quick submit is refused.
@@ -119,13 +120,10 @@ export function Join() {
         <Button variant="primary" size="lg" block disabled={busy} onClick={accept}>
           {t('join.accept')}
         </Button>
-        <button
-          type="button"
-          className="login__switch"
-          onClick={() => signOut().catch(() => setError(t('auth.signOutFailed')))}
-        >
+        <button type="button" className="login__switch" onClick={leave.start}>
           {t('join.otherAccount')}
         </button>
+        {leave.dialog}
       </>
     );
   } else {
