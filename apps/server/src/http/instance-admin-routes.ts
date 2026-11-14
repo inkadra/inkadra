@@ -3,6 +3,7 @@ import {
   ClassificationCatalogs,
   ClassificationsQuery,
   Id,
+  ListPage,
   StartVideoBackfill,
   type StorageLimits,
   UpdateInstanceMember,
@@ -25,7 +26,7 @@ import {
 } from '../classifications.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
+import { instanceSetting, personalToken, session, storageTotal, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import type { Jobs } from '../jobs.ts';
 import { recipesFor } from '../media/ladder.ts';
@@ -34,7 +35,6 @@ import {
   type Limits,
   largestFiles,
   overrideAllowed,
-  personBytes,
   personLimit,
   readLimits,
   saveLimits,
@@ -51,6 +51,7 @@ import {
 } from '../video-settings.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+import { decodeTextCursor, encodeTextCursor } from './keyset.ts';
 
 export function registerInstanceAdminRoutes(
   app: FastifyInstance,
@@ -207,6 +208,8 @@ export function registerInstanceAdminRoutes(
   });
   app.get(`${API_PREFIX}/instance/members`, async (req) => {
     await admin(req);
+    const page = ListPage.parse(req.query ?? {});
+    const after = page.cursor ? decodeTextCursor(page.cursor) : null;
     const { membersCanCreateProjects } = await readInstanceSettings(db, config);
     const limits = await readLimits(db, config);
     const rows = await db
@@ -222,13 +225,20 @@ export function registerInstanceAdminRoutes(
         >`greatest((select max(updated_at) from session where user_id = "user"."id"), (select max(last_used_at) from personal_token where user_id = "user"."id"))`,
         projectsCount: sql<number>`(select count(*)::int from project_member m where m.user_id = "user"."id" and ${live('m')})`,
         canCreateProjectsOverride: user.canCreateProjects,
-        storageBytes: personBytes(sql`"user"."id"`),
+        // The running total (#799, #804), not a sum over every file of every person.
+        // Uploads still arriving do not count here, as in Settings → Storage.
+        storageBytes: sql<string>`coalesce(${storageTotal.bytes} - ${storageTotal.pendingBytes}, 0)::text`,
         storageLimitOverride: user.storageLimit,
       })
       .from(user)
-      .orderBy(asc(user.name), asc(user.id));
+      .leftJoin(storageTotal, eq(storageTotal.userId, user.id))
+      .where(after ? sql`(${user.name}, ${user.id}) > (${after[0]}, ${after[1]}::uuid)` : undefined)
+      .orderBy(asc(user.name), asc(user.id))
+      .limit(page.limit === undefined ? Number.MAX_SAFE_INTEGER : page.limit + 1);
+    const items = page.limit === undefined ? rows : rows.slice(0, page.limit);
+    const last = items.at(-1);
     return {
-      items: rows.map((r) => ({
+      items: items.map((r) => ({
         ...r,
         storageBytes: Number(r.storageBytes),
         storageLimit: personLimit(limits, r.storageLimitOverride),
@@ -237,6 +247,7 @@ export function registerInstanceAdminRoutes(
         canCreateProjects:
           r.role === 'admin' || (r.canCreateProjectsOverride ?? membersCanCreateProjects),
       })),
+      nextCursor: rows.length > items.length && last ? encodeTextCursor(last.name, last.id) : null,
     };
   });
   app.patch(`${API_PREFIX}/instance/members/:userId`, async (req) => {

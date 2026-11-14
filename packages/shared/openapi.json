@@ -16287,6 +16287,29 @@
           }
         ],
         "summary": "Administrator only: directory of active and deactivated instance accounts.",
+        "description": "By name. Without `limit` every account in one answer; with `limit`, pages to follow by `nextCursor` (servers with the `list-pages` capability).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Members",
@@ -16300,10 +16323,19 @@
                       "items": {
                         "$ref": "#/components/schemas/InstanceMember"
                       }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 512
                     }
                   },
                   "required": [
-                    "items"
+                    "items",
+                    "nextCursor"
                   ]
                 }
               }
@@ -22081,6 +22113,7 @@
             "bearer": []
           }
         ],
+        "description": "In the order they joined. Without `limit` every member in one answer; with `limit`, pages to follow by `nextCursor` (servers with the `list-pages` capability).",
         "parameters": [
           {
             "schema": {
@@ -22091,6 +22124,26 @@
             "required": true,
             "name": "projectId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
           }
         ],
         "responses": {
@@ -22106,10 +22159,19 @@
                       "items": {
                         "$ref": "#/components/schemas/ProjectMember"
                       }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 512
                     }
                   },
                   "required": [
-                    "items"
+                    "items",
+                    "nextCursor"
                   ]
                 }
               }
@@ -22382,6 +22444,7 @@
           }
         ],
         "summary": "Every board of the project, flat. Build the tree from parentBoardId.",
+        "description": "Always the whole list today (`nextCursor` null): roles follow the tree. Follow a `nextCursor` that is not null.",
         "parameters": [
           {
             "schema": {
@@ -22407,10 +22470,19 @@
                       "items": {
                         "$ref": "#/components/schemas/Board"
                       }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 512
                     }
                   },
                   "required": [
-                    "items"
+                    "items",
+                    "nextCursor"
                   ]
                 }
               }
@@ -23189,7 +23261,7 @@
           }
         ],
         "summary": "Boards shared with you in projects you are not a member of.",
-        "description": "Only the top board of each shared subtree. Their projects are not listed by GET /projects; GET /projects/{projectId}/boards answers with the boards you can open.",
+        "description": "Only the top board of each shared subtree. Their projects are not listed by GET /projects; GET /projects/{projectId}/boards answers with the boards you can open. Always the whole list today (`nextCursor` null); follow a `nextCursor` that is not null.",
         "responses": {
           "200": {
             "description": "Boards",
@@ -23203,10 +23275,19 @@
                       "items": {
                         "$ref": "#/components/schemas/Board"
                       }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 512
                     }
                   },
                   "required": [
-                    "items"
+                    "items",
+                    "nextCursor"
                   ]
                 }
               }

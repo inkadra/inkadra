@@ -139,7 +139,12 @@ async function main() {
     if (command === 'migrate') return;
   }
 
-  const { db, sql } = createDatabase(config.DATABASE_URL);
+  const timeouts = {
+    statementMs: config.DATABASE_STATEMENT_TIMEOUT_MS,
+    lockMs: config.DATABASE_LOCK_TIMEOUT_MS,
+    idleInTransactionMs: config.DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS,
+  };
+  const { db, sql } = createDatabase(config.DATABASE_URL, config.DATABASE_POOL_MAX, timeouts);
   const mailer = createMailer(config, log);
   const auth = createAuth(config, db, { mailer, log });
   const storage = createStorage(config);
@@ -232,8 +237,15 @@ async function main() {
 
   let collab: ReturnType<typeof createCollabServer> | undefined;
   if (command === 'collab' || command === 'all') {
+    // In `all`, collab loads and stores get their own small pool: a slow request or job on the
+    // main pool can never starve them (#800).
+    const own =
+      command === 'all'
+        ? createDatabase(config.DATABASE_URL, config.DATABASE_COLLAB_POOL_MAX, timeouts)
+        : undefined;
+    if (own) closers.push(() => own.sql.end({ timeout: 5 }));
     collab = createCollabServer({
-      db,
+      db: own?.db ?? db,
       auth,
       log,
       publicUrl: config.PUBLIC_URL,

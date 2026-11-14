@@ -15,7 +15,8 @@ is `BackupManifest` in [`packages/shared/src/backups.ts`](../../packages/shared/
 references. Rows of `board` are written parents first and rows of `comment` thread starts
 first, so loading each entry with `COPY … FROM` in order needs neither deferred constraints nor
 a superuser. `rebuilt` names tables left out because a restore rebuilds them
-(`board_element_index`, the search index). `bytea` columns are hex in text format.
+(`board_element_index`, the search index; `storage_total`, the running storage totals kept
+by triggers as files are loaded). `bytea` columns are hex in text format.
 
 Backup and project-transfer bookkeeping (`instance_backup`, `project_transfer`) is omitted.
 Playable video copies are omitted too: no `asset_rendition` rows or `proxy` variants, and

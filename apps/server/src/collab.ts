@@ -509,28 +509,53 @@ export function createCollabServer(deps: {
 
   /**
    * Closes connections whose token or session ended (4401) or that lost their role (4403), and
-   * updates read-only on the others.
+   * updates read-only on the others. Each person, sign-in and (person, board) pair is read once
+   * per pass however many tabs they have open, and a tick that finds the last pass still
+   * running waits for it instead of starting another (#760).
    */
-  async function recheck(server: Server<Context>) {
+  let rechecking: Promise<void> | undefined;
+  function recheck(server: Server<Context>) {
+    rechecking ??= recheckAll(server).finally(() => {
+      rechecking = undefined;
+    });
+    return rechecking;
+  }
+
+  async function recheckAll(server: Server<Context>) {
     const now = new Date();
+    const once = <T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>) => {
+      const known = cache.get(key);
+      if (known) return known;
+      const loaded = load();
+      cache.set(key, loaded);
+      return loaded;
+    };
+    // The account, or null when it may no longer sign in.
+    const people = new Map<string, Promise<typeof user.$inferSelect | null>>();
+    const signIns = new Map<string, Promise<boolean>>();
+    const roles = new Map<string, ReturnType<typeof boardRole>>();
     for (const document of server.hocuspocus.documents.values()) {
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         const ctx = connection.context;
         if (!ctx?.actor) continue;
+        const actorId = ctx.actor.id;
         try {
-          const [owner] = await db.select().from(user).where(eq(user.id, ctx.actor.id));
+          const owner = await once(people, actorId, async () => {
+            const [row] = await db.select().from(user).where(eq(user.id, actorId));
+            return row && !row.deactivatedAt && !(await adminEnrollmentRequired(db, row))
+              ? row
+              : null;
+          });
           if (owner) ctx.actor.role = owner.role;
-          if (
-            !owner ||
-            owner.deactivatedAt ||
-            (await adminEnrollmentRequired(db, owner)) ||
-            !(await stillSignedIn(ctx, now))
-          ) {
+          const credential = ctx.actor.tokenId ? `t:${ctx.actor.tokenId}` : `s:${ctx.sessionId}`;
+          if (!owner || !(await once(signIns, credential, () => stillSignedIn(ctx, now)))) {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: signed out');
             connection.close({ code: 4401, reason: 'Unauthorized' });
             continue;
           }
-          const access = await boardRole(db, ctx.actor, ctx.boardId);
+          const access = await once(roles, `${actorId}:${ctx.boardId}`, () =>
+            boardRole(db, ctx.actor, ctx.boardId),
+          );
           if (!access?.role) {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
             connection.close({ code: 4403, reason: 'Forbidden' });

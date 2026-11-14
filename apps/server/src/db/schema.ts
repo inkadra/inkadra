@@ -447,22 +447,36 @@ export const invitation = pgTable(
 );
 
 /** Latest Yjs state of a board (a full update, compacted on store). */
-export const boardDoc = pgTable('board_doc', {
-  boardId: uuid('board_id')
-    .primaryKey()
-    .references(() => board.id, { onDelete: 'cascade' }),
-  state: bytea('state').notNull(),
-  schemaVersion: integer('schema_version').notNull(),
-  size: integer('size').notNull(),
-  updatedAt: updatedAt(),
-  /** When board_element_index was last rebuilt from `state`; null = never (backfill). */
-  indexedAt: timestamp('indexed_at', { withTimezone: true }),
-  /**
-   * Navigation counts of `state`, written with the index; valid only while `indexed_at` is not
-   * older than `updated_at`, otherwise readers decode the document.
-   */
-  counts: jsonb('counts').$type<Omit<import('@inkadra/shared').BoardCount, 'boardId'>>(),
-});
+export const boardDoc = pgTable(
+  'board_doc',
+  {
+    boardId: uuid('board_id')
+      .primaryKey()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    state: bytea('state').notNull(),
+    schemaVersion: integer('schema_version').notNull(),
+    size: integer('size').notNull(),
+    updatedAt: updatedAt(),
+    /** When board_element_index was last rebuilt from `state`; null = never (backfill). */
+    indexedAt: timestamp('indexed_at', { withTimezone: true }),
+    /**
+     * Navigation counts of `state`, written with the index; valid only while `indexed_at` is not
+     * older than `updated_at`, otherwise readers decode the document.
+     */
+    counts: jsonb('counts').$type<Omit<import('@inkadra/shared').BoardCount, 'boardId'>>(),
+    /** Open assigned to-do items of `state`, written with the index under the same rule (#803). */
+    tasks: jsonb('tasks').$type<import('../board-preview.ts').OpenTask[]>(),
+    /** Cards in the unsorted tray of `state`, written with the index under the same rule. */
+    unsorted: jsonb('unsorted').$type<{ count: number; assetIds: string[] }>(),
+  },
+  (t) => [
+    // The index backfill of every collab process looks for these at start and hourly (#814),
+    // and for boards indexed before their tasks were stored (#803).
+    index('board_doc_unindexed_idx')
+      .on(t.boardId)
+      .where(sql`${t.indexedAt} is null or ${t.indexedAt} < ${t.updatedAt} or ${t.tasks} is null`),
+  ],
+);
 
 /**
  * Searchable view of the elements of each board, rebuilt from the Yjs document whenever it is
@@ -495,6 +509,8 @@ export const boardElementIndex = pgTable(
     index('board_element_index_project_idx').on(t.projectId),
     index('board_element_index_text_idx').using('gin', t.text.op('gin_trgm_ops')),
     index('board_element_index_tags_idx').using('gin', t.tags),
+    // Largest files and the Server page find the cards of a file (#814).
+    index('board_element_index_asset_idx').on(t.assetId).where(sql`${t.assetId} is not null`),
   ],
 );
 
@@ -562,7 +578,36 @@ export const asset = pgTable(
     index('asset_sha_idx').on(t.sha256),
     // Storage limits add up the files of the uploader at each new file (decision 0081).
     index('asset_created_by_idx').on(t.createdBy),
+    // Hourly sweeps of unfinished uploads, stalled jobs and stuck proxies (#814).
+    index('asset_unfinished_idx')
+      .on(t.status, t.createdAt)
+      .where(sql`${t.status} in ('pending', 'processing')`),
+    index('asset_proxy_pending_idx')
+      .on(t.createdAt)
+      .where(sql`${t.proxyStatus} in ('queued', 'processing')`),
   ],
+);
+
+/**
+ * Running totals of stored bytes per uploader (#799), kept by triggers on `asset`,
+ * `asset_variant` and `asset_rendition` that update each total once per statement (migration
+ * 0052, with the unlogged `storage_total_gone` they use within a statement, not a Drizzle table)
+ * and reconciled daily: storage limits
+ * read them instead of adding up every file. Counts files in every status, as a new upload
+ * does; one row has no person (files whose uploader was deleted).
+ */
+export const storageTotal = pgTable(
+  'storage_total',
+  {
+    userId: uuid('user_id').references(() => user.id, { onDelete: 'cascade' }),
+    /** Originals and their copies: what a person's limit counts. */
+    bytes: bigint('bytes', { mode: 'number' }).notNull().default(0),
+    /** Originals still arriving, at their declared size (part of `bytes`). */
+    pendingBytes: bigint('pending_bytes', { mode: 'number' }).notNull().default(0),
+    /** Rungs of video ladders: the instance total only (decision 0128). */
+    renditionBytes: bigint('rendition_bytes', { mode: 'number' }).notNull().default(0),
+  },
+  (t) => [unique('storage_total_user_unique').on(t.userId).nullsNotDistinct()],
 );
 
 export const assetVariant = pgTable(

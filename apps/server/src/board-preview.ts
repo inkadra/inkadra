@@ -5,6 +5,7 @@ import {
   contentCounts,
   FrameShape,
   getBoardAspect,
+  readElement,
   roots,
   Stroke,
   UNSORTED,
@@ -194,13 +195,58 @@ export function docCounts(doc: Y.Doc): ReturnType<typeof contentCounts> {
   );
 }
 
+/** An open item of a to-do list that someone is assigned to, as stored with the document. */
+export interface OpenTask {
+  elementId: string;
+  itemId: string;
+  text: string;
+  assigneeId: string;
+  dueDate?: string;
+}
+
+/** Every open assigned to-do item of a loaded document; stored with it (#803). */
+export function openTasks(doc: Y.Doc): OpenTask[] {
+  const result: OpenTask[] = [];
+  for (const map of roots(doc).elements.values()) {
+    const el = readElement(map);
+    if (el?.type !== 'todo') continue;
+    for (const item of el.items)
+      if (!item.done && item.assigneeId)
+        result.push({
+          elementId: el.id,
+          itemId: item.id,
+          text: item.text,
+          assigneeId: item.assigneeId,
+          ...(item.dueDate ? { dueDate: item.dueDate } : {}),
+        });
+  }
+  return result;
+}
+
+/** Cards directly in the unsorted tray of a loaded document; stored with it (#803). */
+export function unsortedInDoc(doc: Y.Doc): { count: number; assetIds: string[] } {
+  const result = { count: 0, assetIds: [] as string[] };
+  const cards = [...roots(doc).elements.entries()]
+    .filter(
+      (entry): entry is [string, Y.Map<unknown>] =>
+        entry[1] instanceof Y.Map && entry[1].get('parent') === UNSORTED,
+    )
+    .sort(([a], [b]) => a.localeCompare(b));
+  result.count = cards.length;
+  for (const [, el] of cards) {
+    const id = el.get('assetId') ?? el.get('imageAssetId');
+    if (typeof id === 'string' && !result.assetIds.includes(id) && result.assetIds.length < 4)
+      result.assetIds.push(id);
+  }
+  return result;
+}
+
 const unsorted = new Map<string, { count: number; assetIds: string[] }>();
 
 /**
  * Cards directly in the unsorted tray of a stored document, with their first images or videos
- * (unchecked ids: the route keeps only ready files of the board's project).
- * shortcut: decodes each stored document, cached by its hash; store the count with the document
- * if accounts reach hundreds of boards.
+ * (unchecked ids: the route keeps only ready files of the board's project). For documents
+ * stored since their last indexing; the others read `board_doc.unsorted`.
  */
 export function unsortedOf(state?: Uint8Array): { count: number; assetIds: string[] } {
   if (!state) return { count: 0, assetIds: [] };
@@ -208,21 +254,10 @@ export function unsortedOf(state?: Uint8Array): { count: number; assetIds: strin
   const cached = unsorted.get(key);
   if (cached) return structuredClone(cached);
   const doc = new Y.Doc();
-  const result = { count: 0, assetIds: [] as string[] };
+  let result: { count: number; assetIds: string[] };
   try {
     Y.applyUpdate(doc, state);
-    const cards = [...roots(doc).elements.entries()]
-      .filter(
-        (entry): entry is [string, Y.Map<unknown>] =>
-          entry[1] instanceof Y.Map && entry[1].get('parent') === UNSORTED,
-      )
-      .sort(([a], [b]) => a.localeCompare(b));
-    result.count = cards.length;
-    for (const [, el] of cards) {
-      const id = el.get('assetId') ?? el.get('imageAssetId');
-      if (typeof id === 'string' && !result.assetIds.includes(id) && result.assetIds.length < 4)
-        result.assetIds.push(id);
-    }
+    result = unsortedInDoc(doc);
   } catch {
     return { count: 0, assetIds: [] };
   } finally {

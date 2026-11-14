@@ -10,6 +10,7 @@ import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, board, boardDoc, crewMember } from '../db/schema.ts';
+import { writeBoardIndex } from '../search/index-doc.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -471,16 +472,25 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
       schemaVersion: 4,
       size: state.byteLength,
     });
-    doc.destroy();
-    const mine = (await request('owner', 'GET', '/me/unsorted')).json();
-    expect(mine.items).toContainEqual({
+    const expected = {
       boardId: own.rootBoardId,
       projectId: own.id,
       boardTitle: own.name,
       projectName: 'Tray test',
       count: 2,
       assetIds: [files[0]!.id],
-    });
+    };
+    const mine = (await request('owner', 'GET', '/me/unsorted')).json();
+    expect(mine.items).toContainEqual(expected);
+    // Once indexed, the tray stored with the document answers the same without decoding (#803).
+    await db.transaction((tx) => writeBoardIndex(tx, own.rootBoardId, doc));
+    doc.destroy();
+    const [stored] = await db
+      .select({ unsorted: boardDoc.unsorted })
+      .from(boardDoc)
+      .where(eq(boardDoc.boardId, own.rootBoardId));
+    expect(stored?.unsorted).toEqual({ count: 2, assetIds: [files[0]!.id, files[1]!.id] });
+    expect((await request('owner', 'GET', '/me/unsorted')).json().items).toContainEqual(expected);
     expect(mine.total).toBeGreaterThanOrEqual(2);
     // A viewer cannot place the cards, and strangers never see the board.
     for (const as of ['viewer', 'stranger']) {

@@ -1,8 +1,9 @@
-import { readElement, roots, TodoItem } from '@inkadra/doc-schema';
+import { roots, TodoItem } from '@inkadra/doc-schema';
 import type { MyTask } from '@inkadra/shared';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import * as Y from 'yjs';
 import { activeMember, atLeast, boardRole, boardRoles, projectRole } from './access.ts';
+import { type OpenTask, openTasks } from './board-preview.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, project, projectMember } from './db/schema.ts';
 import { notify, Recipients } from './notifications.ts';
@@ -56,27 +57,34 @@ export function tasksInDoc(
   userId: string,
   place: Omit<MyTask, 'itemId' | 'elementId' | 'text' | 'dueDate'>,
 ): MyTask[] {
-  const result: MyTask[] = [];
-  for (const map of roots(doc).elements.values()) {
-    const el = readElement(map);
-    if (el?.type !== 'todo') continue;
-    for (const item of el.items)
-      if (!item.done && item.assigneeId === userId)
-        result.push({
-          ...place,
-          elementId: el.id,
-          itemId: item.id,
-          text: item.text,
-          ...(item.dueDate ? { dueDate: item.dueDate } : {}),
-        });
-  }
-  return result;
+  return mine(openTasks(doc), userId, place);
 }
 
-// shortcut: read stored documents; add a materialized index if measured project sizes require it.
+function mine(
+  tasks: OpenTask[],
+  userId: string,
+  place: Omit<MyTask, 'itemId' | 'elementId' | 'text' | 'dueDate'>,
+): MyTask[] {
+  return tasks
+    .filter((t) => t.assigneeId === userId)
+    .map(({ assigneeId: _, ...task }) => ({ ...place, ...task }));
+}
+
+/**
+ * The person's open tasks across their projects: from the tasks stored with each document at
+ * its last indexing (#803), decoding only documents stored since. Boards whose stored tasks
+ * name someone else are never read.
+ */
 export async function myTasks(db: Database, userId: string): Promise<MyTask[]> {
+  const fresh = sql`(coalesce(${boardDoc.indexedAt} >= ${boardDoc.updatedAt}, false)
+    and ${boardDoc.tasks} is not null)`;
   const rows = await db
-    .select({ board, projectName: project.name, state: boardDoc.state })
+    .select({
+      board,
+      projectName: project.name,
+      tasks: sql<OpenTask[] | null>`case when ${fresh} then ${boardDoc.tasks} end`,
+      state: sql<Uint8Array | null>`case when ${fresh} then null else ${boardDoc.state} end`,
+    })
     .from(projectMember)
     .innerJoin(project, eq(project.id, projectMember.projectId))
     .innerJoin(board, eq(board.projectId, project.id))
@@ -87,6 +95,7 @@ export async function myTasks(db: Database, userId: string): Promise<MyTask[]> {
         activeMember(),
         isNull(project.archivedAt),
         isNull(board.deletedAt),
+        sql`(not ${fresh} or ${boardDoc.tasks} @> ${JSON.stringify([{ assigneeId: userId }])}::jsonb)`,
       ),
     );
   const readable = await boardRoles(
@@ -97,17 +106,21 @@ export async function myTasks(db: Database, userId: string): Promise<MyTask[]> {
   const items: MyTask[] = [];
   for (const row of rows) {
     if (!readable.has(row.board.id)) continue;
+    const place = {
+      projectId: row.board.projectId,
+      projectName: row.projectName,
+      boardId: row.board.id,
+      boardTitle: row.board.title,
+    };
+    if (row.tasks) {
+      items.push(...mine(row.tasks, userId, place));
+      continue;
+    }
+    if (!row.state) continue;
     const doc = new Y.Doc();
     try {
       Y.applyUpdate(doc, row.state);
-      items.push(
-        ...tasksInDoc(doc, userId, {
-          projectId: row.board.projectId,
-          projectName: row.projectName,
-          boardId: row.board.id,
-          boardTitle: row.board.title,
-        }),
-      );
+      items.push(...tasksInDoc(doc, userId, place));
     } finally {
       doc.destroy();
     }

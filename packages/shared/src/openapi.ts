@@ -54,7 +54,16 @@ import {
   ReplyQuery,
   UpdateComment,
 } from './comments.ts';
-import { ApiError, Id, InvalidToken, OutcomeUnknown, PageQuery, page, z } from './common.ts';
+import {
+  ApiError,
+  Id,
+  InvalidToken,
+  ListPage,
+  OutcomeUnknown,
+  PageQuery,
+  page,
+  z,
+} from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
 import {
   BulkCreateCrew,
@@ -779,8 +788,12 @@ registry.registerPath({
   tags: ['Instance'],
   security: secured,
   summary: 'Administrator only: directory of active and deactivated instance accounts.',
+  description:
+    'By name. Without `limit` every account in one answer; with `limit`, pages to follow by ' +
+    '`nextCursor` (servers with the `list-pages` capability).',
+  request: { query: ListPage },
   responses: {
-    200: { description: 'Members', ...json(z.object({ items: z.array(InstanceMember) })) },
+    200: { description: 'Members', ...json(page(InstanceMember)) },
     ...errors,
   },
 });
@@ -1706,9 +1719,12 @@ registry.registerPath({
   path: v1('/projects/{projectId}/members'),
   tags: ['Projects'],
   security: secured,
-  request: { params: idParam('projectId') },
+  description:
+    'In the order they joined. Without `limit` every member in one answer; with `limit`, pages ' +
+    'to follow by `nextCursor` (servers with the `list-pages` capability).',
+  request: { params: idParam('projectId'), query: ListPage },
   responses: {
-    200: { description: 'Members', ...json(z.object({ items: z.array(ProjectMember) })) },
+    200: { description: 'Members', ...json(page(ProjectMember)) },
     ...errors,
   },
 });
@@ -1742,9 +1758,12 @@ registry.registerPath({
   tags: ['Boards'],
   security: secured,
   summary: 'Every board of the project, flat. Build the tree from parentBoardId.',
+  description:
+    'Always the whole list today (`nextCursor` null): roles follow the tree. Follow a ' +
+    '`nextCursor` that is not null.',
   request: { params: idParam('projectId') },
   responses: {
-    200: { description: 'Boards', ...json(z.object({ items: z.array(Board) })) },
+    200: { description: 'Boards', ...json(page(Board)) },
     ...errors,
   },
 });
@@ -1847,9 +1866,10 @@ registry.registerPath({
   summary: 'Boards shared with you in projects you are not a member of.',
   description:
     'Only the top board of each shared subtree. Their projects are not listed by GET ' +
-    '/projects; GET /projects/{projectId}/boards answers with the boards you can open.',
+    '/projects; GET /projects/{projectId}/boards answers with the boards you can open. Always ' +
+    'the whole list today (`nextCursor` null); follow a `nextCursor` that is not null.',
   responses: {
-    200: { description: 'Boards', ...json(z.object({ items: z.array(Board) })) },
+    200: { description: 'Boards', ...json(page(Board)) },
     401: errors[401],
   },
 });

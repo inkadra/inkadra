@@ -42,7 +42,7 @@ import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifica
 import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { lockUpload, type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
-import type { StorageEnv } from './storage-limits.ts';
+import { reconcileStorageTotals, type StorageEnv } from './storage-limits.ts';
 import { purgeRevokedTokens } from './tokens.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
 import { checkForUpdates, RETRY_MS } from './updates.ts';
@@ -449,7 +449,11 @@ export async function startWorkers(
         const versions = await applyVersionRetention(deps.db);
         return { ...versions, writers: (await pruneWriters(deps.db)).removed };
       }
-      if (job.name === 'purge-notifications') return purgeNotifications(deps.db);
+      if (job.name === 'purge-notifications')
+        return {
+          ...(await purgeNotifications(deps.db)),
+          storageTotals: await reconcileStorageTotals(deps.db),
+        };
       if (job.name === 'access-expiry') return sweepAccessExpiry(deps.db);
       // Asks GitHub only when the stored answer is 6 hours old, or 15 minutes after a failure.
       if (job.name === 'update-check') return checkForUpdates(deps.db);

@@ -3,7 +3,7 @@ import { compareZ, type Element, readElement, roots } from '@inkadra/doc-schema'
 import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
-import { docCounts } from '../board-preview.ts';
+import { docCounts, openTasks, unsortedInDoc } from '../board-preview.ts';
 import { reviveUsed } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, boardElementIndex } from '../db/schema.ts';
@@ -355,23 +355,32 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
   // Keep updated_at as it is: it says when the document changed, not the index.
   await tx
     .update(boardDoc)
-    .set({ indexedAt: new Date(), counts: docCounts(doc), updatedAt: sql`${boardDoc.updatedAt}` })
+    .set({
+      indexedAt: new Date(),
+      counts: docCounts(doc),
+      tasks: openTasks(doc),
+      unsorted: unsortedInDoc(doc),
+      updatedAt: sql`${boardDoc.updatedAt}`,
+    })
     .where(eq(boardDoc.boardId, boardId));
   return entries.length;
 }
 
 /**
- * Indexes boards stored before the index existed, or whose last indexing failed; at most
+ * Indexes boards stored before the index existed, whose last indexing failed, or indexed before
+ * their tasks and tray were stored with them (#803); at most
  * `limit` boards per call, in board order after `after`. A board that cannot be indexed is
  * listed in `failed` and skipped (#815): pass `last` as `after` to go on with the next ones.
  */
 export async function backfillIndex(db: Database, limit = 200, after?: string) {
   const stale = await db
-    .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+    .select({ boardId: boardDoc.boardId })
     .from(boardDoc)
     .where(
       and(
-        sql`(${boardDoc.indexedAt} is null or ${boardDoc.indexedAt} < ${boardDoc.updatedAt})`,
+        // The predicate of board_doc_unindexed_idx.
+        sql`(${boardDoc.indexedAt} is null or ${boardDoc.indexedAt} < ${boardDoc.updatedAt}
+          or ${boardDoc.tasks} is null)`,
         after ? gt(boardDoc.boardId, after) : undefined,
       ),
     )
@@ -389,11 +398,16 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
             state: boardDoc.state,
             indexedAt: boardDoc.indexedAt,
             updatedAt: boardDoc.updatedAt,
+            tasks: boardDoc.tasks,
           })
           .from(boardDoc)
           .where(eq(boardDoc.boardId, row.boardId))
           .for('update');
-        if (!locked || (locked.indexedAt && locked.indexedAt >= locked.updatedAt)) return false;
+        if (
+          !locked ||
+          (locked.indexedAt && locked.indexedAt >= locked.updatedAt && locked.tasks !== null)
+        )
+          return false;
         Y.applyUpdate(doc, locked.state);
         await writeBoardIndex(tx, row.boardId, doc);
         return true;

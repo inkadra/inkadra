@@ -72,9 +72,10 @@ export type InstanceBackups = z.infer<typeof InstanceBackups>;
 
 /**
  * Tables a backup leaves out: derived data that a restore rebuilds (the search index is filled
- * again from the documents by the startup backfill).
+ * again from the documents by the startup backfill; the storage totals by the triggers as the
+ * files are loaded, or by the migration that adds them).
  */
-export const BACKUP_REBUILT_TABLES = ['board_element_index'] as const;
+export const BACKUP_REBUILT_TABLES = ['board_element_index', 'storage_total'] as const;
 
 /**
  * `manifest.json` of an instance backup archive (docs/formats/instance-backup.md). `tables`

@@ -51,6 +51,15 @@ export function page<T extends z.ZodType>(item: T) {
   });
 }
 
+/**
+ * Optional paging of a list that once answered in full (#804): without `limit` the whole list,
+ * as before; with it, pages of `limit` items and `nextCursor` to follow.
+ */
+export const ListPage = z.object({
+  cursor: Cursor.optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
 export const PageQuery = z.object({
   cursor: Cursor.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),

@@ -119,6 +119,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'classification-delete',
         'idempotent-import',
         'video-renditions',
+        'list-pages',
         'unavailable-errors',
       ],
     });

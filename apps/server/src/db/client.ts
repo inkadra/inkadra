@@ -7,8 +7,43 @@ import * as schema from './schema.ts';
 
 export type Database = ReturnType<typeof createDatabase>['db'];
 
-export function createDatabase(url: string, max = 10) {
-  const sql = postgres(url, { max, onnotice: () => {} });
+/** Per-session limits of a pool (#800), in milliseconds; 0 or unset keeps Postgres's (none). */
+export interface DatabaseTimeouts {
+  statementMs?: number;
+  lockMs?: number;
+  idleInTransactionMs?: number;
+}
+
+/** Startup parameters for postgres.js: only the limits that are set. */
+export function sessionLimits(t: DatabaseTimeouts = {}) {
+  const out: Record<string, number> = {};
+  if (t.statementMs) out.statement_timeout = t.statementMs;
+  if (t.lockMs) out.lock_timeout = t.lockMs;
+  if (t.idleInTransactionMs) out.idle_in_transaction_session_timeout = t.idleInTransactionMs;
+  return out;
+}
+
+/**
+ * Startup parameters of connections that must never be cut (#879): migrations, backups,
+ * restores and CLI commands. Explicit, so limits configured on the database role (as behind
+ * PgBouncer) do not reach them.
+ */
+export const UNLIMITED_SESSION = {
+  statement_timeout: 0,
+  lock_timeout: 0,
+  idle_in_transaction_session_timeout: 0,
+};
+
+/** A pool with the server's limits (`timeouts`), or without any when they are not given. */
+export function createDatabase(url: string, max = 10, timeouts?: DatabaseTimeouts) {
+  const sql = postgres(url, {
+    max,
+    onnotice: () => {},
+    ...(timeouts
+      ? // Idle connections close after a minute; a database that does not answer fails in 10 s.
+        { idle_timeout: 60, connect_timeout: 10, connection: sessionLimits(timeouts) }
+      : { connection: UNLIMITED_SESSION }),
+  });
   const db = drizzle(sql, { schema, casing: 'snake_case' });
   return { db, sql };
 }
@@ -29,7 +64,13 @@ export async function runMigrations(
   opts: { productionBoards?: boolean; log?: Parameters<typeof moveToProductionBoards>[1] } = {},
 ) {
   // One connection (max 1) that is never recycled: the session lock holds until sql.end() below.
-  const sql = postgres(url, { max: 1, max_lifetime: null, onnotice: () => {} });
+  const sql = postgres(url, {
+    max: 1,
+    max_lifetime: null,
+    onnotice: () => {},
+    // Building an index or a backfill on a large instance may take minutes.
+    connection: UNLIMITED_SESSION,
+  });
   const db = drizzle(sql, { schema, casing: 'snake_case' });
   try {
     const [free] = await sql`select pg_try_advisory_lock(${MIGRATION_LOCK}) as locked`;

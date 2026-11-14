@@ -133,6 +133,11 @@ export async function pruneWriters(db: Database, now = new Date()) {
           partition by board_id order by last_seen_at desc, client_id desc
         ) as n
         from board_writer
+        -- Only boards over the cap: the window never sorts the whole table (#814).
+        where board_id in (
+          select board_id from board_writer group by board_id
+          having count(*) > ${MAX_WRITERS_PER_BOARD}
+        )
       ) ranked where n > ${MAX_WRITERS_PER_BOARD}
     ) r
     where w.board_id = r.board_id and w.client_id = r.client_id

@@ -52,6 +52,29 @@ not forwarded by default. The image bundles Node 26.13; the host does not need N
 Upload and import size units below use powers of 1024 (`1GB` = 1 GiB). Storage quota units
 use powers of 1000. Boolean settings accept `true` or `false` unless stated otherwise.
 
+## Database connections
+
+Each process (`all`, `web`, `collab`, `worker`) keeps its own pool of Postgres connections. In
+`all`, the collaboration server has a small pool of its own, so a slow request or job never holds
+up the saving of boards.
+
+| Variable                                  | Default | Meaning                                                                              |
+| ----------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `DATABASE_POOL_MAX`                       | `10`    | Connections of each process's main pool                                              |
+| `DATABASE_COLLAB_POOL_MAX`                | `4`     | Connections of the collaboration pool, in `all` only                                 |
+| `DATABASE_STATEMENT_TIMEOUT_MS`           | `60000` | A query running longer is cancelled and the request fails. `0` turns the limit off   |
+| `DATABASE_LOCK_TIMEOUT_MS`                | `15000` | Longest wait for a row or table lock before the query fails. `0` turns the limit off |
+| `DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS` | `60000` | A transaction left open without work is ended. `0` turns the limit off               |
+
+Size Postgres's `max_connections` for every process: with the defaults, one `all` process uses up
+to 14 connections, a split installation 10 per process. Board saves keep their own shorter
+statement limit, and the hourly version cleanup has none. Backups, restores and migrations run
+on separate connections that turn all three limits off when they connect, which also overrides
+limits set on the database role. Behind a connection pooler that refuses startup parameters
+(PgBouncer in transaction mode), set the three limits to `0` and configure them on the database
+role instead; run migrations, backups and restores through a connection that accepts startup
+parameters (Postgres directly, or PgBouncer in session mode).
+
 ## Files and uploads
 
 | Variable                 | Default     | Meaning                                                                                                                                                      |

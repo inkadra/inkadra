@@ -325,6 +325,28 @@ export async function boardRoles(
   actor: Pick<Actor, 'id'>,
   boardIds: readonly string[],
 ): Promise<Map<string, ProjectRole>> {
+  const out = new Map<string, ProjectRole>();
+  for (const [boardId, c] of await boardChains(db, actor, boardIds)) {
+    const { role } = effectiveRole(c.chain, c.grants, c.projectRole);
+    if (role) out.set(boardId, role);
+  }
+  return out;
+}
+
+/** What boardAccess reads, for many boards in one query: each board's chain up to the root. */
+export interface BoardChain {
+  /** The board first, then its ancestors. */
+  chain: string[];
+  grants: Map<string, ProjectRole>;
+  projectRole: ProjectRole | null;
+}
+
+/** The chain of each of the given boards that is not in the trash, with the person's grants. */
+export async function boardChains(
+  db: Pick<Database, 'execute'>,
+  actor: Pick<Actor, 'id'>,
+  boardIds: readonly string[],
+): Promise<Map<string, BoardChain>> {
   const ids = [...new Set(boardIds)];
   if (ids.length === 0) return new Map();
   const rows = await db.execute<{
@@ -350,14 +372,9 @@ export async function boardRoles(
     left join project_member m on m.project_id = up.project_id and m.user_id = ${actor.id}
       and ${live('m')}
     order by up.start, up.depth`);
-  type Chain = {
-    chain: string[];
-    grants: Map<string, ProjectRole>;
-    projectRole: ProjectRole | null;
-  };
-  const chains = new Map<string, Chain>();
+  const chains = new Map<string, BoardChain>();
   for (const r of rows) {
-    const entry: Chain = chains.get(r.start) ?? {
+    const entry: BoardChain = chains.get(r.start) ?? {
       chain: [],
       grants: new Map(),
       projectRole: r.project_role,
@@ -366,12 +383,7 @@ export async function boardRoles(
     if (r.grant_role) entry.grants.set(r.id, r.grant_role);
     chains.set(r.start, entry);
   }
-  const out = new Map<string, ProjectRole>();
-  for (const [boardId, c] of chains) {
-    const { role } = effectiveRole(c.chain, c.grants, c.projectRole);
-    if (role) out.set(boardId, role);
-  }
-  return out;
+  return chains;
 }
 
 /** SQL equivalent of visibility/boardRoles: every granted role permits reading. */

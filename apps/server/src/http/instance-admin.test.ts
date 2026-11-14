@@ -182,6 +182,18 @@ describe.skipIf(!url)('instance administration', () => {
     const res = await request('admin', 'GET', '/instance/members');
     expect(res.statusCode).toBe(200);
     expect(res.json().items).toHaveLength(3);
+    expect(res.json().nextCursor).toBeNull();
+    // Optional pages (#804): the same accounts in the same order.
+    const first = (await request('admin', 'GET', '/instance/members?limit=2')).json();
+    expect(first.items).toHaveLength(2);
+    const rest = (
+      await request('admin', 'GET', `/instance/members?limit=2&cursor=${first.nextCursor}`)
+    ).json();
+    expect(rest).toMatchObject({ nextCursor: null });
+    expect([...first.items, ...rest.items].map((m: InstanceMember) => m.id)).toEqual(
+      res.json().items.map((m: InstanceMember) => m.id),
+    );
+    expect((await request('admin', 'GET', '/instance/members?cursor=bad')).statusCode).toBe(400);
     for (const row of res.json().items)
       expect(InstanceMember.strict().safeParse(row).success).toBe(true);
     expect(res.json().items.find((m: InstanceMember) => m.id === people.member?.id)).toMatchObject({

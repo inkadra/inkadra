@@ -718,6 +718,25 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     ).toMatchObject(stored!.counts!);
   });
 
+  it('fills the tasks of boards indexed before they were stored', async () => {
+    const clear = sql`update board_doc set tasks = null, unsorted = null where board_id = ${boardId}`;
+    const stored = async () =>
+      (
+        await db
+          .select({ tasks: boardDoc.tasks, unsorted: boardDoc.unsorted })
+          .from(boardDoc)
+          .where(eq(boardDoc.boardId, boardId))
+      )[0];
+    await db.execute(clear);
+    // Boards indexed before #803 have no tasks yet: the backfill picks them up once.
+    expect(await backfillIndex(db)).toMatchObject({ indexed: 1, failed: [] });
+    expect(await stored()).toMatchObject({
+      tasks: expect.any(Array),
+      unsorted: { count: expect.any(Number) },
+    });
+    expect(await backfillIndex(db)).toMatchObject({ indexed: 0, failed: [] });
+  });
+
   it('lets a store and the backfill of the same board take turns, the newer state last', async () => {
     const created = await app.inject({
       method: 'POST',

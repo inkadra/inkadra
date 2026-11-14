@@ -87,21 +87,13 @@ export function overrideAllowed(limits: Limits, override: number | null): boolea
   return override > 0 && override <= limits.perUser;
 }
 
-/**
- * Originals and the copies and previews made of them, as Settings → Storage counts them. With
- * `pending`, uploads still arriving count at their declared size: they hold their place, so
- * parallel uploads cannot pass a limit together.
- */
+/** Originals and the copies and previews made of them, as Settings → Storage counts them. */
 export async function usedBytes(
   db: Reader,
-  opts: { userId?: string; pending?: boolean; exclude?: string } = {},
+  opts: { userId?: string } = {},
 ): Promise<{ originals: number; derived: number }> {
-  const statuses = opts.pending
-    ? sql`('pending', 'processing', 'ready', 'failed')`
-    : sql`('processing', 'ready', 'failed')`;
-  const where: SQL[] = [sql`a.status in ${statuses}`];
+  const where: SQL[] = [sql`a.status in ('processing', 'ready', 'failed')`];
   if (opts.userId) where.push(sql`a.created_by = ${opts.userId}`);
-  if (opts.exclude) where.push(sql`a.id <> ${opts.exclude}`);
   const condition = sql.join(where, sql` and `);
   const [row] = await db.execute<{ originals: string; derived: string }>(sql`select
     (select coalesce(sum(a.size), 0) from asset a where ${condition})::text as originals,
@@ -120,6 +112,38 @@ export async function usedBytes(
 
 const total = (u: { originals: number; derived: number }) => u.originals + u.derived;
 
+/**
+ * What a new file is weighed against (#799): the running totals of `storage_total`, files in
+ * every status at their declared size, so parallel uploads cannot pass a limit together. With
+ * `userId`, that person's originals and copies; without, the instance with ladder rungs too.
+ * `exclude` leaves out one file (the upload being finished) with its copies.
+ */
+export async function reservedBytes(
+  db: Reader,
+  opts: { userId?: string; exclude?: string } = {},
+): Promise<number> {
+  const [row] = await db.execute<{ used: string }>(
+    opts.userId
+      ? sql`select coalesce((select bytes from storage_total where user_id = ${opts.userId}), 0)
+          ::text as used`
+      : sql`select coalesce(sum(bytes + rendition_bytes), 0)::text as used from storage_total`,
+  );
+  let used = Number(row?.used ?? 0);
+  if (opts.exclude) {
+    const [own] = await db.execute<{ bytes: string }>(sql`select (a.size
+        + coalesce((select sum(v.bytes) from asset_variant v where v.asset_id = a.id), 0)
+        + ${
+          opts.userId
+            ? sql`0`
+            : sql`coalesce((select sum(r.bytes) from asset_rendition r where r.asset_id = a.id), 0)`
+        })::text as bytes
+      from asset a where a.id = ${opts.exclude}
+        ${opts.userId ? sql`and a.created_by = ${opts.userId}` : sql``}`);
+    used -= Number(own?.bytes ?? 0);
+  }
+  return used;
+}
+
 /** Why `bytes` more do not fit, or null when they do. The instance total goes first. */
 export async function refusal(
   db: Reader,
@@ -129,7 +153,7 @@ export async function refusal(
   exclude?: string,
 ): Promise<StorageFull | null> {
   if (limits.total !== null) {
-    const used = total(await usedBytes(db, { pending: true, exclude }));
+    const used = await reservedBytes(db, { exclude });
     if (used + bytes > limits.total)
       return {
         code: 'storage_full',
@@ -139,7 +163,7 @@ export async function refusal(
       };
   }
   if (person.limit !== null) {
-    const used = total(await usedBytes(db, { userId: person.id, pending: true, exclude }));
+    const used = await reservedBytes(db, { userId: person.id, exclude });
     if (used + bytes > person.limit)
       return {
         code: 'storage_full',
@@ -149,6 +173,80 @@ export async function refusal(
       };
   }
   return null;
+}
+
+/** The tables whose statement triggers keep `storage_total` current (migration 0052). */
+export const STORAGE_TOTAL_TABLES = ['asset', 'asset_variant', 'asset_rendition'] as const;
+
+/**
+ * Every running total from the files themselves, as migration 0052 first built them: run by a
+ * restore, which loads the files with the triggers off (#879).
+ */
+export const REBUILD_STORAGE_TOTALS = `insert into storage_total
+    (user_id, bytes, pending_bytes, rendition_bytes)
+  select a.created_by, sum(a.size + coalesce(v.bytes, 0)),
+    sum(case when a.status = 'pending' then a.size else 0 end), sum(coalesce(r.bytes, 0))
+  from asset a
+  left join (select asset_id, sum(bytes) as bytes from asset_variant group by asset_id) v
+    on v.asset_id = a.id
+  left join (select asset_id, sum(bytes) as bytes from asset_rendition group by asset_id) r
+    on r.asset_id = a.id
+  group by a.created_by
+  on conflict (user_id) do update set bytes = excluded.bytes,
+    pending_bytes = excluded.pending_bytes, rendition_bytes = excluded.rendition_bytes`;
+
+/**
+ * Sets each person's running total to the sum of their files (daily): a total that drifted,
+ * through a write the triggers do not see (a restore, a manual edit), heals within a day. One
+ * short transaction per person, holding only that person's row.
+ */
+export async function reconcileStorageTotals(db: Database): Promise<{ corrected: number }> {
+  const owners = await db.execute<{ user_id: string | null }>(sql`select user_id from storage_total
+    union select distinct created_by from asset`);
+  let corrected = 0;
+  for (const { user_id: owner } of owners) {
+    const who = owner === null ? sql`is null` : sql`= ${owner}`;
+    const changed = await db.transaction(async (tx) => {
+      type Totals = { bytes: string; pending_bytes: string; rendition_bytes: string };
+      const [row] = await tx.execute<Totals>(
+        sql`select bytes::text, pending_bytes::text, rendition_bytes::text from storage_total
+          where user_id ${who} for update`,
+      );
+      const [sum] = await tx.execute<Totals>(sql`select
+        (coalesce(sum(a.size), 0) + coalesce((select sum(v.bytes) from asset_variant v
+          join asset a on a.id = v.asset_id where a.created_by ${who}), 0))::text as bytes,
+        coalesce(sum(a.size) filter (where a.status = 'pending'), 0)::text as pending_bytes,
+        coalesce((select sum(r.bytes) from asset_rendition r
+          join asset a on a.id = r.asset_id where a.created_by ${who}), 0)::text as rendition_bytes
+        from asset a where a.created_by ${who}`);
+      const want = {
+        bytes: sum?.bytes ?? '0',
+        pending: sum?.pending_bytes ?? '0',
+        renditions: sum?.rendition_bytes ?? '0',
+      };
+      if (
+        row?.bytes === want.bytes &&
+        row.pending_bytes === want.pending &&
+        row.rendition_bytes === want.renditions
+      )
+        return false;
+      if (!row && want.bytes === '0' && want.renditions === '0') return false;
+      if (row)
+        await tx.execute(sql`update storage_total set bytes = ${want.bytes}::bigint,
+          pending_bytes = ${want.pending}::bigint, rendition_bytes = ${want.renditions}::bigint
+          where user_id ${who}`);
+      else
+        await tx.execute(sql`insert into storage_total
+            (user_id, bytes, pending_bytes, rendition_bytes)
+          select ${owner}::uuid, ${want.bytes}::bigint, ${want.pending}::bigint,
+            ${want.renditions}::bigint
+          where ${owner}::uuid is null or exists (select 1 from "user" where id = ${owner}::uuid)
+          on conflict (user_id) do nothing`);
+      return true;
+    });
+    if (changed) corrected += 1;
+  }
+  return { corrected };
 }
 
 export class StorageFullError extends HttpError {
@@ -180,7 +278,13 @@ export async function assertSpace(
   const limits = known ?? (await readLimits(tx, env));
   const limit = await limitOf(tx, limits, userId);
   if (limits.total === null && limit === null) return;
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('storage-limits'))`);
+  // An instance total needs every upload in turn; a person's limit only theirs (#799). Both
+  // hold the lock for a few index lookups, and the pool's lock timeout bounds the wait (#800).
+  // shortcut: an administrator setting the first instance total while uploads hold only their
+  // own `storage-limits:<user>` lock lets those few pass the new total together, once; take the
+  // instance lock in shared mode on every upload if that ever matters.
+  const key = limits.total !== null ? 'storage-limits' : `storage-limits:${userId}`;
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${key}))`);
   const refused = await refusal(tx, limits, { id: userId, limit }, bytes, exclude);
   if (refused) throw new StorageFullError(refused);
 }
@@ -204,13 +308,6 @@ export async function reserveSpace<T>(
     return insert(tx);
   });
 }
-
-/** What one person's files take, originals and copies, as InstanceMember.storageBytes. */
-export const personBytes = (userId: SQL) => sql<string>`(
-  (select coalesce(sum(a.size), 0) from asset a
-    where a.created_by = ${userId} and a.status in ('processing', 'ready', 'failed'))
-  + (select coalesce(sum(v.bytes), 0) from asset_variant v join asset a on a.id = v.asset_id
-    where a.created_by = ${userId} and a.status in ('processing', 'ready', 'failed')))::text`;
 
 /**
  * The 50 largest files `ownerId` uploaded, with their copies. Files in projects `viewerId`
@@ -300,8 +397,7 @@ export async function largestFiles(
 export async function myStorage(db: Reader, env: StorageEnv, userId: string): Promise<MyStorage> {
   const limits = await readLimits(db, env);
   const mine = await usedBytes(db, { userId });
-  const instanceFull =
-    limits.total !== null && total(await usedBytes(db, { pending: true })) >= limits.total;
+  const instanceFull = limits.total !== null && (await reservedBytes(db)) >= limits.total;
   return {
     originalBytes: mine.originals,
     derivedBytes: mine.derived,
