@@ -7,6 +7,7 @@
 #   deploy/compose.rustfs.yaml         files in a bundled S3-compatible store (RustFS)
 #   deploy/compose.vaapi.yaml          hardware video encoding on Intel or AMD GPUs (included in the standard image)
 #   deploy/compose.nvidia.yaml         hardware video encoding on NVIDIA GPUs (included in the standard image)
+#   deploy/compose.office.yaml         Office document previews, a worker on the -office image (docs/self-hosting/office.md)
 #   deploy/proxy/<name>/compose.yaml   a reverse proxy in the same stack: caddy, traefik, nginx
 #   deploy/compose.postgres-old-layout.yaml   stay on PostgreSQL 16 for now (docs/self-hosting/upgrades.md)
 #   deploy/compose.demo.yaml           a public demo behind a Cloudflare Tunnel (docs/demo.md)

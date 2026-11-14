@@ -1,0 +1,8 @@
+# With the split layout, the `worker` role also gets OFFICE_PREVIEWS: it sends Office documents
+# to the office-worker of deploy/compose.office.yaml instead of reading them itself.
+#   docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.office.yaml \
+#     -f deploy/compose.office.split.yaml up -d
+services:
+  worker:
+    environment:
+      OFFICE_PREVIEWS: "true"

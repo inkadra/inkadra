@@ -45,14 +45,46 @@ low. Conversion lasts at most 60 seconds, followed by a bounded Poppler pass (50
 The converter runs inside bubblewrap, which needs unprivileged user, mount, PID and network
 namespaces. Docker's default seccomp profile refuses `unshare`, `setns`, `mount` and `clone`
 with namespace flags, so on a default container the sandbox cannot start and conversion
-**fails closed** (the original stays usable). The fix is a seccomp profile of your own that adds
+**fails closed** (the original stays usable). The fix is a seccomp profile (shipped as `deploy/office-seccomp.json`) that adds
 only those calls to Docker's default one, never `seccomp=unconfined`, `--privileged` or
 extra capabilities.
 
-Create the profile next to your compose file (needs `curl`, `sha256sum` and `jq`; without `jq`,
-append the same object to the `syscalls` array of the default profile by hand). The download is
-Docker's default profile at a fixed commit, checked against its SHA-256 before use, so a later
-change upstream cannot alter your sandbox unnoticed:
+## Turn it on
+
+`deploy/compose.office.yaml` adds the worker, with the profile below ready in
+`deploy/office-seccomp.json`. Run it from the folder of `compose.yaml`, with the `deploy` folder
+next to it:
+
+```sh
+docker compose -f compose.yaml -f deploy/compose.office.yaml up -d
+```
+
+It starts an `office-worker` service (command `worker`) on the same version as the other roles
+with `-office` added (`INKADRA_TAG` stays without suffix, for example `0.9.0`; `INKADRA_IMAGE`
+works as usual), with the same database, Redis, storage and data volume, and sets
+`OFFICE_PREVIEWS=true` on it and on `inkadra`. The worker waits for `inkadra` to be healthy,
+drops every capability, keeps `no-new-privileges`, and has its own limits and log rotation:
+`INKADRA_OFFICE_MEM_LIMIT` (4g), `INKADRA_OFFICE_CPUS` (no limit) and
+`INKADRA_OFFICE_PIDS_LIMIT` (1024), and `LOG_MAX_SIZE`/`LOG_MAX_FILES` as in `compose.yaml`.
+The `inkadra` container keeps its ordinary image and makes every other preview.
+
+With the split layout, add both files that carry the worker role's variable:
+
+```sh
+docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.office.yaml \
+  -f deploy/compose.office.split.yaml up -d
+```
+
+The ordinary `worker` then only sends Office documents to the queue the `office-worker` reads.
+Other stack layouts: put `OFFICE_PREVIEWS: "true"` on every container that runs workers and
+add the `-office` worker as above.
+
+`deploy/office-seccomp.json` is Docker's default seccomp profile at a fixed commit of
+[moby/profiles](https://github.com/moby/profiles/blob/7b5ccfab2d6b4e0aa64c6cce401a2705788eafeb/seccomp/default.json)
+(SHA-256 `15434cc9c9037d85b35027a60721bf45f381782b4283b01d94663366e71569f8`) with one rule
+added that allows `clone`, `clone3`, `unshare`, `setns`, `mount`, `umount2`, `pivot_root`,
+`sethostname` and `setdomainname`. CI regenerates it and fails if the file differs. To rebuild
+it yourself (needs `curl`, `sha256sum` and `jq`; on macOS `shasum -a 256 -c -`):
 
 ```sh
 curl -fsSL -o docker-default-seccomp.json \
@@ -61,57 +93,7 @@ echo "15434cc9c9037d85b35027a60721bf45f381782b4283b01d94663366e71569f8  docker-d
   | sha256sum -c - &&
 jq '.syscalls += [{"names": ["clone", "clone3", "unshare", "setns", "mount", "umount2",
     "pivot_root", "sethostname", "setdomainname"], "action": "SCMP_ACT_ALLOW"}]' \
-  docker-default-seccomp.json > inkadra-office-seccomp.json
-```
-
-On macOS, use `shasum -a 256 -c -` instead of `sha256sum -c -`. If the check fails, no profile
-is written: do not use the downloaded file.
-
-Then add the worker next to the single container of the default install (`command: all`):
-
-```yaml
-# compose.office.yaml: docker compose -f compose.yaml -f compose.office.yaml up -d
-services:
-  inkadra:
-    environment:
-      OFFICE_PREVIEWS: "true" # sends Office documents to the worker below
-  office-worker:
-    extends: # same database, Redis, storage and volume settings
-      file: compose.yaml
-      service: inkadra
-    # Same version as the other roles; set INKADRA_TAG without a suffix (for example 0.9.0).
-    image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
-    command: worker
-    user: "1000:1000" # the main container has already prepared /data
-    cap_add: !reset []
-    ports: !reset []
-    depends_on:
-      inkadra:
-        condition: service_healthy
-    environment:
-      OFFICE_PREVIEWS: "true"
-    security_opt:
-      - seccomp=./inkadra-office-seccomp.json
-    cap_drop: [ALL]
-```
-
-The `inkadra` container keeps its ordinary image and keeps making every other preview. With the
-split layout (`deploy/compose.split.yaml`), give the `worker` role the image instead (and add
-`OFFICE_PREVIEWS: "true"` to any other worker you run):
-
-```yaml
-# compose.office.yaml: docker compose -f compose.yaml -f deploy/compose.split.yaml -f compose.office.yaml up -d
-services:
-  worker:
-    user: "1000:1000" # /data must already belong to this user
-    cap_add: !reset []
-    # Same version as the other roles; set INKADRA_TAG without a suffix (for example 0.9.0).
-    image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
-    environment:
-      OFFICE_PREVIEWS: "true"
-    security_opt:
-      - seccomp=./inkadra-office-seccomp.json
-    cap_drop: [ALL]
+  docker-default-seccomp.json > deploy/office-seccomp.json
 ```
 
 `cap_drop: [ALL]`, `no-new-privileges` and a read-only root file system all work with it
@@ -121,12 +103,11 @@ by a second filter that denies them (and `io_uring`, the kernel keyring, `ptrace
 and its own user namespaces are forbidden: bubblewrap's `--disable-userns` when the container
 lets it, and otherwise that same filter, which refuses `clone` with `CLONE_NEWUSER`.
 `--disable-userns` needs a writable `/proc/sys`: it is skipped on a default container, and used
-if you add `systempaths=unconfined` to `security_opt` (optional, not needed for safety).
+if you uncomment `systempaths=unconfined` in the overlay (optional, not needed for safety).
 
 Check the sandbox before enabling conversion for users, as the user the worker runs as and
-without the image's entrypoint, which only accepts Inkadra roles (the service is `office-worker`
-with the single-container layout, `worker` with the split one; add the same `-f` files as for
-`up`):
+without the image's entrypoint, which only accepts Inkadra roles (add the same `-f` files as
+for `up`):
 
 ```sh
 docker compose run --rm --no-deps --user node --entrypoint bwrap office-worker \
@@ -147,7 +128,7 @@ the worker alone:
 | `bwrap: Failed to make / slave: Permission denied`          | `apparmor=unconfined`              |
 | `bwrap: Can't mount proc on /proc: Operation not permitted` | `systempaths=unconfined`           |
 
-Both were checked on such a host, together, with `cap_drop: [ALL]` and `no-new-privileges`. They
+Uncomment the matching line in `deploy/compose.office.yaml`. Both were checked on such a host, together, with `cap_drop: [ALL]` and `no-new-privileges`. They
 take protections off that container, which holds your database credentials, while the converter
 inside stays sandboxed: if you prefer, write an AppArmor profile that allows only these calls.
 Ubuntu 23.10+ also restricts unprivileged user namespaces. Rootless Docker and Podman need
