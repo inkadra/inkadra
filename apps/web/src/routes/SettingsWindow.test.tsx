@@ -195,12 +195,15 @@ it('waits for a row that the page loads later, like a member', async () => {
   expect(document.activeElement).toBe(row);
 });
 
-/** A card above the row that loads after it, like Storage's limits. */
+/**
+ * A card above the row that loads after it, like Storage's limits: when the test says, so a slow
+ * runner never shows it before the row is first revealed.
+ */
+let loadAbove = () => {};
 function Above() {
   const [shown, show] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => show(true), 20);
-    return () => clearTimeout(timer);
+    loadAbove = () => show(true);
   }, []);
   return shown ? <p>limits</p> : null;
 }
@@ -219,6 +222,7 @@ it('keeps the row in view while cards above it load, until the person scrolls', 
     ),
   );
   const before = scrolled.mock.calls.length;
+  await act(async () => loadAbove());
   await act(async () => new Promise((resolve) => setTimeout(resolve, 60)));
   // The card that came in above scrolled it back into view.
   expect(scrolled.mock.calls.length).toBeGreaterThan(before);
