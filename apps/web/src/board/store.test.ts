@@ -703,10 +703,7 @@ it('draws a priority card inside its column, read with it', async () => {
   store.destroy();
 });
 
-// Coverage slows every call: the timed tests below run in the jobs that do not measure it (#852).
-const timed = it.skipIf(Boolean(process.env.INKADRA_COVERAGE));
-
-timed('costs about the same with every card a priority card', { timeout: 60_000 }, async () => {
+it('costs about the same with every card a priority card', { timeout: 60_000 }, async () => {
   // Whether every priority card is read is a counter: thousands of them stay linear.
   const doc = new Y.Doc();
   doc.transact(() => {
@@ -735,103 +732,99 @@ timed('costs about the same with every card a priority card', { timeout: 60_000 
 /** The host's build identity, as an app passes it to export and open snapshots. */
 const BUILD = 'web 1.0.0 (abc1234)';
 
-timed(
-  'opens from a validated snapshot without validating the cards it holds',
-  {
-    timeout: 60_000,
-  },
-  async () => {
-    const { update } = generateReferenceBoard('small', 13);
-    const first = new Y.Doc();
-    Y.applyUpdate(first, update);
-    const exporter = new BoardStore(first);
-    const snapshot = exporter.exportValidatedSnapshot(BUILD)!;
-    expect(snapshot).toBeTypeOf('string');
-    // Not while a transaction is open.
-    first.transact(() => expect(exporter.exportValidatedSnapshot(BUILD)).toBeNull());
-    exporter.destroy();
+it('opens from a validated snapshot without validating the cards it holds', {
+  timeout: 60_000,
+}, async () => {
+  const { update } = generateReferenceBoard('small', 13);
+  const first = new Y.Doc();
+  Y.applyUpdate(first, update);
+  const exporter = new BoardStore(first);
+  const snapshot = exporter.exportValidatedSnapshot(BUILD)!;
+  expect(snapshot).toBeTypeOf('string');
+  // Not while a transaction is open.
+  first.transact(() => expect(exporter.exportValidatedSnapshot(BUILD)).toBeNull());
+  exporter.destroy();
 
-    // The store's own reads: whole cards (synchronous) and step by step (hydration).
-    const { readElement, readElementSteps } = schema;
-    let reads = 0;
-    vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
-      reads++;
-      return readElementSteps(map, cooperative);
-    });
-    vi.spyOn(schema, 'readElement').mockImplementation((map) => {
-      reads++;
-      return readElement(map);
-    });
-    let opened = 0;
-    const open = async (doc: Y.Doc, text: string, hydrate: boolean, build = BUILD) => {
-      reads = 0;
-      const store = hydrate
-        ? BoardStore.hydrate(doc, {
-            snapshot: { text, build },
-            schedule: () => new Promise((resolve) => setImmediate(resolve)),
-          })
-        : new BoardStore(doc, { snapshot: { text, build } });
-      await store.whenHydrated;
-      opened = reads;
-      expectSameAsFresh(store, doc);
-      return store;
-    };
-    try {
-      for (const hydrate of [false, true]) {
-        // The same document: no card is validated again.
-        const same = new Y.Doc();
-        Y.applyUpdate(same, update);
-        const store = await open(same, snapshot, hydrate);
-        expect(opened).toBe(0);
-        // Edits after the open read as usual, strokes and rows included.
-        const { frameId, tableId } = findBench(same);
-        core.addStroke(
-          same,
-          frameId,
-          { tool: 'pencil', color: '#202020', width: 4, points: [1, 2, 3, 4] },
-          LOCAL,
-        );
-        const table = store.getSnapshot().byId.get(tableId) as Extract<
-          schema.Element,
-          { type: 'table' }
-        >;
-        core.setTableCell(same, tableId, table.rows[0]!.id, table.columns[0]!.id, 'after', LOCAL);
-        expectSameAsFresh(store, same);
-        expectValidatedView(store, same);
-        store.destroy();
+  // The store's own reads: whole cards (synchronous) and step by step (hydration).
+  const { readElement, readElementSteps } = schema;
+  let reads = 0;
+  vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
+    reads++;
+    return readElementSteps(map, cooperative);
+  });
+  vi.spyOn(schema, 'readElement').mockImplementation((map) => {
+    reads++;
+    return readElement(map);
+  });
+  let opened = 0;
+  const open = async (doc: Y.Doc, text: string, hydrate: boolean, build = BUILD) => {
+    reads = 0;
+    const store = hydrate
+      ? BoardStore.hydrate(doc, {
+          snapshot: { text, build },
+          schedule: () => new Promise((resolve) => setImmediate(resolve)),
+        })
+      : new BoardStore(doc, { snapshot: { text, build } });
+    await store.whenHydrated;
+    opened = reads;
+    expectSameAsFresh(store, doc);
+    return store;
+  };
+  try {
+    for (const hydrate of [false, true]) {
+      // The same document: no card is validated again.
+      const same = new Y.Doc();
+      Y.applyUpdate(same, update);
+      const store = await open(same, snapshot, hydrate);
+      expect(opened).toBe(0);
+      // Edits after the open read as usual, strokes and rows included.
+      const { frameId, tableId } = findBench(same);
+      core.addStroke(
+        same,
+        frameId,
+        { tool: 'pencil', color: '#202020', width: 4, points: [1, 2, 3, 4] },
+        LOCAL,
+      );
+      const table = store.getSnapshot().byId.get(tableId) as Extract<
+        schema.Element,
+        { type: 'table' }
+      >;
+      core.setTableCell(same, tableId, table.rows[0]!.id, table.columns[0]!.id, 'after', LOCAL);
+      expectSameAsFresh(store, same);
+      expectValidatedView(store, same);
+      store.destroy();
 
-        // Changed since: only the changed cards are read.
-        const changed = new Y.Doc();
-        Y.applyUpdate(changed, update);
-        const [a, b] = [...roots(changed).elements.keys()];
-        roots(changed).elements.get(a!)!.set('x', 12345);
-        roots(changed).elements.get(b!)!.set('w', 'invalid');
-        (await open(changed, snapshot, hydrate)).destroy();
-        expect(opened).toBe(2);
+      // Changed since: only the changed cards are read.
+      const changed = new Y.Doc();
+      Y.applyUpdate(changed, update);
+      const [a, b] = [...roots(changed).elements.keys()];
+      roots(changed).elements.get(a!)!.set('x', 12345);
+      roots(changed).elements.get(b!)!.set('w', 'invalid');
+      (await open(changed, snapshot, hydrate)).destroy();
+      expect(opened).toBe(2);
 
-        // Corrupted, of another build or of another board: ignored whole, every card is read.
-        for (const [text, build] of [
-          [snapshot.slice(0, snapshot.length / 2), BUILD],
-          [snapshot.replace('\t', ' '), BUILD],
-          ['x', BUILD],
-          [snapshot, 'app 1.0.1 (def5678)'],
-        ] as const) {
-          const doc = new Y.Doc();
-          Y.applyUpdate(doc, update);
-          (await open(doc, text, hydrate, build)).destroy();
-          expect(opened).toBe(roots(doc).elements.size);
-        }
-        const other = new Y.Doc();
-        Y.applyUpdate(other, update);
-        roots(other).meta.set('boardId', 'another-board');
-        (await open(other, snapshot, hydrate)).destroy();
-        expect(opened).toBe(roots(other).elements.size);
+      // Corrupted, of another build or of another board: ignored whole, every card is read.
+      for (const [text, build] of [
+        [snapshot.slice(0, snapshot.length / 2), BUILD],
+        [snapshot.replace('\t', ' '), BUILD],
+        ['x', BUILD],
+        [snapshot, 'app 1.0.1 (def5678)'],
+      ] as const) {
+        const doc = new Y.Doc();
+        Y.applyUpdate(doc, update);
+        (await open(doc, text, hydrate, build)).destroy();
+        expect(opened).toBe(roots(doc).elements.size);
       }
-    } finally {
-      vi.restoreAllMocks();
+      const other = new Y.Doc();
+      Y.applyUpdate(other, update);
+      roots(other).meta.set('boardId', 'another-board');
+      (await open(other, snapshot, hydrate)).destroy();
+      expect(opened).toBe(roots(other).elements.size);
     }
-  },
-);
+  } finally {
+    vi.restoreAllMocks();
+  }
+});
 
 it('reads the live document, never the snapshot, for every edit after opening from one', () => {
   // A line whose read differs from the stored card with the same items: what a peer rewriting
