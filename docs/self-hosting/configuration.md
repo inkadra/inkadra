@@ -377,7 +377,9 @@ The server answers three addresses meant for machines:
 - `GET /metrics`: Prometheus metrics, only with `METRICS_TOKEN` set and sent as
   `Authorization: Bearer <token>`. They include the heartbeat of every role
   (`inkadra_process_up`, also for `worker` and `collab`), queue depth and failures, the free
-  space of the data disk, the database size and the time of the last good backup.
+  space of the data disk, the database size and the time of the last good backup, and for the
+  roles that hold boards (`all`, `collab`) their memory, the boards open and how long board
+  saves take and wait for a database connection ([Capacity](capacity.md)).
 
 The alerts of **Settings → Server status** are sent by the web role itself, so they stop with
 it. Watch Inkadra from outside as well: an uptime monitor on `/readyz`, and with Prometheus,

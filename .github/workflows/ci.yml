@@ -725,6 +725,49 @@ jobs:
   # until manifest: before that, this job starts and scans that very image (#835).
   # The one check that names every gate (#842): require it in the ruleset of main. It fails when any
   # gate failed, was cancelled or was skipped, so a new gate counts as soon as it is listed here.
+  # Compose files and their overlays (#900): every combination must resolve, and the Office
+  # worker must come out on the -office tag with its seccomp profile, Docker's default plus the
+  # namespace calls.
+  compose:
+    name: Compose files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PUBLIC_URL: http://localhost:3000
+      AUTH_SECRET: ci
+      POSTGRES_PASSWORD: ci
+      INKADRA_TAG: 0.9.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Every combination resolves
+        run: |
+          set -e
+          docker compose -f compose.yaml config -q
+          docker compose -f compose.yaml -f deploy/compose.split.yaml config -q
+          docker compose -f compose.yaml -f deploy/compose.office.yaml config -q
+          docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.office.yaml \
+            -f deploy/compose.office.split.yaml config -q
+      - name: The Office worker is on the -office image
+        run: |
+          set -e
+          docker compose -f compose.yaml -f deploy/compose.office.yaml config --format json > "$RUNNER_TEMP/office.json"
+          jq -e '.services["office-worker"].image == "ghcr.io/inkadra/inkadra:0.9.0-office"
+            and .services["office-worker"].command == ["worker"]
+            and .services["office-worker"].environment.OFFICE_PREVIEWS == "true"
+            and .services.inkadra.environment.OFFICE_PREVIEWS == "true"
+            and .services.inkadra.image == "ghcr.io/inkadra/inkadra:0.9.0"' "$RUNNER_TEMP/office.json"
+      - name: The seccomp profile is Docker's default plus the namespace calls
+        run: |
+          set -e
+          curl -fsSL -o "$RUNNER_TEMP/default.json" \
+            https://raw.githubusercontent.com/moby/profiles/7b5ccfab2d6b4e0aa64c6cce401a2705788eafeb/seccomp/default.json
+          echo "15434cc9c9037d85b35027a60721bf45f381782b4283b01d94663366e71569f8  $RUNNER_TEMP/default.json" | sha256sum -c -
+          jq '.syscalls += [{"names": ["clone", "clone3", "unshare", "setns", "mount", "umount2",
+              "pivot_root", "sethostname", "setdomainname"], "action": "SCMP_ACT_ALLOW"}]' \
+            "$RUNNER_TEMP/default.json" | diff - deploy/office-seccomp.json
+
   all:
     name: All checks
     if: always()
@@ -741,6 +784,7 @@ jobs:
       - image
       - proxy
       - data-dir
+      - compose
       - postgres-upgrade
       - release-upgrade
       - scan

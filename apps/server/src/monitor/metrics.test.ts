@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderMetrics } from './metrics.ts';
+import { StoreRecorder } from './sampler.ts';
 
 describe('renderMetrics (#817)', () => {
   it('writes the Prometheus text format, escaping labels and skipping empty metrics', () => {
@@ -27,5 +28,15 @@ describe('renderMetrics (#817)', () => {
         '',
       ].join('\n'),
     );
+  });
+});
+
+describe('StoreRecorder (#902)', () => {
+  it('sums up the board saves since the last take, then starts over', () => {
+    const stores = new StoreRecorder();
+    expect(stores.take()).toBeUndefined();
+    for (let i = 1; i <= 20; i++) stores.record(i === 7 ? 30 : 1, i * 10);
+    expect(stores.take()).toEqual({ n: 20, p95: 190, max: 200, waitMax: 30 });
+    expect(stores.take()).toBeUndefined();
   });
 });

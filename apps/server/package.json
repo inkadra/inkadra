@@ -13,6 +13,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:collab-sim": "vitest run src/collab-sim.test.ts",
+    "loadtest": "tsx scripts/loadtest/run.ts",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

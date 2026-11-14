@@ -548,7 +548,7 @@ async function main() {
     store: monitor,
     log,
     latency,
-    ...(collab ? { presence: collab.presence } : {}),
+    ...(collab ? { presence: collab.presence, stores: collab.stores } : {}),
   });
   closers.unshift(async () => sampler.stop());
   if (command === 'worker') {

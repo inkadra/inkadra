@@ -15,6 +15,7 @@ release are marked below and in [Upgrades](upgrades.md#after-090-current-main).
 | [Upgrades](upgrades.md)               | Versions, updating, verifying images                 |
 | [Troubleshooting](troubleshooting.md) | What to check when something does not work           |
 | [Office previews](office.md)          | The optional LibreOffice worker                      |
+| [Capacity](capacity.md)               | Load test presets, how to run it, measured numbers   |
 
 ## What you need
 
@@ -198,7 +199,7 @@ Every tag also exists with the suffix `-office` (`0.9.0-office`, `latest-office`
 `INKADRA_TAG=0.9.0-media` for video, PDF and RAW previews.
 **After 0.9.0**, standard includes media tools and new builds no longer publish `-media`.
 Remove the suffix only when moving to one of those builds. Keep `INKADRA_TAG` without
-`-office` when using the [Office worker override](office.md#the-worker-image), which adds it.
+`-office` when using the [Office worker overlay](office.md#turn-it-on), which adds it.
 
 ### Media tools included in standard
 
@@ -276,6 +277,7 @@ after it; they combine, in this order:
 | `deploy/compose.backups.yaml`       | Backups on a disk of their own, optionally in a bucket too    |
 | `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (standard image) |
 | `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (standard image)       |
+| `deploy/compose.office.yaml`        | Office document previews: a worker on the `-office` image     |
 | `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx`   |
 
 Split mode is for larger teams: you can restart the parts on their own, and a busy worker does
