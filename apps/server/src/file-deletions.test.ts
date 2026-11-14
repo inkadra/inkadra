@@ -14,8 +14,10 @@ import {
 } from './db/schema.ts';
 import {
   assetIdOf,
+  BACKUP_SNAPSHOT_MARGIN_MS,
   DELETION_GRACE_MS,
   recordDeletions,
+  removableBefore,
   removeDeletedFiles,
   sweepDeletions,
 } from './file-deletions.ts';
@@ -145,6 +147,39 @@ describe.skipIf(!url)('recorded file removals (needs DATABASE_URL)', () => {
     await db.delete(instanceBackup).where(eq(instanceBackup.id, backup?.id as string));
     await sweepDeletions(db, storage, log);
     expect(await storage.size(after)).toBeNull();
+  });
+
+  it('holds files for a running backup too, and an hour before a backup started (#794)', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const started = Date.now() - 2 * day;
+    const [running] = await db
+      .insert(instanceBackup)
+      .values({ trigger: 'manual', status: 'running', startedAt: new Date(started) })
+      .returning();
+    try {
+      const key = `feedback/${randomUUID()}`;
+      await write(key);
+      expect(await removeDeletedFiles(db, storage, [key])).toBe(0);
+      expect(await storage.size(key)).not.toBeNull();
+      // Recorded half an hour before the backup started: its transaction may have committed
+      // after the snapshot, so the file is kept; two hours before, it goes.
+      expect(+(await removableBefore(db))).toBe(started - BACKUP_SNAPSHOT_MARGIN_MS);
+      await recordDeletions(db, [key]);
+      await db
+        .update(pendingFileDeletion)
+        .set({ createdAt: new Date(started - 30 * 60_000) })
+        .where(eq(pendingFileDeletion.key, key));
+      await sweepDeletions(db, storage, log);
+      expect(await storage.size(key)).not.toBeNull();
+      await db
+        .update(pendingFileDeletion)
+        .set({ createdAt: new Date(started - 2 * 3_600_000) })
+        .where(eq(pendingFileDeletion.key, key));
+      await sweepDeletions(db, storage, log);
+      expect(await storage.size(key)).toBeNull();
+    } finally {
+      await db.delete(instanceBackup).where(eq(instanceBackup.id, running?.id as string));
+    }
   });
 
   it('keeps going when a chunk fails and ignores an import that stopped answering', async () => {

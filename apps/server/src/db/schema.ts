@@ -999,6 +999,8 @@ export const notification = pgTable(
     emailLeaseUntil: timestamp('email_lease_until', { withTimezone: true }),
     /** Failed email attempts; past `MAX_EMAIL_ATTEMPTS` the row is given up (#812). */
     emailAttempts: integer('email_attempts').notNull().default(0),
+    /** Given up after `MAX_EMAIL_ATTEMPTS`: never sent, shown on the Server page (#812). */
+    emailFailedAt: timestamp('email_failed_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -1479,6 +1481,12 @@ export const instanceBackup = pgTable(
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     /** Files the archive lists that storage did not have when it was verified. */
     missingFiles: integer('missing_files'),
+    /** Files looked up in storage: all of them, or a sample on large instances (#794). */
+    checkedFiles: integer('checked_files'),
+    /** Files storage could not answer for (errors after a retry): neither found nor missing. */
+    unverifiedFiles: integer('unverified_files'),
+    /** False when the verification ran out of time or stalled: the backup is kept, unchecked. */
+    verifyComplete: boolean('verify_complete'),
   },
   (t) => [
     index('instance_backup_started_idx').on(t.startedAt.desc()),

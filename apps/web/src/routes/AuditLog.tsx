@@ -91,7 +91,10 @@ export function AuditLog() {
                 <div className="backup-list__text">
                   <span className="backup-list__when">
                     {t('audit.line', {
-                      who: e.actor?.name ?? t('audit.nobody'),
+                      who:
+                        e.actor?.name ??
+                        // Pseudonymized when the account was deleted (#806).
+                        (e.details.actor ? t('audit.deletedAccount') : t('audit.nobody')),
                       // Catalogue keys hold no dots: `member.updated` is `member_updated`.
                       what: t(`audit.actions.${e.action.replace('.', '_')}`),
                     })}

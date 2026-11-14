@@ -440,13 +440,15 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
     if (!jobs.runBackup) throw new HttpError('internal', 'Backups are not available.');
     const row = await startBackup(db, 'manual', actor.id);
     if (!row) return sendError(reply, 'conflict', 'A backup is already running.');
+    // Best effort: the row is running now, and a failed record must not leave it without a
+    // job (every later backup would answer "already running").
     await recordAudit(db, {
       action: 'backup.started',
       actorId: actor.id,
       targetType: 'backup',
       targetId: row.id,
       ip: req.ip,
-    });
+    }).catch((err) => req.log.error({ err }, 'audit event not recorded'));
     try {
       await enqueue(jobs.runBackup(row.id));
     } catch (err) {

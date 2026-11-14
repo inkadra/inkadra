@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   AUDIT_GROUPS,
   AUDIT_RETENTION_DAYS,
@@ -6,8 +7,7 @@ import {
   type AuditEvents,
   type AuditGroup,
 } from '@inkadra/shared';
-import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
-import type { Logger } from 'pino';
+import { and, count, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 import type { Database } from './db/client.ts';
 import { auditEvent } from './db/schema.ts';
 import { afterCursor, atText, decodeCursor, pageOf } from './http/keyset.ts';
@@ -41,13 +41,102 @@ export async function recordAudit(db: Pick<Database, 'insert'>, input: AuditInpu
   });
 }
 
-/** For actions outside a transaction (sign-ins): a failed record is logged, never thrown. */
-export function recordAuditDetached(
-  db: Pick<Database, 'insert'>,
-  input: AuditInput,
-  log?: Pick<Logger, 'error'>,
-) {
-  recordAudit(db, input).catch((err) => log?.error({ err }, 'audit event not recorded'));
+/** Failed sign-ins of one account from one address within this time are one row (#806). */
+export const SIGN_IN_AUDIT_WINDOW_S = 15 * 60;
+/** Rows of failed sign-ins and lockouts per hour; past it one summary row counts the rest. */
+export const SIGN_IN_AUDIT_PER_HOUR = 200;
+
+/**
+ * Records a failed sign-in or a lockout of an existing account (#806), bounded: the same
+ * account and address within `SIGN_IN_AUDIT_WINDOW_S` add to one row's `count`, and past
+ * `SIGN_IN_AUDIT_PER_HOUR` rows an hour the rest only add to one `rateLimited` summary row.
+ * Attempts on addresses with no account are not recorded at all: rotating addresses or
+ * guessing emails cannot grow the table, which is kept a year.
+ */
+export async function recordSignInEvent(
+  db: Pick<Database, 'insert' | 'select' | 'update'>,
+  input: {
+    action: 'auth.sign_in_failed' | 'auth.locked_out';
+    userId: string;
+    ip: string;
+    details?: Record<string, unknown>;
+  },
+  limits = { windowS: SIGN_IN_AUDIT_WINDOW_S, perHour: SIGN_IN_AUDIT_PER_HOUR },
+): Promise<'added' | 'counted' | 'rate_limited'> {
+  const bump = sql`jsonb_set(${auditEvent.details}, '{count}', to_jsonb(coalesce((${auditEvent.details}->>'count')::int, 1) + 1))`;
+  const since = (secs: number) => gt(auditEvent.at, sql`now() - make_interval(secs => ${secs})`);
+  const [same] = await db
+    .update(auditEvent)
+    .set({ details: bump })
+    .where(
+      and(
+        eq(auditEvent.action, input.action),
+        eq(auditEvent.targetId, input.userId),
+        eq(auditEvent.ip, input.ip),
+        since(limits.windowS),
+      ),
+    )
+    .returning({ id: auditEvent.id });
+  if (same) return 'counted';
+  const [recent] = await db
+    .select({ n: count() })
+    .from(auditEvent)
+    .where(and(inArray(auditEvent.action, SIGN_IN_ACTIONS), since(3600)));
+  if ((recent?.n ?? 0) >= limits.perHour) {
+    const [summed] = await db
+      .update(auditEvent)
+      .set({ details: bump })
+      .where(
+        and(
+          eq(auditEvent.action, 'auth.sign_in_failed'),
+          sql`${auditEvent.details}->>'rateLimited' = 'true'`,
+          since(3600),
+        ),
+      )
+      .returning({ id: auditEvent.id });
+    if (!summed)
+      await recordAudit(db, {
+        action: 'auth.sign_in_failed',
+        details: { rateLimited: true, count: 1 },
+      });
+    return 'rate_limited';
+  }
+  await recordAudit(db, {
+    action: input.action,
+    targetType: 'user',
+    targetId: input.userId,
+    ip: input.ip,
+    details: { ...input.details, count: 1 },
+  });
+  return 'added';
+}
+const SIGN_IN_ACTIONS = ['auth.sign_in_failed', 'auth.locked_out'];
+
+/**
+ * Pseudonymizes the events of an account being deleted (#806): its name, addresses and the IPs
+ * of its actions or sign-in attempts go; the action, the time and one opaque id stay, the same
+ * on every event of that person, so the history still reads as one (deleted) account.
+ */
+export async function pseudonymizeAudit(db: Pick<Database, 'update'>, userId: string) {
+  const opaque = `deleted-${randomUUID().slice(0, 8)}`;
+  const strip = sql`(${auditEvent.details} - 'email' - 'name')`;
+  await db
+    .update(auditEvent)
+    .set({
+      actorName: null,
+      ip: null,
+      details: sql`${strip} || jsonb_build_object('actor', ${opaque}::text)`,
+    })
+    .where(eq(auditEvent.actorId, userId));
+  await db
+    .update(auditEvent)
+    .set({
+      targetId: opaque,
+      ip: sql`case when ${auditEvent.action} like 'auth.%' then null else ${auditEvent.ip} end`,
+      details: strip,
+    })
+    .where(and(eq(auditEvent.targetType, 'user'), eq(auditEvent.targetId, userId)));
+  return opaque;
 }
 
 /** The fields of `patch` that change `before`, as `{ field: [before, after] }`. */

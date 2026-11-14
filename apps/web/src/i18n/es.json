@@ -3094,7 +3094,7 @@
       "body": "Elimina la cuenta y los proyectos en los que no hay nadie más. No se puede deshacer.",
       "open": "Eliminar cuenta…",
       "confirmTitle": "¿Eliminar la cuenta?",
-      "confirmBody": "Los proyectos en los que estás solo se eliminan con todos sus archivos. En los proyectos compartidos el trabajo se queda, sin ti.",
+      "confirmBody": "Los proyectos en los que estás solo se eliminan con todos sus archivos. En los proyectos compartidos el trabajo se queda, sin ti. Los archivos eliminados siguen en las copias de seguridad del servidor hasta que salen de su conservación (7 copias nocturnas por defecto, 91 días como máximo).",
       "fresh": "Por seguridad, debes haber iniciado sesión en los últimos 15 minutos: si hace falta, sal y vuelve a entrar.",
       "blocked": "Eres el único propietario de estos proyectos compartidos: nombra antes a otro propietario.",
       "confirm": "Eliminar definitivamente"
@@ -4273,7 +4273,12 @@
     "notInBucket": "Conservada solo en el servidor: falló la copia al bucket.",
     "verified": "verificada",
     "missingFiles_one": "Falta {{count}} archivo de la lista en el almacenamiento: una restauración no lo tendría.",
-    "missingFiles_other": "Faltan {{count}} archivos de la lista en el almacenamiento: una restauración no los tendría."
+    "missingFiles_other": "Faltan {{count}} archivos de la lista en el almacenamiento: una restauración no los tendría.",
+    "verifyIncomplete": "verificación incompleta",
+    "verifiedSample_one": "verificada con una muestra de {{count}} archivo",
+    "verifiedSample_other": "verificada con una muestra de {{count}} archivos",
+    "unverifiedFiles_one": "{{count}} archivo de la lista no se pudo comprobar: el almacenamiento respondió con un error.",
+    "unverifiedFiles_other": "{{count}} archivos de la lista no se pudieron comprobar: el almacenamiento respondió con un error."
   },
   "export": {
     "title": "Exportar",
@@ -6786,6 +6791,7 @@
     "loadError": "No se pudo cargar el registro de actividad.",
     "more": "Mostrar anteriores",
     "nobody": "Alguien sin sesión",
+    "deletedAccount": "Una cuenta eliminada",
     "line": "{{what}} · {{who}}",
     "retention_one": "Los eventos se guardan {{count}} día.",
     "retention_other": "Los eventos se guardan {{count}} días.",

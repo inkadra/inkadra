@@ -64,6 +64,15 @@ export const STALL_MS = 5 * 60 * 1000;
 class BackupInconsistent extends Error {}
 /** The archive did not read back as it was written (#794). */
 class BackupCorrupt extends Error {}
+/**
+ * The verification of a backup stops after this (#794): the backup is then kept with its
+ * verification `incomplete`, never left running and blocking the next one.
+ */
+export const VERIFY_BUDGET_MS = 30 * 60 * 1000;
+/** Above this many listed files, the verification looks up an even sample of this size. */
+export const VERIFY_SAMPLE = 20_000;
+/** Storage lookups the verification has in flight at once. */
+const VERIFY_CONCURRENCY = 8;
 
 class BackupStalled extends Error {
   constructor() {
@@ -142,7 +151,13 @@ export function toBackup(row: BackupRow): InstanceBackup {
     files: row.fileCount === null ? null : { count: row.fileCount, bytes: row.fileBytes ?? 0 },
     failure: row.failure,
     verification: row.verifiedAt
-      ? { at: row.verifiedAt.toISOString(), missingFiles: row.missingFiles ?? 0 }
+      ? {
+          at: row.verifiedAt.toISOString(),
+          missingFiles: row.missingFiles ?? 0,
+          checkedFiles: row.checkedFiles ?? row.fileCount ?? 0,
+          unverifiedFiles: row.unverifiedFiles ?? 0,
+          complete: row.verifyComplete ?? true,
+        }
       : null,
     startedAt: row.startedAt.toISOString(),
     finishedAt: row.finishedAt?.toISOString() ?? null,
@@ -196,6 +211,8 @@ export interface BackupDeps {
   stallMs?: number;
   /** Tests: how often the heartbeat beats. */
   heartbeatMs?: number;
+  /** Tests: the time the verification may take (`VERIFY_BUDGET_MS`). */
+  verifyBudgetMs?: number;
   storage: Storage;
   dataDir: string;
   migrationsFolder: string;
@@ -254,6 +271,9 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   // for `stallMs` and its connection is not working on a query either, the dump is stuck.
   let movedAt = Date.now();
   let dumping = false;
+  // The verification has its own stop: a stall or the time budget ends it as incomplete.
+  let verifying = false;
+  const verifyStop = new AbortController();
   let dumpPid: number | null = null;
   const stall = new AbortController();
   const stallMs = deps.stallMs ?? STALL_MS;
@@ -262,6 +282,11 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   );
   stalled.catch(() => {});
   const watch = async () => {
+    if (verifying && Date.now() - movedAt > stallMs && !verifyStop.signal.aborted) {
+      log.warn({ backup: id, stalledFor: Date.now() - movedAt }, 'backup verification stalled');
+      verifyStop.abort();
+      return;
+    }
     if (!dumping || stall.signal.aborted || Date.now() - movedAt <= stallMs) return;
     // Quiet is fine while Postgres works on the dump's query (sorting a large table for a
     // parents-first COPY, counting rows); waiting on a lock or on us reading is not.
@@ -339,11 +364,29 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
       dumping = false;
     });
     // Read the archive back before it counts (#794): every table counted and hashed against
-    // the manifest, every listed file looked up in storage.
-    const verified = await verifyBackup(partial, deps.storage);
-    if (verified.missing.count > 0)
+    // the manifest, the listed files looked up in storage. Watched for stalls and bounded in
+    // time: past either it stops as incomplete and the backup is kept.
+    movedAt = Date.now();
+    verifying = true;
+    const budget = setTimeout(() => verifyStop.abort(), deps.verifyBudgetMs ?? VERIFY_BUDGET_MS);
+    const verified = await verifyBackup(partial, deps.storage, {
+      signal: verifyStop.signal,
+      moved: () => {
+        movedAt = Date.now();
+      },
+    }).finally(() => {
+      verifying = false;
+      clearTimeout(budget);
+    });
+    if (!verified.complete) log.warn({ backup: id }, 'backup verification incomplete');
+    if (verified.missing.count > 0 || verified.unverified > 0)
       log.warn(
-        { backup: id, missing: verified.missing.count, examples: verified.missing.examples },
+        {
+          backup: id,
+          missing: verified.missing.count,
+          unverified: verified.unverified,
+          examples: verified.missing.examples,
+        },
         'backup lists files that storage does not have',
       );
     await rename(partial, join(dir, fileName));
@@ -377,6 +420,9 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         fileBytes: result.files.bytes,
         verifiedAt: new Date(),
         missingFiles: verified.missing.count,
+        checkedFiles: verified.checked,
+        unverifiedFiles: verified.unverified,
+        verifyComplete: verified.complete,
         finishedAt: new Date(),
       })
       .where(ours)
@@ -691,7 +737,7 @@ export interface RestoreReport {
   rows: number;
   migrationsBefore: number;
   migrationsAfter: number;
-  files: { listed: number; missing: number; examples: string[] };
+  files: { listed: number; missing: number; unverified: number; examples: string[] };
 }
 
 /**
@@ -845,6 +891,7 @@ export async function restoreBackup(opts: {
 
     const files = await checkFiles(zip, opts.storage);
     // In the restored database: who restored is not known (the command line), when and what is.
+    // Best effort: the restore itself succeeded, a failed record must not report it failed.
     const { sql: audit } = createDatabase(opts.databaseUrl, 1);
     try {
       await audit`
@@ -855,8 +902,10 @@ export async function restoreBackup(opts: {
             appVersion: manifest.appVersion,
             missingFiles: files.missing.count,
           })}::jsonb)`;
+    } catch (err) {
+      opts.log.error({ err }, 'restore not recorded in the audit log');
     } finally {
-      await audit.end();
+      await audit.end().catch(() => {});
     }
     return {
       tables: manifest.tables.length,
@@ -866,6 +915,7 @@ export async function restoreBackup(opts: {
       files: {
         listed: files.listed,
         missing: files.missing.count,
+        unverified: files.unverified,
         examples: files.missing.examples,
       },
     };
@@ -881,10 +931,18 @@ const ARCHIVE_LIMITS = {
 };
 
 /**
- * Reads `files.jsonl` line by line and looks each file up in storage, 16 at a time: the files
- * a restore of this backup would miss (#794). Never holds the whole list in memory.
+ * Reads `files.jsonl` line by line and looks files up in storage, `VERIFY_CONCURRENCY` at a
+ * time: the files a restore of this backup would miss (#794). Never holds the whole list in
+ * memory. With `sample`, a list longer than that is checked on an even sample of that size.
+ * A lookup that fails (not a missing file: an error) is tried once more, then counted as
+ * `unverified`, neither missing nor found. After `signal` aborts it stops looking files up
+ * (`complete: false`) but still reads the list to the end, for its count and hash.
  */
-async function checkFiles(zip: ZipReader, storage: Storage) {
+async function checkFiles(
+  zip: ZipReader,
+  storage: Storage,
+  opts: { listed?: number; sample?: number; signal?: AbortSignal; moved?: () => void } = {},
+) {
   const hash = createHash('sha256');
   const source = piped(
     await zip.stream('files.jsonl', Number.MAX_SAFE_INTEGER),
@@ -895,20 +953,49 @@ async function checkFiles(zip: ZipReader, storage: Storage) {
       },
     }),
   );
+  const every =
+    opts.sample && opts.listed && opts.listed > opts.sample
+      ? Math.ceil(opts.listed / opts.sample)
+      : 1;
+  const stopped = opts.signal
+    ? new Promise<void>((resolve) => {
+        if (opts.signal?.aborted) resolve();
+        opts.signal?.addEventListener('abort', () => resolve(), { once: true });
+      })
+    : null;
   const missing = { count: 0, examples: [] as string[] };
   let listed = 0;
+  let checked = 0;
+  let unverified = 0;
   let batch: Array<{ key: string; size: number | null }> = [];
+  const sizeOf = async (key: string) => {
+    try {
+      return await storage.size(key);
+    } catch {
+      return await storage.size(key);
+    }
+  };
   const flush = async () => {
-    await Promise.all(
+    const work = Promise.all(
       batch.map(async (f) => {
-        const size = await storage.size(f.key).catch(() => null);
+        let size: number | null;
+        try {
+          size = await sizeOf(f.key);
+        } catch {
+          unverified += 1;
+          return;
+        }
+        checked += 1;
         if (size === null || (f.size !== null && size !== f.size)) {
           missing.count += 1;
           if (missing.examples.length < 10) missing.examples.push(f.key);
         }
       }),
     );
+    // A lookup that hangs past the stop does not hold the verification.
+    await (stopped ? Promise.race([work, stopped]) : work);
     batch = [];
+    opts.moved?.();
   };
   for await (const line of createInterface({
     input: source,
@@ -916,39 +1003,80 @@ async function checkFiles(zip: ZipReader, storage: Storage) {
   })) {
     if (!line) continue;
     listed += 1;
+    if (opts.signal?.aborted || (listed - 1) % every !== 0) continue;
     batch.push(JSON.parse(line) as { key: string; size: number | null });
-    if (batch.length === 16) await flush();
+    if (batch.length === VERIFY_CONCURRENCY) await flush();
   }
-  await flush();
-  return { listed, missing, sha256: hash.digest('hex') };
+  if (!opts.signal?.aborted) await flush();
+  return {
+    listed,
+    checked,
+    unverified,
+    missing,
+    complete: !opts.signal?.aborted,
+    sha256: hash.digest('hex'),
+  };
 }
 
 /**
  * Reads a written archive back (#794): the manifest, each table entry counted and hashed
- * against it, and the file list checked against storage. Throws `BackupCorrupt` when the
- * archive does not match what was written; files missing from storage are only reported.
+ * against it, and the file list checked against storage (a sample above `VERIFY_SAMPLE`
+ * files). Throws `BackupCorrupt` when the archive does not match what was written; files
+ * missing from storage are only reported. Once `signal` aborts (time budget, stall) it stops
+ * and answers `complete: false` with what it checked: never corrupt for lack of time.
  */
-export async function verifyBackup(file: string, storage: Storage) {
+export async function verifyBackup(
+  file: string,
+  storage: Storage,
+  opts: { signal?: AbortSignal; moved?: () => void; sample?: number } = {},
+) {
   const zip = await readZip(file, ARCHIVE_LIMITS);
+  const incomplete = (tables: number) => ({
+    tables,
+    files: 0,
+    checked: 0,
+    unverified: 0,
+    missing: { count: 0, examples: [] as string[] },
+    complete: false,
+  });
   try {
     const manifest = await zip.json('manifest.json', BackupManifest, 64 * 1024 * 1024);
+    let tables = 0;
     for (const table of manifest.tables) {
-      const counter = lineCounter(() => {});
+      if (opts.signal?.aborted) return incomplete(tables);
+      const counter = lineCounter(() => opts.moved?.());
       await pipeline(
         await zip.stream(table.entry, Number.MAX_SAFE_INTEGER),
         counter.stream,
         new Writable({ write: (_chunk, _enc, done) => done() }),
-      );
+        { signal: opts.signal ?? new AbortController().signal },
+      ).catch((err) => {
+        if (!opts.signal?.aborted) throw err;
+      });
+      if (opts.signal?.aborted) return incomplete(tables);
       if (counter.lines() !== table.rows || (table.sha256 && counter.sha256() !== table.sha256))
         throw new BackupCorrupt(`${table.name} does not read back as written.`);
+      tables += 1;
     }
-    const files = await checkFiles(zip, storage);
+    const files = await checkFiles(zip, storage, {
+      listed: manifest.files.count,
+      sample: opts.sample ?? VERIFY_SAMPLE,
+      signal: opts.signal,
+      moved: opts.moved,
+    });
     if (
       files.listed !== manifest.files.count ||
       (manifest.files.sha256 && files.sha256 !== manifest.files.sha256)
     )
       throw new BackupCorrupt('files.jsonl does not read back as written.');
-    return { tables: manifest.tables.length, files: files.listed, missing: files.missing };
+    return {
+      tables,
+      files: files.listed,
+      checked: files.checked,
+      unverified: files.unverified,
+      missing: files.missing,
+      complete: files.complete,
+    };
   } finally {
     zip.close();
   }

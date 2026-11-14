@@ -3094,7 +3094,7 @@
       "body": "Deletes the account and the projects nobody else is in. This cannot be undone.",
       "open": "Delete account…",
       "confirmTitle": "Delete the account?",
-      "confirmBody": "Projects where you are alone are deleted with all their files. In shared projects the work stays, without you.",
+      "confirmBody": "Projects where you are alone are deleted with all their files. In shared projects the work stays, without you. Deleted files remain in the server's backups until they age out of the backup retention (7 nightly backups by default, at most 91 days).",
       "fresh": "For safety, you must have signed in during the last 15 minutes: sign out and back in if needed.",
       "blocked": "You are the only owner of these shared projects: make someone else owner first.",
       "confirm": "Delete for good"
@@ -4273,7 +4273,12 @@
     "notInBucket": "Kept on the server only: the copy to the bucket failed.",
     "verified": "verified",
     "missingFiles_one": "{{count}} listed file is missing from storage: a restore would lack it.",
-    "missingFiles_other": "{{count}} listed files are missing from storage: a restore would lack them."
+    "missingFiles_other": "{{count}} listed files are missing from storage: a restore would lack them.",
+    "verifyIncomplete": "verification incomplete",
+    "verifiedSample_one": "verified on a sample of {{count}} file",
+    "verifiedSample_other": "verified on a sample of {{count}} files",
+    "unverifiedFiles_one": "{{count}} listed file could not be checked: storage answered with an error.",
+    "unverifiedFiles_other": "{{count}} listed files could not be checked: storage answered with an error."
   },
   "export": {
     "title": "Export",
@@ -6786,6 +6791,7 @@
     "loadError": "The activity log could not be loaded.",
     "more": "Show older",
     "nobody": "Someone not signed in",
+    "deletedAccount": "A deleted account",
     "line": "{{what}} · {{who}}",
     "retention_one": "Events are kept for {{count}} day.",
     "retention_other": "Events are kept for {{count}} days.",

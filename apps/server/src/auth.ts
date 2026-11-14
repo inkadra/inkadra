@@ -6,7 +6,7 @@ import { genericOAuth, magicLink } from 'better-auth/plugins';
 import { and, count, eq, lt, ne, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { z } from 'zod';
-import { recordAuditDetached } from './audit.ts';
+import { recordSignInEvent } from './audit.ts';
 import { DEVICE_AGE, DEVICE_COOKIE, knownDevices } from './auth-device.ts';
 import { authSecurity, authSource } from './auth-security.ts';
 import { hardenedTwoFactor, readableTwoFactor } from './auth-two-factor.ts';
@@ -169,8 +169,9 @@ function createAuthInstance(
       { message: 'Too many attempts.' },
       { 'retry-after': String(Math.max(1, retryAfter)) },
     );
-  // Audit (#806): failed sign-ins and lockouts. The address is masked; a known account is named
-  // by its id. One lockout event per window, not one per refused attempt.
+  // Audit (#806): failed sign-ins and lockouts of existing accounts only, the address masked,
+  // aggregated per account and IP and capped per hour (`recordSignInEvent`). One lockout event
+  // per window, not one per refused attempt.
   const accountOf = async (address: string) =>
     address
       ? ((
@@ -187,17 +188,13 @@ function createAuthInstance(
     details: Record<string, unknown> = {},
   ) => {
     const userId = who.userId ?? (await accountOf(who.address ?? ''));
-    recordAuditDetached(
-      db,
-      {
-        action,
-        targetType: userId ? 'user' : null,
-        targetId: userId,
-        ip,
-        details: { ...(who.address ? { email: maskAddress(who.address) } : {}), ...details },
-      },
-      deps.log,
-    );
+    if (!userId) return;
+    recordSignInEvent(db, {
+      action,
+      userId,
+      ip,
+      details: { ...(who.address ? { email: maskAddress(who.address) } : {}), ...details },
+    }).catch((err) => deps.log?.error({ err }, 'audit event not recorded'));
   };
   const lockedOut = async (
     key: string,

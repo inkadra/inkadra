@@ -47,7 +47,7 @@ import {
   invitationTarget,
   invitedRole,
 } from '../invitations.ts';
-import type { Mailer } from '../mailer.ts';
+import { type Mailer, maskAddress } from '../mailer.ts';
 import { inviteMail } from '../mails.ts';
 import { addressBucket, hourlyRetryAfter, RateLimiter } from '../rate-limits.ts';
 import { requestOrigin } from '../request-origin.ts';
@@ -666,7 +666,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
           targetId: made.id,
           projectId,
           ip: req.ip,
-          details: { kind: input.kind, email: email ?? null, boardId, role },
+          details: { kind: input.kind, email: email ? maskAddress(email) : null, boardId, role },
         });
       return rows;
     });
@@ -744,7 +744,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         targetId: row.id,
         projectId: row.projectId,
         ip: req.ip,
-        details: { kind: row.kind, email: row.email },
+        details: { kind: row.kind, email: row.email ? maskAddress(row.email) : null },
       });
     });
     return reply.status(204).send();

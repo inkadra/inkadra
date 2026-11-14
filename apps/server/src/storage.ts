@@ -38,6 +38,7 @@ export interface Storage {
   readonly uploads: DataStore;
   /** `localCopy` downloads the file (a bucket) rather than giving its path on this disk. */
   readonly copiesToLocal?: boolean;
+  /** Null when there is no such file; any other failure (a timeout, a 500) throws. */
   size(key: string): Promise<number | null>;
   /** Byte range is inclusive, as in HTTP. */
   read(key: string, range?: { start: number; end: number }): Promise<Readable>;
@@ -155,8 +156,10 @@ export function localStorage(root: string): Storage {
     async size(key) {
       try {
         return (await stat(path(key))).size;
-      } catch {
-        return null;
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT' || code === 'ENOTDIR') return null;
+        throw err;
       }
     },
     async read(key, range) {
@@ -214,6 +217,10 @@ function s3Storage(config: Config): Storage {
           },
         }
       : {}),
+    // A silent bucket fails a request instead of holding it forever (#794): the backup
+    // verification, imports and the sweep wait on these. Time without data, not in total, so
+    // long downloads go on.
+    requestHandler: { connectionTimeout: 10_000, requestTimeout: 60_000 },
   };
   const client = new S3Client(clientConfig);
   const uploads = new S3Store({
@@ -276,8 +283,9 @@ function s3Storage(config: Config): Storage {
       try {
         const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
         return head.ContentLength ?? null;
-      } catch {
-        return null;
+      } catch (err) {
+        if (isNotFound(err)) return null;
+        throw err;
       }
     },
     read,
@@ -389,6 +397,12 @@ export async function abortUpload(uploads: Pick<DataStore, 'remove'>, key: strin
     if ((err as { status_code?: number } | null)?.status_code !== 404) throw err;
   }
   return true;
+}
+
+/** HEAD of a key that is not there: 404 (`NotFound`), or `NoSuchKey` on some servers. */
+export function isNotFound(err: unknown) {
+  const e = err as { name?: string; $metadata?: { httpStatusCode?: number } } | null;
+  return e?.name === 'NotFound' || e?.name === 'NoSuchKey' || e?.$metadata?.httpStatusCode === 404;
 }
 
 /** The stream in pieces of `size` bytes (the last one shorter). */

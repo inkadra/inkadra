@@ -315,14 +315,18 @@ bucket versioning or replication). The format is described in
 [instance-backup.md](../formats/instance-backup.md).
 
 Every backup is **read back once written**: each table is counted and hashed against the
-manifest, and every file it lists is looked up in storage. An archive that does not read back
-fails as `corrupt`; files the backup lists but storage lacks are shown in the history and on
-**Settings → Server** (a restore of that backup would miss them).
+manifest, and the files it lists are looked up in storage (all of them up to 20,000 files, an
+even sample of 20,000 above that). An archive that does not read back fails as `corrupt`; files
+the backup lists but storage lacks are shown in the history and on **Settings → Server** (a
+restore of that backup would miss them). A file storage answers with an error for, twice, is
+counted as not checked rather than missing. The check stops after 30 minutes, or 5 minutes
+without progress: the backup is then kept, marked *verification incomplete*.
 
 Files of deleted projects, accounts and exports are **kept while a kept backup may list them**:
-they are removed once every kept backup is newer than the deletion (at most 91 days), so
-restoring any backup of the history finds its files, as long as the volume or bucket itself
-survives. A copy of the files taken at any time after the backup is therefore consistent with
+they are removed once every kept backup started at least an hour after the deletion, but never
+kept longer than 91 days. Restoring a backup from the last 91 days therefore finds its files, as
+long as the volume or bucket itself survives; an older backup, kept with a long retention, may
+miss files deleted since. A copy of the files taken at any time after the backup is therefore consistent with
 it.
 
 By default these backups stay on the same disk as your files, so they do not protect you from
@@ -391,6 +395,26 @@ The restore loads the tables in order, rebuilds the search index on the next sta
 does not have (a warning, not an error: restore the
 volume or the bucket and they come back). To restore a backup copied elsewhere, put it in the
 data folder first, for example with `docker compose cp`.
+
+## The activity log (audit log)
+
+Administrators see in **Settings → Activity log** who changed roles and members, sharing, share
+links, tokens, settings and backups, and which sign-ins failed. It is kept for **365 days**, then
+removed by the daily maintenance job, and it holds personal data:
+
+- the **name** of the person who acted, as it was at the time, and the **IP address** of the
+  request;
+- for failed sign-ins and lockouts, only of **existing accounts**: the account, the email
+  address **masked** (`m…@example.com`) and the IP address. Attempts from the same address
+  within 15 minutes are one entry with a count, and past 200 entries an hour the rest only add
+  to one summary entry, so guessing addresses cannot grow the log;
+- for email invitations, the invited address, masked the same way;
+- names of people whose role or membership changed.
+
+When an account is **deleted**, its entries are pseudonymized: its name, email addresses and
+the IP addresses of its actions and sign-in attempts are removed; the action, the time and one
+opaque id (the same on all of that person's entries) stay. Backups taken before the deletion
+still hold the earlier entries until they age out of the backup retention.
 
 ## What leaves your server
 

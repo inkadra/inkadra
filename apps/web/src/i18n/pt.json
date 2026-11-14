@@ -3094,7 +3094,7 @@
       "body": "Exclui a conta e os projetos em que não há mais ninguém. Não é possível desfazer.",
       "open": "Excluir conta…",
       "confirmTitle": "Excluir a conta?",
-      "confirmBody": "Os projetos em que você está sozinho são excluídos com todos os arquivos. Nos projetos compartilhados, o trabalho fica, sem você.",
+      "confirmBody": "Os projetos em que você está sozinho são excluídos com todos os arquivos. Nos projetos compartilhados, o trabalho fica, sem você. Os arquivos excluídos ficam nos backups do servidor até saírem da retenção de backups (7 backups noturnos por padrão, no máximo 91 dias).",
       "fresh": "Por segurança, você precisa ter entrado nos últimos 15 minutos: se necessário, saia e entre de novo.",
       "blocked": "Você é o único proprietário destes projetos compartilhados: torne outra pessoa proprietária primeiro.",
       "confirm": "Excluir definitivamente"
@@ -4273,7 +4273,12 @@
     "notInBucket": "Guardado só no servidor: a cópia para o bucket falhou.",
     "verified": "verificado",
     "missingFiles_one": "Falta {{count}} arquivo listado no armazenamento: uma restauração não o teria.",
-    "missingFiles_other": "Faltam {{count}} arquivos listados no armazenamento: uma restauração não os teria."
+    "missingFiles_other": "Faltam {{count}} arquivos listados no armazenamento: uma restauração não os teria.",
+    "verifyIncomplete": "verificação incompleta",
+    "verifiedSample_one": "verificado em uma amostra de {{count}} arquivo",
+    "verifiedSample_other": "verificado em uma amostra de {{count}} arquivos",
+    "unverifiedFiles_one": "{{count}} arquivo listado não pôde ser verificado: o armazenamento respondeu com um erro.",
+    "unverifiedFiles_other": "{{count}} arquivos listados não puderam ser verificados: o armazenamento respondeu com um erro."
   },
   "export": {
     "title": "Exportar",
@@ -6786,6 +6791,7 @@
     "loadError": "Não foi possível carregar o registro de atividade.",
     "more": "Mostrar anteriores",
     "nobody": "Alguém sem sessão",
+    "deletedAccount": "Uma conta excluída",
     "line": "{{what}} · {{who}}",
     "retention_one": "Os eventos ficam guardados por {{count}} dia.",
     "retention_other": "Os eventos ficam guardados por {{count}} dias.",

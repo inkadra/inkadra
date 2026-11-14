@@ -49,12 +49,21 @@ export class MailError extends Error {
 
 /**
  * SMTP_URL with timeouts of 30 seconds unless it sets its own (#812): Nodemailer's defaults
- * wait up to 10 minutes on a silent server, holding the single email worker.
+ * wait up to 10 minutes on a silent server, holding the single email worker. Pooled, at most
+ * two connections: the email jobs send to several people at once, and small relays and Gmail
+ * refuse more connections (`421 too many connections`).
  */
 export function smtpUrl(url: string): string {
   const parsed = new URL(url);
-  for (const option of ['connectionTimeout', 'greetingTimeout', 'socketTimeout'])
-    if (!parsed.searchParams.has(option)) parsed.searchParams.set(option, '30000');
+  const defaults = {
+    connectionTimeout: '30000',
+    greetingTimeout: '30000',
+    socketTimeout: '30000',
+    pool: 'true',
+    maxConnections: '2',
+  };
+  for (const [option, value] of Object.entries(defaults))
+    if (!parsed.searchParams.has(option)) parsed.searchParams.set(option, value);
   return parsed.toString();
 }
 

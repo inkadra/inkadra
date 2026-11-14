@@ -3094,7 +3094,7 @@
       "body": "Elimina l’account e i progetti in cui non c’è nessun altro. Non si può annullare.",
       "open": "Elimina account…",
       "confirmTitle": "Eliminare l’account?",
-      "confirmBody": "I progetti in cui sei da solo vengono eliminati con tutti i file. Nei progetti condivisi resta il lavoro, senza di te.",
+      "confirmBody": "I progetti in cui sei da solo vengono eliminati con tutti i file. Nei progetti condivisi resta il lavoro, senza di te. I file eliminati restano nei backup del server finché escono dalla conservazione dei backup (7 backup notturni di default, al massimo 91 giorni).",
       "fresh": "Per sicurezza, l’accesso deve essere avvenuto negli ultimi 15 minuti: se serve, esci e rientra.",
       "blocked": "Sei l’unico proprietario di questi progetti condivisi: nomina un altro proprietario prima.",
       "confirm": "Elimina definitivamente"
@@ -4273,7 +4273,12 @@
     "notInBucket": "Conservato solo sul server: la copia nel bucket non è riuscita.",
     "verified": "verificato",
     "missingFiles_one": "Manca {{count}} file elencato nello spazio di archiviazione: un ripristino ne sarebbe privo.",
-    "missingFiles_other": "Mancano {{count}} file elencati nello spazio di archiviazione: un ripristino ne sarebbe privo."
+    "missingFiles_other": "Mancano {{count}} file elencati nello spazio di archiviazione: un ripristino ne sarebbe privo.",
+    "verifyIncomplete": "verifica incompleta",
+    "verifiedSample_one": "verificato su un campione di {{count}} file",
+    "verifiedSample_other": "verificato su un campione di {{count}} file",
+    "unverifiedFiles_one": "{{count}} file elencato non è stato controllato: lo spazio di archiviazione ha risposto con un errore.",
+    "unverifiedFiles_other": "{{count}} file elencati non sono stati controllati: lo spazio di archiviazione ha risposto con un errore."
   },
   "export": {
     "title": "Esporta",
@@ -6786,6 +6791,7 @@
     "loadError": "Non è stato possibile caricare il registro attività.",
     "more": "Mostra i precedenti",
     "nobody": "Qualcuno non connesso",
+    "deletedAccount": "Un account eliminato",
     "line": "{{what}} · {{who}}",
     "retention_one": "Gli eventi restano per {{count}} giorno.",
     "retention_other": "Gli eventi restano per {{count}} giorni.",

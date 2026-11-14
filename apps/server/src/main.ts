@@ -553,6 +553,11 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
         { missing: report.files.missing, examples: report.files.examples },
         'some files listed by the backup are not in storage: restore the data volume or bucket too',
       );
+    if (report.files.unverified > 0)
+      log.warn(
+        { unverified: report.files.unverified },
+        'storage did not answer for some listed files: they were not checked',
+      );
     return;
   }
   if (action === 'create' && args.length === 1) {

@@ -3995,6 +3995,24 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false
+        },
+        "checked_files": {
+          "name": "checked_files",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unverified_files": {
+          "name": "unverified_files",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verify_complete": {
+          "name": "verify_complete",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -4387,6 +4405,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "email_failed_at": {
+          "name": "email_failed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

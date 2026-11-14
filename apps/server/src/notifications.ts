@@ -351,6 +351,7 @@ async function sendTo(
           shown.map((n) => n.id),
         ),
         isNull(notification.emailedAt),
+        isNull(notification.emailFailedAt),
         isNull(notification.readAt),
         unleased(now),
       ),
@@ -384,9 +385,16 @@ async function sendTo(
       .set({
         emailAttempts: attempts,
         emailLeaseUntil: sql`${now.toISOString()}::timestamptz + make_interval(mins => least(60, power(2, ${attempts})::int))`,
-        emailedAt: sql`case when ${attempts} >= ${MAX_EMAIL_ATTEMPTS} then ${now.toISOString()}::timestamptz end`,
+        // Given up, never marked sent: counted on the Server page instead (`checkHealth`).
+        emailFailedAt: sql`case when ${attempts} >= ${MAX_EMAIL_ATTEMPTS} then ${now.toISOString()}::timestamptz end`,
       })
-      .where(and(inArray(notification.id, [...ids]), isNull(notification.emailedAt)));
+      .where(
+        and(
+          inArray(notification.id, [...ids]),
+          isNull(notification.emailedAt),
+          isNull(notification.emailFailedAt),
+        ),
+      );
     throw err;
   }
   await db
@@ -437,6 +445,7 @@ async function pendingByPerson(
 ) {
   const eligible = and(
     isNull(notification.emailedAt),
+    isNull(notification.emailFailedAt),
     isNull(notification.readAt),
     unleased(now),
     gt(notification.createdAt, since),
@@ -461,6 +470,7 @@ async function pendingByPerson(
           and(
             eq(notification.userId, userId),
             isNull(notification.emailedAt),
+            isNull(notification.emailFailedAt),
             isNull(notification.readAt),
             unleased(now),
             gt(notification.createdAt, since),

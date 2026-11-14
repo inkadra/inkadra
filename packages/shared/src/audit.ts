@@ -61,7 +61,11 @@ export const AuditEvent = z
         name: z.string().nullable().openapi({ description: 'Name at the time of the action.' }),
       })
       .nullable()
-      .openapi({ description: 'Null for actions without a signed-in person (failed sign-ins).' }),
+      .openapi({
+        description:
+          'Null for actions without a signed-in person (failed sign-ins) and for a deleted ' +
+          'account, whose events keep an opaque id in `details.actor` instead (pseudonymized).',
+      }),
     targetType: z.string().nullable(),
     targetId: z.string().nullable(),
     projectId: Id.nullable(),

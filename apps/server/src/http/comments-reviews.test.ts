@@ -40,6 +40,7 @@ import { memoryMailer, noMailer } from '../mailer.ts';
 import * as notifications from '../notifications.ts';
 import {
   EMAIL_GROUP_DELAY_MS,
+  MAX_EMAIL_ATTEMPTS,
   notificationMessageId,
   purgeNotifications,
   sendDigests,
@@ -1495,6 +1496,34 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     const [row] = await db.select().from(notification).where(eq(notification.id, stuck.id));
     expect(row?.emailedAt).not.toBeNull();
     expect(row?.emailLeaseUntil).toBeNull();
+  });
+
+  it('gives up after MAX_EMAIL_ATTEMPTS as failed, never as sent (#812)', async () => {
+    const mailDeps = { db, log, publicUrl: config.PUBLIC_URL, instanceName: 'Studio' };
+    const last = await addNotification('owner', root, {
+      createdAt: new Date(Date.now() - 600000),
+      emailAttempts: MAX_EMAIL_ATTEMPTS - 1,
+    });
+    await expect(
+      sendImmediateEmails({
+        ...mailDeps,
+        mailer: {
+          enabled: true,
+          async send() {
+            throw new Error('421 too many connections');
+          },
+        },
+      }),
+    ).rejects.toThrow('421 too many connections');
+    const [row] = await db.select().from(notification).where(eq(notification.id, last.id));
+    expect(row?.emailedAt).toBeNull();
+    expect(row?.emailFailedAt).not.toBeNull();
+    // Not picked up again by later runs.
+    await sendImmediateEmails({ ...mailDeps, mailer: memoryMailer() }, new Date(Date.now() + 2 * 3_600_000));
+    const [later] = await db.select().from(notification).where(eq(notification.id, last.id));
+    expect(later?.emailedAt).toBeNull();
+    expect(later?.emailAttempts).toBe(MAX_EMAIL_ATTEMPTS);
+    await db.delete(notification).where(eq(notification.id, last.id));
   });
 
   it('pages mail past inaccessible notifications and retains older unread entries for delivery', async () => {

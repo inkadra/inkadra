@@ -1,9 +1,9 @@
 import { statfs } from 'node:fs/promises';
-import { desc, eq, gt, sql } from 'drizzle-orm';
+import { count, desc, eq, gt, max, sql } from 'drizzle-orm';
 import { readBackupSettings } from '../backup.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { asset, instanceBackup } from '../db/schema.ts';
+import { asset, instanceBackup, notification } from '../db/schema.ts';
 import { readLimits, reservedBytes } from '../storage-limits.ts';
 import { type AlertDeps, sendServerAlert } from './alerts.ts';
 import { type Beat, DAY_MS, lastHour, type StoredProblem } from './store.ts';
@@ -207,6 +207,28 @@ export async function checkHealth(deps: HealthDeps, now = Date.now()) {
         service: null,
         job: null,
         at: backup.finishedAt.getTime(),
+      });
+  }
+
+  // Notification emails given up after every retry (#812): never sent, so a warning on the
+  // Server page, one a day while it goes on.
+  const [givenUp] = await db
+    .select({ n: count(), last: max(notification.emailFailedAt) })
+    .from(notification)
+    .where(gt(notification.emailFailedAt, new Date(now - DAY_MS)));
+  if (givenUp?.n && givenUp.last) {
+    const id = `email_given_up:${new Date(now).toISOString().slice(0, 10)}`;
+    if (!problems.has(id))
+      await store.record({
+        id,
+        kind: 'email_failed',
+        severity: 'warning',
+        role: 'worker',
+        technical: `worker · notifications\n${givenUp.n} notification emails given up after every retry`,
+        assetId: null,
+        service: null,
+        job: null,
+        at: new Date(givenUp.last).getTime(),
       });
   }
 

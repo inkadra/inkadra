@@ -60,6 +60,19 @@ export const InstanceBackup = z
         missingFiles: z.int().min(0).openapi({
           description: 'Listed files that storage did not have (or had with another size).',
         }),
+        checkedFiles: z.int().min(0).openapi({
+          description:
+            'Files looked up in storage: all of them, or an even sample on large instances ' +
+            '(fewer than `files.count`).',
+        }),
+        unverifiedFiles: z.int().min(0).openapi({
+          description: 'Files storage gave an error for, twice: neither found nor missing.',
+        }),
+        complete: z.boolean().openapi({
+          description:
+            'False when the verification ran out of time or stalled: the backup is kept, ' +
+            'checked only as far as it got.',
+        }),
       })
       .nullable()
       .optional()

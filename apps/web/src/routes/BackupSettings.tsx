@@ -212,7 +212,13 @@ export function BackupSettings() {
                       t(`backups.trigger.${b.trigger}`),
                       size(b.size),
                       b.copiedToBucket ? t('backups.inBucket') : null,
-                      b.verification ? t('backups.verified') : null,
+                      !b.verification
+                        ? null
+                        : !b.verification.complete
+                          ? t('backups.verifyIncomplete')
+                          : b.files && b.verification.checkedFiles < b.files.count
+                            ? t('backups.verifiedSample', { count: b.verification.checkedFiles })
+                            : t('backups.verified'),
                     ]
                       .filter(Boolean)
                       .join(' · ')}
@@ -225,6 +231,13 @@ export function BackupSettings() {
                     (b.verification?.missingFiles ?? 0) > 0 && (
                       <span className="backup-list__failure">
                         {t('backups.missingFiles', { count: b.verification?.missingFiles })}
+                      </span>
+                    )}
+                  {b.status === 'ready' &&
+                    b.fileName &&
+                    (b.verification?.unverifiedFiles ?? 0) > 0 && (
+                      <span className="backup-list__failure">
+                        {t('backups.unverifiedFiles', { count: b.verification?.unverifiedFiles })}
                       </span>
                     )}
                   {data.bucket && b.status === 'ready' && b.fileName && !b.copiedToBucket && (

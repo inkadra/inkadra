@@ -3094,7 +3094,7 @@
       "body": "Löscht das Konto und die Projekte, in denen sonst niemand ist. Das lässt sich nicht rückgängig machen.",
       "open": "Konto löschen…",
       "confirmTitle": "Konto löschen?",
-      "confirmBody": "Projekte, in denen du allein bist, werden mit allen Dateien gelöscht. In geteilten Projekten bleibt die Arbeit erhalten, ohne dich.",
+      "confirmBody": "Projekte, in denen du allein bist, werden mit allen Dateien gelöscht. In geteilten Projekten bleibt die Arbeit erhalten, ohne dich. Gelöschte Dateien bleiben in den Backups des Servers, bis sie aus der Backup-Aufbewahrung fallen (standardmäßig 7 nächtliche Backups, höchstens 91 Tage).",
       "fresh": "Zur Sicherheit musst du dich in den letzten 15 Minuten angemeldet haben: Melde dich falls nötig ab und wieder an.",
       "blocked": "Du bist der einzige Inhaber dieser geteilten Projekte: Mach zuerst jemand anderen zum Inhaber.",
       "confirm": "Endgültig löschen"
@@ -4273,7 +4273,12 @@
     "notInBucket": "Nur auf dem Server gespeichert: Die Kopie in den Bucket ist fehlgeschlagen.",
     "verified": "geprüft",
     "missingFiles_one": "{{count}} aufgeführte Datei fehlt im Speicher: Eine Wiederherstellung hätte sie nicht.",
-    "missingFiles_other": "{{count}} aufgeführte Dateien fehlen im Speicher: Eine Wiederherstellung hätte sie nicht."
+    "missingFiles_other": "{{count}} aufgeführte Dateien fehlen im Speicher: Eine Wiederherstellung hätte sie nicht.",
+    "verifyIncomplete": "Prüfung unvollständig",
+    "verifiedSample_one": "an einer Stichprobe von {{count}} Datei geprüft",
+    "verifiedSample_other": "an einer Stichprobe von {{count}} Dateien geprüft",
+    "unverifiedFiles_one": "{{count}} aufgeführte Datei konnte nicht geprüft werden: Der Speicher antwortete mit einem Fehler.",
+    "unverifiedFiles_other": "{{count}} aufgeführte Dateien konnten nicht geprüft werden: Der Speicher antwortete mit einem Fehler."
   },
   "export": {
     "title": "Exportieren",
@@ -6786,6 +6791,7 @@
     "loadError": "Das Aktivitätsprotokoll konnte nicht geladen werden.",
     "more": "Ältere anzeigen",
     "nobody": "Jemand ohne Anmeldung",
+    "deletedAccount": "Ein gelöschtes Konto",
     "line": "{{what}} · {{who}}",
     "retention_one": "Ereignisse bleiben {{count}} Tag erhalten.",
     "retention_other": "Ereignisse bleiben {{count}} Tage erhalten.",

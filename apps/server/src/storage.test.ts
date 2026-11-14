@@ -11,6 +11,7 @@ import { officeFiles } from './media/office.ts';
 import {
   abortUpload,
   createStorage,
+  isNotFound,
   localStorage,
   readAll,
   redirectWarnings,
@@ -260,3 +261,26 @@ it('warns at startup about bucket addresses browsers cannot use (#839)', () => {
   ]);
   expect(redirectWarnings({ ...base, S3_PUBLIC_REDIRECT: false })).toEqual([]);
 });
+
+it('tells a missing file from a storage that does not answer (#794)', async () => {
+  const local = localStorage(mkdtempSync(join(tmpdir(), 'ink-size-')));
+  expect(await local.size(variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a19', '256'))).toBeNull();
+  expect(isNotFound({ name: 'NotFound', $metadata: { httpStatusCode: 404 } })).toBe(true);
+  expect(isNotFound({ name: 'InternalError', $metadata: { httpStatusCode: 500 } })).toBe(false);
+  expect(isNotFound(new Error('socket hang up'))).toBe(false);
+  // Nothing listens there: an error, not a missing file.
+  const unreachable = createStorage(
+    loadConfig({
+      PUBLIC_URL: 'http://localhost:3000',
+      DATABASE_URL: 'postgres://unused',
+      AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+      STORAGE_DRIVER: 's3',
+      S3_ENDPOINT: 'http://127.0.0.1:9',
+      S3_BUCKET: 'inkadra',
+      S3_ACCESS_KEY_ID: 'key',
+      S3_SECRET_ACCESS_KEY: 'secret',
+      S3_FORCE_PATH_STYLE: 'true',
+    }),
+  );
+  await expect(unreachable.size('originals/abc')).rejects.toThrow();
+}, 30_000);

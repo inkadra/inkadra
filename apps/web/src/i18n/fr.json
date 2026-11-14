@@ -3094,7 +3094,7 @@
       "body": "Supprime le compte et les projets où il n’y a personne d’autre. Cette action est irréversible.",
       "open": "Supprimer le compte…",
       "confirmTitle": "Supprimer le compte ?",
-      "confirmBody": "Les projets dont vous êtes le seul membre sont supprimés avec tous leurs fichiers. Dans les projets partagés, le travail reste, sans vous.",
+      "confirmBody": "Les projets dont vous êtes le seul membre sont supprimés avec tous leurs fichiers. Dans les projets partagés, le travail reste, sans vous. Les fichiers supprimés restent dans les sauvegardes du serveur jusqu’à la fin de leur conservation (7 sauvegardes nocturnes par défaut, 91 jours au plus).",
       "fresh": "Par sécurité, vous devez vous être connecté au cours des 15 dernières minutes : déconnectez-vous et reconnectez-vous si besoin.",
       "blocked": "Vous êtes le seul propriétaire de ces projets partagés : nommez d’abord un autre propriétaire.",
       "confirm": "Supprimer définitivement"
@@ -4273,7 +4273,12 @@
     "notInBucket": "Conservée uniquement sur le serveur : la copie dans le bucket a échoué.",
     "verified": "vérifiée",
     "missingFiles_one": "{{count}} fichier listé manque dans le stockage : une restauration ne l’aurait pas.",
-    "missingFiles_other": "{{count}} fichiers listés manquent dans le stockage : une restauration ne les aurait pas."
+    "missingFiles_other": "{{count}} fichiers listés manquent dans le stockage : une restauration ne les aurait pas.",
+    "verifyIncomplete": "vérification incomplète",
+    "verifiedSample_one": "vérifiée sur un échantillon de {{count}} fichier",
+    "verifiedSample_other": "vérifiée sur un échantillon de {{count}} fichiers",
+    "unverifiedFiles_one": "{{count}} fichier listé n’a pas pu être vérifié : le stockage a répondu par une erreur.",
+    "unverifiedFiles_other": "{{count}} fichiers listés n’ont pas pu être vérifiés : le stockage a répondu par une erreur."
   },
   "export": {
     "title": "Exporter",
@@ -6786,6 +6791,7 @@
     "loadError": "Le journal d’activité n’a pas pu être chargé.",
     "more": "Afficher les précédents",
     "nobody": "Quelqu’un de non connecté",
+    "deletedAccount": "Un compte supprimé",
     "line": "{{what}} · {{who}}",
     "retention_one": "Les événements sont gardés {{count}} jour.",
     "retention_other": "Les événements sont gardés {{count}} jours.",

@@ -45,22 +45,37 @@ export async function removeFiles(db: Pick<Database, 'delete'>, storage: Storage
 }
 
 /**
- * Recorded removals before this time may go (#794): a day old, and older than every kept
- * backup, so that restoring any kept backup finds the files it lists. A removal recorded
- * before a backup started is not in that backup: its rows were already gone.
+ * A removal recorded this long before a backup started may still be in it (#794): the
+ * deletion's transaction can begin before the backup's snapshot and commit after `startedAt`
+ * is set, so `startedAt` alone is not a safe line.
+ */
+export const BACKUP_SNAPSHOT_MARGIN_MS = 60 * 60 * 1000;
+
+/** Backups that list files: kept ones, and one being written (its snapshot is taken). */
+const listingBackups = and(
+  inArray(instanceBackup.status, ['ready', 'running']),
+  isNull(instanceBackup.removedAt),
+);
+
+/**
+ * Recorded removals before this time may go (#794): a day old, and an hour older than every
+ * kept or running backup, so that restoring any of them finds the files it lists. A removal
+ * recorded well before a backup started is not in that backup: its rows were already gone.
  */
 export async function removableBefore(db: Pick<Database, 'select'>, now = Date.now()) {
   const [kept] = await db
     .select({ oldest: min(instanceBackup.startedAt) })
     .from(instanceBackup)
-    .where(and(eq(instanceBackup.status, 'ready'), isNull(instanceBackup.removedAt)));
-  const oldest = kept?.oldest ? new Date(kept.oldest).getTime() : Number.POSITIVE_INFINITY;
+    .where(listingBackups);
+  const oldest = kept?.oldest
+    ? new Date(kept.oldest).getTime() - BACKUP_SNAPSHOT_MARGIN_MS
+    : Number.POSITIVE_INFINITY;
   return new Date(Math.max(Math.min(now - DELETION_GRACE_MS, oldest), now - BACKUP_HOLD_MAX_MS));
 }
 
 /**
- * Files of rows just deleted (a project, an account, an export). Removed now when no kept
- * backup lists them; otherwise the records stay and the sweep removes the files once every
+ * Files of rows just deleted (a project, an account, an export). Removed now when no kept or
+ * running backup may list them; otherwise the records stay and the sweep removes the files once every
  * kept backup is newer than the deletion (#794).
  */
 export async function removeDeletedFiles(
@@ -71,7 +86,7 @@ export async function removeDeletedFiles(
   const [kept] = await db
     .select({ id: instanceBackup.id })
     .from(instanceBackup)
-    .where(and(eq(instanceBackup.status, 'ready'), isNull(instanceBackup.removedAt)))
+    .where(listingBackups)
     .limit(1);
   if (kept) return 0;
   await removeFiles(db, storage, keys);
