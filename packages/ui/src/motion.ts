@@ -43,6 +43,9 @@ export function fadeOutCopy(node: Element | null): void {
     el.remove();
   for (const name of [...copy.classList])
     if (name.startsWith('ink-motion-')) copy.classList.remove(name);
+  // Nor what finds it by role or name: a closed dialog is no longer one.
+  for (const name of ['role', 'aria-modal', 'aria-label', 'aria-labelledby'])
+    copy.removeAttribute(name);
   copy.setAttribute('aria-hidden', 'true');
   copy.inert = true;
   copy.classList.add('ink-motion-exit');

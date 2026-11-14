@@ -18,6 +18,8 @@ function measure(root: HTMLElement, selector: string): Map<HTMLElement, Spot> | 
   if (box.width === 0) return null;
   const spots = new Map<HTMLElement, Spot>();
   for (const item of items) {
+    // A fading copy of a removed row is not a row.
+    if (item.classList.contains('ink-motion-exit')) continue;
     const r = item.getBoundingClientRect();
     spots.set(item, {
       x: r.left - box.left + root.scrollLeft,
@@ -38,6 +40,7 @@ function leave(root: HTMLElement, node: HTMLElement, spot: Spot): void {
   const left = box.left + spot.x - root.scrollLeft;
   const top = box.top + spot.y - root.scrollTop;
   const ghost = node.cloneNode(true) as HTMLElement;
+  ghost.dataset.listGhost = '';
   Object.assign(ghost.style, {
     position: 'fixed',
     left: `${left}px`,
@@ -72,6 +75,10 @@ export function easeList(
   const added = [...now.keys()].filter((item) => !before.has(item));
   const removed = [...before].filter(([item]) => !now.has(item) && !item.isConnected);
   const few = added.length + removed.length <= MAX_CHANGES;
+  // The list changed again: rows that were still fading go now, so a copy never sits beside the
+  // row it was (a resolved thread shown again) or over a new list.
+  if (added.length + removed.length > 0)
+    for (const ghost of root.querySelectorAll(':scope > [data-list-ghost]')) ghost.remove();
   if (still && !few) return;
   const style = getComputedStyle(root);
   const duration = tokenMs(style.getPropertyValue('--ink-dur-base'), 180);

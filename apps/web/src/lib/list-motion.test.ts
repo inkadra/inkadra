@@ -45,3 +45,35 @@ it('eases a moved row, pops a new one and fades a removed one', () => {
   expect(copy.className).toBe('row ink-motion-exit');
   expect(copy.style.position).toBe('fixed');
 });
+
+it('drops the copies of an earlier change when the list changes again', () => {
+  window.matchMedia = (() => ({ matches: false })) as unknown as typeof window.matchMedia;
+  const root = document.createElement('ul');
+  const kept = document.createElement('li');
+  const first = document.createElement('li');
+  const back = document.createElement('li');
+  root.append(kept);
+  document.body.append(root);
+  HTMLElement.prototype.getAnimations ??= () => [];
+  back.animate = vi.fn();
+
+  easeList(
+    root,
+    new Map([
+      [kept, spot(0)],
+      [first, spot(20)],
+    ]),
+    new Map([[kept, spot(0)]]),
+  );
+  expect(root.querySelectorAll('.ink-motion-exit')).toHaveLength(1);
+  root.append(back);
+  easeList(
+    root,
+    new Map([[kept, spot(0)]]),
+    new Map([
+      [kept, spot(0)],
+      [back, spot(20)],
+    ]),
+  );
+  expect(root.querySelector('.ink-motion-exit')).toBeNull();
+});
