@@ -63,7 +63,15 @@ const MIGRATION_LOCK = 10894;
 export async function runMigrations(
   url: string,
   migrationsFolder: string,
-  opts: { productionBoards?: boolean; log?: Parameters<typeof moveToProductionBoards>[1] } = {},
+  opts: {
+    productionBoards?: boolean;
+    /**
+     * Only the SQL migrations: a restore first builds the schema of the backup, older than the
+     * one the data steps below are written for (#792).
+     */
+    schemaOnly?: boolean;
+    log?: Parameters<typeof moveToProductionBoards>[1];
+  } = {},
 ) {
   // One connection (max 1) that is never recycled: the session lock holds until sql.end() below.
   const sql = postgres(url, {
@@ -85,6 +93,7 @@ export async function runMigrations(
     }
     await refuseNewerDatabase(sql, migrationsFolder);
     await migrate(db, { migrationsFolder });
+    if (opts.schemaOnly) return;
     // Data that only code can move: the old board cast links become crew rows (decision 0091).
     await mergeCastLinks(db);
     // Every project's days go to its Production board (decision 0123); per project, never fatal.

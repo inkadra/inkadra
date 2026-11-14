@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -37,5 +38,22 @@ describe.skipIf(!url)('runMigrations (needs DATABASE_URL)', () => {
       await sql.end({ timeout: 1 });
     }
     await expect(runMigrations(fresh, folder)).rejects.toThrow(/migrated by a newer Inkadra/);
+  });
+
+  it('builds an older schema without the data steps of this version (#792)', async () => {
+    const folder = fileURLToPath(new URL('../../drizzle', import.meta.url));
+    const journal = JSON.parse(readFileSync(join(folder, 'meta/_journal.json'), 'utf8'));
+    // The schema of 0.9.0 (32 migrations), as a restore of its backup builds it first.
+    journal.entries = journal.entries.slice(0, 32);
+    const partial = mkdtempSync(join(tmpdir(), 'partial-'));
+    mkdirSync(join(partial, 'meta'));
+    writeFileSync(join(partial, 'meta/_journal.json'), JSON.stringify(journal));
+    for (const e of journal.entries)
+      copyFileSync(join(folder, `${e.tag}.sql`), join(partial, `${e.tag}.sql`));
+    const fresh = await freshDatabase(url ?? '', 'older_schema');
+    await expect(runMigrations(fresh, partial, { schemaOnly: true })).resolves.toBeUndefined();
+    // Without schemaOnly the data steps query columns that schema does not have yet.
+    await expect(runMigrations(fresh, partial)).rejects.toThrow();
+    await runMigrations(fresh, folder);
   });
 });
