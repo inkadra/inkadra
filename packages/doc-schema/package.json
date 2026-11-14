@@ -14,13 +14,13 @@
     "reference-board": "tsx scripts/reference-board.ts"
   },
   "dependencies": {
-    "yjs": "^13.6.0",
-    "zod": "^4.6.0"
+    "yjs": "^13.6.33",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",
-    "tsx": "^4.23.0",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   }
