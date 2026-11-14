@@ -21,6 +21,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
+import { useListMotion } from '../../lib/list-motion.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { moveTabFocus } from '../../lib/tabs.ts';
 import { CardReview } from '../CardReview.tsx';
@@ -101,6 +102,7 @@ export function ShotList({
   const [selected, setSelected] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  useListMotion(containerRef, 'tbody > tr');
 
   const opts = useMemo(() => ({ userId, origin: LOCAL }), [userId]);
   const currentFrame = frames.find((f) => f.id === selected) ?? null;

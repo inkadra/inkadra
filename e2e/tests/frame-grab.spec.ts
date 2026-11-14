@@ -393,7 +393,7 @@ for (const provider of ['youtube', 'vimeo']) {
       await page.locator('[data-type="link"]').dblclick();
       await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
       await page
-        .locator('.viewer input[type="file"]')
+        .locator('.viewer:not([inert]) input[type="file"]')
         .setInputFiles({ name: 'manual.png', mimeType: 'image/png', buffer: thumbnail });
       await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);

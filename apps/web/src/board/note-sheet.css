@@ -269,11 +269,7 @@
   padding: 6px;
   -webkit-user-select: none;
   user-select: none;
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-float);
-  box-shadow:
-    inset 0 0 0 1px var(--ink-border-default),
-    var(--ink-shadow-menu);
+  --ink-origin: bottom center;
 }
 .note-phone-menu__item {
   display: flex;

@@ -14,10 +14,6 @@
   overflow-y: auto;
   scrollbar-width: thin;
   padding: 4px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-float);
-  box-shadow: var(--ink-shadow-menu);
 }
 .people-picker__list[hidden] {
   display: none;

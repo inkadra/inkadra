@@ -74,6 +74,7 @@ import type { BoardStore } from './store.ts';
 import { fetchReplies } from './use-board-reviews.ts';
 import './review.css';
 import { formatDateTime } from '../lib/datetime.ts';
+import { useListMotion } from '../lib/list-motion.ts';
 
 const THREADS_PAGE = 30;
 
@@ -208,6 +209,7 @@ function CommentsPanel() {
   const [limit, setLimit] = useState(THREADS_PAGE);
   const ref = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  useListMotion(bodyRef, '.comment-thread');
   const [reviewDetails, setReviewDetails] = useState<HTMLDivElement | null>(null);
   const [moreBelow, setMoreBelow] = useState(false);
   const updateScroll = useCallback(() => {

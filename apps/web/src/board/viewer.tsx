@@ -2,8 +2,8 @@
 import { updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { type Asset, isRawImageType } from '@inkadra/shared';
-import { Avatar, Button, Icon } from '@inkadra/ui';
-import { memo, useContext, useEffect, useRef, useState } from 'react';
+import { Avatar, Button, fadeOutCopy, Icon } from '@inkadra/ui';
+import { memo, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { formatDateTime } from '../lib/datetime.ts';
@@ -291,6 +291,15 @@ export function MediaViewer({
   const [officePage, setOfficePage] = useState(1);
   const [officeSheet, setOfficeSheet] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
+  // Closing fades the viewer out instead of cutting to the board (#769); with reduced motion
+  // it closes at once.
+  useLayoutEffect(
+    () => () => {
+      if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+        fadeOutCopy(dialogRef.current);
+    },
+    [],
+  );
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
   const [embedBlocked, setEmbedBlocked] = useState(false);

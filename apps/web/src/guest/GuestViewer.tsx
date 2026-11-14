@@ -77,7 +77,7 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape closes the native dialog
     <dialog
       ref={ref}
-      className="guest-viewer"
+      className="guest-viewer ink-motion-dialog"
       aria-label={title}
       onClose={onClose}
       onClick={(e) => e.target === e.currentTarget && ref.current?.close()}

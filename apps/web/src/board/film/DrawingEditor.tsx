@@ -612,7 +612,7 @@ export function DrawingEditor({
               ])}
             </div>
             {tool === 'shape' && popover === 'shape' && (
-              <div className="pen__popover pen__shapes">
+              <div className="pen__popover ink-popover pen__shapes">
                 <span className="toolbar__sep" aria-hidden="true" />
                 {DRAG_SHAPES.map((kind) => (
                   <button
@@ -644,7 +644,7 @@ export function DrawingEditor({
               <span className="pen__current-color" style={{ background: color }} />
             </button>
             {popover === 'color' && (
-              <div className="pen__popover pen__colors">
+              <div className="pen__popover ink-popover pen__colors">
                 {PEN_COLORS.map((c) => (
                   <button
                     key={c}
@@ -670,7 +670,7 @@ export function DrawingEditor({
             />
             {sized && popover === 'width' && (
               // biome-ignore lint/a11y/noLabelWithoutControl: Slider renders a labelable range input.
-              <label className="pen__width pen__popover">
+              <label className="pen__width pen__popover ink-popover">
                 <span>{t(sized === 'text' ? 'film.pen.textSize' : 'film.pen.width')}</span>
                 <Slider
                   aria-label={t(sized === 'text' ? 'film.pen.textSize' : 'film.pen.width')}
@@ -702,7 +702,7 @@ export function DrawingEditor({
               onClick={() => setPopover(popover === 'more' ? null : 'more')}
             />
             {popover === 'more' && (
-              <div className="pen__popover pen__more">
+              <div className="pen__popover ink-popover pen__more">
                 {frame.assetId && (
                   <div className="pen__opacity">
                     <span className="pen__opacity-label">

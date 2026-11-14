@@ -29,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
+import { useListMotion } from '../../lib/list-motion.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { SessionContext } from '../../lib/session-context.ts';
 import { PeoplePicker } from '../../people/PeoplePicker.tsx';
@@ -77,6 +78,8 @@ export function TroupeView({
   readOnly?: boolean;
 }) {
   const { t } = useTranslation();
+  const list = useRef<HTMLElement>(null);
+  useListMotion(list, '.troupe__row');
   const phone = useIsPhone();
   const [rows, setRows] = useState<CrewMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,7 +210,7 @@ export function TroupeView({
       );
     });
   return (
-    <section className="story troupe" data-tour="troupe">
+    <section className="story troupe" data-tour="troupe" ref={list}>
       <header className="story__bar troupe__bar">
         <span>
           {t('troupe.people', { count: rows.length })} ·{' '}

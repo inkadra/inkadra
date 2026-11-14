@@ -1497,7 +1497,7 @@ export function PlanCanvas({
     metresDraft < 1000 &&
     (scaleFor(scaleDraft.length, metresDraft) ?? Number.POSITIVE_INFINITY) <= MAX_SCALE;
   const scaleDialog = scaleDraft && (
-    <div className="plan-scale ink-motion-pop" role="dialog" aria-label={t('board.plan.setScale')}>
+    <div className="plan-scale ink-popover" role="dialog" aria-label={t('board.plan.setScale')}>
       <div className="plan-scale__head">
         <b>{t('board.plan.setScale')}</b>
         <IconButton
@@ -1572,7 +1572,7 @@ export function PlanCanvas({
   );
   const measurePanel = measureDraft && (
     <div
-      className="plan-pop plan-pop--measure ink-motion-pop"
+      className="plan-pop plan-pop--measure ink-popover"
       role="dialog"
       aria-label={t('board.plan.shapes.measure')}
       style={

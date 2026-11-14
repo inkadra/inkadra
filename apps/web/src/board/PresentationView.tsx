@@ -252,7 +252,7 @@ export function PresentationView({
   return (
     <dialog
       ref={rootRef}
-      className={`present-view${idle && current ? ' is-idle' : ''}`}
+      className={`present-view ink-motion-dialog${idle && current ? ' is-idle' : ''}`}
       style={
         settings
           ? ({

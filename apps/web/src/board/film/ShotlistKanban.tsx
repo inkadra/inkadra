@@ -2,8 +2,9 @@
 import { type FrameElement, updateElement } from '@inkadra/canvas-core';
 import type { AspectRatio } from '@inkadra/doc-schema';
 import { Avatar, Icon, Select } from '@inkadra/ui';
-import { type DragEvent, useId, useState } from 'react';
+import { type DragEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useListMotion } from '../../lib/list-motion.ts';
 import { CardReview } from '../CardReview.tsx';
 import { useReviews } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -65,6 +66,8 @@ export function ShotlistKanban({
   onAddFrame: (status: KanbanColumnKey) => void;
 }) {
   const { t } = useTranslation();
+  const list = useRef<HTMLDivElement>(null);
+  useListMotion(list, '.kanban__card');
   const presetText = usePresetText();
   const [dropTarget, setDropTarget] = useState<KanbanColumnKey | null>(null);
   const [expandedCols, setExpandedCols] = useState<Set<string>>(new Set());
@@ -122,7 +125,7 @@ export function ShotlistKanban({
   };
 
   return (
-    <div className="kanban">
+    <div className="kanban" ref={list}>
       {KANBAN_COLUMNS.map((col) => {
         const colFrames = frames.filter((f) => getFrameKanbanColumn(f, reviews) === col.key);
 

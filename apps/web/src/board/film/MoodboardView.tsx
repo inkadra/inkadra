@@ -25,6 +25,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
+import { useListMotion } from '../../lib/list-motion.ts';
 import { useModules } from '../../lib/modules.ts';
 import { getCachedAsset, pickVariant, useAsset, useAssetPalettes } from '../assets.ts';
 import { ColorPicker } from '../ColorPicker.tsx';
@@ -371,7 +372,7 @@ function AddReferences({
           }}
         />
       )}
-      {adding === 'link' && <div className="moodboard__popover">{linkForm}</div>}
+      {adding === 'link' && <div className="ink-popover moodboard__popover">{linkForm}</div>}
     </div>
   );
 }
@@ -493,6 +494,7 @@ export function MoodboardView({
   const opener = useRef<HTMLButtonElement | null>(null);
   const bar = useRef<HTMLFieldSetElement | null>(null);
   const root = useRef<HTMLElement | null>(null);
+  useListMotion(root, '.moodboard__tile');
   // The group whose heading gets the focus back once a rename by keyboard ends.
   const refocusGroup = useRef<string | null>(null);
   const all = [...snapshot.byId.values()];
@@ -1007,7 +1009,7 @@ export function MoodboardView({
               onClick={clearSelection}
             />
             {panel === 'group' && (
-              <div className="moodboard__popover moodboard__popover--up">
+              <div className="ink-popover moodboard__popover moodboard__popover--up">
                 <div className="moodboard__options">
                   {groupNames.map((name) => (
                     <button key={name} type="button" onClick={() => moveToGroup(name)}>
@@ -1022,7 +1024,7 @@ export function MoodboardView({
               </div>
             )}
             {panel === 'tag' && (
-              <div className="moodboard__popover moodboard__popover--up">
+              <div className="ink-popover moodboard__popover moodboard__popover--up">
                 {tags.length > 0 && (
                   <div className="moodboard__options">
                     {tags.map((value) => (
@@ -1036,7 +1038,7 @@ export function MoodboardView({
               </div>
             )}
             {panel === 'note' && chosen[0] && (
-              <div className="moodboard__popover moodboard__popover--up">
+              <div className="ink-popover moodboard__popover moodboard__popover--up">
                 <BulkInput
                   label={t('moodboard.note')}
                   initial={noteOf(chosen[0])}

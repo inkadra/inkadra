@@ -140,7 +140,7 @@ export function TodoAssignment({
         )
       )}
       {(picking || open) && !readOnly && (
-        <div className="todo-assignment__picker">
+        <div className="todo-assignment__picker ink-popover">
           <PeoplePicker
             people={people}
             // biome-ignore lint/a11y/noAutofocus: explicitly opened by @ or the assignee chip.

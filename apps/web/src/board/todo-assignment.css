@@ -38,10 +38,7 @@
   min-width: 220px;
   z-index: 10;
   padding: 8px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-md);
-  background: var(--ink-surface-1);
-  box-shadow: var(--ink-shadow-menu);
+  --ink-origin: top right;
 }
 .card__todo-list li {
   flex-wrap: wrap;
