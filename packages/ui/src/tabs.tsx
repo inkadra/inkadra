@@ -170,12 +170,20 @@ export function Tabs<T extends string>({
   const own = useRef<HTMLDivElement>(null);
   const list = listRef ?? own;
   useSlidingIndicator(list, '[role="tab"][aria-selected="true"]', value);
-  // The chosen tab scrolls into view in a bar that overflows, and the cut edges fade.
+  // The chosen tab scrolls into view in a bar that overflows (in the middle when the bar
+  // appears), and the cut edges fade.
+  const shown = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: follows the chosen tab.
   useLayoutEffect(() => {
     const el = list.current;
     const tab = el?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    const first = !shown.current;
+    shown.current = true;
     if (!el || !tab || el.scrollWidth <= el.clientWidth) return;
+    if (first) {
+      el.scrollLeft = Math.max(0, tab.offsetLeft - (el.clientWidth - tab.offsetWidth) / 2);
+      return;
+    }
     const left = tab.offsetLeft - 24;
     const right = tab.offsetLeft + tab.offsetWidth + 24;
     const behavior = reducedMotion() ? 'auto' : 'smooth';

@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -171,20 +170,19 @@ export function TimeField({
     if (!el || !box) return;
     return anchorLayer(el, box, () => setPhase((p) => (p === 'open' ? 'closing' : p)));
   }, [mounted]);
-  // Each column scrolls its choice to the middle when the list opens; the keys focus the hours.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the list opens.
-  useLayoutEffect(() => {
-    if (phase !== 'open') return;
+  // Each column scrolls its choice to the middle when the list opens, and the hours take the
+  // focus. After the layer is shown (the effect above): a hidden popover has nothing to scroll.
+  useEffect(() => {
+    if (phase !== 'open' || !focusList.current) return;
+    focusList.current = false;
     for (const list of layer.current?.querySelectorAll<HTMLElement>('.ink-time__list') ?? []) {
       const at = list.querySelector<HTMLElement>('[tabindex="0"]');
       if (at) list.scrollTop = at.offsetTop - list.clientHeight / 2 + at.offsetHeight / 2;
     }
-    if (!focusList.current) return;
-    focusList.current = false;
     layer.current
       ?.querySelector<HTMLElement>('.ink-time__list [tabindex="0"]')
       ?.focus({ preventScroll: true });
-  }, [phase]);
+  });
 
   /** Leaving the field: an hour alone gets :00, a missing required time is pointed out. */
   const leave = () => {

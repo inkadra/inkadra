@@ -317,13 +317,14 @@ select {
   color: var(--ink-text-secondary);
 }
 .ink-time__seg--period {
-  width: auto;
-  min-width: 2.6ch;
-  margin-left: 4px;
+  width: 2.8ch;
+  margin-left: 3px;
 }
 .ink-time__seg:focus {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
+  /* The filled segment is the focus mark, from the keyboard too. */
+  box-shadow: none;
 }
 .ink-time__seg:disabled {
   cursor: default;
@@ -333,7 +334,12 @@ select {
   color: var(--ink-text-muted);
 }
 .ink-time__auto {
-  flex: none;
+  /* Gives way first in a narrow field: the time and the clock stay whole. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin-left: -4px;
   padding: 0 6px;
   border-radius: var(--ink-radius-full);
