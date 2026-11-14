@@ -23,4 +23,19 @@ describe.skipIf(!url)('runMigrations (needs DATABASE_URL)', () => {
       await sql.end({ timeout: 1 });
     }
   });
+
+  it('refuses a database migrated by a newer version (#805)', async () => {
+    const folder = fileURLToPath(new URL('../../drizzle', import.meta.url));
+    const fresh = await freshDatabase(url ?? '', 'newer_db');
+    await runMigrations(fresh, folder);
+    const { sql } = createDatabase(fresh, 1);
+    try {
+      // What a newer server leaves: one more migration, after every one this build knows.
+      await sql`insert into drizzle.__drizzle_migrations (hash, created_at)
+        values ('from-a-newer-version', ${Date.now() + 365 * 24 * 3600 * 1000})`;
+    } finally {
+      await sql.end({ timeout: 1 });
+    }
+    await expect(runMigrations(fresh, folder)).rejects.toThrow(/migrated by a newer Inkadra/);
+  });
 });

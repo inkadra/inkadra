@@ -79,7 +79,12 @@ listed in `scripts/contract-breaks.json` with its pull request.
 
 **Database.** Edit `apps/server/src/db/schema.ts`, run `pnpm db:generate --name <what>` and
 commit the generated SQL in `apps/server/drizzle`. Never edit a migration that has been
-released; add a new one. Migrations run automatically when the server starts.
+released; add a new one. Migrations run automatically when the server starts, all pending ones
+in one transaction, so a statement that rewrites or scans an existing table (an index, a
+constraint without `NOT VALID`, a type change, `SET NOT NULL`) blocks the instance until the end:
+`db/migration-locks.test.ts` asks for a `-- lock-ok: <why>` comment in front of each one. Keep
+migrations additive (expand, then remove in a later release): the way back from an upgrade is the
+backup taken before it, and a server refuses a database migrated by a newer one.
 
 **Board documents.** Bump `CURRENT_SCHEMA_VERSION` in `packages/doc-schema/src/doc.ts` and add
 a migration from the previous version, with a test that upgrades a document of the old shape.
@@ -142,7 +147,9 @@ Versions follow semver. A maintainer runs the **Release** workflow on `main` wit
 it tags `vX.Y.Z`, publishes the GitHub release and starts CI on the tag. The release notes are
 `docs/releases/X.Y.Z.<lang>.md`: the English file is the body of the release, and every language
 is attached for the Updates page of each instance
-([decision 0080](docs/decisions/0080-update-check.md)); without them GitHub generates the notes.
+([decision 0080](docs/decisions/0080-update-check.md)); the workflow refuses a version without
+the English notes. Before a release, go through the
+[release checklist](docs/releases/CHECKLIST.md).
 CI runs in full, publishes `ghcr.io/inkadra/inkadra:X.Y.Z`, `X.Y` and `latest`, each also with the
 suffix `-office`, for amd64 and arm64 with build provenance and an SBOM, and attaches the
 deployment files to the release. `X.Y.Z-rc.N` makes a pre-release, which moves neither `latest`
