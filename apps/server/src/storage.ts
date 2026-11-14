@@ -16,6 +16,7 @@ import {
   type S3ClientConfig,
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FileStore } from '@tus/file-store';
 import { S3Store } from '@tus/s3-store';
 import type { DataStore } from '@tus/utils';
@@ -50,6 +51,16 @@ export interface Storage {
     signal?: AbortSignal,
   ): Promise<{ path: string; done: () => Promise<void> }>;
   remove(keys: string[]): Promise<void>;
+  /**
+   * A short-lived URL browsers fetch the file from, straight from the bucket (#839). Only the S3
+   * driver has it, and only with S3_PUBLIC_REDIRECT: otherwise every file goes through `read`.
+   */
+  signedUrl?(
+    key: string,
+    ttlS: number,
+    disposition?: string,
+    contentType?: string,
+  ): Promise<string>;
 }
 
 /** Hours before an unfinished upload is removed. */
@@ -89,6 +100,33 @@ export function officeDerivativeKeys(id: string): string[] {
 const SAFE_KEY = /^[a-z]+(\/[A-Za-z0-9._-]+)+$/;
 function checkKey(key: string) {
   if (!SAFE_KEY.test(key) || key.includes('..')) throw new Error(`Invalid storage key ${key}`);
+}
+
+/**
+ * Mistakes that break playback once browsers fetch from the bucket (#839), told at startup: a
+ * plain-http bucket under an https page (mixed content), or a Docker-internal address.
+ */
+export function redirectWarnings(
+  config: Pick<
+    Config,
+    'STORAGE_DRIVER' | 'S3_PUBLIC_REDIRECT' | 'S3_ENDPOINT' | 'S3_PUBLIC_ENDPOINT' | 'PUBLIC_URL'
+  >,
+): string[] {
+  const endpoint = config.S3_PUBLIC_ENDPOINT ?? config.S3_ENDPOINT;
+  if (config.STORAGE_DRIVER !== 's3' || !config.S3_PUBLIC_REDIRECT || !endpoint) return [];
+  const url = new URL(endpoint);
+  const warnings: string[] = [];
+  if (url.protocol === 'http:' && config.PUBLIC_URL.startsWith('https:'))
+    warnings.push(
+      `S3_PUBLIC_REDIRECT sends browsers to ${url.origin}, plain http under an https PUBLIC_URL: ` +
+        'browsers block it. Set S3_PUBLIC_ENDPOINT to the https address of the bucket.',
+    );
+  if (!config.S3_PUBLIC_ENDPOINT && !url.hostname.includes('.'))
+    warnings.push(
+      `S3_PUBLIC_REDIRECT sends browsers to ${url.origin}, which looks like an address only the ` +
+        'server reaches. Set S3_PUBLIC_ENDPOINT to the address browsers use.',
+    );
+  return warnings;
 }
 
 export function createStorage(config: Config): Storage {
@@ -203,9 +241,36 @@ function s3Storage(config: Config): Storage {
     return res.Body as Readable;
   };
 
+  // Signed for the address browsers reach the bucket at, which may not be the server's.
+  const publicClient = config.S3_PUBLIC_ENDPOINT
+    ? new S3Client({ ...clientConfig, endpoint: config.S3_PUBLIC_ENDPOINT })
+    : client;
+
   return {
     uploads,
     copiesToLocal: true,
+    ...(config.S3_PUBLIC_REDIRECT
+      ? {
+          signedUrl: async (
+            key: string,
+            ttlS: number,
+            disposition?: string,
+            contentType?: string,
+          ) => {
+            checkKey(key);
+            return getSignedUrl(
+              publicClient,
+              new GetObjectCommand({
+                Bucket: bucket,
+                Key: key,
+                ...(disposition ? { ResponseContentDisposition: disposition } : {}),
+                ...(contentType ? { ResponseContentType: contentType } : {}),
+              }),
+              { expiresIn: ttlS },
+            );
+          },
+        }
+      : {}),
     async size(key) {
       checkKey(key);
       try {

@@ -153,6 +153,51 @@ uploads after two days, if your service supports one (AWS, R2 and B2 do):
 }
 ```
 
+### Browsers fetch from the bucket
+
+By default every file goes through Inkadra: the bucket never needs to be reachable from outside,
+but each byte crosses the server twice. With `S3_PUBLIC_REDIRECT=true`, Inkadra still checks who
+may see a file, then answers with a redirect to a signed link of the bucket, and the browser
+downloads or plays it from there: originals and playable copies (links valid for four hours, as
+a video keeps playing from the address it was sent to) and video segments (ten minutes, asked
+again for every segment). Thumbnails, files of guests' downloads and the videos of guests who
+may not download still go through the server, and so do the app and anything else that signs
+in with a token.
+
+Turn it on only when browsers can reach the bucket:
+
+- `S3_PUBLIC_ENDPOINT`: the bucket's address as browsers see it, when the server uses another
+  one (for example `S3_ENDPOINT=http://rustfs:9000` inside Docker,
+  `S3_PUBLIC_ENDPOINT=https://files.example.com` behind your proxy). The page's security policy
+  allows that address.
+- A CORS rule on the bucket for your `PUBLIC_URL`, since the video player fetches segments with
+  script:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://inkadra.example.com"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["Range"],
+    "ExposeHeaders": ["Content-Length", "Content-Range", "Accept-Ranges", "ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+The bucket stays private: a signed link opens one file, for a limited time. It is a bearer link
+until then: whoever has it can fetch that file, and taking away someone's access, or a share
+link, does not end the links they already received (up to four hours for an original or a
+playable copy, ten minutes for a video segment). Leave the redirect off if that matters more
+than the server's bandwidth.
+
+Redirected files are not kept by the browser as unchanging (each link is new), so watching the
+same video again downloads it again from the bucket: count on more egress from it.
+
+Inkadra warns at startup when `S3_PUBLIC_REDIRECT` points browsers at plain http under an https
+`PUBLIC_URL`, or at an address that looks internal (no `S3_PUBLIC_ENDPOINT`, a host name without
+a dot such as `rustfs`).
+
 CI tests the S3 driver against RustFS. Other S3-compatible services (AWS, Cloudflare R2,
 Backblaze B2, Garage, SeaweedFS, a MinIO server) speak the same API; self-hosted ones usually
 need `S3_FORCE_PATH_STYLE=true`.

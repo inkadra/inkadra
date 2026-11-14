@@ -159,14 +159,14 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
   const breakdowns: Partial<Record<View, { title: string; total: number; rows: Rows }>> = {
     project: {
       title: t('admin.storageCharts.byProject'),
-      total: usage.originalBytes,
+      total: usage.originalBytes + (usage.derivedBytes ?? 0),
       rows: usage.byProject.map((row) => ({
         id: row.projectId ?? row.scope,
         label:
           row.scope === 'project'
             ? (row.name ?? t('admin.storageCharts.unassigned'))
             : t(`admin.storageCharts.${row.scope}`),
-        bytes: row.bytes,
+        bytes: row.bytes + (row.derivedBytes ?? 0),
         color: projectSwatch(row),
       })),
     },

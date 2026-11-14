@@ -61,6 +61,7 @@ import { iso } from './api-routes.ts';
 import {
   contentDisposition,
   fileHeaders,
+  HLS_SIGNED_URL_TTL_S,
   isThumbnail,
   parseRange,
   sendRanged,
@@ -855,7 +856,16 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           notFound: () => {
             throw new HttpError('not_found', 'Asset not found.');
           },
-          ranged: (key, size) => sendRanged(req, reply, storage, key, size),
+          // A rung is a whole MP4: a guest who may not download never gets a bucket link to it.
+          ranged: (key, size) =>
+            sendRanged(
+              req,
+              reply,
+              storage,
+              key,
+              size,
+              ctx.link.allowDownload ? HLS_SIGNED_URL_TTL_S : false,
+            ),
           fileHeaders: guestFileHeaders,
         },
         // Guests share the per-viewer limit of their link; each has a session of their own.

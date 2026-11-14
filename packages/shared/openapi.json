@@ -3313,6 +3313,11 @@
                   "type": "number",
                   "minimum": 0
                 },
+                "derivedBytes": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Previews, playable copies and video renditions of the project's files, where their size is known; renditions count in no one's storage limit (decision 0128). Older servers omit it."
+                },
                 "color": {
                   "type": "string",
                   "enum": [
@@ -3372,7 +3377,7 @@
                 "derivedBytes": {
                   "type": "number",
                   "minimum": 0,
-                  "description": "Previews and playable copies of those files, where their size is known."
+                  "description": "Previews, playable copies and video renditions of those files, where their size is known. Renditions are metered here but count in no one's storage limit (decision 0128)."
                 }
               },
               "required": [

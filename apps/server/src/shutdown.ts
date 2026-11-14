@@ -44,3 +44,29 @@ export function closeAll(
   })();
   return settledWithin(run, deadlineMs);
 }
+
+/**
+ * One shutdown, however often it is asked for: a second SIGTERM or a lost lease while boards are
+ * being stored must not end the process early. Asked before `ready` (still starting), it runs
+ * once everything to close is known.
+ */
+export function shutdownOnce(run: (reason: string) => Promise<void>) {
+  let ready = false;
+  let asked: string | undefined;
+  let started = false;
+  const start = (reason: string) => {
+    if (started) return;
+    started = true;
+    void run(reason);
+  };
+  return {
+    request(reason: string) {
+      if (ready) start(reason);
+      else asked ??= reason;
+    },
+    ready() {
+      ready = true;
+      if (asked) start(asked);
+    },
+  };
+}

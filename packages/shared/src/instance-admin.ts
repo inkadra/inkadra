@@ -141,6 +141,10 @@ export const StorageUsage = z
         name: z.string().nullable(),
         scope: z.enum(['project', 'restricted', 'unassigned']),
         bytes: z.number().nonnegative(),
+        derivedBytes: z.number().nonnegative().optional().openapi({
+          description:
+            "Previews, playable copies and video renditions of the project's files, where their size is known; renditions count in no one's storage limit (decision 0128). Older servers omit it.",
+        }),
         color: ProjectIcon.shape.color.optional().openapi({
           description:
             "The project's icon colour, on scope project rows only. Older servers omit it.",
@@ -160,7 +164,8 @@ export const StorageUsage = z
           }),
           bytes: z.number().nonnegative(),
           derivedBytes: z.number().nonnegative().optional().openapi({
-            description: 'Previews and playable copies of those files, where their size is known.',
+            description:
+              "Previews, playable copies and video renditions of those files, where their size is known. Renditions are metered here but count in no one's storage limit (decision 0128).",
           }),
         }),
       )

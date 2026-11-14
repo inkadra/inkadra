@@ -13,6 +13,7 @@ import {
   createStorage,
   localStorage,
   readAll,
+  redirectWarnings,
   type Storage,
   variantKey,
 } from './storage.ts';
@@ -161,4 +162,88 @@ it('local storage keeps two writes of one key apart', async () => {
   await Promise.all(bodies.map((body) => storage.write(key, Buffer.from(body), 'image/webp')));
   expect(bodies).toContain((await readAll(await storage.read(key))).toString());
   expect(readdirSync(dirname(join(root, key)))).toEqual([basename(key)]);
+});
+
+describe('signed URLs of the bucket (#839)', () => {
+  const config = (env: Record<string, string>) =>
+    loadConfig({
+      PUBLIC_URL: 'http://localhost:3000',
+      DATABASE_URL: 'postgres://unused',
+      AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+      STORAGE_DRIVER: 's3',
+      S3_ENDPOINT: 'http://rustfs:9000',
+      S3_BUCKET: 'inkadra',
+      S3_ACCESS_KEY_ID: 'key',
+      S3_SECRET_ACCESS_KEY: 'secret',
+      S3_FORCE_PATH_STYLE: 'true',
+      ...env,
+    });
+
+  it('exist only with S3_PUBLIC_REDIRECT, and never on the local driver', () => {
+    expect(createStorage(config({})).signedUrl).toBeUndefined();
+    expect(localStorage(mkdtempSync(join(tmpdir(), 'ink-sign-'))).signedUrl).toBeUndefined();
+  });
+
+  it('point at the address browsers use and carry the name and type', async () => {
+    const storage = createStorage(
+      config({ S3_PUBLIC_REDIRECT: 'true', S3_PUBLIC_ENDPOINT: 'https://files.example.com' }),
+    );
+    const url = new URL(
+      (await storage.signedUrl?.(
+        'originals/abc',
+        600,
+        'attachment; filename="a.mov"',
+        'video/quicktime',
+      )) ?? '',
+    );
+    expect(url.origin).toBe('https://files.example.com');
+    expect(url.pathname).toBe('/inkadra/originals/abc');
+    expect(url.searchParams.get('X-Amz-Expires')).toBe('600');
+    expect(url.searchParams.get('response-content-disposition')).toBe(
+      'attachment; filename="a.mov"',
+    );
+    expect(url.searchParams.get('response-content-type')).toBe('video/quicktime');
+    await expect(storage.signedUrl?.('../etc/passwd', 600)).rejects.toThrow(/Invalid/);
+  });
+
+  it.skipIf(!s3Endpoint)('serve the bytes straight from the bucket', async () => {
+    const storage = createStorage(loadConfig({ ...s3EnvForSigning(), S3_PUBLIC_REDIRECT: 'true' }));
+    const key = `variants/${randomUUID()}/x.webp`;
+    await storage.write(key, Buffer.from('signed'), 'image/webp');
+    const res = await fetch((await storage.signedUrl?.(key, 60)) ?? '');
+    expect(await res.text()).toBe('signed');
+    await storage.remove([key]);
+  });
+});
+
+function s3EnvForSigning() {
+  return {
+    PUBLIC_URL: 'http://localhost:3000',
+    DATABASE_URL: 'postgres://unused',
+    AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+    STORAGE_DRIVER: 's3',
+    S3_ENDPOINT: s3Endpoint as string,
+    S3_BUCKET: process.env.S3_TEST_BUCKET ?? 'inkadra',
+    S3_ACCESS_KEY_ID: process.env.S3_TEST_ACCESS_KEY_ID ?? '',
+    S3_SECRET_ACCESS_KEY: process.env.S3_TEST_SECRET_ACCESS_KEY ?? '',
+    S3_FORCE_PATH_STYLE: 'true',
+  };
+}
+
+it('warns at startup about bucket addresses browsers cannot use (#839)', () => {
+  const base = {
+    STORAGE_DRIVER: 's3' as const,
+    S3_PUBLIC_REDIRECT: true,
+    S3_ENDPOINT: 'http://rustfs:9000',
+    S3_PUBLIC_ENDPOINT: undefined,
+    PUBLIC_URL: 'https://inkadra.example.com',
+  };
+  expect(redirectWarnings(base)).toHaveLength(2);
+  expect(redirectWarnings({ ...base, S3_PUBLIC_ENDPOINT: 'https://files.example.com' })).toEqual(
+    [],
+  );
+  expect(redirectWarnings({ ...base, S3_PUBLIC_ENDPOINT: 'http://files.example.com' })).toEqual([
+    expect.stringMatching(/plain http/),
+  ]);
+  expect(redirectWarnings({ ...base, S3_PUBLIC_REDIRECT: false })).toEqual([]);
 });

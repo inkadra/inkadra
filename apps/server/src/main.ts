@@ -4,6 +4,7 @@ import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
+import IORedis from 'ioredis';
 import pino, { type Logger } from 'pino';
 import { startInlineExpirySweep } from './access-expiry.ts';
 import { disableAdminTwoFactor } from './admin-two-factor.ts';
@@ -27,6 +28,7 @@ import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
 import type { LiveContext } from './http/hls.ts';
 import type { Jobs } from './jobs.ts';
+import { acquireLease, type Lease, type LeaseRole } from './lease.ts';
 import { createMailer } from './mailer.ts';
 import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.ts';
 import type { VideoEncoder } from './media/hwaccel.ts';
@@ -49,8 +51,14 @@ import {
 } from './queues.ts';
 import { configureRateLimits } from './rate-limits.ts';
 import { startIndexBackfill } from './search/index-doc.ts';
-import { closeAll, SHUTDOWN_DEADLINE_MS, settledWithin, WORKER_CLOSE_MS } from './shutdown.ts';
-import { createStorage } from './storage.ts';
+import {
+  closeAll,
+  SHUTDOWN_DEADLINE_MS,
+  settledWithin,
+  shutdownOnce,
+  WORKER_CLOSE_MS,
+} from './shutdown.ts';
+import { createStorage, redirectWarnings } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
 import { cachedVideoSettings } from './video-settings.ts';
 
@@ -132,6 +140,42 @@ async function main() {
     return;
   }
 
+  // Filled in once everything to close is known; a lost lease before then waits for it.
+  const closers: Array<() => Promise<unknown>> = [];
+  const stop = shutdownOnce(async (signal) => {
+    log.info({ signal }, 'shutting down');
+    const done = await closeAll(closers, log);
+    if (!done) log.error({ deadlineMs: SHUTDOWN_DEADLINE_MS }, 'shutdown deadline passed');
+    process.exit(done ? 0 : 1);
+  });
+
+  // One process per role (#790, #819), taken before migrations so a second web never runs them.
+  const leases: Lease[] = [];
+  let leaseRedis: IORedis | undefined;
+  const leaseRoles: LeaseRole[] =
+    command === 'all'
+      ? ['web', 'collab']
+      : command === 'web' || command === 'collab'
+        ? [command]
+        : [];
+  if (leaseRoles.length > 0 && config.REDIS_URL) {
+    leaseRedis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: false });
+    leaseRedis.on('error', () => undefined);
+    try {
+      for (const role of leaseRoles)
+        leases.push(
+          await acquireLease(leaseRedis, role, log, {
+            onLost: () => stop.request('lease lost'),
+          }),
+        );
+    } catch (err) {
+      await Promise.all(leases.map((l) => l.release()));
+      leaseRedis.disconnect();
+      throw err;
+    }
+  } else if (leaseRoles.length > 0)
+    log.warn('REDIS_URL is not set: run only one inkadra process for this instance');
+
   if (command === 'migrate' || command === 'web' || command === 'all') {
     await runMigrations(config.DATABASE_URL, migrationsFolder, {
       productionBoards: config.PRODUCTION_BOARD_MOVE,
@@ -150,6 +194,7 @@ async function main() {
   const mailer = createMailer(config, log);
   const auth = createAuth(config, db, { mailer, log });
   const storage = createStorage(config);
+  for (const warning of redirectWarnings(config)) log.warn(warning);
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
   // Scratch folders of media jobs a crash left behind (not those of a job still running).
@@ -205,11 +250,11 @@ async function main() {
   };
   const transfers = transferDeps(config);
   const closeRateLimits = await configureRateLimits(config, log);
-  const closers: Array<() => Promise<unknown>> = [
+  closers.push(
     async () => closeRateLimits(),
     async () => auth.closeSecurity(),
     () => sql.end({ timeout: 5 }),
-  ];
+  );
 
   // The Server page (#514): every role samples itself and tells the others it is alive.
   const monitorConnection = config.REDIS_URL ? monitorRedis(config.REDIS_URL, log) : undefined;
@@ -432,6 +477,14 @@ async function main() {
     await app.listen({ host: config.HOST, port: config.PORT });
   }
 
+  // Last of all, once boards are stored: the next process may start.
+  const heldLeases = leaseRedis;
+  if (heldLeases)
+    closers.push(async () => {
+      await Promise.all(leases.map((l) => l.release()));
+      heldLeases.disconnect();
+    });
+
   const sampler = startSampler({
     role: command as 'web' | 'collab' | 'worker' | 'all',
     store: monitor,
@@ -450,14 +503,10 @@ async function main() {
     closers.unshift(async () => clearInterval(heartbeat));
   }
 
-  const shutdown = async (signal: string) => {
-    log.info({ signal }, 'shutting down');
-    const done = await closeAll(closers, log);
-    if (!done) log.error({ deadlineMs: SHUTDOWN_DEADLINE_MS }, 'shutdown deadline passed');
-    process.exit(done ? 0 : 1);
-  };
-  process.once('SIGTERM', () => void shutdown('SIGTERM'));
-  process.once('SIGINT', () => void shutdown('SIGINT'));
+  // `on`, not `once`: a second signal while boards are stored must not kill the process.
+  process.on('SIGTERM', () => stop.request('SIGTERM'));
+  process.on('SIGINT', () => stop.request('SIGINT'));
+  stop.ready();
 }
 
 function transferDeps(config: Config) {

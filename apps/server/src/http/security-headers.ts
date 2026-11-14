@@ -6,9 +6,9 @@ export function securityHeaders(
 ): Record<string, string> {
   const storage =
     config.STORAGE_DRIVER === 's3'
-      ? config.S3_ENDPOINT
+      ? (config.S3_PUBLIC_ENDPOINT ?? config.S3_ENDPOINT)
         ? (() => {
-            const url = new URL(config.S3_ENDPOINT);
+            const url = new URL((config.S3_PUBLIC_ENDPOINT ?? config.S3_ENDPOINT) as string);
             if (!config.S3_FORCE_PATH_STYLE) url.hostname = `${config.S3_BUCKET}.${url.hostname}`;
             return url.origin;
           })()
