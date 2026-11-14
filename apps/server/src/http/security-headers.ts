@@ -43,6 +43,10 @@ export function securityHeaders(
       policy,
     'permissions-policy': `camera=(), microphone=(self), geolocation=(), payment=(), usb=(), autoplay=${players}, encrypted-media=${players}, picture-in-picture=${players}, fullscreen=${players}, clipboard-write=${players}`,
     'cross-origin-opener-policy': 'same-origin',
-    ...(config.HSTS_ENABLED && secure ? { 'strict-transport-security': 'max-age=31536000' } : {}),
+    // Never on plain HTTP (a LAN or tailnet address, decision 0035), nor when the instance
+    // itself is not meant to be served over HTTPS.
+    ...(config.HSTS_ENABLED && secure && config.PUBLIC_URL.startsWith('https:')
+      ? { 'strict-transport-security': 'max-age=31536000' }
+      : {}),
   };
 }

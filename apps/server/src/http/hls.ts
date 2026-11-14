@@ -81,7 +81,8 @@ export function toPlayback(
   if (rows.length === 0 && live.length === 0) return null;
   const sorted = [...rows].sort(order);
   const ready = sorted.some(isReady);
-  // A rung offered only live has no row: it is listed as waiting, with `live`.
+  // A rung offered only live has no row: it is listed as waiting, with `live` and `liveOnly`
+  // (no copy is coming, so clients neither wait nor poll for it).
   const extra = live
     .filter((name) => !sorted.some((r) => r.name === name))
     .map((name) => ({
@@ -94,6 +95,7 @@ export function toPlayback(
       size: null,
       url: null,
       live: true,
+      liveOnly: true,
     }));
   return {
     hls:

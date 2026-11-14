@@ -93,7 +93,10 @@ function needsPolling(id: string): boolean {
     proxy === 'queued' ||
     proxy === 'processing' ||
     // Rungs of the ladder still being made (decision 0128): the others appear as they get ready.
-    (value.playback?.renditions.some((r) => r.status === 'queued' || r.status === 'processing') ??
+    // A rung offered only live stays queued for good: no copy is coming.
+    (value.playback?.renditions.some(
+      (r) => !r.liveOnly && (r.status === 'queued' || r.status === 'processing'),
+    ) ??
       false)
   );
 }

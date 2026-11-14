@@ -32,3 +32,16 @@ it('scrubs what it collects and stays inside the sizes the server accepts', () =
   expect(data.console.endsWith('[redacted secret]')).toBe(true);
   expect(data.environment).toContain('Inkadra 0.8.0');
 });
+
+it('keeps the stack of an uncaught error and the text of any rejection', () => {
+  installFeedbackDiagnostics();
+  const error = new TypeError('x is undefined');
+  error.stack = 'TypeError: x is undefined\n    at handler (board.ts:12:5)';
+  window.dispatchEvent(new ErrorEvent('error', { error, message: error.message }));
+  const rejection = new Event('unhandledrejection');
+  Object.assign(rejection, { reason: 'plain text reason' });
+  window.dispatchEvent(rejection);
+  const { console: text } = diagnostics('0.8.0', 'it');
+  expect(text).toContain('at handler (board.ts:12:5)');
+  expect(text).toContain('error Unhandled rejection: plain text reason');
+});

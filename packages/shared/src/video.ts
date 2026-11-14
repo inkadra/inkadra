@@ -291,6 +291,14 @@ export const AssetRendition = z
           'The master playlist offers this rung encoded while watched until it is ready, or ' +
           'for good when it is not stored. Only from servers with `video-live`.',
       }),
+    liveOnly: z
+      .literal(true)
+      .optional()
+      .openapi({
+        description:
+          'Offered only live: no stored copy is being made or will be (its `status` stays ' +
+          '`queued`), so there is nothing to wait for. Absent on rungs that have or get a file.',
+      }),
   })
   .openapi('AssetRendition');
 export type AssetRendition = z.infer<typeof AssetRendition>;
