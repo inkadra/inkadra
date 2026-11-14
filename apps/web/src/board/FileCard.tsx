@@ -430,7 +430,11 @@ function RungsProgress({
           >
             <span>{rungLabel(r.name)}</span>
             <span className="fcard__bar">
-              <i style={{ transform: `scaleX(${r.status === 'ready' ? 1 : (r.progress ?? 0) / 100})` }} />
+              <i
+                style={{
+                  transform: `scaleX(${r.status === 'ready' ? 1 : (r.progress ?? 0) / 100})`,
+                }}
+              />
             </span>
           </span>
         ))}

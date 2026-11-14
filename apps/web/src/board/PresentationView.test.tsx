@@ -217,7 +217,9 @@ describe('PresentationView', () => {
     expect(host.textContent).toContain('Frame visibile');
     expect(host.textContent).not.toContain('Frame nascosto');
     expect(host.querySelectorAll('.present-thumb')).toHaveLength(0);
-    expect(host.querySelector('.present-progress__bar')?.getAttribute('style')).toContain('scaleX(1)');
+    expect(host.querySelector('.present-progress__bar')?.getAttribute('style')).toContain(
+      'scaleX(1)',
+    );
   });
 
   it('puts the body inside the dialog fullscreen, right in the click, and back', async () => {

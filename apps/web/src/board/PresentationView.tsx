@@ -408,7 +408,10 @@ export function PresentationView({
 
             {current && (
               <div className="present-progress">
-                <div className="present-progress__bar" style={{ transform: `scaleX(${progressPercent / 100})` }} />
+                <div
+                  className="present-progress__bar"
+                  style={{ transform: `scaleX(${progressPercent / 100})` }}
+                />
               </div>
             )}
 

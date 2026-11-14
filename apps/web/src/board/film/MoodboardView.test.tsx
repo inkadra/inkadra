@@ -554,7 +554,8 @@ it('offers the existing ways to add a reference to editors only, in the bar and 
   });
   expect(stored()?.type === 'color' && stored()?.hex).toBe('#AABBCC');
   expect(host.querySelector('.moodboard__empty')).toBeNull();
-  await key('Escape', hex ?? window);
+  // The hex field is drawn again for the new colour: Escape goes to the picker itself.
+  await key('Escape', host.querySelector('.colorpicker') ?? window);
   expect(host.querySelector('.colorpicker')).toBeNull();
 
   // Link: a bare domain becomes https, and the preview is asked for.
