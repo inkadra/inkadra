@@ -43,8 +43,10 @@ const Env = z.object({
   AUTH_RATE_LIMITS: z.enum(['on', 'off']).default('on'),
   /** Empty when unset: compose passes every variable, set or not. */
   CSP_REPORT_URI: z.preprocess(emptyToUndefined, z.url().optional()),
-  CSP_ENFORCE: bool('false'),
-  HSTS_ENABLED: bool('false'),
+  /** `false` sends the page policy as report-only, an escape hatch while a setup is fixed. */
+  CSP_ENFORCE: bool('true'),
+  /** Sent only on HTTPS requests of an instance whose PUBLIC_URL is https; `false` turns it off. */
+  HSTS_ENABLED: bool('true'),
   OIDC_ALLOWED_DOMAINS: list,
   REGISTRATION: z.enum(['invite', 'open', 'closed']).default('invite'),
   HOST: z.string().default('0.0.0.0'),

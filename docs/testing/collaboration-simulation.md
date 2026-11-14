@@ -1,9 +1,9 @@
-# Gate 0.3 collaboration simulation
+# Collaboration simulation
 
 `pnpm --filter @inkadra/server test:collab-sim` runs the same test included in
 `pnpm --filter @inkadra/server test`: 30 seconds of activity plus setup,
-convergence, persistence and restart checks. It requires **both** DATABASE_URL
-and REDIS_URL; without them the test is skipped. Use disposable services:
+convergence, persistence and restart checks. It requires both `DATABASE_URL`
+and `REDIS_URL`; without them the test is skipped. Use disposable services:
 the fixture truncates users, projects and instance settings.
 
 For a 30-minute soak on a machine with Postgres and Valkey:
@@ -15,11 +15,8 @@ COLLAB_SIM_DURATION_MS=1800000 COLLAB_SIM_SEED=305 \
 pnpm --filter @inkadra/server test:collab-sim
 ```
 
-On the workstation, set these variables in cmd.exe and invoke pnpm with
-`npx.cmd -y pnpm@10.28.0`. Use a dedicated clone under `H:\T3 CODE\`,
-`core.autocrlf=false`, and a unique Docker Compose project with ports bound to
-127.0.0.1; remove its throwaway services and volumes with `docker compose down -v`
-after the run. Never use a development or production database.
+Remove the services and their volumes after the run. Never use a development or production
+database.
 
 Ten distinct editor accounts authenticate using real session cookies over
 `/collab`, with the web application's Hocuspocus provider and doc-schema.
