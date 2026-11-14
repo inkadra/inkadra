@@ -16,11 +16,20 @@ describe('typing a time', () => {
   });
 
   it('keeps the half of the day in 12 h', () => {
-    expect(typeDigit('h', '', 7, { hour12: true, pm: true })).toMatchObject({ value: 19, done: true });
+    expect(typeDigit('h', '', 7, { hour12: true, pm: true })).toMatchObject({
+      value: 19,
+      done: true,
+    });
     expect(typeDigit('h', '1', 2, { hour12: true, pm: false })).toMatchObject({ value: 0 });
     expect(typeDigit('h', '1', 2, { hour12: true, pm: true })).toMatchObject({ value: 12 });
-    expect(typeDigit('h', '', 2, { hour12: true, pm: false })).toMatchObject({ value: 2, done: true });
-    expect(typeDigit('h', '1', 5, { hour12: true, pm: false })).toMatchObject({ value: 5, done: true });
+    expect(typeDigit('h', '', 2, { hour12: true, pm: false })).toMatchObject({
+      value: 2,
+      done: true,
+    });
+    expect(typeDigit('h', '1', 5, { hour12: true, pm: false })).toMatchObject({
+      value: 5,
+      done: true,
+    });
   });
 
   it('fills the minutes and refuses over 59', () => {

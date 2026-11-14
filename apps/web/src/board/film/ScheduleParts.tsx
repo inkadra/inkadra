@@ -1191,11 +1191,7 @@ export function DayPanel({
           id: item.id,
           // The tour points at the calls tab (decision 0092).
           label:
-            item.id === 'calls' ? (
-              <span data-tour="schedule-calls">{item.label}</span>
-            ) : (
-              item.label
-            ),
+            item.id === 'calls' ? <span data-tour="schedule-calls">{item.label}</span> : item.label,
           count: item.count || undefined,
         }))}
       />

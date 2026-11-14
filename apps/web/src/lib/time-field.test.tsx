@@ -30,29 +30,29 @@ const texts = {
   hour12: false,
 };
 
-function mount(
-  props: Partial<ComponentProps<typeof TimeField>> & { start?: string | null },
-  hour12 = false,
-) {
+type FieldProps = Partial<ComponentProps<typeof TimeField>> & { start?: string | null };
+
+function Field({ onChange, start, ...props }: FieldProps & { onChange: (v: string) => void }) {
+  const [value, setValue] = useState<string | null>(start ?? '');
+  return (
+    <TimeField
+      label="Call time"
+      {...props}
+      value={value}
+      onChange={(v) => {
+        onChange(v);
+        setValue(v);
+      }}
+    />
+  );
+}
+
+function mount(props: FieldProps, hour12 = false) {
   const onChange = vi.fn();
-  function Field() {
-    const [value, setValue] = useState<string | null>(props.start ?? '');
-    return (
-      <TimeField
-        label="Call time"
-        {...props}
-        value={value}
-        onChange={(v) => {
-          onChange(v);
-          setValue(v);
-        }}
-      />
-    );
-  }
   act(() =>
     root.render(
       <TimeFieldTextsContext.Provider value={{ ...texts, hour12 }}>
-        <Field />
+        <Field {...props} onChange={onChange} />
         <button type="button">elsewhere</button>
       </TimeFieldTextsContext.Provider>,
     ),

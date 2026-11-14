@@ -22,7 +22,10 @@ export function anchorLayer(layer: HTMLElement, box: HTMLElement, onOutside: () 
       '--ink-date-left',
       `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`,
     );
-    layer.style.setProperty('--ink-date-top', below ? `${fitsBelow ? rect.bottom + 6 : 8}px` : 'auto');
+    layer.style.setProperty(
+      '--ink-date-top',
+      below ? `${fitsBelow ? rect.bottom + 6 : 8}px` : 'auto',
+    );
     layer.style.setProperty(
       '--ink-date-bottom',
       below ? 'auto' : `${window.innerHeight - rect.top + 6}px`,

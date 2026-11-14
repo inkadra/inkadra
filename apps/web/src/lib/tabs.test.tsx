@@ -64,36 +64,37 @@ it('skips disabled tabs, at the ends too', () => {
   expect(focused()).toBe('d');
 });
 
+function Bar({ changes }: { changes: (value: string) => void }) {
+  const [value, setValue] = useState<'day' | 'calls' | 'kit'>('day');
+  return (
+    <>
+      <Tabs
+        id="t"
+        label="Day"
+        value={value}
+        onChange={(v) => {
+          changes(v);
+          setValue(v);
+        }}
+        items={[
+          { id: 'day', label: 'Day' },
+          { id: 'calls', label: 'Calls', count: 12 },
+          { id: 'kit', label: 'Kit' },
+        ]}
+      />
+      <TabPanel id="t" value={value}>
+        <input aria-label="kept" />
+      </TabPanel>
+    </>
+  );
+}
+
 it('chooses on a click only, links each tab to the panel and keeps the panel mounted', async () => {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
   const changes = vi.fn();
-  function Bar() {
-    const [value, setValue] = useState<'day' | 'calls' | 'kit'>('day');
-    return (
-      <>
-        <Tabs
-          id="t"
-          label="Day"
-          value={value}
-          onChange={(v) => {
-            changes(v);
-            setValue(v);
-          }}
-          items={[
-            { id: 'day', label: 'Day' },
-            { id: 'calls', label: 'Calls', count: 12 },
-            { id: 'kit', label: 'Kit' },
-          ]}
-        />
-        <TabPanel id="t" value={value}>
-          <input aria-label="kept" />
-        </TabPanel>
-      </>
-    );
-  }
-  await act(async () => root.render(<Bar />));
+  await act(async () => root.render(<Bar changes={changes} />));
   const list = host.querySelector('[role="tablist"]');
   expect(list?.classList).toContain('ink-tabs--line');
   expect(list?.querySelector('.ink-tabs__ind')?.getAttribute('aria-hidden')).toBe('true');

@@ -126,7 +126,9 @@ export type TabItem<T extends string> = {
   /** The id of this tab's own panel, when each tab keeps one (both stay in the page). */
   controls?: string;
   /** Extra attributes for this tab's button (a tooltip, a double click, a tour anchor). */
-  props?: ButtonHTMLAttributes<HTMLButtonElement> & { [data: `data-${string}`]: string | undefined };
+  props?: ButtonHTMLAttributes<HTMLButtonElement> & {
+    [data: `data-${string}`]: string | undefined;
+  };
 };
 
 /**

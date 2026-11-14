@@ -281,9 +281,7 @@ export function TimeField({
     else if (event.key === 'Home') next = options[0];
     else if (event.key === 'End') next = options.at(-1);
     else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-      const lists = [
-        ...(layer.current?.querySelectorAll<HTMLElement>('.ink-time__list') ?? []),
-      ];
+      const lists = [...(layer.current?.querySelectorAll<HTMLElement>('.ink-time__list') ?? [])];
       const c = lists.indexOf(list);
       const to = lists[(c + (event.key === 'ArrowRight' ? 1 : lists.length - 1)) % lists.length];
       next = to?.querySelector<HTMLElement>('[tabindex="0"]') ?? undefined;
@@ -345,6 +343,7 @@ export function TimeField({
     return k === 'h' && hour12 ? String(shownHour(v, true)) : pad(v);
   };
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: listens for the focus leaving the field and its list, which only checks the value.
     <div
       className={cx('ink-time-field', className)}
       onBlur={(event) => {
@@ -354,7 +353,7 @@ export function TimeField({
         leave();
       }}
     >
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the segments take the keys; a click on the box focuses one. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/useSemanticElements: the segments take the keys and a click on the box focuses one; a fieldset cannot sit in the labels that hold the field. */}
       <div
         ref={field}
         role="group"
@@ -477,10 +476,7 @@ export function TimeField({
           <div
             ref={layer}
             popover="manual"
-            className={cx(
-              'ink-date__layer ink-time__layer',
-              phase === 'closing' && 'is-closing',
-            )}
+            className={cx('ink-date__layer ink-time__layer', phase === 'closing' && 'is-closing')}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();

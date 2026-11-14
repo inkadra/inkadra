@@ -28,8 +28,7 @@ async function login(page: Page, who: { email: string; password: string }) {
 const isBackupSettings = (r: {
   url(): string;
   request(): { method(): string; postData(): string | null };
-}) =>
-  r.url().endsWith('/instance/backups/settings') && r.request().method() === 'PATCH';
+}) => r.url().endsWith('/instance/backups/settings') && r.request().method() === 'PATCH';
 
 test('the administrator backs up now and finds the backup in the history', async ({ page }) => {
   await login(page, admin);

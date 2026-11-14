@@ -85,6 +85,8 @@ export function uses12h(
   language: string = (typeof document !== 'undefined' && document.documentElement.lang) || 'en',
 ): boolean {
   if (formats.timeFormat !== 'auto') return formats.timeFormat === '12h';
-  return new Intl.DateTimeFormat(autoLocale(language), { hour: 'numeric' }).resolvedOptions()
-    .hour12 === true;
+  return (
+    new Intl.DateTimeFormat(autoLocale(language), { hour: 'numeric' }).resolvedOptions().hour12 ===
+    true
+  );
 }
