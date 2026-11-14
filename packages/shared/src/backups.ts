@@ -4,6 +4,12 @@ import { Id, Timestamp, z } from './common.ts';
 /** Instance backups for administrators (docs/decisions/0037). */
 export const BACKUP_RETENTION_MAX = 90;
 
+/**
+ * `includeMedia` in the backup settings, `media` on backups, and `mediaBytes`, `directory` and
+ * `remote` in the overview (#899).
+ */
+export const BACKUP_TARGETS_CAPABILITY = 'backup-targets';
+
 export const BackupSettings = z
   .object({
     enabled: z.boolean().openapi({ description: 'Nightly backup on or off. Default on.' }),
@@ -16,6 +22,15 @@ export const BackupSettings = z
       .min(1)
       .max(BACKUP_RETENTION_MAX)
       .openapi({ description: 'Successful backups kept; older ones are removed. Default 7.' }),
+    includeMedia: z
+      .boolean()
+      .optional()
+      .openapi({
+        description:
+          'Stored files go into the archive too, not only the database (#899): originals and ' +
+          'thumbnails, never the playable copies of videos. Default false; always present in ' +
+          'answers of servers with the `backup-targets` capability, absent on older ones.',
+      }),
   })
   .openapi('BackupSettings');
 export type BackupSettings = z.infer<typeof BackupSettings>;
@@ -24,6 +39,7 @@ export const DEFAULT_BACKUP_SETTINGS: BackupSettings = {
   enabled: true,
   time: '03:00',
   retention: 7,
+  includeMedia: false,
 };
 
 export const UpdateBackupSettings = BackupSettings.partial()
@@ -46,14 +62,26 @@ export const InstanceBackup = z
       }),
     status: z.enum(['running', 'ready', 'failed']),
     fileName: z.string().nullable().openapi({
-      description: 'Name of the archive in `DATA_DIR/backups` (and `backups/` of the bucket).',
+      description:
+        'Name of the archive in `directory` (and in the bucket of `remote`, when copied).',
     }),
     size: z.number().int().min(0).nullable(),
     copiedToBucket: z.boolean().openapi({ description: 'A copy went to the S3 bucket too.' }),
     files: z
       .object({ count: z.int().min(0), bytes: z.number().int().min(0) })
       .nullable()
-      .openapi({ description: 'Stored files the backup lists (they are not inside it).' }),
+      .openapi({
+        description: 'Stored files the backup lists (inside it only when `media` is set).',
+      }),
+    media: z
+      .object({ count: z.int().min(0), bytes: z.number().int().min(0) })
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'Files copied into the archive (#899); null for a database-only backup. Absent on ' +
+          'older servers.',
+      }),
     failure: z
       .string()
       .nullable()
@@ -103,7 +131,19 @@ export const InstanceBackups = z
   .object({
     settings: BackupSettings,
     timeZone: z.string().openapi({ description: 'Time zone of the server (`TZ`), read only.' }),
-    bucket: z.boolean().openapi({ description: 'Files live in S3: backups are copied there.' }),
+    bucket: z.boolean().openapi({
+      description: 'Archives are copied to a bucket: `remote`, or the files bucket.',
+    }),
+    remote: z.string().nullable().optional().openapi({
+      description: 'The bucket archives are copied to, as `s3://bucket/prefix/` (#899).',
+    }),
+    directory: z.string().optional().openapi({
+      description: 'Folder of the archives on the server: BACKUP_DIR or `DATA_DIR/backups`.',
+    }),
+    mediaBytes: z.number().int().min(0).optional().openapi({
+      description:
+        'About what `includeMedia` adds to each backup now: the stored files it would copy.',
+    }),
     nextRunAt: Timestamp.nullable(),
     items: z.array(InstanceBackup).openapi({ description: 'Newest first, at most 30.' }),
   })
@@ -162,5 +202,19 @@ export const BackupManifest = z.object({
       .regex(/^[0-9a-f]{64}$/)
       .optional(),
   }),
+  /**
+   * A backup with media (#899): the files of `files.jsonl` that storage had, as entries
+   * `media/<key>`, listed with size and SHA-256 in `media.jsonl`. `missing`: listed files storage
+   * no longer had. Absent from database-only backups.
+   */
+  media: z
+    .object({
+      count: z.int().min(0),
+      bytes: z.number().int().min(0),
+      missing: z.int().min(0),
+      entry: z.literal('media.jsonl'),
+      sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    })
+    .optional(),
 });
 export type BackupManifest = z.infer<typeof BackupManifest>;

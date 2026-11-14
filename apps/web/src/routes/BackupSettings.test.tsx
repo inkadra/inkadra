@@ -7,8 +7,11 @@ import { api, RequestError } from '../lib/api.ts';
 import { chooseSelect } from '../test/select.ts';
 import { BackupSettings } from './BackupSettings.tsx';
 
+// The key, and the values of texts with a count: the space estimate is checked by them.
+const t = (key: string, values?: { count?: number }) =>
+  values?.count === undefined ? key : `${key} ${JSON.stringify(values)}`;
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  useTranslation: () => ({ t, i18n: { language: 'en' } }),
 }));
 vi.mock('../lib/api.ts', async (load) => ({
   ...(await load<typeof import('../lib/api.ts')>()),
@@ -89,4 +92,34 @@ it('backs up now and says so when one is already running', async () => {
   await act(async () => button.click());
   expect(api.post).toHaveBeenCalledWith('/instance/backups', {});
   expect(host.querySelector('[role="alert"]')?.textContent).toBe('backups.busy');
+});
+
+it('offers files in the backups with their size, and saves the choice (#899)', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    ...overview([backup({ size: 10_000, media: { count: 12, bytes: 4096 } })]),
+    settings: { enabled: true, time: '03:00', retention: 7, includeMedia: false },
+    directory: '/backups',
+    remote: 's3://archives/backups/',
+    mediaBytes: 5_000_000,
+  });
+  vi.mocked(api.patch).mockResolvedValue({});
+  await act(async () => root.render(<BackupSettings />));
+  expect(host.textContent).toContain('backups.mediaHelp');
+  // Retention multiplies the space: 7 kept × (5904 bytes of tables in the last one + 5 MB of
+  // files now), while the kept backup takes its 10 000 bytes today.
+  expect(host.textContent).toContain(
+    'backups.mediaKept {"count":7,"total":"35.04 MB","used":"10 KB"}',
+  );
+  expect(host.textContent).toContain('backups.withMedia');
+  expect(host.textContent).toContain('backups.whereIn');
+  const toggle = host.querySelector<HTMLInputElement>('[data-tour="backups-media"]');
+  await act(async () => toggle?.click());
+  expect(api.patch).toHaveBeenCalledWith('/instance/backups/settings', { includeMedia: true });
+});
+
+it('hides the files choice from servers that do not know it', async () => {
+  vi.mocked(api.get).mockResolvedValue(overview([]));
+  await act(async () => root.render(<BackupSettings />));
+  expect(host.querySelector('[data-tour="backups-media"]')).toBeNull();
+  expect(host.textContent).toContain('backups.where');
 });

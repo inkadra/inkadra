@@ -15,7 +15,8 @@ export function testDeps(db: Database, log: Logger) {
     uploadMaxSize: 0,
     importMaxSize: 1024 ** 3,
     migrationsFolder: join(import.meta.dirname, '..', 'drizzle'),
-    bucket: false,
+    backupDir: join(root, 'backups'),
+    backupRemote: null,
     databaseUrl: process.env.DATABASE_URL ?? '',
   });
   return { root, storage, jobs };

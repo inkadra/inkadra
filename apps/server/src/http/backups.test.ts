@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { mkdir, readdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -17,7 +18,9 @@ import { createAuth } from '../auth.ts';
 import {
   BUCKET_PREFIX,
   backupCron,
+  backupRemote,
   backupsDir,
+  checkBackupDir,
   copyReadable,
   copyWritable,
   nextBackupAt,
@@ -41,9 +44,9 @@ import {
   instanceBackup,
   instanceSetting,
 } from '../db/schema.ts';
-import { createStorage } from '../storage.ts';
+import { createStorage, localStorage, readAll } from '../storage.ts';
 import { freshDatabase, testDeps } from '../test-deps.ts';
-import { readZip, writeZip } from '../transfers/zip.ts';
+import { readZip, streamOf, writeZip } from '../transfers/zip.ts';
 import { createApp } from './app.ts';
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
@@ -66,6 +69,19 @@ describe('COPY streams of postgres.js', () => {
     for await (const _ of source);
     await new Promise((r) => setImmediate(r));
     expect(resumes).toBeGreaterThan(before);
+  });
+});
+
+describe('backup folder (#899)', () => {
+  it('refuses a folder that cannot be written, naming it', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'backup-dir-'));
+    await checkBackupDir(join(root, 'backups'));
+    expect(existsSync(join(root, 'backups'))).toBe(true);
+    // A file where the folder should be: no system lets a folder be made under it.
+    writeFileSync(join(root, 'taken'), '');
+    await expect(checkBackupDir(join(root, 'taken', 'backups'))).rejects.toThrow(
+      /backup folder .*taken.* cannot be written.*BACKUP_DIR/,
+    );
   });
 });
 
@@ -113,9 +129,9 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
   const backupDeps = () => ({
     db,
     storage: deps.storage,
-    dataDir: deps.root,
+    backupDir: backupsDir(deps.root),
     migrationsFolder: migrations,
-    bucket: false,
+    remote: null,
     databaseUrl: config.DATABASE_URL,
     log,
   });
@@ -203,13 +219,23 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     const first = InstanceBackups.parse(
       (await request('admin', 'GET', '/instance/backups')).json(),
     );
-    expect(first.settings).toEqual({ enabled: true, time: '03:00', retention: 7 });
+    expect(first.settings).toEqual({
+      enabled: true,
+      time: '03:00',
+      retention: 7,
+      includeMedia: false,
+    });
     expect(first.bucket).toBe(false);
     const saved = await request('admin', 'PATCH', '/instance/backups/settings', {
       time: '02:30',
       retention: 3,
     });
-    expect(saved.json()).toEqual({ enabled: true, time: '02:30', retention: 3 });
+    expect(saved.json()).toEqual({
+      enabled: true,
+      time: '02:30',
+      retention: 3,
+      includeMedia: false,
+    });
     expect(
       (await request('admin', 'PATCH', '/instance/backups/settings', { time: '25:00' })).statusCode,
     ).toBe(400);
@@ -581,6 +607,155 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     }
   }, 60_000);
 
+  it('puts the files in the archive when asked, verifies them and restores them (#899)', async () => {
+    const fresh = await freshDatabase(config.DATABASE_URL, 'media');
+    await runMigrations(fresh, migrations);
+    const admin = postgres(fresh, { max: 1, onnotice: () => {} });
+    const files = localStorage(join(mkdtempSync(join(tmpdir(), 'media-files-')), 'files'));
+    // Another folder than DATA_DIR/backups: BACKUP_DIR.
+    const backupDir = join(mkdtempSync(join(tmpdir(), 'media-backups-')), 'elsewhere');
+    await checkBackupDir(backupDir);
+    const original = Buffer.from('frame 1 of a long take'.repeat(1000));
+    const thumb = Buffer.from('a small picture');
+    const [p] = await admin`insert into project (name, position) values ('Rushes', 'a0')
+      returning id`;
+    const [a] = await admin`insert into asset (project_id, kind, mime, filename, size,
+      storage_key, status) values (${p?.id}, 'image', 'image/png', 'still.png',
+      ${original.length}, 'originals/still', 'ready') returning id`;
+    await admin`insert into asset_variant (asset_id, size, width, height, storage_key, bytes)
+      values (${a?.id}, '256', 256, 144, ${`variants/${a?.id}/256.webp`}, ${thumb.length})`;
+    await files.write('originals/still', original, 'image/png');
+    await files.write(`variants/${a?.id}/256.webp`, thumb, 'image/webp');
+    await admin`insert into instance_setting (key, value)
+      values ('backup', ${admin.json({ includeMedia: true })})`;
+    const client = postgres(fresh, { max: 2, onnotice: () => {} });
+    const other = drizzle(client, { schema, casing: 'snake_case' });
+    const target = await freshDatabase(config.DATABASE_URL, 'media_restore');
+    try {
+      const row = await startBackup(other, 'manual', null);
+      const done = await runBackup(
+        { ...backupDeps(), db: other, databaseUrl: fresh, storage: files, backupDir },
+        row?.id as string,
+      );
+      expect(done).toMatchObject({ status: 'ready', mediaCount: 2, verifyComplete: true });
+      expect(done?.mediaBytes).toBe(original.length + thumb.length);
+      expect(toBackup(done as NonNullable<typeof done>).media).toEqual({
+        count: 2,
+        bytes: original.length + thumb.length,
+      });
+      const file = join(backupDir, done?.fileName as string);
+
+      // Verification reads every file back: a file whose bytes changed fails it.
+      const source = await readZip(file, {
+        entries: 10_000,
+        totalBytes: Number.MAX_SAFE_INTEGER,
+        compressionRatio: 10_000,
+      });
+      const tampered = join(backupDir, 'tampered.zip');
+      try {
+        const writer = writeZip(tampered);
+        for (const name of source.names()) {
+          const data = await source.buffer(name, 1024 ** 3);
+          await writer.addBuffer(
+            name,
+            name === 'media/originals/still' ? Buffer.alloc(data.length, 1) : data,
+          );
+        }
+        await writer.close();
+      } finally {
+        source.close();
+      }
+      await expect(verifyBackup(tampered, files)).rejects.toThrow(
+        /originals\/still does not read back/,
+      );
+
+      // A new server with empty storage: the restore puts the files back.
+      const empty = localStorage(join(mkdtempSync(join(tmpdir(), 'media-empty-')), 'files'));
+      const report = await restoreBackup({
+        file,
+        databaseUrl: target,
+        migrationsFolder: migrations,
+        storage: empty,
+        tmpDir: join(deps.root, 'tmp'),
+        log,
+      });
+      expect(report.files).toMatchObject({ listed: 2, restored: 2, failed: 0, missing: 0 });
+      expect(await readAll(await empty.read('originals/still'))).toEqual(original);
+      expect(await readAll(await empty.read(`variants/${a?.id}/256.webp`))).toEqual(thumb);
+
+      // A damaged archive is read back whole first: it never touches the database.
+      const untouched = await freshDatabase(config.DATABASE_URL, 'media_damaged');
+      await expect(
+        restoreBackup({
+          file: tampered,
+          databaseUrl: untouched,
+          migrationsFolder: migrations,
+          storage: localStorage(join(mkdtempSync(join(tmpdir(), 'media-none-')), 'files')),
+          tmpDir: join(deps.root, 'tmp'),
+          log,
+        }),
+      ).rejects.toThrow(/originals\/still does not read back/);
+      const check = postgres(untouched, { max: 1, onnotice: () => {} });
+      try {
+        const [tables] = await check`select count(*)::int as n from information_schema.tables
+          where table_schema = 'public'`;
+        expect(tables?.n).toBe(0);
+      } finally {
+        await check.end({ timeout: 1 });
+      }
+
+      // A file removed between its lookup and its read is left out as missing, a file rewritten
+      // meanwhile goes in as read: the backup is kept and verified either way.
+      let looked = false;
+      const changing = {
+        ...files,
+        size: async (key: string) => {
+          if (key !== 'originals/still') return files.size(key);
+          if (looked) return null;
+          looked = true;
+          return original.length;
+        },
+        read: async (key: string) =>
+          key === 'originals/still'
+            ? files.read('originals/gone')
+            : key.startsWith('variants/')
+              ? streamOf(Buffer.from('a rewritten picture'))
+              : files.read(key),
+      };
+      const again = await startBackup(other, 'manual', null);
+      const partial = await runBackup(
+        { ...backupDeps(), db: other, databaseUrl: fresh, storage: changing, backupDir },
+        again?.id as string,
+      );
+      expect(partial).toMatchObject({
+        status: 'ready',
+        mediaCount: 1,
+        verifyComplete: true,
+        missingFiles: 1,
+      });
+      expect(partial?.mediaBytes).toBe('a rewritten picture'.length);
+
+      // More files than a restore can read: refused before anything is written.
+      const many = await startBackup(other, 'manual', null);
+      const refused = await runBackup(
+        {
+          ...backupDeps(),
+          db: other,
+          databaseUrl: fresh,
+          storage: files,
+          backupDir,
+          mediaFilesMax: 1,
+        },
+        many?.id as string,
+      );
+      expect(refused).toMatchObject({ status: 'failed', failure: 'internal' });
+      expect((await readdir(backupDir)).filter((n) => n.endsWith('.partial'))).toEqual([]);
+    } finally {
+      await admin.end({ timeout: 1 });
+      await client.end({ timeout: 1 });
+    }
+  }, 60_000);
+
   it('keeps a live but quiet backup when another worker starts', async () => {
     const fresh = await freshDatabase(config.DATABASE_URL, 'quiet');
     await runMigrations(fresh, migrations);
@@ -619,7 +794,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     };
     const row = await startBackup(db, 'manual', null);
     const done = await runBackup(
-      { ...backupDeps(), storage: failing, bucket: true },
+      { ...backupDeps(), remote: { storage: failing, prefix: BUCKET_PREFIX, label: 'test' } },
       row?.id as string,
     );
     expect(done).toMatchObject({ status: 'ready', copiedToBucket: false });
@@ -639,7 +814,16 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
           .where(eq(instanceBackup.id, id));
       },
     };
-    expect(await runBackup({ ...backupDeps(), storage: meanwhile, bucket: true }, id)).toBeNull();
+    expect(
+      await runBackup(
+        {
+          ...backupDeps(),
+          storage: meanwhile,
+          remote: { storage: meanwhile, prefix: BUCKET_PREFIX, label: 'test' },
+        },
+        id,
+      ),
+    ).toBeNull();
     const [after] = await db.select().from(instanceBackup).where(eq(instanceBackup.id, id));
     expect(after).toMatchObject({ status: 'failed', failure: 'interrupted' });
     // No row points to the archive it wrote: it is removed rather than left outside retention.
@@ -841,7 +1025,8 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     }
 
     const fresh = await freshDatabase(config.DATABASE_URL, 'restore_missing');
-    // Before the fix the open COPY made the ROLLBACK hang or fail with COPY_IN_PROGRESS.
+    // Before the fix the open COPY made the ROLLBACK hang or fail with COPY_IN_PROGRESS. Read
+    // back first, the archive would be refused before the load: this checks the load itself.
     await expect(
       restoreBackup({
         file: broken,
@@ -850,6 +1035,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
         storage: deps.storage,
         tmpDir: join(deps.root, 'tmp'),
         log,
+        skipVerify: true,
       }),
     ).rejects.toMatchObject({ reason: 'invalid_archive', message: /Missing entry/ });
     const { sql: after } = createDatabase(fresh, 1);
@@ -882,12 +1068,13 @@ describe.skipIf(!url || !s3Endpoint)('backups with files in S3 (needs S3_TEST_EN
     try {
       await runMigrations(config.DATABASE_URL, migrations);
       await db.execute(sql`truncate table instance_backup`);
+      const storage = createStorage(config);
       const deps = {
         db,
-        storage: createStorage(config),
-        dataDir: testDeps(db, log).root,
+        storage,
+        backupDir: backupsDir(testDeps(db, log).root),
         migrationsFolder: migrations,
-        bucket: true,
+        remote: { storage, prefix: BUCKET_PREFIX, label: 'test' },
         databaseUrl: config.DATABASE_URL,
         log,
       };
@@ -905,6 +1092,63 @@ describe.skipIf(!url || !s3Endpoint)('backups with files in S3 (needs S3_TEST_EN
       const next = await runBackup(deps, second?.id as string);
       expect(await deps.storage.size(key)).toBeNull();
       await deps.storage.remove([`${BUCKET_PREFIX}${next?.fileName}`]);
+    } finally {
+      await db.execute(sql`truncate table instance_backup`);
+      await client.end({ timeout: 1 });
+    }
+  });
+  it('copies archives to a bucket of their own while files stay on disk (#899)', async () => {
+    const config = loadConfig({
+      PUBLIC_URL: 'http://localhost:3000',
+      DATABASE_URL: url as string,
+      AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+      BACKUP_S3_ENDPOINT: s3Endpoint,
+      BACKUP_S3_BUCKET: process.env.S3_TEST_BUCKET ?? 'inkadra',
+      BACKUP_S3_ACCESS_KEY_ID: process.env.S3_TEST_ACCESS_KEY_ID,
+      BACKUP_S3_SECRET_ACCESS_KEY: process.env.S3_TEST_SECRET_ACCESS_KEY,
+      BACKUP_S3_PREFIX: `tests/${randomUUID()}/`,
+      BACKUP_S3_FORCE_PATH_STYLE: 'true',
+    });
+    const remote = backupRemote(config);
+    if (!remote?.storage.list) throw new Error('no backup bucket');
+    const { db, sql: client } = createDatabase(config.DATABASE_URL, 2);
+    const log = pino({ level: 'silent' });
+    try {
+      await runMigrations(config.DATABASE_URL, migrations);
+      await db.execute(sql`truncate table instance_backup`);
+      const root = testDeps(db, log).root;
+      const deps = {
+        db,
+        storage: localStorage(join(root, 'files')),
+        backupDir: join(root, 'backups'),
+        migrationsFolder: migrations,
+        remote,
+        databaseUrl: config.DATABASE_URL,
+        log,
+      };
+      const first = await startBackup(db, 'manual', null);
+      const done = await runBackup(deps, first?.id as string);
+      expect(done).toMatchObject({ status: 'ready', copiedToBucket: true });
+      expect(await remote.storage.list(remote.prefix)).toEqual([
+        { key: `${remote.prefix}${done?.fileName}`, size: done?.size },
+      ]);
+      // What a restore downloads is the archive written here.
+      const copy = await readAll(
+        await remote.storage.read(`${remote.prefix}${done?.fileName}`),
+        1024 ** 3,
+      );
+      expect(copy.length).toBe(done?.size);
+
+      await db
+        .insert(instanceSetting)
+        .values({ key: 'backup', value: { retention: 1 } })
+        .onConflictDoUpdate({ target: instanceSetting.key, set: { value: { retention: 1 } } });
+      const second = await startBackup(db, 'manual', null);
+      const next = await runBackup(deps, second?.id as string);
+      expect((await remote.storage.list(remote.prefix)).map((o) => o.key)).toEqual([
+        `${remote.prefix}${next?.fileName}`,
+      ]);
+      await remote.storage.remove([`${remote.prefix}${next?.fileName}`]);
     } finally {
       await db.execute(sql`truncate table instance_backup`);
       await client.end({ timeout: 1 });

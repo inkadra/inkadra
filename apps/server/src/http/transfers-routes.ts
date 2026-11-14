@@ -18,6 +18,9 @@ import { requireProjectCreation } from '../access-expiry.ts';
 import { changes, recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import {
+  backupDirOf,
+  backupRemoteLabel,
+  MEDIA_BYTES,
   nextBackupAt,
   readBackupSettings,
   reapStaleBackups,
@@ -393,10 +396,15 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       .from(instanceBackup)
       .orderBy(desc(instanceBackup.startedAt))
       .limit(30);
+    const [media] = await db.execute<{ n: string }>(sql.raw(MEDIA_BYTES));
+    const remote = backupRemoteLabel(config);
     return {
       settings,
       timeZone: serverTimeZone(),
-      bucket: config.STORAGE_DRIVER === 's3',
+      bucket: remote !== null,
+      remote,
+      directory: backupDirOf(config),
+      mediaBytes: Number(media?.n ?? 0),
       nextRunAt: jobs.scheduleBackups ? (nextBackupAt(settings)?.toISOString() ?? null) : null,
       items: rows.map(toBackup),
     };

@@ -79,7 +79,9 @@ docker compose up -d --wait
 | `VALKEY_DATA`   | uid 999, in the image | The Valkey image, at startup: leave it as it is                      |
 
 The owners are numbers: on the host they may show up as other names, or as no name at all. Keep
-`tmp` and `backups` inside `INKADRA_DATA`, as they come: do not mount them on a disk of their own.
+`tmp` inside `INKADRA_DATA`, as it comes. Backups can live on a disk of their own: use
+`deploy/compose.backups.yaml` and `INKADRA_BACKUPS` (see [Backups](README.md#backups)), not a
+mount over `/data/backups`.
 
 ### Backing up the folders
 

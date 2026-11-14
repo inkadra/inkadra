@@ -4237,7 +4237,7 @@
   },
   "backups": {
     "title": "Sauvegardes",
-    "cardLead": "Chaque sauvegarde contient toute la base de données et est relue après écriture. Les fichiers restent où ils sont : sauvegardez aussi le volume de données ou le bucket. Les fichiers supprimés restent tant qu’une sauvegarde gardée en a besoin.",
+    "cardLead": "Chaque sauvegarde contient toute la base de données et est relue une fois écrite. Les fichiers restent où ils sont, sauf si vous les incluez : sauvegardez aussi le volume de données ou le bucket. Les fichiers supprimés sont gardés tant qu'une sauvegarde conservée en a besoin.",
     "now": "Sauvegarder maintenant",
     "running": "Sauvegarde en cours…",
     "busy": "Une sauvegarde est déjà en cours.",
@@ -4256,8 +4256,15 @@
     "keepHelp": "Les sauvegardes plus anciennes sont supprimées quand une nouvelle réussit.",
     "keepCount_one": "la dernière sauvegarde",
     "keepCount_other": "les {{count}} dernières sauvegardes",
+    "media": "Inclure les fichiers",
+    "mediaHelp": "Les fichiers envoyés et leurs miniatures entrent aussi dans chaque sauvegarde : environ {{size}} de plus aujourd'hui. Les copies lisibles des vidéos sont refaites après une restauration.",
+    "mediaHelpPlain": "Les fichiers envoyés et leurs miniatures entrent aussi dans chaque sauvegarde. Les copies lisibles des vidéos sont refaites après une restauration.",
+    "mediaKept_one": "En gardant seulement la dernière sauvegarde, cela fait environ {{total}} au total ; les sauvegardes gardées occupent {{used}} aujourd'hui.",
+    "mediaKept_other": "Chaque sauvegarde gardée a sa propre copie : environ {{total}} pour les {{count}} dernières, alors que les sauvegardes gardées occupent {{used}} aujourd'hui.",
     "history": "Historique",
     "inBucket": "copiée dans le bucket",
+    "withMedia_one": "avec {{count}} fichier",
+    "withMedia_other": "avec {{count}} fichiers",
     "trigger": {
       "scheduled": "Nocturne",
       "manual": "Manuelle",
@@ -4271,11 +4278,13 @@
     },
     "where": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis DATA_DIR/backups sur le serveur. Restaurez sur une base de données vide avec",
     "whereBucket": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis DATA_DIR/backups ou backups/ dans le bucket. Restaurez sur une base de données vide avec",
+    "whereLocal": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis {{directory}} sur le serveur. Restaurez dans une base vide avec",
+    "whereIn": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis {{directory}} sur le serveur ou depuis {{bucket}}. Restaurez dans une base vide avec",
     "failure": {
       "interrupted": "Le serveur s’est arrêté pendant l’opération. Relancez-la.",
       "stalled": "Elle a cessé de progresser et a été annulée. Consultez le journal du serveur pour cette sauvegarde.",
-      "no_space": "Le volume de données est plein.",
-      "permission": "Le serveur ne peut pas écrire dans son dossier de données (DATA_DIR/backups).",
+      "no_space": "Pas assez d'espace libre dans le dossier des sauvegardes.",
+      "permission": "Le serveur ne peut pas écrire dans son dossier de sauvegardes (BACKUP_DIR).",
       "internal": "Une erreur s’est produite. Le journal du serveur en indique la cause, avec l’id de cette sauvegarde.",
       "inconsistent": "Des tableaux ou des commentaires se référencent en boucle et ne peuvent pas être enregistrés dans l’ordre. Le journal du serveur indique la table.",
       "corrupt": "L’archive relue ne correspond pas à ce qui a été écrit : elle n’a pas été gardée. Vérifiez le volume de données."
@@ -5713,6 +5722,10 @@
           "2": {
             "title": "Tout de suite",
             "text": "Faites-en une maintenant, avant une mise à jour."
+          },
+          "3": {
+            "title": "Les fichiers aussi",
+            "text": "Mettez les fichiers envoyés dans les sauvegardes, pas seulement la base de données."
           }
         }
       },
