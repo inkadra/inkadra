@@ -4014,7 +4014,7 @@
       "byUser": "Usage by user",
       "noUser": "No linked account",
       "usedDetail": "Original files {{originals}} · previews {{previews}}",
-      "scope": "Space used and usage by user include previews and playable copies; the other cards count original files only. The database and older previews with no recorded size are not counted.",
+      "scope": "Space used and usage by project and by user include previews and playable copies; the other cards count original files only. The database and older previews with no recorded size are not counted.",
       "category": "Category / project",
       "size": "Original files",
       "share": "Share",

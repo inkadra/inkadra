@@ -309,12 +309,14 @@ describe.skipIf(!url)('instance administration', () => {
     expect(result.byType.reduce((sum, row) => sum + row.bytes, 0)).toBe(4500);
     expect(result.byProject.reduce((sum, row) => sum + row.bytes, 0)).toBe(4500);
     expect(result.byProject).toEqual([
-      { projectId: null, name: null, scope: 'restricted', bytes: 3000 },
+      { projectId: null, name: null, scope: 'restricted', bytes: 3000, derivedBytes: 0 },
       {
         projectId: own.id,
         name: 'Visible shoot',
         scope: 'project',
         bytes: 1500,
+        // The rung is metered with its project (#841), though in no one's limit (0128).
+        derivedBytes: 1250,
         color: own.icon.color,
       },
     ]);
@@ -338,6 +340,7 @@ describe.skipIf(!url)('instance administration', () => {
       name: 'Private shoot',
       scope: 'project',
       bytes: 3000,
+      derivedBytes: 0,
       color: hidden.icon.color,
     });
   });

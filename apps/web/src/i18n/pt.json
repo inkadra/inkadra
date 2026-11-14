@@ -4014,7 +4014,7 @@
       "byUser": "Uso por usuário",
       "noUser": "Sem conta vinculada",
       "usedDetail": "Arquivos originais {{originals}} · prévias {{previews}}",
-      "scope": "O espaço usado e o uso por usuário incluem prévias e cópias reproduzíveis; os demais cards contam apenas arquivos originais. O banco de dados e prévias antigas sem tamanho registrado não são contados.",
+      "scope": "O espaço usado e o uso por projeto e por usuário incluem prévias e cópias reproduzíveis; os demais cards contam apenas arquivos originais. O banco de dados e prévias antigas sem tamanho registrado não são contados.",
       "category": "Categoria / projeto",
       "size": "Arquivos originais",
       "share": "Percentual",

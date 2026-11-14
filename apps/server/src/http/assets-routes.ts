@@ -206,6 +206,12 @@ export function fileHeaders(reply: FastifyReply, etag: string) {
   reply.header('cross-origin-resource-policy', 'same-origin');
 }
 
+/**
+ * How long a redirect to the bucket stays valid. A player keeps asking ranges of the same URL
+ * while it plays: long enough for a long review session, short enough not to be a share link.
+ */
+export const SIGNED_URL_TTL_S = 4 * 60 * 60;
+
 /** Sends a stored file, or the single byte range asked for. */
 export async function sendRanged(
   req: FastifyRequest,
@@ -214,6 +220,22 @@ export async function sendRanged(
   key: string,
   size: number,
 ) {
+  // Browsers (a session cookie, no token) get the file from the bucket itself (#839); apps with
+  // a token keep this path, since a token must never travel with the redirect.
+  if (storage.signedUrl && !req.headers.authorization) {
+    const header = (name: string) => {
+      const value = reply.getHeader(name);
+      return typeof value === 'string' ? value : undefined;
+    };
+    const url = await storage.signedUrl(
+      key,
+      SIGNED_URL_TTL_S,
+      header('content-disposition'),
+      header('content-type'),
+    );
+    reply.header('cache-control', 'private, no-store');
+    return reply.redirect(url, 302);
+  }
   reply.header('accept-ranges', 'bytes');
   const range = parseRange(req.headers.range, size);
   if (range === undefined) {

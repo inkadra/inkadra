@@ -110,12 +110,14 @@ it('lists the storage of each user, and files with no account under one label', 
   expect(host.textContent).toContain('admin.storageCharts.noUser');
 });
 
-it('counts previews in the space used and in the usage of each user', async () => {
+it('counts previews in the space used and in the usage of each project and user', async () => {
   const usage: StorageUsage = {
     originalBytes: 3000,
     derivedBytes: 1000,
     byType: [{ type: 'images', bytes: 3000 }],
-    byProject: [{ projectId: 'p', name: 'Shoot', scope: 'project', bytes: 3000 }],
+    byProject: [
+      { projectId: 'p', name: 'Shoot', scope: 'project', bytes: 3000, derivedBytes: 1000 },
+    ],
     byUser: [
       { userId: 'u', name: 'Paola Rossi', bytes: 3000, derivedBytes: 1000 },
       { userId: 'idle', name: 'Luca Neri', bytes: 0, derivedBytes: 0 },
@@ -130,6 +132,9 @@ it('counts previews in the space used and in the usage of each user', async () =
   );
   expect(host.querySelector('.storage-tiles dd')?.textContent).toBe('4 KB');
   expect(host.textContent).toContain('admin.storageCharts.usedDetail');
+  await show('project');
+  const shoot = [...host.querySelectorAll('tr')].find((row) => row.textContent?.includes('Shoot'));
+  expect(shoot?.textContent).toContain('4 KB');
   await show('user');
   expect(host.textContent).toContain('Luca Neri');
   const paola = [...host.querySelectorAll('tr')].find((row) => row.textContent?.includes('Paola'));

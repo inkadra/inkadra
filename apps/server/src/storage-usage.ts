@@ -62,9 +62,11 @@ export function storageUsage(
           ? ('project' as const)
           : ('restricted' as const),
       bytes: 0,
+      derivedBytes: 0,
       ...(row.projectId && row.visible && row.projectColor && { color: row.projectColor }),
     };
     entry.bytes += row.bytes;
+    entry.derivedBytes = (entry.derivedBytes ?? 0) + row.derivedBytes;
     projects.set(key, entry);
     const uploader = users.get(row.userId) ?? {
       userId: row.userId,
@@ -82,7 +84,9 @@ export function storageUsage(
     derivedBytes,
     byType: types,
     byProject: [...projects.values()].sort(
-      (a, b) => b.bytes - a.bytes || (a.projectId ?? a.scope).localeCompare(b.projectId ?? b.scope),
+      (a, b) =>
+        b.bytes + (b.derivedBytes ?? 0) - a.bytes - (a.derivedBytes ?? 0) ||
+        (a.projectId ?? a.scope).localeCompare(b.projectId ?? b.scope),
     ),
     byUser: [...users.values()].sort(
       (a, b) =>

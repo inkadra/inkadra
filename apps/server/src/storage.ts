@@ -16,6 +16,7 @@ import {
   type S3ClientConfig,
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FileStore } from '@tus/file-store';
 import { S3Store } from '@tus/s3-store';
 import type { DataStore } from '@tus/utils';
@@ -50,6 +51,11 @@ export interface Storage {
     signal?: AbortSignal,
   ): Promise<{ path: string; done: () => Promise<void> }>;
   remove(keys: string[]): Promise<void>;
+  /**
+   * A short-lived URL browsers fetch the file from, straight from the bucket (#839). Only the S3
+   * driver has it, and only with S3_PUBLIC_REDIRECT: otherwise every file goes through `read`.
+   */
+  signedUrl?(key: string, ttlS: number, disposition?: string, contentType?: string): Promise<string>;
 }
 
 /** Hours before an unfinished upload is removed. */
@@ -203,9 +209,31 @@ function s3Storage(config: Config): Storage {
     return res.Body as Readable;
   };
 
+  // Signed for the address browsers reach the bucket at, which may not be the server's.
+  const publicClient = config.S3_PUBLIC_ENDPOINT
+    ? new S3Client({ ...clientConfig, endpoint: config.S3_PUBLIC_ENDPOINT })
+    : client;
+
   return {
     uploads,
     copiesToLocal: true,
+    ...(config.S3_PUBLIC_REDIRECT
+      ? {
+          signedUrl: (key: string, ttlS: number, disposition?: string, contentType?: string) => {
+            checkKey(key);
+            return getSignedUrl(
+              publicClient,
+              new GetObjectCommand({
+                Bucket: bucket,
+                Key: key,
+                ...(disposition ? { ResponseContentDisposition: disposition } : {}),
+                ...(contentType ? { ResponseContentType: contentType } : {}),
+              }),
+              { expiresIn: ttlS },
+            );
+          },
+        }
+      : {}),
     async size(key) {
       checkKey(key);
       try {

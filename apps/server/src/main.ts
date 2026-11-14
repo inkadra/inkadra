@@ -4,6 +4,7 @@ import { mkdir, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
+import IORedis from 'ioredis';
 import pino, { type Logger } from 'pino';
 import { startInlineExpirySweep } from './access-expiry.ts';
 import { disableAdminTwoFactor } from './admin-two-factor.ts';
@@ -27,6 +28,7 @@ import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
 import type { LiveContext } from './http/hls.ts';
 import type { Jobs } from './jobs.ts';
+import { acquireLease, type Lease, type LeaseRole } from './lease.ts';
 import { createMailer } from './mailer.ts';
 import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.ts';
 import type { VideoEncoder } from './media/hwaccel.ts';
@@ -129,6 +131,29 @@ async function main() {
     await backupCommand(config, log, process.argv.slice(3));
     return;
   }
+
+  // One process per role (#790, #819), taken before migrations so a second web never runs them.
+  const leases: Lease[] = [];
+  let leaseRedis: IORedis | undefined;
+  const leaseRoles: LeaseRole[] =
+    command === 'all' ? ['web', 'collab'] : command === 'web' || command === 'collab' ? [command] : [];
+  if (leaseRoles.length > 0 && config.REDIS_URL) {
+    leaseRedis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: false });
+    leaseRedis.on('error', () => undefined);
+    try {
+      for (const role of leaseRoles)
+        leases.push(
+          await acquireLease(leaseRedis, role, log, {
+            onLost: () => process.kill(process.pid, 'SIGTERM'),
+          }),
+        );
+    } catch (err) {
+      await Promise.all(leases.map((l) => l.release()));
+      leaseRedis.disconnect();
+      throw err;
+    }
+  } else if (leaseRoles.length > 0)
+    log.warn('REDIS_URL is not set: run only one inkadra process for this instance');
 
   if (command === 'migrate' || command === 'web' || command === 'all') {
     await runMigrations(config.DATABASE_URL, migrationsFolder, {
@@ -419,6 +444,14 @@ async function main() {
     closers.unshift(() => Promise.all([app.close(), ownCollab?.destroy()]));
     await app.listen({ host: config.HOST, port: config.PORT });
   }
+
+  // Last of all, once boards are stored: the next process may start.
+  const heldLeases = leaseRedis;
+  if (heldLeases)
+    closers.push(async () => {
+      await Promise.all(leases.map((l) => l.release()));
+      heldLeases.disconnect();
+    });
 
   const sampler = startSampler({
     role: command as 'web' | 'collab' | 'worker' | 'all',

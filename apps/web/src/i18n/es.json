@@ -4014,7 +4014,7 @@
       "byUser": "Uso por usuario",
       "noUser": "Sin cuenta vinculada",
       "usedDetail": "Archivos originales {{originals}} · vistas previas {{previews}}",
-      "scope": "El espacio usado y el uso por usuario incluyen vistas previas y copias reproducibles; las demás tarjetas solo cuentan los archivos originales. La base de datos y las vistas previas antiguas sin tamaño guardado no se cuentan.",
+      "scope": "El espacio usado y el uso por proyecto y por usuario incluyen vistas previas y copias reproducibles; las demás tarjetas solo cuentan los archivos originales. La base de datos y las vistas previas antiguas sin tamaño guardado no se cuentan.",
       "category": "Categoría / proyecto",
       "size": "Archivos originales",
       "share": "Porcentaje",

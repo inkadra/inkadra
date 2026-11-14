@@ -270,13 +270,21 @@ after it; they combine, in this order:
 | `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (standard image)       |
 | `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx`   |
 
-Split mode is for larger teams: you can restart or scale the parts on their own, and a busy
-worker does not slow down the web app. The proxy must send `/collab` to the `collab` container
-on port 3001: with the bundled proxies, set `INKADRA_COLLAB_UPSTREAM=collab:3001` (Caddy,
-Nginx) or add `deploy/proxy/traefik/compose.split.yaml` (Traefik).
-Run **one** `collab` container: boards are not yet shared between several collab processes
-([#790](https://github.com/inkadra/inkadra/issues/790)), and two of them would overwrite each
-other's edits. `web` and `worker` can be scaled.
+Split mode is for larger teams: you can restart the parts on their own, and a busy worker does
+not slow down the web app. The proxy must send `/collab` to the `collab` container on port 3001:
+with the bundled proxies, set `INKADRA_COLLAB_UPSTREAM=collab:3001` (Caddy, Nginx) or add
+`deploy/proxy/traefik/compose.split.yaml` (Traefik).
+
+Run **one replica per role** of `inkadra` (web) and `collab`, in either mode: collab keeps each
+open board in memory, and the web role runs migrations, keeps upload parts on its own data
+volume and live video sessions in memory, so two of either would lose edits or uploads
+([#790](https://github.com/inkadra/inkadra/issues/790),
+[#819](https://github.com/inkadra/inkadra/issues/819)). Each of these processes holds a lease
+in Valkey while it runs, and a second one with the same role refuses to start with
+"Another inkadra process with the … role is running". After a crash the lease ends by itself
+within 30 seconds; the same container restarting takes it back at once. On an orchestrator,
+update by recreating (stop the old process, then start the new one), not by a rolling update.
+Only `worker` can run as several replicas.
 
 ```sh
 INKADRA_COLLAB_UPSTREAM=collab:3001 docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/proxy/caddy/compose.yaml up -d

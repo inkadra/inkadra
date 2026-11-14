@@ -4014,7 +4014,7 @@
       "byUser": "Utilisation par utilisateur",
       "noUser": "Aucun compte associé",
       "usedDetail": "Fichiers originaux {{originals}} · aperçus {{previews}}",
-      "scope": "L’espace utilisé et l’utilisation par utilisateur comprennent les aperçus et les copies lisibles ; les autres cartes ne comptent que les fichiers originaux. La base de données et les anciens aperçus sans taille enregistrée ne sont pas comptés.",
+      "scope": "L’espace utilisé et l’utilisation par projet et par utilisateur comprennent les aperçus et les copies lisibles ; les autres cartes ne comptent que les fichiers originaux. La base de données et les anciens aperçus sans taille enregistrée ne sont pas comptés.",
       "category": "Catégorie / projet",
       "size": "Fichiers originaux",
       "share": "Pourcentage",

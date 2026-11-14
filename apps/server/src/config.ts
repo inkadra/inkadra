@@ -101,6 +101,14 @@ const Env = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   /**
+   * Browsers fetch originals, playable copies and video segments straight from the bucket, through
+   * short-lived signed URLs, instead of through the server (#839). Off by default: the bucket must
+   * be reachable from browsers and allow the instance's origin (CORS).
+   */
+  S3_PUBLIC_REDIRECT: bool('false'),
+  /** The bucket's address as browsers reach it, when it differs from S3_ENDPOINT. */
+  S3_PUBLIC_ENDPOINT: z.preprocess((v) => (v === '' ? undefined : v), z.url().optional()),
+  /**
    * Decode HEIC/HEIF photos (iPhone) to make thumbnails. HEVC is covered by patents in some
    * countries: set to `false` to store HEIC files without previews.
    */
