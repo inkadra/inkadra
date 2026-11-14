@@ -204,7 +204,8 @@ it('navigates the filtered gallery, shows frame reuse and respects readOnly', as
   await click(chip(host, 'night'));
   const opener = host.querySelector<HTMLButtonElement>('button.moodboard__card');
   await click(opener);
-  const dialog = () => host.querySelector('[role="dialog"]');
+  // A closing viewer leaves an aria-hidden copy while it fades out.
+  const dialog = () => host.querySelector('[role="dialog"]:not([aria-hidden])');
   expect(dialog()?.textContent).toContain('1 / 2');
   expect(dialog()?.textContent).toContain('4C');
   expect(dialog()?.querySelector('[data-tags-readonly="true"]')).not.toBeNull();
