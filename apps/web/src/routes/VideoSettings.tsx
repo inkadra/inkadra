@@ -47,20 +47,28 @@ export function copiesMbPerMinute(
   return ladderFor(rungs, side).reduce((sum, r) => sum + mbPerMinute(quality, r, fast, custom), 0);
 }
 
-/** Megabytes the copies of the whole library would take with these choices. */
+/**
+ * Megabytes the copies of the whole library would take with these choices: `rungs` are kept
+ * for every video, `liveRungs` (set to live only) also for the videos this server cannot
+ * encode live.
+ */
 export function libraryMb(
   view: VideoSettingsView,
   quality: VideoQuality,
   rungs: VideoRung[],
   custom?: Custom,
+  liveRungs: VideoRung[] = [],
 ) {
+  const stored = [...rungs, ...liveRungs];
+  const mb = (on: VideoRung[], side: number, minutes: number, fast: number) =>
+    (minutes - fast) * copiesMbPerMinute(quality, on, side, false, custom) +
+    fast * copiesMbPerMinute(quality, on, side, true, custom);
   return view.library.reduce((sum, row) => {
     const side = Number(row.side);
-    const slow = row.minutes - row.fastMinutes;
     return (
       sum +
-      slow * copiesMbPerMinute(quality, rungs, side, false, custom) +
-      row.fastMinutes * copiesMbPerMinute(quality, rungs, side, true, custom)
+      mb(rungs, side, row.minutes - row.noLiveMinutes, row.fastMinutes - row.noLiveFastMinutes) +
+      mb(stored, side, row.noLiveMinutes, row.noLiveFastMinutes)
     );
   }, 0);
 }
@@ -150,7 +158,9 @@ function ExistingVideos({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const chosen = VIDEO_RUNGS.filter((r) => view.settings.rungs[r] === 'stored');
-  const after = libraryMb(view, view.settings.quality, chosen, view.settings.custom) * 1e6;
+  const liveOnly = VIDEO_RUNGS.filter((r) => view.settings.rungs[r] === 'live');
+  const after =
+    libraryMb(view, view.settings.quality, chosen, view.settings.custom, liveOnly) * 1e6;
   const growth = Math.max(0, after - view.copiesBytes);
   const room = view.freeBytes === null || growth < view.freeBytes;
   const hours = Math.max(1, Math.round(regenerationHours(view, chosen)));
@@ -834,12 +844,20 @@ export function VideoSettings() {
   const size = (mb: number) =>
     mb >= 1000 ? `${number(mb / 1000, 1)} GB` : `${number(Math.round(mb))} MB`;
   const { settings, locked, encoder } = view;
-  // Space counts only the rungs kept on disk: live ones take none.
-  const chosen = VIDEO_RUNGS.filter((r) => settings.rungs[r] === 'stored');
+  // Space counts the rungs kept on disk, and those set to live only for videos this server
+  // cannot encode live (`liveOnly`, kept for them all the same).
+  const liveOnly = VIDEO_RUNGS.filter((r) => settings.rungs[r] === 'live');
+  const chosen = VIDEO_RUNGS.filter((r) => settings.rungs[r] !== 'off');
   const custom = settings.custom;
   const customised = Object.keys(custom ?? {}).length > 0;
   const perMinute = copiesMbPerMinute(settings.quality, chosen, 2160, false, custom);
-  const all = libraryMb(view, settings.quality, chosen, custom);
+  const all = libraryMb(
+    view,
+    settings.quality,
+    VIDEO_RUNGS.filter((r) => settings.rungs[r] === 'stored'),
+    custom,
+    liveOnly,
+  );
   const videos = view.library.reduce((sum, r) => sum + r.videos, 0);
   const minutes = Math.round(view.library.reduce((sum, r) => sum + r.minutes, 0));
   const hardware = encoder !== null && encoder.backend !== 'software';
@@ -1031,6 +1049,9 @@ export function VideoSettings() {
               </dd>
             </div>
           </dl>
+        {liveOnly.length > 0 && (
+          <p className="settings-row__help">{t('videoSettings.totals.liveNote')}</p>
+        )}
         </div>
       </Card>
       <p className="video-note">{t('videoSettings.rungs.note')}</p>

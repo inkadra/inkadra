@@ -409,9 +409,9 @@ export function issueBody(r, files) {
 function github(env) {
   const base = `https://api.github.com/repos/${env.REPO}`;
   // `body` is an object to send as JSON, or an already-encoded stream of JSON.
-  const call = async (method, path, body) => {
+  const call = async (method, path, body, root = base) => {
     const stream = body instanceof ReadableStream;
-    const res = await fetch(base + path, {
+    const res = await fetch(root + path, {
       method,
       // Workers has no 'error' mode. A redirect is not ok below, so it is never followed.
       redirect: 'manual',
@@ -447,10 +447,18 @@ function github(env) {
         throw new HttpError(503, 'repository unavailable', {}, false);
       }
     },
-    /** The report's own issue among the newest: the marker closes the body, and text can't forge it. */
+    /**
+     * The report's own issue: the marker closes the body, and text can't forge it. Found by search,
+     * whatever its labels and age; the newest issues cover the minutes before GitHub indexes a new one.
+     */
     async findIssue(requestId) {
-      const issues = await call('GET', '/issues?labels=from-app&state=all&sort=created&direction=desc&per_page=100');
-      return issues?.find?.((issue) => issue.body?.endsWith(marker(requestId))) ?? null;
+      const own = (issue) => issue.body?.endsWith(marker(requestId));
+      const q = encodeURIComponent(`repo:${env.REPO} in:body "inkadra-feedback: ${requestId}"`);
+      const found = await call('GET', `/search/issues?q=${q}&per_page=10`, undefined, 'https://api.github.com');
+      const hit = found?.items?.find?.(own);
+      if (hit) return hit;
+      const issues = await call('GET', '/issues?state=all&sort=created&direction=desc&per_page=100');
+      return issues?.find?.(own) ?? null;
     },
     /** An orphan branch holding only report files, so it never mixes with the code. */
     async ensureAssetsBranch() {

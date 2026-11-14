@@ -59,6 +59,19 @@ const STALE_PROCESS_MS = 10 * 60_000;
 export const processFolder = () => `${hostname()}-${process.pid}`;
 
 type AssetRow = typeof asset.$inferSelect;
+/** The columns the live rules read: enough for the Video page to apply them without whole rows. */
+export type LiveRow = Pick<
+  AssetRow,
+  | 'kind'
+  | 'status'
+  | 'durationMs'
+  | 'width'
+  | 'height'
+  | 'videoCodec'
+  | 'audioCodec'
+  | 'frameRate'
+  | 'mediaInfo'
+>;
 
 /** The HLS media playlist of a live rung: every segment known from the duration alone. */
 export function livePlaylist(durationMs: number, rung: VideoRung) {
@@ -81,7 +94,7 @@ export function livePlaylist(durationMs: number, rung: VideoRung) {
 }
 
 /** What a video row tells about its source, as the planners read it. */
-export function rowInfo(row: AssetRow): VideoInfo {
+export function rowInfo(row: LiveRow): VideoInfo {
   const media = row.mediaInfo;
   return {
     durationMs: row.durationMs,
@@ -103,7 +116,7 @@ export function rowInfo(row: AssetRow): VideoInfo {
  * duration that the GPU decodes and encodes on its own (liveDecodable). Measured on an Intel
  * N100: ProRes UHD decoded on the CPU 0.97×, 4K HDR tone mapped on the CPU 0.59×.
  */
-export function liveEligible(row: AssetRow, encoder: VideoEncoder | undefined) {
+export function liveEligible(row: LiveRow, encoder: VideoEncoder | undefined) {
   if (row.kind !== 'video' || row.status !== 'ready' || !row.durationMs) return false;
   const info = rowInfo(row);
   if (!(shortSide(info) ?? 0)) return false;

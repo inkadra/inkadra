@@ -36,6 +36,7 @@ import {
 import { downloadPlanSheet, planSheetEnv, planSheetRequest } from './PlanExport.tsx';
 import { setupName } from './PlanKit.tsx';
 import { usePlanSurface } from './PlanSurface.tsx';
+import { useModalInert } from './useModalInert.ts';
 import './plan.css';
 import './outputs.css';
 
@@ -156,13 +157,9 @@ export function PlanViewer({
   });
   const tabs = family?.length ? family : [plan];
   const place = store ? linkedLocation(base ?? plan, store.getSnapshot().byId)?.name : undefined;
-  // The view takes the focus, for its keys, and gives it back on close.
+  // The view is a modal: the app behind is inert, it takes the focus for its keys.
   const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null;
-    root.current?.focus({ preventScroll: true });
-    return () => before?.focus?.({ preventScroll: true });
-  }, []);
+  useModalInert(root);
   const down = (e: ReactPointerEvent<HTMLDivElement>) => {
     // The zoom bar sits on the stage: its buttons keep their clicks.
     if ((e.target as Element).closest('.plan-view__bar')) return;

@@ -6590,7 +6590,8 @@
       "hour": "Une heure de vidéo",
       "library_one": "Ta vidéo ({{duration}})",
       "library_other": "Tes {{count}} vidéos ({{duration}})",
-      "duration": "{{hours}} h {{minutes}} min"
+      "duration": "{{hours}} h {{minutes}} min",
+      "liveNote": "Les résolutions réglées sur « À la volée seulement » sont comptées aussi, pour les vidéos que ce serveur ne sait pas encoder à la volée (ProRes, HDR, pivotées, entrelacées) : il les garde sur disque."
     },
     "examples": {
       "title": "Une minute d’original, et ses copies",

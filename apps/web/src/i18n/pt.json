@@ -6590,7 +6590,8 @@
       "hour": "Uma hora de vídeo",
       "library_one": "O teu vídeo ({{duration}})",
       "library_other": "Os teus {{count}} vídeos ({{duration}})",
-      "duration": "{{hours}} h {{minutes}} min"
+      "duration": "{{hours}} h {{minutes}} min",
+      "liveNote": "As resoluções em «Só ao vivo» também são contadas, para os vídeos que este servidor não consegue codificar ao vivo (ProRes, HDR, rodados, entrelaçados): ele guarda-as em disco."
     },
     "examples": {
       "title": "Um minuto de original e as suas cópias",

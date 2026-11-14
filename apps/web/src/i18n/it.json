@@ -6590,7 +6590,8 @@
       "hour": "Un'ora di video",
       "library_one": "Il tuo video ({{duration}})",
       "library_other": "I tuoi {{count}} video ({{duration}})",
-      "duration": "{{hours}} h {{minutes}} min"
+      "duration": "{{hours}} h {{minutes}} min",
+      "liveNote": "Contano anche le risoluzioni su «Solo al volo», per i video che questo server non sa codificare al volo (ProRes, HDR, ruotati, interlacciati): li tiene su disco."
     },
     "examples": {
       "title": "Un minuto di originale, e le sue copie",
