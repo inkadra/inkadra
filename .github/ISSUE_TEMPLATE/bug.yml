@@ -20,7 +20,7 @@ body:
     id: version
     attributes:
       label: Inkadra version
-      description: Shown on the sign-in screen, or the image tag you run.
+      description: Shown at the bottom of Settings, or the image tag you run.
     validations:
       required: true
   - type: textarea
