@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { isRouteErrorResponse, useRouteError } from 'react-router';
 import { FeedbackLauncher } from '../feedback/Feedback.tsx';
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
+import { isChunkError } from '../lib/chunks.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
 import './error.css';
 
@@ -61,6 +62,8 @@ export function ErrorPage() {
   }, [error, id]);
   const details = useMemo(() => errorDetails(error, id), [error, id]);
   const reporting = !!useFeedbackStatus()?.enabled;
+  // A part of the app missing after a deploy is an update, not a bug (#832).
+  const update = isChunkError(error);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(details);
@@ -73,9 +76,11 @@ export function ErrorPage() {
     <div className="app-error">
       <div className="ink-empty">
         <Icon name="warning" />
-        <h1 className="app-error__title">{t('appError.title')}</h1>
+        <h1 className="app-error__title">
+          {t(update ? 'appError.updateTitle' : 'appError.title')}
+        </h1>
         <p className="app-error__msg" role="alert">
-          {t('appError.body')}
+          {t(update ? 'appError.updateBody' : 'appError.body')}
         </p>
         <p className="app-error__hint">{t('appError.hint')}</p>
         <div className="ink-empty__actions">
@@ -106,6 +111,30 @@ export function ErrorPage() {
       <NoSessionProvider>
         <FeedbackLauncher />
       </NoSessionProvider>
+    </div>
+  );
+}
+
+/**
+ * The first load could not reach the server (#821): a deploy, a restart, the network. The
+ * session tries again by itself; Retry tries at once.
+ */
+export function ServerUnreachable({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="app-error">
+      <div className="ink-empty">
+        <Icon name="warning" />
+        <h1 className="app-error__title">{t('appError.unreachableTitle')}</h1>
+        <p className="app-error__msg" role="alert">
+          {t('appError.unreachableBody')}
+        </p>
+        <div className="ink-empty__actions">
+          <Button variant="primary" onClick={onRetry}>
+            {t('appError.retry')}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

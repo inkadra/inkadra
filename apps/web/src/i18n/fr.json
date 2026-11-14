@@ -28,6 +28,7 @@
     "passwordHint": "Au moins 10 caractères",
     "createAdmin": "Créer le compte et se connecter",
     "signOut": "Se déconnecter",
+    "signOutFailed": "Impossible de se déconnecter. Vérifiez la connexion et réessayez.",
     "errors": {
       "reauthRequired": "Reconnectez-vous pour continuer.",
       "invalid": "E-mail ou mot de passe incorrect.",
@@ -218,6 +219,10 @@
     "title": "Une erreur s’est produite",
     "body": "La page a cessé de fonctionner. Les modifications déjà synchronisées sont en sécurité ; rechargez pour vous reconnecter.",
     "retry": "Réessayer",
+    "unreachableTitle": "Le serveur ne répond pas",
+    "unreachableBody": "Inkadra réessaiera tout seul. Vérifiez la connexion, ou patientez un instant si le serveur redémarre.",
+    "updateTitle": "Inkadra a été mis à jour",
+    "updateBody": "Rechargez la page pour ouvrir la nouvelle version.",
     "copy": "Copier les détails",
     "copied": "Détails copiés",
     "id": "ID de l’erreur {{id}}",

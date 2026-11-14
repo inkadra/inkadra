@@ -28,6 +28,7 @@
     "passwordHint": "Al menos 10 caracteres",
     "createAdmin": "Crear cuenta y entrar",
     "signOut": "Cerrar sesión",
+    "signOutFailed": "No se pudo cerrar la sesión. Comprueba la conexión e inténtalo de nuevo.",
     "errors": {
       "reauthRequired": "Inicia sesión de nuevo para continuar.",
       "invalid": "Correo o contraseña incorrectos.",
@@ -218,6 +219,10 @@
     "title": "Algo salió mal",
     "body": "La página dejó de funcionar. Los cambios ya sincronizados están a salvo; recarga para volver a conectarte.",
     "retry": "Reintentar",
+    "unreachableTitle": "No se puede conectar con el servidor",
+    "unreachableBody": "Inkadra lo volverá a intentar sola. Comprueba la conexión o espera un momento si el servidor se está reiniciando.",
+    "updateTitle": "Inkadra se ha actualizado",
+    "updateBody": "Recarga la página para abrir la nueva versión.",
     "copy": "Copiar detalles",
     "copied": "Detalles copiados",
     "id": "ID de error {{id}}",

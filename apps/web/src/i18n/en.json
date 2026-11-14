@@ -28,6 +28,7 @@
     "passwordHint": "At least 10 characters",
     "createAdmin": "Create account and sign in",
     "signOut": "Sign out",
+    "signOutFailed": "Could not sign out. Check the connection and try again.",
     "errors": {
       "reauthRequired": "Sign in again to continue.",
       "invalid": "Wrong email or password.",
@@ -218,6 +219,10 @@
     "title": "Something went wrong",
     "body": "The page stopped working. Changes already synced are safe; reload to reconnect.",
     "retry": "Try again",
+    "unreachableTitle": "Can’t reach the server",
+    "unreachableBody": "Inkadra will try again by itself. Check the connection, or wait a moment if the server is restarting.",
+    "updateTitle": "Inkadra has been updated",
+    "updateBody": "Reload the page to open the new version.",
     "copy": "Copy details",
     "copied": "Details copied",
     "id": "Error ID {{id}}",
