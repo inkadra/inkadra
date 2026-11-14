@@ -149,6 +149,11 @@ deployment files to the release. `X.Y.Z-rc.N` makes a pre-release, which moves n
 nor `X.Y`. Every push to `main` publishes the `edge` tag. See
 [decision 0010](docs/decisions/0010-images-and-releases.md).
 
+After a release, freeze a board written by it (#849): copy
+`packages/doc-schema/scripts/release-fixture.ts` into a checkout of the tag, run it there with
+`--tag vX.Y.Z` and commit the two files it writes to `packages/doc-schema/src/fixtures/`.
+`release-fixtures.test.ts` then checks that every later build reads that board as it was written.
+
 ## CI
 
 Workflows pin third-party actions to a commit (`uses: owner/action@<sha> # vX.Y.Z`) and
@@ -156,3 +161,9 @@ download tools with a checked SHA-256; Dependabot updates both. A job gets only 
 permissions it needs, declared on the job. `actionlint` and `zizmor` check every change to
 `.github/workflows`. `scripts/test-proxy.sh <caddy|traefik|nginx> [all|split]` runs the reverse
 proxy checks locally against a built image (`INKADRA_TAG=…`).
+
+CI measures the line and branch coverage of every workspace and fails when one drops under its
+floor in `scripts/coverage-floors.json` (#852); raise a floor when coverage grows.
+`e2e/tests/axe.spec.ts` runs axe-core on the key pages in both themes and fails on serious and
+critical violations (#853). The server suites against S3 run on RustFS in CI (#844); locally,
+set `S3_TEST_ENDPOINT`, `S3_TEST_ACCESS_KEY_ID` and `S3_TEST_SECRET_ACCESS_KEY`.

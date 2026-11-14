@@ -16,6 +16,8 @@
         "TZ",
         "CI",
         "INKADRA_TEST_MEDIA_TOOLS",
+        "INKADRA_TEST_S3",
+        "S3_TEST_*",
         "COLLAB_SIM_DURATION_MS"
       ]
     },

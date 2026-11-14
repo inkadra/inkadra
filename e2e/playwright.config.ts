@@ -118,6 +118,14 @@ export default defineConfig({
       },
     },
     {
+      // #850: a managed server, its limits set by the environment. CI runs it on its own
+      // database with STORAGE_LIMIT and STORAGE_LIMIT_PER_USER set.
+      name: 'managed-limits',
+      testMatch: 'storage-limits-locked.spec.ts',
+      dependencies: ['first-run'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    {
       // Load tests, run on their own with `pnpm test:perf`.
       name: 'perf',
       testDir: './tests/perf',

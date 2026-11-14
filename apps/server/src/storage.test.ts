@@ -51,6 +51,19 @@ function contract(name: string, make: () => Storage) {
       await storage.remove([small, large]);
     });
 
+    it('takes a resumable upload and serves it at its key (#844)', async () => {
+      const id = `originals/${randomUUID()}`;
+      await storage.uploads.create(new Upload({ id, size: 11, offset: 0 }));
+      const body = Readable.from([Buffer.from('hello world')]);
+      expect(await storage.uploads.write(body, id, 0)).toBe(11);
+      expect(await storage.size(id)).toBe(11);
+      expect((await readAll(await storage.read(id, { start: 6, end: 10 }))).toString()).toBe(
+        'world',
+      );
+      await storage.remove([id]);
+      expect(await storage.size(id)).toBeNull();
+    });
+
     it('refuses keys that could escape the storage root', async () => {
       await expect(
         storage.write('../etc/passwd', Buffer.from('x'), 'text/plain'),

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Storage limits set by the server environment (decision 0081): run with STORAGE_LIMIT and
-// STORAGE_LIMIT_PER_USER set, after first-run.spec.ts. Skipped otherwise, as in CI.
+// STORAGE_LIMIT_PER_USER set, after first-run.spec.ts: the managed-limits project in CI (#850).
+// Skipped otherwise.
 import { expect, test } from '@playwright/test';
 import { signIn } from './perf/seed.ts';
 

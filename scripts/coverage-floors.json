@@ -1,0 +1,10 @@
+{
+  "apps/server": { "lines": 0, "branches": 0 },
+  "apps/web": { "lines": 0, "branches": 0 },
+  "apps/clipper": { "lines": 0, "branches": 0 },
+  "packages/canvas-core": { "lines": 0, "branches": 0 },
+  "packages/doc-schema": { "lines": 0, "branches": 0 },
+  "packages/print": { "lines": 0, "branches": 0 },
+  "packages/shared": { "lines": 0, "branches": 0 },
+  "packages/ui": { "lines": 0, "branches": 0 }
+}

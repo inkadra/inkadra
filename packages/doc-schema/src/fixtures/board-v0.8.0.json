@@ -1,0 +1,1056 @@
+{
+  "tag": "v0.8.0",
+  "schemaVersion": 15,
+  "elements": {
+    "note_first_fixture": {
+      "id": "note_first_fixture",
+      "x": 300,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a1",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 11"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "note",
+      "color": "color 10"
+    },
+    "note_last_fixture": {
+      "id": "note_last_fixture",
+      "x": 600,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a2",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 21"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "note",
+      "color": "color 20"
+    },
+    "image_first_fixture": {
+      "id": "image_first_fixture",
+      "x": 900,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a3",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 31"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "image",
+      "source": {
+        "kind": "uploaded-video",
+        "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000030",
+        "timeSeconds": 120
+      },
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000030",
+      "caption": "caption 30",
+      "rotation": 120
+    },
+    "image_last_fixture": {
+      "id": "image_last_fixture",
+      "x": 1200,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a4",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 41"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "image",
+      "source": {
+        "kind": "link-thumbnail",
+        "url": "https://example.com/ref",
+        "timeSeconds": 120
+      },
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000040",
+      "caption": "caption 40",
+      "rotation": 120
+    },
+    "link_first_fixture": {
+      "id": "link_first_fixture",
+      "x": 1500,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a5",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 51"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "link",
+      "url": "https://example.com/ref",
+      "title": "title 50",
+      "description": "description 50",
+      "imageAssetId": "0193f0a4-6c1e-7b9a-9c51-000000000050"
+    },
+    "link_last_fixture": {
+      "id": "link_last_fixture",
+      "x": 1800,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a6",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 61"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "link",
+      "url": "https://example.com/ref",
+      "title": "title 60",
+      "description": "description 60",
+      "imageAssetId": "0193f0a4-6c1e-7b9a-9c51-000000000060"
+    },
+    "file_first_fixture": {
+      "id": "file_first_fixture",
+      "x": 2100,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a7",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 71"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "file",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000070",
+      "caption": "caption 70"
+    },
+    "file_last_fixture": {
+      "id": "file_last_fixture",
+      "x": 2400,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a8",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 81"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "file",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000080",
+      "caption": "caption 80"
+    },
+    "todo_first_fixture": {
+      "id": "todo_first_fixture",
+      "x": 2700,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a9",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 91"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "todo",
+      "title": "title 90",
+      "items": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000091",
+          "text": "text 91",
+          "done": true,
+          "assigneeId": "0193f0a4-6c1e-7b9a-9c51-000000000091",
+          "dueDate": "2026-03-14"
+        }
+      ],
+      "list": "wardrobe",
+      "sceneId": "0193f0a4-6c1e-7b9a-9c51-000000000090"
+    },
+    "todo_last_fixture": {
+      "id": "todo_last_fixture",
+      "x": 3000,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a10",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 101"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "todo",
+      "title": "title 100",
+      "items": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000101",
+          "text": "text 101",
+          "done": false,
+          "assigneeId": "0193f0a4-6c1e-7b9a-9c51-000000000101",
+          "dueDate": "2026-03-14"
+        }
+      ],
+      "list": "equipment",
+      "sceneId": "0193f0a4-6c1e-7b9a-9c51-000000000100"
+    },
+    "color_first_fixture": {
+      "id": "color_first_fixture",
+      "x": 3300,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a11",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 111"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "color",
+      "hex": "#C9A36A",
+      "label": "label 110"
+    },
+    "color_last_fixture": {
+      "id": "color_last_fixture",
+      "x": 3600,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a12",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 121"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "color",
+      "hex": "#C9A36A",
+      "label": "label 120"
+    },
+    "column_first_fixture": {
+      "id": "column_first_fixture",
+      "x": 3900,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a13",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 131"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "column",
+      "title": "title 130",
+      "collapsed": true,
+      "color": "blue"
+    },
+    "column_last_fixture": {
+      "id": "column_last_fixture",
+      "x": 4200,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a14",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 141"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "column",
+      "title": "title 140",
+      "collapsed": false,
+      "color": "green"
+    },
+    "board_first_fixture": {
+      "id": "board_first_fixture",
+      "x": 4500,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a15",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 151"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "board",
+      "boardId": "0193f0a4-6c1e-7b9a-9c51-000000000150"
+    },
+    "board_last_fixture": {
+      "id": "board_last_fixture",
+      "x": 4800,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a16",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 161"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "board",
+      "boardId": "0193f0a4-6c1e-7b9a-9c51-000000000160"
+    },
+    "scene_first_fixture": {
+      "id": "scene_first_fixture",
+      "x": 5100,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a17",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 171"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "scene",
+      "number": "number 170",
+      "title": "title 170",
+      "setting": "int",
+      "time": "day",
+      "location": "location 170",
+      "synopsis": "synopsis 170",
+      "collapsed": true
+    },
+    "scene_last_fixture": {
+      "id": "scene_last_fixture",
+      "x": 5400,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a18",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 181"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "scene",
+      "number": "number 180",
+      "title": "title 180",
+      "setting": "int-ext",
+      "time": "dusk",
+      "location": "location 180",
+      "synopsis": "synopsis 180",
+      "collapsed": false
+    },
+    "frame_first_fixture": {
+      "id": "frame_first_fixture",
+      "x": 5700,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a19",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 191"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "frame",
+      "source": {
+        "kind": "uploaded-video",
+        "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000190",
+        "timeSeconds": 120
+      },
+      "label": "label 190",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000190",
+      "aspect": "2.39",
+      "action": "action 190",
+      "shot": "shot 190",
+      "angle": "angle 190",
+      "movement": "movement 190",
+      "lens": "lens 190",
+      "durationMs": 120,
+      "audio": "audio 190",
+      "dialogue": "dialogue 190",
+      "notes": "notes 190",
+      "location": "location 190",
+      "cast": [
+        "cast 191"
+      ],
+      "status": "draft",
+      "approved": true,
+      "strokes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000191",
+          "tool": "pencil",
+          "color": "#C9A36A",
+          "width": 120,
+          "opacity": 1,
+          "points": [
+            120,
+            120
+          ]
+        }
+      ],
+      "shapes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000190",
+          "kind": "rect",
+          "color": "#C9A36A",
+          "width": 120,
+          "x0": 120,
+          "y0": 120,
+          "x1": 120,
+          "y1": 120,
+          "text": "text 190"
+        }
+      ],
+      "referenceOpacity": 1
+    },
+    "frame_last_fixture": {
+      "id": "frame_last_fixture",
+      "x": 6000,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a20",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 201"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "frame",
+      "source": {
+        "kind": "link-thumbnail",
+        "url": "https://example.com/ref",
+        "timeSeconds": 120
+      },
+      "label": "label 200",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000200",
+      "aspect": "9:16",
+      "action": "action 200",
+      "shot": "shot 200",
+      "angle": "angle 200",
+      "movement": "movement 200",
+      "lens": "lens 200",
+      "durationMs": 120,
+      "audio": "audio 200",
+      "dialogue": "dialogue 200",
+      "notes": "notes 200",
+      "location": "location 200",
+      "cast": [
+        "cast 201"
+      ],
+      "status": "retake",
+      "approved": false,
+      "strokes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000201",
+          "tool": "marker",
+          "color": "#C9A36A",
+          "width": 120,
+          "opacity": 1,
+          "points": [
+            120,
+            120
+          ]
+        }
+      ],
+      "shapes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000200",
+          "kind": "text",
+          "color": "#C9A36A",
+          "width": 120,
+          "x0": 120,
+          "y0": 120,
+          "x1": 120,
+          "y1": 120,
+          "text": "text 200"
+        }
+      ],
+      "referenceOpacity": 1
+    },
+    "arrow_first_fixture": {
+      "id": "arrow_first_fixture",
+      "x": 6300,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a21",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 211"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "arrow",
+      "from": {
+        "elementId": "0193f0a4-6c1e-7b9a-9c51-000000000210",
+        "x": 120,
+        "y": 120
+      },
+      "to": {
+        "elementId": "0193f0a4-6c1e-7b9a-9c51-000000000210",
+        "x": 120,
+        "y": 120
+      },
+      "label": "label 210",
+      "line": "solid",
+      "heads": "end",
+      "path": "straight"
+    },
+    "arrow_last_fixture": {
+      "id": "arrow_last_fixture",
+      "x": 6600,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a22",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 221"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "arrow",
+      "from": {
+        "elementId": "0193f0a4-6c1e-7b9a-9c51-000000000220",
+        "x": 120,
+        "y": 120
+      },
+      "to": {
+        "elementId": "0193f0a4-6c1e-7b9a-9c51-000000000220",
+        "x": 120,
+        "y": 120
+      },
+      "label": "label 220",
+      "line": "dashed",
+      "heads": "none",
+      "path": "curved"
+    },
+    "character_first_fixture": {
+      "id": "character_first_fixture",
+      "x": 6900,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a23",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 231"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "character",
+      "name": "name 230",
+      "role": "role 230",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000230",
+      "age": "age 230",
+      "description": "description 230",
+      "actor": "actor 230",
+      "contact": "contact 230",
+      "notes": "notes 230",
+      "scenes": [
+        "scene 231"
+      ]
+    },
+    "character_last_fixture": {
+      "id": "character_last_fixture",
+      "x": 7200,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a24",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 241"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "character",
+      "name": "name 240",
+      "role": "role 240",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000240",
+      "age": "age 240",
+      "description": "description 240",
+      "actor": "actor 240",
+      "contact": "contact 240",
+      "notes": "notes 240",
+      "scenes": [
+        "scene 241"
+      ]
+    },
+    "location_first_fixture": {
+      "id": "location_first_fixture",
+      "x": 7500,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a25",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 251"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "location",
+      "name": "name 250",
+      "setting": "int",
+      "address": "address 250",
+      "mapUrl": "https://example.com/ref",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000250",
+      "light": "light 250",
+      "availability": "availability 250",
+      "contact": "contact 250",
+      "notes": "notes 250",
+      "scenes": [
+        "scene 251"
+      ]
+    },
+    "location_last_fixture": {
+      "id": "location_last_fixture",
+      "x": 7800,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a26",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 261"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "location",
+      "name": "name 260",
+      "setting": "int-ext",
+      "address": "address 260",
+      "mapUrl": "https://example.com/ref",
+      "assetId": "0193f0a4-6c1e-7b9a-9c51-000000000260",
+      "light": "light 260",
+      "availability": "availability 260",
+      "contact": "contact 260",
+      "notes": "notes 260",
+      "scenes": [
+        "scene 261"
+      ]
+    },
+    "section_first_fixture": {
+      "id": "section_first_fixture",
+      "x": 8100,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a27",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 271"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "section",
+      "title": "title 270",
+      "moveCards": true
+    },
+    "section_last_fixture": {
+      "id": "section_last_fixture",
+      "x": 8400,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a28",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 281"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "section",
+      "title": "title 280",
+      "moveCards": false
+    },
+    "table_first_fixture": {
+      "id": "table_first_fixture",
+      "x": 8700,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a29",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 291"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "table",
+      "columns": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000291",
+          "width": 120
+        }
+      ],
+      "rows": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000291",
+          "cells": {
+            "0193f0a4-6c1e-7b9a-9c51-000000000291": "cells 291"
+          }
+        }
+      ],
+      "header": true,
+      "color": "blue"
+    },
+    "table_last_fixture": {
+      "id": "table_last_fixture",
+      "x": 9000,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a30",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 301"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "table",
+      "columns": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000301",
+          "width": 120
+        }
+      ],
+      "rows": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000301",
+          "cells": {
+            "0193f0a4-6c1e-7b9a-9c51-000000000301": "cells 301"
+          }
+        }
+      ],
+      "header": false,
+      "color": "green"
+    },
+    "map_first_fixture": {
+      "id": "map_first_fixture",
+      "x": 9300,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a31",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 311"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "map",
+      "name": "name 310",
+      "address": "address 310",
+      "url": "https://example.com/ref",
+      "lat": 1,
+      "lon": 120,
+      "zoom": 1,
+      "imageAssetId": "0193f0a4-6c1e-7b9a-9c51-000000000310"
+    },
+    "map_last_fixture": {
+      "id": "map_last_fixture",
+      "x": 9600,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a32",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 321"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "map",
+      "name": "name 320",
+      "address": "address 320",
+      "url": "https://example.com/ref",
+      "lat": 1,
+      "lon": 120,
+      "zoom": 1,
+      "imageAssetId": "0193f0a4-6c1e-7b9a-9c51-000000000320"
+    },
+    "plan_first_fixture": {
+      "id": "plan_first_fixture",
+      "x": 9900,
+      "y": 0,
+      "w": 240,
+      "h": 120,
+      "z": "a33",
+      "parent": null,
+      "locked": true,
+      "tags": [
+        "tag 331"
+      ],
+      "guestHidden": true,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "plan",
+      "title": "title 330",
+      "strokes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000330",
+          "tool": "pencil",
+          "color": "#C9A36A",
+          "width": 120,
+          "opacity": 1,
+          "points": [
+            120,
+            120
+          ],
+          "layer": "set",
+          "group": "2026-03-14"
+        }
+      ],
+      "shapes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000330",
+          "kind": "rect",
+          "color": "#C9A36A",
+          "width": 120,
+          "x0": 120,
+          "y0": 120,
+          "x1": 120,
+          "y1": 120,
+          "text": "text 330",
+          "rotation": 120,
+          "dashed": true,
+          "from": "2026-03-14",
+          "to": "2026-03-14",
+          "layer": "set",
+          "group": "2026-03-14"
+        }
+      ],
+      "icons": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000330",
+          "kind": "fresnel",
+          "color": "#C9A36A",
+          "x": 120,
+          "y": 120,
+          "rotation": 120,
+          "label": "label 330",
+          "size": "S",
+          "w": 120,
+          "h": 120,
+          "lens": 120,
+          "showLens": true,
+          "reach": 120,
+          "power": "power 330",
+          "beam": 120,
+          "intensity": 1,
+          "steps": [
+            {
+              "x": 120,
+              "y": 120,
+              "rotation": 120,
+              "note": "note 331",
+              "bend": 120
+            }
+          ],
+          "note": "note 330",
+          "dashed": true,
+          "layer": "set",
+          "group": "2026-03-14"
+        }
+      ],
+      "sceneIds": [
+        "0193f0a4-6c1e-7b9a-9c51-000000000331"
+      ],
+      "variantOf": "2026-03-14",
+      "variant": "variant 330",
+      "hiddenLayers": [
+        "set"
+      ],
+      "lockedLayers": [
+        "set"
+      ],
+      "scale": 120,
+      "grid": "1",
+      "rulers": true,
+      "sensor": "s35",
+      "presentation": true
+    },
+    "plan_last_fixture": {
+      "id": "plan_last_fixture",
+      "x": 10200,
+      "y": 400,
+      "w": 240,
+      "h": 120,
+      "z": "a34",
+      "parent": null,
+      "locked": false,
+      "tags": [
+        "tag 341"
+      ],
+      "guestHidden": false,
+      "createdBy": null,
+      "createdAt": 1760000000000,
+      "type": "plan",
+      "title": "title 340",
+      "strokes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000340",
+          "tool": "marker",
+          "color": "#C9A36A",
+          "width": 120,
+          "opacity": 1,
+          "points": [
+            120,
+            120
+          ],
+          "layer": "notes",
+          "group": "2026-03-14"
+        }
+      ],
+      "shapes": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000340",
+          "kind": "zone",
+          "color": "#C9A36A",
+          "width": 120,
+          "x0": 120,
+          "y0": 120,
+          "x1": 120,
+          "y1": 120,
+          "text": "text 340",
+          "rotation": 120,
+          "dashed": false,
+          "from": "2026-03-14",
+          "to": "2026-03-14",
+          "layer": "notes",
+          "group": "2026-03-14"
+        }
+      ],
+      "icons": [
+        {
+          "id": "0193f0a4-6c1e-7b9a-9c51-000000000340",
+          "kind": "light",
+          "color": "#C9A36A",
+          "x": 120,
+          "y": 120,
+          "rotation": 120,
+          "label": "label 340",
+          "size": "L",
+          "w": 120,
+          "h": 120,
+          "lens": 120,
+          "showLens": false,
+          "reach": 120,
+          "power": "power 340",
+          "beam": 120,
+          "intensity": 1,
+          "steps": [
+            {
+              "x": 120,
+              "y": 120,
+              "rotation": 120,
+              "note": "note 341",
+              "bend": 120
+            }
+          ],
+          "note": "note 340",
+          "dashed": false,
+          "layer": "notes",
+          "group": "2026-03-14"
+        }
+      ],
+      "sceneIds": [
+        "0193f0a4-6c1e-7b9a-9c51-000000000341"
+      ],
+      "variantOf": "2026-03-14",
+      "variant": "variant 340",
+      "hiddenLayers": [
+        "notes"
+      ],
+      "lockedLayers": [
+        "notes"
+      ],
+      "scale": 120,
+      "grid": "0.5",
+      "rulers": false,
+      "sensor": "s16",
+      "presentation": false
+    }
+  }
+}
