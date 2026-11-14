@@ -6,6 +6,8 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { walkTabs } from '../test/tabs.ts';
 
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 afterEach(() => document.body.replaceChildren());
 
 const press = (key: string, extra: KeyboardEventInit = {}) => {

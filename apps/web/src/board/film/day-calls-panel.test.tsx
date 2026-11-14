@@ -112,7 +112,8 @@ it('groups the called crew, hints when the cast is on set and folds the others',
   );
   expect(check(host, 'Nino')?.checked).toBe(false);
   // The day's call shows until a time is typed; the usual pick-up is the placeholder.
-  const segments = [...host.querySelectorAll<HTMLInputElement>('.ink-time.is-auto .ink-time__seg')];
+  const call = host.querySelector('.ink-time.is-auto');
+  const segments = [...(call?.querySelectorAll<HTMLInputElement>('.ink-time__seg') ?? [])];
   expect(segments.map((s) => s.value).join(':')).toBe('07:00');
   expect(
     host.querySelector<HTMLInputElement>(`input[aria-label='dayCalls.pickupOf{"name":"Ada"}']`)
