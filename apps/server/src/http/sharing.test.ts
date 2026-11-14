@@ -1134,9 +1134,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     ).toBeGreaterThan(0);
     expect((await call('newbie', 'DELETE', '/api/v1/me', {})).status).toBe(400);
 
-    // A file of theirs still being processed elsewhere (#879): the save holds its row, then
-    // writes a copy, which locks their storage total. The deletion waits for the save and
-    // never takes the total first, so neither ends in a deadlock.
+    // A file of theirs still being processed elsewhere (#879): the save locks its row, then
+    // the update and its copies lock their storage total. The deletion waits for the row
+    // before it takes the total, so neither ends in a deadlock.
     const file = (inProject: string) => ({
       projectId: inProject,
       kind: 'video' as const,
@@ -1158,9 +1158,10 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       held = resolve;
     });
     const save = db.transaction(async (tx) => {
-      await tx.update(asset).set({ status: 'ready' }).where(eq(asset.id, id));
+      await tx.select({ id: asset.id }).from(asset).where(eq(asset.id, id)).for('update');
       held();
       await released;
+      await tx.update(asset).set({ status: 'ready' }).where(eq(asset.id, id));
       await tx.insert(assetVariant).values({
         assetId: id,
         size: '256',
