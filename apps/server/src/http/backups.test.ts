@@ -746,14 +746,16 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
           .where(eq(instanceBackup.id, id));
       },
     };
-    expect(await runBackup(
+    expect(
+      await runBackup(
         {
           ...backupDeps(),
           storage: meanwhile,
           remote: { storage: meanwhile, prefix: BUCKET_PREFIX, label: 'test' },
         },
         id,
-      )).toBeNull();
+      ),
+    ).toBeNull();
     const [after] = await db.select().from(instanceBackup).where(eq(instanceBackup.id, id));
     expect(after).toMatchObject({ status: 'failed', failure: 'interrupted' });
     // No row points to the archive it wrote: it is removed rather than left outside retention.
@@ -1034,7 +1036,7 @@ describe.skipIf(!url || !s3Endpoint)('backups with files in S3 (needs S3_TEST_EN
       BACKUP_S3_BUCKET: process.env.S3_TEST_BUCKET ?? 'inkadra',
       BACKUP_S3_ACCESS_KEY_ID: process.env.S3_TEST_ACCESS_KEY_ID,
       BACKUP_S3_SECRET_ACCESS_KEY: process.env.S3_TEST_SECRET_ACCESS_KEY,
-      BACKUP_S3_PREFIX: `test-backups/${randomUUID()}/`,
+      BACKUP_S3_PREFIX: `tests/${randomUUID()}/`,
       BACKUP_S3_FORCE_PATH_STYLE: 'true',
     });
     const remote = backupRemote(config);

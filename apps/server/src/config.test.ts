@@ -44,6 +44,12 @@ describe('backup folder and bucket (#899)', () => {
     ).toThrow(/BACKUP_S3_SECRET_ACCESS_KEY/);
     expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: 'backups' })).toThrow(/BACKUP_S3_PREFIX/);
     expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: '../x/' })).toThrow(/BACKUP_S3_PREFIX/);
+    expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: 'my-backups/' })).toThrow(
+      /BACKUP_S3_PREFIX/,
+    );
+    expect(loadConfig({ ...base, BACKUP_S3_PREFIX: 'inkadra/nightly-2/' }).BACKUP_S3_PREFIX).toBe(
+      'inkadra/nightly-2/',
+    );
   });
 });
 

@@ -565,9 +565,7 @@ export const PRE_UPGRADE_KEEP = 2;
  * Keeps the newest `retention` successful backups, and the newest `PRE_UPGRADE_KEEP` taken
  * before an upgrade; removes older archives and old rows.
  */
-export async function applyBackupRetention(
-  deps: Pick<BackupDeps, 'db' | 'remote' | 'backupDir'>,
-) {
+export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'remote' | 'backupDir'>) {
   const { db } = deps;
   const { retention } = await readBackupSettings(db);
   const kept = await db
@@ -585,9 +583,7 @@ export async function applyBackupRetention(
       // shortcut: the copy is removed from the bucket configured now; after BACKUP_S3_* changed,
       // copies in the earlier bucket stay there (documented).
       if (row.copiedToBucket && deps.remote)
-        await deps.remote.storage
-          .remove([`${deps.remote.prefix}${row.fileName}`])
-          .catch(() => {});
+        await deps.remote.storage.remove([`${deps.remote.prefix}${row.fileName}`]).catch(() => {});
     }
   }
   if (old.length)
@@ -716,9 +712,8 @@ async function adoptPreUpgradeArchives(
     if (!info) continue;
     // Retention removes the bucket copy only when the row says there is one.
     const copiedToBucket = deps.remote
-      ? (await deps.remote.storage
-          .size(`${deps.remote.prefix}${fileName}`)
-          .catch(() => null)) !== null
+      ? (await deps.remote.storage.size(`${deps.remote.prefix}${fileName}`).catch(() => null)) !==
+        null
       : false;
     await db.insert(instanceBackup).values({
       trigger: 'pre-upgrade',
@@ -1611,7 +1606,10 @@ async function* mediaLines(zip: ZipReader, media: NonNullable<BackupManifest['me
       },
     }),
   );
-  for await (const line of createInterface({ input: source, crlfDelay: Number.POSITIVE_INFINITY })) {
+  for await (const line of createInterface({
+    input: source,
+    crlfDelay: Number.POSITIVE_INFINITY,
+  })) {
     if (!line) continue;
     count += 1;
     yield JSON.parse(line) as { key: string; size: number; sha256: string };

@@ -291,9 +291,10 @@ const Env = z.object({
   BACKUP_S3_ACCESS_KEY_ID: optional,
   BACKUP_S3_SECRET_ACCESS_KEY: optional,
   /** Folder of the archives in that bucket, ending with `/`. */
+  // The first folder in lower-case letters only, as every storage key (`checkKey`).
   BACKUP_S3_PREFIX: z
     .string()
-    .regex(/^[a-z][a-z0-9._-]*\/([A-Za-z0-9._-]+\/)*$/, 'A folder such as backups/ or inkadra/backups/')
+    .regex(/^[a-z]+\/([A-Za-z0-9._-]+\/)*$/, 'A folder such as backups/ or inkadra/backups/')
     .default('backups/'),
   BACKUP_S3_FORCE_PATH_STYLE: bool('false'),
 

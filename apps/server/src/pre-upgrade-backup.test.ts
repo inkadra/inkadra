@@ -17,8 +17,8 @@ import pino from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyBackupRetention,
-  backupBeforeMigrating,
   type BackupRemote,
+  backupBeforeMigrating,
   backupsDir,
   liveTableBytes,
   PRE_UPGRADE_KEEP,
