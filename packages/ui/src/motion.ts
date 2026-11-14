@@ -38,6 +38,8 @@ export function fadeOutCopy(node: Element | null): void {
     el.removeAttribute('data-type');
     el.removeAttribute('data-testid');
   }
+  // A copy must not load or play anything again (a viewer's video, a PDF frame).
+  for (const el of copy.querySelectorAll('video, audio, iframe, object, embed, source')) el.remove();
   for (const name of [...copy.classList])
     if (name.startsWith('ink-motion-')) copy.classList.remove(name);
   copy.setAttribute('aria-hidden', 'true');

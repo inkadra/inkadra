@@ -91,7 +91,7 @@ export function ExpiryPicker({
       {open && (
         <fieldset
           id={id}
-          className="share__expiry-pop"
+          className="share__expiry-pop ink-popover"
           style={place}
           onKeyDown={(e) => {
             if (e.key !== 'Escape') return;

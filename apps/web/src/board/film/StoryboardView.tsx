@@ -18,6 +18,7 @@ import { useRegisterActions } from '../../commands/actions.ts';
 import { duplicateInStore } from '../../commands/board-actions.ts';
 import { api } from '../../lib/api.ts';
 import { useSession } from '../../lib/session.tsx';
+import { useListMotion } from '../../lib/list-motion.ts';
 import { CardReview } from '../CardReview.tsx';
 import { ContextMenu, UploadPanel } from '../chrome.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
@@ -94,6 +95,8 @@ export function StoryboardView({
   ready?: boolean;
 }) {
   const { t } = useTranslation();
+  const list = useRef<HTMLDivElement>(null);
+  useListMotion(list, '.story__tile');
   const boardAspect = useBoardAspect(store.doc);
   const { groups: allGroups, frames, labels } = useStoryboard(store);
   const omittedCount = allGroups.filter((g) => g.scene?.omitted).length;
@@ -335,7 +338,7 @@ export function StoryboardView({
     <span className="story__total">{t('film.total', { count: frames.length })}</span>
   );
   return (
-    <div className={`story story--${size}`}>
+    <div className={`story story--${size}`} ref={list}>
       <div className="story__bar" data-chrome>
         <div className="view-options__inline">
           {sizeControl}

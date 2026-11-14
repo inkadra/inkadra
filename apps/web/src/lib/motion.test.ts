@@ -11,7 +11,7 @@ afterEach(() => {
 it('leaves an inert copy without ids that removes itself', () => {
   vi.useFakeTimers();
   document.body.innerHTML =
-    '<div><div id="card" class="card ink-motion-card" data-el="a" data-type="note"><b data-testid="t">A</b></div></div>';
+    '<div><div id="card" class="card ink-motion-card" data-el="a" data-type="note"><b data-testid="t">A</b><video src="a.mp4" autoplay></video><iframe src="a.pdf"></iframe></div></div>';
   const card = document.getElementById('card') as HTMLElement;
   card.getAnimations ??= () => [];
   fadeOutCopy(card);
@@ -19,6 +19,7 @@ it('leaves an inert copy without ids that removes itself', () => {
   expect(copy.className).toBe('card ink-motion-exit');
   expect(copy.getAttribute('aria-hidden')).toBe('true');
   expect(copy.querySelector('[data-testid]')).toBeNull();
+  expect(copy.querySelector('video, iframe')).toBeNull();
   expect(['id', 'data-el', 'data-type'].some((name) => copy.hasAttribute(name))).toBe(false);
   vi.advanceTimersByTime(500);
   expect(copy.isConnected).toBe(false);

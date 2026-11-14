@@ -41,6 +41,7 @@ import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
 import { moveTabFocus } from '../lib/tabs.ts';
+import { useListMotion } from '../lib/list-motion.ts';
 import { MyTasksTab } from '../routes/MyTasks.tsx';
 import { useProjects } from '../routes/projects-context.ts';
 import { formatStorage } from '../routes/StorageCharts.tsx';
@@ -429,6 +430,7 @@ export function NotificationList({
   // outside it (the navigation, the top bar) is not leaving it. A phone has its own layout.
   const inPage = fixed && !mobile;
   const panel = useRef<HTMLDivElement>(null);
+  useListMotion(panel, 'li.notification');
   // Marking all as read covers what was listed when the panel opened, not what arrives later.
   const openedAt = useRef(new Date().toISOString());
 

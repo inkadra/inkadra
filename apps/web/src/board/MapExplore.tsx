@@ -246,7 +246,7 @@ export function MapDialog({
   return (
     <dialog
       ref={dialog}
-      className="map-dialog"
+      className="map-dialog ink-motion-dialog"
       aria-label={name}
       data-chrome
       {...backdrop}

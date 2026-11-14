@@ -1463,9 +1463,11 @@ select {
 
 /* Menus: every action menu of the web app (the board's, the ⋯ menus, the right click) is one
    floating surface with neutral rows. The row under the pointer or the keyboard turns
-   surface-3; keyboard focus adds the blue ring. Each menu places and sizes itself. */
-.ink-menu {
-  padding: 4px;
+   surface-3; keyboard focus adds the blue ring. Popovers (#767), the other floating panels
+   opened from a control (pickers, small forms), share the same surface. Both scale in from
+   their anchor (`--ink-origin`); each one places and sizes itself. */
+.ink-menu,
+.ink-popover {
   border: 1px solid var(--ink-border-default);
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
@@ -1473,6 +1475,9 @@ select {
   box-shadow: var(--ink-shadow-menu);
   transform-origin: var(--ink-origin, top left);
   animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+}
+.ink-menu {
+  padding: 4px;
 }
 .ink-menu__item {
   display: flex;

@@ -3604,6 +3604,9 @@ button.crumb--editable:focus-visible {
   z-index: var(--ink-layer-viewer);
   display: flex;
   background: rgb(8 8 10 / 0.92);
+  /* Fades in; it fades out as a copy when it closes (useExitFade). Opacity only, so it stays
+     the same with reduced motion. */
+  animation: ink-fade-in var(--ink-dur-base) var(--ink-ease-out) backwards;
 }
 .viewer:focus-visible {
   /* Focused by code on open, not a control: no ring. */

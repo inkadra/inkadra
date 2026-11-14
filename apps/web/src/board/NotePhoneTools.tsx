@@ -344,7 +344,7 @@ export function NotePhoneTools({
         <div
           ref={menu}
           id={menuId}
-          className="note-phone-menu"
+          className="note-phone-menu ink-popover"
           role="listbox"
           aria-label={listLabel}
           style={{ transform: `translateY(${-inset}px)` }}

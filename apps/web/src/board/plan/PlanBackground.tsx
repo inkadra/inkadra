@@ -167,7 +167,7 @@ export function BackgroundPanel({
   const opacity = Math.round((background?.opacity ?? 1) * 100);
   return (
     <div
-      className="plan-pop plan-background ink-motion-pop"
+      className="plan-pop plan-background ink-popover"
       role="dialog"
       aria-label={t('board.plan.background.title')}
       data-tour="plan-background-panel"

@@ -162,7 +162,7 @@ export function PeoplePicker({
           onBlur?.(e);
         }}
       />
-      <div className="people-picker__list" role="listbox" id={listId} hidden={!shown}>
+      <div className="people-picker__list ink-popover" role="listbox" id={listId} hidden={!shown}>
         {shown &&
           people.map((person, i) => (
             <div
@@ -186,7 +186,7 @@ export function PeoplePicker({
           ))}
       </div>
       {empty && open && searched && !people.length && (
-        <p className="people-picker__list people-picker__empty" role="status">
+        <p className="people-picker__list people-picker__empty ink-popover" role="status">
           {empty}
         </p>
       )}
