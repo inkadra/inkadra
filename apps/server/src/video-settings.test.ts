@@ -10,6 +10,7 @@ import {
   readVideoSettings,
   runBenchmark,
   startBenchmark,
+  videoLibrary,
 } from './video-settings.ts';
 
 /** A database whose instance_setting row holds `value`. */
@@ -208,5 +209,33 @@ describe('performance test from the page', () => {
     expect(queued).toBe(2);
     // One left running by a worker that died is stale after ten minutes.
     expect((await readBenchmark(fake, Date.now() + 11 * 60_000)).running).toBe(false);
+  });
+});
+
+describe('library estimates (decision 0128)', () => {
+  const row = (codec: string, minutes: number, extra: Record<string, unknown> = {}) => ({
+    kind: 'video',
+    status: 'ready',
+    durationMs: minutes * 60000,
+    width: 1920,
+    height: 1080,
+    videoCodec: codec,
+    audioCodec: 'aac',
+    frameRate: 25,
+    mediaInfo: { pixelFormat: 'yuv420p', bits: 8, ...extra },
+  });
+  const rows = (list: unknown[]) =>
+    ({
+      select: () => ({ from: () => ({ where: async () => list }) }),
+    }) as unknown as Parameters<typeof videoLibrary>[0];
+  it('splits the minutes the server cannot encode live (ProRes, HDR) from the rest', async () => {
+    const encoder = { backend: 'vaapi', label: 'x' } as Parameters<typeof videoLibrary>[1];
+    const list = rows([row('h264', 30), row('prores', 10), row('hevc', 5, { hdr: 'pq' })]);
+    const [, , r1080] = await videoLibrary(list, encoder);
+    expect(r1080?.minutes).toBeCloseTo(45);
+    expect(r1080?.noLiveMinutes).toBeCloseTo(15);
+    // Without a GPU encoder none is live.
+    const [, , none] = await videoLibrary(list, undefined);
+    expect(none?.noLiveMinutes).toBeCloseTo(45);
   });
 });
