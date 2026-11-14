@@ -14,8 +14,16 @@ import { signIn } from '../tests/perf/seed.ts';
 
 const base = (process.env.SHOTS_BASE_URL ?? 'http://localhost:3100').replace(/\/+$/, '');
 const out = fileURLToPath(new URL('../test-results/screenshots/audit', import.meta.url));
-const admin = { name: 'Giulia Bianchi', email: 'giulia@example.com', password: 'correct-horse-battery' };
-const member = { name: 'Marco Rossi', email: 'marco@example.com', password: 'correct-horse-battery' };
+const admin = {
+  name: 'Giulia Bianchi',
+  email: 'giulia@example.com',
+  password: 'correct-horse-battery',
+};
+const member = {
+  name: 'Marco Rossi',
+  email: 'marco@example.com',
+  password: 'correct-horse-battery',
+};
 
 async function call<T>(cookie: string, method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${base}/api/v1${path}`, {
@@ -53,9 +61,9 @@ async function seed(cookie: string) {
   await call(cookie, 'POST', '/instance/backups');
   const deadline = Date.now() + 120_000;
   while (
-    (await call<{ items: Array<{ status: string }> }>(cookie, 'GET', '/instance/backups')).items.some(
-      (b) => b.status === 'running',
-    )
+    (
+      await call<{ items: Array<{ status: string }> }>(cookie, 'GET', '/instance/backups')
+    ).items.some((b) => b.status === 'running')
   ) {
     if (Date.now() > deadline) throw new Error('Backup timed out');
     await new Promise((r) => setTimeout(r, 300));
