@@ -276,7 +276,8 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
         expiresAt: new Date(Date.now() + 86_400_000),
       })),
     );
-    for (const id of ids) await deps.storage.write(`feedback/${id}`, Buffer.from('x'), 'text/plain');
+    for (const id of ids)
+      await deps.storage.write(`feedback/${id}`, Buffer.from('x'), 'text/plain');
     try {
       const row = await startBackup(db, 'manual', null);
       const done = await runBackup(backupDeps(), row?.id as string);

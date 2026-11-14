@@ -320,7 +320,7 @@ even sample of 20,000 above that). An archive that does not read back fails as `
 the backup lists but storage lacks are shown in the history and on **Settings → Server** (a
 restore of that backup would miss them). A file storage answers with an error for, twice, is
 counted as not checked rather than missing. The check stops after 30 minutes, or 5 minutes
-without progress: the backup is then kept, marked *verification incomplete*.
+without progress: the backup is then kept, marked _verification incomplete_.
 
 Files of deleted projects, accounts and exports are **kept while a kept backup may list them**:
 they are removed once every kept backup started at least an hour after the deletion, but never

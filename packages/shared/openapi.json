@@ -4821,11 +4821,28 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Listed files that storage did not have (or had with another size)."
+              },
+              "checkedFiles": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Files looked up in storage: all of them, or an even sample on large instances (fewer than `files.count`)."
+              },
+              "unverifiedFiles": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Files storage gave an error for, twice: neither found nor missing."
+              },
+              "complete": {
+                "type": "boolean",
+                "description": "False when the verification ran out of time or stalled: the backup is kept, checked only as far as it got."
               }
             },
             "required": [
               "at",
-              "missingFiles"
+              "missingFiles",
+              "checkedFiles",
+              "unverifiedFiles",
+              "complete"
             ],
             "description": "The check run on the archive after it was written (#794): every table read back and counted, every listed file looked up in storage. Absent on older servers."
           },
@@ -4967,7 +4984,7 @@
               "id",
               "name"
             ],
-            "description": "Null for actions without a signed-in person (failed sign-ins)."
+            "description": "Null for actions without a signed-in person (failed sign-ins) and for a deleted account, whose events keep an opaque id in `details.actor` instead (pseudonymized)."
           },
           "targetType": {
             "type": [

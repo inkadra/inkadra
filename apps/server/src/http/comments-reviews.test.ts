@@ -1519,7 +1519,10 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect(row?.emailedAt).toBeNull();
     expect(row?.emailFailedAt).not.toBeNull();
     // Not picked up again by later runs.
-    await sendImmediateEmails({ ...mailDeps, mailer: memoryMailer() }, new Date(Date.now() + 2 * 3_600_000));
+    await sendImmediateEmails(
+      { ...mailDeps, mailer: memoryMailer() },
+      new Date(Date.now() + 2 * 3_600_000),
+    );
     const [later] = await db.select().from(notification).where(eq(notification.id, last.id));
     expect(later?.emailedAt).toBeNull();
     expect(later?.emailAttempts).toBe(MAX_EMAIL_ATTEMPTS);

@@ -144,9 +144,8 @@ describe.skipIf(!url)('audit log (#806, needs DATABASE_URL)', () => {
       email: 'guest@example.com',
     });
     expect(made.statusCode).toBe(201);
-    expect((await request('admin', 'DELETE', `/invitations/${made.json().id}`)).statusCode).toBe(
-      204,
-    );
+    const revoked = await request('admin', 'DELETE', `/invitations/${made.json().invitation.id}`);
+    expect(revoked.statusCode).toBe(204);
     for (const action of ['invitation.created', 'invitation.revoked']) {
       const { items } = await list(`?action=${action}`);
       expect(items[0]?.details).toMatchObject({ email: 'g…@example.com' });
