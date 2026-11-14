@@ -1162,6 +1162,8 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       expect(
         (await readdir(transfersDir(source.deps.root))).filter((n) => n.startsWith(id)),
       ).toEqual([]);
+      // Still running for the other worker: it would hold the one export of the project.
+      await source.db.delete(projectTransfer).where(eq(projectTransfer.id, id));
     });
 
     it('answers a second cancel with 409 and the cancelled transfer', async () => {
