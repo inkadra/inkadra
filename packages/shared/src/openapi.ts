@@ -1184,7 +1184,7 @@ registry.registerPath({
   method: 'get',
   path: v1('/instance/storage'),
   tags: ['Instance'],
-  security: secured,
+  security: [{ session: [] }],
   summary: 'Administrator-only sum of original asset sizes; excludes derived files and database.',
   responses: {
     200: {

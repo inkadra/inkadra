@@ -58,7 +58,7 @@ describe.skipIf(!url)('instance administration', () => {
   let app: Awaited<ReturnType<typeof createApp>>;
   const request = (
     who: string | null,
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     payload?: object,
   ) =>
@@ -114,6 +114,25 @@ describe.skipIf(!url)('instance administration', () => {
   it('protects every endpoint before parsing input, including storage and invitations', async () => {
     const routes = [
       ['GET', '/instance/members'],
+      ['GET', `${memberPath('member')}/files`],
+      ['PUT', '/instance/classifications'],
+      ['GET', '/instance/storage-limits'],
+      ['PATCH', '/instance/storage-limits'],
+      ['GET', '/instance/video-settings'],
+      ['PATCH', '/instance/video-settings'],
+      ['POST', '/instance/video-settings/benchmark'],
+      ['POST', '/instance/video-settings/reprocess'],
+      ['DELETE', '/instance/video-settings/reprocess'],
+      ['GET', '/instance/backups'],
+      ['POST', '/instance/backups'],
+      ['PATCH', '/instance/backups/settings'],
+      ['GET', '/instance/server'],
+      ['GET', '/instance/server/live'],
+      ['PATCH', '/instance/server/alerts'],
+      ['POST', '/instance/server/problems/seen'],
+      ['POST', '/instance/server/problems/retry'],
+      ['POST', '/instance/server/problems/example/seen'],
+      ['POST', '/instance/server/problems/example/retry'],
       ['GET', '/instance/settings'],
       ['PATCH', '/instance/settings'],
       ['PATCH', memberPath('member')],
@@ -121,6 +140,7 @@ describe.skipIf(!url)('instance administration', () => {
       ['GET', '/instance/updates'],
       ['POST', '/instance/updates/check'],
     ] as const;
+    const token = await issueToken(db, people.admin!.id, { name: 'Guard regression' });
     for (const [method, path] of routes) {
       expect(
         (await request(null, method, path, method === 'PATCH' ? {} : undefined)).statusCode,
@@ -128,7 +148,17 @@ describe.skipIf(!url)('instance administration', () => {
       expect(
         (await request('member', method, path, method === 'PATCH' ? {} : undefined)).statusCode,
       ).toBe(403);
+      expect(
+        (
+          await app.inject({
+            method,
+            url: `/api/v1${path}`,
+            headers: { authorization: `Bearer ${token.token}` },
+          })
+        ).statusCode,
+      ).toBe(403);
     }
+    await db.delete(personalToken).where(eq(personalToken.id, token.row.id));
     expect(
       (
         await request('member', 'POST', '/invitations', {
@@ -721,5 +751,60 @@ describe.skipIf(!url)('instance administration', () => {
     expect(attempts.map((r) => r.statusCode).sort()).toEqual([200, 409]);
     const remaining = await db.select().from(user).where(eq(user.role, 'admin'));
     expect(remaining.filter((u) => !u.deactivatedAt)).toHaveLength(1);
+  });
+  it('allows two-factor sign-in after secret rotation and invalidates the old session', async () => {
+    const created = await signUp('rotation');
+    const cookie = String(created.headers['set-cookie']).split(';')[0] ?? '';
+    const headers = { cookie, origin: config.PUBLIC_URL };
+    const enabled = await app.inject({
+      method: 'POST',
+      url: '/api/auth/two-factor/enable',
+      headers,
+      payload: { password: 'correct-horse-battery' },
+    });
+    expect(enabled.statusCode).toBe(200);
+    const secret = new URL(enabled.json().totpURI).searchParams.get('secret') ?? '';
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/auth/two-factor/verify-totp',
+          headers,
+          payload: { code: totp(secret) },
+        })
+      ).statusCode,
+    ).toBe(200);
+    const rotated = {
+      ...config,
+      AUTH_SECRET: 'rotated-test-secret-'.repeat(3),
+      AUTH_SECRET_PREVIOUS: config.AUTH_SECRET,
+    };
+    const next = await createApp({
+      config: rotated,
+      db,
+      auth: createAuth(rotated, db),
+      log,
+      ...testDeps(db, log),
+    });
+    try {
+      expect((await next.inject({ url: '/api/v1/me', headers })).statusCode).toBe(401);
+      const login = await next.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        headers: { origin: config.PUBLIC_URL },
+        payload: { email: 'rotation@example.com', password: 'correct-horse-battery' },
+      });
+      expect(login.json().twoFactorRedirect).toBe(true);
+      const challenge = login.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+      const verified = await next.inject({
+        method: 'POST',
+        url: '/api/auth/two-factor/verify-totp',
+        headers: { cookie: challenge, origin: config.PUBLIC_URL },
+        payload: { code: totp(secret) },
+      });
+      expect(verified.statusCode).toBe(200);
+    } finally {
+      await next.close();
+    }
   });
 });

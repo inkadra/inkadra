@@ -1,6 +1,6 @@
 name: Idea
 description: Suggest a feature or an improvement
-labels: [idea]
+labels: [enhancement]
 body:
   - type: textarea
     id: problem

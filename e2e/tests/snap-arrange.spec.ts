@@ -10,7 +10,7 @@ import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const out =
   process.env.E2E_SHOTS ??
-  fileURLToPath(new URL('../../docs/screenshots/0.7-arrange/', import.meta.url));
+  fileURLToPath(new URL('../test-results/screenshots/0.7-arrange/', import.meta.url));
 const account = {
   name: 'Giulia Bianchi',
   email: 'giulia@example.com',

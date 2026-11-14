@@ -18,6 +18,9 @@ services:
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}
     command: all
     restart: unless-stopped
+    # Time to save open boards at shutdown (a board the database cannot take within a few seconds
+    # is kept on disk instead); Docker's default 10 s kills the process sooner on a slow database.
+    stop_grace_period: 30s
     ports:
       # Only this machine can reach the port: point your reverse proxy at it, or set
       # INKADRA_BIND=0.0.0.0 if the proxy runs on another host (see docs/self-hosting).
@@ -25,11 +28,15 @@ services:
     environment:
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      AUTH_SECRET_PREVIOUS: ${AUTH_SECRET_PREVIOUS:-}
       DATABASE_URL: postgres://inkadra:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/inkadra
-      REDIS_URL: redis://valkey:6379
+      # With VALKEY_PASSWORD set (recommended, hex only: `openssl rand -hex 32`), Valkey asks for it.
+      REDIS_URL: redis://${VALKEY_PASSWORD:+:${VALKEY_PASSWORD}@}valkey:6379
       INSTANCE_NAME: ${INSTANCE_NAME:-Inkadra}
       REGISTRATION: ${REGISTRATION:-invite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Set it to your proxy's address only (docs/self-hosting/configuration.md#trust_proxy); the
+      # bundled proxies in deploy/proxy set their own.
       TRUST_PROXY: ${TRUST_PROXY:-loopback,linklocal,uniquelocal}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       FEEDBACK_GITHUB_TOKEN: ${FEEDBACK_GITHUB_TOKEN:-}
@@ -70,10 +77,11 @@ services:
       CLIPPER_EXTENSION_IDS: ${CLIPPER_EXTENSION_IDS:-}
       OIDC_ALLOWED_DOMAINS: ${OIDC_ALLOWED_DOMAINS:-}
       # Browser policies (see docs/self-hosting/configuration.md#browser-security-headers)
-      CSP_ENFORCE: ${CSP_ENFORCE:-false}
+      CSP_ENFORCE: ${CSP_ENFORCE:-true}
       # CSP_REPORT_URI is not forwarded by default: 0.4.0 refuses an empty value. To collect
       # reports, add `CSP_REPORT_URI: ${CSP_REPORT_URI}` here together with a value in .env.
-      HSTS_ENABLED: ${HSTS_ENABLED:-false}
+      # Sent only on HTTPS requests when PUBLIC_URL is https, never on a plain-HTTP LAN address.
+      HSTS_ENABLED: ${HSTS_ENABLED:-true}
     volumes:
       # A named volume by default. Set INKADRA_DATA to a host folder to keep uploads on a disk
       # or dataset of your choice: at startup it is given to uid 1000, the user Inkadra runs as.
@@ -88,6 +96,7 @@ services:
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
     security_opt: ["no-new-privileges:true"]
+    networks: [default, backend]
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,6 +132,7 @@ services:
       - --
     command: ["postgres"] # a custom entrypoint drops the image's default command
     security_opt: ["no-new-privileges:true"]
+    networks: [backend]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U inkadra -d inkadra"]
       interval: 5s
@@ -132,15 +142,37 @@ services:
   valkey:
     image: valkey/valkey:9-alpine
     restart: unless-stopped
-    command: ["valkey-server", "--appendonly", "yes"]
+    # The password, when set, goes in as configuration on standard input ("-"), never on the
+    # command line, so no process list shows it. Without it Valkey starts as before. Through
+    # the image's entrypoint, which gives /data to the valkey user and drops root.
+    command:
+      - sh
+      - -c
+      - |
+        [ -z "$$VALKEY_PASSWORD" ] && exec docker-entrypoint.sh valkey-server --appendonly yes
+        exec docker-entrypoint.sh valkey-server - --appendonly yes <<EOF
+        requirepass $$VALKEY_PASSWORD
+        EOF
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
     volumes:
       - ${VALKEY_DATA:-valkey-data}:/data
     security_opt: ["no-new-privileges:true"]
+    networks: [backend]
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      # valkey-cli reads the password from REDISCLI_AUTH, not from its arguments.
+      test:
+        - CMD-SHELL
+        - '[ -z "$$VALKEY_PASSWORD" ] || export REDISCLI_AUTH="$$VALKEY_PASSWORD"; valkey-cli ping | grep -q PONG'
       interval: 5s
       timeout: 5s
       retries: 20
+
+networks:
+  # Inkadra, its database and Valkey. Nothing else joins it (the bundled proxies stay on
+  # `default`), and it has no way out to the internet.
+  backend:
+    internal: true
 
 volumes:
   inkadra-data:

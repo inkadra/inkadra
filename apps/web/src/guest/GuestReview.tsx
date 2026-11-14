@@ -94,7 +94,7 @@ export function GuestReview({
         if (await actions.review(frame.id, { status: value }))
           actions.notify(t(`guest.review.done.${value}`));
       } catch (err) {
-        actions.notify(err instanceof Error ? err.message : t('guest.errors.generic'));
+        actions.notify(actions.fail(err));
       } finally {
         setBusy(false);
       }

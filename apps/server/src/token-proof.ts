@@ -44,7 +44,8 @@ async function instanceId(db: Pick<Database, 'select' | 'insert'>): Promise<stri
   return made;
 }
 
-const keySealer = (authSecret: string) => sealer(authSecret, 'token-proof-key');
+const keySealer = (authSecret: string, previousSecret?: string) =>
+  sealer(authSecret, 'token-proof-key', previousSecret);
 
 /**
  * The proof key of an official app's token: made at the first call, returned again while the
@@ -56,8 +57,9 @@ export async function proofKeyFor(
   db: Database,
   authSecret: string,
   tokenId: string,
+  previousSecret?: string,
 ): Promise<TokenProofKey | 'not_app' | null> {
-  const seal = keySealer(authSecret);
+  const seal = keySealer(authSecret, previousSecret);
   const [row] = await db
     .select({
       client: personalToken.client,
@@ -84,7 +86,7 @@ export async function proofKeyFor(
       ),
     )
     .returning({ id: personalToken.id });
-  if (!made) return proofKeyFor(db, authSecret, tokenId);
+  if (!made) return proofKeyFor(db, authSecret, tokenId, previousSecret);
   return { instanceId: await instanceId(db), keyId, key };
 }
 
@@ -108,6 +110,7 @@ export async function proveNonce(
   authSecret: string,
   keyId: string,
   nonce: string,
+  previousSecret?: string,
 ): Promise<TokenProof | null> {
   const [row] = await db
     .select({ sealed: personalToken.proofKey })
@@ -120,7 +123,7 @@ export async function proveNonce(
         or(isNull(personalToken.expiresAt), gt(personalToken.expiresAt, new Date())),
       ),
     );
-  const key = row?.sealed ? keySealer(authSecret).open(row.sealed) : null;
+  const key = row?.sealed ? keySealer(authSecret, previousSecret).open(row.sealed) : null;
   if (!key) return null;
   const instance = await readInstanceId(db);
   if (!instance) return null;

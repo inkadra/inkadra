@@ -20,6 +20,7 @@ export interface GuestActions {
   picks: ReadonlyMap<string, GuestPick>;
   reviews: ReadonlyMap<string, GuestElementReview>;
   counts: ReadonlyMap<string | null, CommentCount>;
+  /** Pick and review reject with the failed request: the control words it with `fail`. */
   pick: (elementId: string, body: SetPick) => Promise<void>;
   review: (elementId: string, body: GuestSetElementReview) => Promise<boolean>;
   /** Runs an action that needs the guest's name, asking for it first if it is missing. */

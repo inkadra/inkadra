@@ -1,7 +1,7 @@
 # Team comments, reviews and notifications
 
-The team endpoints implement [decision 0013](decisions/0013-review-and-sharing.md) using the
-existing wave-3 API and database contracts. Guest endpoints are implemented separately.
+How the server's team endpoints implement [decision 0013](decisions/0013-review-and-sharing.md).
+Guest endpoints are not covered here.
 
 ## Access and lists
 

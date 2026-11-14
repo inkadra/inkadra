@@ -124,7 +124,7 @@ export function useBoardPreview(boardId: string | null, version: string): Previe
   );
 }
 
-/** Forgets every preview: on sign-out (the next person may see less of a board), and in tests. */
+/** Forgets every preview, for tests: signing out reloads the page (#831). */
 export function resetBoardPreviews() {
   cache.clear();
   loadedAt.clear();
