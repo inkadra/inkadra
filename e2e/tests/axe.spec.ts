@@ -16,11 +16,10 @@ const admin = {
 async function violations(page: Page, name: string): Promise<string[]> {
   const found: string[] = [];
   for (const theme of ['light', 'dark'] as const) {
-    await page.evaluate((v) => {
-      localStorage.setItem('inkadra.theme', v);
-      window.dispatchEvent(new Event('inkadra-theme-change'));
-    }, theme);
-    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // The theme follows the system unless chosen in Settings; guest pages only follow the system.
+    await page.emulateMedia({ colorScheme: theme });
+    if (await page.locator('html[data-theme]').count())
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     const { violations } = await new AxeBuilder({ page }).analyze();
     for (const v of violations) {
       if (v.impact !== 'serious' && v.impact !== 'critical') continue;
