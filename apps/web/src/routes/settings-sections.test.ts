@@ -31,6 +31,7 @@ it('identifies all settings pages and localizes headings, descriptions and group
       'access',
       'classifications',
       'reports',
+      'audit',
       'instance',
       'workspace',
       'video',
@@ -71,8 +72,9 @@ it('opens the page that took the content of a page that left in the redesign (01
     expect(settingsSection('/settings', `?section=${id}`).id).toBe(id);
   expect(SETTINGS_PAGES.map((p) => p.group)).toEqual([
     ...Array(7).fill('personal'),
-    ...Array(4).fill('workspace'),
-    // Video joined the Server group (decision 0128): seventeen pages.
+    // The activity log (#806) joined Workspace.
+    ...Array(5).fill('workspace'),
+    // Video joined the Server group (decision 0128): eighteen pages.
     ...Array(6).fill('server'),
   ]);
   // One icon per page.

@@ -45,7 +45,7 @@ it('groups permitted pages, marks the current one and flags incomplete setup', a
     'settingsUi.groups.workspace',
     'settingsUi.groups.server',
   ]);
-  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(17);
+  expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(18);
   const iconOf = (section: string) =>
     host.querySelector(`a[href="/settings?section=${section}"] svg`)?.innerHTML;
   expect(new Set([iconOf('preferences'), iconOf('tutorials'), iconOf('instance')]).size).toBe(3);
