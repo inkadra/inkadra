@@ -27,6 +27,7 @@ import { exportProject } from '../transfers/export.ts';
 import { importProject, remapBlock } from '../transfers/import.ts';
 import { readZip, writeZip } from '../transfers/zip.ts';
 import { createApp } from './app.ts';
+import { SCHEDULE_SOURCES_BYTES } from './boards-routes.ts';
 import { keepBlockKeys } from './schedule-routes.ts';
 
 const block = (over: Partial<ScheduleBlock> = {}): ScheduleBlock => ({
@@ -502,6 +503,25 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
       (await request('member', 'GET', `/projects/${ids.project}/schedule-sources?boards=x`))
         .statusCode,
     ).toBe(400);
+    expect(member.json().rest).toEqual([]);
+    // A large storyboard fills the answer: the next ones are named, to be asked for again.
+    await db
+      .update(boardDoc)
+      .set({ size: SCHEDULE_SOURCES_BYTES + 1 })
+      .where(eq(boardDoc.boardId, ids.sa));
+    const full = await request('member', 'GET', path);
+    expect(full.json().items.map((i: { boardId: string }) => i.boardId)).toEqual([ids.sa]);
+    expect(full.json().rest).toEqual([ids.sb, ids.ordinary]);
+    const next = await request(
+      'member',
+      'GET',
+      `/projects/${ids.project}/schedule-sources?boards=${full.json().rest.join(',')}`,
+    );
+    expect(next.json().items.map((i: { boardId: string }) => i.boardId)).toEqual([
+      ids.sb,
+      ids.ordinary,
+    ]);
+    await db.update(boardDoc).set({ size: state.byteLength }).where(eq(boardDoc.boardId, ids.sa));
   });
 
   it('is never shown to guests', async () => {

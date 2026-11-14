@@ -1338,6 +1338,13 @@ export function ScheduleView({
           people={people}
           userId={userId}
           readOnly={readOnly}
+          // Its items on a storyboard read only (a summary, or the person's role): not ticked.
+          locked={(row) =>
+            row.items.some((item) => {
+              const from = sources.boardOf.get(item.elementId) ?? boardId;
+              return sources.list.find((s) => s.boardId === from)?.readOnly ?? false;
+            })
+          }
           phone={phone}
           onChange={(row, patch) => {
             // Each item is ticked on its own storyboard, where the person may edit it.

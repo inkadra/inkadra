@@ -3,6 +3,7 @@ import {
   type Element,
   getBoardAspect,
   hiddenFromGuests,
+  migrateBoardDoc,
   readElement,
   roots,
 } from '@inkadra/doc-schema';
@@ -214,12 +215,22 @@ export function docScheduleSource(doc: Y.Doc): ScheduleSourceContent {
   return { aspect: getBoardAspect(doc), elements };
 }
 
-/** What a schedule reads of a stored board document. */
-export function scheduleSource(state: Uint8Array | null | undefined): ScheduleSourceContent {
+/**
+ * What a schedule reads of a stored board document, migrated as the collab server migrates it
+ * on load: a document stored by an older build reads as the live one would.
+ */
+export function scheduleSource(
+  boardId: string,
+  state: Uint8Array | null | undefined,
+): ScheduleSourceContent {
   if (!state) return { aspect: null, elements: [] };
   const doc = new Y.Doc();
   try {
     Y.applyUpdate(doc, state);
+    // A newer document (a newer server wrote it) is read as it is, as the board list reads it.
+    try {
+      migrateBoardDoc(doc, boardId);
+    } catch {}
     return docScheduleSource(doc);
   } finally {
     doc.destroy();

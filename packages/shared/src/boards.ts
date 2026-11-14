@@ -301,8 +301,8 @@ export type BoardCounts = z.infer<typeof BoardCounts>;
 
 /** Capability: `GET /projects/{projectId}/schedule-sources` exists (#826). */
 export const SCHEDULE_SOURCES_CAPABILITY = 'schedule-sources';
-/** Storyboards a schedule reads at once; more are asked for in several requests. */
-export const SCHEDULE_SOURCES_MAX = 100;
+/** Storyboards a schedule asks for at once; more are asked for in several requests. */
+export const SCHEDULE_SOURCES_MAX = 50;
 export const ScheduleSourcesQuery = z.object({
   boards: z
     .string()
@@ -326,7 +326,14 @@ export const ScheduleSource = z
   .openapi('ScheduleSource');
 export type ScheduleSource = z.infer<typeof ScheduleSource>;
 export const ScheduleSources = z
-  .object({ items: z.array(ScheduleSource) })
+  .object({
+    items: z.array(ScheduleSource),
+    rest: z.array(Id).openapi({
+      description:
+        'Requested boards the caller can open that did not fit in this answer, which is bounded ' +
+        'in bytes: ask for them in another request.',
+    }),
+  })
   .openapi('ScheduleSources', {
     description:
       'A read-only copy of what the Production board shows of its storyboards (#826), for the ' +

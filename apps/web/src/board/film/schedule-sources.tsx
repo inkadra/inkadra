@@ -12,6 +12,7 @@ import {
   createBoardDoc,
   type Element,
   getBoardAspect,
+  roots,
   setBoardAspect,
 } from '@inkadra/doc-schema';
 import {
@@ -272,6 +273,24 @@ export function summaryStore(item: ScheduleSourceBody): BoardStore {
 }
 
 /**
+ * What a storyboard of the Production board is read from (#826): its document once synced, or
+ * offline when the document holds the board (kept in this tab, or its copy on the device), so
+ * needed items are still ticked on it; otherwise the server's summary, read only. None when the
+ * person has no access.
+ */
+export function sourceOf(
+  boardId: string,
+  conn: Pick<BoardConnection, 'status' | 'store' | 'readOnly'> | undefined,
+  summary: BoardStore | undefined,
+): { boardId: string; store: BoardStore; readOnly: boolean } | null {
+  if (conn?.status === 'denied' || conn?.status === 'signedOut') return null;
+  const held = conn?.status === 'offline' && roots(conn.store.doc).elements.size > 0;
+  if (conn && (conn.status === 'synced' || held || (conn.status === 'offline' && !summary)))
+    return { boardId, store: conn.store, readOnly: conn.readOnly };
+  return summary ? { boardId, store: summary, readOnly: true } : null;
+}
+
+/**
  * The sources of a schedule. A storyboard reads its own document. The Production board reads
  * the project's storyboards the person can read, and any board a block points to, from a
  * read-only summary the server makes of them (#826), and opens a storyboard's document only when
@@ -326,17 +345,17 @@ export function useScheduleSources({
     const chunks: string[][] = [];
     for (let i = 0; i < wanted.length; i += SCHEDULE_SOURCES_MAX)
       chunks.push(wanted.slice(i, i + SCHEDULE_SOURCES_MAX));
-    Promise.all(
-      chunks.map((chunk) =>
-        api.get<{ items: ScheduleSourceBody[] }>(
-          `/projects/${projectId}/schedule-sources?boards=${chunk.join(',')}`,
-        ),
-      ),
-    ).then(
+    // An answer is bounded in bytes: it names the boards that did not fit, asked for next.
+    const read = async (chunk: readonly string[]): Promise<ScheduleSourceBody[]> => {
+      const body = await api.get<{ items: ScheduleSourceBody[]; rest?: string[] }>(
+        `/projects/${projectId}/schedule-sources?boards=${chunk.join(',')}`,
+      );
+      const rest = body.rest ?? [];
+      return rest.length && body.items.length ? [...body.items, ...(await read(rest))] : body.items;
+    };
+    Promise.all(chunks.map(read)).then(
       (bodies) => {
-        const stores = new Map(
-          bodies.flatMap((b) => b.items).map((item) => [item.boardId, summaryStore(item)]),
-        );
+        const stores = new Map(bodies.flat().map((item) => [item.boardId, summaryStore(item)]));
         // A replaced summary is left to the garbage collector: no socket or listener outside it.
         if (alive) setSummaries({ key: idsKey, stores });
       },
@@ -373,16 +392,8 @@ export function useScheduleSources({
   );
   const open = useMemo(() => {
     if (!across) return [{ boardId, store, readOnly: false }];
-    return ids.flatMap((id) => {
-      const conn = conns.get(id);
-      const summary = summaries?.stores.get(id);
-      // Refused: its blocks show their stored labels, as for a storyboard in the trash.
-      if (conn?.status === 'denied' || conn?.status === 'signedOut') return [];
-      if (conn && (conn.status === 'synced' || (conn.status === 'offline' && !summary)))
-        return [{ boardId: id, store: conn.store, readOnly: conn.readOnly }];
-      // Read only until its document is open: nothing is ticked on a copy.
-      return summary ? [{ boardId: id, store: summary, readOnly: true }] : [];
-    });
+    // Refused: its blocks show their stored labels, as for a storyboard in the trash.
+    return ids.flatMap((id) => sourceOf(id, conns.get(id), summaries?.stores.get(id)) ?? []);
   }, [across, ids, conns, summaries, boardId, store]);
   const stores = useMemo(() => open.map((o) => o.store), [open]);
   const snapshots = useSnapshots(stores);

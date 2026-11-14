@@ -36,7 +36,12 @@ import {
   requireBoardRole,
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
-import { type BoardReader, scheduleSource, storedColumns } from '../board-content.ts';
+import {
+  type BoardReader,
+  type ScheduleSourceContent,
+  scheduleSource,
+  storedColumns,
+} from '../board-content.ts';
 import { boardCounts, projectBoard, unsortedOf } from '../board-preview.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -79,6 +84,15 @@ interface Deps {
 export const DEMO_MAX_BOARDS = 30;
 
 const ProjectParams = z.object({ projectId: Id });
+
+/**
+ * Stored size of the storyboards one schedule-sources answer reads (#826): frames carry their
+ * drawings, which the schedule shows, so the answer is bounded in bytes and the rest is asked for
+ * again (`rest`). A board larger than the budget still comes, alone.
+ */
+export const SCHEDULE_SOURCES_BYTES = 8 * 1024 * 1024;
+/** Summaries of stored documents kept between requests, by board and save, up to this size. */
+const SUMMARY_CACHE_BYTES = 32 * 1024 * 1024;
 const BoardParams = z.object({ boardId: Id });
 
 export function toBoard(row: typeof board.$inferSelect, myRole: ProjectRole): Board {
@@ -212,6 +226,18 @@ async function createProduction(
 export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+  // Least recently read first; a save changes the key, so a stale summary is never served.
+  const summaries = new Map<string, { content: ScheduleSourceContent; bytes: number }>();
+  let summaryBytes = 0;
+  const cacheSummary = (key: string, content: ScheduleSourceContent, bytes: number) => {
+    summaries.set(key, { content, bytes });
+    summaryBytes += bytes;
+    for (const [old, entry] of summaries) {
+      if (summaryBytes <= SUMMARY_CACHE_BYTES) break;
+      summaries.delete(old);
+      summaryBytes -= entry.bytes;
+    }
+  };
 
   app.get(v1('/boards/:boardId/preview'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
@@ -587,9 +613,9 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       const role = roles.get(id)?.role;
       return role ? [{ id, role }] : [];
     });
-    if (readable.length === 0) return { items: [] };
-    const docs = await db
-      .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+    if (readable.length === 0) return { items: [], rest: [] };
+    const saved = await db
+      .select({ boardId: boardDoc.boardId, size: boardDoc.size, updatedAt: boardDoc.updatedAt })
       .from(boardDoc)
       .where(
         inArray(
@@ -597,17 +623,49 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
           readable.map((r) => r.id),
         ),
       );
-    const states = new Map(docs.map((d) => [d.boardId, d.state]));
-    const items = [];
-    for (const { id, role } of readable) {
-      const live = await deps.boardReader?.scheduleSource?.(id);
-      items.push({
-        boardId: id,
-        readOnly: !atLeast(role, CAPABILITY_ROLE.edit),
-        ...(live ?? scheduleSource(states.get(id))),
-      });
+    const savedOf = new Map(saved.map((d) => [d.boardId, d]));
+    // In the order asked, within the byte budget; always at least one, so each request moves on.
+    const chosen: typeof readable = [];
+    const rest: string[] = [];
+    let bytes = 0;
+    for (const r of readable) {
+      const size = savedOf.get(r.id)?.size ?? 0;
+      if (chosen.length > 0 && bytes + size > SCHEDULE_SOURCES_BYTES) rest.push(r.id);
+      else {
+        chosen.push(r);
+        bytes += size;
+      }
     }
-    return { items };
+    const content = new Map<string, ScheduleSourceContent>();
+    const keyOf = (id: string) => `${id}:${savedOf.get(id)?.updatedAt.getTime() ?? 0}`;
+    for (const { id } of chosen) {
+      const live = await deps.boardReader?.scheduleSource?.(id);
+      const cached = live ? undefined : summaries.get(keyOf(id));
+      if (cached) {
+        summaries.delete(keyOf(id));
+        summaries.set(keyOf(id), cached);
+      }
+      const found = live ?? cached?.content;
+      if (found) content.set(id, found);
+    }
+    const missing = chosen.filter(({ id }) => !content.has(id) && savedOf.has(id)).map((r) => r.id);
+    if (missing.length > 0) {
+      const docs = await db
+        .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+        .from(boardDoc)
+        .where(inArray(boardDoc.boardId, missing));
+      for (const doc of docs) {
+        const summary = scheduleSource(doc.boardId, doc.state);
+        content.set(doc.boardId, summary);
+        cacheSummary(keyOf(doc.boardId), summary, doc.state.byteLength);
+      }
+    }
+    const items = chosen.map(({ id, role }) => ({
+      boardId: id,
+      readOnly: !atLeast(role, CAPABILITY_ROLE.edit),
+      ...(content.get(id) ?? scheduleSource(id, null)),
+    }));
+    return { items, rest };
   });
 
   app.post(v1('/projects/:projectId/boards'), async (req, reply) => {
