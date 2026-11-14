@@ -291,8 +291,15 @@ export function MediaViewer({
   const [officePage, setOfficePage] = useState(1);
   const [officeSheet, setOfficeSheet] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
-  // Closing fades the viewer out instead of cutting to the board (#769).
-  useLayoutEffect(() => () => fadeOutCopy(dialogRef.current), []);
+  // Closing fades the viewer out instead of cutting to the board (#769); with reduced motion
+  // it closes at once.
+  useLayoutEffect(
+    () => () => {
+      if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+        fadeOutCopy(dialogRef.current);
+    },
+    [],
+  );
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
   const [embedBlocked, setEmbedBlocked] = useState(false);

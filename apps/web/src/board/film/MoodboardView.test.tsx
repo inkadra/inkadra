@@ -369,7 +369,7 @@ it('selects with the checkboxes and a click, then moves to a group and tags toge
   // With a selection going, a click on a tile selects instead of opening the viewer.
   await click(host.querySelector<HTMLElement>('.moodboard__card--color'));
   await click(checks(host)[2] ?? null);
-  expect(document.querySelector('.viewer')).toBeNull();
+  expect(document.querySelector('.viewer:not(.ink-motion-exit)')).toBeNull();
   expect(host.querySelectorAll('[data-picked]')).toHaveLength(3);
 
   await click(inBar(host, 'moodboard.moveToGroup'));

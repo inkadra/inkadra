@@ -59,7 +59,8 @@ function leave(root: HTMLElement, node: HTMLElement, spot: Spot): void {
 /**
  * Motion for a list that changes under the person's hand (#768): a row that moved eases from
  * its old place (FLIP, `translate` only), a new row pops in and a removed one fades out where
- * it was. Only transform and opacity move; with reduced motion rows only fade.
+ * it was. Only transform and opacity move; with reduced motion new rows fade in and moved or
+ * removed ones change at once.
  */
 export function easeList(
   root: HTMLElement,
@@ -100,7 +101,8 @@ export function easeList(
       easing: easeOut,
     });
   }
-  if (few) for (const [item, spot] of removed) leave(root, item, spot);
+  // With reduced motion a removed row goes at once: no copy lingers in its place.
+  if (few && !still) for (const [item, spot] of removed) leave(root, item, spot);
 }
 
 /** Runs `easeList` on the items matching `selector` inside `root` after every render. */
