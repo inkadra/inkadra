@@ -56,7 +56,10 @@ it('schedules anonymisation separately and isolates it from upload purge failure
     select: () => ({
       from: () => ({
         where: (...args: unknown[]) =>
-          Object.assign(pendingUploads(...args), { limit: async () => [] }),
+          Object.assign(pendingUploads(...args), {
+            limit: async () => [],
+            orderBy: () => ({ limit: async () => [] }),
+          }),
       }),
     }),
     delete: () => ({ where: vi.fn().mockResolvedValue(undefined) }),
