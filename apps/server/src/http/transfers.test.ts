@@ -1368,6 +1368,34 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     expect(projects.json().items).toHaveLength(0);
   });
 
+  it('refuses an archive over the storage limit before or at commit, keeping nothing (#850)', async () => {
+    const owner = await signUp(target.app, 'over-limit');
+    const before = await storedOriginals();
+    const path = await handmade({ data: png });
+    const full = { reason: 'storage_full' };
+    // Over the limit from the start: no file is written.
+    const small = { STORAGE_LIMIT: undefined, STORAGE_LIMIT_PER_USER: png.length - 1 };
+    await expect(
+      importProject(importDeps({ storageEnv: small }), path, owner.id),
+    ).rejects.toMatchObject(full);
+    expect(await storedOriginals()).toBe(before);
+    // The space is taken while the files are written: the commit refuses and removes them.
+    const env = { STORAGE_LIMIT: undefined, STORAGE_LIMIT_PER_USER: 1e9 };
+    const storage = {
+      ...target.deps.storage,
+      async writeStream(...args: Parameters<typeof target.deps.storage.writeStream>) {
+        await target.deps.storage.writeStream(...args);
+        env.STORAGE_LIMIT_PER_USER = 1;
+      },
+    };
+    await expect(
+      importProject(importDeps({ storageEnv: env, storage }), path, owner.id),
+    ).rejects.toMatchObject(full);
+    expect(await storedOriginals()).toBe(before);
+    const projects = await call(target.app, owner, 'GET', '/projects');
+    expect(projects.json().items).toHaveLength(0);
+  });
+
   it('skips files that are missing or do not match their checksum, and says so', async () => {
     const owner = await signUp(target.app, 'skipper');
     for (const path of [

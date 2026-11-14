@@ -9,6 +9,7 @@ import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   asset,
+  assetRendition,
   assetVariant,
   invitation as invitationTable,
   personalToken,
@@ -58,6 +59,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const mailer = memoryMailer();
   let auth: ReturnType<typeof createAuth>;
+  let deps: ReturnType<typeof testDeps>;
   let app: Awaited<ReturnType<typeof createApp>>;
   let base = '';
 
@@ -155,7 +157,8 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     // Revocation must be observed on the next request, including with the old cookies.
     expect(auth.options).not.toHaveProperty('session.cookieCache.enabled', true);
     expect(auth.options).not.toHaveProperty('secondaryStorage');
-    app = await createApp({ config, db, auth, log, mailer, ...testDeps(db, log) });
+    deps = testDeps(db, log);
+    app = await createApp({ config, db, auth, log, mailer, ...deps });
     await app.listen({ host: '127.0.0.1', port: 0 });
     base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
     expect((await signUp('owner')).status).toBe(200);
@@ -1146,7 +1149,23 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       storageKey: `originals/${randomBytes(8).toString('hex')}`,
       createdBy: as.newbie.id,
     });
-    await db.insert(asset).values(file(solo.body.id));
+    // The solo project holds files: the original and its copies go with the account (#846).
+    const [mine] = await db.insert(asset).values(file(solo.body.id)).returning();
+    const mineId = mine?.id as string;
+    const rung = `variants/${mineId}/r0123-480.mp4`;
+    const stored = [mine?.storageKey as string, `variants/${mineId}/256.webp`, rung];
+    for (const key of stored) await deps.storage.write(key, Buffer.from('x'), 'video/mp4');
+    await db.insert(assetVariant).values({
+      assetId: mineId,
+      size: '256',
+      width: 1,
+      height: 1,
+      storageKey: `variants/${mineId}/256.webp`,
+      bytes: 1,
+    });
+    await db
+      .insert(assetRendition)
+      .values({ assetId: mineId, name: '480', status: 'ready', recipe: 'x', storageKey: rung });
     const [processing] = await db.insert(asset).values(file(projectId)).returning();
     const id = processing?.id as string;
     let release = () => {};
@@ -1189,6 +1208,8 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const [kept] = await db.select().from(asset).where(eq(asset.id, id));
     expect(kept?.createdBy).toBeNull();
     expect(await db.select().from(project).where(eq(project.id, solo.body.id))).toEqual([]);
+    await deps.jobs.idle();
+    for (const key of stored) expect(await deps.storage.size(key)).toBeNull();
     expect((await call('newbie', 'GET', '/api/v1/me')).status).toBe(401);
     // The shared project stays, without the person.
     const members = await call('owner', 'GET', `/api/v1/projects/${projectId}/members`);
