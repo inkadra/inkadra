@@ -49,7 +49,7 @@ describe.each(LOCALES.filter((locale) => locale !== 'it'))('the %s catalogue', (
     expect(differ).toEqual([]);
   });
 
-  it('translates every phrase instead of copying the English one', () => {
+  it.skipIf(locale === 'en')('translates every phrase instead of copying the English one', () => {
     // Single words and patterns may match English (Storyboard, Zoom, {{a}} → {{b}});
     // three or more words equal to English are an English placeholder left behind.
     const english = flat(en);

@@ -135,7 +135,17 @@ async function transcode(
       .where(eq(asset.id, assetId));
   const plan = videoPlan(container, info, row.size, settings);
   if (plan.kind === 'ladder') {
-    const result = await makeLadder(deps, row, container, source, dir, info, plan, onProgress, opts);
+    const result = await makeLadder(
+      deps,
+      row,
+      container,
+      source,
+      dir,
+      info,
+      plan,
+      onProgress,
+      opts,
+    );
     // The ladder is in: the single copy of before goes (decision 0128).
     if (regenerate && !('skipped' in result && result.skipped === 'gone'))
       await dropOldCopy(db, storage, assetId);

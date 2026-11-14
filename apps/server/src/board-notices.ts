@@ -42,7 +42,10 @@ export async function noticeAssetBoards(db: Database, notices: BoardNotifier, as
     .where(
       and(
         // Through the project, whose index the table has.
-        eq(boardElementIndex.projectId, sql`(select ${asset.projectId} from ${asset} where ${asset.id} = ${assetId})`),
+        eq(
+          boardElementIndex.projectId,
+          sql`(select ${asset.projectId} from ${asset} where ${asset.id} = ${assetId})`,
+        ),
         eq(boardElementIndex.assetId, assetId),
       ),
     );

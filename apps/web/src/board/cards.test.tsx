@@ -208,7 +208,11 @@ describe('video link cards', () => {
     const preview = render({ ...link, showInfo: false, showPreview: true });
     expect(preview).toContain('data-play-link=');
     expect(preview).not.toContain('Video description');
-    expect(preview).not.toContain('Video title');
+    // Only the card's own name for screen readers (#825) says the title; nothing shows it.
+    expect(preview).toContain('aria-label="board.types.link: Video title"');
+    expect(preview.replace('aria-label="board.types.link: Video title"', '')).not.toContain(
+      'Video title',
+    );
     const info = render({ ...link, showInfo: true, showPreview: false });
     expect(info).not.toContain('data-play-link=');
     expect(info).toContain('Video description');

@@ -529,7 +529,7 @@ export function Canvas({
   }, []);
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   /** The card with the keyboard focus (#825), and what the live region last said. */
-  const [focusId, setFocusId] = useState<string | null>(null);
+  const [cardFocus, setCardFocus] = useState<string | null>(null);
   const [spoken, setSpoken] = useState('');
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
@@ -3764,12 +3764,12 @@ export function Canvas({
       ?.querySelector<HTMLElement>(`.card--free[data-el="${CSS.escape(id)}"]`)
       ?.focus({ preventScroll: true });
   const tabStop =
-    (focusId && visible.some((el) => el.id === focusId) && focusId) ||
+    (cardFocus && visible.some((el) => el.id === cardFocus) && cardFocus) ||
     (selection.size === 1 && visible.find((el) => selection.has(el.id))?.id) ||
     firstCard(focusBoxes());
 
   const drawsOutline = (el: Element) =>
-    el.id === focusId ||
+    el.id === cardFocus ||
     selection.has(el.id) ||
     !!overlay.moving?.has(el.id) ||
     (isContainer(el) && !!snap.columns.get(el.id)?.some((c) => selection.has(c.id)));
@@ -3816,7 +3816,7 @@ export function Canvas({
           const id = (e.target as HTMLElement).matches('.card--free[data-el]')
             ? (e.target as HTMLElement).dataset.el
             : undefined;
-          if (id) setFocusId(id);
+          if (id) setCardFocus(id);
         }}
       >
         <span className="ink-sr-only" aria-live="polite">
