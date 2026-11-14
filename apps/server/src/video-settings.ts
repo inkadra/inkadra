@@ -295,7 +295,8 @@ export async function videoLibrary(
     })
     .from(asset)
     .where(and(eq(asset.kind, 'video'), eq(asset.status, 'ready'), isNotNull(asset.durationMs)));
-  const sums = new Map<VideoRung, VideoSettingsView['library'][number]>(
+  // Required: this server always sends the live-only minutes, optional for older ones.
+  const sums = new Map<VideoRung, Required<VideoSettingsView['library'][number]>>(
     VIDEO_RUNGS.map((side) => [
       side,
       { side, minutes: 0, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 0 },
