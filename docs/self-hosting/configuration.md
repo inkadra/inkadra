@@ -12,7 +12,7 @@ Compose reads by itself:
 
 ```yaml
 services:
-  inkadra: # `web`, `collab` or `worker` too in split mode
+  inkadra: # add `collab` and `worker` too in split mode
     environment:
       TZ: Europe/Rome
       IMPORT_MAX_SIZE: 50GB
@@ -20,31 +20,45 @@ services:
 
 ## Server
 
-| Variable        | Default                          | Meaning                                                                                          |
-| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                            |
-| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path         |
-| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out            |
-| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                                       |
-| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab` |
-| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                            |
-| `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                                    |
-| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                              |
-| `PORT`          | `3000`                           | Port of the web server                                                                           |
-| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                  |
-| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                            |
-| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                            |
-| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                             |
-| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                             |
+| Variable        | Default                          | Meaning                                                                                           |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                             |
+| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path          |
+| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out             |
+| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                                        |
+| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`  |
+| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                             |
+| `REGISTRATION`  | `invite`                         | `invite`: invitation required; `open`: anyone; `closed`: no new accounts, even with an invitation |
+| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                               |
+| `PORT`          | `3000`                           | Port of the web server                                                                            |
+| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                   |
+| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                             |
+| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                             |
+| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                              |
+| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                              |
+
+`INSTANCE_NAME` and `REGISTRATION` are installation defaults; saved administrator choices
+in Settings override them.
+
+`TZ` sets the container time zone used for scheduled backups (UTC unless configured). It is
+not forwarded by default. The image bundles Node 26.13; the host does not need Node.
+
+| Variable                | Default | Meaning                                                                                                               |
+| ----------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `PRODUCTION_BOARD_MOVE` | `true`  | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main) |
+| `OFFICE_PREVIEWS`       | off     | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md)          |
+
+Upload and import size units below use powers of 1024 (`1GB` = 1 GiB). Storage quota units
+use powers of 1000. Boolean settings accept `true` or `false` unless stated otherwise.
 
 ## Files and uploads
 
 | Variable                 | Default     | Meaning                                                                                                                                                      |
 | ------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `STORAGE_DRIVER`         | `local`     | `local`: files in the data volume. `s3`: files in a bucket. See [Storage](storage.md)                                                                        |
-| `S3_ENDPOINT`            | AWS         | Address of an S3-compatible service, e.g. `https://s3.eu-central-003.backblazeb2.com`                                                                        |
+| `S3_ENDPOINT`            | AWS         | Address of an S3-compatible service, e.g. `https://s3.example.com`                                                                                           |
 | `S3_REGION`              | `us-east-1` | Region of the bucket                                                                                                                                         |
-| `S3_BUCKET`              |             | Bucket name                                                                                                                                                  |
+| `S3_BUCKET`              |             | Required with `STORAGE_DRIVER=s3`. Bucket name                                                                                                               |
 | `S3_ACCESS_KEY_ID`       |             | Access key                                                                                                                                                   |
 | `S3_SECRET_ACCESS_KEY`   |             | Secret key                                                                                                                                                   |
 | `S3_FORCE_PATH_STYLE`    | `false`     | `true` for MinIO, RustFS, Garage and most self-hosted stores                                                                                                 |
@@ -56,28 +70,58 @@ services:
 
 ## Public demo
 
-`DEMO_MODE=true` makes the server a public demo with sandboxes that go after an hour, and closes
-everything a stranger could abuse. Off by default. Its variables (`DEMO_TTL`, `DEMO_STORAGE`,
-`DEMO_MAX_SANDBOXES`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`) and how to run it behind a
-Cloudflare Tunnel are in [The public demo](../demo.md).
+`DEMO_MODE` defaults to `false`. Setting it to `true` enables temporary sandboxes and disables
+sign-in providers, email, reports, maps and heavy media previews. It is not a normal team
+installation. See [demo configuration](../demo.md) before enabling it.
+
+| Variable                                 | Default | Allowed values                                                |
+| ---------------------------------------- | ------- | ------------------------------------------------------------- |
+| `DEMO_TTL`                               | `1h`    | Seconds or an integer with `s`, `m`, `h`; at least one minute |
+| `DEMO_STORAGE`                           | `100MB` | Space per sandbox, decimal units                              |
+| `DEMO_MAX_SANDBOXES`                     | `50`    | Integer 1–10000                                               |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET` | unset   | Set both together; required in production demo mode           |
 
 ## Media previews
 
-Media tools are included in the standard image (see [The image](README.md#the-image)). The policy is in [decision 0048](../decisions/0048-media-worker-previews.md).
+Media tools are included in standard builds after 0.9.0; that release needs `0.9.0-media`
+(see [The image](README.md#the-image)). Current `main` adds the controls below.
 
-| Variable                      | Default               | Meaning                                                                                                                                                                                                               |
-| ----------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RAW_PREVIEWS`                | `true`                | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded                                                                                                     |
-| `PDF_PREVIEWS`                | `true`                | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                                                                                                                            |
-| `VIDEO_PROXIES`               | `true`                | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage                                                                                                 |
-| `VIDEO_PROXY_MAX_DURATION`    | `7200`                | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                                                                                |
-| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `0`                   | Largest video that gets a playable copy, as bytes or with a unit; `0` (the default) for no limit: the duration limit and the free-space check remain                                                                  |
-| `VIDEO_PROXY_RESOLUTION`      | unset (`1080`)        | Largest shorter side of a copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                                                                             |
-| `VIDEO_PROXY_BITRATE`         | unset                 | Cap on the peak video bitrate of every copy (`5M`, `2500k`). Unset, the quality preset sets the rate by size and frame rate: about 46 MB per minute for 1080p (decision 0128)                                         |
-| `VIDEO_PROXY_CONCURRENCY`     | `1`, `2` with a GPU   | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores. Unset, it is `2` when a hardware encoder was found |
-| `VIDEO_PROXY_THREADS`         | `2`                   | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                                                                             |
-| `VIDEO_PROXY_HWACCEL`         | `auto`                | Hardware encoding of the copies: `auto`, `nvenc`, `qsv`, `vaapi` or `none` (libx264 only). See [Hardware video encoding](#hardware-video-encoding)                                                                    |
-| `VIDEO_PROXY_VAAPI_DEVICE`    | `/dev/dri/renderD128` | Render node used by `qsv` and `vaapi`                                                                                                                                                                                 |
+In **Settings → Video**, administrators choose Light, Balanced (default) or High quality,
+resolutions to store, and whether to encode while someone watches. By default, 480p, 720p and
+1080p are stored, without upscaling; 2160p is off and also requires raising
+`VIDEO_PROXY_RESOLUTION` above its default of 1080. Browser-playable originals get copies when
+heavy (over 1080 pixels on the shorter side, 12 Mbit/s or 60 fps). Live encoding needs a GPU
+and a successful worker benchmark. Without it, live resolutions are stored instead.
+Changing settings affects new copies; use the page's regeneration control for missing or
+outdated copies. Existing copies stay available until replacements are ready.
+
+These four overrides are unset by default. Add them to each role's `environment` in Compose;
+setting them locks the corresponding control in Settings.
+
+| Variable                  | Allowed values                               | Meaning                                                            |
+| ------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| `VIDEO_QUALITY`           | `light`, `balanced`, `high`                  | Quality preset                                                     |
+| `VIDEO_RENDITIONS`        | Comma-separated `480`, `720`, `1080`, `2160` | Resolutions to store; all others are off                           |
+| `VIDEO_LIVE`              | `true`, `false`                              | Allow encoding while watched, if hardware supports it              |
+| `VIDEO_LIVE_MAX_SESSIONS` | Integer 0–64                                 | Override the measured session capacity; `0` disables live encoding |
+
+| Variable                      | Default                  | Meaning                                                                                                                                                                                                               |
+| ----------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RAW_PREVIEWS`                | `true`                   | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded                                                                                                     |
+| `PDF_PREVIEWS`                | `true`                   | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                                                                                                                            |
+| `VIDEO_PROXIES`               | `true`                   | Enable playable copies of unsupported or heavy videos. `false` disables creation                                                                                                                                      |
+| `VIDEO_PROXY_MAX_DURATION`    | `7200`                   | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                                                                                |
+| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `0`                      | Largest video that gets a playable copy, as bytes or with a unit; `0` (the default) for no limit: the duration limit and the free-space check remain                                                                  |
+| `VIDEO_PROXY_RESOLUTION`      | unset (`1080`), 144–2160 | Largest shorter side of a copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                                                                             |
+| `VIDEO_PROXY_BITRATE`         | unset                    | Cap on the peak video bitrate of every copy (`5M`, `2500k`). Unset, the quality preset sets the rate by size and frame rate: about 46 MB per minute for 1080p (decision 0128)                                         |
+| `VIDEO_PROXY_CONCURRENCY`     | `1`, `2` with a GPU      | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores. Unset, it is `2` when a hardware encoder was found |
+| `VIDEO_PROXY_THREADS`         | `2` (1–16)               | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                                                                             |
+| `VIDEO_PROXY_HWACCEL`         | `auto`                   | Hardware encoding of the copies: `auto`, `nvenc`, `qsv`, `vaapi` or `none` (libx264 only). See [Hardware video encoding](#hardware-video-encoding)                                                                    |
+| `VIDEO_PROXY_VAAPI_DEVICE`    | `/dev/dri/renderD128`    | Render node used by `qsv` and `vaapi`                                                                                                                                                                                 |
+
+For custom images or non-Docker installs, tools are discovered on `PATH`. Override individual
+paths with `FFMPEG_PATH`, `FFPROBE_PATH`, `EXIFTOOL_PATH`, `PDFTOPPM_PATH`, `PDFINFO_PATH`,
+`PRLIMIT_PATH` or `NICE_PATH`. A missing tool disables the previews that need it.
 
 ### Hardware video encoding
 
@@ -87,14 +131,14 @@ Sync** (`qsv`) or **VAAPI**, and AMD GPUs with **VAAPI**. When the worker starts
 NVENC, then Quick Sync, then VAAPI: each needs its encoder in ffmpeg, the device, and a
 one-second test encode that works. The first that passes is used, and the log says which
 (`video encoding: Intel Quick Sync (Intel, /dev/dri/renderD128, low power)`), as does
-**Settings → Diagnostics** (_Video encoding_). Naming one backend tries only that one; if it
-does not work the worker falls back to libx264 and Diagnostics shows a warning.
+**Settings → Video**. Naming one backend tries only that one; if it
+does not work the worker falls back to libx264 and the Video page shows the selected encoder.
 
 The copy is the same whatever encodes it: H.264 High and AAC in an MP4, the shorter side at
 most `VIDEO_PROXY_RESOLUTION`, a keyframe every two seconds, a constant quality under a peak
 rate set by the quality preset ([decision 0128](../decisions/0128-video-renditions.md)), and the
 same length, size and time limits. GPUs and drivers that refuse the full rate control (QVBR,
-lookahead) get plain VBR at the preset's target: Diagnostics then says _basic rate control_. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and AV1) are also
+lookahead) get plain VBR at the preset's target: the encoder label then says _basic rate control_. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and AV1) are also
 decoded and scaled on the GPU; ProRes, DNxHD and 4:2:2 sources are decoded on the CPU and only
 encoded on the GPU. **If the GPU fails on a file** (a profile it does not take, a busy device),
 that copy is made again with libx264: a video never ends up without its copy because of the GPU.
@@ -156,14 +200,13 @@ services:
 ```
 
 On older Docker versions, `runtime: nvidia` with `NVIDIA_VISIBLE_DEVICES: all` does the same.
-Consumer GeForce cards allow a limited number of NVENC sessions at once (8 with current drivers,
-fewer with old ones): keep `VIDEO_PROXY_CONCURRENCY` under it, counting other programs (Plex,
-Jellyfin) that use the card.
+The driver can limit concurrent NVENC sessions. Count other programs using the card when
+setting `VIDEO_PROXY_CONCURRENCY`.
 
 **Checking it.** After starting the stack:
 
 1. the worker log has `video encoding: …` with the backend, not `Software (libx264)`;
-2. Settings → Diagnostics shows the same under _Video encoding_;
+2. Settings → Video shows the selected encoder;
 3. upload a ProRes or HEVC clip: the copy is made, and `nvidia-smi` (NVIDIA) or
    `intel_gpu_top` (Intel, on the host) shows the encoder busy meanwhile;
 4. the worker log has no `hardware encoding failed` for it (which would mean libx264 made it).
@@ -232,7 +275,9 @@ These change `compose.yaml` itself, not the server.
 
 ## Sign-in and email
 
-Step by step in [Sign-in](sign-in.md). Every variable is optional.
+Setup instructions are in [Sign-in](sign-in.md). Leave unused providers unset. Set Google
+client id and secret together; OIDC needs discovery URL, client id and secret together.
+`SMTP_URL` requires `MAIL_FROM`.
 
 | Variable                 | Default                | Meaning                                                                           |
 | ------------------------ | ---------------------- | --------------------------------------------------------------------------------- |
@@ -281,7 +326,8 @@ claim any client address. Once the proxy works, narrow it to **the proxy's own a
 - a proxy in the same Docker network: its single container IP, e.g.
   `TRUST_PROXY=172.18.0.10`. Pin it with `ipv4_address: 172.18.0.10` in compose
   (and configure network IPAM for that address);
-- a proxy on the same machine, reaching the published port: `TRUST_PROXY=loopback`;
+- a proxy on the same machine, reaching the published port: verify the peer Inkadra actually
+  sees. Docker may translate it; do not assume it is loopback or trust the Docker gateway;
 - a proxy on another machine of your LAN: its address, e.g. `TRUST_PROXY=192.168.1.10`;
 - a proxy that reaches Inkadra over Tailscale, for example Pangolin on a VPS targeting the
   server's Tailscale address: only that proxy's tailnet address, e.g.
@@ -350,13 +396,6 @@ also redirects HTTP to HTTPS: see [Reverse proxy](reverse-proxy.md#security-head
 - Email is sent in the background: a container stopped at the wrong moment can lose a message
   that was about to go out, and failures are logged without credentials.
 
-> **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
-> container IP pinned with `ipv4_address`, for example `172.18.0.10`
-> or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
-> trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
-> `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
-> or bypassing address-based rate limits. Direct clients need no proxy trust.
-
 ## Direct LAN and Tailscale access
 
 `PUBLIC_URL` is the canonical external address for email, invitations, share links and
@@ -385,7 +424,7 @@ Use the pinned proxy container IP and verify the peer address in your deployment
 Reporting to the **Inkadra developers is on without a saved choice**, also on an upgraded instance,
 via the relay described below. What leaves and how to turn it off, in plain words:
 [What leaves your server](README.md#what-leaves-your-server).
-Saved administrator choices override that default. In Settings → About → Reports an administrator
+Saved administrator choices override that default. In Settings → Reports an administrator
 chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
 guests may report (off by default) and how long attachments are kept (90 days by default; 30
 days or one year on request). Every report is first saved in the local database; attachments
@@ -432,7 +471,7 @@ retries with exponential backoff and the person has already seen "sent", with a 
 A lost connection or a 5xx during the write itself leaves the outcome unknown: the report is
 marked "To check on GitHub" and not posted again, to prevent duplicates. A 401, 404, 410, 422 or a
 repository that is no longer private stops the retries: the reason is logged and shown in
-Settings → About → Reports, and **Try again** there sends those reports round again. A report still
+Settings → Reports, and **Try again** there sends those reports round again. A report still
 retrying reads "Waiting to be sent", and **Try again** in its expanded row runs the same delivery
 sooner, with no risk of a duplicate. If the destination changes, queued reports stay local, marked
 "Inbox only", and never go to the repository chosen before.
@@ -446,26 +485,15 @@ another `https://` relay URL to override (plain `http://` only to this machine),
 string to disable this route. No GitHub or Cloudflare credential is installed in the app for it.
 
 **Every instance without a saved choice uses this destination, including one upgraded from an
-earlier version where reporting was off.** To keep reports off, save a choice in Settings → About → Reports
+earlier version where reporting was off.** To keep reports off, save a choice in Settings → Reports
 or set the empty value before upgrading. Guests stay disabled. Settings lets administrators turn
 developer reporting off with one switch (Inbox), choose Inbox only, disable reports, or configure
 their own private GitHub repository. Saved administrator choices always take precedence, including
 existing direct GitHub setups. A dialog opened before the choice changed asks to read it again.
 
-**What is sent**, after the mandatory preview: the selected title, description, diagnostics
-(redacted logs, version, browser/OS, screen, theme/language, route, sync and flags) and attachments.
-They go through Cloudflare, which sees this server's IP address, to the private
-`inkadra/inkadra-feedback` repository, read by Inkadra developers. No reporter name, email or
-instance URL is added. Before leaving, logs and text files lose secrets, this instance's host name,
-the machine's name and internal addresses, and files are renamed `kind-N.ext`. Installation IDs and
-networks are stored by the relay only as HMACs.
-
-**Metadata.** Attachments stay in a repository's history, so nothing leaves with its GPS position.
-PNG, JPEG, WebP, GIF, TIFF, AVIF and HEIC are rewritten without metadata (the last three as WebP).
-Videos from the device need ffmpeg to lose theirs, so they are refused on an image without it (the
-standard image has it); recordings made in the dialog always go. PDFs leave whole, with their
-metadata, and the dialog says so. What people write and what is visible in a file can still be
-personal: the preview is there to check it.
+For report contents, redaction, metadata and attachment retention, see
+[What leaves your server](README.md#what-leaves-your-server). PDFs retain their metadata.
+Device videos need ffmpeg for metadata removal; the dialog refuses them without it.
 
 **Limits.** 10 MiB per image or file, 25 MiB per video, 32 MiB per report; direct GitHub keeps its
 100 MiB video limit. The relay accepts 40 reports a day per network and 60 a day in total, across

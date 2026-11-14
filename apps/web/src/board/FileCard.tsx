@@ -520,9 +520,10 @@ function VideoPreview({
   // A ladder plays as soon as its smallest rung is ready (decision 0128).
   const preparing = !playable.hls && (proxy?.status === 'queued' || proxy?.status === 'processing');
   const percent = proxy?.status === 'processing' ? (proxy.progress ?? null) : null;
-  const rungs = [...(asset.playback?.renditions ?? [])].sort(
-    (a, b) => Number(a.name) - Number(b.name),
-  );
+  // A rung offered only live is never stored (decision 0128): no bar, nothing to wait for.
+  const rungs = (asset.playback?.renditions ?? [])
+    .filter((r) => !r.liveOnly)
+    .sort((a, b) => Number(a.name) - Number(b.name));
   const making =
     rungs.find((r) => r.status === 'processing') ?? rungs.find((r) => r.status === 'queued');
   // A guest whose link allows no downloads gets a picture as the url (guest-assets.ts): nothing

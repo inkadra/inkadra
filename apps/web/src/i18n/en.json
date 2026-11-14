@@ -2011,7 +2011,8 @@
       "original": "Original",
       "live": "live",
       "liveCopy": "copy at {{percent}}%",
-      "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it."
+      "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it.",
+      "liveOnlyNote": "«Live» qualities are converted by the graphics card as you watch, without storing a copy."
     }
   },
   "search": {

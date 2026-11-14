@@ -61,6 +61,20 @@ describe('toPlayback', () => {
     ).toBe('prores');
     expect(waiting?.noLive).toBeUndefined();
   });
+
+  it('marks a rung offered only live apart from one live while its copy is made', () => {
+    const playback = toPlayback(
+      [row('480', { status: 'processing', progress: 30, storageKey: null })],
+      '/x',
+      false,
+      ['480', '1080'],
+    );
+    expect(playback?.hls).toMatch(/master\.m3u8\?v=[\w-]{8}-l$/);
+    expect(playback?.renditions.map((r) => [r.name, r.status, r.live, r.liveOnly])).toEqual([
+      ['480', 'processing', true, undefined],
+      ['1080', 'queued', true, true],
+    ]);
+  });
 });
 
 describe('proxyRendition', () => {
