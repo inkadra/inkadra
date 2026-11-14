@@ -1,11 +1,11 @@
 {
   "apps/server": {
-    "lines": 0,
-    "branches": 0
+    "lines": 86,
+    "branches": 76
   },
   "apps/web": {
-    "lines": 0,
-    "branches": 0
+    "lines": 57,
+    "branches": 48
   },
   "apps/clipper": {
     "lines": 51,
