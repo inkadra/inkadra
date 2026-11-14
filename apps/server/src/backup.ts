@@ -154,6 +154,11 @@ export const VERIFY_BUDGET_MS = 30 * 60 * 1000;
  * 25 MiB/s): their part of the verification gets `VERIFY_BUDGET_MS` plus the time this rate
  * needs for `media.bytes`, apart from the tables and the file list (#899).
  */
+/**
+ * The most files a backup with media holds (#899): the entries a restore reads
+ * (`ARCHIVE_LIMITS`), less room for the tables. More fails the backup before it writes.
+ */
+export const MEDIA_FILES_MAX = 499_000;
 export const MEDIA_VERIFY_BYTES_PER_MS = (25 * 1024 * 1024) / 1000;
 /** Above this many listed files, the verification looks up an even sample of this size. */
 export const VERIFY_SAMPLE = 20_000;
@@ -300,6 +305,8 @@ export interface BackupDeps {
   stallMs?: number;
   /** Tests: how often the heartbeat beats. */
   heartbeatMs?: number;
+  /** Tests: the most files of a backup with media (`MEDIA_FILES_MAX`). */
+  mediaFilesMax?: number;
   /** Tests: the time the verification of tables and file list may take (`VERIFY_BUDGET_MS`). */
   verifyBudgetMs?: number;
   storage: Storage;
@@ -986,7 +993,7 @@ async function freeBytes(dir: string) {
  * estimate asks for.
  */
 async function dumpDatabase(
-  deps: Pick<BackupDeps, 'databaseUrl' | 'migrationsFolder'>,
+  deps: Pick<BackupDeps, 'databaseUrl' | 'migrationsFolder' | 'mediaFilesMax'>,
   path: string,
   hooks: {
     moved: () => void;
@@ -1012,6 +1019,16 @@ async function dumpDatabase(
     if (hooks.media) {
       const [row] = await sql.unsafe<{ n: string }[]>(MEDIA_BYTES);
       needed += Number(row?.n ?? 0);
+      const [files] = await sql<{ n: number }[]>`select (
+        (select count(*) from asset where status <> 'pending')
+        + (select count(*) from asset_variant where size <> 'proxy')
+        + (select count(*) from feedback_attachment where expires_at > now())
+      )::int as n`;
+      const max = deps.mediaFilesMax ?? MEDIA_FILES_MAX;
+      if ((files?.n ?? 0) > max)
+        throw new Error(
+          `${files?.n} files are more than a backup with files holds (${max}): turn "Include files" off and back up the data volume or the bucket instead.`,
+        );
     }
     const free = await freeBytes(dirname(path));
     if (free < needed)
@@ -1492,9 +1509,10 @@ export async function restoreBackup(opts: {
 
 const ARCHIVE_LIMITS = {
   // shortcut: one entry per file of a backup with media (#899), and yazl and yauzl keep the
-  // central directory in memory (a few hundred bytes an entry); past this many files, media
-  // backups need a format with an index of its own.
-  entries: 2_000_000,
+  // central directory in memory: about 1 KiB an entry each (measured with 10 000 to 40 000
+  // entries), and yazl's writing slows down as the square of the entries. Past this many files,
+  // media backups need a format with an index of its own.
+  entries: 500_000,
   totalBytes: Number.MAX_SAFE_INTEGER,
   compressionRatio: 10_000,
 };

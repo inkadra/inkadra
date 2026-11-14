@@ -734,6 +734,22 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
         missingFiles: 1,
       });
       expect(partial?.mediaBytes).toBe('a rewritten picture'.length);
+
+      // More files than a restore can read: refused before anything is written.
+      const many = await startBackup(other, 'manual', null);
+      const refused = await runBackup(
+        {
+          ...backupDeps(),
+          db: other,
+          databaseUrl: fresh,
+          storage: files,
+          backupDir,
+          mediaFilesMax: 1,
+        },
+        many?.id as string,
+      );
+      expect(refused).toMatchObject({ status: 'failed', failure: 'internal' });
+      expect((await readdir(backupDir)).filter((n) => n.endsWith('.partial'))).toEqual([]);
     } finally {
       await admin.end({ timeout: 1 });
       await client.end({ timeout: 1 });

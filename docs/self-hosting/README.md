@@ -476,8 +476,10 @@ docker compose run --rm inkadra backup restore-files inkadra-backup-20261102-030
 ```
 
 Archives with files hold one zip entry per file, and the server keeps the list of entries in
-memory while it reads one (about 200 bytes a file): plan on about 200 MB of memory per million
-files for a restore or a verification.
+memory while it writes or reads one, about 1 KiB a file: 100,000 files take about 100 MB. A
+backup with files holds at most 499,000 files (originals, thumbnails and attachments together);
+above that it fails with a message saying so, and the data volume or the bucket has to be
+backed up on its own instead.
 
 The restore loads the tables in order, rebuilds the search index on the next start, records a
 `backup.restored` event in the audit log, and lists any file named by the backup that storage
