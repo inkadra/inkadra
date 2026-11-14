@@ -175,6 +175,26 @@ export async function refusal(
   return null;
 }
 
+/** The tables whose statement triggers keep `storage_total` current (migration 0052). */
+export const STORAGE_TOTAL_TABLES = ['asset', 'asset_variant', 'asset_rendition'] as const;
+
+/**
+ * Every running total from the files themselves, as migration 0052 first built them: run by a
+ * restore, which loads the files with the triggers off (#879).
+ */
+export const REBUILD_STORAGE_TOTALS = `insert into storage_total
+    (user_id, bytes, pending_bytes, rendition_bytes)
+  select a.created_by, sum(a.size + coalesce(v.bytes, 0)),
+    sum(case when a.status = 'pending' then a.size else 0 end), sum(coalesce(r.bytes, 0))
+  from asset a
+  left join (select asset_id, sum(bytes) as bytes from asset_variant group by asset_id) v
+    on v.asset_id = a.id
+  left join (select asset_id, sum(bytes) as bytes from asset_rendition group by asset_id) r
+    on r.asset_id = a.id
+  group by a.created_by
+  on conflict (user_id) do update set bytes = excluded.bytes,
+    pending_bytes = excluded.pending_bytes, rendition_bytes = excluded.rendition_bytes`;
+
 /**
  * Sets each person's running total to the sum of their files (daily): a total that drifted,
  * through a write the triggers do not see (a restore, a manual edit), heals within a day. One
@@ -260,6 +280,9 @@ export async function assertSpace(
   if (limits.total === null && limit === null) return;
   // An instance total needs every upload in turn; a person's limit only theirs (#799). Both
   // hold the lock for a few index lookups, and the pool's lock timeout bounds the wait (#800).
+  // shortcut: an administrator setting the first instance total while uploads hold only their
+  // own `storage-limits:<user>` lock lets those few pass the new total together, once; take the
+  // instance lock in shared mode on every upload if that ever matters.
   const key = limits.total !== null ? 'storage-limits' : `storage-limits:${userId}`;
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${key}))`);
   const refused = await refusal(tx, limits, { id: userId, limit }, bytes, exclude);

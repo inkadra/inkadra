@@ -923,7 +923,7 @@
             }
           ],
           "isUnique": false,
-          "where": "\"board_doc\".\"indexed_at\" is null or \"board_doc\".\"indexed_at\" < \"board_doc\".\"updated_at\"",
+          "where": "\"board_doc\".\"indexed_at\" is null or \"board_doc\".\"indexed_at\" < \"board_doc\".\"updated_at\" or \"board_doc\".\"tasks\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}

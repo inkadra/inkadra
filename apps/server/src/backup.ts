@@ -29,9 +29,10 @@ import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import postgres from 'postgres';
 import { VERSION } from './config.ts';
-import { createDatabase, type Database, runMigrations } from './db/client.ts';
+import { createDatabase, type Database, runMigrations, UNLIMITED_SESSION } from './db/client.ts';
 import { instanceBackup, instanceSetting } from './db/schema.ts';
 import type { Storage } from './storage.ts';
+import { REBUILD_STORAGE_TOTALS, STORAGE_TOTAL_TABLES } from './storage-limits.ts';
 import { piped, readZip, writeZip } from './transfers/zip.ts';
 
 /**
@@ -50,6 +51,8 @@ const SKIPPED_TABLES = new Set<string>([
   'project_transfer',
   // The rungs of video ladders (decision 0128) are made again with "Rigenera", like proxies.
   'asset_rendition',
+  // Copies of deleted files parked for one statement (migration 0052): empty between them.
+  'storage_total_gone',
   ...BACKUP_REBUILT_TABLES,
 ]);
 const NAME = /^[a-z_][a-z0-9_]{0,62}$/;
@@ -536,7 +539,11 @@ async function dumpDatabase(
   // A connection of its own: when a COPY breaks off while its socket is paused for
   // backpressure, postgres.js never reads the end of the transaction. Destroying this
   // connection settles it, without touching the pool the rest of the server uses.
-  const sql = postgres(deps.databaseUrl, { max: 1, onnotice: () => {} });
+  const sql = postgres(deps.databaseUrl, {
+    max: 1,
+    onnotice: () => {},
+    connection: UNLIMITED_SESSION,
+  });
   const zip = writeZip(path);
   // A stalled dump (see runBackup) gives up its connection and its file.
   const stop = () => {
@@ -767,6 +774,12 @@ export async function restoreBackup(opts: {
     try {
       // The manifest lists tables in load order, self-referencing rows parents first.
       await target.begin(async (tx) => {
+        // The storage totals are rebuilt once at the end, not file by file as the rows arrive
+        // (#879). Before migration 0052 there are neither triggers nor totals: it builds them.
+        const [totals] = await tx<{ ok: boolean }[]>`
+          select to_regclass('storage_total') is not null as ok`;
+        const counted = totals?.ok ? STORAGE_TOTAL_TABLES : [];
+        for (const name of counted) await tx`alter table ${tx(name)} disable trigger user`;
         for (const table of manifest.tables) {
           const name = table.name;
           const sink = await copyWritable(
@@ -784,6 +797,8 @@ export async function restoreBackup(opts: {
           rows += table.rows;
           opts.log.info({ table: name, rows: table.rows }, 'table restored');
         }
+        for (const name of counted) await tx`alter table ${tx(name)} enable trigger user`;
+        if (counted.length > 0) await tx.unsafe(REBUILD_STORAGE_TOTALS);
       });
     } finally {
       await target.end();

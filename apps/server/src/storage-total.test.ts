@@ -23,6 +23,13 @@ describe.skipIf(!url)('running storage totals (#799, needs DATABASE_URL)', () =>
     end = () => created.sql.end();
     const [p] = await db.insert(project).values({ name: 'Usage', position: 'a0' }).returning();
     projectId = p?.id as string;
+    // Counts each update of a running total, for the tests of #879.
+    await db.execute(q`create table storage_total_updates (xid bigint not null)`);
+    await db.execute(q`create function count_storage_total_update() returns trigger
+      language plpgsql as $$ begin insert into storage_total_updates values (txid_current());
+      return null; end $$`);
+    await db.execute(q`create trigger count_update after update on storage_total
+      for each row execute function count_storage_total_update()`);
   });
   afterAll(() => end());
 
@@ -85,6 +92,110 @@ describe.skipIf(!url)('running storage totals (#799, needs DATABASE_URL)', () =>
     await db.delete(asset).where(eq(asset.id, a));
     expect(await reservedBytes(db, { userId: bruno })).toBe(0);
     expect(await reservedBytes(db)).toBe(0);
+  });
+
+  it('updates each total once per statement, even for thousands of files (#879)', async () => {
+    const [p] = await db.insert(project).values({ name: 'Big', position: 'a1' }).returning();
+    const big = p?.id as string;
+    const elena = await person();
+    const fabio = await person();
+    const ids = Array.from({ length: 3000 }, () => randomUUID());
+    type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
+    // Row versions of storage_total written by this transaction: one per owner and statement.
+    const updates = async (tx: Tx) =>
+      Number(
+        (
+          await tx.execute<{ n: string }>(
+            q`select count(*)::text as n from storage_total_updates where xid = txid_current()`,
+          )
+        )[0]?.n,
+      );
+    const before = await reservedBytes(db);
+    await db.transaction(async (tx) => {
+      await tx.insert(asset).values(
+        ids.map((id, i) => ({
+          id,
+          projectId: big,
+          kind: 'image' as const,
+          mime: 'image/jpeg',
+          filename: 'a.jpg',
+          size: 100,
+          storageKey: `originals/${id}`,
+          status: 'ready' as const,
+          createdBy: i % 2 ? elena : fabio,
+        })),
+      );
+      await tx.insert(assetVariant).values(
+        ids.map((assetId) => ({
+          assetId,
+          size: '256' as const,
+          width: 1,
+          height: 1,
+          storageKey: `variants/${assetId}`,
+          bytes: 10,
+        })),
+      );
+      await tx.insert(assetRendition).values(
+        ids.map((assetId) => ({
+          assetId,
+          name: '480' as const,
+          status: 'ready' as const,
+          recipe: 'r',
+          bytes: 1,
+        })),
+      );
+      expect(await updates(tx)).toBeLessThanOrEqual(4);
+    });
+    expect(await reservedBytes(db, { userId: elena })).toBe(1500 * 110);
+    expect(await reservedBytes(db, { userId: fabio })).toBe(1500 * 110);
+    expect(await reservedBytes(db)).toBe(before + 3000 * 111);
+
+    // The project goes with its files, their copies and rungs in the cascade.
+    const started = Date.now();
+    await db.transaction(async (tx) => {
+      await tx.delete(project).where(eq(project.id, big));
+      expect(await updates(tx)).toBeLessThanOrEqual(2);
+    });
+    expect(Date.now() - started).toBeLessThan(10_000);
+    expect(await reservedBytes(db, { userId: elena })).toBe(0);
+    expect(await reservedBytes(db, { userId: fabio })).toBe(0);
+    expect(await reservedBytes(db)).toBe(before);
+    const [parked] = await db.execute<{ n: string }>(
+      q`select count(*)::text as n from storage_total_gone`,
+    );
+    expect(parked?.n).toBe('0');
+  }, 60_000);
+
+  it('moves the files of a deleted person in one step', async () => {
+    const gino = await person();
+    await db.insert(asset).values(
+      Array.from({ length: 2000 }, () => {
+        const id = randomUUID();
+        return {
+          id,
+          projectId,
+          kind: 'image' as const,
+          mime: 'image/jpeg',
+          filename: 'a.jpg',
+          size: 5,
+          storageKey: `originals/${id}`,
+          createdBy: gino,
+        };
+      }),
+    );
+    const before = await reservedBytes(db);
+    await db.transaction(async (tx) => {
+      await tx.delete(user).where(eq(user.id, gino));
+      const [n] = await tx.execute<{ n: string }>(
+        q`select count(*)::text as n from storage_total_updates where xid = txid_current()`,
+      );
+      expect(Number(n?.n)).toBeLessThanOrEqual(2);
+    });
+    expect(await reservedBytes(db)).toBe(before);
+    const [row] = await db.execute<{ n: string }>(
+      q`select count(*)::text as n from storage_total where user_id = ${gino}`,
+    );
+    expect(row?.n).toBe('0');
   });
 
   it('keeps the files of a deleted person in the instance total', async () => {

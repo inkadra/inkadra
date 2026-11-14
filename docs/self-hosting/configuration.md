@@ -68,9 +68,12 @@ up the saving of boards.
 
 Size Postgres's `max_connections` for every process: with the defaults, one `all` process uses up
 to 14 connections, a split installation 10 per process. Board saves keep their own shorter
-statement limit; backups, restores and migrations run on separate connections without these
-limits. Behind a connection pooler that refuses startup parameters (PgBouncer in transaction
-mode), set the three limits to `0` and configure them on the database role instead.
+statement limit, and the hourly version cleanup has none. Backups, restores and migrations run
+on separate connections that turn all three limits off when they connect, which also overrides
+limits set on the database role. Behind a connection pooler that refuses startup parameters
+(PgBouncer in transaction mode), set the three limits to `0` and configure them on the database
+role instead; run migrations, backups and restores through a connection that accepts startup
+parameters (Postgres directly, or PgBouncer in session mode).
 
 ## Files and uploads
 

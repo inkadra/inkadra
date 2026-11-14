@@ -666,6 +666,38 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     ).toMatchObject(stored!.counts!);
   });
 
+  it('fills the tasks of boards indexed before they were stored, never from an older save', async () => {
+    const clear = sql`update board_doc set tasks = null, unsorted = null where board_id = ${boardId}`;
+    const stored = async () =>
+      (
+        await db
+          .select({ tasks: boardDoc.tasks, unsorted: boardDoc.unsorted })
+          .from(boardDoc)
+          .where(eq(boardDoc.boardId, boardId))
+      )[0];
+    // A save lands between the backfill reading the document and indexing it: nothing written.
+    await db.execute(clear);
+    const racing = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop !== 'transaction') return Reflect.get(target, prop, receiver);
+        return async (...args: Parameters<typeof db.transaction>) => {
+          await db.execute(sql`update board_doc set updated_at = updated_at + interval '1 microsecond'
+            where board_id = ${boardId}`);
+          return target.transaction(...args);
+        };
+      },
+    });
+    expect(await backfillIndex(racing)).toMatchObject({ indexed: 0, failed: [] });
+    expect(await stored()).toEqual({ tasks: null, unsorted: null });
+    // Boards indexed before #803 have no tasks yet: the backfill picks them up once.
+    expect(await backfillIndex(db)).toMatchObject({ indexed: 1, failed: [] });
+    expect(await stored()).toMatchObject({
+      tasks: expect.any(Array),
+      unsorted: { count: expect.any(Number) },
+    });
+    expect(await backfillIndex(db)).toMatchObject({ indexed: 0, failed: [] });
+  });
+
   it('goes past a board it cannot index instead of stopping at it (#815)', async () => {
     const root = await get('owner', `/api/v1/projects/${projectId}`);
     const added = await app.inject({

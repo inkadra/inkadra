@@ -135,6 +135,15 @@ const stateColumns = (snap: VersionState) => ({
  * deleted keeps its next newest one, as long as that one is still within its 48 hours.
  */
 export async function applyVersionRetention(db: Database, now = new Date()) {
+  return db.transaction(async (tx) => {
+    // Ranks every automatic version: on a large instance this may outlast the pool's statement
+    // limit (#800), which is for requests.
+    await tx.execute(sql`set local statement_timeout = 0`);
+    return retain(tx, now);
+  });
+}
+
+async function retain(db: Tx, now: Date) {
   await db.execute(sql`
     with ranked as (
       select id, created_at + case

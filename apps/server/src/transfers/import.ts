@@ -363,6 +363,17 @@ export async function importProject(
     const commentIds = new Map(comments.map((c) => [c.id, randomUUID()]));
     let elements = 0;
     const created = await db.transaction(async (tx) => {
+      // Locks in the order every other path takes them (#879): the storage lock, then the
+      // instance lock, then rows. The asset rows below lock their uploader's storage total, which
+      // an upload holding the storage lock or an account deletion holding the instance lock may
+      // wait for. The files must still fit: another upload may have taken the space meanwhile.
+      await fits(
+        tx,
+        [...stored.values()].reduce((n, f) => n + f.size, 0),
+      );
+      // The instance lock orders projects (the position set at the end) and guards account
+      // deletion, which removes projects, transfers and files under it.
+      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       await fence(tx);
       // The files belong to the rows made here: no longer to remove.
       await clearDeletions(tx, written);
@@ -607,12 +618,6 @@ export async function importProject(
         });
       }
 
-      // The files, already in this transaction, must still fit: another upload may have taken
-      // the space while they were written.
-      await fits(tx, 0);
-      // The instance lock orders projects (and guards other instance-wide changes): taken
-      // last, so it is held only for this update and the commit, not the whole import.
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       const [last] = await tx
         .select({ position: project.position })
         .from(project)

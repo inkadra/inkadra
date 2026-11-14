@@ -432,6 +432,13 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       expect(sizes.map((v) => v.size)).toEqual(['256']);
       const [back] = await restored`select proxy_status, proxy_progress from asset`;
       expect(back).toEqual({ proxy_status: 'skipped', proxy_progress: null });
+      // The storage totals are built once from the restored files, with the triggers on again.
+      const totals = await restored`select user_id, bytes::int, pending_bytes::int
+        from storage_total`;
+      expect([...totals]).toEqual([{ user_id: null, bytes: 10, pending_bytes: 0 }]);
+      const [on] = await restored`select count(*)::int as n from pg_trigger
+        where tgname like '%storage_total%' and tgenabled = 'O'`;
+      expect(on?.n).toBe(10);
     } finally {
       await admin.end({ timeout: 1 });
       await client.end({ timeout: 1 });

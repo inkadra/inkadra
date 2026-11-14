@@ -291,6 +291,11 @@ async function saveProxy(
 ) {
   const assetId = row.id;
   await db.transaction(async (tx) => {
+    // The file's row before its copies, as in process.ts (#879).
+    await tx
+      .update(asset)
+      .set({ proxyStatus: 'ready', proxyProgress: 100 })
+      .where(eq(asset.id, assetId));
     await tx
       .delete(assetVariant)
       .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
@@ -303,10 +308,6 @@ async function saveProxy(
       mime: info.videoCodec ? 'video/mp4' : 'audio/mp4',
       bytes,
     });
-    await tx
-      .update(asset)
-      .set({ proxyStatus: 'ready', proxyProgress: 100 })
-      .where(eq(asset.id, assetId));
   });
 }
 

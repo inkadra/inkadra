@@ -470,10 +470,11 @@ export const boardDoc = pgTable(
     unsorted: jsonb('unsorted').$type<{ count: number; assetIds: string[] }>(),
   },
   (t) => [
-    // The index backfill of every collab process looks for these at start and hourly (#814).
+    // The index backfill of every collab process looks for these at start and hourly (#814),
+    // and for boards indexed before their tasks were stored (#803).
     index('board_doc_unindexed_idx')
       .on(t.boardId)
-      .where(sql`${t.indexedAt} is null or ${t.indexedAt} < ${t.updatedAt}`),
+      .where(sql`${t.indexedAt} is null or ${t.indexedAt} < ${t.updatedAt} or ${t.tasks} is null`),
   ],
 );
 
@@ -589,7 +590,9 @@ export const asset = pgTable(
 
 /**
  * Running totals of stored bytes per uploader (#799), kept by triggers on `asset`,
- * `asset_variant` and `asset_rendition` (migration 0052) and reconciled daily: storage limits
+ * `asset_variant` and `asset_rendition` that update each total once per statement (migration
+ * 0052, with the unlogged `storage_total_gone` they use within a statement, not a Drizzle table)
+ * and reconciled daily: storage limits
  * read them instead of adding up every file. Counts files in every status, as a new upload
  * does; one row has no person (files whose uploader was deleted).
  */

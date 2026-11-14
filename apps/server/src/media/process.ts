@@ -806,12 +806,14 @@ async function save(
   fields: Partial<typeof asset.$inferInsert>,
 ) {
   await db.transaction(async (tx) => {
+    // The file's row first, then its copies (which lock the uploader's storage total): the order
+    // of an account deletion, so the two never wait on each other (#879).
+    await tx.update(asset).set(fields).where(eq(asset.id, assetId));
     // The playable copy of a video is made by a job of its own and outlives a second pass.
     await tx
       .delete(assetVariant)
       .where(and(eq(assetVariant.assetId, assetId), ne(assetVariant.size, 'proxy')));
     if (variants.length > 0) await tx.insert(assetVariant).values(variants);
-    await tx.update(asset).set(fields).where(eq(asset.id, assetId));
   });
 }
 

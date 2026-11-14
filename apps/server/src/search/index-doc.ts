@@ -302,17 +302,24 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
 }
 
 /**
- * Indexes boards stored before the index existed, or whose last indexing failed; at most
+ * Indexes boards stored before the index existed, whose last indexing failed, or indexed before
+ * their tasks and tray were stored with them (#803); at most
  * `limit` boards per call, in board order after `after`. A board that cannot be indexed is
  * listed in `failed` and skipped (#815): pass `last` as `after` to go on with the next ones.
  */
 export async function backfillIndex(db: Database, limit = 200, after?: string) {
   const stale = await db
-    .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+    .select({
+      boardId: boardDoc.boardId,
+      state: boardDoc.state,
+      storedAt: sql<string>`${boardDoc.updatedAt}::text`,
+    })
     .from(boardDoc)
     .where(
       and(
-        sql`(${boardDoc.indexedAt} is null or ${boardDoc.indexedAt} < ${boardDoc.updatedAt})`,
+        // The predicate of board_doc_unindexed_idx.
+        sql`(${boardDoc.indexedAt} is null or ${boardDoc.indexedAt} < ${boardDoc.updatedAt}
+          or ${boardDoc.tasks} is null)`,
         after ? gt(boardDoc.boardId, after) : undefined,
       ),
     )
@@ -324,8 +331,24 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
     const doc = new Y.Doc();
     try {
       Y.applyUpdate(doc, row.state);
-      await db.transaction((tx) => writeBoardIndex(tx, row.boardId, doc));
-      indexed += 1;
+      const written = await db.transaction(async (tx) => {
+        // Only the document read above, locked until the end: a save since then is indexed by
+        // that save, and this older one must not overwrite it with a newer indexed_at.
+        const [same] = await tx
+          .select({ boardId: boardDoc.boardId })
+          .from(boardDoc)
+          .where(
+            and(
+              eq(boardDoc.boardId, row.boardId),
+              sql`${boardDoc.updatedAt} = ${row.storedAt}::timestamptz`,
+            ),
+          )
+          .for('update');
+        if (!same) return false;
+        await writeBoardIndex(tx, row.boardId, doc);
+        return true;
+      });
+      if (written) indexed += 1;
     } catch (err) {
       failed.push({ boardId: row.boardId, err });
     } finally {
