@@ -733,8 +733,7 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
     // One archive per schema state: the new one replaces older copies of the same state.
     for (const old of same) {
       await rm(join(dir, old), { force: true }).catch(() => {});
-      if (deps.bucket)
-        await deps.storage.remove([`${BUCKET_PREFIX}${old}`]).catch(() => {});
+      if (deps.bucket) await deps.storage.remove([`${BUCKET_PREFIX}${old}`]).catch(() => {});
     }
     const copied = await copyToBucket(deps, id, fileName);
     const file = join(dir, fileName);
