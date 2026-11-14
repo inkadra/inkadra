@@ -431,8 +431,11 @@ docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.9.0 --format '{{ json
 ## How releases are made
 
 Every push to `main` publishes `edge` and `sha-<commit>`. For a release, a maintainer runs the
-Release workflow, which tags `vX.Y.Z` on `main`, opens the GitHub release and starts CI on the
-tag. CI runs in full (tests, end-to-end, the reverse proxy examples, a vulnerability scan of
-the image), builds amd64 and arm64 on native runners without build cache, publishes `X.Y.Z`,
-`X.Y` and `latest`, and attaches the deployment files to the release. Versions with a suffix
+Release workflow, which checks that CI passed on that commit of `main`, tags `vX.Y.Z`, opens
+the GitHub release as a draft and starts CI on the tag. CI runs in full (tests, end-to-end, the
+reverse proxy examples, a vulnerability scan of the image), builds amd64 and arm64, standard and
+office, on native runners without build cache, starts and scans each of those images before
+tagging them, publishes `X.Y.Z`, `X.Y` and `latest`, attaches the deployment files to the
+release and only then publishes it, so the Updates page never offers a version without an image.
+The deployment files pin `INKADRA_TAG` to that version. Versions with a suffix
 (`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.

@@ -469,7 +469,8 @@ jobs:
           ./grype "docker-archive:$RUNNER_TEMP/image.tar" --only-fixed --fail-on high
 
   # main and tags only: build each architecture on its own runner (no emulation), push by
-  # digest, then join them under the version tags.
+  # digest, then join them under the version tags. A digest has no tag yet, so nobody pulls it
+  # until manifest: before that, this job starts and scans that very image (#835).
   publish:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})
     if: github.event_name != 'pull_request'
@@ -525,6 +526,26 @@ jobs:
           sbom: true
           # No build cache: a published image is always built from a clean state.
           no-cache: true
+      - name: Start the pushed image
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          docker pull "$IMAGE@$DIGEST"
+          docker tag "$IMAGE@$DIGEST" "$IMAGE:smoke"
+          INKADRA_TAG=smoke scripts/test-data-dir.sh
+      - name: Scan the pushed image for high or critical vulnerabilities that have a fix
+        env:
+          ARCH: ${{ matrix.arch }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          GRYPE_VERSION: 0.121.0
+          GRYPE_SHA256_amd64: 64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519
+          GRYPE_SHA256_arm64: 86f570f75ca947ea3dd6486309232bcff6d78e44ba081ae75ab14eab72be3dae
+        run: |
+          sum="GRYPE_SHA256_$ARCH"
+          curl -sSfL --retry 6 --retry-all-errors --retry-delay 10 -o grype.tar.gz "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_${ARCH}.tar.gz"
+          echo "${!sum}  grype.tar.gz" | sha256sum -c -
+          tar xzf grype.tar.gz grype
+          ./grype "docker:$IMAGE@$DIGEST" --only-fixed --fail-on high
       - name: Keep the digest for the manifest job
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
@@ -616,11 +637,14 @@ jobs:
           VERSION="${TAG#v}"
           mkdir -p "dist/inkadra-$VERSION"
           cp -r compose.yaml .env.example deploy "dist/inkadra-$VERSION/"
-          # The files pin this release instead of `latest`.
+          # The files pin this release instead of `latest`, even without INKADRA_TAG in .env (#834).
           sed -i "s/^# INKADRA_TAG=latest /INKADRA_TAG=$VERSION /" "dist/inkadra-$VERSION/.env.example"
+          sed -i "s/\${INKADRA_TAG:-latest}/\${INKADRA_TAG:-$VERSION}/" "dist/inkadra-$VERSION/compose.yaml"
+          grep -qF ":\${INKADRA_TAG:-$VERSION}" "dist/inkadra-$VERSION/compose.yaml"
           tar -C dist -czf "dist/inkadra-$VERSION-deploy.tar.gz" "inkadra-$VERSION"
           (cd dist && sha256sum "inkadra-$VERSION-deploy.tar.gz" > "inkadra-$VERSION-deploy.tar.gz.sha256")
-      # The Release workflow creates the release and its notes; a tag pushed by hand gets one here.
+      # The Release workflow creates the release and its notes as a draft; a tag pushed by hand
+      # gets one here. The last step publishes it, now that the image exists (#836).
       - name: Attach the files to the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -633,7 +657,7 @@ jobs:
           Install and upgrade: [docs/self-hosting](https://github.com/${GITHUB_REPOSITORY}/tree/${TAG}/docs/self-hosting).
           EOF
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            flags=()
+            flags=(--draft)
             case "$TAG" in *-*) flags+=(--prerelease) ;; esac
             gh release create "$TAG" --verify-tag --title "Inkadra $VERSION" --generate-notes "${flags[@]}"
           fi
@@ -644,3 +668,4 @@ jobs:
           fi
           gh release upload "$TAG" --clobber \
             "dist/inkadra-$VERSION-deploy.tar.gz" "dist/inkadra-$VERSION-deploy.tar.gz.sha256"
+          gh release edit "$TAG" --draft=false
