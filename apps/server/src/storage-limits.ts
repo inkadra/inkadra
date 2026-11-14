@@ -187,26 +187,39 @@ export async function reconcileStorageTotals(db: Database): Promise<{ corrected:
   for (const { user_id: owner } of owners) {
     const who = owner === null ? sql`is null` : sql`= ${owner}`;
     const changed = await db.transaction(async (tx) => {
-      const [row] = await tx.execute<{ bytes: string; rendition_bytes: string }>(
-        sql`select bytes::text, rendition_bytes::text from storage_total
+      type Totals = { bytes: string; pending_bytes: string; rendition_bytes: string };
+      const [row] = await tx.execute<Totals>(
+        sql`select bytes::text, pending_bytes::text, rendition_bytes::text from storage_total
           where user_id ${who} for update`,
       );
-      const [sum] = await tx.execute<{ bytes: string; rendition_bytes: string }>(sql`select
+      const [sum] = await tx.execute<Totals>(sql`select
         (coalesce(sum(a.size), 0) + coalesce((select sum(v.bytes) from asset_variant v
           join asset a on a.id = v.asset_id where a.created_by ${who}), 0))::text as bytes,
+        coalesce(sum(a.size) filter (where a.status = 'pending'), 0)::text as pending_bytes,
         coalesce((select sum(r.bytes) from asset_rendition r
           join asset a on a.id = r.asset_id where a.created_by ${who}), 0)::text as rendition_bytes
         from asset a where a.created_by ${who}`);
-      const bytes = sum?.bytes ?? '0';
-      const renditionBytes = sum?.rendition_bytes ?? '0';
-      if (row?.bytes === bytes && row?.rendition_bytes === renditionBytes) return false;
-      if (!row && bytes === '0' && renditionBytes === '0') return false;
+      const want = {
+        bytes: sum?.bytes ?? '0',
+        pending: sum?.pending_bytes ?? '0',
+        renditions: sum?.rendition_bytes ?? '0',
+      };
+      if (
+        row?.bytes === want.bytes &&
+        row.pending_bytes === want.pending &&
+        row.rendition_bytes === want.renditions
+      )
+        return false;
+      if (!row && want.bytes === '0' && want.renditions === '0') return false;
       if (row)
-        await tx.execute(sql`update storage_total set bytes = ${bytes}::bigint,
-          rendition_bytes = ${renditionBytes}::bigint where user_id ${who}`);
+        await tx.execute(sql`update storage_total set bytes = ${want.bytes}::bigint,
+          pending_bytes = ${want.pending}::bigint, rendition_bytes = ${want.renditions}::bigint
+          where user_id ${who}`);
       else
-        await tx.execute(sql`insert into storage_total (user_id, bytes, rendition_bytes)
-          select ${owner}::uuid, ${bytes}::bigint, ${renditionBytes}::bigint
+        await tx.execute(sql`insert into storage_total
+            (user_id, bytes, pending_bytes, rendition_bytes)
+          select ${owner}::uuid, ${want.bytes}::bigint, ${want.pending}::bigint,
+            ${want.renditions}::bigint
           where ${owner}::uuid is null or exists (select 1 from "user" where id = ${owner}::uuid)
           on conflict (user_id) do nothing`);
       return true;

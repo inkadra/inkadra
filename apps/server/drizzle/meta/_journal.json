@@ -365,13 +365,6 @@
       "when": 1794649516589,
       "tag": "0051_notification_board_project_idx_board_doc_counts",
       "breakpoints": true
-    },
-    {
-      "idx": 52,
-      "version": "7",
-      "when": 1794667459989,
-      "tag": "0052_db_perf_indexes_storage_total_board_doc_tasks",
-      "breakpoints": true
     }
   ]
 }

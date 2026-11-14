@@ -226,7 +226,8 @@ export function registerInstanceAdminRoutes(
         projectsCount: sql<number>`(select count(*)::int from project_member m where m.user_id = "user"."id" and ${live('m')})`,
         canCreateProjectsOverride: user.canCreateProjects,
         // The running total (#799, #804), not a sum over every file of every person.
-        storageBytes: sql<string>`coalesce(${storageTotal.bytes}, 0)::text`,
+        // Uploads still arriving do not count here, as in Settings → Storage.
+        storageBytes: sql<string>`coalesce(${storageTotal.bytes} - ${storageTotal.pendingBytes}, 0)::text`,
         storageLimitOverride: user.storageLimit,
       })
       .from(user)

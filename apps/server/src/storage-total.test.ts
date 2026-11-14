@@ -59,6 +59,17 @@ describe.skipIf(!url)('running storage totals (#799, needs DATABASE_URL)', () =>
       .insert(assetRendition)
       .values({ assetId: a, name: '480', status: 'ready', recipe: 'r', bytes: 300 });
     expect(await reservedBytes(db, { userId: anna })).toBe(1050);
+    const pending = async (userId: string) =>
+      (
+        await db.execute<{ n: string }>(
+          q`select pending_bytes::text as n from storage_total where user_id = ${userId}`,
+        )
+      )[0]?.n;
+    // A new file is still arriving; once processed it no longer counts as such.
+    expect(await pending(anna)).toBe('1000');
+    await db.update(asset).set({ status: 'ready' }).where(eq(asset.id, a));
+    expect(await pending(anna)).toBe('0');
+    expect(await reservedBytes(db, { userId: anna })).toBe(1050);
     expect(await reservedBytes(db)).toBe(1350);
     // Finishing an upload weighs it without itself.
     expect(await reservedBytes(db, { userId: anna, exclude: a })).toBe(0);

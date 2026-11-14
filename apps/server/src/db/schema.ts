@@ -599,6 +599,8 @@ export const storageTotal = pgTable(
     userId: uuid('user_id').references(() => user.id, { onDelete: 'cascade' }),
     /** Originals and their copies: what a person's limit counts. */
     bytes: bigint('bytes', { mode: 'number' }).notNull().default(0),
+    /** Originals still arriving, at their declared size (part of `bytes`). */
+    pendingBytes: bigint('pending_bytes', { mode: 'number' }).notNull().default(0),
     /** Rungs of video ladders: the instance total only (decision 0128). */
     renditionBytes: bigint('rendition_bytes', { mode: 'number' }).notNull().default(0),
   },
