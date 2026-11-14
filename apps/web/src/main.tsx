@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
 import { installFeedbackDiagnostics } from './feedback/diagnostics.ts';
 import { i18nReady } from './i18n/index.ts';
+import { lazyRoute, reloadOnPreloadError } from './lib/chunks.ts';
 import { DialogTexts } from './lib/DialogTexts.tsx';
 import { SessionProvider, useSession } from './lib/session.tsx';
 import { AppContextMenu } from './menus/AppContextMenu.tsx';
@@ -15,7 +16,7 @@ import { AdminEnrollment } from './routes/AdminEnrollment.tsx';
 import { AppLayout } from './routes/AppLayout.tsx';
 import { Authorize } from './routes/Authorize.tsx';
 import { Diagnostics } from './routes/Diagnostics.tsx';
-import { ErrorPage } from './routes/ErrorPage.tsx';
+import { ErrorPage, ServerUnreachable } from './routes/ErrorPage.tsx';
 import { Home } from './routes/Home.tsx';
 import { Join } from './routes/Join.tsx';
 import { Login } from './routes/Login.tsx';
@@ -27,10 +28,11 @@ import { Settings, TwoFactor } from './routes/Settings.tsx';
 import { Team } from './routes/Team.tsx';
 
 installFeedbackDiagnostics();
+reloadOnPreloadError();
 
 function Root() {
-  const { loading } = useSession();
-  if (loading) return null;
+  const { loading, unreachable, retry } = useSession();
+  if (loading) return unreachable && retry ? <ServerUnreachable onRetry={retry} /> : null;
   return (
     <AdminEnrollment setup={<TwoFactor mandatory onDone={() => {}} />}>
       <Outlet />
@@ -38,8 +40,10 @@ function Root() {
   );
 }
 
-const loadBoard = async () => ({ Component: (await import('./board/BoardPage.tsx')).BoardPage });
-const loadGuest = async () => ({ Component: (await import('./guest/GuestPage.tsx')).GuestPage });
+const loadBoard = () =>
+  lazyRoute(async () => ({ Component: (await import('./board/BoardPage.tsx')).BoardPage }));
+const loadGuest = () =>
+  lazyRoute(async () => ({ Component: (await import('./guest/GuestPage.tsx')).GuestPage }));
 
 const router = createBrowserRouter([
   // The guest page of a share link (decision 0013): outside the account session, which it

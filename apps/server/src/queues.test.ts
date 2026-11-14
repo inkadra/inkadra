@@ -19,6 +19,7 @@ vi.mock('bullmq', () => ({
     upsertJobScheduler = harness.schedule;
     add = (...args: unknown[]) => harness.add(this.name, ...args);
     getJob = vi.fn();
+    on = vi.fn();
     close = vi.fn();
   },
   Worker: class {
@@ -56,7 +57,10 @@ it('schedules anonymisation separately and isolates it from upload purge failure
     select: () => ({
       from: () => ({
         where: (...args: unknown[]) =>
-          Object.assign(pendingUploads(...args), { limit: async () => [] }),
+          Object.assign(pendingUploads(...args), {
+            limit: async () => [],
+            orderBy: () => ({ limit: async () => [] }),
+          }),
       }),
     }),
     delete: () => ({ where: vi.fn().mockResolvedValue(undefined) }),
@@ -86,6 +90,7 @@ it('schedules anonymisation separately and isolates it from upload purge failure
       removed: 0,
       requeued: 0,
       proxies: 0,
+      deletions: 0,
     });
     pendingUploads.mockRejectedValueOnce(new Error('Purge failed'));
     await expect(run({ name: 'purge-uploads' })).rejects.toThrow('Purge failed');

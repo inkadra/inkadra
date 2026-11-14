@@ -144,6 +144,49 @@ describe('mounted asset polling', () => {
     expect(api.get).toHaveBeenCalledTimes(2);
   });
 
+  it('never polls for rungs offered only live, only for copies being made', async () => {
+    const rung = (name: '480' | '1080', over: object) => ({
+      name,
+      status: 'queued' as const,
+      progress: null,
+      width: null,
+      height: null,
+      bitrate: null,
+      size: null,
+      url: null,
+      live: true,
+      ...over,
+    });
+    const video = (renditions: ReturnType<typeof rung>[]): Asset => ({
+      ...asset,
+      status: 'ready',
+      proxy: {
+        status: 'skipped',
+        progress: null,
+        url: null,
+        mime: 'video/mp4',
+        width: null,
+        height: null,
+        size: null,
+      },
+      playback: { hls: '/hls/master.m3u8?v=1-l', original: false, renditions },
+    });
+    primeAsset(video([rung('480', { liveOnly: true }), rung('1080', { liveOnly: true })]));
+    await render(<VideoCard />);
+    await advance(60_000);
+    expect(api.get).not.toHaveBeenCalled();
+
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    resetAssetCache();
+    const making = video([rung('480', { status: 'processing', progress: 30 })]);
+    primeAsset(making);
+    api.get.mockResolvedValue(making);
+    await render(<VideoCard />);
+    await advance(4000);
+    expect(api.get).toHaveBeenCalled();
+  });
+
   it('recovers after a network error without ever rendering missing', async () => {
     api.get
       .mockRejectedValueOnce(new TypeError('offline'))

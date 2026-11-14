@@ -97,32 +97,39 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
     if (!p) throw new HttpError('not_found', 'Project not found.');
     if (!(await canExport(db, actor.id, projectId)))
       throw new HttpError('forbidden', 'Only owners and editors can export a project.');
-    const [pending] = await db
-      .select()
-      .from(projectTransfer)
-      .where(
-        and(
-          eq(projectTransfer.userId, actor.id),
-          eq(projectTransfer.projectId, projectId),
-          eq(projectTransfer.kind, 'export'),
-          inArray(projectTransfer.status, ['queued', 'running']),
-        ),
+    const { row, created } = await db.transaction(async (tx) => {
+      // Serialize admission for every deployment, including different editors of a project.
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`project-export:${projectId}`}))`,
       );
-    if (pending)
-      return reply.status(202).header('location', location(pending.id)).send(toTransfer(pending));
-    const [row] = await db.transaction(async (tx) => {
-      // A demo sandbox exports once (decision 0084): counted under a lock, so two clicks
-      // together cannot make two archives.
-      if (config.DEMO_MODE) {
+      if (config.DEMO_MODE)
         await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`demo-export:${actor.id}`}))`);
-        if ((await exportsOf(tx, actor.id)) >= 1) throw refuse('rate_limited', 'demo_export');
+      const [pending] = await tx
+        .select()
+        .from(projectTransfer)
+        .where(
+          and(
+            eq(projectTransfer.projectId, projectId),
+            eq(projectTransfer.kind, 'export'),
+            inArray(projectTransfer.status, ACTIVE),
+          ),
+        );
+      if (pending) {
+        if (pending.userId !== actor.id)
+          throw new HttpError('conflict', 'Another export of this project is still running.');
+        return { row: pending, created: false };
       }
-      return tx
+      if (config.DEMO_MODE && (await exportsOf(tx, actor.id)) >= 1)
+        throw refuse('rate_limited', 'demo_export');
+      const [row] = await tx
         .insert(projectTransfer)
         .values({ kind: 'export', userId: actor.id, projectId, projectName: p.name })
         .returning();
+      return { row, created: true };
     });
     if (!row) throw new Error('Transfer insert returned nothing');
+    if (!created)
+      return reply.status(202).header('location', location(row.id)).send(toTransfer(row));
     try {
       await enqueue(jobs.runTransfer(row.id));
     } catch (err) {
@@ -334,7 +341,25 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
   app.delete(v1('/transfers/:transferId'), async (req, reply) => {
     const { row } = await own(req);
     if (!(await cancel(row))) {
-      await db.delete(projectTransfer).where(eq(projectTransfer.id, row.id));
+      await db.transaction(async (tx) => {
+        if (config.DEMO_MODE && row.kind === 'export') {
+          await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`demo-export:${row.userId}`}))`,
+          );
+          // Keep the allowance independently of deletable transfer history. Failed exports
+          // remain retryable, as before. The marker is removed when the sandbox expires.
+          const [current] = await tx
+            .select()
+            .from(projectTransfer)
+            .where(eq(projectTransfer.id, row.id));
+          if (current?.status === 'ready')
+            await tx
+              .insert(instanceSetting)
+              .values({ key: `demo-export:${row.userId}`, value: { used: true } })
+              .onConflictDoNothing();
+        }
+        await tx.delete(projectTransfer).where(eq(projectTransfer.id, row.id));
+      });
       await rm(transferFile(dataDir, row.id), { force: true });
     }
     return reply.status(204).send();

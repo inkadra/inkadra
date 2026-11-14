@@ -12,25 +12,32 @@ const config = (env: Record<string, string> = {}) =>
   });
 
 describe('browser security policy', () => {
-  it('reports by default and permits same-origin connections', () => {
+  it('enforces by default and permits same-origin connections', () => {
     const h = securityHeaders(config());
-    expect(h['content-security-policy-report-only']).toContain("connect-src 'self'");
-    expect(h['content-security-policy-report-only']).toContain("script-src 'self';");
-    expect(h['content-security-policy']).toBeUndefined();
-    expect(h['content-security-policy-report-only']).not.toContain('upgrade-insecure-requests');
-    expect(h['strict-transport-security']).toBeUndefined();
+    expect(h['content-security-policy']).toContain("connect-src 'self'");
+    expect(h['content-security-policy']).toContain("script-src 'self';");
+    expect(h['content-security-policy-report-only']).toBeUndefined();
+    expect(h['content-security-policy']).toContain('upgrade-insecure-requests');
+    expect(h['strict-transport-security']).toBe('max-age=31536000');
     expect(h['cross-origin-opener-policy']).toBe('same-origin');
     expect(h['permissions-policy']).toContain('camera=()');
     expect(h['permissions-policy']).toContain('microphone=(self)');
     // Only the three players of link cards, loaded after a click (decision 0050).
-    expect(h['content-security-policy-report-only']).toContain(
+    expect(h['content-security-policy']).toContain(
       'frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com;',
     );
     expect(h['permissions-policy']).toContain(
       'fullscreen=(self "https://www.youtube-nocookie.com" "https://player.vimeo.com" "https://www.instagram.com")',
     );
   });
-  it('enforces only when opted in, including S3 presigned media and uploads', () => {
+  it('only reports, and sends no HSTS, when turned off', () => {
+    const h = securityHeaders(config({ CSP_ENFORCE: 'false', HSTS_ENABLED: 'false' }));
+    expect(h['content-security-policy']).toBeUndefined();
+    expect(h['content-security-policy-report-only']).toContain("script-src 'self';");
+    expect(h['content-security-policy-report-only']).not.toContain('upgrade-insecure-requests');
+    expect(h['strict-transport-security']).toBeUndefined();
+  });
+  it('allows S3 presigned media and uploads', () => {
     const h = securityHeaders(
       config({
         CSP_ENFORCE: 'true',
@@ -54,12 +61,17 @@ describe('browser security policy', () => {
           S3_ENDPOINT: 'https://objects.example:9000',
           S3_FORCE_PATH_STYLE: 'false',
         }),
-      )['content-security-policy-report-only'],
+      )['content-security-policy'],
     ).toContain('https://media.objects.example:9000');
   });
   it('never sends HSTS or upgrades insecure requests on local HTTP', () => {
     const h = securityHeaders(config({ CSP_ENFORCE: 'true', HSTS_ENABLED: 'true' }), false);
     expect(h['strict-transport-security']).toBeUndefined();
     expect(h['content-security-policy']).not.toContain('upgrade-insecure-requests');
+  });
+  it('never sends HSTS when PUBLIC_URL is plain HTTP, even on an HTTPS request', () => {
+    const h = securityHeaders(config({ PUBLIC_URL: 'http://inkadra.lan:3000' }), true);
+    expect(h['strict-transport-security']).toBeUndefined();
+    expect(h['content-security-policy']).toBeDefined();
   });
 });

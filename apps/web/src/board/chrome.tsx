@@ -1631,7 +1631,7 @@ export function UnsortedDrawer({
 }
 
 export function UploadPanel() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const all = useUploads();
   // Refused for lack of space: told once for the batch by StorageNotice, not as rows here.
   const uploads = all.filter((u) => u.state !== 'full');
@@ -1671,7 +1671,9 @@ export function UploadPanel() {
               {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
                 <span className="ink-muted">
                   {t('board.uploads.transfer', {
-                    speed: (u.bytesPerSecond / 1024 / 1024).toFixed(1),
+                    speed: new Intl.NumberFormat(i18n.language, {
+                      maximumFractionDigits: 1,
+                    }).format(u.bytesPerSecond / 1024 / 1024),
                     seconds: u.remainingSeconds,
                   })}
                 </span>

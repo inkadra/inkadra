@@ -1,5 +1,5 @@
 {
-  "id": "01f2bbb7-fff5-4504-8f83-ab6151df68f4",
+  "id": "22a67f34-3adb-43fd-b083-f22f3d8824a3",
   "prevId": "c5941fbb-e7dd-4996-b6de-7558f3bdfd56",
   "version": "7",
   "dialect": "postgresql",
@@ -851,12 +851,6 @@
         "indexed_at": {
           "name": "indexed_at",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "counts": {
-          "name": "counts",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         }
@@ -3734,6 +3728,12 @@
           "notNull": true,
           "default": "now()"
         },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "finished_at": {
           "name": "finished_at",
           "type": "timestamp with time zone",
@@ -4284,38 +4284,6 @@
           ],
           "isUnique": false,
           "where": "\"notification\".\"share_link_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notification_board_idx": {
-          "name": "notification_board_idx",
-          "columns": [
-            {
-              "expression": "board_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"notification\".\"board_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notification_project_idx": {
-          "name": "notification_project_idx",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"notification\".\"project_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -5275,6 +5243,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "size": {
           "name": "size",

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
@@ -13,7 +13,13 @@ import { backupsDir, restoreBackup, runBackup, startBackup } from './backup.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
-import { attachCollab, createCollabServer, DEMO_COLLAB_LIMITS } from './collab.ts';
+import {
+  attachCollab,
+  createCollabServer,
+  DEMO_COLLAB_LIMITS,
+  replayUnsavedBoards,
+  unsavedBoardsDir,
+} from './collab.ts';
 import { type Config, loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { startSandboxSweep } from './demo.ts';
@@ -41,6 +47,7 @@ import {
   startBoardWorker,
   startWorkers,
 } from './queues.ts';
+import { configureRateLimits } from './rate-limits.ts';
 import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
@@ -70,8 +77,13 @@ async function main() {
   }
 
   const config = loadConfig();
-  /** The demo's caps on boards and their versions (decision 0084); none elsewhere. */
-  const limits = config.DEMO_MODE ? DEMO_COLLAB_LIMITS : undefined;
+  const limits = config.DEMO_MODE
+    ? DEMO_COLLAB_LIMITS
+    : {
+        maxPayload: 16 * 1024 * 1024,
+        stateBytes: config.BOARD_MAX_STATE_BYTES,
+        elements: config.BOARD_MAX_ELEMENTS,
+      };
   const log = pino({ level: config.LOG_LEVEL, base: { service: command } });
   log.info({ version: VERSION }, 'starting inkadra');
 
@@ -184,7 +196,9 @@ async function main() {
       : {}),
   };
   const transfers = transferDeps(config);
+  const closeRateLimits = await configureRateLimits(config, log);
   const closers: Array<() => Promise<unknown>> = [
+    async () => closeRateLimits(),
     async () => auth.closeSecurity(),
     () => sql.end({ timeout: 5 }),
   ];
@@ -219,8 +233,12 @@ async function main() {
       log,
       publicUrl: config.PUBLIC_URL,
       trustProxy: config.TRUST_PROXY,
+      monitor: { store: monitor, role: command },
       ...(limits ? { limits } : {}),
+      unsavedDir: unsavedBoardsDir(config.DATA_DIR),
     });
+    // Before any board opens: what the last shutdown could not store (#795).
+    await replayUnsavedBoards(db, unsavedBoardsDir(config.DATA_DIR), log);
     const server = collab;
     closers.unshift(() => server.destroy());
     const backfill = startIndexBackfill(db, log);
@@ -233,7 +251,7 @@ async function main() {
           directBoardWriter(server, log),
           log,
           {
-            versions: directVersionWriter(server, db, log, limits),
+            versions: directVersionWriter(server, db, log, config.DEMO_MODE ? limits : undefined),
             notices: directBoardNotifier(server),
             reader: directBoardReader(server, db),
           },
@@ -250,7 +268,7 @@ async function main() {
     let jobs: Jobs;
     let queueHandles: ReturnType<typeof createQueues> | undefined;
     if (config.REDIS_URL) {
-      const queues = createQueues(config.REDIS_URL);
+      const queues = createQueues(config.REDIS_URL, { log });
       queueHandles = queues;
       jobs = queues.jobs;
       closers.unshift(() => queues.close());
@@ -279,7 +297,7 @@ async function main() {
     if (collab) {
       boards = directBoardWriter(collab, log);
       boardReader = directBoardReader(collab, db);
-      versions = directVersionWriter(collab, db, log, limits);
+      versions = directVersionWriter(collab, db, log, config.DEMO_MODE ? limits : undefined);
       notices = directBoardNotifier(collab);
     } else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
@@ -350,7 +368,7 @@ async function main() {
     });
     if (config.DEMO_MODE) {
       // The only automatic deletion of Inkadra: sandboxes past their hour, now and every minute.
-      const stopDemo = startSandboxSweep({ db, jobs, config, log });
+      const stopDemo = startSandboxSweep({ db, jobs, config, storage, log });
       closers.unshift(async () => stopDemo());
       // Production refuses to start without them (loadConfig); development and tests say so.
       if (!config.TURNSTILE_SECRET)
@@ -434,6 +452,16 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
       log,
     });
     log.info(report, 'backup restored');
+    // Boards a shutdown kept on disk belong to the database just replaced: set aside, not
+    // replayed into the restored one (moved, never deleted).
+    const unsaved = unsavedBoardsDir(config.DATA_DIR);
+    const aside = `${unsaved}-before-restore-${Date.now()}`;
+    await rename(unsaved, aside).then(
+      () => log.warn({ dir: aside }, 'boards kept on disk before the restore set aside'),
+      (err: NodeJS.ErrnoException) => {
+        if (err.code !== 'ENOENT') throw err;
+      },
+    );
     if (report.files.missing > 0)
       log.warn(
         { missing: report.files.missing, examples: report.files.examples },
@@ -462,6 +490,10 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
 }
 
 main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+  // pino's `err` serializer keeps the stack and the `cause` chain (a failed migration's real
+  // PostgreSQL error is the cause of drizzle's "Failed query"). The configured logger may not
+  // exist yet (a config error), so this one is standalone.
+  const log = pino({ base: { service: process.argv[2] ?? 'all' } });
+  log.fatal({ err }, 'inkadra failed to start');
   process.exit(1);
 });

@@ -115,7 +115,7 @@ export async function notify(
   const values: Array<typeof notification.$inferInsert> = [];
   let limiter = fanoutLimiters.get(db);
   if (!limiter) {
-    limiter = new RateLimiter(300, 60_000);
+    limiter = new RateLimiter(300, 60_000, 'notifications:limiter');
     fanoutLimiters.set(db, limiter);
   }
   const roles = event.boardId
@@ -141,7 +141,7 @@ export async function notify(
     if (inboxOff.get(userId)?.includes(type)) continue;
     const visible = roles ? roles.has(userId) : (await visibility(db, userId, [event]))(event);
     if (!visible) continue;
-    if (actorKey && !limiter.take(actorKey)) break;
+    if (actorKey && !(await limiter.take(actorKey))) break;
     values.push({
       userId,
       type,
