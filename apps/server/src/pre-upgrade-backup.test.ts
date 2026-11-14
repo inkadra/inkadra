@@ -225,7 +225,10 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
       await runMigrations(fresh, folder, { beforeMigrating: backupBeforeMigrating(d) });
       const [name] = archives(d.dataDir);
       expect(name).toMatch(new RegExp(`^inkadra-backup-pre-upgrade-m${count}-`));
-      const target = await freshDatabase(url ?? '', `pre_upgrade_${release.replaceAll('.', '_')}_r`);
+      const target = await freshDatabase(
+        url ?? '',
+        `pre_upgrade_${release.replaceAll('.', '_')}_r`,
+      );
       const report = await restoreBackup({
         file: join(backupsDir(d.dataDir), name ?? ''),
         databaseUrl: target,
@@ -247,7 +250,9 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
     const step = { beforeMigrating: backupBeforeMigrating(d) };
     // A restart loop: each start fails on the migration itself, never on a second backup.
     for (let i = 0; i < 3; i++)
-      await expect(runMigrations(fresh, broken, step)).rejects.toThrow(/no_such_table|Failed query/);
+      await expect(runMigrations(fresh, broken, step)).rejects.toThrow(
+        /no_such_table|Failed query/,
+      );
     expect(archives(d.dataDir)).toHaveLength(1);
     // Past the reuse window a new copy replaces it: one per schema state.
     const [first] = archives(d.dataDir);
