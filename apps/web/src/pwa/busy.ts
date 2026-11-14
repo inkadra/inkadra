@@ -1,7 +1,8 @@
 /**
  * What a reload for a new version must wait for: a board with changes the server does not have
- * yet, an upload that can still run. Nothing is stored locally, so reloading would lose them
- * (`setUnsaved` below asks before the person closes or reloads the tab).
+ * yet, an upload that can still run. Board edits are also kept on the device (#791), but the
+ * reload still waits: sending them before is safer than counting on that copy, and an upload
+ * is not kept (`setUnsaved` below asks before the person closes or reloads the tab).
  * Each holder sets its own reason (any value) busy or idle.
  */
 

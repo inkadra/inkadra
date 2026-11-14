@@ -794,7 +794,7 @@ export async function restoreBackup(opts: {
     const folder = await mkdtemp(join(opts.tmpDir, 'restore-'));
     try {
       await partialMigrations(opts.migrationsFolder, count, folder);
-      await runMigrations(opts.databaseUrl, folder);
+      await runMigrations(opts.databaseUrl, folder, { schemaOnly: true });
     } finally {
       await rm(folder, { recursive: true, force: true });
     }

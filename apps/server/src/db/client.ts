@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
@@ -61,7 +63,15 @@ const MIGRATION_LOCK = 10894;
 export async function runMigrations(
   url: string,
   migrationsFolder: string,
-  opts: { productionBoards?: boolean; log?: Parameters<typeof moveToProductionBoards>[1] } = {},
+  opts: {
+    productionBoards?: boolean;
+    /**
+     * Only the SQL migrations: a restore first builds the schema of the backup, older than the
+     * one the data steps below are written for (#792).
+     */
+    schemaOnly?: boolean;
+    log?: Parameters<typeof moveToProductionBoards>[1];
+  } = {},
 ) {
   // One connection (max 1) that is never recycled: the session lock holds until sql.end() below.
   const sql = postgres(url, {
@@ -81,7 +91,9 @@ export async function runMigrations(
       );
       await sql`select pg_advisory_lock(${MIGRATION_LOCK})`;
     }
+    await refuseNewerDatabase(sql, migrationsFolder);
     await migrate(db, { migrationsFolder });
+    if (opts.schemaOnly) return;
     // Data that only code can move: the old board cast links become crew rows (decision 0091).
     await mergeCastLinks(db);
     // Every project's days go to its Production board (decision 0123); per project, never fatal.
@@ -89,4 +101,29 @@ export async function runMigrations(
   } finally {
     await sql.end();
   }
+}
+
+/**
+ * Refuses a database that a newer Inkadra migrated (#805). Drizzle's migrator only applies what
+ * is newer than the last applied migration, so an older server would otherwise start on a schema
+ * it does not know. The way back is the backup taken before the upgrade (upgrades.md).
+ */
+async function refuseNewerDatabase(sql: postgres.Sql, migrationsFolder: string) {
+  const [table] = await sql<{ ok: boolean }[]>`
+    select to_regclass('drizzle.__drizzle_migrations') is not null as ok`;
+  if (!table?.ok) return;
+  const [applied] = await sql<{ n: number; last: string | null }[]>`
+    select count(*)::int as n, max(created_at)::text as last from drizzle.__drizzle_migrations`;
+  const journal = JSON.parse(
+    await readFile(join(migrationsFolder, 'meta', '_journal.json'), 'utf8'),
+  ) as { entries: { when: number }[] };
+  const known = journal.entries.length;
+  const newest = Math.max(0, ...journal.entries.map((e) => e.when));
+  if (applied && applied.last !== null && Number(applied.last) > newest)
+    throw new Error(
+      `This database was migrated by a newer Inkadra (${applied.n} migrations applied, this ` +
+        `version knows ${known}). Start that newer version again, or go back by restoring the ` +
+        'backup taken before the upgrade into a new, empty database with this version: see ' +
+        'https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/upgrades.md#going-back-to-an-older-version',
+    );
 }

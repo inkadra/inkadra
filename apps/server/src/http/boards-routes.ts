@@ -18,6 +18,7 @@ import {
   type ProjectRole,
   type RecentBoard,
   RecentBoardQuery,
+  ScheduleSourcesQuery,
   UpdateBoard,
   z,
 } from '@inkadra/shared';
@@ -35,7 +36,12 @@ import {
   requireBoardRole,
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
-import { type BoardReader, storedColumns } from '../board-content.ts';
+import {
+  type BoardReader,
+  type ScheduleSourceContent,
+  scheduleSource,
+  storedColumns,
+} from '../board-content.ts';
 import { boardCounts, projectBoard, unsortedOf } from '../board-preview.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -78,6 +84,20 @@ interface Deps {
 export const DEMO_MAX_BOARDS = 30;
 
 const ProjectParams = z.object({ projectId: Id });
+
+/**
+ * Stored size of the storyboards one schedule-sources answer reads (#826): frames carry their
+ * drawings, which the schedule shows, so the answer is bounded in bytes and the rest is asked for
+ * again (`rest`). A board larger than the budget still comes, alone.
+ */
+export const SCHEDULE_SOURCES_BYTES = 8 * 1024 * 1024;
+/**
+ * Summaries of stored documents kept between requests, by board and save, up to this size,
+ * measured as their JSON (UTF-16, 2 bytes a character): the stored Yjs binary is far smaller
+ * than the objects it decodes to. shortcut: the parsed objects take some more heap than their
+ * JSON; take a heap snapshot before raising the cap.
+ */
+const SUMMARY_CACHE_BYTES = 16 * 1024 * 1024;
 const BoardParams = z.object({ boardId: Id });
 
 export function toBoard(row: typeof board.$inferSelect, myRole: ProjectRole): Board {
@@ -211,6 +231,18 @@ async function createProduction(
 export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+  // Least recently read first; a save changes the key, so a stale summary is never served.
+  const summaries = new Map<string, { content: ScheduleSourceContent; bytes: number }>();
+  let summaryBytes = 0;
+  const cacheSummary = (key: string, content: ScheduleSourceContent, bytes: number) => {
+    summaries.set(key, { content, bytes });
+    summaryBytes += bytes;
+    for (const [old, entry] of summaries) {
+      if (summaryBytes <= SUMMARY_CACHE_BYTES) break;
+      summaries.delete(old);
+      summaryBytes -= entry.bytes;
+    }
+  };
 
   app.get(v1('/boards/:boardId/preview'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
@@ -560,6 +592,85 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
         : [],
     );
     return { items };
+  });
+
+  // What the Production board shows of its storyboards, without opening their documents (#826).
+  // The live document when this process holds it, else the stored one.
+  // shortcut: with the collab server in another process the stored one is read, which trails the
+  // live one by its save delay (seconds); add a queued read if that shows.
+  app.get(v1('/projects/:projectId/schedule-sources'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { projectId } = ProjectParams.parse(req.params);
+    const { boards: ids } = ScheduleSourcesQuery.parse(req.query ?? {});
+    const [pRole, grants] = await Promise.all([
+      projectRole(db, actor, projectId),
+      projectGrants(db, actor, projectId),
+    ]);
+    if (!pRole && grants.size === 0) throw new HttpError('not_found', 'Project not found.');
+    // Roles follow the whole tree, so every board of the project is read for them.
+    const rows = await db
+      .select()
+      .from(board)
+      .where(and(eq(board.projectId, projectId), isNull(board.deletedAt)));
+    const roles = effectiveRoles(rows, grants, pRole);
+    // Only boards the caller can open; the others are left out, as the board list does.
+    const readable = ids.flatMap((id) => {
+      const role = roles.get(id)?.role;
+      return role ? [{ id, role }] : [];
+    });
+    if (readable.length === 0) return { items: [], rest: [] };
+    const saved = await db
+      .select({ boardId: boardDoc.boardId, size: boardDoc.size, updatedAt: boardDoc.updatedAt })
+      .from(boardDoc)
+      .where(
+        inArray(
+          boardDoc.boardId,
+          readable.map((r) => r.id),
+        ),
+      );
+    const savedOf = new Map(saved.map((d) => [d.boardId, d]));
+    // In the order asked, within the byte budget; always at least one, so each request moves on.
+    const chosen: typeof readable = [];
+    const rest: string[] = [];
+    let bytes = 0;
+    for (const r of readable) {
+      const size = savedOf.get(r.id)?.size ?? 0;
+      if (chosen.length > 0 && bytes + size > SCHEDULE_SOURCES_BYTES) rest.push(r.id);
+      else {
+        chosen.push(r);
+        bytes += size;
+      }
+    }
+    const content = new Map<string, ScheduleSourceContent>();
+    const keyOf = (id: string) => `${id}:${savedOf.get(id)?.updatedAt.getTime() ?? 0}`;
+    for (const { id } of chosen) {
+      const live = await deps.boardReader?.scheduleSource?.(id);
+      const cached = live ? undefined : summaries.get(keyOf(id));
+      if (cached) {
+        summaries.delete(keyOf(id));
+        summaries.set(keyOf(id), cached);
+      }
+      const found = live ?? cached?.content;
+      if (found) content.set(id, found);
+    }
+    const missing = chosen.filter(({ id }) => !content.has(id) && savedOf.has(id)).map((r) => r.id);
+    if (missing.length > 0) {
+      const docs = await db
+        .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+        .from(boardDoc)
+        .where(inArray(boardDoc.boardId, missing));
+      for (const doc of docs) {
+        const summary = scheduleSource(doc.boardId, doc.state);
+        content.set(doc.boardId, summary);
+        cacheSummary(keyOf(doc.boardId), summary, JSON.stringify(summary).length * 2);
+      }
+    }
+    const items = chosen.map(({ id, role }) => ({
+      boardId: id,
+      readOnly: !atLeast(role, CAPABILITY_ROLE.edit),
+      ...(content.get(id) ?? scheduleSource(id, null)),
+    }));
+    return { items, rest };
   });
 
   app.post(v1('/projects/:projectId/boards'), async (req, reply) => {

@@ -65,8 +65,8 @@ import { canCreateProjects } from '../lib/access.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
 import { usePreferences } from '../lib/preferences.ts';
+import { useSignOut } from '../lib/SignOut.tsx';
 import { useSession } from '../lib/session.tsx';
-import { signOut } from '../lib/sign-out.ts';
 import { useTheme } from '../lib/theme.ts';
 import type { InboxFilter } from '../notifications/model.ts';
 import {
@@ -241,6 +241,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const newProjectGroup = useRef<string | undefined>(undefined);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [signOutFailed, setSignOutFailed] = useState(false);
+  const leave = useSignOut(user?.id, () => setSignOutFailed(true));
   const [creating, setCreating] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -665,9 +666,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             label={t('auth.signOut')}
             onClick={() => {
               setSignOutFailed(false);
-              signOut().catch(() => setSignOutFailed(true));
+              leave.start();
             }}
           />
+          {leave.dialog}
         </span>
       </div>
     </Sidebar>

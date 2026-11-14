@@ -8,9 +8,9 @@ afterEach(() => vi.restoreAllMocks());
 it('reloads the page only once the server has signed the person out (#831)', async () => {
   const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
   vi.spyOn(authApi, 'signOut').mockRejectedValueOnce(new TypeError('Failed to fetch'));
-  await expect(signOut()).rejects.toThrow('Failed to fetch');
+  await expect(signOut(undefined)).rejects.toThrow('Failed to fetch');
   expect(reload).not.toHaveBeenCalled();
   vi.spyOn(authApi, 'signOut').mockResolvedValueOnce(null);
-  await signOut();
+  await signOut(undefined);
   expect(reload).toHaveBeenCalledOnce();
 });

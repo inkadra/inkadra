@@ -26,10 +26,37 @@ Database migrations run when the new version starts, before it accepts requests.
 `compose.yaml` and `deploy/` files with the ones attached to the release: new settings arrive
 there.
 
-Going back to an older version after its migrations ran is not supported: restore the backup
-taken before the upgrade instead, with that older version
-(see [Restoring](README.md#restoring)). A backup restores on the same or any newer version, so it
-also carries data across an upgrade.
+Migrations only go forward. To go back, follow
+[Going back to an older version](#going-back-to-an-older-version). A backup restores on the same
+or any newer version, so it also carries data across an upgrade.
+
+### Going back to an older version
+
+There are no down migrations: going back means the backup taken before the upgrade, restored
+with the older version, into a new, empty database. Everything written after that backup is
+lost, so decide quickly, and keep the upgraded database until you are sure.
+
+```sh
+docker compose stop inkadra
+# Keep the upgraded database aside, renamed, until you no longer need it.
+docker compose exec postgres psql -U inkadra -d postgres -c 'alter database inkadra rename to inkadra_upgraded'
+docker compose exec postgres createdb -U inkadra inkadra
+# INKADRA_TAG back to the older version in .env, then:
+docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-<before the upgrade>.zip
+docker compose up -d --wait
+```
+
+The files stay where they are: files uploaded after the backup are kept in storage but no
+longer listed. CI runs this rollback, and the upgrade from the last release with its sample
+data, on every change (`scripts/test-release-upgrade.sh`).
+
+From the version after 0.9.0, a server refuses to start on a database that a newer version
+migrated, with a message that points here, instead of running on a schema it does not know.
+Boards follow the same rule: a server opens only documents of its own schema or older (a
+newer document can only come from a newer server, whose database it refuses), a backup or a
+project archive from a newer version is refused, and older apps and browser tabs connected
+to a newer server stay read-only on boards they would damage
+([decision 0102](../decisions/0102-min-writer-schema.md)).
 
 The sections below list what to do for each version, newest first. Read every one between
 your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
@@ -494,6 +521,9 @@ tagging them, publishes `X.Y.Z`, `X.Y` and `latest`, attaches the deployment fil
 release and only then publishes it, so the Updates page never offers a version without an image.
 The deployment files pin `INKADRA_TAG` to that version. Versions with a suffix
 (`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
+
+What each release candidate must pass before the release, automated or by hand, is in the
+[release checklist](../releases/CHECKLIST.md).
 
 Tell us how your upgrade went and
 what was unclear in this guide in [GitHub Discussions](https://github.com/inkadra/inkadra/discussions)

@@ -10,6 +10,7 @@ import {
   type Instance,
   type InstanceVersion,
   PLAN_SHEET_PDF_CAPABILITY,
+  SCHEDULE_SOURCES_CAPABILITY,
   SERVER_LIVE_CAPABILITY,
   TRANSFER_CANCEL_CAPABILITY,
   UpdateMe,
@@ -169,6 +170,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         // Optional `limit` and `cursor` on the member lists (#804).
         'list-pages',
         UNAVAILABLE_ERRORS_CAPABILITY,
+        SCHEDULE_SOURCES_CAPABILITY,
         // GET /instance/audit: administrative and security actions (#806).
         AUDIT_CAPABILITY,
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).

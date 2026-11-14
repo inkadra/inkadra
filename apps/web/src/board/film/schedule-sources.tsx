@@ -6,22 +6,39 @@ import {
   type SceneGroup,
   storyboardOf,
 } from '@inkadra/canvas-core';
-import { type AspectRatio, type Element, getBoardAspect } from '@inkadra/doc-schema';
-import { type Board, blockTarget, type ScheduleBlock, targetKey } from '@inkadra/shared';
+import {
+  AspectRatio,
+  addElement,
+  createBoardDoc,
+  type Element,
+  getBoardAspect,
+  roots,
+  setBoardAspect,
+} from '@inkadra/doc-schema';
+import {
+  type Board,
+  blockTarget,
+  SCHEDULE_SOURCES_MAX,
+  type ScheduleBlock,
+  type ScheduleSource as ScheduleSourceBody,
+  targetKey,
+} from '@inkadra/shared';
 import { type GlyphColor, glyphColor } from '@inkadra/ui';
 import {
   lazy,
   type ReactNode,
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
 } from 'react';
+import { api } from '../../lib/api.ts';
 import { treeOrder } from '../boards.ts';
 import type { BoardConnection } from '../connection.ts';
-import type { BoardStore, Snapshot } from '../store.ts';
+import { BoardStore, type Snapshot } from '../store.ts';
 
 /**
  * The identity palette storyboards take their dot from (decision 0123); the colour is the block
@@ -239,13 +256,47 @@ function useSnapshots(stores: readonly BoardStore[]): readonly Snapshot[] {
   return last.current;
 }
 
+/** A read-only store of what the server sent of a storyboard (#826). */
+export function summaryStore(item: ScheduleSourceBody): BoardStore {
+  const doc = createBoardDoc(item.boardId);
+  doc.transact(() => {
+    for (const el of item.elements) {
+      // A card this build cannot read is left out, as the board itself would show it.
+      try {
+        addElement(doc, el as Element);
+      } catch {}
+    }
+    const aspect = AspectRatio.safeParse(item.aspect);
+    if (aspect.success) setBoardAspect(doc, aspect.data);
+  });
+  return new BoardStore(doc);
+}
+
 /**
- * The sources of a schedule. A storyboard reads its own document. The Production board opens
- * the documents of the project's storyboards the person can read and of any board a block points
- * to, through the board connection, each with the person's own role (decision 0123).
- * They share one WebSocket (#826).
- * shortcut: every readable storyboard still loads its whole document at once; open them on demand,
- * or read a frame and scene summary from the server, when projects reach tens of storyboards.
+ * What a storyboard of the Production board is read from (#826): its document once synced, or
+ * offline when the document holds the board (kept in this tab, or its copy on the device), so
+ * needed items are still ticked on it; otherwise the server's summary, read only. None when the
+ * person has no access.
+ */
+export function sourceOf(
+  boardId: string,
+  conn: Pick<BoardConnection, 'status' | 'store' | 'readOnly'> | undefined,
+  summary: BoardStore | undefined,
+): { boardId: string; store: BoardStore; readOnly: boolean } | null {
+  if (conn?.status === 'denied' || conn?.status === 'signedOut') return null;
+  const held = conn?.status === 'offline' && roots(conn.store.doc).elements.size > 0;
+  if (conn && (conn.status === 'synced' || held || (conn.status === 'offline' && !summary)))
+    return { boardId, store: conn.store, readOnly: conn.readOnly };
+  return summary ? { boardId, store: summary, readOnly: true } : null;
+}
+
+/**
+ * The sources of a schedule. A storyboard reads its own document. The Production board reads
+ * the project's storyboards the person can read, and any board a block points to, from a
+ * read-only summary the server makes of them (#826), and opens a storyboard's document only when
+ * a day that plans it is selected (`openLive`): its call sheet ticks needed items there, each with
+ * the person's own role (decision 0123). Opened documents stay open while the schedule is, and
+ * share one WebSocket.
  * `docs` must be rendered: it holds the connections.
  */
 export function useScheduleSources({
@@ -254,6 +305,7 @@ export function useScheduleSources({
   boards,
   across,
   referenced,
+  active = true,
 }: {
   store: BoardStore;
   boardId: string;
@@ -262,7 +314,9 @@ export function useScheduleSources({
   across: boolean;
   /** Boards the days' blocks point to. */
   referenced: readonly string[];
-}): { sources: ScheduleSources; docs: ReactNode } {
+  /** The schedule is shown: the summary is read again each time it is. */
+  active?: boolean;
+}): { sources: ScheduleSources; docs: ReactNode; openLive: (ids: readonly string[]) => void } {
   const ids = useMemo(() => {
     if (!across || !boards) return [] as string[];
     const live = new Set(boards.map((b) => b.id));
@@ -274,6 +328,56 @@ export function useScheduleSources({
       )
       .map((b) => b.id);
   }, [across, boards, referenced]);
+  const projectId = boards?.[0]?.projectId;
+  const idsKey = ids.join(',');
+  const [summaries, setSummaries] = useState<{
+    key: string;
+    stores: ReadonlyMap<string, BoardStore>;
+  } | null>(null);
+  useEffect(() => {
+    if (!across || !active || !projectId) return;
+    const wanted = idsKey.split(',').filter(Boolean);
+    if (!wanted.length) {
+      setSummaries({ key: idsKey, stores: new Map() });
+      return;
+    }
+    let alive = true;
+    const chunks: string[][] = [];
+    for (let i = 0; i < wanted.length; i += SCHEDULE_SOURCES_MAX)
+      chunks.push(wanted.slice(i, i + SCHEDULE_SOURCES_MAX));
+    // An answer is bounded in bytes: it names the boards that did not fit, asked for next.
+    const read = async (chunk: readonly string[]): Promise<ScheduleSourceBody[]> => {
+      const body = await api.get<{ items: ScheduleSourceBody[]; rest?: string[] }>(
+        `/projects/${projectId}/schedule-sources?boards=${chunk.join(',')}`,
+      );
+      const rest = body.rest ?? [];
+      return rest.length && body.items.length ? [...body.items, ...(await read(rest))] : body.items;
+    };
+    Promise.all(chunks.map(read)).then(
+      (bodies) => {
+        const stores = new Map(bodies.flat().map((item) => [item.boardId, summaryStore(item)]));
+        // A replaced summary is left to the garbage collector: no socket or listener outside it.
+        if (alive) setSummaries({ key: idsKey, stores });
+      },
+      // Unreachable: the last summary stays; without one, blocks show their stored labels.
+      () => {
+        if (alive) setSummaries((last) => last ?? { key: idsKey, stores: new Map() });
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [across, active, projectId, idsKey]);
+  // The storyboards opened live: only ever added to while the schedule is open.
+  const [live, setLive] = useState<readonly string[]>([]);
+  const openLive = useCallback(
+    (next: readonly string[]) =>
+      setLive((current) => {
+        const added = next.filter((id) => id && !current.includes(id));
+        return added.length ? [...current, ...added] : current;
+      }),
+    [],
+  );
   const [conns, setConns] = useState<ReadonlyMap<string, BoardConnection>>(new Map());
   const onConn = useMemo(
     () => (id: string, conn: BoardConnection | null) =>
@@ -288,13 +392,9 @@ export function useScheduleSources({
   );
   const open = useMemo(() => {
     if (!across) return [{ boardId, store, readOnly: false }];
-    return ids.flatMap((id) => {
-      const conn = conns.get(id);
-      // Refused: its blocks show their stored labels, as for a storyboard in the trash.
-      if (!conn || conn.status === 'denied' || conn.status === 'signedOut') return [];
-      return [{ boardId: id, store: conn.store, readOnly: conn.readOnly }];
-    });
-  }, [across, ids, conns, boardId, store]);
+    // Refused: its blocks show their stored labels, as for a storyboard in the trash.
+    return ids.flatMap((id) => sourceOf(id, conns.get(id), summaries?.stores.get(id)) ?? []);
+  }, [across, ids, conns, summaries, boardId, store]);
   const stores = useMemo(() => open.map((o) => o.store), [open]);
   const snapshots = useSnapshots(stores);
   const dots = useMemo(() => storyboardDots(boards ?? []), [boards]);
@@ -332,13 +432,15 @@ export function useScheduleSources({
       frames: groups.flatMap((g) => g.frames),
       labels,
       boardOf,
-      loading:
-        across &&
-        (!boards || ids.some((id) => !conns.has(id) || conns.get(id)?.status === 'connecting')),
+      loading: across && (!boards || summaries?.key !== idsKey),
     };
-  }, [open, snapshots, boards, dots, boardId, across, ids, conns]);
-  const docs = across ? ids.map((id) => <SourceDoc key={id} boardId={id} onConn={onConn} />) : null;
-  return { sources, docs };
+  }, [open, snapshots, boards, dots, boardId, across, summaries, idsKey]);
+  const docs = across
+    ? live
+        .filter((id) => ids.includes(id))
+        .map((id) => <SourceDoc key={id} boardId={id} onConn={onConn} />)
+    : null;
+  return { sources, docs, openLive };
 }
 
 /**

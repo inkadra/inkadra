@@ -59,6 +59,7 @@ const ALLOWED: Record<string, readonly string[]> = {
     '/projects/:projectId/export-settings',
     '/projects/:projectId/members',
     '/projects/:projectId/plan-kit',
+    '/projects/:projectId/schedule-sources',
     '/projects/:projectId/tags',
     '/project-groups',
     '/shared-boards',
