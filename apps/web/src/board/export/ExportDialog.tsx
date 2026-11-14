@@ -73,7 +73,7 @@ import {
 } from './image-format.ts';
 import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize } from './layout.ts';
 import type { OriginalFile, OriginalsPlan } from './originals.ts';
-import { calendarDate } from './planning.ts';
+import { calendarDate } from './calendar-date.ts';
 import {
   DEPARTMENTS,
   type Department,

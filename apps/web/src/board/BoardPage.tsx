@@ -18,7 +18,9 @@ import {
 import { Avatar, Button, EmptyState, Icon, IconButton, ProjectGlyph } from '@inkadra/ui';
 import {
   Fragment,
+  lazy,
   type MouseEvent,
+  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -58,18 +60,13 @@ import {
 } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
-import { ContextMenu, type MenuItem, Toast } from './chrome.tsx';
+import { ContextMenu, type MenuItem } from './chrome.tsx';
+import { Toast } from './Toast.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState } from './DeniedState.tsx';
-import { ExportDialog } from './export/ExportDialog.tsx';
 import type { ExportWhat } from './export/engine.ts';
 import type { ExportSource } from './export/settings.ts';
-import { ClientReviewView } from './film/ClientReviewView.tsx';
-import { MoodboardView } from './film/MoodboardView.tsx';
 import { useDaysPointingAt } from './film/production-days.ts';
-import { ScheduleView } from './film/ScheduleView.tsx';
-import { ShotList } from './film/ShotList.tsx';
-import { StoryboardView } from './film/StoryboardView.tsx';
 import { dayElements, type ScheduleSources } from './film/schedule-sources.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import { applyImport, type ImportPlan } from './film/screenplay/plan.ts';
@@ -80,7 +77,6 @@ import {
   ScreenplayImportDialog,
 } from './film/screenplay/ScreenplayImportDialog.tsx';
 import { shootingZone } from './film/sun.ts';
-import { TroupeView } from './film/TroupeView.tsx';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
 import { RestoredToast } from './RestoredToast.tsx';
@@ -104,12 +100,34 @@ import {
   viewsOn,
 } from './views.ts';
 import './film/film.css';
-import { ScenePlan } from './plan/ScenePlan.tsx';
 import { type Peer, usePeers } from './presence.ts';
 import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
+
+// The film views, the set plan and the export dialog (with pdf-lib) load when first shown,
+// not with the board (#827). Each waits behind its own Suspense: the rest of the page stays.
+const StoryboardView = lazy(async () => ({
+  default: (await import('./film/StoryboardView.tsx')).StoryboardView,
+}));
+const ShotList = lazy(async () => ({ default: (await import('./film/ShotList.tsx')).ShotList }));
+const ClientReviewView = lazy(async () => ({
+  default: (await import('./film/ClientReviewView.tsx')).ClientReviewView,
+}));
+const MoodboardView = lazy(async () => ({
+  default: (await import('./film/MoodboardView.tsx')).MoodboardView,
+}));
+const ScheduleView = lazy(async () => ({
+  default: (await import('./film/ScheduleView.tsx')).ScheduleView,
+}));
+const TroupeView = lazy(async () => ({
+  default: (await import('./film/TroupeView.tsx')).TroupeView,
+}));
+const ScenePlan = lazy(async () => ({ default: (await import('./plan/ScenePlan.tsx')).ScenePlan }));
+const ExportDialog = lazy(async () => ({
+  default: (await import('./export/ExportDialog.tsx')).ExportDialog,
+}));
 
 const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || role === 'editor';
 
@@ -1183,7 +1201,8 @@ function BoardScreen({
           style={{ display: view === 'schedule' ? 'contents' : 'none' }}
           inert={view !== 'schedule'}
         >
-          <ScheduleView
+          <Suspense fallback={null}>
+            <ScheduleView
             active={view === 'schedule'}
             key={`${boardId}-${preview?.version.id ?? 'live'}`}
             store={preview?.store ?? conn.store}
@@ -1207,30 +1226,35 @@ function BoardScreen({
             }
             onOpenTroupe={() => navigate('?view=troupe')}
           />
+          </Suspense>
         </div>
       )}
       {(openedFilmViews.troupe || view === 'troupe') && (
         <div style={{ display: view === 'troupe' ? 'contents' : 'none' }} inert={view !== 'troupe'}>
-          <TroupeView
-            key={projectId}
+          <Suspense fallback={null}>
+            <TroupeView
+              key={projectId}
+              store={conn.store}
+              projectId={projectId}
+              boardId={boardId}
+              readOnly={!!preview || !editable}
+            />
+          </Suspense>
+        </div>
+      )}
+      <Suspense fallback={null}>{content}</Suspense>
+      {/* A scene's set plan opens on its own wherever there is no canvas around it. */}
+      {view !== 'canvas' && !preview && (
+        <Suspense fallback={null}>
+          <ScenePlan
             store={conn.store}
             projectId={projectId}
             boardId={boardId}
-            readOnly={!!preview || !editable}
+            userId={user.id}
+            readOnly={!editable}
+            ready={conn.status === 'synced'}
           />
-        </div>
-      )}
-      {content}
-      {/* A scene's set plan opens on its own wherever there is no canvas around it. */}
-      {view !== 'canvas' && !preview && (
-        <ScenePlan
-          store={conn.store}
-          projectId={projectId}
-          boardId={boardId}
-          userId={user.id}
-          readOnly={!editable}
-          ready={conn.status === 'synced'}
-        />
+        </Suspense>
       )}
       {shareDialog}
       {iconBoard && (
@@ -1268,6 +1292,7 @@ function BoardScreen({
         />
       )}
       {exporting && (
+        <Suspense fallback={null}>
         <ExportDialog
           source={exporting.source}
           initialWhat={exporting.what}
@@ -1295,6 +1320,7 @@ function BoardScreen({
           }
           onClose={() => setExporting(null)}
         />
+        </Suspense>
       )}
       <RestoredToast
         provider={conn.provider}

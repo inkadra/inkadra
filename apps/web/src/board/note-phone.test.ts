@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { noteBlocks } from './export/note-text.ts';
 import { parseTrigger } from './NotePhoneTools.tsx';
-import { isEmpty, plainText } from './note.tsx';
+import { isEmpty } from './note.tsx';
+import { plainText } from './note-text.ts';
 import { type Peer, typingIn } from './presence.ts';
 
 describe('the phone note (#110)', () => {

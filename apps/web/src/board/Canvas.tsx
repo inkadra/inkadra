@@ -151,7 +151,6 @@ import {
   Minimap,
   TOOL_MIME,
   TOOLS,
-  Toast,
   Toolbar,
   type ToolType,
   UnsortedDrawer,
@@ -209,6 +208,7 @@ import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortc
 import { LOCAL } from './store.ts';
 import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
+import { Toast } from './Toast.tsx';
 import { startUpload } from './uploads.ts';
 import { canRecord, VoiceNoteRecorder } from './VoiceNote.tsx';
 import { MediaViewer } from './viewer.tsx';

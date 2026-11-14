@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { setFeedbackStatus } from '../feedback/state.ts';
-import { TOAST_ACTION_MS, TOAST_MS, Toast } from './chrome.tsx';
+import { TOAST_ACTION_MS, TOAST_MS, Toast } from './Toast.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
