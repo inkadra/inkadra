@@ -157,6 +157,10 @@
   font-size: 11px;
   color: var(--ink-text-muted);
 }
+.needed__name small.needed__locked {
+  display: block;
+  margin: 0;
+}
 .needed li.is-done .needed__name {
   color: var(--ink-text-muted);
 }

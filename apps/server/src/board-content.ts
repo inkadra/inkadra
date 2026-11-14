@@ -1,4 +1,12 @@
-import { boardDocName, hiddenFromGuests, readElement, roots } from '@inkadra/doc-schema';
+import {
+  boardDocName,
+  type Element,
+  getBoardAspect,
+  hiddenFromGuests,
+  migrateBoardDoc,
+  readElement,
+  roots,
+} from '@inkadra/doc-schema';
 import { type BoardColumn, type CrewCharacter, Id } from '@inkadra/shared';
 import { eq } from 'drizzle-orm';
 import * as Y from 'yjs';
@@ -145,6 +153,8 @@ export interface BoardReader {
   element(boardId: string, elementId: string): Promise<StoredElement | null>;
   columns(boardId: string): Promise<BoardColumn[]>;
   characters?(boardId: string): Promise<CrewCharacter[]>;
+  /** The live document when the collab server has it open; null otherwise. */
+  scheduleSource?(boardId: string): Promise<ScheduleSourceContent | null>;
 }
 
 /** Read the authoritative live document, including deletions, before using stored state. */
@@ -153,6 +163,10 @@ export function directBoardReader(
   db: Pick<Database, 'select' | 'execute'>,
 ): BoardReader {
   return {
+    async scheduleSource(boardId) {
+      const doc = collab.hocuspocus.documents.get(boardDocName(boardId));
+      return doc ? docScheduleSource(doc) : null;
+    },
     async characters(boardId) {
       const doc = collab.hocuspocus.documents.get(boardDocName(boardId));
       return doc ? docCharacters(doc, boardId) : storedCharacters(db, boardId);
@@ -173,4 +187,52 @@ export function directBoardReader(
       return doc ? docColumns(doc) : storedColumns(db, boardId);
     },
   };
+}
+
+/** The cards a schedule reads of a storyboard (#826): what its queue, blocks and call sheets show. */
+const SCHEDULE_TYPES: ReadonlySet<string> = new Set([
+  'scene',
+  'frame',
+  'character',
+  'location',
+  'plan',
+  'todo',
+]);
+
+export interface ScheduleSourceContent {
+  aspect: string | null;
+  elements: Element[];
+}
+
+/** What a schedule reads of a board document; callers authorize the board first. */
+export function docScheduleSource(doc: Y.Doc): ScheduleSourceContent {
+  const elements: Element[] = [];
+  for (const map of roots(doc).elements.values()) {
+    if (!(map instanceof Y.Map) || !SCHEDULE_TYPES.has(map.get('type') as string)) continue;
+    const el = readElement(map);
+    if (el) elements.push(el);
+  }
+  return { aspect: getBoardAspect(doc), elements };
+}
+
+/**
+ * What a schedule reads of a stored board document, migrated as the collab server migrates it
+ * on load: a document stored by an older build reads as the live one would.
+ */
+export function scheduleSource(
+  boardId: string,
+  state: Uint8Array | null | undefined,
+): ScheduleSourceContent {
+  if (!state) return { aspect: null, elements: [] };
+  const doc = new Y.Doc();
+  try {
+    Y.applyUpdate(doc, state);
+    // A newer document (a newer server wrote it) is read as it is, as the board list reads it.
+    try {
+      migrateBoardDoc(doc, boardId);
+    } catch {}
+    return docScheduleSource(doc);
+  } finally {
+    doc.destroy();
+  }
 }

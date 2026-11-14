@@ -4,7 +4,7 @@ import { TODO_LISTS, type TodoList } from '@inkadra/doc-schema';
 import type { Person } from '@inkadra/shared';
 import { Avatar, Checkbox, Icon, Segmented } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
-import { type CSSProperties, useState } from 'react';
+import { type CSSProperties, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PeoplePicker } from '../../people/PeoplePicker.tsx';
 import type { NeededRow } from './needed.ts';
@@ -30,13 +30,15 @@ const firstName = (person: Person | undefined) => person?.name.trim().split(/\s+
 
 /**
  * A shooting day's "Da portare": what the scenes of the day need, by kind of list, with who
- * brings it (decision 0058). Ticking a row ticks the items on the to-do cards.
+ * brings it (decision 0058). Ticking a row ticks the items on the to-do cards. `locked`: a row
+ * whose items are on a storyboard the schedule only reads (#826), shown read-only with why.
  */
 export function NeededItems({
   rows,
   people,
   userId,
   readOnly,
+  locked,
   phone,
   onChange,
 }: {
@@ -44,10 +46,13 @@ export function NeededItems({
   people: Person[];
   userId: string | undefined;
   readOnly: boolean;
+  locked?: (row: NeededRow) => boolean;
   phone: boolean;
   onChange: (row: NeededRow, patch: { done?: boolean; assigneeId?: string | null }) => void;
 }) {
   const { t } = useTranslation();
+  const hintId = useId();
+  const fixed = (row: NeededRow) => readOnly || (locked?.(row) ?? false);
   const [mine, setMine] = useState(false);
   const [picking, setPicking] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -60,7 +65,7 @@ export function NeededItems({
   const who = (row: NeededRow) => {
     const person = personOf(row);
     const name = firstName(person);
-    if (readOnly)
+    if (fixed(row))
       return <span className={`needed__who${person ? '' : ' is-none'}`}>{name || '—'}</span>;
     return (
       <button
@@ -134,18 +139,26 @@ export function NeededItems({
               {items.length}
             </h4>
             <ul>
-              {items.map((row) => (
+              {items.map((row, index) => (
                 <li key={row.key} className={row.done ? 'is-done' : undefined}>
                   <div className="needed__row">
                     <Checkbox
                       checked={row.done}
-                      disabled={readOnly}
+                      disabled={fixed(row)}
                       aria-label={row.text}
+                      aria-describedby={
+                        !readOnly && locked?.(row) ? `${hintId}-${list}-${index}` : undefined
+                      }
                       onChange={(e) => onChange(row, { done: e.target.checked })}
                     />
                     <span className="needed__name">
                       {row.text}
                       {row.count > 1 && <small>×{row.count}</small>}
+                      {!readOnly && locked?.(row) && (
+                        <small className="needed__locked" id={`${hintId}-${list}-${index}`}>
+                          {t('needed.locked')}
+                        </small>
+                      )}
                       {phone && (
                         <small className="needed__meta">
                           {scenes(row)} · {firstName(personOf(row)) || t('needed.nobody')}
@@ -155,7 +168,7 @@ export function NeededItems({
                     {!phone && <span className="needed__scenes">{scenes(row)}</span>}
                     {(!phone || !row.assigneeId || picking === row.key) && who(row)}
                   </div>
-                  {picking === row.key && !readOnly && (
+                  {picking === row.key && !fixed(row) && (
                     <div className="needed__picker">
                       <PeoplePicker
                         people={people}

@@ -29,6 +29,16 @@
     "createAdmin": "Crear cuenta y entrar",
     "signOut": "Cerrar sesión",
     "signOutFailed": "No se pudo cerrar la sesión. Comprueba la conexión e inténtalo de nuevo.",
+    "signOutUnsaved": {
+      "title": "¿Cerrar sesión y eliminar los cambios sin guardar?",
+      "body_one": "{{count}} tablero tiene cambios guardados solo en este dispositivo. Al cerrar sesión se eliminan. Mantén la sesión y ábrelo con conexión para guardarlos.",
+      "body_other": "{{count}} tableros tienen cambios guardados solo en este dispositivo. Al cerrar sesión se eliminan. Mantén la sesión y ábrelos con conexión para guardarlos.",
+      "kept_one": "{{count}} tablero tiene cambios que el servidor no aceptó (límite de tamaño, sin acceso o en la papelera). Abrirlo no los guarda y al cerrar sesión se eliminan: descárgalos para conservar una copia.",
+      "kept_other": "{{count}} tableros tienen cambios que el servidor no aceptó (límite de tamaño, sin acceso o en la papelera). Abrirlos no los guarda y al cerrar sesión se eliminan: descárgalos para conservar una copia.",
+      "confirm": "Cerrar sesión y eliminar",
+      "download": "Descargar los cambios",
+      "stay": "Mantener la sesión"
+    },
     "errors": {
       "reauthRequired": "Inicia sesión de nuevo para continuar.",
       "invalid": "Correo o contraseña incorrectos.",
@@ -720,7 +730,7 @@
       "saving": "Sincronizando…",
       "online_one": "{{count}} en línea",
       "online_other": "{{count}} en línea",
-      "offline": "Sin conexión · no cierres la pestaña",
+      "offline": "Sin conexión · guardado en el dispositivo",
       "denied": "Acceso denegado",
       "readOnly": "Solo lectura",
       "signedOut": "Sesión cerrada"
@@ -1922,6 +1932,10 @@
       "drawFailed": "No se pudo guardar el trazo. Inténtalo de nuevo; si el problema continúa, recarga el tablero.",
       "updateApp": "Este tablero requiere una versión más reciente. Actualiza la app para editarlo; puedes seguir leyéndolo.",
       "sizeLimit": "Este tablero ha alcanzado su límite de tamaño. Las adiciones no se guardaron; el tablero se ha recargado. Puedes eliminar contenido para liberar espacio.",
+      "sizeLimitKept": "Este tablero ha alcanzado su límite de tamaño. Los cambios hechos en este dispositivo no se guardaron: se conservan en este dispositivo y el tablero se ha recargado. Descárgalos para conservar una copia, o descártalos. Puedes eliminar contenido para hacer espacio.",
+      "kept": "Los cambios de este tablero que el servidor no aceptó se conservan en este dispositivo. No están en el tablero: descárgalos para conservar una copia, o descártalos.",
+      "keptDownload": "Descargar los cambios",
+      "keptDiscard": "Descartar",
       "sizeLimitReadOnly": "Este tablero ha alcanzado su límite de tamaño y es de solo lectura. Las adiciones no se guardaron."
     },
     "sheet": {
@@ -3527,6 +3541,7 @@
     "pickupAt": "recogida {{pickup}}"
   },
   "needed": {
+    "locked": "Aquí solo lectura: su storyboard no está abierto para editar.",
     "title": "Para llevar",
     "progress": "{{ready}} de {{total}} listos",
     "mine": "Solo los míos",

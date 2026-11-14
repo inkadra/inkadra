@@ -88,7 +88,10 @@ backup taken before it, and a server refuses a database migrated by a newer one.
 
 **Board documents.** Bump `CURRENT_SCHEMA_VERSION` in `packages/doc-schema/src/doc.ts` and add
 a migration from the previous version, with a test that upgrades a document of the old shape.
-Documents are migrated when the collaboration server loads them. Add the new version to
+Documents are migrated when the collaboration server loads them, and the web app migrates the
+copies it keeps on the device on its own before merging them; so a step must be CRDT-idempotent:
+only `Y.Map#set` with values that follow from the document, and deletions, never an insert into a
+`Y.Array` or text, new shared types, random ids or timestamps (see the comment on `migrations`). Add the new version to
 `WRITER_SCHEMAS` in the same file as `{ min: <the new version> }`; only a test like
 `canvas-core/src/older-client.test.ts`, proving that clients of the older schema lose nothing of
 the change, may lower `min`, and the entry names that test by its title, which starts with

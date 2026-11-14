@@ -3,6 +3,7 @@ import { createBoardDoc } from '@inkadra/doc-schema';
 import type { Board, ScheduleBlock } from '@inkadra/shared';
 import { glyphColor } from '@inkadra/ui';
 import { describe, expect, it } from 'vitest';
+import type { BoardConnection } from '../connection.ts';
 import { BoardStore } from '../store.ts';
 import { newScheduleBlock } from './schedule.ts';
 import {
@@ -11,6 +12,7 @@ import {
   offersWhole,
   plannedKeys,
   type ScheduleSources,
+  sourceOf,
   storyboardDots,
   UNAVAILABLE_DOT,
   withLabels,
@@ -163,5 +165,43 @@ describe("a day's cards on the Production board (decision 0123)", () => {
     expect(dayElements({ blocks: [] }, read).size).toBe(0);
     // A storyboard's own schedule reads all of its cards.
     expect(dayElements({ blocks: [] }, { ...read, across: false })).toBe(read.byId);
+  });
+});
+
+describe('sourceOf (#826)', () => {
+  const summary = storyboard(A).store;
+  const conn = (status: BoardConnection['status'], store: BoardStore, readOnly = false) => ({
+    status,
+    store,
+    readOnly,
+  });
+
+  it('reads the open document once synced, with the person’s role', () => {
+    const live = storyboard(A).store;
+    expect(sourceOf(A, conn('synced', live), summary)).toEqual({
+      boardId: A,
+      store: live,
+      readOnly: false,
+    });
+  });
+
+  it('ticks offline on a document that holds the board, not on the summary', () => {
+    const held = storyboard(A).store;
+    expect(sourceOf(A, conn('offline', held), summary)?.store).toBe(held);
+    // An empty document offline (nothing kept): the summary, read only.
+    const empty = new BoardStore(createBoardDoc(A));
+    expect(sourceOf(A, conn('offline', empty), summary)).toEqual({
+      boardId: A,
+      store: summary,
+      readOnly: true,
+    });
+  });
+
+  it('reads the summary, read only, until the document is open, and nothing once refused', () => {
+    expect(sourceOf(A, undefined, summary)).toMatchObject({ store: summary, readOnly: true });
+    const live = storyboard(A).store;
+    expect(sourceOf(A, conn('connecting', live), summary)?.store).toBe(summary);
+    expect(sourceOf(A, conn('denied', live), summary)).toBeNull();
+    expect(sourceOf(A, undefined, undefined)).toBeNull();
   });
 });

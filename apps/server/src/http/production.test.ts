@@ -27,6 +27,7 @@ import { exportProject } from '../transfers/export.ts';
 import { importProject, remapBlock } from '../transfers/import.ts';
 import { readZip, writeZip } from '../transfers/zip.ts';
 import { createApp } from './app.ts';
+import { SCHEDULE_SOURCES_BYTES } from './boards-routes.ts';
 import { keepBlockKeys } from './schedule-routes.ts';
 
 const block = (over: Partial<ScheduleBlock> = {}): ScheduleBlock => ({
@@ -457,6 +458,70 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     expect(
       await daysOfBoard(db, { id: people.storyboarder?.id as string }, ids.project, ids.sa),
     ).toEqual([]);
+  });
+
+  it('serves the cards a schedule reads of the storyboards the caller can open (#826)', async () => {
+    const base = { x: 0, y: 0, w: 240, z: 'a0', parent: null, createdBy: null, createdAt: 0 };
+    const doc = createBoardDoc(ids.sa);
+    addElement(doc, {
+      ...base,
+      id: 'scene-sum-1',
+      type: 'scene',
+      number: '4',
+      title: 'Rain',
+    } as Element);
+    addElement(doc, {
+      ...base,
+      id: 'frame-sum-1',
+      type: 'frame',
+      parent: 'scene-sum-1',
+    } as Element);
+    addElement(doc, { ...base, id: 'note-sum-1', type: 'note' } as Element);
+    const state = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: ids.sa, state, schemaVersion: 3, size: state.byteLength })
+      .onConflictDoUpdate({ target: boardDoc.boardId, set: { state, size: state.byteLength } });
+    const path = `/projects/${ids.project}/schedule-sources?boards=${ids.sa},${ids.sb},${ids.trashed},${ids.ordinary}`;
+    const member = await request('member', 'GET', path);
+    expect(member.statusCode, member.body).toBe(200);
+    const items = member.json().items as Array<{
+      boardId: string;
+      readOnly: boolean;
+      elements: Array<{ id: string }>;
+    }>;
+    // A board in the trash is left out; the others in the order asked.
+    expect(items.map((i) => i.boardId)).toEqual([ids.sa, ids.sb, ids.ordinary]);
+    expect(items[0]?.readOnly).toBe(false);
+    // Only the cards the schedule reads: the note stays in the document.
+    expect(items[0]?.elements.map((e) => e.id).sort()).toEqual(['frame-sum-1', 'scene-sum-1']);
+    // A grant on one storyboard reads that one only: nothing about the other.
+    const granted = await request('storyboarder', 'GET', path);
+    expect(granted.json().items.map((i: { boardId: string }) => i.boardId)).toEqual([ids.sa]);
+    expect((await request('stranger', 'GET', path)).statusCode).toBe(404);
+    expect(
+      (await request('member', 'GET', `/projects/${ids.project}/schedule-sources?boards=x`))
+        .statusCode,
+    ).toBe(400);
+    expect(member.json().rest).toEqual([]);
+    // A large storyboard fills the answer: the next ones are named, to be asked for again.
+    await db
+      .update(boardDoc)
+      .set({ size: SCHEDULE_SOURCES_BYTES + 1 })
+      .where(eq(boardDoc.boardId, ids.sa));
+    const full = await request('member', 'GET', path);
+    expect(full.json().items.map((i: { boardId: string }) => i.boardId)).toEqual([ids.sa]);
+    expect(full.json().rest).toEqual([ids.sb, ids.ordinary]);
+    const next = await request(
+      'member',
+      'GET',
+      `/projects/${ids.project}/schedule-sources?boards=${full.json().rest.join(',')}`,
+    );
+    expect(next.json().items.map((i: { boardId: string }) => i.boardId)).toEqual([
+      ids.sb,
+      ids.ordinary,
+    ]);
+    await db.update(boardDoc).set({ size: state.byteLength }).where(eq(boardDoc.boardId, ids.sa));
   });
 
   it('is never shown to guests', async () => {

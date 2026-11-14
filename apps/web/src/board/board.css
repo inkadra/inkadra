@@ -5733,6 +5733,12 @@ button.card__play {
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
 }
+.board-update-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
 /* On a phone, under the zoom row at the top of the board (12px + 44px + 12px below the header). */
 @media (width < 768px) {
   .board-update-notice {

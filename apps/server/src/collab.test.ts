@@ -135,6 +135,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     origin?: string,
     schemaVersion: number | null = CURRENT_SCHEMA_VERSION,
     targetBoardId = boardId,
+    query = '',
   ) {
     class CookieSocket extends WebSocket {
       constructor(address: string, protocols?: string | string[]) {
@@ -146,7 +147,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     }
     const doc = new Y.Doc();
     const websocketProvider = new HocuspocusProviderWebsocket({
-      url: `ws://${base}/collab${schemaVersion === null ? '' : `?schemaVersion=${schemaVersion}`}`,
+      url: `ws://${base}/collab${schemaVersion === null ? '' : `?schemaVersion=${schemaVersion}`}${query}`,
       WebSocketPolyfill: CookieSocket,
     });
     const provider = new HocuspocusProvider({
@@ -422,6 +423,22 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     });
     c.close();
     expect(failed).toBe(true);
+  });
+
+  it('tells a client that asks a lost access and a signed-out session apart (#791)', async () => {
+    const reasonOf = (c: ReturnType<typeof connect>) =>
+      new Promise<string | null>((resolve) => {
+        c.provider.on('authenticationFailed', ({ reason }: { reason: string }) => resolve(reason));
+        setTimeout(() => resolve(null), 4000);
+      });
+    await signUp('outsider');
+    const asks = (credentials: { cookie?: string }) =>
+      connect(credentials, undefined, CURRENT_SCHEMA_VERSION, boardId, '&reasons=1');
+    // The client deletes its copy of the board only for `Forbidden`.
+    expect(await reasonOf(asks(as('outsider')))).toBe('Forbidden');
+    expect(await reasonOf(asks({}))).toBe('Unauthorized');
+    // A client that does not ask keeps the generic refusal it knows.
+    expect(await reasonOf(connect(as('outsider')))).toBe('permission-denied');
   });
 
   it('keeps viewers read-only on the WebSocket', async () => {
