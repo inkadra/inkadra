@@ -135,7 +135,8 @@ services:
   valkey:
     image: valkey/valkey:9-alpine
     restart: unless-stopped
-    command: ["valkey-server", "--appendonly", "yes"]
+    # BullMQ keeps its job schedules here: never evict keys, refuse writes when full instead.
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     volumes:
       - ${VALKEY_DATA:-valkey-data}:/data
     security_opt: ["no-new-privileges:true"]

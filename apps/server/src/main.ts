@@ -48,6 +48,7 @@ import {
   startWorkers,
 } from './queues.ts';
 import { startIndexBackfill } from './search/index-doc.ts';
+import { closeAll, SHUTDOWN_DEADLINE_MS, settledWithin, WORKER_CLOSE_MS } from './shutdown.ts';
 import { createStorage } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
 import { cachedVideoSettings } from './video-settings.ts';
@@ -213,7 +214,11 @@ async function main() {
       transfers,
       monitor: { store: monitor, role: command },
     });
-    closers.unshift(() => workers.close());
+    closers.unshift(async () => {
+      // Jobs still running past the wait are left to BullMQ, which runs them again (#796).
+      if (!(await settledWithin(workers.close(), WORKER_CLOSE_MS)))
+        log.warn('jobs still running at shutdown: they run again after the restart');
+    });
     log.info('worker started');
   }
 
@@ -231,7 +236,8 @@ async function main() {
     // Before any board opens: what the last shutdown could not store (#795).
     await replayUnsavedBoards(db, unsavedBoardsDir(config.DATA_DIR), log);
     const server = collab;
-    closers.unshift(() => server.destroy());
+    // With the web role the HTTP server carries the WebSockets: both close together (below).
+    if (command === 'collab') closers.unshift(() => server.destroy());
     const backfill = startIndexBackfill(db, log);
     closers.unshift(async () => backfill.stop());
     if (command === 'collab') {
@@ -386,7 +392,10 @@ async function main() {
     if (collab) {
       attachCollab(app.server, collab);
     }
-    closers.unshift(() => app.close());
+    // New connections stop at once, while open boards are stored: `app.close()` waits for the
+    // collab WebSockets too, which only `destroy()` ends (#796).
+    const ownCollab = collab;
+    closers.unshift(() => Promise.all([app.close(), ownCollab?.destroy()]));
     await app.listen({ host: config.HOST, port: config.PORT });
   }
 
@@ -401,14 +410,9 @@ async function main() {
 
   const shutdown = async (signal: string) => {
     log.info({ signal }, 'shutting down');
-    for (const close of closers) {
-      try {
-        await close();
-      } catch (err) {
-        log.error({ err }, 'error during shutdown');
-      }
-    }
-    process.exit(0);
+    const done = await closeAll(closers, log);
+    if (!done) log.error({ deadlineMs: SHUTDOWN_DEADLINE_MS }, 'shutdown deadline passed');
+    process.exit(done ? 0 : 1);
   };
   process.once('SIGTERM', () => void shutdown('SIGTERM'));
   process.once('SIGINT', () => void shutdown('SIGINT'));

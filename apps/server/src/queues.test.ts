@@ -97,6 +97,21 @@ it('schedules anonymisation separately and isolates it from upload purge failure
   }
 });
 
+it('registers the recurring jobs again, for a Valkey that lost them (#798)', async () => {
+  vi.useFakeTimers();
+  const deps = { db: {} as Database, storage: {} as Storage, tmpDir: '/unused', heic: false };
+  const workers = await startWorkers('redis://unused', pino({ level: 'silent' }), deps);
+  try {
+    const digests = () => harness.schedule.mock.calls.filter(([id]) => id === 'digest').length;
+    const before = digests();
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    expect(digests()).toBe(before + 1);
+  } finally {
+    await workers.close();
+    vi.useRealTimers();
+  }
+});
+
 it('routes Office documents to the office queue, read only by workers with LibreOffice', async () => {
   const deps = { db: {} as Database, storage: {} as Storage, tmpDir: '/unused', heic: false };
   const log = pino({ level: 'silent' });
