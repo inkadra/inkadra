@@ -13,7 +13,8 @@
       "!**/openapi.json",
       "!**/drizzle/meta",
       "!**/ui/src/tokens.css",
-      "!docs/decisions/**/*.html"
+      "!docs/decisions/**/*.html",
+      "!deploy/office-seccomp.json"
     ]
   },
   "formatter": {
