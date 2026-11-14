@@ -1222,15 +1222,13 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     ).map((r) => r.id);
     const rung = `variants/${ids[0]}/r0123-480.mp4`;
     await deps.storage.write(rung, Buffer.from('rung'), 'video/mp4');
-    await db
-      .insert(assetRendition)
-      .values({
-        assetId: ids[0] as string,
-        name: '480',
-        status: 'ready',
-        recipe: 'x',
-        storageKey: rung,
-      });
+    await db.insert(assetRendition).values({
+      assetId: ids[0] as string,
+      name: '480',
+      status: 'ready',
+      recipe: 'x',
+      storageKey: rung,
+    });
     const files = () =>
       readdirSync(join(deps.root, 'files'), { recursive: true, withFileTypes: true })
         .filter((f) => f.isFile())

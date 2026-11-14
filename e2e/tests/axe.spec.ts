@@ -64,9 +64,7 @@ test('key pages have no serious or critical axe violations', async ({ page, brow
   found.push(...(await violations(page, 'home')));
 
   await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
-  await expect(page.locator('.board-canvas, [data-tour="canvas"]').first()).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect(page.locator('.canvas')).toBeVisible({ timeout: 20_000 });
   found.push(...(await violations(page, 'board')));
 
   await page.goto('/settings');
