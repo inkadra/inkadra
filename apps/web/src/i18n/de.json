@@ -717,7 +717,7 @@
       "saving": "Synchronisiert…",
       "online_one": "{{count}} online",
       "online_other": "{{count}} online",
-      "offline": "Offline · Änderungen bleiben hier",
+      "offline": "Offline · Tab geöffnet lassen",
       "denied": "Zugriff verweigert",
       "readOnly": "Nur Lesen",
       "signedOut": "Abgemeldet"

@@ -717,7 +717,7 @@
       "saving": "Synchronisation…",
       "online_one": "{{count}} en ligne",
       "online_other": "{{count}} en ligne",
-      "offline": "Hors ligne · les modifications restent ici",
+      "offline": "Hors ligne · gardez cet onglet ouvert",
       "denied": "Accès refusé",
       "readOnly": "Lecture seule",
       "signedOut": "Déconnecté"

@@ -4,16 +4,22 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
+import { RequestError } from '../lib/api.ts';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 
 type Options = {
   document: Y.Doc;
   onAuthenticated: (event: { scope: string }) => void;
   onDisconnect: () => void;
-  onAuthenticationFailed: () => void;
+  onAuthenticationFailed: (event: { reason: string }) => void;
 };
 const person = vi.hoisted(() => ({ id: 'offline-test' }));
 const sockets = vi.hoisted(() => [] as Options[]);
+const me = vi.hoisted(() => ({ get: vi.fn(async () => ({})) }));
+vi.mock('../lib/api.ts', async (original) => ({
+  ...(await original<typeof import('../lib/api.ts')>()),
+  api: me,
+}));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: person }) }));
 vi.mock('@hocuspocus/provider', () => ({
   HocuspocusProvider: class {
@@ -36,6 +42,8 @@ afterEach(async () => {
   document.body.replaceChildren();
   sockets.length = 0;
   person.id = 'offline-test';
+  me.get.mockReset();
+  me.get.mockResolvedValue({});
 });
 function Board({ id }: { id: string }) {
   connection = useBoardConnection(id, false);
@@ -104,10 +112,35 @@ it('discards cached content after the server denies access', async () => {
   const socket = await open('revoked-board');
   await act(async () => {
     connection!.store.doc.getMap('meta').set('title', 'Revoked content');
-    socket.onAuthenticationFailed();
+    socket.onAuthenticationFailed({ reason: 'permission-denied' });
   });
+  expect(connection?.status).toBe('denied');
   await act(async () => root!.unmount());
   root = undefined;
   await open('revoked-board');
   expect(connection?.store.doc.getMap('meta').get('title')).toBeUndefined();
+});
+
+it('tells a session that expired while away from a lost access, and keeps its edits', async () => {
+  // Reconnecting after sleep with an expired cookie: the server only says "permission denied".
+  me.get.mockRejectedValue(new RequestError(401, 'unauthorized', 'Not signed in'));
+  const socket = await open('slept-board');
+  await act(async () => {
+    socket.onAuthenticated({ scope: 'read-write' });
+    connection!.store.doc.getMap('meta').set('title', 'Edited on the train');
+    socket.onDisconnect();
+    socket.onAuthenticationFailed({ reason: 'permission-denied' });
+  });
+  expect(connection?.status).toBe('signedOut');
+  await act(async () => root!.unmount());
+  root = undefined;
+  await open('slept-board');
+  expect(connection?.store.doc.getMap('meta').get('title')).toBe('Edited on the train');
+});
+
+it('stays offline, not denied, when the server cannot say who is signed in', async () => {
+  me.get.mockRejectedValue(new TypeError('Failed to fetch'));
+  const socket = await open('unreachable-board');
+  await act(async () => socket.onAuthenticationFailed({ reason: 'permission-denied' }));
+  expect(connection?.status).toBe('offline');
 });
