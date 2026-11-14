@@ -5768,6 +5768,10 @@
           "4": {
             "title": "Los avisos",
             "text": "Te avisa si algo va mal."
+          },
+          "5": {
+            "title": "Prueba de carga",
+            "text": "Somete la instancia a una carga de prueba y se detiene si las personas lo notan; el informe queda aquí."
           }
         }
       },
@@ -6292,6 +6296,112 @@
       "title": "Para quien gestiona el servidor",
       "lead": "Los gráficos en el tiempo, los procesos, las colas de trabajos y el registro de errores están en la vista Avanzada.",
       "open": "Abrir Avanzada"
+    },
+    "loadTest": {
+      "title": "Prueba de carga",
+      "lead": "Somete esta instancia a la carga de muchas personas editando a la vez, mide cómo aguanta y guarda el informe.",
+      "loadError": "No se pudieron cargar las pruebas de carga.",
+      "unavailable": "Las pruebas de carga necesitan un worker",
+      "unavailableHelp": "Se ejecutan como tarea en segundo plano: inicia la instancia con Valkey (REDIS_URL) y un worker.",
+      "preset": "Tamaño",
+      "presets": {
+        "small": "Pequeña",
+        "medium": "Mediana",
+        "large": "Grande"
+      },
+      "presetText": "{{editors}} editores, {{readers}} lectores, {{boards}} tableros · {{time}}",
+      "warningTitle": "Carga esta misma instancia",
+      "warning": "Durante {{time}} el servidor trabaja a fondo para editores de prueba: quien use tableros y vídeos en ese momento puede notarlos más lentos. Crea una cuenta de prueba y un proyecto con {{boards}} tableros, y los elimina al final, también tras una parada o un reinicio.",
+      "when": "Cuándo",
+      "guard": "Se detiene sola si las personas que usan la instancia lo notan.",
+      "now": "Ahora",
+      "later": "Más tarde",
+      "at": "Inicio",
+      "timeZone": "Zona horaria del servidor: {{zone}}",
+      "date": "Fecha",
+      "time": "Hora",
+      "understand": "Entiendo que esto genera carga real en esta instancia.",
+      "start": "Iniciar la prueba de carga",
+      "schedule": "Programar la prueba de carga",
+      "startError": "No se pudo iniciar la prueba de carga. Inténtalo de nuevo.",
+      "badTime": "Elige una hora dentro de los próximos 7 días.",
+      "stopError": "No se pudo detener la prueba de carga. Inténtalo de nuevo.",
+      "reasons": {
+        "store_slow": "detenida: el guardado de los tableros se volvió lento",
+        "api_slow": "detenida: la app se volvió lenta para los demás",
+        "api_errors": "detenida: los demás recibían errores",
+        "edits_slow": "detenida: los cambios se volvieron lentos",
+        "backup_running": "Hay una copia de seguridad en curso: inténtalo cuando termine.",
+        "transfer_running": "Hay una exportación o importación en curso: inténtalo cuando termine.",
+        "loadtest_running": "Ya hay una prueba de carga programada o en curso.",
+        "under_load": "La instancia ya está ocupada: inténtalo más tarde.",
+        "no_worker": "Las pruebas de carga necesitan un worker (REDIS_URL).",
+        "internal": "algo salió mal"
+      },
+      "scheduledFor": "Prueba de carga {{preset}} programada para {{time}}",
+      "starting": "Prueba de carga {{preset}} iniciándose…",
+      "scheduledHelp": "No empieza si en ese momento hay una copia de seguridad o una importación en curso, o si la instancia está ocupada.",
+      "cancel": "Cancelar",
+      "phase": {
+        "starting": "Iniciando…",
+        "seeding": "Creando tableros de prueba: {{done}} de {{total}}",
+        "running": "En curso: {{done}} de {{total}}",
+        "cleaning": "Eliminando los datos de prueba…"
+      },
+      "running": "Prueba de carga {{preset}} en curso",
+      "stop": "Detener",
+      "progress": "Progreso de la prueba de carga",
+      "ms": "{{value}} ms",
+      "mib": "{{value}} MiB",
+      "live": {
+        "edits": "Cambios",
+        "editP95": "Ida y vuelta de los cambios p95",
+        "deliveryP95": "Entrega a los lectores p95",
+        "storeP95": "Guardado de tableros p95",
+        "apiP95": "App para los demás p95",
+        "errors": "Errores · reconexiones"
+      },
+      "history": "Últimas pruebas de carga",
+      "notCleaned": "datos de prueba aún eliminándose",
+      "status": {
+        "passed": "Superada",
+        "failed": "No superada",
+        "aborted": "Detenida por la protección",
+        "stopped": "Detenida",
+        "cancelled": "Cancelada",
+        "refused": "No iniciada",
+        "interrupted": "Interrumpida"
+      },
+      "report": {
+        "times_one": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} medida)",
+        "times_other": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} medidas)",
+        "editsValue": "{{edits}} ({{switches}} cambios de tablero, {{uploads}} subidas, {{failed}} fallidas)",
+        "p95p99": "p95 {{p95}}, p99 {{p99}}",
+        "p95": "p95 {{value}}",
+        "storesValue": "p95 {{p95}} · el más lento {{max}}",
+        "memoryValue": "{{before}} antes → pico {{peak}}",
+        "perBoardValue_one": "{{value}} en {{count}} tablero",
+        "perBoardValue_other": "{{value}} en {{count}} tableros",
+        "setup": "{{editors}} editores, {{readers}} lectores, {{boards}} tableros, {{time}}",
+        "measure": "Medida",
+        "value": "Resultado",
+        "limit": "Límite",
+        "rows": {
+          "edits": "Cambios",
+          "editMs": "Ida y vuelta de los cambios",
+          "deliveryMs": "Entrega a los lectores",
+          "errors": "Errores",
+          "reconnects": "Reconexiones",
+          "stores": "Guardado de tableros",
+          "poolWait": "Espera de conexión (guardados)",
+          "connections": "Conexiones a la base de datos",
+          "memory": "Memoria (roles de tableros)",
+          "perBoard": "Por tablero abierto"
+        },
+        "overLimit": "(por encima del límite)",
+        "noServer": "No se midió el lado del servidor.",
+        "text": "Informe en texto"
+      }
     }
   },
   "updates": {
@@ -6844,7 +6954,10 @@
       "backup_started": "Copia iniciada",
       "backup_restored": "Copia restaurada",
       "auth_sign_in_failed": "Inicio de sesión fallido",
-      "auth_locked_out": "Inicio de sesión bloqueado"
+      "auth_locked_out": "Inicio de sesión bloqueado",
+      "loadtest_started": "Prueba de carga iniciada",
+      "loadtest_stopped": "Prueba de carga detenida",
+      "loadtest_finished": "Prueba de carga terminada"
     }
   }
 }

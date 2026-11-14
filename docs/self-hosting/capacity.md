@@ -11,8 +11,8 @@ how long boards take to save and how much memory each open board costs.
 > what it created at the end, also when stopped with Ctrl-C, but a crash or a lost connection
 > can leave a project named `Load test …` behind.
 
-There is no button for it in **Settings**: load started from the web app would run against the
-live instance that serves it.
+Administrators can also run it from **Settings → Server → Load test**, on the instance itself
+and with protections: see [From the settings](#from-the-settings).
 
 ## Presets
 
@@ -28,12 +28,39 @@ Every preset also fails on any error (a refused connection, a board that does no
 upload), on more reconnects than editors, on more than 8 MiB per open board, and on a slow wait
 for a database connection (1, 2 and 5 s). The limits are generous on purpose: they catch a
 regression of several times on a shared CI machine, not a few percent. They live in
-[`apps/server/scripts/loadtest/report.ts`](../../apps/server/scripts/loadtest/report.ts).
+[`apps/server/src/loadtest/report.ts`](../../apps/server/src/loadtest/report.ts).
 
 What the clients do: the test seeds the boards through the API, with 20 notes each. Each editor
 opens a random board, adds a note, then moves it about once a second while moving its cursor,
 uploads a small picture about once a minute, and moves to another board every 20 to 40 seconds.
 Each reader follows an editor from board to board without writing.
+
+## From the settings
+
+**Settings → Server → Load test** (administrators) runs the same presets as a worker job of the
+instance, so it needs Valkey (`REDIS_URL`) and a worker (`all`, or a `worker` container):
+
+- Pick a preset, read the warning, tick the confirmation, then start now or schedule a time
+  within the next 7 days, in the server's time zone (for example tonight at 03:00).
+- It does not start while a backup, an export or an import runs, or when the last minute already
+  shows API answers or board saves over 1 s, or the CPU over 80 %. A scheduled run checks again
+  when its time comes.
+- While it runs the page shows a progress bar, the live numbers and **Stop**.
+- **The guard** stops it when the people using the instance feel it: two readings in a row (5 s
+  apart) with board saves p95 over 2 s, the API answers of everyone but the test over 2 s at p95
+  or more than 5 % server errors, or the test's own edit round trip over 3 s.
+- The report has the fields and limits of the CLI report; the last 10 runs are kept.
+- It signs in with an account it creates in the database (no open registration needed) and a
+  personal token, and records that account and its `Load test …` project on the run. They are
+  deleted at the end, also after a stop. After a crash or a restart the worker finds the run
+  without a heartbeat within a minute and deletes them at its start, or within 5 minutes.
+- Starts, stops and results are in the audit log (`loadtest.started`, `loadtest.stopped`,
+  `loadtest.finished`).
+
+The worker reaches the instance on its loopback with `all` (`http://127.0.0.1:PORT`), and through
+`PUBLIC_URL` in split mode, where the proxy must route `/collab` as for browsers. The clients run
+in the worker, so they take some of the machine's CPU: on a small server the numbers read lower
+than from a separate machine.
 
 ## Running it
 

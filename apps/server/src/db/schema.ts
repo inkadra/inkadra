@@ -1499,6 +1499,56 @@ export const instanceBackup = pgTable(
   ],
 );
 
+/**
+ * Load tests started from Settings → Server (#908). The test account and project are written
+ * here as soon as they exist, without foreign keys: a run that crashed still says what to
+ * delete, and the startup sweep deletes it.
+ */
+export const loadTestRun = pgTable(
+  'load_test_run',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    preset: text('preset', { enum: ['small', 'medium', 'large'] }).notNull(),
+    status: text('status', {
+      enum: [
+        'scheduled',
+        'running',
+        'passed',
+        'failed',
+        'aborted',
+        'stopped',
+        'cancelled',
+        'refused',
+        'interrupted',
+      ],
+    }).notNull(),
+    reason: text('reason'),
+    /** Null for a run started now. */
+    scheduledFor: timestamp('scheduled_for', { withTimezone: true }),
+    requestedBy: uuid('requested_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    /** Moved by the running job every few seconds; a silent `running` row was interrupted. */
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }),
+    /** Asked from the page; the job reads it with each heartbeat. */
+    stopRequestedAt: timestamp('stop_requested_at', { withTimezone: true }),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    progress: jsonb('progress').$type<import('@inkadra/shared').LoadTestProgress>(),
+    report: jsonb('report').$type<import('@inkadra/shared').LoadTestReport>(),
+    testUserId: uuid('test_user_id'),
+    testProjectId: uuid('test_project_id'),
+    /** Set once the test account and its project are gone. */
+    cleanedAt: timestamp('cleaned_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('load_test_run_created_idx').on(t.createdAt.desc()),
+    // One run scheduled or running at a time, across processes.
+    uniqueIndex('load_test_run_active_uq')
+      .on(sql`(true)`)
+      .where(sql`${t.status} in ('scheduled', 'running')`),
+  ],
+);
+
 /** Only a digest of the bearer credential; generation is public key-derivation context. */
 export const calendarFeed = pgTable('calendar_feed', {
   userId: uuid('user_id')
