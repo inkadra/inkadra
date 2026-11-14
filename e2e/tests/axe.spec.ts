@@ -20,6 +20,8 @@ async function violations(page: Page, name: string): Promise<string[]> {
     await page.emulateMedia({ colorScheme: theme });
     if (await page.locator('html[data-theme]').count())
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    // Colours fade between themes: measured mid-way, contrast is wrong.
+    await page.waitForTimeout(400);
     // The account button shows the person's initials, which are not its label ("Account").
     const { violations } = await new AxeBuilder({ page })
       .exclude('.ink-sidebar__user > .ink-btn--ghost')
