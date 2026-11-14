@@ -12,6 +12,7 @@
     "screenshots": "tsx scripts/screenshots.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@hocuspocus/provider": "^4.8.0",
     "@inkadra/canvas-core": "workspace:*",
     "@inkadra/doc-schema": "workspace:*",

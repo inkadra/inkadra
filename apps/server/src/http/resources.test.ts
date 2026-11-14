@@ -1,3 +1,4 @@
+import { readdirSync } from 'node:fs';
 import {
   createServer,
   type IncomingMessage,
@@ -6,6 +7,7 @@ import {
   type ServerResponse,
 } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clientAssetUploadId } from '@inkadra/shared';
 import { eq, inArray, sql } from 'drizzle-orm';
@@ -15,7 +17,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, assetVariant, creationRequest, pendingFileDeletion } from '../db/schema.ts';
+import {
+  asset,
+  assetRendition,
+  assetVariant,
+  creationRequest,
+  pendingFileDeletion,
+} from '../db/schema.ts';
 import { purgeUploads } from '../queues.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
@@ -1208,6 +1216,27 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       sql`select storage_key as key from asset where project_id = ${projectId}`,
     );
     expect(assets.length).toBeGreaterThan(0);
+    // Every derived file goes too, not only the originals (#846): variants and a video rung.
+    const ids = (
+      await db.execute<{ id: string }>(sql`select id from asset where project_id = ${projectId}`)
+    ).map((r) => r.id);
+    const rung = `variants/${ids[0]}/r0123-480.mp4`;
+    await deps.storage.write(rung, Buffer.from('rung'), 'video/mp4');
+    await db.insert(assetRendition).values({
+      assetId: ids[0] as string,
+      name: '480',
+      status: 'ready',
+      recipe: 'x',
+      storageKey: rung,
+    });
+    const files = () =>
+      readdirSync(join(deps.root, 'files'), { recursive: true, withFileTypes: true })
+        .filter((f) => f.isFile())
+        .map((f) => join(f.parentPath, f.name))
+        .filter((path) => ids.some((id) => path.includes(id)));
+    const before = files();
+    expect(before.some((path) => path.includes(`variants${sep}`))).toBe(true);
+    expect(before.length).toBeGreaterThan(assets.length);
     // Owners only: an editor is refused too.
     const viewer = `/api/v1/projects/${projectId}/members/${as.viewer.id}`;
     await call('owner', 'PUT', viewer, { role: 'editor' });
@@ -1217,6 +1246,7 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect((await call('owner', 'DELETE', `/api/v1/projects/${projectId}`)).statusCode).toBe(204);
     await deps.jobs.idle();
     for (const { key } of assets) expect(await deps.storage.size(key)).toBeNull();
+    expect(files()).toEqual([]);
     // Recorded with the rows, cleared once the files are gone (#801).
     const pending = await db
       .select()

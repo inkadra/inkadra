@@ -49,7 +49,8 @@ describe('per-process rate limits', () => {
     for (let i = 0; i < 10_000; i++) await limiter.take(String(i));
     const started = performance.now();
     for (let i = 0; i < 20_000; i++) await limiter.take(`flood-${i}`);
-    expect(performance.now() - started).toBeLessThan(1000);
+    // Coverage slows every call: the measured CI runs leave the timing to the others (#852).
+    if (!process.env.INKADRA_COVERAGE) expect(performance.now() - started).toBeLessThan(1000);
   });
 
   it('retains wrong-password counters and pending checks under capacity pressure', async () => {

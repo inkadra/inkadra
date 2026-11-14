@@ -18,4 +18,7 @@ it('lets local runs skip, and names what a CI run lacks', () => {
   expect(
     missingTestEnv({ ...ci, INKADRA_TEST_MEDIA_TOOLS: 'required' }, { ...tools, exiftool: null }),
   ).toEqual(['exiftool']);
+  expect(
+    missingTestEnv({ ...ci, INKADRA_TEST_S3: 'required', S3_TEST_ENDPOINT: 'http://s3' }, {}),
+  ).toEqual(['S3_TEST_ACCESS_KEY_ID', 'S3_TEST_SECRET_ACCESS_KEY']);
 });
