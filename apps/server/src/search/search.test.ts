@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, newElementId, roots } from '@inkadra/doc-schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
@@ -332,6 +332,58 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
   afterAll(async () => {
     await app?.close();
     await client.end();
+  });
+
+  it('writes only the index rows that changed (#797)', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Diff' },
+    });
+    const id = created.json().id as string;
+    const doc = storyboard(id);
+    const state = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state, schemaVersion: 2, size: state.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const old = new Date('2020-01-01T00:00:00Z');
+    await db
+      .update(boardElementIndex)
+      .set({ updatedAt: old })
+      .where(eq(boardElementIndex.boardId, id));
+    const rows = () =>
+      db
+        .select({
+          elementId: boardElementIndex.elementId,
+          text: boardElementIndex.text,
+          updatedAt: boardElementIndex.updatedAt,
+        })
+        .from(boardElementIndex)
+        .where(eq(boardElementIndex.boardId, id));
+    const before = await rows();
+    // Nothing changed: no row is written, frames with jsonb data included.
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    expect((await rows()).every((r) => r.updatedAt.getTime() === old.getTime())).toBe(true);
+    // One card renamed, one removed, one added: only those rows move.
+    const elements = roots(doc).elements;
+    const marta = [...elements.values()].find((m) => m.get('name') === 'Marta')!;
+    marta.set('name', 'Martina');
+    const color = [...elements.values()].find((m) => m.get('type') === 'color')!;
+    elements.delete(String(color.get('id')));
+    const added = addElement(doc, { ...base(), type: 'character', name: 'Leo' });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const after = await rows();
+    const moved = after.filter((r) => r.updatedAt.getTime() !== old.getTime());
+    expect(moved.map((r) => r.elementId).sort()).toEqual(
+      [String(marta.get('id')), String(added.get('id'))].sort(),
+    );
+    expect(after.map((r) => r.elementId)).not.toContain(String(color.get('id')));
+    expect(after).toHaveLength(before.length);
+    expect(after.find((r) => r.elementId === marta.get('id'))?.text).toContain('Martina');
+    // Out of the way of the searches below.
+    await db.delete(board).where(eq(board.id, id));
   });
 
   it('finds cards, boards and projects by part of a word', async () => {
@@ -666,7 +718,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     ).toMatchObject(stored!.counts!);
   });
 
-  it('fills the tasks of boards indexed before they were stored, never from an older save', async () => {
+  it('fills the tasks of boards indexed before they were stored', async () => {
     const clear = sql`update board_doc set tasks = null, unsorted = null where board_id = ${boardId}`;
     const stored = async () =>
       (
@@ -675,20 +727,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
           .from(boardDoc)
           .where(eq(boardDoc.boardId, boardId))
       )[0];
-    // A save lands between the backfill reading the document and indexing it: nothing written.
     await db.execute(clear);
-    const racing = new Proxy(db, {
-      get(target, prop, receiver) {
-        if (prop !== 'transaction') return Reflect.get(target, prop, receiver);
-        return async (...args: Parameters<typeof db.transaction>) => {
-          await db.execute(sql`update board_doc set updated_at = updated_at + interval '1 microsecond'
-            where board_id = ${boardId}`);
-          return target.transaction(...args);
-        };
-      },
-    });
-    expect(await backfillIndex(racing)).toMatchObject({ indexed: 0, failed: [] });
-    expect(await stored()).toEqual({ tasks: null, unsorted: null });
     // Boards indexed before #803 have no tasks yet: the backfill picks them up once.
     expect(await backfillIndex(db)).toMatchObject({ indexed: 1, failed: [] });
     expect(await stored()).toMatchObject({
@@ -696,6 +735,60 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       unsorted: { count: expect.any(Number) },
     });
     expect(await backfillIndex(db)).toMatchObject({ indexed: 0, failed: [] });
+  });
+
+  it('lets a store and the backfill of the same board take turns, the newer state last', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Turni' },
+    });
+    const id = created.json().id as string;
+    const doc = storyboard(id);
+    const v1 = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state: v1, schemaVersion: 2, size: v1.byteLength });
+    const marta = [...roots(doc).elements.values()].find((m) => m.get('name') === 'Marta')!;
+    marta.set('name', 'Martina');
+    const v2 = Y.encodeStateAsUpdate(doc);
+    // A store writes the newer state and its index, and has not committed yet...
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let indexing = () => {};
+    const indexed = new Promise<void>((resolve) => {
+      indexing = resolve;
+    });
+    const store = db.transaction(async (tx) => {
+      await tx
+        .update(boardDoc)
+        .set({ state: v2, size: v2.byteLength, updatedAt: new Date() })
+        .where(eq(boardDoc.boardId, id));
+      await writeBoardIndex(tx, id, doc);
+      indexing();
+      await gate;
+    });
+    await indexed;
+    // ...while the backfill read the older state, still listed as never indexed.
+    const backfill = backfillIndex(db);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await store;
+    await backfill;
+    const titles = await db
+      .select({ title: boardElementIndex.title })
+      .from(boardElementIndex)
+      .where(
+        and(
+          eq(boardElementIndex.boardId, id),
+          eq(boardElementIndex.elementId, String(marta.get('id'))),
+        ),
+      );
+    expect(titles).toEqual([{ title: 'Martina' }]);
+    await db.delete(board).where(eq(board.id, id));
   });
 
   it('goes past a board it cannot index instead of stopping at it (#815)', async () => {

@@ -246,13 +246,34 @@ export function entriesFor(doc: Y.Doc): IndexEntry[] {
   });
 }
 
+/** What a row says, the same however Postgres orders the keys of its jsonb data. */
+function rowKey(r: Omit<IndexEntry, 'elementId'> & { projectId: string }): string {
+  const sorted = (_key: string, value: unknown) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : value;
+  return JSON.stringify(
+    [r.projectId, r.type, r.title, r.text, r.tags, r.assetId ?? null, r.data ?? null],
+    sorted,
+  );
+}
+
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
- * Replaces the index rows of a board with the content of `doc`. Idempotent: running it twice
- * on the same document leaves the same rows.
+ * Makes the index rows of a board match the content of `doc`, writing only the rows that differ.
+ * Idempotent: running it twice on the same document leaves the same rows, and writes none.
+ * Holds the board's document row until the transaction ends: two writes of the same board (a
+ * store and the backfill, or a retried store) take turns, and each reads `doc` only once it has
+ * the turn. A caller that read the stored state itself rereads it after this lock
+ * (backfillIndex), so an older state never lands after a newer one.
  */
 export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y.Doc) {
+  await tx
+    .select({ boardId: boardDoc.boardId })
+    .from(boardDoc)
+    .where(eq(boardDoc.boardId, boardId))
+    .for('update');
   const [row] = await tx
     .select({ projectId: board.projectId })
     .from(board)
@@ -281,11 +302,55 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
     tags: entries.flatMap((e) => e.tags),
     text: entries.flatMap((e) => (e.type === 'frame' ? [e.text] : [])),
   });
-  await tx.delete(boardElementIndex).where(eq(boardElementIndex.boardId, boardId));
-  for (let i = 0; i < entries.length; i += 500) {
+  // #797: only the rows that changed are written. Rewriting every row of the board on every
+  // store churned the GIN indexes and the WAL in proportion to the board, not to the edit.
+  // shortcut: the rows are read back to compare them, which costs no WAL; keep the last indexed
+  // rows in memory per open board if that read ever shows up.
+  const kept = await tx
+    .select({
+      elementId: boardElementIndex.elementId,
+      projectId: boardElementIndex.projectId,
+      type: boardElementIndex.type,
+      title: boardElementIndex.title,
+      text: boardElementIndex.text,
+      tags: boardElementIndex.tags,
+      assetId: boardElementIndex.assetId,
+      data: boardElementIndex.data,
+    })
+    .from(boardElementIndex)
+    .where(eq(boardElementIndex.boardId, boardId));
+  const was = new Map(kept.map((r) => [r.elementId, rowKey(r)]));
+  const rows = entries.map((e) => ({ ...e, boardId, projectId: row.projectId }));
+  const changed = rows.filter((r) => was.get(r.elementId) !== rowKey(r));
+  const live = new Set(entries.map((e) => e.elementId));
+  const gone = kept.flatMap((r) => (live.has(r.elementId) ? [] : [r.elementId]));
+  for (let i = 0; i < gone.length; i += 500) {
+    await tx
+      .delete(boardElementIndex)
+      .where(
+        and(
+          eq(boardElementIndex.boardId, boardId),
+          inArray(boardElementIndex.elementId, gone.slice(i, i + 500)),
+        ),
+      );
+  }
+  for (let i = 0; i < changed.length; i += 500) {
     await tx
       .insert(boardElementIndex)
-      .values(entries.slice(i, i + 500).map((e) => ({ ...e, boardId, projectId: row.projectId })));
+      .values(changed.slice(i, i + 500))
+      .onConflictDoUpdate({
+        target: [boardElementIndex.boardId, boardElementIndex.elementId],
+        set: {
+          projectId: sql`excluded.project_id`,
+          type: sql`excluded.type`,
+          title: sql`excluded.title`,
+          text: sql`excluded.text`,
+          tags: sql`excluded.tags`,
+          assetId: sql`excluded.asset_id`,
+          data: sql`excluded.data`,
+          updatedAt: new Date(),
+        },
+      });
   }
   // Keep updated_at as it is: it says when the document changed, not the index.
   await tx
@@ -309,11 +374,7 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
  */
 export async function backfillIndex(db: Database, limit = 200, after?: string) {
   const stale = await db
-    .select({
-      boardId: boardDoc.boardId,
-      state: boardDoc.state,
-      storedAt: sql<string>`${boardDoc.updatedAt}::text`,
-    })
+    .select({ boardId: boardDoc.boardId })
     .from(boardDoc)
     .where(
       and(
@@ -330,25 +391,28 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
   for (const row of stale) {
     const doc = new Y.Doc();
     try {
-      Y.applyUpdate(doc, row.state);
-      const written = await db.transaction(async (tx) => {
-        // Only the document read above, locked until the end: a save since then is indexed by
-        // that save, and this older one must not overwrite it with a newer indexed_at.
-        const [same] = await tx
-          .select({ boardId: boardDoc.boardId })
+      // Reread under the lock: a store may have written a newer state and its index since.
+      const done = await db.transaction(async (tx) => {
+        const [locked] = await tx
+          .select({
+            state: boardDoc.state,
+            indexedAt: boardDoc.indexedAt,
+            updatedAt: boardDoc.updatedAt,
+            tasks: boardDoc.tasks,
+          })
           .from(boardDoc)
-          .where(
-            and(
-              eq(boardDoc.boardId, row.boardId),
-              sql`${boardDoc.updatedAt} = ${row.storedAt}::timestamptz`,
-            ),
-          )
+          .where(eq(boardDoc.boardId, row.boardId))
           .for('update');
-        if (!same) return false;
+        if (
+          !locked ||
+          (locked.indexedAt && locked.indexedAt >= locked.updatedAt && locked.tasks !== null)
+        )
+          return false;
+        Y.applyUpdate(doc, locked.state);
         await writeBoardIndex(tx, row.boardId, doc);
         return true;
       });
-      if (written) indexed += 1;
+      if (done) indexed += 1;
     } catch (err) {
       failed.push({ boardId: row.boardId, err });
     } finally {

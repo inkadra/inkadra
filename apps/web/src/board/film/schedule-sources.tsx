@@ -243,8 +243,9 @@ function useSnapshots(stores: readonly BoardStore[]): readonly Snapshot[] {
  * The sources of a schedule. A storyboard reads its own document. The Production board opens
  * the documents of the project's storyboards the person can read and of any board a block points
  * to, through the board connection, each with the person's own role (decision 0123).
- * shortcut: every readable storyboard opens at once; open them on demand when a project has more
- * than about ten.
+ * They share one WebSocket (#826).
+ * shortcut: every readable storyboard still loads its whole document at once; open them on demand,
+ * or read a frame and scene summary from the server, when projects reach tens of storyboards.
  * `docs` must be rendered: it holds the connections.
  */
 export function useScheduleSources({

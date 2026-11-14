@@ -134,6 +134,105 @@ export async function myTasks(db: Database, userId: string): Promise<MyTask[]> {
 const TaskFields = TodoItem.pick({ assigneeId: true, dueDate: true });
 
 /**
+ * Keys whose new value can change what the task check reads: the task fields themselves, and
+ * what makes a map a todo item under its key (`id`, `type`, `items`).
+ */
+const TASK_KEYS = new Set(['assigneeId', 'dueDate', 'id', 'type', 'items']);
+
+/**
+ * Whether an update can assign a task or set a due date (#755). Todo items are Y.Maps, so such a
+ * write is always an item under one of TASK_KEYS; the full check, which copies the whole board,
+ * runs only then. A first value carries its key; a new value of a key that had one carries only
+ * its origin, the value it replaces, so the key is read from that item, in the document or earlier
+ * in the update. A deletion alone assigns nobody: at most it uncovers what someone already wrote
+ * under the same key. Anything that can't be resolved here gets the full check.
+ */
+export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
+  // Structs or deletions held back for a missing earlier update were never checked against this
+  // test (they could not be read yet): an update that fills the gap integrates them, so the full
+  // check, whose candidate includes them, has to run (#880 review).
+  if (document.store.pendingStructs || document.store.pendingDs) return true;
+  try {
+    const { structs } = Y.decodeUpdate(update);
+    // The structs of each client, in clock order as an update lists them, for a binary search.
+    const byClient = new Map<number, Array<(typeof structs)[number]>>();
+    for (const s of structs) {
+      const list = byClient.get(s.id.client);
+      if (list) list.push(s);
+      else byClient.set(s.id.client, [s]);
+    }
+    const sent = (id: Y.ID) => {
+      const list = byClient.get(id.client);
+      if (!list) return undefined;
+      let lo = 0;
+      let hi = list.length - 1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        const s = list[mid]!;
+        if (id.clock < s.id.clock) hi = mid - 1;
+        else if (id.clock >= s.id.clock + s.length) lo = mid + 1;
+        else return s;
+      }
+      return undefined;
+    };
+    // The key of each item read so far: a chain of origins is walked once, not once per item,
+    // so a long chained update stays linear (#880 review).
+    const keys = new Map<unknown, string | null | undefined>();
+    /** The map key of an item, null when it is not a map value, undefined when unknown. */
+    const keyOf = (first: (typeof structs)[number] | undefined): string | null | undefined => {
+      const chain: unknown[] = [];
+      let item = first;
+      let key: string | null | undefined;
+      for (;;) {
+        if (!(item instanceof Y.Item)) {
+          key = undefined;
+          break;
+        }
+        if (keys.has(item)) {
+          key = keys.get(item);
+          break;
+        }
+        chain.push(item);
+        if (item.parentSub !== null) {
+          key = item.parentSub;
+          break;
+        }
+        // Read from the document: a decoded item names neither its key nor its parent.
+        if (item.parent !== null && item.origin === null && item.rightOrigin === null) {
+          key = null;
+          break;
+        }
+        const origin = item.origin ?? item.rightOrigin;
+        if (!origin) {
+          key = null;
+          break;
+        }
+        if (origin.clock < Y.getState(document.store, origin.client)) {
+          const stored = Y.getItem(document.store, origin);
+          key = stored instanceof Y.Item ? stored.parentSub : undefined;
+          break;
+        }
+        item = sent(origin);
+        // Longer than the update: a cycle, which only a malformed update makes.
+        if (chain.length > structs.length) {
+          key = undefined;
+          break;
+        }
+      }
+      for (const c of chain) keys.set(c, key);
+      return key;
+    };
+    return structs.some((s) => {
+      if (!(s instanceof Y.Item)) return false;
+      const key = keyOf(s);
+      return key === undefined || (key !== null && TASK_KEYS.has(key));
+    });
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Refuse a prospective CRDT update only for what its sender may not do. It has to stay that way:
  * a refused update closes the document, and the client resends it forever with all its other edits.
  * Who can be assigned changes while a client is offline, so that is corrected afterwards instead
@@ -146,6 +245,7 @@ export async function validateTaskUpdate(
   document: Y.Doc,
   update: Uint8Array,
 ) {
+  if (!mayTouchTasks(document, update)) return;
   const candidate = new Y.Doc();
   try {
     Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
