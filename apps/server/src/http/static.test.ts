@@ -88,7 +88,9 @@ describe('web app files', () => {
     expect(page.statusCode).toBe(200);
     expect(page.body).toContain('<title>Inkadra</title>');
     expect((await app.inject('/assets/index-OLD.js')).statusCode).toBe(404);
-    expect(page.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    expect((await app.inject('/login')).headers['referrer-policy']).toBe(
+      'strict-origin-when-cross-origin',
+    );
   });
 
   it('answers HEAD on app routes like GET, without a body', async () => {
