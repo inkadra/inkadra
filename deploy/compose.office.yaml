@@ -1,0 +1,66 @@
+# Office document previews (DOCX, XLSX, PPTX, ODT, ODS, ODP): one more worker on the `-office`
+# image, next to your stack. Add it with -f, after compose.yaml:
+#   docker compose -f compose.yaml -f deploy/compose.office.yaml up -d
+# With the split layout (deploy/compose.split.yaml) add deploy/compose.office.split.yaml too.
+# Guide: docs/self-hosting/office.md
+#
+# Run it from the folder of compose.yaml: the seccomp profile is read from deploy/office-seccomp.json,
+# so keep the deploy folder next to compose.yaml. INKADRA_TAG must be a version without suffix
+# (for example 0.9.0), as for the other roles: this worker uses the same one with `-office`.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-20m}"
+    max-file: "${LOG_MAX_FILES:-5}"
+
+services:
+  inkadra:
+    environment:
+      # Sends Office documents to the worker below. Without a worker running, their cards stay
+      # "processing", so keep this file and the variable together.
+      OFFICE_PREVIEWS: "true"
+
+  office-worker:
+    extends: # same database, Redis, storage and volume settings
+      file: compose.yaml
+      service: inkadra
+    image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office
+    command: worker
+    # The main container has already prepared /data for uid 1000.
+    user: "1000:1000"
+    cap_add: !reset []
+    ports: !reset []
+    environment:
+      OFFICE_PREVIEWS: "true"
+    security_opt:
+      - no-new-privileges:true
+      # Docker's default profile plus the calls bubblewrap needs to build its namespaces
+      # (never seccomp=unconfined). Where it comes from: docs/self-hosting/office.md.
+      - seccomp=./deploy/office-seccomp.json
+      # Only if the worker log says `bwrap: Failed to make / slave: Permission denied`
+      # (a Linux host where Docker applies AppArmor): uncomment.
+      # - apparmor=unconfined
+      # Only if it says `bwrap: Can't mount proc on /proc: Operation not permitted`: uncomment.
+      # - systempaths=unconfined
+    cap_drop: [ALL]
+    # LibreOffice needs at least 4 GiB of address space and a few hundred MiB of memory per
+    # conversion; keep concurrency low (docs/self-hosting/office.md).
+    deploy:
+      resources:
+        limits:
+          memory: ${INKADRA_OFFICE_MEM_LIMIT:-4g}
+          cpus: ${INKADRA_OFFICE_CPUS:-0}
+          pids: ${INKADRA_OFFICE_PIDS_LIMIT:-1024}
+    logging: *logging
+    # Same check as the image's (the worker's heartbeat file), with a longer start period for
+    # LibreOffice's first run.
+    healthcheck:
+      test: ["CMD", "node", "/app/healthcheck.mjs"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    depends_on:
+      inkadra:
+        condition: service_healthy
