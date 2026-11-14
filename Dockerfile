@@ -8,8 +8,9 @@ FROM node:26.13-trixie-slim@sha256:e6bedef217677b276c591795e169840edd9096dbf13f2
 
 FROM node-base AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
-# Node 26 no longer ships corepack; keep this version in sync with packageManager in package.json.
-RUN npm install -g pnpm@12.17.0
+# Node 26 no longer ships corepack: install the pnpm version of packageManager in package.json (#785).
+RUN --mount=type=bind,source=package.json,target=/tmp/package.json \
+    npm install -g "pnpm@$(node -p "require('/tmp/package.json').packageManager.split('@')[1]")"
 WORKDIR /src
 
 # Dependencies first, from the lockfile alone (#843): a source change reuses this layer, so only
