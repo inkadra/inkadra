@@ -112,7 +112,8 @@ it('groups the called crew, hints when the cast is on set and folds the others',
   );
   expect(check(host, 'Nino')?.checked).toBe(false);
   // The day's call shows until a time is typed; the usual pick-up is the placeholder.
-  expect(host.querySelector('.auto-time')?.textContent).toContain('07:00');
+  const segments = [...host.querySelectorAll<HTMLInputElement>('.ink-time.is-auto .ink-time__seg')];
+  expect(segments.map((s) => s.value).join(':')).toBe('07:00');
   expect(
     host.querySelector<HTMLInputElement>(`input[aria-label='dayCalls.pickupOf{"name":"Ada"}']`)
       ?.placeholder,
@@ -148,7 +149,7 @@ it('stores a change as an exception of the day', () => {
 it('is read-only for viewers', () => {
   const { host } = mount({ items: [ada], characters: [], failed: false, reload: () => {} }, true);
   expect(host.querySelector('fieldset')?.disabled).toBe(true);
-  expect(host.querySelector<HTMLButtonElement>('.auto-time')?.disabled).toBe(true);
+  expect(host.querySelector<HTMLInputElement>('.ink-time__seg')?.disabled).toBe(true);
 });
 
 it('links an empty crew to the Troupe view, and says why the roster cannot be read', () => {

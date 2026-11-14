@@ -11,7 +11,7 @@ export function switchDirection(from: BoardView | null, to: BoardView): 'forward
   return ALL_VIEWS.indexOf(to) > ALL_VIEWS.indexOf(from) ? 'forward' : 'back';
 }
 
-/** Where the active tab's pill starts its next slide, measured before the tabs change. */
+/** Where the tabs' thumb starts its next slide, measured before the tabs change. */
 let pill: { to: BoardView; left: number; width: number } | null = null;
 
 /**
@@ -24,7 +24,7 @@ export function beginViewSwitch(from: BoardView | null, to: BoardView): ViewSwit
   if (!direction || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return {};
   document.documentElement.dataset.viewDirection = direction;
   const list = document.querySelector<HTMLElement>('.ink-header .view-tabs');
-  const moving = list?.querySelector<HTMLElement>('.view-tabs__pill');
+  const moving = list?.querySelector<HTMLElement>('.ink-tabs__ind');
   const start = moving?.getAnimations().length
     ? moving
     : list?.querySelector('[aria-selected="true"]');
@@ -36,21 +36,25 @@ export function beginViewSwitch(from: BoardView | null, to: BoardView): ViewSwit
   return { viewTransition: true };
 }
 
-/** Slides the pill to the open tab, when a tab switch brought it there. */
+/**
+ * Slides the tabs' thumb (`Tabs`, packages/ui) to the open tab from where it was measured, when
+ * a tab switch brought it there: the header may have drawn the tabs anew in between. Transform
+ * only, like the thumb's own slide.
+ */
 export function slideTabPill(list: HTMLElement | null, view: BoardView): void {
   const from = pill;
   if (!list || from?.to !== view) return;
   pill = null;
-  const shape = list.querySelector<HTMLElement>('.view-tabs__pill');
+  const shape = list.querySelector<HTMLElement>('.ink-tabs__ind');
   const tab = list.querySelector<HTMLElement>('[aria-selected="true"]');
-  if (!shape || !tab) return;
+  if (!shape || !tab || tab.offsetWidth === 0) return;
   for (const running of shape.getAnimations()) running.cancel();
   list.classList.add('view-tabs--sliding');
   const style = getComputedStyle(list);
   shape.animate(
     [
-      { transform: `translateX(${from.left}px)`, width: `${from.width}px` },
-      { transform: `translateX(${tab.offsetLeft}px)`, width: `${tab.offsetWidth}px` },
+      { transform: `translateX(${from.left}px) scaleX(${from.width / tab.offsetWidth})` },
+      { transform: `translateX(${tab.offsetLeft}px) scaleX(1)` },
     ],
     {
       duration: tokenMs(style.getPropertyValue('--ink-dur-base'), 180),

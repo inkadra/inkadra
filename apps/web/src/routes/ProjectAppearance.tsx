@@ -10,6 +10,7 @@ import {
   NavItem,
   ProjectGlyph,
   swallowOutsidePress,
+  Tabs,
   tokens,
 } from '@inkadra/ui';
 import {
@@ -550,43 +551,22 @@ export function AppearancePicker({
   const labelId = `${idPrefix}-label`;
   const colorName = t(`appearance.colors.${icon.color}`);
   const tabs = (
-    <div
+    <Tabs
+      id={`${idPrefix}-tab`}
+      variant="segmented"
+      fill
       className="project-appearance__tabs"
-      role="tablist"
-      aria-label={label ? undefined : t('appearance.title')}
-      aria-labelledby={label ? labelId : undefined}
-    >
-      {TABS.map((value, index) => (
-        <button
-          type="button"
-          key={value}
-          role="tab"
-          id={`${idPrefix}-tab-${value}`}
-          aria-selected={tab === value}
-          aria-controls={`${idPrefix}-panel-${value}`}
-          tabIndex={tab === value ? 0 : -1}
-          disabled={disabled}
-          onClick={() => setTab(value)}
-          onKeyDown={(event) => {
-            if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-              event.preventDefault();
-              const step = event.key === 'ArrowLeft' ? -1 : 1;
-              const next =
-                event.key === 'Home'
-                  ? TABS[0]
-                  : event.key === 'End'
-                    ? TABS.at(-1)
-                    : TABS[(index + step + TABS.length) % TABS.length];
-              if (!next) return;
-              setTab(next);
-              document.getElementById(`${idPrefix}-tab-${next}`)?.focus();
-            }
-          }}
-        >
-          {t(`appearance.${value}`)}
-        </button>
-      ))}
-    </div>
+      label={label ? undefined : t('appearance.title')}
+      labelledBy={label ? labelId : undefined}
+      value={tab}
+      onChange={setTab}
+      items={TABS.map((value) => ({
+        id: value,
+        label: t(`appearance.${value}`),
+        disabled,
+        controls: `${idPrefix}-panel-${value}`,
+      }))}
+    />
   );
   return (
     <div

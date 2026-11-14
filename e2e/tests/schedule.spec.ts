@@ -41,7 +41,12 @@ test('a shooting day saves itself, takes a dropped shot at a time and undoes', a
   const inspector = schedule.getByRole('complementary', { name: 'Dettagli del giorno di riprese' });
   const saved = schedule.locator('.schedule__status');
   await inspector.getByLabel('Data', { exact: true }).fill('2026-11-02');
-  await inspector.getByLabel('Convocazione', { exact: true }).fill('09:00');
+  // The call time is typed into the time field's segments (#772).
+  await inspector
+    .getByRole('group', { name: 'Convocazione', exact: true })
+    .getByRole('spinbutton', { name: 'Ore' })
+    .click();
+  await page.keyboard.type('0900');
   await inspector.getByLabel('Location', { exact: true }).fill('Stazione');
   // No save button: it saves on its own.
   await expect(saved).toHaveText(/Salvato alle/);

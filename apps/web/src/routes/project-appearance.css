@@ -100,26 +100,7 @@
   font-size: 11.5px;
 }
 .project-appearance__tabs {
-  display: flex;
-  padding: 3px;
   margin-bottom: 12px;
-  background: var(--ink-surface-1);
-  border-radius: var(--ink-radius-sm);
-}
-.project-appearance__tabs button {
-  flex: 1;
-  padding: 6px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-.project-appearance__tabs [aria-selected="true"] {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
 }
 .project-appearance__panels {
   position: relative;
@@ -176,8 +157,7 @@
 }
 .project-appearance__choices button:focus-visible,
 .project-appearance__swatches button:focus-visible,
-.project-appearance__emojis button:focus-visible,
-.project-appearance__tabs button:focus-visible {
+.project-appearance__emojis button:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--ink-accent-primary) 40%, transparent);
   outline-offset: 2px;
 }
@@ -328,14 +308,13 @@
   font-weight: 500;
   color: var(--ink-text-secondary);
 }
+/* Beside the label in New project: sized by the words. */
 .project-appearance__picker--inline .project-appearance__tabs {
+  width: fit-content;
   margin-bottom: 0;
 }
-.project-appearance__picker--inline .project-appearance__tabs button {
+.project-appearance__picker--inline .project-appearance__tabs .ink-tabs__tab {
   flex: none;
-  min-height: 22px;
-  padding: 2px 12px;
-  font-size: 12px;
 }
 .project-appearance__picker--inline .project-appearance__choices {
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -397,19 +376,17 @@
   .project-appearance__custom-input {
     font-size: 16px;
   }
-  .project-appearance__tabs button {
-    min-height: 44px;
-  }
   /* New project goes back to the dialog's layout: tabs under the label, six shapes a row. */
   .project-appearance__head {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
-  .project-appearance__picker--inline .project-appearance__tabs button {
-    flex: 1;
-    min-height: 44px;
-    font-size: inherit;
+  .project-appearance__picker--inline .project-appearance__tabs {
+    width: 100%;
+  }
+  .project-appearance__picker--inline .project-appearance__tabs .ink-tabs__tab {
+    flex: 1 1 0;
   }
   .project-appearance__picker--inline .project-appearance__choices {
     grid-template-columns: repeat(6, minmax(0, 1fr));

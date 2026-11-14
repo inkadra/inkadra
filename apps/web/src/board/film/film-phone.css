@@ -74,10 +74,9 @@
   .shots .story__bar .view-tabs {
     flex: none;
   }
-  .shots .story__bar .view-tabs__tab {
+  .shots .story__bar .view-tabs .ink-tabs__tab {
     min-width: 44px;
     min-height: 44px;
-    justify-content: center;
   }
   .shots__mode-label {
     position: absolute;

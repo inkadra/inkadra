@@ -205,20 +205,28 @@ it('keeps emoji across tab navigation, supports Home/End and exposes both panels
   await act(async () =>
     emoji.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })),
   );
+  expect(document.activeElement).toBe(symbol);
+  await act(async () => symbol.click());
   expect(symbol.getAttribute('aria-selected')).toBe('true');
   // A grid emoji is shown as the selected tile, not as text in the field.
   expect(host.querySelector('[role="radio"][aria-label="🎬"]')?.getAttribute('aria-checked')).toBe(
     'true',
   );
   expect(host.querySelector<HTMLInputElement>('input[maxlength="32"]')?.value).toBe('');
+  // The arrows only move the focus (#455); a click or Enter chooses.
+  symbol.focus();
   await act(async () =>
     symbol.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })),
   );
+  expect(document.activeElement).toBe(emoji);
+  expect(symbol.getAttribute('aria-selected')).toBe('true');
+  await act(async () => emoji.click());
   expect(emoji.getAttribute('aria-selected')).toBe('true');
   await act(async () =>
     emoji.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })),
   );
   // Emoji is the last tab: the theme moved to the export dialog (decision 0088).
+  expect(document.activeElement).toBe(emoji);
   expect(emoji.getAttribute('aria-selected')).toBe('true');
   expect(host.querySelectorAll('[role="tab"]')).toHaveLength(2);
   expect(host.querySelectorAll('[role="tabpanel"]')).toHaveLength(2);

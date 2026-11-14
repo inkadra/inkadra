@@ -2,7 +2,7 @@
 
 import type { Element } from '@inkadra/doc-schema';
 import { castNameKey, type ShootingDayInput } from '@inkadra/shared';
-import { Button, Checkbox, EmptyState } from '@inkadra/ui';
+import { Button, Checkbox, EmptyState, TimeField } from '@inkadra/ui';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { keyTimes } from './call-sheet.ts';
@@ -14,9 +14,8 @@ import {
   dayCrew,
   withDayCall,
 } from './day-calls.ts';
-import { AutoTime } from './fields.tsx';
 import type { CalendarDay } from './ScheduleCalendar.tsx';
-import { clockLabel, clockMinutes } from './schedule.ts';
+import { clockLabel } from './schedule.ts';
 
 /**
  * The "Convocazioni" tab of the day panel (decision 0092): who is called and only the
@@ -84,7 +83,6 @@ export function DayCallsPanel({
       },
       key,
     );
-  const dayCall = clockLabel(clockMinutes(draft.callTime));
   const absent = entries.filter((e) => !e.called);
   const row = (person: DayCrewEntry) => {
     const { member } = person;
@@ -106,14 +104,18 @@ export function DayCallsPanel({
             <label className="ink-sr-only" htmlFor={`${rowId}-call`}>
               {t('dayCalls.callOf', { name: member.name })}
             </label>
-            <AutoTime
+            <TimeField
               key={member.id}
               id={`${rowId}-call`}
+              label={t('dayCalls.callOf', { name: member.name })}
               value={person.ownCall}
-              computed={dayCall}
+              auto={draft.callTime}
               autoLabel={t('schedule.auto')}
+              clearLabel={t('timeField.clearNamed', {
+                name: t('dayCalls.callOf', { name: member.name }),
+              })}
               disabled={readOnly || stale}
-              onChange={(call) => change(person, { call }, `call:${member.id}`)}
+              onChange={(call) => change(person, { call: call || null }, `call:${member.id}`)}
             />
             <input
               className="ink-input"

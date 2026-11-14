@@ -15,9 +15,9 @@ import {
   toggleGroup,
 } from '@inkadra/canvas-core';
 import type { PlanIconKind } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, moveTabFocus, TabPanel, Tabs } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu } from '../chrome.tsx';
@@ -188,27 +188,15 @@ export function PlanEditor(props: PlanEditorProps) {
       return;
     }
     if (e.type !== 'keydown') return;
-    // The setup tabs: arrows move between setups, F2 renames the current one. Here, since this
-    // listener stops every key before the tabs' own handlers would see it.
-    const tab = target?.closest<HTMLElement>('.plan-setups [role="tab"]');
-    if (tab && (e.key === 'F2' || e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    // The setup tabs: the arrows move the focus between setups (Enter or Space switches, #455),
+    // F2 renames the current one. Here, since this listener stops every key before the tabs'
+    // own handlers would see it.
+    if (target?.closest('.plan-setups [role="tab"]') && e.key === 'F2') {
       e.preventDefault();
-      if (e.key === 'F2') setRenaming(true);
-      else {
-        const at = family.findIndex((f) => f.id === plan.id) + (e.key === 'ArrowRight' ? 1 : -1);
-        const next = family[(at + family.length) % family.length];
-        if (next && next.id !== plan.id) {
-          props.onSwitch?.(next.id);
-          // The editor of the next setup mounts anew: its selected tab takes the focus.
-          requestAnimationFrame(() =>
-            document
-              .querySelector<HTMLElement>('.plan-setups [role="tab"][aria-selected="true"]')
-              ?.focus(),
-          );
-        }
-      }
+      setRenaming(true);
       return;
     }
+    if (target?.closest('[role="tablist"]') && moveTabFocus(e)) return;
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     const { selection, item } = ed;
@@ -325,12 +313,11 @@ export function PlanEditor(props: PlanEditorProps) {
   );
   /** The name of the setup being renamed, on its tab (or the phone's header): Enter keeps it. */
   /** The tabs by setup, and the phone's setup button: focus comes back to them after a rename. */
-  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+  const setupTabsId = useId();
+  const setupTab = (id: string) => document.getElementById(`${setupTabsId}-${id}`);
   const setupButton = useRef<HTMLButtonElement>(null);
   const backToTab = () =>
-    requestAnimationFrame(() =>
-      (phone ? setupButton.current : tabRefs.current.get(plan.id))?.focus(),
-    );
+    requestAnimationFrame(() => (phone ? setupButton.current : setupTab(plan.id))?.focus());
   const renameField = (
     <input
       className="plan-field"
@@ -357,42 +344,50 @@ export function PlanEditor(props: PlanEditorProps) {
     />
   );
   // While renaming, the field lies over the tab, outside the tablist: a tablist holds tabs only.
-  const renamedTab = renaming ? tabRefs.current.get(plan.id) : undefined;
+  const renamedTab = renaming ? setupTab(plan.id) : null;
   const setupTabs = (
     <div className="plan-setups" data-tour="plan-setups">
-      <div className="plan-setups__list" role="tablist" aria-label={t('board.plan.setups')}>
-        {family.map((p) => (
-          <button
-            key={p.id}
-            ref={(el) => {
-              if (el) tabRefs.current.set(p.id, el);
-              else tabRefs.current.delete(p.id);
-            }}
-            type="button"
-            role="tab"
-            className="plan-setups__tab"
-            aria-selected={p.id === plan.id}
-            tabIndex={p.id === plan.id ? 0 : -1}
-            title={p.id === plan.id ? t('board.plan.renameHint') : undefined}
-            onClick={() => p.id !== plan.id && props.onSwitch?.(p.id)}
-            // Every setup is renamed on its tab, the base too (decision 0117).
-            onDoubleClick={() => p.id === plan.id && setRenaming(true)}
-            onContextMenu={(e) => {
-              if (p.id !== plan.id) return;
-              e.preventDefault();
-              setRenaming(true);
-            }}
-          >
-            {setupName(p, family, t)}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        id={setupTabsId}
+        className="plan-setups__list"
+        label={t('board.plan.setups')}
+        value={plan.id}
+        onChange={(id) => {
+          props.onSwitch?.(id);
+          // The editor of the next setup mounts anew: its selected tab takes the focus.
+          requestAnimationFrame(() =>
+            document
+              .querySelector<HTMLElement>('.plan-setups [role="tab"][aria-selected="true"]')
+              ?.focus(),
+          );
+        }}
+        items={family.map((p) => ({
+          id: p.id,
+          label: setupName(p, family, t),
+          props:
+            p.id === plan.id
+              ? {
+                  title: t('board.plan.renameHint'),
+                  // Every setup is renamed on its tab, the base too (decision 0117).
+                  onDoubleClick: () => setRenaming(true),
+                  onContextMenu: (e) => {
+                    e.preventDefault();
+                    setRenaming(true);
+                  },
+                }
+              : undefined,
+        }))}
+      />
       {renaming && (
         <span
           className="plan-setups__rename"
           style={
             renamedTab
-              ? { left: renamedTab.offsetLeft, width: Math.max(140, renamedTab.offsetWidth) }
+              ? {
+                  // The tab's place in its tablist, which may be scrolled sideways.
+                  left: renamedTab.offsetLeft - (renamedTab.parentElement?.scrollLeft ?? 0),
+                  width: Math.max(140, renamedTab.offsetWidth),
+                }
               : undefined
           }
         >
@@ -564,39 +559,20 @@ export function PlanEditor(props: PlanEditorProps) {
   );
   const panel = (
     <aside className="plan-side" aria-label={t('board.plan.sidePanel')}>
-      <div className="plan-side__tabs" role="tablist" aria-label={t('board.plan.sidePanel')}>
-        {(['properties', 'elements', 'kit'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            id={`plan-tab-${tab}`}
-            aria-selected={ed.tab === tab}
-            aria-controls={`plan-panel-${tab}`}
-            tabIndex={ed.tab === tab ? 0 : -1}
-            onClick={() => ed.setTab(tab)}
-            onKeyDown={(e) => {
-              const order = ['properties', 'elements', 'kit'] as const;
-              const at = order.indexOf(tab);
-              if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                const next = order[
-                  (at + (e.key === 'ArrowRight' ? 1 : 2)) % 3
-                ] as (typeof order)[number];
-                ed.setTab(next);
-                document.getElementById(`plan-tab-${next}`)?.focus();
-              }
-            }}
-          >
-            {t(`board.plan.tabs2.${tab}`)}
-          </button>
-        ))}
-      </div>
-      <div
-        className="plan-side__body"
-        role="tabpanel"
-        id={`plan-panel-${ed.tab}`}
-        aria-labelledby={`plan-tab-${ed.tab}`}
-      >
+      <Tabs
+        id="plan-tab"
+        variant="segmented"
+        fill
+        className="plan-side__tabs"
+        label={t('board.plan.sidePanel')}
+        value={ed.tab}
+        onChange={ed.setTab}
+        items={(['properties', 'elements', 'kit'] as const).map((tab) => ({
+          id: tab,
+          label: t(`board.plan.tabs2.${tab}`),
+        }))}
+      />
+      <TabPanel id="plan-tab" value={ed.tab} className="plan-side__body">
         {ed.tab === 'properties' && (
           <PlanProperties ed={ed} onMeasure={(id) => canvas.current?.openMeasure(id)} />
         )}
@@ -610,7 +586,7 @@ export function PlanEditor(props: PlanEditorProps) {
           />
         )}
         {ed.tab === 'kit' && <PlanKit ed={ed} onCallSheet={callSheet} />}
-      </div>
+      </TabPanel>
       {ed.tab === 'properties' && kitCard}
     </aside>
   );

@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import { AutoTime, ShotField, TokenField } from './fields.tsx';
+import { ShotField, TokenField } from './fields.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 const session = vi.hoisted(() => ({ admin: false }));
@@ -58,21 +58,6 @@ it('adds chips on Enter and comma without duplicates, and removes them', async (
     host.querySelector<HTMLButtonElement>('[aria-label="remove Elena"]')?.click(),
   );
   expect(onChange).toHaveBeenLastCalledWith([]);
-});
-
-it('shows the computed time until a time is set, then a time input', async () => {
-  const onChange = vi.fn();
-  const view = (value: string | null) => (
-    <AutoTime id="wrap" value={value} computed="00:20 (+1)" autoLabel="auto" onChange={onChange} />
-  );
-  const { host, rerender } = await mount(view(null));
-  const button = host.querySelector('button');
-  expect(button?.textContent).toBe('00:20 (+1)auto');
-  expect(host.querySelector('input')).toBeNull();
-  await act(async () => button?.click());
-  expect(host.querySelector('input[type=time]')).not.toBeNull();
-  await rerender(view('23:30'));
-  expect(host.querySelector<HTMLInputElement>('input')?.value).toBe('23:30');
 });
 
 it('adds a shot value typed by an administrator, and only keeps the text for a member', async () => {

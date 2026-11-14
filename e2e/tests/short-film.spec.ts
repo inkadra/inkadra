@@ -570,7 +570,12 @@ test('a short film is prepared from the moodboard to the shot list', async ({
       await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
       await expect(inspector).toContainText(`Giorno ${n + 1} di ${n + 1}`);
       await inspector.getByLabel('Data', { exact: true }).fill(day.date);
-      await inspector.getByLabel('Convocazione', { exact: true }).fill('07:30');
+      // The call time is typed into the time field's segments (#772).
+      await inspector
+        .getByRole('group', { name: 'Convocazione', exact: true })
+        .getByRole('spinbutton', { name: 'Ore' })
+        .click();
+      await page.keyboard.type('0730');
       await inspector.getByLabel('Location', { exact: true }).fill(day.location);
       // It saves on its own.
       await expect(schedule.locator('.schedule__status')).toHaveText(/Salvato alle/);

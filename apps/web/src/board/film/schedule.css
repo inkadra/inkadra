@@ -1414,7 +1414,8 @@ fieldset.schedule__field > legend {
   color: var(--ink-text-muted);
   font-size: 11px;
 }
-.schedule__field .auto-time__tag {
+.schedule__field .ink-time__auto {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2011,7 +2012,7 @@ fieldset.schedule__field > legend {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
-.day-calls__row .auto-time__tag {
+.day-calls__row .ink-time__auto {
   display: none;
 }
 .day-calls__hint {

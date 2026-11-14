@@ -2571,7 +2571,8 @@ export function Canvas({
     // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
     if (isContextualFocus(e.target) && (e.key === 'Enter' || e.key === ' ')) return;
     // A tab, such as the header's views, chooses itself with Enter or Space, and the keys that
-    // walk the tabs (lib/tabs.ts, which prevents their default) never nudge the selection.
+    // walk the tabs (moveTabFocus in @inkadra/ui, which prevents their default) never nudge the
+    // selection.
     if (
       e.target instanceof HTMLElement &&
       e.target.closest('[role="tab"]') &&

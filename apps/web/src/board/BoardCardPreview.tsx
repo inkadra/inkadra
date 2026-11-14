@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
 import type { Board, BoardCount, BoardPreview } from '@inkadra/shared';
-import { Avatar, Icon, kindStyle, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, Icon, kindStyle, ProjectGlyph, Tabs, useTabPanelFade } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
-import { type CSSProperties, type ReactNode, useState } from 'react';
+import { type CSSProperties, type ReactNode, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { moveTabFocus } from '../lib/tabs.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { type PreviewEntry, useBoardPreview } from './board-previews.ts';
 import { loadCardView, saveCardView } from './canvas-prefs.ts';
@@ -58,6 +57,9 @@ export function BoardCardPreview({
   const views = boardViews(board, counts);
   const [chosen, setChosen] = useState(() => loadCardView(userId, element.id));
   const view = cardView(views, chosen) ?? 'canvas';
+  const tabsId = useId();
+  const body = useRef<HTMLDivElement>(null);
+  useTabPanelFade(body, view);
   // What the canvas already knows of the board: when it changes the preview is asked again.
   const version = `${board.editedAt ?? board.updatedAt}|${counts?.elementCount ?? ''}|${counts?.framesToShoot ?? ''}`;
   const entry = useBoardPreview(board.id, version);
@@ -84,31 +86,30 @@ export function BoardCardPreview({
         <span className="board-card__meta">{metaOf(t, view, counts, preview)}</span>
       </div>
       {views.length > 1 && (
-        <div
+        <Tabs
+          id={tabsId}
+          variant="segmented"
+          size="sm"
           className="board-card__tabs"
-          role="tablist"
-          aria-label={t('board.board.views', { name: board.title })}
-          onKeyDown={moveTabFocus}
-        >
-          {views.map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              className="board-card__tab"
-              aria-selected={v === view}
-              tabIndex={v === view ? 0 : -1}
-              onClick={() => choose(v)}
-              // Double clicking a tab looks at it; it does not open the board.
-              onDoubleClick={(e) => e.stopPropagation()}
-            >
-              <Icon name={viewIcon(v)} contentKind={v} size={12} />
-              {t(viewLabelKey(v, board.kind))}
-            </button>
-          ))}
-        </div>
+          label={t('board.board.views', { name: board.title })}
+          value={view}
+          onChange={choose}
+          items={views.map((v) => ({
+            id: v,
+            label: t(viewLabelKey(v, board.kind)),
+            icon: <Icon name={viewIcon(v)} contentKind={v} size={12} />,
+            // Double clicking a tab looks at it; it does not open the board.
+            props: { onDoubleClick: (e) => e.stopPropagation() },
+          }))}
+        />
       )}
-      <div className="board-card__body" role={views.length > 1 ? 'tabpanel' : undefined}>
+      <div
+        ref={body}
+        className="board-card__body"
+        {...(views.length > 1
+          ? { role: 'tabpanel', id: `${tabsId}-panel`, 'aria-labelledby': `${tabsId}-${view}` }
+          : {})}
+      >
         <ViewPreview view={view} entry={entry} counts={counts} />
       </div>
     </div>

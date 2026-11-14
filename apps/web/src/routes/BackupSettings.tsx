@@ -4,7 +4,7 @@ import {
   type InstanceBackups,
   type BackupSettings as Settings,
 } from '@inkadra/shared';
-import { Button, Select, Switch } from '@inkadra/ui';
+import { Button, Select, Switch, TimeField } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -158,16 +158,15 @@ export function BackupSettings() {
             help={t('backups.timeZone', { zone: data.timeZone })}
             htmlFor={timeId}
           >
-            <input
+            <TimeField
               id={timeId}
-              className="ink-input backup-settings__time"
-              type="time"
-              step={60}
+              className="backup-settings__time"
+              label={t('backups.time')}
+              required
               value={settings.time}
               disabled={!settings.enabled}
-              onChange={(e) => {
-                if (/^([01]\d|2[0-3]):[0-5]\d$/.test(e.target.value))
-                  void save({ time: e.target.value });
+              onChange={(time) => {
+                if (/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) void save({ time });
               }}
             />
           </Row>

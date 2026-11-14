@@ -1,57 +1,8 @@
 /* Storyboard, shot list, frame pictures and the pen. Status colours use the tag tokens. */
 
+/* The view tabs of the header and the shot list's layouts are segmented Tabs (packages/ui). */
 .view-tabs {
-  display: flex;
-  gap: 2px;
   margin-left: 16px;
-  padding: 2px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-2);
-}
-.view-tabs__tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: calc(var(--ink-radius-sm) - 2px);
-  background: transparent;
-  color: var(--ink-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.view-tabs__tab:hover {
-  color: var(--ink-text-primary);
-}
-.view-tabs__tab[aria-selected="true"] {
-  background: var(--ink-surface-1);
-  color: var(--ink-text-primary);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-}
-
-/* The active tab's background slides to the new tab, then the tab draws its own again. */
-.ink-header .view-tabs,
-.ink-header .view-tabs__tab {
-  position: relative;
-}
-.view-tabs__pill {
-  display: none;
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 0;
-  border-radius: calc(var(--ink-radius-sm) - 2px);
-  background: var(--ink-surface-1);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
-}
-.view-tabs--sliding .view-tabs__pill {
-  display: block;
-}
-.view-tabs--sliding .view-tabs__tab[aria-selected="true"] {
-  background: transparent;
-  box-shadow: none;
 }
 
 /* Switching views with the tabs (view-switch.ts). Only the views' surface takes part, so the
@@ -3131,26 +3082,6 @@ button.moodboard__card:focus-visible {
 .token-field__input::placeholder {
   color: var(--ink-text-muted);
 }
-.auto-time {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  text-align: left;
-  cursor: pointer;
-}
-.auto-time > span:first-child {
-  white-space: nowrap;
-}
-.auto-time__tag {
-  color: var(--ink-text-muted);
-  font-size: 11px;
-}
-
 @media (width < 768px) {
   /* Scene header: the number keeps to its digits and the location takes the rest of the line,
      so INT./EXT., location and time read as one slug line before the title. */

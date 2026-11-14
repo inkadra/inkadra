@@ -6,12 +6,15 @@ import { expect, it } from 'vitest';
 
 /**
  * Every date of the interface goes through `DateField` (packages/ui/src/date-field.tsx), which
- * opens Inkadra's calendar: a native date input or the browser's picker would bring back the
- * unstyled popup. Tests may still look for the field's own input.
+ * opens Inkadra's calendar, and every time through `TimeField` (time-field.tsx, #772): a native
+ * date or time input or the browser's picker would bring back the unstyled popup and the
+ * operating system's clock instead of the person's time format. Tests may still look for the
+ * field's own input.
  */
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const own = join(root, 'packages/ui/src/date-field.tsx');
 const native = /type=\{?["']date["']|type:\s*["']date["']|datetime-local|showPicker/;
+const nativeTime = /type=\{?["']time["']|type:\s*["']time["']/;
 
 function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -28,6 +31,13 @@ it('tells native date inputs from the rest', () => {
   expect(native.test('input.showPicker()')).toBe(true);
   expect(native.test('<input type="time" />')).toBe(false);
   expect(native.test('<DateField label="Due" />')).toBe(false);
+});
+
+it('tells native time inputs from the rest', () => {
+  for (const text of ['<input type="time" />', "type='time'", 'type={"time"}', "{ type: 'time' }"])
+    expect(nativeTime.test(text)).toBe(true);
+  expect(nativeTime.test('<TimeField label="Call" />')).toBe(false);
+  expect(nativeTime.test('type="timestamp"')).toBe(false);
 });
 
 it('uses DateField for every date', () => {
@@ -48,5 +58,16 @@ it('uses DateField for every date', () => {
   expect(
     found,
     'use DateField from @inkadra/ui (packages/ui/src/date-field.tsx), never a native date input or picker',
+  ).toEqual([]);
+});
+
+it('uses TimeField for every time', () => {
+  const found = files(join(root, 'apps/web/src'))
+    .concat(files(join(root, 'packages/ui/src')))
+    .filter((file) => nativeTime.test(readFileSync(file, 'utf8')))
+    .map((file) => file.slice(root.length));
+  expect(
+    found,
+    'use TimeField from @inkadra/ui (packages/ui/src/time-field.tsx), never a native time input',
   ).toEqual([]);
 });

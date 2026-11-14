@@ -75,3 +75,16 @@ export function formatClock(value: string, formats: Formats = getPreferences()):
   const hours = Number(match[1]);
   return `${hours % 12 || 12}:${match[2]} ${hours < 12 ? 'AM' : 'PM'}`;
 }
+
+/**
+ * Whether times show in 12 h (AM/PM): the person's time format, or for Automatic the clock of
+ * the interface language (#302), the same one `formatDateTime` uses.
+ */
+export function uses12h(
+  formats: Formats = getPreferences(),
+  language: string = (typeof document !== 'undefined' && document.documentElement.lang) || 'en',
+): boolean {
+  if (formats.timeFormat !== 'auto') return formats.timeFormat === '12h';
+  return new Intl.DateTimeFormat(autoLocale(language), { hour: 'numeric' }).resolvedOptions()
+    .hour12 === true;
+}

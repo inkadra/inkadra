@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { swallowOutsidePress } from './components.tsx';
 import {
   addMonths,
   calendarKey,
@@ -20,6 +19,7 @@ import {
   monthKey,
 } from './date-grid.ts';
 import { Icon } from './icons.tsx';
+import { anchorLayer } from './layer.ts';
 
 const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
@@ -150,47 +150,7 @@ export function DateField({
     const el = layer.current;
     const box = field.current;
     if (!el || !box) return;
-    el.showPopover();
-    // Under the field, or above it when there is no room below; it grows away from the field.
-    // With room on neither side (a low window, a high zoom) it starts at the top of the window,
-    // over the field, and the panel scrolls within the window's height.
-    const position = () => {
-      const rect = box.getBoundingClientRect();
-      const width = el.offsetWidth;
-      const height = el.offsetHeight;
-      const fitsBelow = rect.bottom + 6 + height <= window.innerHeight - 8;
-      const below = fitsBelow || rect.top - 6 - height < 8;
-      el.dataset.side = below ? 'below' : 'above';
-      el.style.setProperty(
-        '--ink-date-left',
-        `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`,
-      );
-      el.style.setProperty(
-        '--ink-date-top',
-        below ? `${fitsBelow ? rect.bottom + 6 : 8}px` : 'auto',
-      );
-      el.style.setProperty(
-        '--ink-date-bottom',
-        below ? 'auto' : `${window.innerHeight - rect.top + 6}px`,
-      );
-    };
-    position();
-    // On a phone the layer is the scrim around the sheet: its own click closes the sheet.
-    const outside = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (el.contains(target) || box.contains(target)) return;
-      swallowOutsidePress(event);
-      setPhase((p) => (p === 'open' ? 'closing' : p));
-    };
-    document.addEventListener('pointerdown', outside, true);
-    window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
-    return () => {
-      el.hidePopover();
-      document.removeEventListener('pointerdown', outside, true);
-      window.removeEventListener('resize', position);
-      window.removeEventListener('scroll', position, true);
-    };
+    return anchorLayer(el, box, () => setPhase((p) => (p === 'open' ? 'closing' : p)));
   }, [mounted]);
   // A text trigger checks no range: the bounds of a date input give the browser's own words.
   useEffect(() => {

@@ -33,47 +33,13 @@
 
 /* The tabs of a day in the schedule's side panel. */
 .schedule__tabs {
-  display: flex;
-  gap: 2px;
   margin: 0 -16px;
   padding: 0 12px;
-  border-bottom: 1px solid var(--ink-border-muted);
-}
-.schedule__tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px 8px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.schedule__tab:hover {
-  color: var(--ink-text-primary);
-}
-.schedule__tab[aria-selected="true"] {
-  color: var(--ink-text-primary);
-  border-bottom-color: var(--ink-accent-primary);
 }
 .schedule__panel {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.schedule__tab-count {
-  min-width: 18px;
-  padding: 0 5px;
-  border-radius: var(--ink-radius-full);
-  background: var(--ink-surface-3);
-  color: var(--ink-text-secondary);
-  font-size: 10.5px;
-  line-height: 16px;
-  text-align: center;
 }
 
 .needed__progress {
