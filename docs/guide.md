@@ -31,7 +31,7 @@ Draw on a picture. **Done**, `Esc` or a click elsewhere closes it.
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="screenshots/guide/phone-dark.png">
-    <img src="screenshots/guide/phone-light.png" alt="A board on a phone: a video playing in its card, the dock with the first few tools, and the navigation bar below it" width="280">
+    <img src="screenshots/guide/phone-light.png" alt="A board on a phone: a selected video card with its preview, the dock with the first few tools, and the navigation bar below it" width="280">
   </picture>
 </p>
 
@@ -117,7 +117,7 @@ standard image is there, at full quality.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="screenshots/guide/frame-panel-dark.png">
-  <img src="screenshots/guide/frame-panel-light.png" alt="A storyboard on the canvas, two scenes of frames, with the first frame selected and its panel open: picture, Draw, number, action, shot size, angle, movement and lens">
+  <img src="screenshots/guide/frame-panel-light.png" alt="The Storyboard view filtered to its first scene, with the first frame selected and its panel open: picture, Draw, number, action, shot size, angle, movement and lens">
 </picture>
 
 **Draw** opens the frame full screen, with one floating bar: pens, eraser, shapes, text, colour and
@@ -227,7 +227,7 @@ card has the same kind of panel, with fewer fields.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="screenshots/guide/character-dark.png">
-  <img src="screenshots/guide/character-light.png" alt="A casting board with two character cards and a location. The panel of the first character is open on its identity and appearance sections">
+  <img src="screenshots/guide/character-light.png" alt="A casting board with three character cards and three locations. Anna's panel is open on its identity and appearance sections">
 </picture>
 
 ## Comments
