@@ -188,7 +188,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
         <button
           type="button"
           className="settings-home__signout"
-          onClick={() => signOut().catch(() => setSignOutFailed(true))}
+          onClick={() => signOut(user?.id).catch(() => setSignOutFailed(true))}
         >
           {t('auth.signOut')}
         </button>

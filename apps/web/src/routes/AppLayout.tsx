@@ -662,7 +662,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             label={t('auth.signOut')}
             onClick={() => {
               setSignOutFailed(false);
-              signOut().catch(() => setSignOutFailed(true));
+              signOut(user?.id).catch(() => setSignOutFailed(true));
             }}
           />
         </span>

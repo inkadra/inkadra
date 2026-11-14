@@ -11,11 +11,13 @@ import {
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useMemo, useState } from 'react';
+import { IndexeddbPersistence } from 'y-indexeddb';
 import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { setBusy, setUnsaved } from '../pwa/busy.ts';
 import { refetchAsset } from './assets.ts';
+import { closeLocalBoard, localBoardName, openLocalBoard } from './local-boards.ts';
 import { BoardStore } from './store.ts';
 
 /**
@@ -147,16 +149,17 @@ export async function refusalStatus(): Promise<ConnectionStatus> {
     await api.get('/me');
     return 'denied';
   } catch (err) {
-    if (err instanceof RequestError) return err.status === 401 ? 'signedOut' : 'denied';
+    // A server error is not a lost access: the board's copy on this device must stay (#791).
+    if (err instanceof RequestError)
+      return err.status === 401 ? 'signedOut' : err.status >= 500 ? 'offline' : 'denied';
     return 'offline';
   }
 }
 
 // Keep reopened boards and their last authenticated role available while this tab is offline.
-// shortcut: memory only, so a closed or reloaded tab loses them; `setUnsaved` warns before
-// that. Upgrade to a persistent copy (IndexedDB) to survive it (#791).
+// Edits the server has not confirmed are also kept on the device (`local-boards.ts`, #791).
 // #777: only the last few boards are kept, so a long session does not hold every board it opened.
-// A board with edits the server has not confirmed is never dropped (#791 will persist those).
+// A board with edits the server has not confirmed is never dropped.
 // Signing out reloads the page (#831), which empties it.
 // shortcut: counted in boards, not bytes; add a byte budget if boards grow to tens of MB.
 export const CACHED_BOARDS = 8;
@@ -252,11 +255,48 @@ export function useBoardConnection(
     // Kept under the board's key, so edits cached when the board closed still warn.
     let edited = cached?.unsaved ?? false;
     let alive = true;
+    // The board's copy on this device (#791): opened once a deletion of it is done.
+    let local: IndexeddbPersistence | null = null;
+    let localReady = false;
+    let marked = false;
+    /** Says on the device whether the copy holds edits the server has not confirmed. */
+    const mark = () => {
+      if (!local || marked === edited) return;
+      marked = edited;
+      void local.set('unsaved', edited).catch(() => {});
+    };
+    /** Deletes the copy at once: no access to the board, or a refused write. */
+    const dropLocal = () => {
+      if (local) void closeLocalBoard(local, true);
+      local = null;
+    };
     const hold = () => {
       if (!trackBusy) return;
       setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
       setUnsaved(cacheKey, edited && state.status !== 'denied');
     };
+    if (userId)
+      void openLocalBoard(localBoardName(userId, boardId), doc)
+        .then(async (opened) => {
+          if (!alive || state.status === 'denied') {
+            void closeLocalBoard(opened, refused || state.status === 'denied');
+            return;
+          }
+          local = opened;
+          mark();
+          const [, unsaved] = await Promise.all([opened.whenSynced, opened.get('unsaved')]);
+          if (!alive || local !== opened) return;
+          localReady = true;
+          marked = unsaved === true;
+          // Edits a closed tab left on the device: the server confirms them once it has them.
+          if (marked && !edited && (state.status !== 'synced' || unsynced > 0)) {
+            edited = true;
+            hold();
+          }
+          mark();
+        })
+        // No IndexedDB (a private window may refuse it): the board works from memory, as before.
+        .catch(() => {});
     const socket = shareSocket ? acquireSharedSocket(boardDocName(boardId)) : undefined;
     const provider = new HocuspocusProvider({
       ...(socket ? { websocketProvider: socket } : { url: collabUrl() }),
@@ -285,6 +325,7 @@ export function useBoardConnection(
           // sending further edits; never cache the unaccepted additions.
           if (!roleReadOnly && !refused) {
             refused = true;
+            dropLocal();
             setReload((value) => value + 1);
           }
         }
@@ -306,8 +347,10 @@ export function useBoardConnection(
       },
     });
     const onEdit = (_update: Uint8Array, origin: unknown) => {
-      if (origin === provider || edited) return;
+      // The copy on the device loading is not an edit: its own flag says if it holds some.
+      if (origin === provider || origin instanceof IndexeddbPersistence || edited) return;
       edited = true;
+      mark();
       hold();
     };
     doc.on('update', onEdit);
@@ -318,6 +361,7 @@ export function useBoardConnection(
       if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
       state = { ...state, ...patch };
       state.readOnly = roleReadOnly || state.schemaTooNew === true;
+      if (state.status === 'denied') dropLocal();
       hold();
       setConn({ store, provider, saves, ...state });
     }
@@ -326,12 +370,19 @@ export function useBoardConnection(
     const stopSaves = watchSaves(provider, (next) => {
       unsynced = next.pending;
       if (unsynced === 0) edited = false;
+      mark();
       saves.set(next);
       hold();
     });
     update({});
     return () => {
       alive = false;
+      // Everything confirmed: the copy on the device is no longer needed.
+      if (local)
+        void closeLocalBoard(
+          local,
+          refused || (localReady && state.status === 'synced' && unsynced === 0 && !edited),
+        );
       // Only the deletions: an update from the document's own state vector holds no items.
       if (refused)
         refusedDeletions.set(cacheKey, Y.encodeStateAsUpdate(doc, Y.encodeStateVector(doc)));

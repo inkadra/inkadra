@@ -122,7 +122,7 @@ export function Join() {
         <button
           type="button"
           className="login__switch"
-          onClick={() => signOut().catch(() => setError(t('auth.signOutFailed')))}
+          onClick={() => signOut(user?.id).catch(() => setError(t('auth.signOutFailed')))}
         >
           {t('join.otherAccount')}
         </button>

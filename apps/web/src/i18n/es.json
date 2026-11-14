@@ -720,7 +720,7 @@
       "saving": "Sincronizando…",
       "online_one": "{{count}} en línea",
       "online_other": "{{count}} en línea",
-      "offline": "Sin conexión · no cierres la pestaña",
+      "offline": "Sin conexión · cambios guardados en este dispositivo",
       "denied": "Acceso denegado",
       "readOnly": "Solo lectura",
       "signedOut": "Sesión cerrada"

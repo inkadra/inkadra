@@ -299,6 +299,40 @@ export const BoardCounts = z.object({ items: z.array(BoardCount) }).openapi('Boa
 });
 export type BoardCounts = z.infer<typeof BoardCounts>;
 
+/** Capability: `GET /projects/{projectId}/schedule-sources` exists (#826). */
+export const SCHEDULE_SOURCES_CAPABILITY = 'schedule-sources';
+/** Storyboards a schedule reads at once; more are asked for in several requests. */
+export const SCHEDULE_SOURCES_MAX = 100;
+export const ScheduleSourcesQuery = z.object({
+  boards: z
+    .string()
+    .transform((value) => [...new Set(value.split(',').filter(Boolean))])
+    .pipe(z.array(Id).min(1).max(SCHEDULE_SOURCES_MAX))
+    .openapi({
+      description: `Comma-separated ids of the project's boards to read, at most ${SCHEDULE_SOURCES_MAX}.`,
+    }),
+});
+export const ScheduleSource = z
+  .object({
+    boardId: Id,
+    readOnly: z.boolean().openapi({ description: 'The caller may only read this board.' }),
+    aspect: z.string().nullable().openapi({ description: "The board's frame aspect ratio." }),
+    elements: z.array(z.record(z.string(), z.unknown())).openapi({
+      description:
+        'The cards a schedule reads, as the board document stores them: scenes, frames, ' +
+        'characters, locations, set plans and to-do lists. Other cards are left out.',
+    }),
+  })
+  .openapi('ScheduleSource');
+export type ScheduleSource = z.infer<typeof ScheduleSource>;
+export const ScheduleSources = z.object({ items: z.array(ScheduleSource) }).openapi('ScheduleSources', {
+  description:
+    'A read-only copy of what the Production board shows of its storyboards (#826), for the ' +
+    'requested boards the caller can open; the others are left out. Open the board document ' +
+    'to edit or to follow changes live.',
+});
+export type ScheduleSources = z.infer<typeof ScheduleSources>;
+
 /** Personal clip destinations, independent of edits by other people. */
 export const ClipBoard = Board.pick({ id: true, projectId: true, title: true, myRole: true })
   .extend({ projectName: z.string(), usedAt: Timestamp })

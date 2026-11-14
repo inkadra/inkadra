@@ -326,7 +326,14 @@ export function ScheduleView({
     .sort()
     .join(' ');
   const referenced = useMemo(() => referencedKey.split(' ').filter(Boolean), [referencedKey]);
-  const { sources, docs } = useScheduleSources({ store, boardId, boards, across, referenced });
+  const { sources, docs, openLive } = useScheduleSources({
+    store,
+    boardId,
+    boards,
+    across,
+    referenced,
+    active,
+  });
   const sourcesRef = useRef<ScheduleSources>(sources);
   sourcesRef.current = sources;
   useEffect(() => onSources?.(sources), [onSources, sources]);
@@ -498,6 +505,17 @@ export function ScheduleView({
     drafted.find((d) => d.day.id === selection.day) ??
     drafted.find((d) => d.draft.date === focusDate) ??
     null;
+  // The storyboards the selected day plans open live (#826): its call sheet ticks their items.
+  const selectedBoardsKey = across
+    ? [
+        ...new Set(
+          selectedEntry?.draft.blocks.flatMap(
+            (block) => blockTarget(block, boardId)?.boardId ?? [],
+          ) ?? [],
+        ),
+      ].join(' ')
+    : '';
+  useEffect(() => openLive(selectedBoardsKey.split(' ')), [selectedBoardsKey, openLive]);
   const disabled = readOnly || busy;
   const dayLong = (date: string, options: Intl.DateTimeFormatOptions) => {
     const time = Date.parse(`${date}T00:00:00Z`);
