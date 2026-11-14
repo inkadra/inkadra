@@ -777,6 +777,7 @@ test('sending again after a lost answer finds the issue: no double, no extra quo
   const fake = globalThis.fetch;
   // GitHub opens the issue, but the Worker sees an error.
   const opened = [];
+  const searched = [];
   globalThis.fetch = async (url, init) => {
     if (url.endsWith('/issues') && init.method === 'POST') {
       const response = await fake(url, init);
@@ -784,7 +785,12 @@ test('sending again after a lost answer finds the issue: no double, no extra quo
       await response.text();
       return new Response('{}', { status: 502 });
     }
-    if (url.includes('/issues?')) return Response.json(opened);
+    // Found by search, even when it is no longer among the newest issues.
+    if (url.includes('/search/issues?')) {
+      searched.push(decodeURIComponent(url));
+      return Response.json({ items: opened });
+    }
+    if (url.includes('/issues?')) return Response.json([]);
     return fake(url, init);
   };
   const t = await ticketFor(e);
@@ -806,6 +812,7 @@ test('sending again after a lost answer finds the issue: no double, no extra quo
   assert.equal(late.status, 201);
   assert.equal((await late.json()).number, 7);
   assert.equal(opened.length, 1);
+  assert.ok(searched.some((u) => u.includes('repo:o/r') && u.includes(`inkadra-feedback: ${REQUEST}`)));
   // And from then on it answers from memory, without asking GitHub.
   const before = calls.length;
   const again = await sendAt(800_000);

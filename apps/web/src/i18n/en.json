@@ -6610,7 +6610,8 @@
       "hour": "One hour of video",
       "library_one": "Your video ({{duration}})",
       "library_other": "Your {{count}} videos ({{duration}})",
-      "duration": "{{hours}} h {{minutes}} min"
+      "duration": "{{hours}} h {{minutes}} min",
+      "liveNote": "Resolutions set to live only are counted too, for videos this server cannot encode live (ProRes, HDR, rotated, interlaced): it keeps them on disk."
     },
     "examples": {
       "title": "One minute of original, and its copies",

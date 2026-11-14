@@ -11,15 +11,16 @@ import {
   type VideoSettingsView,
   z,
 } from '@inkadra/shared';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
-import { instanceSetting } from './db/schema.ts';
+import { asset, instanceSetting } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
 import type { Jobs } from './jobs.ts';
 import { readVideoEncoder } from './media/encoder-setting.ts';
 import type { VideoEncoder } from './media/hwaccel.ts';
 import type { Recipes } from './media/ladder.ts';
+import { liveEligible } from './media/live.ts';
 import { QUALITY_VALUES, rungRate, VIDEO_QUALITIES } from './media/quality.ts';
 import type { ProxySettings } from './media/video.ts';
 import { countNeeding, readBackfill } from './video-backfill.ts';
@@ -271,31 +272,55 @@ export function applyVideoSettings(base: ProxySettings, settings: VideoSettings)
   };
 }
 
-/** Minutes of video by the rung of their shorter side, for the estimates of the Video page. */
-export async function videoLibrary(db: Reader): Promise<VideoSettingsView['library']> {
-  const rows = await db.execute<{ side: string; minutes: string; fast: string; videos: string }>(
-    sql`select case
-          when least(width, height) > 1080 then '2160'
-          when least(width, height) > 720 then '1080'
-          when least(width, height) > 480 then '720'
-          else '480' end as side,
-        (sum(duration_ms) / 60000.0)::text as minutes,
-        (sum(case when frame_rate > 30.5 then duration_ms else 0 end) / 60000.0)::text as fast,
-        count(*)::text as videos
-      from asset
-      where kind = 'video' and status = 'ready' and duration_ms is not null
-        and width is not null and height is not null
-      group by 1`,
-  );
-  return VIDEO_RUNGS.map((side) => {
-    const r = rows.find((x) => x.side === side);
-    return {
+/**
+ * Minutes of video by the rung of their shorter side, for the estimates of the Video page, with
+ * those of videos this server cannot encode live (`encoder`, liveEligible): a rung set to live
+ * only is still stored for them.
+ */
+export async function videoLibrary(
+  db: Reader,
+  encoder?: VideoEncoder,
+): Promise<VideoSettingsView['library']> {
+  const rows = await db
+    .select({
+      kind: asset.kind,
+      status: asset.status,
+      durationMs: asset.durationMs,
+      width: asset.width,
+      height: asset.height,
+      videoCodec: asset.videoCodec,
+      audioCodec: asset.audioCodec,
+      frameRate: asset.frameRate,
+      mediaInfo: asset.mediaInfo,
+    })
+    .from(asset)
+    .where(and(eq(asset.kind, 'video'), eq(asset.status, 'ready'), isNotNull(asset.durationMs)));
+  // Required: this server always sends the live-only minutes, optional for older ones.
+  const sums = new Map<VideoRung, Required<VideoSettingsView['library'][number]>>(
+    VIDEO_RUNGS.map((side) => [
       side,
-      minutes: Number(r?.minutes ?? 0),
-      fastMinutes: Number(r?.fast ?? 0),
-      videos: Number(r?.videos ?? 0),
-    };
-  });
+      { side, minutes: 0, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 0 },
+    ]),
+  );
+  for (const row of rows) {
+    if (!row.width || !row.height || !row.durationMs) continue;
+    const short = Math.min(row.width, row.height);
+    const sum = sums.get(
+      short > 1080 ? '2160' : short > 720 ? '1080' : short > 480 ? '720' : '480',
+    );
+    if (!sum) continue;
+    const minutes = row.durationMs / 60000;
+    const fast = (row.frameRate ?? 0) > 30.5 ? minutes : 0;
+    const noLive = !liveEligible(row, encoder);
+    sum.minutes += minutes;
+    sum.fastMinutes += fast;
+    if (noLive) {
+      sum.noLiveMinutes += minutes;
+      sum.noLiveFastMinutes += fast;
+    }
+    sum.videos += 1;
+  }
+  return [...sums.values()];
 }
 
 /**
@@ -343,7 +368,7 @@ export async function videoSettingsView(
       concurrency: config.VIDEO_PROXY_CONCURRENCY ?? (hardware ? 2 : 1),
     },
     queue: { queued: Number(counts?.queued ?? 0), processing: Number(counts?.processing ?? 0) },
-    library: await videoLibrary(db),
+    library: await videoLibrary(db, saved?.backend ? saved : undefined),
     copiesBytes: Number(counts?.copies ?? 0),
     freeBytes: extra.freeBytes,
     outdated: await countNeeding(db, 'outdated', recipe),

@@ -52,7 +52,7 @@ branch. Local instance retention does not remove them; developers manage GitHub 
 token check runs before the report is counted, so an outage uses up no quota. A 5xx or lost answer
 during the issue write may have opened it, so it answers `uncertain: true`. Sending it again is
 safe: the relay remembers each `requestId` for seven days, answers with the same issue, and after
-10 minutes looks for its marker among the newest issues.
+10 minutes searches the repository for its marker (then the newest issues, in case the search has not indexed it yet).
 
 ## Deployment (manual only)
 

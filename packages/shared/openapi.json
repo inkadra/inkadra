@@ -4084,6 +4084,16 @@
             "minimum": 0,
             "description": "Of which above 30 fps."
           },
+          "noLiveMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Of which this server cannot encode live (ProRes, HDR, rotated, ...): a resolution set to live only is stored for them all the same. Optional: older servers omit it."
+          },
+          "noLiveFastMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Of noLiveMinutes, above 30 fps."
+          },
           "videos": {
             "type": "integer",
             "minimum": 0

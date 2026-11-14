@@ -6610,7 +6610,8 @@
       "hour": "Eine Stunde Video",
       "library_one": "Dein Video ({{duration}})",
       "library_other": "Deine {{count}} Videos ({{duration}})",
-      "duration": "{{hours}} h {{minutes}} min"
+      "duration": "{{hours}} h {{minutes}} min",
+      "liveNote": "Auflösungen mit „Nur live“ sind mitgerechnet, für Videos, die dieser Server nicht live kodieren kann (ProRes, HDR, gedreht, interlaced): Er speichert sie."
     },
     "examples": {
       "title": "Eine Minute Original und ihre Kopien",
