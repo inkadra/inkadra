@@ -4086,7 +4086,7 @@
           "noLiveMinutes": {
             "type": "number",
             "minimum": 0,
-            "description": "Of which this server cannot encode live (ProRes, HDR, rotated, ...): a resolution set to live only is stored for them all the same."
+            "description": "Of which this server cannot encode live (ProRes, HDR, rotated, ...): a resolution set to live only is stored for them all the same. Optional: older servers omit it."
           },
           "noLiveFastMinutes": {
             "type": "number",
@@ -4102,8 +4102,6 @@
           "side",
           "minutes",
           "fastMinutes",
-          "noLiveMinutes",
-          "noLiveFastMinutes",
           "videos"
         ]
       },

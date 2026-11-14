@@ -65,10 +65,12 @@ export function libraryMb(
     fast * copiesMbPerMinute(quality, on, side, true, custom);
   return view.library.reduce((sum, row) => {
     const side = Number(row.side);
+    const noLive = row.noLiveMinutes ?? 0;
+    const noLiveFast = row.noLiveFastMinutes ?? 0;
     return (
       sum +
-      mb(rungs, side, row.minutes - row.noLiveMinutes, row.fastMinutes - row.noLiveFastMinutes) +
-      mb(stored, side, row.noLiveMinutes, row.noLiveFastMinutes)
+      mb(rungs, side, row.minutes - noLive, row.fastMinutes - noLiveFast) +
+      mb(stored, side, noLive, noLiveFast)
     );
   }, 0);
 }
