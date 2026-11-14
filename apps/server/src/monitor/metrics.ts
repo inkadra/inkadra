@@ -1,4 +1,4 @@
-import type { IntervalHistogram } from 'node:perf_hooks';
+import type { monitorEventLoopDelay } from 'node:perf_hooks';
 import { desc, eq } from 'drizzle-orm';
 import { instanceBackup } from '../db/schema.ts';
 import { beatStatus, diskSpace } from './health.ts';
@@ -35,7 +35,7 @@ export function renderMetrics(metrics: Metric[]): string {
  */
 export async function collectMetrics(
   deps: ServerDeps,
-  loop?: IntervalHistogram,
+  loop?: ReturnType<typeof monitorEventLoopDelay>,
   now = Date.now(),
 ): Promise<Metric[]> {
   const [beats, queues, disk, db, backup] = await Promise.all([
