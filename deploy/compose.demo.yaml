@@ -105,8 +105,12 @@ services:
   cloudflared:
     # A pinned release (2026.10.7, 30 October 2026): move it on after reading the notes at
     # https://github.com/cloudflare/cloudflared/releases.
-    image: cloudflare/cloudflared:2026.10.7
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     restart: unless-stopped
+    # Rotated like the services of compose.yaml (#837).
+    logging:
+      driver: json-file
+      options: { max-size: "${LOG_MAX_SIZE:-20m}", max-file: "${LOG_MAX_FILES:-5}" }
     command: ["tunnel", "--no-autoupdate", "run"]
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}

@@ -39,6 +39,8 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
 const url = process.env.DATABASE_URL;
 
+const METRICS = 'metrics-token-metrics-token-0123456';
+
 describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
   const config = loadConfig({
     NODE_ENV: 'test',
@@ -80,7 +82,7 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
     );
     const deps = testDeps(db, log);
     app = await createApp({
-      config: { ...config, DATA_DIR: deps.root },
+      config: { ...config, DATA_DIR: deps.root, METRICS_TOKEN: METRICS },
       db,
       auth: createAuth(config, db),
       log,
@@ -112,6 +114,19 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
   afterAll(async () => {
     await app.close();
     await client.end({ timeout: 5 });
+  });
+
+  it('gives Prometheus metrics for the bearer token only (#817)', async () => {
+    const scrape = (authorization?: string) =>
+      app.inject({ url: '/metrics', headers: authorization ? { authorization } : {} });
+    expect((await scrape()).statusCode).toBe(401);
+    expect((await scrape(`Bearer ${METRICS}x`)).statusCode).toBe(401);
+    expect((await scrape(people.admin?.cookie)).statusCode).toBe(401);
+    const res = await scrape(`Bearer ${METRICS}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/plain; version=0.0.4');
+    expect(res.body).toContain('\ninkadra_database_up 1\n');
+    expect(res.body).toMatch(/^inkadra_database_size_bytes \d+$/m);
   });
 
   it('is for administrators only', async () => {

@@ -232,6 +232,13 @@ const Env = z.object({
     .default('loopback,linklocal,uniquelocal')
     .transform((v): boolean | string => (v === 'true' || v === 'false' ? v === 'true' : v)),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  /** Client addresses in request logs: personal data, so off unless asked for (#837). */
+  LOG_CLIENT_IP: bool('false'),
+  /** Bearer token of GET /metrics (Prometheus); unset, the endpoint does not exist (#817). */
+  METRICS_TOKEN: z.preprocess(
+    emptyToUndefined,
+    z.string().min(32, 'METRICS_TOKEN must be at least 32 characters').optional(),
+  ),
 
   /** Sign in with Google: OAuth client of type "Web application" in Google Cloud. */
   GOOGLE_CLIENT_ID: optional,

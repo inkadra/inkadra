@@ -480,6 +480,9 @@ jobs:
             VERSION=0.0.0-ci
             REVISION=${{ github.sha }}
           outputs: type=docker,dest=${{ runner.temp }}/image.tar
+          # Layers of earlier runs (#843): the dependency layer is rebuilt only with the lockfile.
+          cache-from: type=gha,scope=image-amd64
+          cache-to: type=gha,scope=image-amd64,mode=max,ignore-error=true
       - run: docker load --input "$RUNNER_TEMP/image.tar"
       - name: Media tools run as the image user
         run: |
@@ -496,9 +499,7 @@ jobs:
       # Media packages must not add setuid/setgid programs beyond the runtime base (#357).
       - name: No new setuid or setgid files
         run: |
-          base="$(sed -n 's/^FROM \(node:.*\) AS runtime$/\1/p' Dockerfile)"
-          node_version="$(sed -n 's/^ARG NODE_VERSION=//p' Dockerfile)"
-          base="${base//\$\{NODE_VERSION\}/$node_version}"
+          base="$(sed -n 's/^FROM \(node:.*\) AS node-base$/\1/p' Dockerfile)"
           docker pull "$base"
           privileged() {
             docker run --rm --user 0 --entrypoint find "$1" / -xdev -perm /6000 -type f | sort

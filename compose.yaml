@@ -13,6 +13,15 @@
 
 name: inkadra
 
+# Every service keeps at most 5 log files of 20 MB (#837): Docker's default json-file grows
+# without end. LOG_MAX_SIZE and LOG_MAX_FILES change it; a daemon with another log driver
+# (journald, Loki…) needs `logging: !reset {}` per service in an override file.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-20m}"
+    max-file: "${LOG_MAX_FILES:-5}"
+
 services:
   inkadra:
     image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}
@@ -35,6 +44,10 @@ services:
       INSTANCE_NAME: ${INSTANCE_NAME:-Inkadra}
       REGISTRATION: ${REGISTRATION:-invite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Client addresses in request logs (personal data): off unless set to true.
+      LOG_CLIENT_IP: ${LOG_CLIENT_IP:-false}
+      # GET /metrics for Prometheus, with this bearer token (32+ characters); empty turns it off.
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
       # Set it to your proxy's address only (docs/self-hosting/configuration.md#trust_proxy); the
       # bundled proxies in deploy/proxy set their own.
       TRUST_PROXY: ${TRUST_PROXY:-loopback,linklocal,uniquelocal}
@@ -89,8 +102,19 @@ services:
       # or dataset of your choice: at startup it is given to uid 1000, the user Inkadra runs as.
       - ${INKADRA_DATA:-inkadra-data}:/data
     read_only: true
+    # Large scratch files go to /data/tmp; /tmp lives in memory, so it is bounded.
     tmpfs:
-      - /tmp
+      - /tmp:size=${INKADRA_TMPFS_SIZE:-512m},mode=1777
+    # Limits (#838), so a burst of transcodes cannot push the host into the OOM killer, which
+    # may pick PostgreSQL. Memory covers the server plus VIDEO_PROXY_CONCURRENCY ffmpeg copies;
+    # INKADRA_CPUS=0 means no CPU limit. See docs/self-hosting/configuration.md#resource-limits.
+    deploy:
+      resources:
+        limits:
+          memory: ${INKADRA_MEM_LIMIT:-6g}
+          cpus: ${INKADRA_CPUS:-0}
+          pids: ${INKADRA_PIDS_LIMIT:-1024}
+    logging: *logging
     # The entrypoint starts as root only to give /data to uid 1000 when needed, then switches
     # to that user, which drops these capabilities too. Remove user and cap_add to start as
     # uid 1000 directly: the data folder must then already belong to it.
@@ -106,7 +130,7 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:1018733457011bf88d81db98cf43aac6d5150afc18787dbe204771fedf80ff95
     restart: unless-stopped
     environment:
       POSTGRES_USER: inkadra
@@ -132,8 +156,22 @@ services:
         fi
         exec docker-entrypoint.sh "$$@"
       - --
-    command: ["postgres"] # a custom entrypoint drops the image's default command
+    # A custom entrypoint drops the image's default command. Memory settings stated, so they
+    # match the container limit below (#838).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-256MB}
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
     security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEM_LIMIT:-2g}
+          cpus: ${POSTGRES_CPUS:-0}
+          pids: 512
+    logging: *logging
     networks: [backend]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U inkadra -d inkadra"]
@@ -142,7 +180,7 @@ services:
       retries: 20
 
   valkey:
-    image: valkey/valkey:9-alpine
+    image: valkey/valkey:9-alpine@sha256:bf09d58e96d6b4524a15396b65b242bbe18beebbcc15a04d8ee75ddac62fae0b
     restart: unless-stopped
     # BullMQ keeps its job schedules here: never evict keys, refuse writes when full instead.
     # The password, when set, goes in as configuration on standard input ("-"), never on the
@@ -161,6 +199,13 @@ services:
     volumes:
       - ${VALKEY_DATA:-valkey-data}:/data
     security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: ${VALKEY_MEM_LIMIT:-1g}
+          cpus: ${VALKEY_CPUS:-0}
+          pids: 128
+    logging: *logging
     networks: [backend]
     healthcheck:
       # valkey-cli reads the password from REDISCLI_AUTH, not from its arguments.

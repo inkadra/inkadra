@@ -18,7 +18,7 @@ import {
   VIDEO_RENDITIONS_CAPABILITY,
 } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { canCreateProjects } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
 import { countUsers, OIDC_PROVIDER_ID } from '../auth.ts';
@@ -68,8 +68,11 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
     return { items: await myTasks(db, actor.id) };
   });
 
-  // Polled by Docker and proxies every few seconds: keep it out of the request log.
-  app.get(v1('/health'), { logLevel: 'warn' }, async (_req, reply) => {
+  // Polled by Docker and proxies every few seconds: keep these out of the request log.
+  // Liveness (#816): the process answers. A database or Valkey outage must not get it restarted.
+  app.get('/livez', { logLevel: 'warn' }, async () => ({ status: 'ok' }));
+  // Readiness: whether it can serve requests now, for load balancers and external monitors.
+  const health = async (_req: FastifyRequest, reply: FastifyReply) => {
     let database: 'ok' | 'error' = 'ok';
     try {
       await db.execute(sql`select 1`);
@@ -84,7 +87,9 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       checks: { database, queue },
     };
     return reply.status(ok ? 200 : 503).send(body);
-  });
+  };
+  app.get(v1('/health'), { logLevel: 'warn' }, health);
+  app.get('/readyz', { logLevel: 'warn' }, health);
 
   app.get(v1('/instance'), async () => {
     const users = await countUsers(db);

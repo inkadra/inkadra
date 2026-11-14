@@ -221,7 +221,7 @@ async function memberProjects(db: Database, adminId: string): Promise<Set<string
 const bounded = <T>(work: Promise<T>) =>
   within(work, MONITOR_TIMEOUT_MS, 'The queue did not answer in time.');
 
-async function queueCounts(
+export async function queueCounts(
   queues: Record<ServerQueueId, Queue>,
   redis: IORedis | undefined,
   now: number,
@@ -479,7 +479,7 @@ async function problems(
   return out.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
 }
 
-async function database(db: Database) {
+export async function database(db: Database) {
   try {
     const [row] = await db.execute<{ version: string; size: string; connections: number }>(sql`
       select current_setting('server_version') as version,

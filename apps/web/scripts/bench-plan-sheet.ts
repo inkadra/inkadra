@@ -4,7 +4,7 @@
 //   pnpm --filter @inkadra/web bench:plan-sheet --icons 300 --runs 20
 // Each size runs in a process of its own, so the first run is cold (fonts parsed, code not yet
 // optimised) and the peak memory is that size's. Run it with the Node of the server's image
-// (Dockerfile, NODE_VERSION).
+// (Dockerfile, the node base image).
 import { execFileSync } from 'node:child_process';
 import { registerHooks } from 'node:module';
 import { performance } from 'node:perf_hooks';
