@@ -293,8 +293,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       file,
       {
         notFound: (r) => sendError(r, 'not_found', 'This video has no such copy.'),
-        ranged: (key, size) =>
-          sendRanged(req, reply, storage, key, size, HLS_SIGNED_URL_TTL_S),
+        ranged: (key, size) => sendRanged(req, reply, storage, key, size, HLS_SIGNED_URL_TTL_S),
         fileHeaders,
       },
       deps.live && {
