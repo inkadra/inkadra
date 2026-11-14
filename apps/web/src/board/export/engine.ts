@@ -271,7 +271,7 @@ export async function buildPages(
   const fonts = await loadFonts(req.theme?.headingFont);
   signal?.throwIfAborted();
   const images = new Map<string, LoadedImage>();
-  const mode: ImageMode = preview || req.format !== 'pdf' ? 'bitmap' : 'pdf';
+  const mode: ImageMode = preview ? 'bitmap' : req.format !== 'pdf' ? 'blob' : 'pdf';
   const names = preview ? env.cache.names : new Map<string, string>();
   const tracks = new Map<string, AssetTrack>();
   const exportSizes = new Map<string, { width: number; height: number }>();

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { DEFAULT_VIDEO_SETTINGS, type VideoSettingsView } from '@inkadra/shared';
+import { DEFAULT_VIDEO_SETTINGS, type VideoRung, type VideoSettingsView } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -45,10 +45,24 @@ const view = (patch: Partial<VideoSettingsView> = {}): VideoSettingsView => ({
   },
   queue: { queued: 0, processing: 0 },
   library: [
-    { side: '480', minutes: 0, fastMinutes: 0, videos: 0 },
-    { side: '720', minutes: 0, fastMinutes: 0, videos: 0 },
-    { side: '1080', minutes: 60, fastMinutes: 0, videos: 3 },
-    { side: '2160', minutes: 60, fastMinutes: 0, videos: 2 },
+    { side: '480', minutes: 0, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 0 },
+    { side: '720', minutes: 0, fastMinutes: 0, noLiveMinutes: 0, noLiveFastMinutes: 0, videos: 0 },
+    {
+      side: '1080',
+      minutes: 60,
+      fastMinutes: 0,
+      noLiveMinutes: 0,
+      noLiveFastMinutes: 0,
+      videos: 3,
+    },
+    {
+      side: '2160',
+      minutes: 60,
+      fastMinutes: 0,
+      noLiveMinutes: 0,
+      noLiveFastMinutes: 0,
+      videos: 2,
+    },
   ],
   copiesBytes: 0,
   freeBytes: null,
@@ -266,12 +280,34 @@ it('says live is off when the sessions are 0, and offers each chosen resolution 
   });
 });
 
-it('tags a live-only resolution and leaves it out of the space estimates', async () => {
+it('counts a live-only resolution for the videos this server cannot encode live', () => {
+  const library = [
+    {
+      side: '1080' as const,
+      minutes: 60,
+      fastMinutes: 0,
+      noLiveMinutes: 30,
+      noLiveFastMinutes: 0,
+      videos: 2,
+    },
+  ];
+  const data = view({ library });
+  const per = (rungs: VideoRung[]) => copiesMbPerMinute('balanced', rungs, 1080);
+  // Half the hour is stored whatever the setting says: 1080 stays live-only for the rest.
+  expect(libraryMb(data, 'balanced', ['480', '720'], undefined, ['1080'])).toBeCloseTo(
+    30 * per(['480', '720']) + 30 * per(['480', '720', '1080']),
+  );
+});
+
+it('tags a live-only resolution and counts it in the space estimates of a source that needs it', async () => {
   const rungs = { ...DEFAULT_VIDEO_SETTINGS.rungs, '1080': 'live' as const };
   await show(view({ settings: { ...DEFAULT_VIDEO_SETTINGS, rungs } }));
   expect(host.textContent).toContain('videoSettings.live.onlyLive');
   const minute = host.querySelector('.video-totals dd')?.textContent ?? '';
-  expect(minute).toContain(String(Math.round(copiesMbPerMinute('balanced', ['480', '720']))));
+  expect(minute).toContain(
+    String(Math.round(copiesMbPerMinute('balanced', ['480', '720', '1080']))),
+  );
+  expect(host.textContent).toContain('videoSettings.totals.liveNote');
 });
 
 it('keeps Avanzate collapsed, and lets the admin raise live sessions over the measurement', async () => {

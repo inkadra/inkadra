@@ -30,14 +30,17 @@ export function installFeedbackDiagnostics() {
     };
   }
   window.addEventListener('error', (e) =>
-    add(consoleEntries, `error ${e.error?.name ?? 'Error'}: ${e.message}`),
+    add(
+      consoleEntries,
+      `error ${e.error?.name ?? 'Error'}: ${e.message}${e.error?.stack ? `\n${e.error.stack}` : ''}`,
+    ),
   );
   window.addEventListener('unhandledrejection', (e) =>
     add(
       consoleEntries,
       e.reason instanceof Error
-        ? `error ${e.reason.name}: ${e.reason.message}`
-        : 'error Unhandled rejection',
+        ? `error ${e.reason.name}: ${e.reason.message}\n${e.reason.stack ?? ''}`
+        : `error Unhandled rejection: ${String(e.reason)}`,
     ),
   );
   const originalOpen = XMLHttpRequest.prototype.open;

@@ -19,10 +19,12 @@ import {
   GROUP_DRAG,
   moveToGroup,
   PROJECT_DRAG,
+  reportGroupError,
   setDragging,
   setDragOver,
   updateGroup,
   useDragOver,
+  useGroupSaveFailed,
 } from './project-groups.ts';
 import './project-groups.css';
 
@@ -311,6 +313,17 @@ export function useDropTarget(
   };
 }
 
+/** Says that a project or group dropped, or a fold, was not saved (#776). */
+export function GroupSaveError() {
+  const { t } = useTranslation();
+  if (!useGroupSaveFailed()) return null;
+  return (
+    <p role="alert" className="shell-alert">
+      {t('projectsPage.saveError')}
+    </p>
+  );
+}
+
 /** The chevron of a foldable group: points right when folded, down when open. */
 export const GroupChevron = () => (
   <Icon name="chevronRight" size={12} className="ink-icon project-group-chevron" />
@@ -321,7 +334,7 @@ export function reorderGroup(groups: ProjectGroup[], id: string, target: string,
   if (id === target) return;
   const others = groups.filter((g) => g.id !== id);
   const at = others.findIndex((g) => g.id === target) + (after ? 1 : 0);
-  void updateGroup(id, { before: others[at]?.id ?? null }).catch(() => {});
+  void updateGroup(id, { before: others[at]?.id ?? null }).catch(reportGroupError);
 }
 
 /** A group in the sidebar: its row folds and unfolds it and takes dropped projects. */
@@ -345,7 +358,7 @@ export function SidebarGroup({
     (id, after, kind) =>
       kind === 'group'
         ? reorderGroup(groups, id, group.id, after)
-        : void moveToGroup(id, group.id).catch(() => {}),
+        : void moveToGroup(id, group.id).catch(reportGroupError),
     ['project', 'group'],
   );
   return (
@@ -363,7 +376,7 @@ export function SidebarGroup({
           aria-expanded={!group.collapsed}
           onContextMenu={onContextMenu}
           onClick={() =>
-            void updateGroup(group.id, { collapsed: !group.collapsed }).catch(() => {})
+            void updateGroup(group.id, { collapsed: !group.collapsed }).catch(reportGroupError)
           }
           {...(phone
             ? {}

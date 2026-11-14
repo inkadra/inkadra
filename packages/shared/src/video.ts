@@ -179,6 +179,20 @@ export const VideoLibrary = z
     side: VideoRung,
     minutes: z.number().nonnegative(),
     fastMinutes: z.number().nonnegative().openapi({ description: 'Of which above 30 fps.' }),
+    noLiveMinutes: z
+      .number()
+      .nonnegative()
+      .openapi({
+        description:
+          'Of which this server cannot encode live (ProRes, HDR, rotated, ...): a resolution ' +
+          'set to live only is stored for them all the same. Optional: older servers omit it.',
+      })
+      .optional(),
+    noLiveFastMinutes: z
+      .number()
+      .nonnegative()
+      .openapi({ description: 'Of noLiveMinutes, above 30 fps.' })
+      .optional(),
     videos: z.int().min(0),
   })
   .openapi('VideoLibrary');

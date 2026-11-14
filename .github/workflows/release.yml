@@ -1,7 +1,8 @@
 name: Release
 
-# Tags main and publishes a GitHub release. Tags pushed with the workflow token do not trigger
-# other workflows, so this one starts CI on the new tag, which publishes the image.
+# Tags main and opens a draft GitHub release. Tags pushed with the workflow token do not trigger
+# other workflows, so this one starts CI on the new tag, which publishes the image and then the
+# release: instances never see a version whose image is missing (#836).
 on:
   workflow_dispatch:
     inputs:
@@ -33,6 +34,11 @@ jobs:
         run: |
           echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "Not a semver version: $VERSION"; exit 1; }
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then echo "v$VERSION already exists"; exit 1; fi
+      # Only a commit whose CI passed on main is tagged; rerun CI there if it failed by chance.
+      - name: Check that CI passed on this commit
+        run: |
+          passed=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --branch main --event push --status success --json databaseId --jq length)
+          [ "$passed" -gt 0 ] || { echo "CI has not passed on main at $GITHUB_SHA: wait for it or rerun it"; exit 1; }
       - name: Tag
         run: |
           git config user.name "github-actions[bot]"
@@ -42,9 +48,10 @@ jobs:
       # The hand-written notes (docs/releases/<version>.<lang>.md, or those of X.Y.Z for an
       # X.Y.Z-rc.N) are the body, in English, and the release-notes.<lang>.md assets that the
       # Updates page of every instance reads in its reader's language (decision 0080).
+      # A draft: the release job of CI publishes it once the image is out.
       - name: GitHub release
         run: |
-          args=(--title "Inkadra $VERSION" --verify-tag)
+          args=(--title "Inkadra $VERSION" --verify-tag --draft)
           case "$VERSION" in *-*) args+=(--prerelease) ;; esac
           notes=""
           for v in "$VERSION" "${VERSION%%-*}"; do

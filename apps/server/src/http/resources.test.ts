@@ -8,14 +8,14 @@ import {
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { clientAssetUploadId } from '@inkadra/shared';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, assetVariant, creationRequest } from '../db/schema.ts';
+import { asset, assetVariant, creationRequest, pendingFileDeletion } from '../db/schema.ts';
 import { purgeUploads } from '../queues.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
@@ -1217,6 +1217,17 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect((await call('owner', 'DELETE', `/api/v1/projects/${projectId}`)).statusCode).toBe(204);
     await deps.jobs.idle();
     for (const { key } of assets) expect(await deps.storage.size(key)).toBeNull();
+    // Recorded with the rows, cleared once the files are gone (#801).
+    const pending = await db
+      .select()
+      .from(pendingFileDeletion)
+      .where(
+        inArray(
+          pendingFileDeletion.key,
+          assets.map((a) => a.key),
+        ),
+      );
+    expect(pending).toEqual([]);
     expect((await call('owner', 'GET', `/api/v1/projects/${projectId}`)).statusCode).toBe(404);
   });
 });

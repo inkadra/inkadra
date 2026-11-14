@@ -8,7 +8,7 @@ import * as Y from 'yjs';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/seed.ts';
 
 /**
- * Screenshots of project export, import and instance backups (docs/screenshots/0.5-backup),
+ * Screenshots of project export, import and instance backups (e2e/test-results/screenshots/0.5-backup),
  * desktop and phone, dark and light, on an empty instance with a fictional project:
  *
  *   SHOTS_BASE_URL=http://localhost:3200 pnpm --filter @inkadra/e2e exec tsx scripts/screenshots-backup.ts
@@ -17,7 +17,7 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/s
  */
 
 const base = (process.env.SHOTS_BASE_URL ?? 'http://localhost:3100').replace(/\/+$/, '');
-const out = fileURLToPath(new URL('../../docs/screenshots/0.5-backup', import.meta.url));
+const out = fileURLToPath(new URL('../test-results/screenshots/0.5-backup', import.meta.url));
 const account = {
   name: 'Giulia Bianchi',
   email: 'giulia@example.com',

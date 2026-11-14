@@ -235,22 +235,26 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
   if (process.env.SELECT_SCREENSHOTS) {
-    await page.screenshot({ path: '../docs/screenshots/ui-select/export-dialog.png' });
+    await page.screenshot({ path: 'test-results/screenshots/ui-select/export-dialog.png' });
     const trigger = dialog.getByRole('combobox').first();
     await trigger.click();
-    await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-dark.png' });
+    await page.screenshot({
+      path: 'test-results/screenshots/ui-select/default-open-desktop-dark.png',
+    });
     await page.keyboard.press('Escape');
     await page.evaluate(() => {
       document.documentElement.dataset.theme = 'light';
     });
     await trigger.click();
-    await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-light.png' });
+    await page.screenshot({
+      path: 'test-results/screenshots/ui-select/default-open-desktop-light.png',
+    });
     await page.keyboard.press('Escape');
     await page.setViewportSize({ width: 390, height: 844 });
     await trigger.click();
     await expect(page.locator('.ink-select__panel')).toBeVisible();
     await page.screenshot({
-      path: '../docs/screenshots/ui-select/phone-bottom-sheet.png',
+      path: 'test-results/screenshots/ui-select/phone-bottom-sheet.png',
       animations: 'disabled',
     });
     await page.keyboard.press('Escape');
@@ -260,7 +264,7 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
     await trigger.click();
     await expect(page.locator('.ink-select__panel')).toBeVisible();
     await page.screenshot({
-      path: '../docs/screenshots/ui-select/phone-bottom-sheet-dark.png',
+      path: 'test-results/screenshots/ui-select/phone-bottom-sheet-dark.png',
       animations: 'disabled',
     });
     await page.keyboard.press('Escape');
@@ -1021,8 +1025,9 @@ test('bands take the chosen colour in any theme, and a selection downloads its f
 const pixelOf = (page: Page, bytes: Buffer, x: number, y: number) =>
   page.evaluate(
     async ([data, px, py]) => {
-      const res = await fetch(`data:image/png;base64,${data}`);
-      const bitmap = await createImageBitmap(await res.blob());
+      // Decoded here, not fetched: the page's CSP has no data: in connect-src.
+      const png = Uint8Array.from(atob(data as string), (c) => c.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([png], { type: 'image/png' }));
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
       const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
       ctx.drawImage(bitmap, 0, 0);

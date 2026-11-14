@@ -69,6 +69,8 @@ const TokenParams = z.object({ token: z.string().min(16).max(128) });
 
 /** Invitations a person may create in an hour, so an account cannot be used to send spam. */
 const INVITATIONS_PER_HOUR = 50;
+/** How long an invitation request waits for SMTP before answering without the email. */
+const MAIL_TIMEOUT_MS = 15_000;
 /**
  * An instance invitation link creates an account for whoever opens it, so unless the request
  * asks otherwise it works once and for two days. CreateInvitation's own default (7 days) is
@@ -184,9 +186,9 @@ async function rootBoardId(db: Database, projectId: string): Promise<string> {
 export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, mailer } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
-  const seal = sealer(config.AUTH_SECRET, 'invitation');
-  const previewLimiter = new RateLimiter(30, 60_000);
-  const searchLimiter = new RateLimiter(30, 60_000);
+  const seal = sealer(config.AUTH_SECRET, 'invitation', config.AUTH_SECRET_PREVIOUS);
+  const previewLimiter = new RateLimiter(30, 60_000, 'sharing-routes:previewLimiter');
+  const searchLimiter = new RateLimiter(30, 60_000, 'sharing-routes:searchLimiter');
   const joinUrl = (token: string) => `${config.PUBLIC_URL}/join/${token}`;
 
   /** `fresh`: the token just made, for the answer that creates or resends an invitation. */
@@ -227,11 +229,26 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     return null;
   }
 
-  async function sendInvitation(row: InvitationRow, token: string, inviter: Actor) {
+  /**
+   * Sends the invitation email, giving up after `MAIL_TIMEOUT_MS` so a slow SMTP never holds the
+   * request for minutes. `rotate` stores the new token only once the email went out.
+   * shortcut: a send that times out may still be delivered later; on a resend its link is then
+   * dead. Upgrade to a queued job if that shows up in practice.
+   */
+  async function sendInvitation(
+    row: InvitationRow,
+    token: string,
+    inviter: Actor,
+    rotate?: { tokenHash: string; expiresAt: Date },
+  ) {
     if (!mailer.enabled || row.kind !== 'email' || !row.email) return row;
     const [from] = await db.select().from(user).where(eq(user.id, inviter.id));
     const { projectName, boardTitle } = await invitationTarget(db, row);
-    await mailer.send(
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('SMTP timed out')), MAIL_TIMEOUT_MS);
+    });
+    const send = mailer.send(
       inviteMail({
         to: row.email,
         from: from ?? {},
@@ -244,9 +261,16 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         instanceName: config.INSTANCE_NAME,
       }),
     );
+    // A send that loses the race fails later on its own: never as an unhandled rejection.
+    send.catch(() => undefined);
+    try {
+      await Promise.race([send, timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
     const [sent] = await db
       .update(invitation)
-      .set({ lastSentAt: new Date() })
+      .set({ ...rotate, lastSentAt: new Date() })
       .where(eq(invitation.id, row.id))
       .returning();
     return sent ?? row;
@@ -373,7 +397,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/users/search'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { q } = UserSearchQuery.parse(req.query ?? {});
-    searchLimiter.require(actor.id, 'Too many searches: wait a minute.');
+    await searchLimiter.require(actor.id, 'Too many searches: wait a minute.');
     const [sharer] = await db.execute<{ ok: number }>(sql`
       select 1 as ok from ${projectMember} m
       where m.user_id = ${actor.id} and m.role in ('owner', 'editor') and ${live('m')}
@@ -632,14 +656,26 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         undefined,
         Math.max(1, Math.ceil((row.lastSentAt.getTime() + 60_000 - Date.now()) / 1000)),
       );
-    // A new token: the link of the previous email stops working.
+    // A new token: the link of the previous email stops working, but only once the new one went
+    // out, so a failed send leaves the earlier link usable.
     const token = newSecret('', 24);
-    const [renewed] = await db
-      .update(invitation)
-      .set({ tokenHash: sha256(token), expiresAt: new Date(Date.now() + 7 * 86_400_000) })
-      .where(eq(invitation.id, row.id))
-      .returning();
-    return toInvitation(await sendInvitation(renewed ?? row, token, actor), token);
+    const expiresAt = new Date(Date.now() + 7 * 86_400_000);
+    let sent: InvitationRow;
+    try {
+      sent = await sendInvitation({ ...row, expiresAt }, token, actor, {
+        tokenHash: sha256(token),
+        expiresAt,
+      });
+    } catch (err) {
+      req.log.warn({ err }, 'invitation email not sent');
+      throw new HttpError(
+        'unavailable',
+        'The email could not be sent. The earlier link still works; try again later.',
+        undefined,
+        60,
+      );
+    }
+    return toInvitation(sent, token);
   });
 
   app.delete(v1('/invitations/:invitationId'), async (req, reply) => {
@@ -651,7 +687,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/invitations/by-token/:token'), async (req) => {
-    previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
+    await previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);
     if (!row) throw new HttpError('not_found', 'Invitation not found.');
@@ -672,7 +708,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/invitations/by-token/:token/claim'), async (req, reply) => {
-    previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
+    await previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);
     if (!row || invitationStatus(row) !== 'valid')

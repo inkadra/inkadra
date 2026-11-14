@@ -21,6 +21,10 @@ interface ProjectBoards {
 const cache = new Map<string, ProjectBoards>();
 const listeners = new Set<() => void>();
 const loading = new Set<string>();
+/** When each project's list last arrived. */
+const fetched = new Map<string, number>();
+/** How old a list may get while the tab is in view (#824). */
+export const BOARDS_STALE_MS = 60_000;
 const EMPTY: ProjectBoards = { items: null, error: false };
 
 function emit() {
@@ -36,6 +40,7 @@ export async function refreshBoards(projectId: string): Promise<void> {
   try {
     const page = await api.get<{ items: Board[] }>(`/projects/${projectId}/boards`);
     cache.set(projectId, { items: page.items, error: false });
+    fetched.set(projectId, Date.now());
   } catch {
     cache.set(projectId, { items: cache.get(projectId)?.items ?? null, error: true });
   } finally {
@@ -60,7 +65,21 @@ export function useProjectBoards(projectId: string | undefined): ProjectBoards {
     () => (projectId ? (cache.get(projectId) ?? EMPTY) : EMPTY),
   );
   useEffect(() => {
-    if (projectId && !cache.has(projectId)) void refreshBoards(projectId);
+    if (!projectId) return;
+    if (!cache.has(projectId)) void refreshBoards(projectId);
+    // Colleagues add, rename, move and delete boards too: a list in view is read again once it
+    // is a minute old, and when the tab comes back (#824). One request serves every reader.
+    const revalidate = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - (fetched.get(projectId) ?? 0) >= BOARDS_STALE_MS)
+        void refreshBoards(projectId);
+    };
+    const timer = setInterval(revalidate, BOARDS_STALE_MS);
+    document.addEventListener('visibilitychange', revalidate);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', revalidate);
+    };
   }, [projectId]);
   return value;
 }

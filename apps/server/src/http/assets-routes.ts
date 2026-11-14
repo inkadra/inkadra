@@ -232,7 +232,7 @@ export async function sendRanged(
 
 export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage } = deps;
-  const frameLimiter = new RateLimiter(FRAMES_PER_MINUTE, 60_000);
+  const frameLimiter = new RateLimiter(FRAMES_PER_MINUTE, 60_000, 'assets-routes:frameLimiter');
   let runningFrames = 0;
 
   app.get(v1('/assets/:assetId'), async (req) => {
@@ -276,7 +276,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get(v1('/assets/:assetId/frame'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
-    frameLimiter.require(actor.id, 'Too many frames: wait a minute.');
+    await frameLimiter.require(actor.id, 'Too many frames: wait a minute.');
     const { assetId } = AssetParams.parse(req.params);
     const { time } = VideoFrameQuery.parse(req.query);
     const { asset: row } = await requireAssetRole(db, actor, assetId, 'editor');

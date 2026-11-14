@@ -52,12 +52,14 @@ import {
   projectPin,
   user,
 } from '../db/schema.ts';
+import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
 import { officeFiles } from '../media/office.ts';
-import { animatedVariantKey } from '../storage.ts';
+import { removeFilesLater } from '../queues.ts';
+import { animatedVariantKey, type Storage } from '../storage.ts';
 import { storageUsage } from '../storage-usage.ts';
 import { iso } from './api-routes.ts';
-import { requireActor } from './auth-routes.ts';
+import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { renditionFiles } from './hls.ts';
 import { idempotentCreation } from './idempotency.ts';
@@ -67,6 +69,7 @@ interface Deps {
   db: Database;
   auth: Auth;
   jobs: Jobs;
+  storage: Storage;
 }
 
 const ProjectParams = z.object({ projectId: Id });
@@ -205,11 +208,11 @@ async function ownerCount(db: Pick<Database, 'select'>, projectId: string) {
 }
 
 export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
-  const { config, db, auth, jobs } = deps;
+  const { config, db, auth, jobs, storage } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
   app.get(v1('/instance/storage'), async (req, reply) => {
-    const actor = await requireActor(auth, req, db);
+    const { user: actor } = await requireSession(auth, req, db);
     if (actor.role !== 'admin')
       throw new HttpError('forbidden', 'Only administrators can see instance storage.');
     reply.header('cache-control', 'private, no-store');
@@ -584,10 +587,11 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const keys = await db.transaction(async (tx) => {
       const files = await projectFiles(tx, [projectId]);
       await tx.delete(project).where(eq(project.id, projectId));
+      await recordDeletions(tx, files);
       return files;
     });
     // Files go after the rows: a failure leaves orphan files, never rows without files.
-    if (keys.length > 0) await jobs.deleteFiles(keys);
+    await removeFilesLater({ db, jobs, storage }, keys, req.log);
     return reply.status(204).send();
   });
 

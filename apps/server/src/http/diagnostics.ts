@@ -43,11 +43,11 @@ export function registerDiagnostics(app: FastifyInstance, deps: DiagnosticsDeps)
   // Open to anyone before the first account exists: a few checks a minute per address.
   // Afterwards only administrators get through, and every page load of theirs asks for the
   // setup checks (#681), so they are not limited.
-  const limiter = new RateLimiter(10, 60_000);
+  const limiter = new RateLimiter(10, 60_000, 'diagnostics:limiter');
 
   app.get(`${API_PREFIX}/diagnostics`, async (req) => {
     const setup = (await countUsers(db)) === 0;
-    if (setup) limiter.require(addressBucket(req.ip), 'Too many checks: wait a minute.');
+    if (setup) await limiter.require(addressBucket(req.ip), 'Too many checks: wait a minute.');
     else {
       const { user: actor } = await requireSession(auth, req, db);
       if (actor.role !== 'admin')

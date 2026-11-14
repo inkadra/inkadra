@@ -685,6 +685,44 @@ test('one network cannot use up the day: an absolute cap, whatever the install i
   });
 });
 
+test('one network cannot use up the day\'s bytes: past its share, files wait and text still goes', async () => {
+  // Each test report carries 16 bytes of files.
+  const e = { ...env(), NETWORK_DAILY_BYTES: '20' };
+  mockGitHub();
+  const ips = ['2001:db8:1:1::1', '2001:db8:1:2::1'];
+  const t = await ticketFor(e, INSTALL, ips[0]);
+  let at = t.nbf - Date.now() + 1000;
+  await later(at, async () => {
+    assert.equal((await sendReport(e, reportForm(t, await solve(t.seed, t.bits)), ips[0])).status, 201);
+  });
+  const t2 = await later(at, () => ticketFor(e, OTHER_INSTALL, ips[1]));
+  at = t2.nbf - Date.now() + 1000;
+  await later(at, async () => {
+    const nonce = await solve(t2.seed, t2.bits);
+    const res = await sendReport(e, reportForm(t2, nonce, {}, OTHER_INSTALL), ips[1]);
+    assert.equal(res.status, 429);
+    assert.ok(Number(res.headers.get('retry-after')) > 0);
+    const bare = new FormData();
+    bare.set('report', reportForm(t2, nonce, {}, OTHER_INSTALL).get('report'));
+    assert.equal((await sendReport(e, bare, ips[1])).status, 201);
+    // Another network still sends files.
+    const t3 = await ticketFor(e, 'abcdefabcdefabcdefabcdefabcdefab', '2001:db8:2::1');
+    await later(t3.nbf - Date.now() + 1000, async () => {
+      const form = reportForm(t3, await solve(t3.seed, t3.bits), {}, 'abcdefabcdefabcdefabcdefabcdefab');
+      assert.equal((await sendReport(e, form, '2001:db8:2::1')).status, 201);
+    });
+  });
+});
+
+test('storage from before the per-network byte share gains the column and keeps its counts', () => {
+  const sql = sqlStorage();
+  sql.exec('CREATE TABLE counts (key TEXT PRIMARY KEY, count INTEGER NOT NULL, since INTEGER NOT NULL, last INTEGER NOT NULL);');
+  sql.exec('INSERT INTO counts (key, count, since, last) VALUES (?, ?, ?, ?)', 'net:x', 3, 1, 1);
+  new Meter({ storage: { sql } }, {});
+  new Meter({ storage: { sql } }, {});
+  assert.deepEqual({ ...sql.exec('SELECT count, bytes FROM counts WHERE key = ?', 'net:x').toArray()[0] }, { count: 3, bytes: 0 });
+});
+
 test('a report over the daily byte budget waits; one without files still goes', async () => {
   const e = { ...env(), DAILY_BYTES: '3' };
   const calls = mockGitHub();
@@ -739,6 +777,7 @@ test('sending again after a lost answer finds the issue: no double, no extra quo
   const fake = globalThis.fetch;
   // GitHub opens the issue, but the Worker sees an error.
   const opened = [];
+  const searched = [];
   globalThis.fetch = async (url, init) => {
     if (url.endsWith('/issues') && init.method === 'POST') {
       const response = await fake(url, init);
@@ -746,7 +785,12 @@ test('sending again after a lost answer finds the issue: no double, no extra quo
       await response.text();
       return new Response('{}', { status: 502 });
     }
-    if (url.includes('/issues?')) return Response.json(opened);
+    // Found by search, even when it is no longer among the newest issues.
+    if (url.includes('/search/issues?')) {
+      searched.push(decodeURIComponent(url));
+      return Response.json({ items: opened });
+    }
+    if (url.includes('/issues?')) return Response.json([]);
     return fake(url, init);
   };
   const t = await ticketFor(e);
@@ -768,6 +812,7 @@ test('sending again after a lost answer finds the issue: no double, no extra quo
   assert.equal(late.status, 201);
   assert.equal((await late.json()).number, 7);
   assert.equal(opened.length, 1);
+  assert.ok(searched.some((u) => u.includes('repo:o/r') && u.includes(`inkadra-feedback: ${REQUEST}`)));
   // And from then on it answers from memory, without asking GitHub.
   const before = calls.length;
   const again = await sendAt(800_000);

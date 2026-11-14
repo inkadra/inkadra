@@ -27,8 +27,10 @@ import {
   projectExportSettings,
   sharePick,
 } from '../db/schema.ts';
+import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
 import { sniffImage } from '../media/heic.ts';
+import { removeFilesLater } from '../queues.ts';
 import { animatedVariantKey, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { toAsset } from './assets-routes.ts';
@@ -250,10 +252,12 @@ export function registerExportSettingsRoutes(app: FastifyInstance, deps: Deps) {
         });
       const previous = before?.logoAssetId ?? null;
       if (logoAssetId === undefined || !previous || previous === logoAssetId) return [];
-      return dropUnusedLogo(tx, projectId, previous);
+      const files = await dropUnusedLogo(tx, projectId, previous);
+      await recordDeletions(tx, files);
+      return files;
     });
     // Files go after the rows: a failure leaves orphan files, never rows without files.
-    if (dropped.length > 0) await deps.jobs.deleteFiles(dropped);
+    await removeFilesLater({ db, jobs: deps.jobs, storage: deps.storage }, dropped, req.log);
     return load(db, projectId, true);
   });
 }

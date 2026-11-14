@@ -23,9 +23,10 @@ import { rememberClipBoard } from '../clip-board-history.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
+import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
 import { sniffImage } from '../media/heic.ts';
-import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
+import { ENQUEUE_TIMEOUT_MS, removeFilesLater, within } from '../queues.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { reserveSpace } from '../storage-limits.ts';
@@ -186,7 +187,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     config: deps.config,
   };
   // Each clip can fetch two addresses or store a large file.
-  const limiter = new RateLimiter(30, 60_000);
+  const limiter = new RateLimiter(30, 60_000, 'clip-routes:limiter');
   const imageMax =
     deps.uploadMaxSize > 0 ? Math.min(deps.uploadMaxSize, FETCHED_IMAGE_MAX) : FETCHED_IMAGE_MAX;
 
@@ -324,18 +325,16 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
   async function discard(ids: string[], log: FastifyBaseLogger) {
     const keys = ids.map(originalKey);
     try {
-      await db.delete(asset).where(inArray(asset.id, ids));
+      await db.transaction(async (tx) => {
+        await tx.delete(asset).where(inArray(asset.id, ids));
+        await recordDeletions(tx, keys);
+      });
     } catch (err) {
       // Rows and files stay together: the upload purge treats them like any unused upload.
       log.error({ err, ids }, 'clip assets not removed');
       return;
     }
-    try {
-      await within(jobs.deleteFiles(keys), ENQUEUE_TIMEOUT_MS, 'The job queue did not answer.');
-    } catch (err) {
-      log.warn({ err, ids }, 'clip files not queued for removal: removing them now');
-      await storage.remove(keys).catch((e) => log.error({ err: e, ids }, 'clip files not removed'));
-    }
+    await removeFilesLater({ db, jobs, storage }, keys, log);
   }
 
   await app.register(async (scope) => {
@@ -356,7 +355,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
       const boards = deps.boards;
       if (!boards)
         throw new HttpError('internal', 'Clips need the collaboration server: set REDIS_URL.');
-      limiter.require(actor.id, 'Too many clips: wait a minute.');
+      await limiter.require(actor.id, 'Too many clips: wait a minute.');
 
       const checked = new Map<string, ReturnType<typeof requireBoardRole>>();
       const check = (boardId: string) => {
@@ -437,7 +436,9 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
         if (!placed.ok)
           throw placed.reason === 'column'
             ? new HttpError('bad_request', 'The column is not on this board.')
-            : new HttpError('internal', 'The board could not be reached in time: try again.');
+            : placed.reason === 'full'
+              ? new HttpError('conflict', 'This board has reached its size limit.')
+              : new HttpError('internal', 'The board could not be reached in time: try again.');
         // On the board now: from here the assets are the card's, and the clip has succeeded.
         await process(created.splice(0), req.log);
         // A history failure must never turn a confirmed clip into a retryable failure.

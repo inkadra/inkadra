@@ -251,6 +251,12 @@ const errors = {
   },
   403: { description: 'Not allowed', ...json(ApiError) },
   404: { description: 'Not found', ...json(ApiError) },
+  503: {
+    description:
+      'Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds ' +
+      '(code `unavailable`, capability `unavailable-errors`)',
+    ...json(ApiError),
+  },
 };
 registry.register('InvalidToken', InvalidToken);
 const secured: Array<Record<string, string[]>> = [{ session: [] }, { bearer: [] }];
@@ -1178,7 +1184,7 @@ registry.registerPath({
   method: 'get',
   path: v1('/instance/storage'),
   tags: ['Instance'],
-  security: secured,
+  security: [{ session: [] }],
   summary: 'Administrator-only sum of original asset sizes; excludes derived files and database.',
   responses: {
     200: {
@@ -1932,7 +1938,9 @@ registry.registerPath({
   path: v1('/invitations/{invitationId}/resend'),
   tags: ['Sharing'],
   security: secured,
-  summary: 'Send an email invitation again and push its expiry back.',
+  summary:
+    'Send an email invitation again and push its expiry back. When the email cannot be sent ' +
+    '(503 `unavailable`), the earlier link keeps working.',
   request: { params: idParam('invitationId') },
   responses: { 200: { description: 'Sent', ...json(Invitation) }, ...errors },
 });
@@ -3410,6 +3418,10 @@ registry.registerPath({
   responses: {
     201: { description: 'Card created', ...json(ClipResult) },
     ...errors,
+    409: {
+      description: 'The board is at its size limit (BOARD_MAX_ELEMENTS, BOARD_MAX_STATE_BYTES)',
+      ...json(ApiError),
+    },
     413: {
       description: 'File larger than the instance limit (Instance.limits)',
       ...json(ApiError),

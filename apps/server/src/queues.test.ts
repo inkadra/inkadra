@@ -19,6 +19,7 @@ vi.mock('bullmq', () => ({
     upsertJobScheduler = harness.schedule;
     add = (...args: unknown[]) => harness.add(this.name, ...args);
     getJob = vi.fn();
+    on = vi.fn();
     close = vi.fn();
   },
   Worker: class {
@@ -56,7 +57,10 @@ it('schedules anonymisation separately and isolates it from upload purge failure
     select: () => ({
       from: () => ({
         where: (...args: unknown[]) =>
-          Object.assign(pendingUploads(...args), { limit: async () => [] }),
+          Object.assign(pendingUploads(...args), {
+            limit: async () => [],
+            orderBy: () => ({ limit: async () => [] }),
+          }),
       }),
     }),
     delete: () => ({ where: vi.fn().mockResolvedValue(undefined) }),
@@ -86,6 +90,7 @@ it('schedules anonymisation separately and isolates it from upload purge failure
       removed: 0,
       requeued: 0,
       proxies: 0,
+      deletions: 0,
     });
     pendingUploads.mockRejectedValueOnce(new Error('Purge failed'));
     await expect(run({ name: 'purge-uploads' })).rejects.toThrow('Purge failed');
@@ -94,6 +99,21 @@ it('schedules anonymisation separately and isolates it from upload purge failure
     expect(clearExpiredGuestNames).toHaveBeenCalledTimes(2);
   } finally {
     await workers.close();
+  }
+});
+
+it('registers the recurring jobs again, for a Valkey that lost them (#798)', async () => {
+  vi.useFakeTimers();
+  const deps = { db: {} as Database, storage: {} as Storage, tmpDir: '/unused', heic: false };
+  const workers = await startWorkers('redis://unused', pino({ level: 'silent' }), deps);
+  try {
+    const digests = () => harness.schedule.mock.calls.filter(([id]) => id === 'digest').length;
+    const before = digests();
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    expect(digests()).toBe(before + 1);
+  } finally {
+    await workers.close();
+    vi.useRealTimers();
   }
 });
 

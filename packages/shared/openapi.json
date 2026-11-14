@@ -293,7 +293,8 @@
                   "conflict",
                   "payload_too_large",
                   "rate_limited",
-                  "internal"
+                  "internal",
+                  "unavailable"
                 ]
               },
               "message": {
@@ -4083,6 +4084,16 @@
             "minimum": 0,
             "description": "Of which above 30 fps."
           },
+          "noLiveMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Of which this server cannot encode live (ProRes, HDR, rotated, ...): a resolution set to live only is stored for them all the same. Optional: older servers omit it."
+          },
+          "noLiveFastMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Of noLiveMinutes, above 30 fps."
+          },
           "videos": {
             "type": "integer",
             "minimum": 0
@@ -5743,6 +5754,8 @@
               "disk_full",
               "service_down",
               "server_error",
+              "board_save_failed",
+              "board_load_failed",
               "config_check"
             ],
             "description": "Open list: clients show a kind they do not know with the generic text. `config_check`: a failing diagnostic check (`checkId`), gone once it passes; it cannot be marked seen."
@@ -12661,6 +12674,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -12746,6 +12769,16 @@
           },
           "429": {
             "description": "Rate limited"
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -12855,6 +12888,16 @@
           },
           "429": {
             "description": "Rate limited"
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -12928,6 +12971,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -13032,6 +13085,16 @@
           },
           "429": {
             "description": "Rate limited"
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -13151,6 +13214,16 @@
           },
           "429": {
             "description": "Rate limited"
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -13212,6 +13285,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -13288,6 +13371,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -13374,6 +13467,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -13453,6 +13556,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -13518,6 +13631,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -13639,6 +13762,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -13738,6 +13871,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -13820,6 +13963,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -13929,6 +14082,16 @@
           },
           "409": {
             "description": "Stale revision; details.current contains the latest member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -14046,6 +14209,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -14156,6 +14329,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -14236,6 +14419,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -14296,6 +14489,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -14347,6 +14550,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -14521,6 +14734,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -14623,6 +14846,16 @@
           },
           "409": {
             "description": "A new day on a board other than the project's live Production board: details.reason 'production_board' and details.boardId, the Production board's id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -14749,6 +14982,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -14823,6 +15066,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -14905,6 +15158,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -15005,6 +15268,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -15121,6 +15394,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -15224,6 +15507,16 @@
           },
           "409": {
             "description": "Stale revision or removed day.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -15372,6 +15665,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -15491,6 +15794,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -15557,6 +15870,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -15609,6 +15932,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -15677,6 +16010,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -15760,6 +16103,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -15828,6 +16181,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -15889,6 +16252,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -15968,6 +16341,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -16080,6 +16463,16 @@
           },
           "409": {
             "description": "Last active administrator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -16518,6 +16911,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -16585,6 +16988,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -16703,6 +17116,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -16772,6 +17195,16 @@
           },
           "409": {
             "description": "Sole owner of shared projects (details: DeleteMeBlocked), or last active instance administrator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -16852,6 +17285,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -16907,6 +17350,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -16996,6 +17449,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -17129,6 +17592,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -17247,6 +17720,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -17313,6 +17796,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -17504,6 +17997,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -17572,6 +18075,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -17725,9 +18238,6 @@
         "security": [
           {
             "session": []
-          },
-          {
-            "bearer": []
           }
         ],
         "summary": "Administrator-only sum of original asset sizes; excludes derived files and database.",
@@ -17774,6 +18284,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -17842,6 +18362,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -17926,6 +18456,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -17987,6 +18527,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18071,6 +18621,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -18133,6 +18693,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18219,6 +18789,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -18278,6 +18858,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18366,6 +18956,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -18434,6 +19034,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -18495,6 +19105,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18571,6 +19191,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18659,6 +19289,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18808,6 +19448,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -18869,6 +19519,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18956,6 +19616,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -19036,6 +19706,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -19100,6 +19780,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -19208,6 +19898,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -19298,6 +19998,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -19359,6 +20069,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -19442,6 +20162,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -19513,6 +20243,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -19605,6 +20345,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -19690,6 +20440,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -19761,6 +20521,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -19841,6 +20611,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -19895,6 +20675,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -19985,6 +20775,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -20046,6 +20846,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -20135,6 +20945,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -20232,6 +21052,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -20311,6 +21141,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -20380,6 +21220,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -20476,6 +21326,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -20540,6 +21400,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -20628,6 +21498,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -20709,6 +21589,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -20898,6 +21788,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -20970,6 +21870,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -21063,6 +21973,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -21127,6 +22047,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -21217,6 +22147,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -21324,6 +22264,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -21397,6 +22347,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -21488,6 +22448,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -21593,6 +22563,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -21666,6 +22646,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -21759,6 +22749,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -21823,6 +22823,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -21912,6 +22922,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -21985,6 +23005,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -22047,6 +23077,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -22262,6 +23302,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -22336,6 +23386,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -22443,6 +23503,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -22517,6 +23587,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -22625,6 +23705,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -22711,6 +23801,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -22728,7 +23828,7 @@
             "bearer": []
           }
         ],
-        "summary": "Send an email invitation again and push its expiry back.",
+        "summary": "Send an email invitation again and push its expiry back. When the email cannot be sent (503 `unavailable`), the earlier link keeps working.",
         "parameters": [
           {
             "schema": {
@@ -22784,6 +23884,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -22857,6 +23967,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -23038,6 +24158,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -23141,6 +24271,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -23207,6 +24347,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -23285,6 +24435,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -23349,6 +24509,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -23428,6 +24598,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -23600,6 +24780,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -23681,6 +24871,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -23782,6 +24982,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -23856,6 +25066,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -23950,6 +25170,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -24055,6 +25285,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -24144,6 +25384,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -24218,6 +25468,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -24333,6 +25593,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -24404,6 +25674,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -24489,6 +25769,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -24560,6 +25850,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -24675,6 +25975,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -24810,6 +26120,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -24896,6 +26216,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -24996,6 +26326,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -25081,6 +26421,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -25469,6 +26819,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -25579,6 +26939,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -25653,6 +27023,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -25783,6 +27163,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -25873,6 +27263,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -25938,6 +27338,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26025,6 +27435,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -26098,6 +27518,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26179,6 +27609,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -26245,6 +27685,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26341,6 +27791,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -26428,6 +27888,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -26502,6 +27972,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26610,6 +28090,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -26709,6 +28199,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -26783,6 +28283,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26885,6 +28395,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -27019,6 +28539,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -27235,6 +28765,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -27300,6 +28840,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -27376,6 +28926,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -27487,6 +29047,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -27606,6 +29176,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -27690,6 +29270,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -27795,6 +29385,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -27884,6 +29484,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -27948,6 +29558,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -28029,6 +29649,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -30834,6 +32464,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -30952,6 +32592,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -31035,6 +32685,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -31150,6 +32810,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -31225,6 +32895,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -31327,6 +33007,16 @@
           },
           "409": {
             "description": "Saved by a newer Inkadra (`newer_schema`) (details: BoardVersionConflict)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -31455,6 +33145,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -31542,6 +33242,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -31643,6 +33353,16 @@
           },
           "429": {
             "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -31783,6 +33503,16 @@
               }
             }
           },
+          "409": {
+            "description": "The board is at its size limit (BOARD_MAX_ELEMENTS, BOARD_MAX_STATE_BYTES)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "413": {
             "description": "File larger than the instance limit (Instance.limits)",
             "content": {
@@ -31805,6 +33535,16 @@
           },
           "500": {
             "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -31892,6 +33632,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -31965,6 +33715,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {

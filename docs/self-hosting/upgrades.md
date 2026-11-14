@@ -34,7 +34,19 @@ also carries data across an upgrade.
 The sections below list what to do for each version, newest first. Read every one between
 your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
-## Upgrading to 0.10
+## After 0.9.0 (current main)
+
+These changes are on `main`, not in 0.9.0.
+
+- **Media tools are now in the standard image.** Remove `-media` from `INKADRA_TAG` when
+  moving to these builds, not when installing 0.9.0. Standard still excludes LibreOffice.
+- **Video copies use quality presets and multiple resolutions.** Review
+  [Settings → Video](configuration.md#media-previews). Existing copies remain playable;
+  regeneration is explicit. The default source-size limit is now unlimited, while the
+  two-hour duration limit remains.
+- **Modules are personal settings.** Storyboard, Production, Moodboard, Client review and
+  Set plan can be switched off in Settings → Modules. This hides creation tools, not existing
+  data. There is no server environment variable for modules.
 
 - **Shooting days move to a Production board.** The schedule becomes the project's
   ([decision 0123](../decisions/0123-production-board.md)): when the new version starts, every
@@ -43,8 +55,9 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
   the days of its boards move there, as they are. Days on boards in the trash stay where they
   are. A project that already has a Production board, even one in the trash, is left alone.
   It is one query, then one short transaction per project; a project that fails is logged
-  ("Production board not made") and tried again at the next start. Afterwards new days can be
-  made only on the Production board.
+  ("Production board not made") and tried again at the next start.
+  With a live Production board, new days belong there; without one, the old board schedule
+  remains available.
 - **Back up first,** as for any release with migrations. The way back for the instance is that
   backup, restored with the older version.
 - **To hold the move back,** set `PRODUCTION_BOARD_MOVE=false` in `.env` before upgrading: the
@@ -78,12 +91,51 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
   Days created on the Production board after the move stay on it, in the trash with the board.
 
+### Safer defaults in the deployment files
+
+Take the new `compose.yaml` and `deploy/` files with this version (see [Updating](#updating)).
+Your current `.env` keeps working; what changes, and what to do:
+
+- **The Content-Security-Policy is enforced.** Until now the browser only reported what the
+  policy would block. If your proxy injects scripts or styles, or files in S3 come from an
+  address other than `S3_ENDPOINT`, something can stop loading (the browser's console says
+  `Refused to load…`): set `CSP_ENFORCE=false` in `.env` and run `docker compose up -d`, then
+  see [Trying CSP enforcement](#trying-csp-enforcement). An existing `CSP_ENFORCE=false` stays.
+- **HSTS is on** when `PUBLIC_URL` is https: Inkadra sends `Strict-Transport-Security` on
+  requests that reach it over HTTPS (through a proxy that `TRUST_PROXY` accepts), never on plain
+  HTTP, so LAN and Tailscale addresses over HTTP keep working. If you also use plain HTTP on the
+  **same host name** as `PUBLIC_URL`, set `HSTS_ENABLED=false` before upgrading: browsers keep
+  HSTS for a year. An existing `HSTS_ENABLED=false` stays.
+- **Postgres and Valkey are on their own network**, `backend`, which has no way out and which
+  only Inkadra joins: the bundled proxies and anything else you put on the stack's `default`
+  network can no longer reach them. A container of your own that talks to the database (a
+  backup job, for example) must join `backend` too. `docker compose up -d` creates the network
+  and recreates the three containers; data stays in its volumes.
+- **Valkey can ask for a password.** New `.env` files have `VALKEY_PASSWORD`; without it Valkey
+  starts without one, as before. To turn it on, add `VALKEY_PASSWORD=` with a value from
+  `openssl rand -hex 32` (letters and digits only, it is part of a URL) and run
+  `docker compose up -d`: Inkadra and Valkey restart with it. Jobs that were queued stay.
+- **The bundled proxies are the only peer Inkadra trusts for client addresses.** Caddy, Nginx
+  and Traefik in `deploy/proxy` now run at a fixed address, `10.212.47.2`, on a fixed subnet
+  `10.212.47.0/24` of the stack's network, and set `TRUST_PROXY` to that address unless `.env`
+  sets one. If your `.env` has a `TRUST_PROXY` line written for a bundled proxy, remove it or
+  change it to `10.212.47.2`: with the old address Inkadra no longer trusts the proxy, sees
+  every request as plain HTTP from one client and sends no HSTS. Compose recreates the network on `up -d`; if your version of Compose asks for it,
+  run `docker compose down` (without `-v`) first. If the subnet is taken on your machine, choose
+  another one in the proxy's compose file. Without a bundled proxy nothing changes, but set
+  `TRUST_PROXY` to your proxy's address (see [TRUST_PROXY](configuration.md#trust_proxy)).
+- **The bundled Traefik no longer reads the Docker socket.** Its routes come from a file
+  defined in `deploy/proxy/traefik/compose.yaml` (and `compose.split.yaml`), with the same rules
+  as the old labels; labels you added to `inkadra` for it are ignored. The read timeout of the
+  HTTPS entry point is now 12 hours instead of none: uploads are in pieces of at most 50 MiB,
+  but a project import is one request and must arrive within that time.
+
 ## Upgrading to 0.9
 
 - **Reports go to the Inkadra developers by default,** also on an instance where they were off, unless
   an administrator saved a choice. Nothing leaves until someone writes a report, sees its preview and
   sends it. To avoid it, set an empty `FEEDBACK_RELAY_URL=` in `.env` **before** upgrading, then save a
-  choice in **Settings → About → Reports**. See
+  choice in **Settings → Reports**. See
   [What leaves your server](README.md#what-leaves-your-server).
 - **Emails can switch to English.** People who never opened the language setting get them in English
   until they come back to the app, also on accounts that got Italian emails until now.
@@ -106,21 +158,26 @@ not start an empty database beside your data: it stops, and its log says "The vo
 PostgreSQL 16 database from an older layout" with a link to this section. Nothing is lost, but
 the instance is down until you do the steps below. It takes a
 few minutes of downtime for a small instance; the dump and restore grow with the size of the
-database, and you need room for the dump and for the second copy of the database.
+database, and you need room for the dump and for the second copy of the database. Keep the SQL dump private: it contains account credentials
+and tokens.
 
 There are two ways. Both are run by CI on every change (`scripts/test-postgres-upgrade.sh`,
 from seeded data on 16 to the app running on 18), so the commands below are the tested ones.
 
-| Way                                      | Good for                                                                      |
-| ---------------------------------------- | ----------------------------------------------------------------------------- |
-| [Dump and restore](#dump-and-restore)    | The default. A new volume: the old one stays as it was, so going back is easy |
-| [In place](#in-place-with-pgautoupgrade) | A large database, where a dump takes too long. Changes the old volume         |
+| Way                                      | Good for                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------- |
+| [Dump and restore](#dump-and-restore)    | The default. Uses a new volume and preserves the old database         |
+| [In place](#in-place-with-pgautoupgrade) | A large database, where a dump takes too long. Changes the old volume |
 
-You need Docker Compose 2.24 or newer for the files in `deploy/` (`docker compose version`).
+You need Docker Compose 2.24.4 or newer for the files in `deploy/` (`docker compose version`).
 Check which PostgreSQL you run now with
 `docker compose exec postgres postgres --version`. The commands assume the project name
 `inkadra` (the folder name, unless you set `-p`): replace `inkadra_postgres-data` with
 `<project>_postgres-data` otherwise. `docker volume ls` shows it.
+
+For split installs, include the same `-f` files in each command below and stop all three
+application services (`inkadra`, `collab`, `worker`) wherever a step stops Inkadra. Do not
+leave a worker writing to the database during a dump or restore.
 
 ### Back up first
 
@@ -191,7 +248,8 @@ your usual copy of the data volume or the bucket. Check that `./inkadra-backups`
    its migrations run on start, before it accepts requests.
 
    ```sh
-   docker compose up -d
+   docker compose pull
+   docker compose up -d --wait
    docker compose ps          # inkadra, postgres and valkey "healthy"
    ```
 
@@ -214,12 +272,12 @@ stays in the layout of 16 (`/var/lib/postgresql/data`): you keep adding
 `deploy/compose.postgres-old-layout.yaml`, with `POSTGRES_MAJOR=18`, and can move to the new
 layout later with a dump and restore.
 
-**Not from PostgreSQL 16.16 yet.** `postgres:16-alpine` has been 16.16 since 12 November 2026,
-and the current `pgautoupgrade/pgautoupgrade:18-alpine` (PostgreSQL 18.6) cannot upgrade a
-cluster of 16.16: it stops at "Restoring database schemas in the new cluster", and its
+**PostgreSQL 16.16 needs dump and restore with the tested image.** CI pins PostgreSQL
+16.15 and `pgautoupgrade/pgautoupgrade:18.6-alpine` because that upgrader cannot read
+the new column option written by 16.16: it stops at "Restoring database schemas in the new cluster", and its
 `pg_upgrade_dump_*.log` says `unrecognized parameter "pg_attver"`. If
 `docker compose exec postgres postgres --version` says 16.16 or newer, take the
-[dump and restore](#dump-and-restore) until pgautoupgrade publishes an image of 18.7 or newer
+[dump and restore](#dump-and-restore) unless you have verified an upgrader with PostgreSQL 18.7 or newer
 (`docker run --rm --entrypoint postgres pgautoupgrade/pgautoupgrade:18-alpine --version`). If an
 upgrade already stopped there, the volume is no longer usable as it is: empty it and unpack
 `postgres-data-16.tgz` from step 1 into it, as in [Going back](#going-back). 16.15 and older
@@ -255,7 +313,7 @@ upgrade as below.
    ```sh
    docker run --rm -e POSTGRES_USER=inkadra -e POSTGRES_DB=inkadra -e POSTGRES_PASSWORD=unused \
      -e PGDATA=/var/lib/postgresql/data -e PGAUTO_ONESHOT=yes \
-     -v inkadra_postgres-data:/var/lib/postgresql/data pgautoupgrade/pgautoupgrade:18-alpine
+     -v inkadra_postgres-data:/var/lib/postgresql/data pgautoupgrade/pgautoupgrade:18.6-alpine
    ```
 
 4. **Start.**
@@ -309,7 +367,7 @@ made: stop everything, empty the volume and unpack `postgres-data-16.tgz` into i
 
 ## Upgrading to 0.5
 
-- Nightly backups are on by default at 03:00 server time, kept for 7 days, in `/data/backups`.
+- Nightly backups are on by default at 03:00 server time, keeping the last 7 successful backups, in `/data/backups`.
   Make sure the data volume has room for them, or turn them off in **Settings → Backups** if
   you back up Postgres another way.
 - Project export and import arrive. An import sends the whole archive in one request, up to
@@ -325,7 +383,7 @@ made: stop everything, empty the volume and unpack `postgres-data-16.tgz` into i
 - **"Require two-factor for administrators"** is a new setting, off on existing installations.
   Only an administrator with verified two-factor can turn it on. Before you do, keep the recovery
   codes and the emergency command that turns it off from the server
-  ([details](sign-in.md#two-factor-authentication)):
+  ([details](sign-in.md#administrator-enrollment-policy)):
 
   ```sh
   docker compose exec inkadra node /app/dist/main.js admin-2fa off
@@ -368,23 +426,20 @@ docker compose exec inkadra node /app/dist/main.js unlock-auth person@example.co
 
 ### Trying CSP enforcement
 
-0.4 sends a `Content-Security-Policy` in **report-only** mode: the browser applies nothing, it
-only reports what the policy would block. To switch to enforcement:
-
-1. Use Inkadra normally for a while with the browser's developer tools open (Console): open
-   boards with images, videos, YouTube links and files, sign in with each method you use. Every
-   `[Report Only] Refused to load…` message is something enforcement would break. For a whole
-   team, set `CSP_REPORT_URI` to an endpoint that collects reports.
-2. Fix what you can at the source: a proxy that injects scripts or styles, an S3 address that
-   differs from `S3_ENDPOINT`. If something Inkadra itself needs is blocked, please open an issue.
-3. Set `CSP_ENFORCE=true` in `.env` and run `docker compose up -d`. If something breaks, set it
-   back to `false`: nothing is stored, the header changes on the next page load.
+0.4 to 0.9 send the policy in report-only mode by default; 0.10 enforces it. To try enforcement
+on an older version, or after turning it off, start with `CSP_ENFORCE=false` (report-only). Use
+each sign-in method and board media type, and check the browser console for
+`[Report Only] Refused to load…`. Fix blocked sources before setting `CSP_ENFORCE=true` and
+recreating the container. Revert to `false` if needed. For a reporting endpoint, use
+`CSP_REPORT_URI` as described in
+[Browser security headers](configuration.md#browser-security-headers).
 
 ### HSTS
 
-HSTS is off in Inkadra by default; set it at the proxy (see
+In 0.4 to 0.9 HSTS is off in Inkadra by default; set it at the proxy (see
 [Security headers](reverse-proxy.md#security-headers)) or with `HSTS_ENABLED=true`. Turn it on
-only when HTTPS works for good: browsers remember it for a year.
+only when HTTPS works for good: browsers remember it for a year. From 0.10 it is on by default
+(see [Safer defaults](#safer-defaults-in-the-deployment-files)).
 
 ## Upgrading to Valkey 9
 
@@ -431,8 +486,15 @@ docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.9.0 --format '{{ json
 ## How releases are made
 
 Every push to `main` publishes `edge` and `sha-<commit>`. For a release, a maintainer runs the
-Release workflow, which tags `vX.Y.Z` on `main`, opens the GitHub release and starts CI on the
-tag. CI runs in full (tests, end-to-end, the reverse proxy examples, a vulnerability scan of
-the image), builds amd64 and arm64 on native runners without build cache, publishes `X.Y.Z`,
-`X.Y` and `latest`, and attaches the deployment files to the release. Versions with a suffix
+Release workflow, which checks that CI passed on that commit of `main`, tags `vX.Y.Z`, opens
+the GitHub release as a draft and starts CI on the tag. CI runs in full (tests, end-to-end, the
+reverse proxy examples, a vulnerability scan of the image), builds amd64 and arm64, standard and
+office, on native runners without build cache, starts and scans each of those images before
+tagging them, publishes `X.Y.Z`, `X.Y` and `latest`, attaches the deployment files to the
+release and only then publishes it, so the Updates page never offers a version without an image.
+The deployment files pin `INKADRA_TAG` to that version. Versions with a suffix
 (`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
+
+Tell us how your upgrade went and
+what was unclear in this guide in [GitHub Discussions](https://github.com/inkadra/inkadra/discussions)
+or an [issue](https://github.com/inkadra/inkadra/issues/new/choose).

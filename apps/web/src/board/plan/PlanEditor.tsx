@@ -37,6 +37,7 @@ import { PlanProperties } from './PlanProperties.tsx';
 import { PlanStart } from './PlanStart.tsx';
 import { ScenePicker } from './scenes.tsx';
 import { type SetupChange, setupChanges } from './setups.ts';
+import { useModalInert } from './useModalInert.ts';
 import './plan.css';
 
 /** Px an arrow key moves the view when nothing is picked; four times that with Shift. */
@@ -302,19 +303,8 @@ export function PlanEditor(props: PlanEditorProps) {
       window.removeEventListener('keyup', on, true);
     };
   }, []);
-  // A modal: the app behind is inert, the editor takes the focus and gives it back on close.
   const dialogRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null;
-    const app = document.getElementById('root');
-    const wasInert = app?.inert ?? false;
-    if (app) app.inert = true;
-    dialogRef.current?.focus({ preventScroll: true });
-    return () => {
-      if (app) app.inert = wasInert;
-      before?.focus?.({ preventScroll: true });
-    };
-  }, []);
+  useModalInert(dialogRef);
   // A new selection shows its properties.
   const selectedId = ed.selection[0]?.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: follows what is selected.
