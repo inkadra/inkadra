@@ -683,7 +683,8 @@
       "moveCardsOn": "Mover com os cards abaixo",
       "moveCardsOff": "Mover só o título",
       "hideGrid": "Ocultar a grade de pontos",
-      "showGrid": "Mostrar a grade de pontos"
+      "showGrid": "Mostrar a grade de pontos",
+      "restoreKept": "Restaurar alterações de um ficheiro…"
     },
     "zoom": {
       "label": "Zoom",
@@ -1941,10 +1942,17 @@
       "drawFailed": "Não foi possível salvar o traço. Tente novamente; se o problema continuar, recarregue o quadro.",
       "updateApp": "Este quadro requer uma versão mais recente. Atualize o app para editá-lo; você pode continuar visualizando.",
       "sizeLimit": "Este quadro atingiu o limite de tamanho. As adições não foram salvas; o quadro foi recarregado. Você pode excluir conteúdo para liberar espaço.",
-      "sizeLimitKept": "Este quadro atingiu o limite de tamanho. As alterações feitas neste dispositivo não foram guardadas: ficam neste dispositivo e o quadro foi recarregado. Transfira-as para guardar uma cópia ou descarte-as. Pode eliminar conteúdo para libertar espaço.",
-      "kept": "As alterações a este quadro que o servidor não aceitou ficam neste dispositivo. Não estão no quadro: transfira-as para guardar uma cópia ou descarte-as.",
+      "sizeLimitKept": "Este quadro atingiu o limite de tamanho. As alterações feitas neste dispositivo não foram guardadas: ficam neste dispositivo e o quadro foi recarregado. Elimine conteúdo para libertar espaço e restaure-as, transfira-as para guardar uma cópia ou descarte-as.",
+      "kept": "As alterações a este quadro que o servidor não aceitou ficam neste dispositivo. Não estão no quadro: restaure-as quando o quadro as puder aceitar, transfira-as para guardar uma cópia ou descarte-as.",
       "keptDownload": "Transferir as alterações",
       "keptDiscard": "Descartar",
+      "keptRestore": "Restaurar no quadro",
+      "keptRestored": "As alterações voltaram ao quadro e estão guardadas.",
+      "keptRestoreRefused": "O servidor voltou a recusar estas alterações: ficam neste dispositivo.",
+      "keptRestoreNotWritable": "Agora não é possível editar este quadro: as alterações ficam neste dispositivo. Tente de novo quando o puder editar.",
+      "keptRestoreTooNew": "Estas alterações foram feitas com uma versão mais recente do Inkadra: atualize a app para as restaurar.",
+      "keptRestoreInvalid": "Este ficheiro não é um conjunto de alterações transferido do Inkadra.",
+      "keptRestoreOtherBoard": "Este ficheiro contém alterações de outro quadro: abra esse quadro para as restaurar.",
       "sizeLimitReadOnly": "Este quadro atingiu o limite de tamanho e está em modo somente leitura. As adições não foram salvas."
     },
     "sheet": {
@@ -5928,7 +5936,7 @@
           },
           "1": {
             "title": "Filtrar",
-            "text": "Mostre só pessoas, compartilhamento, acessos ou dados."
+            "text": "Mostre só pessoas, compartilhamento, acessos ou dados, e exporte-os em CSV."
           },
           "2": {
             "title": "Guardado por um ano",
@@ -6800,6 +6808,9 @@
     "none": "Nada registrado ainda.",
     "loadError": "Não foi possível carregar o registro de atividade.",
     "more": "Mostrar anteriores",
+    "export": "Exportar",
+    "exportHelp": "Todos os eventos deste filtro, num ficheiro CSV para uma folha de cálculo.",
+    "exportCsv": "Exportar CSV",
     "nobody": "Alguém sem sessão",
     "deletedAccount": "Uma conta excluída",
     "line": "{{what}} · {{who}}",

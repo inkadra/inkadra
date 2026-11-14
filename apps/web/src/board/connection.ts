@@ -10,7 +10,7 @@ import {
   readBoardNotice,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
@@ -22,10 +22,12 @@ import {
   dropLocalBoard,
   hasKept,
   keepAside,
+  keptUpdate,
   LOCAL_ORIGIN,
   type LocalBoard,
   localBoardName,
   openLocalBoard,
+  RestoreError,
   sweepLocalBoards,
 } from './local-boards.ts';
 import { BoardStore } from './store.ts';
@@ -61,10 +63,20 @@ export interface BoardConnection {
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
   saves: SaveStore;
+  /**
+   * Merges edits set aside (#898) into the board (`restorableUpdate`): resolves once the server
+   * has confirmed them, rejects with a `RestoreError` when it cannot take them.
+   */
+  merge?: (update: Uint8Array) => Promise<void>;
 }
 
-/** Edits set aside on this device for a board (#791): the person downloads or discards them. */
+/**
+ * Edits set aside on this device for a board (#791): the person restores them into the board
+ * (#898), downloads or discards them.
+ */
 export interface KeptChanges {
+  /** Deletes them once the server confirmed them; refused, they stay (`RestoreError`). */
+  restore(): Promise<void>;
   download(): Promise<void>;
   discard(): Promise<void>;
 }
@@ -257,6 +269,7 @@ export function useBoardConnection(
   const [reload, setReload] = useState(0);
   const [limitedBoard, setLimitedBoard] = useState<string | null>(null);
   const [keptBoard, setKeptBoard] = useState<string | null>(null);
+  const merger = useRef<BoardConnection['merge']>(undefined);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: A refusal must reopen the document even though its board id is unchanged.
   useEffect(() => {
@@ -321,6 +334,27 @@ export function useBoardConnection(
       setAside(local.close(), edited || marked);
       local = null;
     };
+    // A merge of edits set aside (#898), until the server confirms or refuses it.
+    let merging: { resolve: () => void; reject: (err: Error) => void } | null = null;
+    const settleMerge = (err?: Error) => {
+      const pending = merging;
+      merging = null;
+      if (err) pending?.reject(err);
+      else pending?.resolve();
+    };
+    const merge = (update: Uint8Array) =>
+      new Promise<void>((resolve, reject) => {
+        if (state.readOnly || state.status !== 'synced' || refused || dropped || merging) {
+          reject(new RestoreError('notWritable'));
+          return;
+        }
+        merging = { resolve, reject };
+        // An edit made here: sent, stored in the copy and counted unsaved like any other.
+        Y.applyUpdate(doc, update);
+        // Nothing the board lacked: nothing for the server to confirm.
+        if (!provider.hasUnsyncedChanges) settleMerge();
+      });
+    merger.current = merge;
     const hold = () => {
       if (!trackBusy) return;
       setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
@@ -385,6 +419,7 @@ export function useBoardConnection(
       // The server says when the role changes between editing and reading (decision 0011).
       onStateless: ({ payload }) => {
         const msg = readBoardNotice(payload);
+        if (msg?.type === 'writeRefused') settleMerge(new RestoreError('refused'));
         if (msg?.type === 'writeRefused' && msg.reason === 'frozen') {
           setLimitedBoard(boardId);
           // A rejected Yjs struct leaves a clock gap. Reopen from confirmed state before
@@ -435,10 +470,12 @@ export function useBoardConnection(
       state = { ...state, ...patch };
       state.schemaTooNew = docTooNew || copyTooNew;
       state.readOnly = roleReadOnly || state.schemaTooNew;
+      if (state.status === 'denied') settleMerge(new RestoreError('refused'));
+      if (state.status === 'signedOut') settleMerge(new RestoreError('notWritable'));
       // The session ended: copies with nothing unsaved go, so none stays on a shared computer.
       if (state.status === 'signedOut' && was !== 'signedOut') void sweepLocalBoards();
       hold();
-      setConn({ store, provider, saves, ...state });
+      setConn({ store, provider, saves, merge, ...state });
     }
     const stopSchema = watchDocumentSchema(doc, (tooNew) => {
       docTooNew = tooNew;
@@ -449,6 +486,7 @@ export function useBoardConnection(
       unsynced = next.pending;
       // A read-only connection is answered without its edits being applied: they stay unsaved.
       if (unsynced === 0 && !state.readOnly) edited = false;
+      if (unsynced === 0) settleMerge(state.readOnly ? new RestoreError('refused') : undefined);
       mark();
       saves.set(next);
       hold();
@@ -456,6 +494,8 @@ export function useBoardConnection(
     update({});
     return () => {
       alive = false;
+      settleMerge(new RestoreError('notWritable'));
+      if (merger.current === merge) merger.current = undefined;
       // Kept: another view may have it open. Once all is confirmed, `sweepLocalBoards` deletes it.
       mark();
       void local?.close();
@@ -499,6 +539,14 @@ export function useBoardConnection(
     () =>
       keptBoard === boardId && userId
         ? {
+            // Deleted only once the server has them: refused, they stay set aside.
+            restore: async () => {
+              const update = await keptUpdate(userId, boardId);
+              if (!merger.current) throw new RestoreError('notWritable');
+              await merger.current(update);
+              await discardKept(userId, boardId);
+              setKeptBoard(null);
+            },
             download: () => downloadKept(userId, boardId).then(() => setKeptBoard(null)),
             discard: () => discardKept(userId, boardId).then(() => setKeptBoard(null)),
           }

@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { authApi, RequestError } from '../lib/api.ts';
 import { signOut } from '../lib/sign-out.ts';
 import { installWebLocks } from '../test/web-locks.ts';
@@ -13,7 +13,13 @@ import {
   refusalStatus,
   useBoardConnection,
 } from './connection.ts';
-import { keptBoards, sweepLocalBoards, unsavedLocalBoards } from './local-boards.ts';
+import {
+  keepAside,
+  keptBoards,
+  RestoreError,
+  sweepLocalBoards,
+  unsavedLocalBoards,
+} from './local-boards.ts';
 
 /** The copy of a board on the device (#791): a reload, a second account, signing out. */
 type Options = {
@@ -47,6 +53,8 @@ vi.mock('@hocuspocus/provider', () => ({
   HocuspocusProvider: class {
     document: Y.Doc;
     listeners = new Map<string, (payload: unknown) => void>();
+    // What the provider says after sending an edit: the server has not confirmed it yet.
+    hasUnsyncedChanges = true;
     constructor(options: Options) {
       this.document = options.document;
       providers.push({
@@ -267,4 +275,73 @@ it('keeps the copy when the server fails rather than refuses', async () => {
   expect(await refusalStatus()).toBe('offline');
   me.get.mockRejectedValueOnce(new RequestError(403, 'forbidden', 'No'));
   expect(await refusalStatus()).toBe('denied');
+});
+
+/** Edits the server refused earlier, set aside on the device, then a board that takes them. */
+async function openWithKept(id: string, title: string) {
+  const aside = new Y.Doc();
+  aside.getMap('meta').set('title', title);
+  await keepAside(person.id, id, aside);
+  const provider = await open(id);
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'read-write' });
+    provider.onSynced();
+  });
+  await settle();
+  expect(connection?.kept).toBeTruthy();
+  return provider;
+}
+
+it('merges edits set aside into the board, deleting them once the server confirms (#898)', async () => {
+  const provider = await openWithKept('back', 'Restored from the trash');
+  let restored = false;
+  let restoring: Promise<void> = Promise.resolve();
+  await act(async () => {
+    restoring = connection!.kept!.restore().then(() => {
+      restored = true;
+    });
+  });
+  await settle();
+  expect(title()).toBe('Restored from the trash');
+  // Sent, not confirmed: still set aside.
+  expect(restored).toBe(false);
+  expect(await keptBoards(person.id)).toContain('back');
+  await act(async () => provider.emit('unsyncedChanges', { number: 0 }));
+  await act(async () => restoring);
+  await settle();
+  expect(restored).toBe(true);
+  expect(await keptBoards(person.id)).not.toContain('back');
+  expect(connection?.kept).toBeNull();
+});
+
+it('keeps edits set aside when the server refuses them again, or cannot take them (#898)', async () => {
+  const provider = await openWithKept('still-full', 'Still too big');
+  let error: unknown;
+  let restoring: Promise<void> = Promise.resolve();
+  await act(async () => {
+    restoring = connection!.kept!.restore().catch((err) => {
+      error = err;
+    });
+  });
+  await settle();
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'writeRefused', reason: 'frozen' }) }),
+  );
+  await act(async () => restoring);
+  await settle();
+  expect(error).toBeInstanceOf(RestoreError);
+  expect((error as RestoreError).reason).toBe('refused');
+  expect(await keptBoards(person.id)).toContain('still-full');
+  expect(connection?.kept).toBeTruthy();
+  // Offline: nothing is merged, and they stay.
+  const reopened = providers.at(-1)!;
+  await act(async () => reopened.onDisconnect());
+  await act(async () => {
+    restoring = connection!.kept!.restore().catch((err) => {
+      error = err;
+    });
+  });
+  await act(async () => restoring);
+  expect((error as RestoreError).reason).toBe('notWritable');
+  expect(await keptBoards(person.id)).toContain('still-full');
 });

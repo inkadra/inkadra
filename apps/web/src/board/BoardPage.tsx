@@ -77,6 +77,7 @@ import {
 import { shootingZone } from './film/sun.ts';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
+import { keptFileUpdate, RestoreError } from './local-boards.ts';
 import { RestoredToast } from './RestoredToast.tsx';
 import { isMac } from './shortcuts.ts';
 import { LOCAL, REPAIR } from './store.ts';
@@ -494,6 +495,33 @@ function BoardScreen({
   const openScriptImport = useCallback(() => setImportingScript(true), []);
   const [scriptToast, setScriptToast] = useState<string | null>(null);
   const closeScriptToast = useCallback(() => setScriptToast(null), []);
+  // Edits set aside, back into the board (#898): from this device or from a downloaded file.
+  const [restoring, setRestoring] = useState(false);
+  const [restoreToast, setRestoreToast] = useState<{ text: string; ok: boolean } | null>(null);
+  const restoreInput = useRef<HTMLInputElement>(null);
+  const restoreKept = useCallback(
+    (run: () => Promise<void>) => {
+      setRestoring(true);
+      run()
+        .then(
+          () => setRestoreToast({ text: t('board.contextual.keptRestored'), ok: true }),
+          (err) => {
+            const reason = err instanceof RestoreError ? err.reason : 'refused';
+            const text = {
+              refused: t('board.contextual.keptRestoreRefused'),
+              notWritable: t('board.contextual.keptRestoreNotWritable'),
+              tooNew: t('board.contextual.keptRestoreTooNew'),
+              invalid: t('board.contextual.keptRestoreInvalid'),
+              otherBoard: t('board.contextual.keptRestoreOtherBoard'),
+            }[reason];
+            setRestoreToast({ text, ok: false });
+          },
+        )
+        .finally(() => setRestoring(false));
+    },
+    [t],
+  );
+  const restoreFromFile = useCallback(() => restoreInput.current?.click(), []);
   const [preview, setPreview] = useState<VersionPreview | null>(null);
   const rememberSelection = useCallback((ids: ReadonlySet<string>) => {
     liveSelection.current = ids;
@@ -925,6 +953,15 @@ function BoardScreen({
                                 },
                               ]
                             : []),
+                          ...(conn?.merge
+                            ? [
+                                {
+                                  label: t('board.menu.restoreKept'),
+                                  icon: 'upload' as const,
+                                  action: restoreFromFile,
+                                },
+                              ]
+                            : []),
                           ...(reportingOn
                             ? [
                                 { divider: true as const },
@@ -1019,6 +1056,7 @@ function BoardScreen({
       iconTarget,
       importable,
       openScriptImport,
+      restoreFromFile,
       canPresent,
       startPresentation,
       selfId,
@@ -1170,11 +1208,21 @@ function BoardScreen({
           )}
           {conn.kept && (
             <div className="board-update-notice__actions">
-              <Button
-                variant="primary"
-                icon="download"
-                onClick={() => void conn.kept?.download().catch(() => {})}
-              >
+              {/* The board takes edits again: restored from the trash, access back, room made. */}
+              {!conn.readOnly && conn.status === 'synced' && (
+                <Button
+                  variant="primary"
+                  icon="undo"
+                  busy={restoring}
+                  onClick={() => {
+                    const kept = conn.kept;
+                    if (kept) restoreKept(() => kept.restore());
+                  }}
+                >
+                  {t('board.contextual.keptRestore')}
+                </Button>
+              )}
+              <Button icon="download" onClick={() => void conn.kept?.download().catch(() => {})}>
                 {t('board.contextual.keptDownload')}
               </Button>
               <Button onClick={() => void conn.kept?.discard().catch(() => {})}>
@@ -1289,6 +1337,30 @@ function BoardScreen({
           storyboard={scriptStoryboard}
           onImport={importScript}
           onClose={() => setImportingScript(false)}
+        />
+      )}
+      <input
+        ref={restoreInput}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          event.currentTarget.value = '';
+          const merge = conn.merge;
+          if (!file) return;
+          restoreKept(async () => {
+            if (!merge) throw new RestoreError('notWritable');
+            await merge(keptFileUpdate(await file.text(), boardId));
+          });
+        }}
+      />
+      {restoreToast && (
+        <Toast
+          text={restoreToast.text}
+          ok={restoreToast.ok}
+          warning={restoreToast.ok ? undefined : 'warn'}
+          onClose={() => setRestoreToast(null)}
         />
       )}
       {scriptToast && (

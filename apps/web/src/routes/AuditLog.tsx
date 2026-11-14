@@ -1,5 +1,6 @@
 import { AUDIT_GROUPS, type AuditEvent, type AuditEvents, type AuditGroup } from '@inkadra/shared';
-import { Button, Select } from '@inkadra/ui';
+import { API_PREFIX } from '@inkadra/shared/constants';
+import { Button, Icon, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -54,12 +55,11 @@ export function AuditLog() {
   return (
     <>
       <Card tour="audit" anchor="audit.filter">
-        <div className="settings-rows">
+        <div className="settings-rows" data-tour="audit-filter">
           <Row label={t('audit.filter')} htmlFor={filterId}>
             <Select
               id={filterId}
               className="ink-input"
-              data-tour="audit-filter"
               value={group}
               onChange={(value) => setGroup(value as AuditGroup | '')}
             >
@@ -70,6 +70,17 @@ export function AuditLog() {
                 </option>
               ))}
             </Select>
+          </Row>
+          <Row label={t('audit.export')} help={t('audit.exportHelp')}>
+            {/* Every page of the filter, streamed by the server (#897): the browser saves it. */}
+            <a
+              className="ink-btn ink-btn--secondary"
+              href={`${API_PREFIX}/instance/audit.csv${group ? `?group=${group}` : ''}`}
+              download
+            >
+              <Icon name="download" size={14} />
+              {t('audit.exportCsv')}
+            </a>
           </Row>
         </div>
       </Card>

@@ -275,7 +275,8 @@ export function dropLocalBoard(name: string, after?: Promise<unknown>): Promise<
 /**
  * Sets aside edits the server will not take (#791): refused at the board's size limit, or the
  * board was lost (no access, in the trash). The board then reopens from what the server
- * confirmed, and they stay on the device to download (`downloadKept`) instead of being lost.
+ * confirmed, and they stay on the device to restore (`keptUpdate`, #898) or download
+ * (`downloadKept`) instead of being lost.
  * One copy per board: what is set aside later is merged into it, so nothing earlier is lost.
  * Rejects when it could not be stored (a full disk): the caller then keeps the board's copy.
  */
@@ -315,6 +316,78 @@ const base64 = (bytes: Uint8Array) => {
   return btoa(text);
 };
 
+/** The edits set aside for a board, read into a document of their own. */
+async function readKept(userId: string, boardId: string): Promise<Y.Doc> {
+  const doc = new Y.Doc();
+  const kept = new IndexeddbPersistence(keptName(userId, boardId), doc);
+  try {
+    await kept.whenSynced;
+  } finally {
+    await kept.destroy();
+  }
+  return doc;
+}
+
+/** Why edits set aside could not go back into their board (#898). */
+export class RestoreError extends Error {
+  constructor(readonly reason: 'refused' | 'notWritable' | 'tooNew' | 'invalid' | 'otherBoard') {
+    super(`Edits not restored: ${reason}`);
+  }
+}
+
+/**
+ * Edits set aside, as an update the board merges (#898): checked apart first, as an opened copy
+ * is. One of an older schema is migrated; one of a newer schema than this build reads is refused.
+ */
+export function restorableUpdate(update: Uint8Array, boardId: string): Uint8Array {
+  const scratch = new Y.Doc();
+  try {
+    try {
+      Y.applyUpdate(scratch, update);
+    } catch {
+      throw new RestoreError('invalid');
+    }
+    const version = getSchemaVersion(scratch);
+    if (version > CURRENT_SCHEMA_VERSION) throw new RestoreError('tooNew');
+    if (version > 0 && version < CURRENT_SCHEMA_VERSION) migrateBoardDoc(scratch, boardId);
+    return Y.encodeStateAsUpdate(scratch);
+  } finally {
+    scratch.destroy();
+  }
+}
+
+/** The edits set aside on this device for a board, ready to merge into it (#898). */
+export async function keptUpdate(userId: string, boardId: string): Promise<Uint8Array> {
+  const doc = await readKept(userId, boardId);
+  const update = Y.encodeStateAsUpdate(doc);
+  doc.destroy();
+  return restorableUpdate(update, boardId);
+}
+
+/**
+ * The edits in a file `keptFile` made, ready to merge into the board (#898). The file comes from
+ * the person's disk: anything but such a file of this board is refused.
+ */
+export function keptFileUpdate(text: string, boardId: string): Uint8Array {
+  let file: { format?: unknown; version?: unknown; boardId?: unknown; update?: unknown };
+  try {
+    file = JSON.parse(text);
+  } catch {
+    throw new RestoreError('invalid');
+  }
+  if (file?.format !== 'inkadra-kept-changes' || typeof file.update !== 'string')
+    throw new RestoreError('invalid');
+  if (typeof file.version !== 'number' || file.version > 1) throw new RestoreError('tooNew');
+  if (file.boardId !== boardId) throw new RestoreError('otherBoard');
+  let bytes: Uint8Array;
+  try {
+    bytes = Uint8Array.from(atob(file.update), (c) => c.charCodeAt(0));
+  } catch {
+    throw new RestoreError('invalid');
+  }
+  return restorableUpdate(bytes, boardId);
+}
+
 /**
  * The edits set aside for a board, as a JSON file: the board as this device had it (`content`,
  * readable) and the same document as a Yjs update (`update`, base64), which restores it exactly.
@@ -323,13 +396,7 @@ export async function keptFile(
   userId: string,
   boardId: string,
 ): Promise<{ blob: Blob; name: string }> {
-  const doc = new Y.Doc();
-  const kept = new IndexeddbPersistence(keptName(userId, boardId), doc);
-  try {
-    await kept.whenSynced;
-  } finally {
-    await kept.destroy();
-  }
+  const doc = await readKept(userId, boardId);
   const { meta, elements } = roots(doc);
   const file = {
     format: 'inkadra-kept-changes',

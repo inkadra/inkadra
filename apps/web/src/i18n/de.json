@@ -683,7 +683,8 @@
       "moveCardsOn": "Mit den Karten darunter verschieben",
       "moveCardsOff": "Nur den Titel verschieben",
       "hideGrid": "Punktraster ausblenden",
-      "showGrid": "Punktraster einblenden"
+      "showGrid": "Punktraster einblenden",
+      "restoreKept": "Änderungen aus Datei wiederherstellen…"
     },
     "zoom": {
       "label": "Zoom",
@@ -1941,10 +1942,17 @@
       "drawFailed": "Der Strich konnte nicht gespeichert werden. Versuch es noch mal; falls das Problem bleibt, lade das Board neu.",
       "updateApp": "Dieses Board braucht eine neuere Version. Aktualisiere die App, um es zu bearbeiten; ansehen kannst du es weiterhin.",
       "sizeLimit": "Dieses Board hat seine Größenbegrenzung erreicht. Ergänzungen wurden nicht gespeichert; das Board wurde neu geladen. Du kannst Inhalte löschen, um Platz zu schaffen.",
-      "sizeLimitKept": "Dieses Board hat seine Größenbegrenzung erreicht. Auf diesem Gerät gemachte Änderungen wurden nicht gespeichert: Sie bleiben auf diesem Gerät, und das Board wurde neu geladen. Lade sie herunter, um eine Kopie zu behalten, oder verwirf sie. Du kannst Inhalte löschen, um Platz zu schaffen.",
-      "kept": "Änderungen an diesem Board, die der Server nicht angenommen hat, bleiben auf diesem Gerät. Sie sind nicht im Board: Lade sie herunter, um eine Kopie zu behalten, oder verwirf sie.",
+      "sizeLimitKept": "Dieses Board hat seine Größenbegrenzung erreicht. Auf diesem Gerät gemachte Änderungen wurden nicht gespeichert: Sie bleiben auf diesem Gerät, und das Board wurde neu geladen. Lösche Inhalte, um Platz zu schaffen, und stelle sie wieder her, lade sie herunter, um eine Kopie zu behalten, oder verwirf sie.",
+      "kept": "Änderungen an diesem Board, die der Server nicht angenommen hat, bleiben auf diesem Gerät. Sie sind nicht im Board: Stelle sie wieder her, sobald das Board sie annehmen kann, lade sie herunter, um eine Kopie zu behalten, oder verwirf sie.",
       "keptDownload": "Änderungen herunterladen",
       "keptDiscard": "Verwerfen",
+      "keptRestore": "Im Board wiederherstellen",
+      "keptRestored": "Die Änderungen sind wieder im Board und gespeichert.",
+      "keptRestoreRefused": "Der Server hat diese Änderungen erneut abgelehnt: Sie bleiben auf diesem Gerät.",
+      "keptRestoreNotWritable": "Dieses Board kann gerade nicht bearbeitet werden: Die Änderungen bleiben auf diesem Gerät. Versuche es erneut, sobald du es bearbeiten kannst.",
+      "keptRestoreTooNew": "Diese Änderungen wurden mit einer neueren Version von Inkadra gemacht: Aktualisiere die App, um sie wiederherzustellen.",
+      "keptRestoreInvalid": "Diese Datei enthält keine aus Inkadra heruntergeladenen Änderungen.",
+      "keptRestoreOtherBoard": "Diese Datei enthält Änderungen an einem anderen Board: Öffne dieses Board, um sie wiederherzustellen.",
       "sizeLimitReadOnly": "Dieses Board hat seine Größenbegrenzung erreicht und ist schreibgeschützt. Ergänzungen wurden nicht gespeichert."
     },
     "sheet": {
@@ -5928,7 +5936,7 @@
           },
           "1": {
             "title": "Eingrenzen",
-            "text": "Nur Personen, Teilen, Anmeldungen oder Daten anzeigen."
+            "text": "Nur Personen, Teilen, Anmeldungen oder Daten anzeigen und als CSV exportieren."
           },
           "2": {
             "title": "Ein Jahr lang",
@@ -6800,6 +6808,9 @@
     "none": "Noch nichts aufgezeichnet.",
     "loadError": "Das Aktivitätsprotokoll konnte nicht geladen werden.",
     "more": "Ältere anzeigen",
+    "export": "Exportieren",
+    "exportHelp": "Alle Ereignisse dieses Filters als CSV-Datei für eine Tabellenkalkulation.",
+    "exportCsv": "CSV exportieren",
     "nobody": "Jemand ohne Anmeldung",
     "deletedAccount": "Ein gelöschtes Konto",
     "line": "{{what}} · {{who}}",

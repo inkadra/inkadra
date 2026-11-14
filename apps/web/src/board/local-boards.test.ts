@@ -11,8 +11,11 @@ import {
   keepAside,
   keptBoards,
   keptFile,
+  keptFileUpdate,
   localBoardName,
   openLocalBoard,
+  RestoreError,
+  restorableUpdate,
   sweepLocalBoards,
   unsavedLocalBoards,
 } from './local-boards.ts';
@@ -204,4 +207,54 @@ it('says a copy is unsaved no later than it stores the first edit (#791)', async
   await opened.close();
   await sweepLocalBoards();
   expect(titleOf(await stored(early, 'early'))).toBe('Typed while it opened');
+});
+
+/** The reason a restore was refused, or undefined when it was not (#898). */
+const refusal = (run: () => unknown) => {
+  try {
+    run();
+  } catch (err) {
+    return err instanceof RestoreError ? err.reason : 'thrown';
+  }
+};
+
+it('restores a downloaded file only into its own board, and only a file it made (#898)', async () => {
+  const doc = new Y.Doc();
+  doc.getMap('meta').set('title', 'From the file');
+  await keepAside('restorer', 'board', doc);
+  const text = await (await keptFile('restorer', 'board')).blob.text();
+  const into = new Y.Doc();
+  Y.applyUpdate(into, keptFileUpdate(text, 'board'));
+  expect(titleOf(into)).toBe('From the file');
+  expect(refusal(() => keptFileUpdate(text, 'another'))).toBe('otherBoard');
+  expect(refusal(() => keptFileUpdate('not json', 'board'))).toBe('invalid');
+  expect(refusal(() => keptFileUpdate('{"format":"inkadra-board"}', 'board'))).toBe('invalid');
+  const file = { format: 'inkadra-kept-changes', version: 1, boardId: 'board', update: '!!' };
+  expect(refusal(() => keptFileUpdate(JSON.stringify(file), 'board'))).toBe('invalid');
+  expect(refusal(() => keptFileUpdate(JSON.stringify({ ...file, version: 2 }), 'board'))).toBe(
+    'tooNew',
+  );
+});
+
+it('migrates edits set aside under an older schema before the merge, and refuses newer ones (#898)', () => {
+  const ahead = new Y.Doc();
+  ahead.getMap('meta').set('schemaVersion', CURRENT_SCHEMA_VERSION + 1);
+  expect(refusal(() => restorableUpdate(Y.encodeStateAsUpdate(ahead), 'board'))).toBe('tooNew');
+  const old = new Y.Doc();
+  old.transact(() => {
+    old.getMap('meta').set('schemaVersion', 25);
+    const plan = new Y.Map<unknown>();
+    plan.set('type', 'plan');
+    const icon = new Y.Map<unknown>();
+    icon.set('steps', [{ x: 1, y: 1 }]);
+    icon.set('note', 'Enters left');
+    plan.set('icons', Y.Array.from([icon]));
+    old.getMap('elements').set('plan-1', plan);
+  });
+  const board = new Y.Doc();
+  Y.applyUpdate(board, restorableUpdate(Y.encodeStateAsUpdate(old), 'board'));
+  expect(board.getMap('meta').get('schemaVersion')).toBe(CURRENT_SCHEMA_VERSION);
+  const plan = board.getMap('elements').get('plan-1') as Y.Map<unknown>;
+  const [icon] = (plan.get('icons') as Y.Array<Y.Map<unknown>>).toArray();
+  expect(icon?.get('stepNote')).toBe('Enters left');
 });

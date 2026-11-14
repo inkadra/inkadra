@@ -411,6 +411,15 @@ removed by the daily maintenance job, and it holds personal data:
 - for email invitations, the invited address, masked the same way;
 - names of people whose role or membership changed.
 
+**Export CSV** downloads every event of the chosen filter, not only the loaded page
+(`GET /api/v1/instance/audit.csv`, administrators only). The file is UTF-8 with a byte order
+mark, so Excel reads accents correctly. Its columns keep the same English names whatever the
+interface language, so scripts and spreadsheets that read it keep working: `at` (ISO 8601, UTC),
+`action`, `actor_id`, `actor_name`, `target_type`, `target_id`, `project_id`, `ip`, `details`
+(JSON). A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front,
+so a spreadsheet never runs it as a formula. The export holds the same personal data as the log:
+keep it as carefully.
+
 When an account is **deleted**, its entries are pseudonymized: its name, email addresses and
 the IP addresses of its actions and sign-in attempts are removed; the action, the time and one
 opaque id (the same on all of that person's entries) stay. Backups taken before the deletion
