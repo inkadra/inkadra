@@ -151,6 +151,10 @@ export async function readBoardRoles(
   return {
     rssBytes: beats.reduce((n, b) => n + b.memory, 0),
     openBoards: beats.reduce((n, b) => n + (b.presence?.length ?? 0), 0),
+    boardBytes: beats.some((b) => b.boardBytes !== undefined)
+      ? beats.reduce((n, b) => n + (b.boardBytes ?? 0), 0)
+      : null,
+    shared: beats.some((b) => b.role === 'all'),
     storeP95Ms: max(beats.map((b) => b.stores?.p95)),
     storeMaxMs: max(beats.map((b) => b.stores?.max)),
     poolWaitMaxMs: max(beats.map((b) => b.stores?.waitMax)),

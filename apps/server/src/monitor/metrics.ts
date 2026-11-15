@@ -80,6 +80,13 @@ export async function collectMetrics(
       ),
     },
     {
+      name: 'inkadra_collab_open_board_bytes',
+      help: 'Encoded size of the Yjs documents of the boards open with someone signed in on them, at the last heartbeat of a collaboration role.',
+      values: beats.flatMap((b) =>
+        b.boardBytes !== undefined ? [{ labels: who(b), value: b.boardBytes }] : [],
+      ),
+    },
+    {
       name: 'inkadra_board_stores',
       help: 'Board saves to the database between the last two heartbeats.',
       values: beats.flatMap((b) => (b.stores ? [{ labels: who(b), value: b.stores.n }] : [])),

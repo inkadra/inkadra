@@ -6386,6 +6386,7 @@
       "progress": "Progreso de la prueba de carga",
       "ms": "{{value}} ms",
       "mib": "{{value}} MiB",
+      "kib": "{{value}} KiB",
       "live": {
         "edits": "Cambios",
         "editP95": "Ida y vuelta de los cambios p95",
@@ -6429,9 +6430,16 @@
           "poolWait": "Espera de conexión (guardados)",
           "connections": "Conexiones a la base de datos",
           "memory": "Memoria (roles de tableros)",
+          "docs": "Documentos de los tableros",
           "perBoard": "Por tablero abierto"
         },
         "overLimit": "(por encima del límite)",
+        "infoOnly": "Solo informativo",
+        "perBoardInfo": {
+          "shared_process": "“Por tablero abierto” es el aumento de memoria de un proceso que también ejecuta los roles web y worker y, aquí, los clientes de la prueba: es informativo, no un límite. “Documentos de los tableros” mide los tableros en sí.",
+          "few_boards": "“Por tablero abierto” divide el aumento de memoria entre menos de {{min}} tableros, menos de lo que mueven el recolector de basura y las conexiones: es informativo, no un límite. “Documentos de los tableros” mide los tableros en sí.",
+          "other": "“Por tablero abierto” es informativo, no un límite."
+        },
         "noServer": "No se midió el lado del servidor.",
         "text": "Informe en texto"
       }

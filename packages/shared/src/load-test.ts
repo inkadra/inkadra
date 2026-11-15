@@ -21,6 +21,10 @@ export const LoadTestLimits = z
     poolWaitMaxMs: z.number(),
     rssMiB: z.number(),
     perBoardMiB: z.number(),
+    docPerBoardKiB: z
+      .number()
+      .optional()
+      .openapi({ description: 'Absent in reports of runs before it existed (#911).' }),
     errors: z.number(),
     reconnects: z.number(),
   })
@@ -54,7 +58,30 @@ export const LoadTestReport = z
         baselineRssMiB: z.number(),
         peakRssMiB: z.number(),
         peakOpenBoards: z.number(),
-        perBoardMiB: z.number().nullable(),
+        perBoardMiB: z.number().nullable().openapi({
+          description: 'Resident memory growth at the peak over the boards open then.',
+        }),
+        perBoardInfo: z
+          .string()
+          .nullable()
+          .optional()
+          .openapi({
+            description:
+              'Why `perBoardMiB` is information only and not a limit: `shared_process`, the ' +
+              'boards share an `all` ' +
+              'process with other roles (and the load clients of a run from the settings), or ' +
+              '`few_boards`, fewer than 20 were open at the peak. Null: it decides. Absent in older reports ' +
+              '(#911); unknown values may come later.',
+          }),
+        docPerBoardKiB: z
+          .number()
+          .nullable()
+          .optional()
+          .openapi({
+            description:
+              'Largest mean encoded size of an open board document (Yjs) over the run; null when ' +
+              'the server does not report it, absent in older reports (#911).',
+          }),
         storeP95Ms: z.number().nullable(),
         storeMaxMs: z.number().nullable(),
         poolWaitMaxMs: z.number().nullable(),

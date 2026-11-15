@@ -6386,6 +6386,7 @@
       "progress": "Avancement du test de charge",
       "ms": "{{value}} ms",
       "mib": "{{value}} Mio",
+      "kib": "{{value}} Kio",
       "live": {
         "edits": "Modifications",
         "editP95": "Aller-retour des modifications p95",
@@ -6429,9 +6430,16 @@
           "poolWait": "Attente de connexion (enregistrements)",
           "connections": "Connexions à la base de données",
           "memory": "Mémoire (rôles des tableaux)",
+          "docs": "Documents des tableaux",
           "perBoard": "Par tableau ouvert"
         },
         "overLimit": "(au-delà de la limite)",
+        "infoOnly": "Pour information",
+        "perBoardInfo": {
+          "shared_process": "« Par tableau ouvert » est la hausse de mémoire d’un processus qui exécute aussi les rôles web et worker et, ici, les clients du test : c’est une information, pas une limite. « Documents des tableaux » mesure les tableaux eux-mêmes.",
+          "few_boards": "« Par tableau ouvert » divise la hausse de mémoire par moins de {{min}} tableaux, moins que ce que déplacent le ramasse-miettes et les connexions : c’est une information, pas une limite. « Documents des tableaux » mesure les tableaux eux-mêmes.",
+          "other": "« Par tableau ouvert » est une information, pas une limite."
+        },
         "noServer": "Le côté serveur n’a pas été mesuré.",
         "text": "Rapport en texte"
       }

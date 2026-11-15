@@ -3,7 +3,7 @@
 How many people can work on one Inkadra instance at the same time depends on the machine, the
 database and the boards. The load test measures it for your setup: it connects editors and
 readers to an instance, the way the web app does, and reports how long edits take to come back,
-how long boards take to save and how much memory each open board costs.
+how long boards take to save and how much each open board weighs.
 
 > **Run it against a test copy of your instance, never production.** It creates an account, a
 > project with up to a thousand boards and small uploads, and puts real load on the server, the
@@ -25,8 +25,10 @@ and with protections: see [From the settings](#from-the-settings).
 \* Of the processes that hold boards (`all`, or `collab` in split mode).
 
 Every preset also fails on any error (a refused connection, a board that does not open, a failed
-upload), on more reconnects than editors, on more than 8 MiB per open board, and on a slow wait
-for a database connection (1, 2 and 5 s). The limits are generous on purpose: they catch a
+upload), on more reconnects than editors, on open board documents over 256 KiB each on average, on
+more than 8 MiB of memory growth per open board where that number is meaningful (see
+[Reading the report](#reading-the-report)), and on a slow wait for a database connection (1, 2
+and 5 s). The limits are generous on purpose: they catch a
 regression of several times on a shared CI machine, not a few percent. They live in
 [`apps/server/src/loadtest/report.ts`](../../apps/server/src/loadtest/report.ts).
 
@@ -109,19 +111,20 @@ start.
 ## Reading the report
 
 ```text
-Inkadra load test · preset small · http://localhost:3902
+Inkadra load test · preset small · http://127.0.0.1:3911
 5 editors, 2 readers, 50 boards, 60 s
 
-Edits                 299 (12 board switches, 6 uploads, 0 failed)
-Edit round trip       p50 0.7 ms · p95 1 ms · p99 1.4 ms (287 samples)   limit p95 500 ms, p99 1500 ms
-Delivery to readers   p50 1.2 ms · p95 1.8 ms · p99 2.3 ms (116 samples)   limit p95 1000 ms
+Edits                 301 (13 board switches, 6 uploads, 0 failed)
+Edit round trip       p50 0.8 ms · p95 2.1 ms · p99 3.4 ms (288 samples)   limit p95 500 ms, p99 1500 ms
+Delivery to readers   p50 1.4 ms · p95 2.8 ms · p99 18.2 ms (163 samples)   limit p95 1000 ms
 Errors                0   limit 0
 Reconnects            0   limit 5
-Board saves           p95 25.5 ms · slowest 27.1 ms   limit p95 1000 ms
-Pool wait (saves)     slowest 17.7 ms   limit 1000 ms
+Board saves           p95 32.8 ms · slowest 34.1 ms   limit p95 1000 ms
+Pool wait (saves)     slowest 24.6 ms   limit 1000 ms
 Database connections  peak 14
-Memory (board roles)  245 MiB before → peak 264 MiB   limit 1024 MiB
-Per open board        3.7 MiB over 5 boards   limit 8 MiB
+Memory (board roles)  218 MiB before → peak 238 MiB   limit 1024 MiB
+Board documents       4.8 KiB per open board (Yjs, encoded)   limit 256 KiB
+Per open board        5 MiB over 5 boards   (info) memory growth of a process shared with other roles; not a limit
 
 PASSED
 ```
@@ -136,15 +139,22 @@ PASSED
   `DATABASE_COLLAB_POOL_MAX` (`all`) or `DATABASE_POOL_MAX` (`collab`), within the
   database's `max_connections`.
 - **Memory**: resident memory of the processes holding boards before the test and at its peak.
-  **Per open board** is the growth divided by the boards open at that peak, sockets and presence
-  included; with few boards open it is rough, since the garbage collector moves memory by more
-  than a board weighs.
+- **Board documents**: the mean size of the open boards' Yjs documents, encoded, as the
+  collaboration role measures them at each heartbeat; the largest over the run. This is what a
+  board itself weighs, and it is the limit on board size. In memory a document takes a few times
+  its encoded size.
+- **Per open board**: the memory growth divided by the boards open at the peak, sockets, presence
+  and garbage included. It is a limit only when the boards have a `collab` process of their own
+  and at least 20 were open at the peak. Otherwise the report marks it `(info)` and the settings
+  show it greyed out: in an `all` process the growth also holds the web and worker roles, and for
+  a run from the settings the load clients themselves; with few boards open, uploads, socket
+  buffers and the garbage collector move memory by more than the boards weigh.
 - **Errors** lists the first ten. **Reconnects** counts connections the server or network
   dropped: a few happen; many mean a proxy timeout or a restart.
 
 The server's numbers come from the metrics every role sends with its heartbeat, every 5 s:
 `inkadra_process_resident_memory_bytes`, `inkadra_collab_open_boards`,
-`inkadra_board_store_seconds`, `inkadra_board_store_pool_wait_seconds` and `inkadra_board_stores`.
+`inkadra_collab_open_board_bytes`, `inkadra_board_store_seconds`, `inkadra_board_store_pool_wait_seconds` and `inkadra_board_stores`.
 Prometheus can watch them on a production instance too.
 
 ## Measured
@@ -162,3 +172,8 @@ image of `main` on a GitHub runner (4 cores, 16 GB), with the bundled Postgres a
 First runs, 14 November 2026. In both CI runs: 20 editors made about 3600 edits, 65 uploads and
 130 board switches without an error or a reconnect; peak database connections 14 (`all`) and 23
 (split). † Memory of the `collab` role only. \* Windows 11, server run from source.
+
+Since #911 the `all` runs show **Per open board** as information only, and **Board documents**
+decides: a `small` run in `all` mode on the workstation measured 4.8 KiB per open board
+(15 November 2026), well under the 256 KiB limit, which is there to catch a document that keeps
+growing, not boards with more content.

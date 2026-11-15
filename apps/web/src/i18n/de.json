@@ -6386,6 +6386,7 @@
       "progress": "Fortschritt des Lasttests",
       "ms": "{{value}} ms",
       "mib": "{{value}} MiB",
+      "kib": "{{value}} KiB",
       "live": {
         "edits": "Änderungen",
         "editP95": "Umlaufzeit der Änderungen p95",
@@ -6429,9 +6430,16 @@
           "poolWait": "Warten auf Verbindung (Speichern)",
           "connections": "Datenbankverbindungen",
           "memory": "Speicher (Board-Rollen)",
+          "docs": "Board-Dokumente",
           "perBoard": "Pro offenem Board"
         },
         "overLimit": "(über der Grenze)",
+        "infoOnly": "Nur zur Information",
+        "perBoardInfo": {
+          "shared_process": "„Pro offenem Board“ ist der Speicherzuwachs eines Prozesses, der auch die Web- und Worker-Rolle und hier die Testclients ausführt: nur zur Information, keine Grenze. „Board-Dokumente“ misst die Boards selbst.",
+          "few_boards": "„Pro offenem Board“ teilt den Speicherzuwachs durch weniger als {{min}} Boards, weniger als Garbage Collector und Verbindungen bewegen: nur zur Information, keine Grenze. „Board-Dokumente“ misst die Boards selbst.",
+          "other": "„Pro offenem Board“ dient nur zur Information und ist keine Grenze."
+        },
         "noServer": "Die Serverseite wurde nicht gemessen.",
         "text": "Bericht als Text"
       }

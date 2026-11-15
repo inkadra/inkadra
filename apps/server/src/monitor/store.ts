@@ -74,6 +74,8 @@ export interface Beat {
   cpu: number;
   memory: number;
   presence?: PresenceBoard[];
+  /** Encoded size of the Yjs documents of the boards in `presence` (#911); older beats lack it. */
+  boardBytes?: number;
   /** Collaboration roles only, when they stored boards since the previous beat. */
   stores?: BeatStores;
   /** The external programs it runs now (ffmpeg, LibreOffice…); older beats lack it. */

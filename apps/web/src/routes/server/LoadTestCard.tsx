@@ -411,7 +411,10 @@ export function Report({ report: r }: { report: LoadTestReport }) {
     v === null ? '–' : t('server.loadTest.ms', { value: number(v, lang, v >= 100 ? 0 : 1) });
   const mib = (v: number | null) =>
     v === null ? '–' : t('server.loadTest.mib', { value: number(v, lang, v >= 100 ? 0 : 1) });
-  const over = (v: number | null, limit: number) => v !== null && v > limit;
+  const kib = (v: number | null) =>
+    v === null ? '–' : t('server.loadTest.kib', { value: number(v, lang, v >= 100 ? 0 : 1) });
+  const over = (v: number | null, limit: number | undefined) =>
+    v !== null && limit !== undefined && v > limit;
   const times = (x: LoadTestReport['editMs']) =>
     t('server.loadTest.report.times', {
       p50: ms(x.p50),
@@ -420,7 +423,15 @@ export function Report({ report: r }: { report: LoadTestReport }) {
       count: x.n,
     });
   const s = r.server;
-  const rows: Array<{ key: string; value: string; limit: string | null; bad: boolean }> = [
+  // The memory growth per board that does not decide (#911): shown, in a neutral style.
+  const info = s?.perBoardInfo ?? null;
+  const rows: Array<{
+    key: string;
+    value: string;
+    limit: string | null;
+    bad: boolean;
+    info?: boolean;
+  }> = [
     {
       key: 'edits',
       value: t('server.loadTest.report.editsValue', {
@@ -483,14 +494,26 @@ export function Report({ report: r }: { report: LoadTestReport }) {
             limit: mib(l.rssMiB),
             bad: over(s.peakRssMiB, l.rssMiB),
           },
+          // Absent in reports from before #911.
+          ...(s.docPerBoardKiB !== undefined
+            ? [
+                {
+                  key: 'docs',
+                  value: kib(s.docPerBoardKiB),
+                  limit: l.docPerBoardKiB === undefined ? null : kib(l.docPerBoardKiB),
+                  bad: over(s.docPerBoardKiB, l.docPerBoardKiB),
+                },
+              ]
+            : []),
           {
             key: 'perBoard',
             value: t('server.loadTest.report.perBoardValue', {
               value: mib(s.perBoardMiB),
               count: s.peakOpenBoards,
             }),
-            limit: mib(l.perBoardMiB),
-            bad: over(s.perBoardMiB, l.perBoardMiB),
+            limit: info ? t('server.loadTest.report.infoOnly') : mib(l.perBoardMiB),
+            bad: !info && over(s.perBoardMiB, l.perBoardMiB),
+            info: !!info,
           },
         ]
       : []),
@@ -515,7 +538,10 @@ export function Report({ report: r }: { report: LoadTestReport }) {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.key} className={row.bad ? 'load-test__over' : undefined}>
+            <tr
+              key={row.key}
+              className={row.bad ? 'load-test__over' : row.info ? 'load-test__info' : undefined}
+            >
               <th scope="row">{t(`server.loadTest.report.rows.${row.key}`)}</th>
               <td>
                 {row.value}
@@ -529,6 +555,15 @@ export function Report({ report: r }: { report: LoadTestReport }) {
         </tbody>
       </table>
       {!s && <p className="server-hint">{t('server.loadTest.report.noServer')}</p>}
+      {info && (
+        <p className="server-hint">
+          {t(`server.loadTest.report.perBoardInfo.${info}`, {
+            // RSS_MIN_BOARDS of apps/server/src/loadtest/report.ts.
+            min: 20,
+            defaultValue: t('server.loadTest.report.perBoardInfo.other'),
+          })}
+        </p>
+      )}
       <details className="load-test__text">
         <summary>{t('server.loadTest.report.text')}</summary>
         <pre>

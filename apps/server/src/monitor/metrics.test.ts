@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import * as Y from 'yjs';
 import { renderMetrics } from './metrics.ts';
-import { StoreRecorder } from './sampler.ts';
+import { DocSizes, StoreRecorder } from './sampler.ts';
 
 describe('renderMetrics (#817)', () => {
   it('writes the Prometheus text format, escaping labels and skipping empty metrics', () => {
@@ -38,5 +39,20 @@ describe('StoreRecorder (#902)', () => {
     for (let i = 1; i <= 20; i++) stores.record(i === 7 ? 30 : 1, i * 10);
     expect(stores.take()).toEqual({ n: 20, p95: 190, max: 200, waitMax: 30 });
     expect(stores.take()).toBeUndefined();
+  });
+});
+
+describe('DocSizes (#911)', () => {
+  it('sums the encoded size of the documents, encoding again only those that changed', () => {
+    const a = new Y.Doc();
+    const b = new Y.Doc();
+    a.getMap('cards').set('n1', 'x'.repeat(1000));
+    const sizes = new DocSizes();
+    const first = sizes.total([a, b]);
+    expect(first).toBe(Y.encodeStateAsUpdate(a).byteLength + Y.encodeStateAsUpdate(b).byteLength);
+    expect(first).toBeGreaterThan(1000);
+    b.getMap('cards').set('n2', 'y'.repeat(500));
+    expect(sizes.total([a, b])).toBeGreaterThan(first + 500);
+    expect(sizes.total([])).toBe(0);
   });
 });
