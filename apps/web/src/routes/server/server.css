@@ -679,6 +679,9 @@ div.load-test__run,
   color: var(--ink-status-warn);
   font-weight: 600;
 }
+.load-test__info td {
+  color: var(--ink-text-secondary);
+}
 .load-test__text {
   margin-top: 10px;
   font-size: 12px;

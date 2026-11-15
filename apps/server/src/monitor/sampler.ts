@@ -1,6 +1,7 @@
 import { hostname } from 'node:os';
 import type { ServerRole } from '@inkadra/shared';
 import type { Logger } from 'pino';
+import * as Y from 'yjs';
 import { ChildSampler } from './children.ts';
 import {
   type ContainerReading,
@@ -95,6 +96,31 @@ export class StoreRecorder {
     this.totals = [];
     this.waitMax = 0;
     return out;
+  }
+}
+
+/**
+ * Encoded size of the open board documents (#911): what the boards themselves weigh, without the
+ * sockets, clients and garbage that the memory of the process also holds. Each size is kept
+ * until the document's state vector changes, so an idle board is not encoded every 5 s.
+ * shortcut: a deletion leaves the state vector as it is, so a board keeps its older, slightly
+ * larger size until the next insertion; switch to the document's `update` event if that matters.
+ */
+export class DocSizes {
+  private known = new WeakMap<Y.Doc, { sv: string; bytes: number }>();
+
+  total(docs: Iterable<Y.Doc>): number {
+    let bytes = 0;
+    for (const doc of docs) {
+      const sv = Buffer.from(Y.encodeStateVector(doc)).toString('base64');
+      let size = this.known.get(doc);
+      if (size?.sv !== sv) {
+        size = { sv, bytes: Y.encodeStateAsUpdate(doc).byteLength };
+        this.known.set(doc, size);
+      }
+      bytes += size.bytes;
+    }
+    return bytes;
   }
 }
 
@@ -194,6 +220,8 @@ export function startSampler(opts: {
   latency?: LatencyRecorder;
   presence?: () => PresenceBoard[];
   stores?: StoreRecorder;
+  /** Encoded bytes of the boards in `presence` (#911). */
+  boardBytes?: () => number;
   intervalMs?: number;
 }) {
   const host = hostname();
@@ -216,6 +244,7 @@ export function startSampler(opts: {
     const presence = opts.presence?.();
     const children = await tools.sample(at);
     const stores = opts.stores?.take();
+    const boardBytes = opts.boardBytes?.();
     if (previous) {
       const point = pointFrom(at, at - previous.at, previous, { container, cpu, rss });
       point.g = gpu;
@@ -234,6 +263,7 @@ export function startSampler(opts: {
         cpu: point.pc,
         memory: rss,
         ...(presence ? { presence } : {}),
+        ...(boardBytes !== undefined ? { boardBytes } : {}),
         ...(stores ? { stores } : {}),
         ...(children.length ? { children } : {}),
       });

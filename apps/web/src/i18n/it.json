@@ -6386,6 +6386,7 @@
       "progress": "Avanzamento del test di carico",
       "ms": "{{value}} ms",
       "mib": "{{value}} MiB",
+      "kib": "{{value}} KiB",
       "live": {
         "edits": "Modifiche",
         "editP95": "Andata e ritorno delle modifiche p95",
@@ -6429,9 +6430,16 @@
           "poolWait": "Attesa di connessione (salvataggi)",
           "connections": "Connessioni al database",
           "memory": "Memoria (ruoli delle board)",
+          "docs": "Documenti delle board",
           "perBoard": "Per board aperta"
         },
         "overLimit": "(oltre il limite)",
+        "infoOnly": "Solo informativo",
+        "perBoardInfo": {
+          "shared_process": "“Per board aperta” è la crescita di memoria di un processo che esegue anche i ruoli web e worker e, qui, i client del test: è un’informazione, non un limite. “Documenti delle board” misura le board stesse.",
+          "few_boards": "“Per board aperta” divide la crescita di memoria per meno di {{min}} board, meno di quanto spostano garbage collector e connessioni: è un’informazione, non un limite. “Documenti delle board” misura le board stesse.",
+          "other": "“Per board aperta” è un’informazione, non un limite."
+        },
         "noServer": "Il lato server non è stato misurato.",
         "text": "Resoconto come testo"
       }

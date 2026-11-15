@@ -28,7 +28,7 @@ import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
 import { boardProblem, recordProblem } from './monitor/problems.ts';
-import { StoreRecorder } from './monitor/sampler.ts';
+import { DocSizes, StoreRecorder } from './monitor/sampler.ts';
 import type { MonitorStore, PresenceBoard } from './monitor/store.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
@@ -1047,27 +1047,43 @@ export function createCollabServer(deps: {
   hocuspocus.shouldUnloadDocument = (document) =>
     hocuspocus.documents.get(document.name) === document && shouldUnload(document);
 
+  /** The signed-in people on a document and its board; null when nobody signed in is on it. */
+  function signedIn(document: Document) {
+    const users = new Set<string>();
+    let boardId: string | null = null;
+    for (const connection of document.getConnections() as Array<Connection<Context>>) {
+      const ctx = connection.context;
+      if (!ctx?.user) continue;
+      users.add(ctx.user.id);
+      boardId = ctx.boardId;
+    }
+    return boardId && users.size ? { boardId, users } : null;
+  }
+
   /** Who is on which board now: ids only, the web role names them for whoever may see them. */
   function presence(): PresenceBoard[] {
     const out: PresenceBoard[] = [];
     for (const document of server.hocuspocus.documents.values()) {
-      const users = new Set<string>();
-      let boardId: string | null = null;
-      for (const connection of document.getConnections() as Array<Connection<Context>>) {
-        const ctx = connection.context;
-        if (!ctx?.user) continue;
-        users.add(ctx.user.id);
-        boardId = ctx.boardId;
-      }
-      if (boardId && users.size)
-        out.push({ boardId, since: openedAt.get(document) ?? Date.now(), users: [...users] });
+      const on = signedIn(document);
+      if (on)
+        out.push({
+          boardId: on.boardId,
+          since: openedAt.get(document) ?? Date.now(),
+          users: [...on.users],
+        });
     }
     return out;
   }
 
+  const sizes = new DocSizes();
+  /** Encoded size of the boards `presence` lists (#911). */
+  const boardBytes = () =>
+    sizes.total([...server.hocuspocus.documents.values()].filter((d) => signedIn(d)));
+
   return Object.assign(server, {
     recheck: () => recheck(server),
     presence,
+    boardBytes,
     hasRoom,
     stores: storeTimes,
   });

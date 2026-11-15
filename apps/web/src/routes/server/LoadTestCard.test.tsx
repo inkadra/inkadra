@@ -200,6 +200,61 @@ it('keeps the reports of the last runs, with the lines past their limit', async 
   expect(host.textContent).toContain('Inkadra load test · preset small');
 });
 
+const memoryReport = (perBoardInfo: string | null) => ({
+    preset: 'small' as const,
+    durationS: 60,
+    editors: 5,
+    readers: 2,
+    boards: 50,
+    edits: 300,
+    switches: 12,
+    uploads: { ok: 6, failed: 0 },
+    editMs: { p50: 1, p95: 6, p99: 9, n: 280 },
+    deliveryMs: { p50: 1, p95: 2, p99: 3, n: 100 },
+    errors: 0,
+    reconnects: 0,
+    server: {
+      baselineRssMiB: 184,
+      peakRssMiB: 271,
+      peakOpenBoards: 6,
+      perBoardMiB: 14.5,
+      perBoardInfo,
+      docPerBoardKiB: 3000,
+      storeP95Ms: 49,
+      storeMaxMs: 60,
+      poolWaitMaxMs: 3,
+      peakDbConnections: 9,
+    },
+    limits: { ...limits, docPerBoardKiB: 1024 },
+    failures: [],
+    text: 'Inkadra load test · preset small',
+});
+const rowsOf = (selector: string) =>
+  [...host.querySelectorAll(`${selector} th`)].map((th) => th.textContent);
+
+it('shows memory growth per board as information when it does not decide (#911)', async () => {
+  vi.mocked(api.get).mockResolvedValue(
+    page([run({ status: 'failed', report: memoryReport('shared_process') })]),
+  );
+  await act(async () => root.render(<LoadTestCard />));
+  expect(rowsOf('.load-test__over')).toEqual(['server.loadTest.report.rows.docs']);
+  expect(rowsOf('.load-test__info')).toEqual(['server.loadTest.report.rows.perBoard']);
+  expect(host.textContent).toContain('server.loadTest.report.infoOnly');
+  expect(host.textContent).toContain('server.loadTest.report.perBoardInfo.shared_process');
+});
+
+it('keeps memory growth per board as a limit when it decides (#911)', async () => {
+  vi.mocked(api.get).mockResolvedValue(
+    page([run({ status: 'failed', report: memoryReport(null) })]),
+  );
+  await act(async () => root.render(<LoadTestCard />));
+  expect(rowsOf('.load-test__over')).toEqual([
+    'server.loadTest.report.rows.docs',
+    'server.loadTest.report.rows.perBoard',
+  ]);
+  expect(host.textContent).not.toContain('server.loadTest.report.perBoardInfo');
+});
+
 it('says when there is no worker to run it', async () => {
   vi.mocked(api.get).mockResolvedValue(page([], false));
   await act(async () => root.render(<LoadTestCard />));

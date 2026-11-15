@@ -6386,6 +6386,7 @@
       "progress": "Progresso do teste de carga",
       "ms": "{{value}} ms",
       "mib": "{{value}} MiB",
+      "kib": "{{value}} KiB",
       "live": {
         "edits": "Alterações",
         "editP95": "Ida e volta das alterações p95",
@@ -6429,9 +6430,16 @@
           "poolWait": "Espera de conexão (salvamentos)",
           "connections": "Conexões ao banco de dados",
           "memory": "Memória (papéis dos quadros)",
+          "docs": "Documentos dos quadros",
           "perBoard": "Por quadro aberto"
         },
         "overLimit": "(acima do limite)",
+        "infoOnly": "Apenas informativo",
+        "perBoardInfo": {
+          "shared_process": "“Por quadro aberto” é o aumento de memória de um processo que também executa as funções web e worker e, aqui, os clientes do teste: é informativo, não um limite. “Documentos dos quadros” mede os próprios quadros.",
+          "few_boards": "“Por quadro aberto” divide o aumento de memória por menos de {{min}} quadros, menos do que movem o coletor de lixo e as conexões: é informativo, não um limite. “Documentos dos quadros” mede os próprios quadros.",
+          "other": "“Por quadro aberto” é informativo, não um limite."
+        },
         "noServer": "O lado do servidor não foi medido.",
         "text": "Relatório em texto"
       }

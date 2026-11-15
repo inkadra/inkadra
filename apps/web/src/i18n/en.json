@@ -6386,6 +6386,7 @@
       "progress": "Load test progress",
       "ms": "{{value}} ms",
       "mib": "{{value}} MiB",
+      "kib": "{{value}} KiB",
       "live": {
         "edits": "Edits",
         "editP95": "Edit round trip p95",
@@ -6429,9 +6430,16 @@
           "poolWait": "Pool wait (saves)",
           "connections": "Database connections",
           "memory": "Memory (board roles)",
+          "docs": "Board documents",
           "perBoard": "Per open board"
         },
         "overLimit": "(over the limit)",
+        "infoOnly": "Information only",
+        "perBoardInfo": {
+          "shared_process": "Per open board is the memory growth of a process that also runs the web and worker roles, and here the test clients: it is information, not a limit. Board documents measures the boards themselves.",
+          "few_boards": "Per open board divides the memory growth by fewer than {{min}} boards, less than the garbage collector and the connections move: it is information, not a limit. Board documents measures the boards themselves.",
+          "other": "Per open board is information, not a limit."
+        },
         "noServer": "The server side was not measured.",
         "text": "Report as text"
       }

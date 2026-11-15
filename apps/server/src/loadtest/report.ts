@@ -12,8 +12,13 @@ export interface Limits {
   poolWaitMaxMs: number;
   /** Peak resident memory of the processes holding boards (from /metrics). */
   rssMiB: number;
-  /** Memory growth per open board (from /metrics). */
+  /**
+   * Resident memory growth per open board (from /metrics). Decides only when the boards have a
+   * process of their own and enough of them are open: see `rssPerBoardInfo`.
+   */
   perBoardMiB: number;
+  /** Mean encoded size of the open Yjs board documents (from /metrics, #911). */
+  docPerBoardKiB: number;
   errors: number;
   reconnects: number;
 }
@@ -42,6 +47,7 @@ export const PRESETS: Record<'small' | 'medium' | 'large', Preset> = {
       poolWaitMaxMs: 1000,
       rssMiB: 1024,
       perBoardMiB: 8,
+      docPerBoardKiB: 1024,
       errors: 0,
       reconnects: 5,
     },
@@ -59,6 +65,7 @@ export const PRESETS: Record<'small' | 'medium' | 'large', Preset> = {
       poolWaitMaxMs: 2000,
       rssMiB: 1536,
       perBoardMiB: 8,
+      docPerBoardKiB: 1024,
       errors: 0,
       reconnects: 20,
     },
@@ -76,6 +83,7 @@ export const PRESETS: Record<'small' | 'medium' | 'large', Preset> = {
       poolWaitMaxMs: 5000,
       rssMiB: 3072,
       perBoardMiB: 8,
+      docPerBoardKiB: 1024,
       errors: 0,
       reconnects: 50,
     },
@@ -115,6 +123,10 @@ export function parseMetrics(text: string): Sample[] {
 export interface ServerReading {
   rssBytes: number;
   openBoards: number;
+  /** Encoded size of the open board documents; null from a server that does not report it. */
+  boardBytes: number | null;
+  /** A board process alive now is `all`: web, worker and Settings load clients share it. */
+  shared: boolean;
   storeP95Ms: number | null;
   storeMaxMs: number | null;
   poolWaitMaxMs: number | null;
@@ -145,6 +157,10 @@ export function readServer(samples: readonly Sample[]): ServerReading {
   return {
     rssBytes: sum('inkadra_process_resident_memory_bytes'),
     openBoards: sum('inkadra_collab_open_boards'),
+    boardBytes: of('inkadra_collab_open_board_bytes').length
+      ? sum('inkadra_collab_open_board_bytes')
+      : null,
+    shared: [...alive].some((key) => key.startsWith('all@')),
     storeP95Ms: max(of('inkadra_board_store_seconds', 'p95'), 1000),
     storeMaxMs: max(of('inkadra_board_store_seconds', 'max'), 1000),
     poolWaitMaxMs: max(of('inkadra_board_store_pool_wait_seconds'), 1000),
@@ -152,11 +168,25 @@ export function readServer(samples: readonly Sample[]): ServerReading {
   };
 }
 
+/**
+ * Why the memory growth per open board is shown but does not decide (#911): `shared_process`
+ * when the boards live in an `all` process, whose memory also holds the web and worker roles and,
+ * for a run from the settings, the load clients themselves; `few_boards` when fewer than
+ * `RSS_MIN_BOARDS` were open at the peak, where sockets, uploads and the garbage collector move
+ * memory by more than the boards weigh.
+ */
+export type RssPerBoardInfo = 'shared_process' | 'few_boards';
+export const RSS_MIN_BOARDS = 20;
+
 export interface ServerSummary {
   baselineRssMiB: number;
   peakRssMiB: number;
   peakOpenBoards: number;
   perBoardMiB: number | null;
+  /** Null when `perBoardMiB` decides. */
+  perBoardInfo: RssPerBoardInfo | null;
+  /** The largest mean encoded size of an open board document over the run; null if unreported. */
+  docPerBoardKiB: number | null;
   storeP95Ms: number | null;
   storeMaxMs: number | null;
   poolWaitMaxMs: number | null;
@@ -178,6 +208,9 @@ const maxOf = (values: Array<number | null>) => {
 export function summarizeServer(baseline: ServerReading, readings: ServerReading[]): ServerSummary {
   const peak = readings.reduce((a, b) => (b.rssBytes > a.rssBytes ? b : a), baseline);
   const peakOpenBoards = Math.max(0, ...readings.map((r) => r.openBoards));
+  const docPerBoard = maxOf(
+    readings.map((r) => (r.boardBytes !== null && r.openBoards > 0 ? r.boardBytes / r.openBoards : null)),
+  );
   return {
     baselineRssMiB: baseline.rssBytes / MiB,
     peakRssMiB: peak.rssBytes / MiB,
@@ -186,6 +219,12 @@ export function summarizeServer(baseline: ServerReading, readings: ServerReading
       peak.openBoards > 0 && baseline.rssBytes > 0
         ? Math.max(0, peak.rssBytes - baseline.rssBytes) / MiB / peak.openBoards
         : null,
+    perBoardInfo: [baseline, ...readings].some((r) => r.shared)
+      ? 'shared_process'
+      : peak.openBoards < RSS_MIN_BOARDS
+        ? 'few_boards'
+        : null,
+    docPerBoardKiB: docPerBoard === null ? null : docPerBoard / 1024,
     storeP95Ms: maxOf(readings.map((r) => r.storeP95Ms)),
     storeMaxMs: maxOf(readings.map((r) => r.storeMaxMs)),
     poolWaitMaxMs: maxOf(readings.map((r) => r.poolWaitMaxMs)),
@@ -228,10 +267,17 @@ export function evaluate(r: Result, limits: Limits): string[] {
     over('board save p95', r.server.storeP95Ms, limits.storeP95Ms, ' ms');
     over('pool wait of a board save', r.server.poolWaitMaxMs, limits.poolWaitMaxMs, ' ms');
     over('peak memory', r.server.peakRssMiB, limits.rssMiB, ' MiB');
-    over('memory per open board', r.server.perBoardMiB, limits.perBoardMiB, ' MiB');
+    if (!r.server.perBoardInfo)
+      over('memory per open board', r.server.perBoardMiB, limits.perBoardMiB, ' MiB');
+    over('board document size', r.server.docPerBoardKiB, limits.docPerBoardKiB, ' KiB');
   }
   return out;
 }
+
+const INFO_TEXT: Record<RssPerBoardInfo, string> = {
+  shared_process: 'memory growth of a process shared with other roles; not a limit',
+  few_boards: `memory growth over fewer than ${RSS_MIN_BOARDS} boards; not a limit`,
+};
 
 const round = (v: number) => (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10);
 const show = (v: number | null, unit = '') => (v === null ? '–' : `${round(v)}${unit}`);
@@ -257,7 +303,10 @@ export function formatReport(r: Result, limits: Limits, failures: string[]): str
       `Pool wait (saves)     slowest ${show(s.poolWaitMaxMs, ' ms')}   limit ${limits.poolWaitMaxMs} ms`,
       `Database connections  peak ${show(s.peakDbConnections)}`,
       `Memory (board roles)  ${show(s.baselineRssMiB, ' MiB')} before → peak ${show(s.peakRssMiB, ' MiB')}   limit ${limits.rssMiB} MiB`,
-      `Per open board        ${show(s.perBoardMiB, ' MiB')} over ${s.peakOpenBoards} boards   limit ${limits.perBoardMiB} MiB`,
+      `Board documents       ${show(s.docPerBoardKiB, ' KiB')} per open board (Yjs, encoded)   limit ${limits.docPerBoardKiB} KiB`,
+      `Per open board        ${show(s.perBoardMiB, ' MiB')} over ${s.peakOpenBoards} boards   ${
+        s.perBoardInfo ? `(info) ${INFO_TEXT[s.perBoardInfo]}` : `limit ${limits.perBoardMiB} MiB`
+      }`,
     );
   } else lines.push('Server                not measured: set METRICS_TOKEN to read /metrics');
   for (const e of r.errors.slice(0, 10)) lines.push(`  error: ${e}`);
