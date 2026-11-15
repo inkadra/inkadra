@@ -15,7 +15,7 @@ import {
   VariantQuery,
   VideoFrameQuery,
 } from './assets.ts';
-import { AuditEvents, AuditEventsQuery } from './audit.ts';
+import { AuditCsvQuery, AuditEvents, AuditEventsQuery } from './audit.ts';
 import {
   BackupSettings,
   InstanceBackup,
@@ -1567,6 +1567,23 @@ registry.registerPath({
     'projects and accounts, failed sign-ins and lockouts. Kept for `retentionDays`.',
   request: { query: AuditEventsQuery },
   responses: { 200: { description: 'Audit events', ...json(AuditEvents) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/audit.csv'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: every audit event of the filter as one CSV file ' +
+    '(#897), newest first, streamed. UTF-8 with a byte order mark, CRLF line ends; columns ' +
+    '`at` (ISO 8601, UTC), `action`, `actor_id`, `actor_name`, `target_type`, `target_id`, ' +
+    '`project_id`, `ip`, `details` (JSON). A cell that starts with `=`, `+`, `-`, `@`, a tab or ' +
+    "a carriage return gets a `'` in front. Capability `audit-csv`.",
+  request: { query: AuditCsvQuery },
+  responses: {
+    200: { description: 'Audit events as CSV', content: { 'text/csv': { schema: z.string() } } },
+    ...errors,
+  },
 });
 
 // Server page (#514) ----------------------------------------------------------

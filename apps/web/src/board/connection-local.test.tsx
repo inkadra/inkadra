@@ -1,19 +1,28 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
+import { createElement, deleteElements } from '@inkadra/canvas-core';
+import { createBoardDoc } from '@inkadra/doc-schema';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { authApi, RequestError } from '../lib/api.ts';
 import { signOut } from '../lib/sign-out.ts';
 import { installWebLocks } from '../test/web-locks.ts';
 import {
   type BoardConnection,
   cachedBoards,
+  MERGE_TIMEOUT_MS,
   refusalStatus,
   useBoardConnection,
 } from './connection.ts';
-import { keptBoards, sweepLocalBoards, unsavedLocalBoards } from './local-boards.ts';
+import {
+  keepAside,
+  keptBoards,
+  RestoreError,
+  sweepLocalBoards,
+  unsavedLocalBoards,
+} from './local-boards.ts';
 
 /** The copy of a board on the device (#791): a reload, a second account, signing out. */
 type Options = {
@@ -47,6 +56,8 @@ vi.mock('@hocuspocus/provider', () => ({
   HocuspocusProvider: class {
     document: Y.Doc;
     listeners = new Map<string, (payload: unknown) => void>();
+    // What the provider says after sending an edit: the server has not confirmed it yet.
+    hasUnsyncedChanges = true;
     constructor(options: Options) {
       this.document = options.document;
       providers.push({
@@ -267,4 +278,135 @@ it('keeps the copy when the server fails rather than refuses', async () => {
   expect(await refusalStatus()).toBe('offline');
   me.get.mockRejectedValueOnce(new RequestError(403, 'forbidden', 'No'));
   expect(await refusalStatus()).toBe('denied');
+});
+
+/** Edits the server refused earlier, set aside on the device, then a board that takes them. */
+async function openWithKept(id: string, title: string) {
+  const aside = new Y.Doc();
+  aside.getMap('meta').set('title', title);
+  await keepAside(person.id, id, aside);
+  const provider = await open(id);
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'read-write' });
+    provider.onSynced();
+  });
+  await settle();
+  expect(connection?.kept).toBeTruthy();
+  return provider;
+}
+
+it('merges edits set aside into the board, deleting them once the server confirms (#898)', async () => {
+  const provider = await openWithKept('back', 'Restored from the trash');
+  let restored = false;
+  let restoring: Promise<void> = Promise.resolve();
+  await act(async () => {
+    restoring = connection!.kept!.restore().then(() => {
+      restored = true;
+    });
+  });
+  await settle();
+  expect(title()).toBe('Restored from the trash');
+  // Sent, not confirmed: still set aside.
+  expect(restored).toBe(false);
+  expect(await keptBoards(person.id)).toContain('back');
+  await act(async () => provider.emit('unsyncedChanges', { number: 0 }));
+  await act(async () => restoring);
+  await settle();
+  expect(restored).toBe(true);
+  expect(await keptBoards(person.id)).not.toContain('back');
+  expect(connection?.kept).toBeNull();
+});
+
+it('keeps edits set aside when the server refuses them again, or cannot take them (#898)', async () => {
+  const provider = await openWithKept('still-full', 'Still too big');
+  let error: unknown;
+  let restoring: Promise<void> = Promise.resolve();
+  await act(async () => {
+    restoring = connection!.kept!.restore().catch((err) => {
+      error = err;
+    });
+  });
+  await settle();
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'writeRefused', reason: 'frozen' }) }),
+  );
+  await act(async () => restoring);
+  await settle();
+  expect(error).toBeInstanceOf(RestoreError);
+  expect((error as RestoreError).reason).toBe('refused');
+  expect(await keptBoards(person.id)).toContain('still-full');
+  expect(connection?.kept).toBeTruthy();
+  // Offline: nothing is merged, and they stay.
+  const reopened = providers.at(-1)!;
+  await act(async () => reopened.onDisconnect());
+  await act(async () => {
+    restoring = connection!.kept!.restore().catch((err) => {
+      error = err;
+    });
+  });
+  await act(async () => restoring);
+  expect((error as RestoreError).reason).toBe('notWritable');
+  expect(await keptBoards(person.id)).toContain('still-full');
+});
+
+it('keeps edits set aside that merging would lose, and restores them as new cards (#898)', async () => {
+  const base = createBoardDoc('lost-card');
+  const note = createElement(base, 'note', { x: 0, y: 0 }, {}, { userId: 'someone' });
+  const aside = new Y.Doc();
+  Y.applyUpdate(aside, Y.encodeStateAsUpdate(base));
+  aside.getMap<Y.Map<unknown>>('elements').get(note.id)?.set('x', 120);
+  await keepAside(person.id, 'lost-card', aside);
+  const provider = await open('lost-card');
+  await act(async () => {
+    // The board as the server has it: the card was deleted since, to make room.
+    Y.applyUpdate(provider.document, Y.encodeStateAsUpdate(base), provider);
+    deleteElements(provider.document, [note.id], provider);
+    provider.onAuthenticated({ scope: 'read-write' });
+    provider.onSynced();
+  });
+  await settle();
+  let error: unknown;
+  await act(async () => {
+    await connection!.kept!.restore().catch((err) => {
+      error = err;
+    });
+  });
+  // Nothing merged, nothing discarded: the person is told what would be lost.
+  expect((error as RestoreError).reason).toBe('conflict');
+  expect((error as RestoreError).conflict?.deleted).toEqual([note.id]);
+  expect(provider.document.getMap('elements').size).toBe(0);
+  expect(await keptBoards(person.id)).toContain('lost-card');
+  let restoring: Promise<void> = Promise.resolve();
+  await act(async () => {
+    restoring = connection!.kept!.restore([note.id]);
+  });
+  await settle();
+  const cards = [...provider.document.getMap<Y.Map<unknown>>('elements').values()];
+  expect(cards.map((card) => [card.get('id') === note.id, card.get('x')])).toEqual([[false, 120]]);
+  expect(await keptBoards(person.id)).toContain('lost-card');
+  await act(async () => provider.emit('unsyncedChanges', { number: 0 }));
+  await act(async () => restoring);
+  await settle();
+  expect(await keptBoards(person.id)).not.toContain('lost-card');
+});
+
+it('stops waiting for a merge the server never answers, and keeps the edits (#898)', async () => {
+  await openWithKept('silent', 'Never answered');
+  const timers = vi.spyOn(globalThis, 'setTimeout');
+  let error: unknown;
+  let restoring: Promise<void> = Promise.resolve();
+  await act(async () => {
+    restoring = connection!.kept!.restore().catch((err) => {
+      error = err;
+    });
+  });
+  await settle();
+  const wait = timers.mock.calls.find(([, ms]) => ms === MERGE_TIMEOUT_MS);
+  const giveUp = wait?.[0] as (() => void) | undefined;
+  expect(giveUp).toBeDefined();
+  await act(async () => giveUp?.());
+  await act(async () => restoring);
+  expect((error as RestoreError).reason).toBe('refused');
+  expect(await keptBoards(person.id)).toContain('silent');
+  expect(connection?.kept).toBeTruthy();
 });

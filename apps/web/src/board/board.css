@@ -5678,6 +5678,14 @@ button.card__play {
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
 }
+/* What a restore of edits set aside would lose (#898): short lines between two sentences. */
+.board-update-notice p {
+  margin: 0;
+}
+.board-update-notice ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
 .board-update-notice__actions {
   display: flex;
   flex-wrap: wrap;

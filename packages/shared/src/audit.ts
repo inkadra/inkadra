@@ -7,6 +7,8 @@ import { Id, Timestamp, z } from './common.ts';
  * which sign-ins failed. Append-only; kept for `AUDIT_RETENTION_DAYS`.
  */
 export const AUDIT_CAPABILITY = 'audit-log';
+/** `GET /instance/audit.csv`: the filtered events as one CSV file (#897). */
+export const AUDIT_CSV_CAPABILITY = 'audit-csv';
 export const AUDIT_RETENTION_DAYS = 365;
 
 export const AUDIT_ACTIONS = [
@@ -96,6 +98,13 @@ export const AuditEventsQuery = z
     limit: z.coerce.number().int().min(1).max(200).optional(),
   })
   .openapi('AuditEventsQuery');
+
+/** The filters of the CSV export: those of the list, every page. */
+export const AuditCsvQuery = AuditEventsQuery.pick({
+  group: true,
+  action: true,
+  actorId: true,
+}).openapi('AuditCsvQuery');
 
 export const AuditEvents = z
   .object({

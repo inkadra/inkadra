@@ -683,7 +683,8 @@
       "moveCardsOn": "Déplacer avec les cartes dessous",
       "moveCardsOff": "Déplacer le titre seul",
       "hideGrid": "Masquer la grille de points",
-      "showGrid": "Afficher la grille de points"
+      "showGrid": "Afficher la grille de points",
+      "restoreKept": "Restaurer des modifications depuis un fichier…"
     },
     "zoom": {
       "label": "Zoom",
@@ -1941,10 +1942,30 @@
       "drawFailed": "Impossible d’enregistrer le trait. Réessayez ; si le problème persiste, rechargez le tableau.",
       "updateApp": "Ce tableau nécessite une version plus récente. Mettez à jour l’application pour le modifier ; vous pouvez continuer à le consulter.",
       "sizeLimit": "Ce tableau a atteint sa limite de taille. Les ajouts n’ont pas été enregistrés ; le tableau a été rechargé. Vous pouvez supprimer du contenu pour libérer de la place.",
-      "sizeLimitKept": "Ce tableau a atteint sa taille maximale. Les modifications faites sur cet appareil n’ont pas été enregistrées : elles sont conservées sur cet appareil, et le tableau a été rechargé. Téléchargez-les pour en garder une copie, ou supprimez-les. Vous pouvez supprimer du contenu pour faire de la place.",
-      "kept": "Les modifications de ce tableau que le serveur n’a pas acceptées sont conservées sur cet appareil. Elles ne sont pas dans le tableau : téléchargez-les pour en garder une copie, ou supprimez-les.",
+      "sizeLimitKept": "Ce tableau a atteint sa taille maximale. Les modifications faites sur cet appareil n’ont pas été enregistrées : elles sont conservées sur cet appareil, et le tableau a été rechargé. Supprimez du contenu pour faire de la place et restaurez-les, téléchargez-les pour en garder une copie, ou supprimez-les.",
+      "kept": "Les modifications de ce tableau que le serveur n’a pas acceptées sont conservées sur cet appareil. Elles ne sont pas dans le tableau : restaurez-les quand le tableau peut les accepter, téléchargez-les pour en garder une copie, ou supprimez-les.",
       "keptDownload": "Télécharger les modifications",
       "keptDiscard": "Supprimer",
+      "keptRestore": "Restaurer dans le tableau",
+      "keptRestored": "Les modifications sont de nouveau dans le tableau et enregistrées.",
+      "keptRestoreRefused": "Le serveur a de nouveau refusé ces modifications : elles restent sur cet appareil.",
+      "keptRestoreNotWritable": "Ce tableau ne peut pas être modifié pour l’instant : les modifications restent sur cet appareil. Réessayez quand vous pourrez le modifier.",
+      "keptRestoreTooNew": "Ces modifications ont été faites avec une version plus récente d’Inkadra : mettez l’app à jour pour les restaurer.",
+      "keptRestoreInvalid": "Ce fichier n’est pas un ensemble de modifications téléchargé depuis Inkadra.",
+      "keptRestoreOtherBoard": "Ce fichier contient des modifications d’un autre tableau : ouvrez ce tableau pour les restaurer.",
+      "keptRestoreTooBig": "Ce fichier est trop volumineux pour contenir les modifications d’un tableau.",
+      "keptConflict": "Non restaurées : le tableau a changé depuis que ces modifications ont été mises de côté, et les fusionner en perdrait certaines ou écraserait des modifications plus récentes. Rien n’a été changé dans le tableau.",
+      "keptConflictOlder": "Elles ont été faites avec une version antérieure d’Inkadra : les fusionner pourrait écraser des modifications plus récentes.",
+      "keptConflictDeleted_one": "{{count}} carte que vous avez modifiée a été supprimée du tableau entre-temps.",
+      "keptConflictDeleted_other": "{{count}} cartes que vous avez modifiées ont été supprimées du tableau entre-temps.",
+      "keptConflictChanged_one": "{{count}} carte que vous avez modifiée a aussi été modifiée dans le tableau entre-temps.",
+      "keptConflictChanged_other": "{{count}} cartes que vous avez modifiées ont aussi été modifiées dans le tableau entre-temps.",
+      "keptConflictSettings": "Des réglages du tableau que vous avez modifiés ont aussi été modifiés entre-temps.",
+      "keptConflictAsNew_one": "Restaurer en nouvelles cartes ajoute votre version de la carte modifiée à côté de celle du tableau, qui reste telle quelle.",
+      "keptConflictAsNew_other": "Restaurer en nouvelles cartes ajoute votre version des {{count}} cartes modifiées à côté de celles du tableau, qui restent telles quelles.",
+      "keptConflictNoCards": "Aucune carte ne peut être restaurée en nouvelle : téléchargez les modifications pour en garder une copie.",
+      "keptRestoreAsNew": "Restaurer en nouvelles cartes",
+      "keptRestoredAsNew": "Vos modifications sont de nouveau dans le tableau, en nouvelles cartes, et enregistrées.",
       "sizeLimitReadOnly": "Ce tableau a atteint sa limite de taille et est en lecture seule. Les ajouts n’ont pas été enregistrés."
     },
     "sheet": {
@@ -5612,6 +5633,14 @@
           "2": {
             "title": "Récupérer un élément",
             "text": "Vous pouvez aussi récupérer une seule carte supprimée."
+          },
+          "3": {
+            "title": "Modifications gardées sur cet appareil",
+            "text": "Quand le serveur ne peut pas accepter vos modifications (taille maximale, aucun accès, dans la corbeille), elles restent sur cet appareil. Dès que le tableau accepte de nouveau des modifications, Restaurer dans le tableau les ramène ; si le tableau a changé entre-temps, restaurez-les en nouvelles cartes."
+          },
+          "4": {
+            "title": "Depuis un fichier téléchargé",
+            "text": "Vous avez téléchargé les modifications ? Dans le menu du tableau, Restaurer des modifications depuis un fichier… les ramène dans le même tableau."
           }
         }
       },
@@ -5945,7 +5974,7 @@
           },
           "1": {
             "title": "Affiner",
-            "text": "N’afficher que les personnes, le partage, les connexions ou les données."
+            "text": "N’afficher que les personnes, le partage, les connexions ou les données, et les exporter en CSV."
           },
           "2": {
             "title": "Gardé un an",
@@ -6927,6 +6956,9 @@
     "none": "Rien d’enregistré pour l’instant.",
     "loadError": "Le journal d’activité n’a pas pu être chargé.",
     "more": "Afficher les précédents",
+    "export": "Exporter",
+    "exportHelp": "Tous les événements de ce filtre, dans un fichier CSV pour un tableur.",
+    "exportCsv": "Exporter en CSV",
     "nobody": "Quelqu’un de non connecté",
     "deletedAccount": "Un compte supprimé",
     "line": "{{what}} · {{who}}",

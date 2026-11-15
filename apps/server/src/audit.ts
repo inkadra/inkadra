@@ -208,6 +208,67 @@ export async function listAudit(
   };
 }
 
+/**
+ * The CSV columns (#897): stable English keys, the same whatever the interface language, so a
+ * script or a spreadsheet that reads the export keeps working. `at` is ISO 8601 in UTC and
+ * `details` the event's details as JSON.
+ */
+export const AUDIT_CSV_COLUMNS = [
+  'at',
+  'action',
+  'actor_id',
+  'actor_name',
+  'target_type',
+  'target_id',
+  'project_id',
+  'ip',
+  'details',
+] as const;
+
+/**
+ * One CSV cell. A value a spreadsheet would read as a formula (`=`, `+`, `-`, `@`, tab or
+ * carriage return first) gets a `'` in front (CSV injection); then quoted when it has to be.
+ */
+export function csvCell(value: string | null): string {
+  let text = value ?? '';
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+/**
+ * The events of the filter as CSV, newest first, read a page at a time so the whole log never
+ * sits in memory: UTF-8 with a byte order mark (Excel reads it as UTF-8), CRLF line ends.
+ */
+export async function* auditCsv(
+  db: Database,
+  q: { group?: AuditGroup; action?: AuditAction; actorId?: string },
+): AsyncGenerator<string> {
+  yield `\uFEFF${AUDIT_CSV_COLUMNS.join(',')}\r\n`;
+  let cursor: string | undefined;
+  do {
+    const page = await listAudit(db, { ...q, cursor, limit: 500 });
+    yield page.items
+      .map(
+        (e) =>
+          `${[
+            e.at,
+            e.action,
+            e.actor?.id ?? null,
+            e.actor?.name ?? null,
+            e.targetType,
+            e.targetId,
+            e.projectId,
+            e.ip,
+            JSON.stringify(e.details),
+          ]
+            .map(csvCell)
+            .join(',')}\r\n`,
+      )
+      .join('');
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+}
+
 /** Retention: events go after `AUDIT_RETENTION_DAYS`, a thousand at a time. */
 export async function purgeAudit(db: Database, now = new Date()) {
   const cutoff = new Date(+now - AUDIT_RETENTION_DAYS * 86_400_000);

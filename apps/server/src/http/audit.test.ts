@@ -3,7 +3,7 @@ import { AUDIT_RETENTION_DAYS, AuditEvents } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { purgeAudit, recordAudit, recordSignInEvent } from '../audit.ts';
+import { csvCell, purgeAudit, recordAudit, recordSignInEvent } from '../audit.ts';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
@@ -13,6 +13,16 @@ import { createApp } from './app.ts';
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
 const url = process.env.DATABASE_URL;
+
+it('writes CSV cells a spreadsheet never runs as formulas (#897)', () => {
+  expect(csvCell(null)).toBe('');
+  expect(csvCell('plain')).toBe('plain');
+  for (const lead of ['=', '+', '-', '@', '\t']) expect(csvCell(`${lead}1`)).toBe(`'${lead}1`);
+  expect(csvCell('\r1')).toBe(`"'\r1"`);
+  expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
+  expect(csvCell('a,b')).toBe('"a,b"');
+  expect(csvCell('two\nlines')).toBe('"two\nlines"');
+});
 
 describe.skipIf(!url)('audit log (#806, needs DATABASE_URL)', () => {
   const config = loadConfig({
@@ -67,6 +77,43 @@ describe.skipIf(!url)('audit log (#806, needs DATABASE_URL)', () => {
   it('is for administrators only', async () => {
     expect((await request('member', 'GET', '/instance/audit')).statusCode).toBe(403);
     expect((await request(null, 'GET', '/instance/audit')).statusCode).toBe(401);
+  });
+
+  it('exports every event of the filter as CSV, for administrators only (#897)', async () => {
+    expect((await request('member', 'GET', '/instance/audit.csv')).statusCode).toBe(403);
+    expect((await request(null, 'GET', '/instance/audit.csv')).statusCode).toBe(401);
+    // More than one page of the export (500), with a name that reads as a formula.
+    await db.insert(auditEvent).values(
+      Array.from({ length: 501 }, (_, i) => ({
+        action: 'token.created',
+        actorId: people.admin?.id,
+        actorName: '=cmd|calc',
+        targetType: 'token',
+        targetId: `csv-${i}`,
+        details: { label: `token, ${i}` },
+      })),
+    );
+    await recordAudit(db, { action: 'invitation.created', targetId: 'csv-other' });
+    const response = await request('admin', 'GET', '/instance/audit.csv?group=security');
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('text/csv; charset=utf-8');
+    expect(response.headers['content-disposition']).toMatch(
+      /^attachment; filename="inkadra-activity-\d{4}-\d{2}-\d{2}\.csv"$/,
+    );
+    const [header, ...rows] = response.body.trimEnd().split('\r\n');
+    expect(header).toBe(
+      '﻿at,action,actor_id,actor_name,target_type,target_id,project_id,ip,details',
+    );
+    const tokens = rows.filter((r) => r.includes(',token.created,'));
+    expect(tokens).toHaveLength(501);
+    // Filtered: an invitation is not in the security group.
+    expect(rows.some((r) => r.includes('invitation.created'))).toBe(false);
+    const [at, , actorId, actorName] = tokens[0]?.split(',') ?? [];
+    expect(new Date(at ?? '').toISOString()).toBe(at);
+    expect(actorId).toBe(people.admin?.id);
+    expect(actorName).toBe(`'=cmd|calc`);
+    expect(tokens[0]).toMatch(/,"\{""label"":""token, \d+""\}"$/);
+    await db.execute(sql`delete from audit_event where target_id like 'csv-%'`);
   });
 
   it('records a role change with who did it and what changed', async () => {

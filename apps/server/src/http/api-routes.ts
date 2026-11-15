@@ -2,6 +2,7 @@ import { CURRENT_SCHEMA_VERSION, MIN_WRITER_SCHEMA } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
   AUDIT_CAPABILITY,
+  AUDIT_CSV_CAPABILITY,
   BACKUP_TARGETS_CAPABILITY,
   BOARD_WRITERS_CAPABILITY,
   CLASSIFICATION_DELETE_CAPABILITY,
@@ -177,6 +178,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         SCHEDULE_SOURCES_CAPABILITY,
         // GET /instance/audit: administrative and security actions (#806).
         AUDIT_CAPABILITY,
+        // GET /instance/audit.csv: the filtered events as one CSV file (#897).
+        AUDIT_CSV_CAPABILITY,
         BACKUP_TARGETS_CAPABILITY,
         // Settings → Server runs the load test (#908): only where a worker can run it.
         ...(deps.jobs.runLoadTest ? [LOAD_TEST_CAPABILITY] : []),

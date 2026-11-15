@@ -21584,6 +21584,142 @@
         }
       }
     },
+    "/api/v1/instance/audit.csv": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session: every audit event of the filter as one CSV file (#897), newest first, streamed. UTF-8 with a byte order mark, CRLF line ends; columns `at` (ISO 8601, UTC), `action`, `actor_id`, `actor_name`, `target_type`, `target_id`, `project_id`, `ip`, `details` (JSON). A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front. Capability `audit-csv`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "members",
+                "sharing",
+                "security",
+                "data"
+              ]
+            },
+            "required": false,
+            "name": "group",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "member.updated",
+                "settings.changed",
+                "project.deleted",
+                "project.member_set",
+                "project.member_removed",
+                "board.grant_set",
+                "board.grant_removed",
+                "invitation.created",
+                "invitation.revoked",
+                "share_link.created",
+                "share_link.changed",
+                "share_link.removed",
+                "token.created",
+                "token.revoked",
+                "account.deleted",
+                "backup.started",
+                "backup.restored",
+                "loadtest.started",
+                "loadtest.stopped",
+                "loadtest.finished",
+                "auth.sign_in_failed",
+                "auth.locked_out"
+              ]
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": false,
+            "name": "actorId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit events as CSV",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/instance/server": {
       "get": {
         "tags": [

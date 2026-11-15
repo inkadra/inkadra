@@ -135,6 +135,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'unavailable-errors',
         'schedule-sources',
         'audit-log',
+        'audit-csv',
         'backup-targets',
       ],
     });

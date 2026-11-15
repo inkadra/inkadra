@@ -1,5 +1,7 @@
+import { Readable } from 'node:stream';
 import {
   API_PREFIX,
+  AuditCsvQuery,
   AuditEventsQuery,
   ClassificationCatalogs,
   ClassificationsQuery,
@@ -16,7 +18,7 @@ import {
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { live } from '../access.ts';
-import { changes, listAudit, recordAudit } from '../audit.ts';
+import { auditCsv, changes, listAudit, recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import {
   deletedIds,
@@ -289,6 +291,17 @@ export function registerInstanceAdminRoutes(
     await admin(req);
     reply.header('cache-control', 'private, no-store');
     return listAudit(db, AuditEventsQuery.parse(req.query ?? {}));
+  });
+  // The same events as a CSV file, every page of the filter, streamed (#897).
+  app.get(`${API_PREFIX}/instance/audit.csv`, async (req, reply) => {
+    await admin(req);
+    const query = AuditCsvQuery.parse(req.query ?? {});
+    const day = new Date().toISOString().slice(0, 10);
+    reply
+      .header('cache-control', 'private, no-store')
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', `attachment; filename="inkadra-activity-${day}.csv"`);
+    return reply.send(Readable.from(auditCsv(db, query)));
   });
   app.patch(`${API_PREFIX}/instance/members/:userId`, async (req) => {
     const actor = await admin(req);
