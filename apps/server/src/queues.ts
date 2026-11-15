@@ -8,6 +8,7 @@ import { sweepAccessExpiry } from './access-expiry.ts';
 import { purgeAudit } from './audit.ts';
 import {
   type BackupDeps,
+  type BackupRemote,
   backupCron,
   readBackupSettings,
   reapStaleBackups,
@@ -380,8 +381,10 @@ export interface TransferWorkerDeps {
   /** STORAGE_LIMIT and STORAGE_LIMIT_PER_USER, which imports respect (decision 0081). */
   storageEnv?: StorageEnv;
   migrationsFolder: string;
-  /** Files live in S3: copy backups to the bucket too. */
-  bucket: boolean;
+  /** BACKUP_DIR or `DATA_DIR/backups` (#899). */
+  backupDir: string;
+  /** Where archives are copied once verified (`backupRemote`), or null. */
+  backupRemote: BackupRemote | null;
   /** Backups dump the database over a connection of their own. */
   databaseUrl: string;
 }
@@ -421,9 +424,9 @@ export async function startWorkers(
   const backupDeps: BackupDeps | undefined = deps.transfers && {
     db: deps.db,
     storage: deps.storage,
-    dataDir: deps.transfers.dataDir,
+    backupDir: deps.transfers.backupDir,
     migrationsFolder: deps.transfers.migrationsFolder,
-    bucket: deps.transfers.bucket,
+    remote: deps.transfers.backupRemote,
     databaseUrl: deps.transfers.databaseUrl,
     log,
   };
@@ -470,7 +473,7 @@ export async function startWorkers(
         return backupJob(backupDeps, (job.data as JobPayloads['maintenance:backup']).backupId);
       if (job.name === 'transfer-sweep' && deps.transfers) {
         await reapStaleBackups(deps.db);
-        await sweepPartialBackups(deps.transfers.dataDir);
+        await sweepPartialBackups(deps.transfers.backupDir);
         return sweepTransfers({
           db: deps.db,
           dataDir: deps.transfers.dataDir,
@@ -1082,10 +1085,10 @@ export function inlineJobs(
                 {
                   db: deps.db,
                   storage: deps.storage,
-                  dataDir: transfers.dataDir,
+                  backupDir: transfers.backupDir,
                   migrationsFolder: transfers.migrationsFolder,
                   databaseUrl: transfers.databaseUrl,
-                  bucket: transfers.bucket,
+                  remote: transfers.backupRemote,
                   log,
                 },
                 backupId,

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { VideoRung } from '@inkadra/shared';
@@ -11,9 +11,13 @@ import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
 import {
+  archiveToRestore,
   backupBeforeMigrating,
-  backupsDir,
+  backupDirOf,
+  backupRemote,
+  checkBackupDir,
   restoreBackup,
+  restoreBackupFiles,
   runBackup,
   startBackup,
 } from './backup.ts';
@@ -183,6 +187,11 @@ async function main() {
   } else if (leaseRoles.length > 0)
     log.warn('REDIS_URL is not set: run only one inkadra process for this instance');
 
+  // The roles that write backups (the one before an upgrade, nightly, manual) refuse to start
+  // without a folder they can write to (#899).
+  if (['migrate', 'web', 'all', 'worker'].includes(command))
+    await checkBackupDir(backupDirOf(config));
+
   if (command === 'migrate' || command === 'web' || command === 'all') {
     // Alive, not ready, while the backup before an upgrade and the migrations run (#805): a
     // long backup must not get the container marked unhealthy and restarted.
@@ -200,7 +209,7 @@ async function main() {
         productionBoards: config.PRODUCTION_BOARD_MOVE,
         log,
         beforeMigrating: backupBeforeMigrating(
-          { storage: createStorage(config), log, ...transferDeps(config) },
+          { storage: createStorage(config), log, ...backupDeps(config) },
           { skip: config.SKIP_PRE_MIGRATION_BACKUP },
         ),
       });
@@ -539,7 +548,7 @@ async function main() {
     store: monitor,
     log,
     latency,
-    ...(collab ? { presence: collab.presence } : {}),
+    ...(collab ? { presence: collab.presence, stores: collab.stores } : {}),
   });
   closers.unshift(async () => sampler.stop());
   if (command === 'worker') {
@@ -558,6 +567,16 @@ async function main() {
   stop.ready();
 }
 
+/** What a backup needs from the configuration (#899). */
+function backupDeps(config: Config, remote = backupRemote(config)) {
+  return {
+    backupDir: backupDirOf(config),
+    remote,
+    migrationsFolder,
+    databaseUrl: config.DATABASE_URL,
+  };
+}
+
 function transferDeps(config: Config) {
   return {
     dataDir: config.DATA_DIR,
@@ -568,23 +587,44 @@ function transferDeps(config: Config) {
       STORAGE_LIMIT_PER_USER: config.STORAGE_LIMIT_PER_USER,
     },
     migrationsFolder,
-    bucket: config.STORAGE_DRIVER === 's3',
+    backupDir: backupDirOf(config),
+    backupRemote: backupRemote(config),
     databaseUrl: config.DATABASE_URL,
   };
 }
 
 async function backupCommand(config: Config, log: Logger, args: string[]) {
   const [action, file] = args;
+  const dir = backupDirOf(config);
+  const remote = backupRemote(config);
+  if (action === 'list' && args.length === 1) {
+    // The archives on this server and in the backup bucket (#899), oldest first.
+    const local = (await readdir(dir).catch(() => [] as string[])).filter((n) =>
+      /^inkadra-backup-.*\.zip$/.test(n),
+    );
+    for (const name of local.sort())
+      process.stdout.write(`${join(dir, name)}\t${(await stat(join(dir, name))).size}\n`);
+    if (remote?.storage.list)
+      for (const o of (await remote.storage.list(remote.prefix)).sort((a, b) =>
+        a.key.localeCompare(b.key),
+      ))
+        if (/\.zip$/.test(o.key))
+          process.stdout.write(`${remote.label}${o.key.slice(remote.prefix.length)}\t${o.size}\n`);
+    return;
+  }
   if (action === 'restore' && file && args.length === 2) {
     const tmpDir = join(config.DATA_DIR, 'tmp');
     await mkdir(tmpDir, { recursive: true });
+    const archive = await archiveToRestore(file, dir, remote, log);
     const report = await restoreBackup({
-      file,
+      file: archive.path,
       databaseUrl: config.DATABASE_URL,
       migrationsFolder,
       storage: createStorage(config),
       tmpDir,
       log,
+      // Hashing what storage already has costs a read: cheap on a local disk only.
+      hashExisting: config.STORAGE_DRIVER === 'local',
     });
     log.info(report, 'backup restored');
     // Boards a shutdown kept on disk belong to the database just replaced: set aside, not
@@ -597,36 +637,83 @@ async function backupCommand(config: Config, log: Logger, args: string[]) {
         if (err.code !== 'ENOENT') throw err;
       },
     );
-    if (report.files.missing > 0)
-      log.warn(
-        { missing: report.files.missing, examples: report.files.examples },
-        'some files listed by the backup are not in storage: restore the data volume or bucket too',
-      );
-    if (report.files.unverified > 0)
-      log.warn(
-        { unverified: report.files.unverified },
-        'storage did not answer for some listed files: they were not checked',
-      );
+    await reportFiles(report.files, archive, file, log);
+    return;
+  }
+  if (action === 'restore-files' && file && args.length === 2) {
+    const archive = await archiveToRestore(file, dir, remote, log);
+    const files = await restoreBackupFiles({
+      file: archive.path,
+      storage: createStorage(config),
+      log,
+      hashExisting: config.STORAGE_DRIVER === 'local',
+    });
+    log.info(files, 'files of the backup restored');
+    await reportFiles(files, archive, file, log);
     return;
   }
   if (action === 'create' && args.length === 1) {
+    await checkBackupDir(dir);
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     const { db, sql } = createDatabase(config.DATABASE_URL, 2);
     try {
       const row = await startBackup(db, 'manual', null);
       if (!row) throw new Error('A backup is already running.');
       const done = await runBackup(
-        { db, storage: createStorage(config), log, ...transferDeps(config) },
+        { db, storage: createStorage(config), log, ...backupDeps(config, remote) },
         row.id,
       );
       if (done?.status !== 'ready') throw new Error('The backup failed, see the log above.');
-      log.info({ file: join(backupsDir(config.DATA_DIR), done.fileName ?? '') }, 'backup written');
+      log.info({ file: join(dir, done.fileName ?? '') }, 'backup written');
     } finally {
       await sql.end({ timeout: 5 });
     }
     return;
   }
-  throw new Error('Usage: inkadra backup create | inkadra backup restore <file>');
+  throw new Error(
+    'Usage: inkadra backup create | inkadra backup list | inkadra backup restore <file or name> | inkadra backup restore-files <file or name>',
+  );
+}
+
+/**
+ * Says what a restore left out (#899). Files that could not be written make the command exit
+ * with 1 and keep a downloaded archive for `backup restore-files`; otherwise the download, a
+ * copy of what the bucket keeps, is removed.
+ */
+async function reportFiles(
+  files: {
+    failed: number;
+    failedExamples: string[];
+    missing: number;
+    unverified: number;
+    examples: string[];
+  },
+  archive: { path: string; downloaded: boolean },
+  name: string,
+  log: Logger,
+) {
+  if (files.missing > 0)
+    log.warn(
+      { missing: files.missing, examples: files.examples },
+      'some files listed by the backup are not in storage: restore the data volume or bucket too',
+    );
+  if (files.unverified > 0)
+    log.warn(
+      { unverified: files.unverified },
+      'storage did not answer for some listed files: they were not checked',
+    );
+  if (files.failed > 0) {
+    log.error(
+      { failed: files.failed, examples: files.failedExamples, archive: archive.path },
+      `some files of the backup were not restored: run "backup restore-files ${name}" again`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (archive.downloaded) {
+    await rm(archive.path, { force: true });
+    log.info({ file: archive.path }, 'downloaded backup removed: the bucket keeps it');
+  }
 }
 
 main().catch((err) => {

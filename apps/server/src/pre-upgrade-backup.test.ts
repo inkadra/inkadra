@@ -17,6 +17,7 @@ import pino from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import {
   applyBackupRetention,
+  type BackupRemote,
   backupBeforeMigrating,
   backupsDir,
   liveTableBytes,
@@ -63,9 +64,10 @@ function deps(databaseUrl: string, dataDir = mkdtempSync(join(tmpdir(), 'pre-upg
   return {
     databaseUrl,
     dataDir,
+    backupDir: backupsDir(dataDir),
     storage: localStorage(join(mkdtempSync(join(tmpdir(), 'pre-upgrade-files-')), 'files')),
     migrationsFolder: folder,
-    bucket: false,
+    remote: null as BackupRemote | null,
     log,
   };
 }
@@ -246,7 +248,8 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
     const fresh = await freshDatabase(url ?? '', 'pre_upgrade_loop');
     await runMigrations(fresh, older);
     const { older: broken } = migrationsUpTo(Number.POSITIVE_INFINITY, true);
-    const d = { ...deps(fresh), bucket: true };
+    const base = deps(fresh);
+    const d = { ...base, remote: { storage: base.storage, prefix: 'backups/', label: 'test' } };
     const step = { beforeMigrating: backupBeforeMigrating(d) };
     // A restart loop: each start fails on the migration itself, never on a second backup.
     for (let i = 0; i < 3; i++)

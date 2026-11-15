@@ -136,6 +136,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'schedule-sources',
         'audit-log',
         'audit-csv',
+        'backup-targets',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();

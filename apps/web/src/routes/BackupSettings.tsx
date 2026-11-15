@@ -87,6 +87,10 @@ export function BackupSettings() {
   const size = (bytes: number | null) =>
     bytes === null ? null : formatStorage(bytes, i18n.language);
   const last = data.items.find((b) => b.status !== 'running') ?? null;
+  // Retention multiplies the space (#899): each kept backup holds its own copy of the files.
+  const kept = data.items.filter((b) => b.status === 'ready' && b.fileName);
+  const usedBytes = kept.reduce((sum, b) => sum + (b.size ?? 0), 0);
+  const tableBytes = Math.max(0, (kept[0]?.size ?? 0) - (kept[0]?.media?.bytes ?? 0));
   const retentionChoices = RETENTION_CHOICES.includes(settings.retention)
     ? RETENTION_CHOICES
     : [...RETENTION_CHOICES, settings.retention].sort((a, b) => a - b);
@@ -189,6 +193,32 @@ export function BackupSettings() {
               ))}
             </Select>
           </Row>
+          {/* Older servers know no such setting (#899): the row is not offered there. */}
+          {settings.includeMedia !== undefined && (
+            <Row
+              anchor="backups.media"
+              label={t('backups.media')}
+              help={
+                data.mediaBytes === undefined
+                  ? t('backups.mediaHelpPlain')
+                  : `${t('backups.mediaHelp', { size: size(data.mediaBytes) })} ${t(
+                      'backups.mediaKept',
+                      {
+                        count: settings.retention,
+                        total: size((tableBytes + data.mediaBytes) * settings.retention),
+                        used: size(usedBytes),
+                      },
+                    )}`
+              }
+            >
+              <Switch
+                data-tour="backups-media"
+                aria-label={t('backups.media')}
+                checked={settings.includeMedia}
+                onChange={(e) => void save({ includeMedia: e.target.checked })}
+              />
+            </Row>
+          )}
         </div>
         {startError && (
           <p role="alert" className="settings-card__pad backup-settings__error">
@@ -210,6 +240,7 @@ export function BackupSettings() {
                     {[
                       t(`backups.trigger.${b.beforeUpgrade ? 'preUpgrade' : b.trigger}`),
                       size(b.size),
+                      b.media ? t('backups.withMedia', { count: b.media.count }) : null,
                       b.copiedToBucket ? t('backups.inBucket') : null,
                       !b.verification
                         ? null
@@ -251,7 +282,12 @@ export function BackupSettings() {
         )}
       </Card>
       <p className="settings-footnote">
-        {t(data.bucket ? 'backups.whereBucket' : 'backups.where')}{' '}
+        {data.directory
+          ? t(data.remote ? 'backups.whereIn' : 'backups.whereLocal', {
+              directory: data.directory,
+              bucket: data.remote,
+            })
+          : t(data.bucket ? 'backups.whereBucket' : 'backups.where')}{' '}
         <code className="settings-env">node /app/dist/main.js backup restore &lt;file&gt;</code>
       </p>
     </>

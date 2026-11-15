@@ -187,6 +187,7 @@ export const SETTINGS: SettingEntry[] = [
   s('backups.nightly', 'backups.nightly'),
   s('backups.time', 'backups.time'),
   s('backups.keep', 'backups.keep'),
+  s('backups.media', 'backups.media'),
   s('backups.history', 'backups.history'),
   s('server.health', 'server.how.title'),
   s('server.people', 'server.people.title'),

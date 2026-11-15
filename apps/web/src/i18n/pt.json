@@ -4258,7 +4258,7 @@
   },
   "backups": {
     "title": "Backups",
-    "cardLead": "Cada backup contém todo o banco de dados e é relido depois de escrito. Os arquivos ficam onde estão: faça backup também do volume de dados ou do bucket. Arquivos excluídos são mantidos enquanto um backup guardado precisar deles.",
+    "cardLead": "Cada backup contém toda a base de dados e é relido depois de escrito. Os ficheiros ficam onde estão, a menos que os incluas: faz também backup do volume de dados ou do bucket. Os ficheiros eliminados são mantidos enquanto um backup guardado precisar deles.",
     "now": "Fazer backup agora",
     "running": "Fazendo backup…",
     "busy": "Já há um backup em andamento.",
@@ -4277,8 +4277,15 @@
     "keepHelp": "Os backups mais antigos são removidos depois que um novo é concluído.",
     "keepCount_one": "o último backup",
     "keepCount_other": "os últimos {{count}} backups",
+    "media": "Incluir ficheiros",
+    "mediaHelp": "Os ficheiros enviados e as suas miniaturas também entram em cada backup: agora cerca de {{size}} a mais. As cópias reproduzíveis dos vídeos são refeitas depois de um restauro.",
+    "mediaHelpPlain": "Os ficheiros enviados e as suas miniaturas também entram em cada backup. As cópias reproduzíveis dos vídeos são refeitas depois de um restauro.",
+    "mediaKept_one": "Guardando só o último backup, são cerca de {{total}} no total; os backups guardados ocupam agora {{used}}.",
+    "mediaKept_other": "Cada backup guardado tem a sua própria cópia: cerca de {{total}} para os últimos {{count}}, enquanto os backups guardados ocupam agora {{used}}.",
     "history": "Histórico",
     "inBucket": "copiado para o bucket",
+    "withMedia_one": "com {{count}} ficheiro",
+    "withMedia_other": "com {{count}} ficheiros",
     "trigger": {
       "scheduled": "Noturno",
       "manual": "Manual",
@@ -4292,11 +4299,13 @@
     },
     "where": "Os backups não podem ser baixados pelo navegador: copie-os de DATA_DIR/backups no servidor. Restaure em um banco de dados vazio com",
     "whereBucket": "Os backups não podem ser baixados pelo navegador: copie-os de DATA_DIR/backups ou de backups/ no bucket. Restaure em um banco de dados vazio com",
+    "whereLocal": "Os backups não se descarregam no navegador: copia-os de {{directory}} no servidor. Restaura numa base de dados vazia com",
+    "whereIn": "Os backups não se descarregam no navegador: copia-os de {{directory}} no servidor ou de {{bucket}}. Restaura numa base de dados vazia com",
     "failure": {
       "interrupted": "O servidor parou durante a execução. Inicie de novo.",
       "stalled": "Parou de avançar e foi cancelado. Verifique o log do servidor para este backup.",
-      "no_space": "O volume de dados está cheio.",
-      "permission": "O servidor não consegue gravar na pasta de dados (DATA_DIR/backups).",
+      "no_space": "Não há espaço livre suficiente na pasta dos backups.",
+      "permission": "O servidor não consegue escrever na sua pasta de backups (BACKUP_DIR).",
       "internal": "Algo deu errado. O log do servidor explica o quê, com o id deste backup.",
       "inconsistent": "Alguns quadros ou comentários apontam uns para os outros em um ciclo e não podem ser salvos em ordem. O log do servidor indica a tabela.",
       "corrupt": "O arquivo não foi relido como foi escrito, por isso não foi mantido. Verifique o volume de dados."
@@ -5742,6 +5751,10 @@
           "2": {
             "title": "Já",
             "text": "Faça uma agora, antes de uma atualização."
+          },
+          "3": {
+            "title": "Também os ficheiros",
+            "text": "Põe os ficheiros enviados nos backups, não só a base de dados."
           }
         }
       },

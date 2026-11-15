@@ -4258,7 +4258,7 @@
   },
   "backups": {
     "title": "Copias de seguridad",
-    "cardLead": "Cada copia contiene toda la base de datos y se relee tras escribirse. Los archivos se quedan donde están: haz también copia del volumen de datos o del bucket. Los archivos eliminados se conservan mientras una copia guardada los necesite.",
+    "cardLead": "Cada copia de seguridad contiene toda la base de datos y se vuelve a leer tras escribirla. Los archivos se quedan donde están salvo que los incluyas: haz también copia del volumen de datos o del bucket. Los archivos eliminados se conservan mientras una copia guardada los necesite.",
     "now": "Hacer copia ahora",
     "running": "Haciendo copia…",
     "busy": "Ya hay una copia en curso.",
@@ -4277,8 +4277,15 @@
     "keepHelp": "Las copias más antiguas se eliminan cuando una nueva termina bien.",
     "keepCount_one": "la última copia",
     "keepCount_other": "las últimas {{count}} copias",
+    "media": "Incluir archivos",
+    "mediaHelp": "Los archivos subidos y sus miniaturas también entran en cada copia: ahora unos {{size}} más. Las copias reproducibles de los vídeos se vuelven a crear tras una restauración.",
+    "mediaHelpPlain": "Los archivos subidos y sus miniaturas también entran en cada copia. Las copias reproducibles de los vídeos se vuelven a crear tras una restauración.",
+    "mediaKept_one": "Guardando solo la última copia, son unos {{total}} en total; las copias guardadas ocupan ahora {{used}}.",
+    "mediaKept_other": "Cada copia guardada tiene sus propios archivos: unos {{total}} para las últimas {{count}}, mientras que ahora las copias guardadas ocupan {{used}}.",
     "history": "Historial",
     "inBucket": "copiada al bucket",
+    "withMedia_one": "con {{count}} archivo",
+    "withMedia_other": "con {{count}} archivos",
     "trigger": {
       "scheduled": "Nocturna",
       "manual": "Manual",
@@ -4292,11 +4299,13 @@
     },
     "where": "Las copias no se descargan desde el navegador: cópialas de DATA_DIR/backups en el servidor. Restaura en una base de datos vacía con",
     "whereBucket": "Las copias no se descargan desde el navegador: cópialas de DATA_DIR/backups o de backups/ en el bucket. Restaura en una base de datos vacía con",
+    "whereLocal": "Las copias no se descargan desde el navegador: cópialas desde {{directory}} en el servidor. Restaura en una base de datos vacía con",
+    "whereIn": "Las copias no se descargan desde el navegador: cópialas desde {{directory}} en el servidor o desde {{bucket}}. Restaura en una base de datos vacía con",
     "failure": {
       "interrupted": "El servidor se detuvo mientras estaba en curso. Iníciala de nuevo.",
       "stalled": "Dejó de avanzar y se canceló. Revisa el registro del servidor para esta copia.",
-      "no_space": "El volumen de datos está lleno.",
-      "permission": "El servidor no puede escribir en su carpeta de datos (DATA_DIR/backups).",
+      "no_space": "No hay suficiente espacio libre en la carpeta de copias.",
+      "permission": "El servidor no puede escribir en su carpeta de copias (BACKUP_DIR).",
       "internal": "Algo salió mal. El registro del servidor indica qué, con el id de esta copia.",
       "inconsistent": "Algunos tableros o comentarios se apuntan entre sí en un bucle y no se pueden guardar en orden. El registro del servidor indica la tabla.",
       "corrupt": "El archivo no se pudo releer tal como se escribió, así que no se conservó. Revisa el volumen de datos."
@@ -5742,6 +5751,10 @@
           "2": {
             "title": "Ahora mismo",
             "text": "Haz una ahora, antes de una actualización."
+          },
+          "3": {
+            "title": "También los archivos",
+            "text": "Mete los archivos subidos en las copias, no solo la base de datos."
           }
         }
       },

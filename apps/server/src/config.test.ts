@@ -25,6 +25,39 @@ describe('UPLOAD_MAX_SIZE', () => {
   });
 });
 
+describe('backup folder and bucket (#899)', () => {
+  it('defaults to DATA_DIR/backups and the files bucket, and wants both keys and a folder prefix', async () => {
+    const { backupDirOf, backupRemoteLabel } = await import('./backup.ts');
+    const local = loadConfig({ ...base, DATA_DIR: '/data' });
+    expect(backupDirOf(local)).toMatch(/[/\\]data[/\\]backups$/);
+    expect(backupRemoteLabel(local)).toBeNull();
+    expect(backupDirOf(loadConfig({ ...base, BACKUP_DIR: '/mnt/backups' }))).toBe('/mnt/backups');
+    const remote = loadConfig({
+      ...base,
+      BACKUP_S3_BUCKET: 'archives',
+      BACKUP_S3_ACCESS_KEY_ID: 'id',
+      BACKUP_S3_SECRET_ACCESS_KEY: 'secret',
+    });
+    expect(backupRemoteLabel(remote)).toBe('s3://archives/backups/');
+    expect(() =>
+      loadConfig({ ...base, BACKUP_S3_BUCKET: 'archives', BACKUP_S3_ACCESS_KEY_ID: 'id' }),
+    ).toThrow(/BACKUP_S3_SECRET_ACCESS_KEY/);
+    expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: 'backups' })).toThrow(/BACKUP_S3_PREFIX/);
+    expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: '../x/' })).toThrow(/BACKUP_S3_PREFIX/);
+    expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: 'my-backups/' })).toThrow(
+      /BACKUP_S3_PREFIX/,
+    );
+    // Never among the stored files: originals (and tus uploads), copies, feedback attachments.
+    for (const prefix of ['originals/', 'variants/backups/', 'feedback/'])
+      expect(() => loadConfig({ ...base, BACKUP_S3_PREFIX: prefix })).toThrow(
+        /BACKUP_S3_PREFIX: Not inside the folders of stored files/,
+      );
+    expect(loadConfig({ ...base, BACKUP_S3_PREFIX: 'inkadra/nightly-2/' }).BACKUP_S3_PREFIX).toBe(
+      'inkadra/nightly-2/',
+    );
+  });
+});
+
 describe('CSP_REPORT_URI', () => {
   it('treats an empty value as unset and rejects a relative one', () => {
     expect(loadConfig({ ...base, CSP_REPORT_URI: '' }).CSP_REPORT_URI).toBeUndefined();

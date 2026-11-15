@@ -1488,6 +1488,9 @@ export const instanceBackup = pgTable(
     unverifiedFiles: integer('unverified_files'),
     /** False when the verification ran out of time or stalled: the backup is kept, unchecked. */
     verifyComplete: boolean('verify_complete'),
+    /** Stored files copied into the archive (#899); null for a database-only backup. */
+    mediaCount: integer('media_count'),
+    mediaBytes: bigint('media_bytes', { mode: 'number' }),
   },
   (t) => [
     index('instance_backup_started_idx').on(t.startedAt.desc()),

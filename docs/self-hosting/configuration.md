@@ -46,11 +46,18 @@ in Settings override them.
 `TZ` sets the container time zone used for scheduled backups (UTC unless configured). It is
 not forwarded by default. The image bundles Node 26.13; the host does not need Node.
 
-| Variable                    | Default | Meaning                                                                                                                                    |
-| --------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PRODUCTION_BOARD_MOVE`     | `true`  | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main)                      |
-| `SKIP_PRE_MIGRATION_BACKUP` | `false` | `true` or `false` only. `true` starts an upgrade without the [database backup before migrations](upgrades.md#the-backup-before-an-upgrade) |
-| `OFFICE_PREVIEWS`           | off     | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md)                               |
+| Variable                                                 | Default              | Meaning                                                                                                                                    |
+| -------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PRODUCTION_BOARD_MOVE`                                  | `true`               | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main)                      |
+| `SKIP_PRE_MIGRATION_BACKUP`                              | `false`              | `true` or `false` only. `true` starts an upgrade without the [database backup before migrations](upgrades.md#the-backup-before-an-upgrade) |
+| `BACKUP_DIR`                                             | `<DATA_DIR>/backups` | Folder of the [backups](README.md#backups), for example another disk; it must be writable or the server does not start                     |
+| `BACKUP_S3_BUCKET`                                       |                      | A bucket the backups are copied to once verified, whatever `STORAGE_DRIVER` is. See [Backups](README.md#a-bucket-for-backups)              |
+| `BACKUP_S3_ENDPOINT`                                     | AWS                  | Address of that S3-compatible service                                                                                                      |
+| `BACKUP_S3_REGION`                                       | `us-east-1`          | Region of that bucket                                                                                                                      |
+| `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY` |                      | Keys of that bucket, set together. Only here: never stored in the database nor logged                                                      |
+| `BACKUP_S3_PREFIX`                                       | `backups/`           | Folder in the bucket, ending with `/`; the first part in lower-case letters only                                                           |
+| `BACKUP_S3_FORCE_PATH_STYLE`                             | `false`              | `true` for MinIO, RustFS, Garage and most self-hosted stores                                                                               |
+| `OFFICE_PREVIEWS`                                        | off                  | Only the exact value `true` enables Office routing/conversion. Requires the [Office worker setup](office.md)                               |
 
 Upload and import size units below use powers of 1024 (`1GB` = 1 GiB). Storage quota units
 use powers of 1000. Boolean settings accept `true` or `false` unless stated otherwise.
@@ -370,7 +377,9 @@ The server answers three addresses meant for machines:
 - `GET /metrics`: Prometheus metrics, only with `METRICS_TOKEN` set and sent as
   `Authorization: Bearer <token>`. They include the heartbeat of every role
   (`inkadra_process_up`, also for `worker` and `collab`), queue depth and failures, the free
-  space of the data disk, the database size and the time of the last good backup.
+  space of the data disk, the database size and the time of the last good backup, and for the
+  roles that hold boards (`all`, `collab`) their memory, the boards open and how long board
+  saves take and wait for a database connection ([Capacity](capacity.md)).
 
 The alerts of **Settings → Server status** are sent by the web role itself, so they stop with
 it. Watch Inkadra from outside as well: an uptime monitor on `/readyz`, and with Prometheus,

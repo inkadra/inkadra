@@ -278,6 +278,25 @@ const Env = z.object({
    * written first and the server refuses to migrate if it fails (#805). `true` skips it.
    */
   SKIP_PRE_MIGRATION_BACKUP: bool('false'),
+  /** Where backups are written (#899); default `DATA_DIR/backups`. Another disk or mount. */
+  BACKUP_DIR: optional,
+  /**
+   * A bucket the archives are copied to once written and verified (#899), whatever
+   * STORAGE_DRIVER is; it replaces the copy to `backups/` of the files bucket. Keys only here,
+   * never in the database.
+   */
+  BACKUP_S3_ENDPOINT: z.preprocess(emptyToUndefined, z.url().optional()),
+  BACKUP_S3_REGION: z.string().min(1).default('us-east-1'),
+  BACKUP_S3_BUCKET: optional,
+  BACKUP_S3_ACCESS_KEY_ID: optional,
+  BACKUP_S3_SECRET_ACCESS_KEY: optional,
+  /** Folder of the archives in that bucket, ending with `/`. */
+  // The first folder in lower-case letters only, as every storage key (`checkKey`).
+  BACKUP_S3_PREFIX: z
+    .string()
+    .regex(/^[a-z]+\/([A-Za-z0-9._-]+\/)*$/, 'A folder such as backups/ or inkadra/backups/')
+    .default('backups/'),
+  BACKUP_S3_FORCE_PATH_STYLE: bool('false'),
 
   /**
    * The public demo (decision 0084): "Try the demo" makes a sandbox without an account, which
@@ -376,6 +395,12 @@ export function demoConfig(c: Config): Config {
   };
 }
 
+/**
+ * The folders of stored files in storage (`storage.ts`): originals (and the tus uploads next
+ * to them), thumbnails and other copies, feedback attachments. Nothing else may write there.
+ */
+export const STORAGE_PREFIXES = ['originals/', 'variants/', 'feedback/'] as const;
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = Env.superRefine((c, ctx) => {
     if (c.STORAGE_DRIVER === 's3' && !c.S3_BUCKET)
@@ -385,6 +410,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         message: 'Required with STORAGE_DRIVER=s3',
       });
     for (const [a, b] of [
+      ['BACKUP_S3_ACCESS_KEY_ID', 'BACKUP_S3_SECRET_ACCESS_KEY'],
       ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
       ['OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET'],
       ['OIDC_CLIENT_ID', 'OIDC_DISCOVERY_URL'],
@@ -396,6 +422,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
           message: `Set together with ${c[a] ? a : b}`,
         });
     }
+    // Archives among the stored files would be listed, cleaned up or served as files (#899).
+    if (STORAGE_PREFIXES.some((p) => c.BACKUP_S3_PREFIX.startsWith(p)))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['BACKUP_S3_PREFIX'],
+        message: `Not inside the folders of stored files (${STORAGE_PREFIXES.join(', ')})`,
+      });
     if (c.SMTP_URL && !c.MAIL_FROM)
       ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'Required with SMTP_URL' });
     if (Boolean(c.TURNSTILE_SITE_KEY) !== Boolean(c.TURNSTILE_SECRET))

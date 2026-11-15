@@ -7,7 +7,14 @@ import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { board, boardDoc, boardElementIndex, boardGrant, user } from '../db/schema.ts';
+import {
+  board,
+  boardDoc,
+  boardElementIndex,
+  boardGrant,
+  project as projectTable,
+  user,
+} from '../db/schema.ts';
 import { createApp } from '../http/app.ts';
 import {
   containsPattern,
@@ -884,6 +891,93 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect((await get('guest', '/api/v1/search?q=fonico')).body.items).toEqual([]);
     expect((await get('guest', '/api/v1/search?q=palasc')).body.items).toEqual([]);
     expect((await get('stranger', '/api/v1/search?q=palasc')).body.items).toEqual([]);
+  });
+
+  it('indexes a board while its project is deleted, in either order, without a deadlock (#906)', async () => {
+    // A project with a stored and indexed board, as the collaboration server leaves it.
+    const indexedBoard = async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/v1/projects',
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { name: 'Da cancellare' },
+      });
+      const { id: project, rootBoardId } = created.json();
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${project}/boards`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { parentBoardId: rootBoardId, kind: 'storyboard', title: 'Salvataggio' },
+      });
+      const id = added.json().id as string;
+      const doc = storyboard(id);
+      const state = Y.encodeStateAsUpdate(doc);
+      await db
+        .insert(boardDoc)
+        .values({ boardId: id, state, schemaVersion: 2, size: state.byteLength });
+      await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+      return { project: project as string, id, doc };
+    };
+    // The index transaction of a store (collab.ts): the index, then the board row.
+    const indexStore = (id: string, doc: Y.Doc, between?: () => Promise<void>) =>
+      db.transaction(async (tx) => {
+        const n = await writeBoardIndex(tx, id, doc);
+        await between?.();
+        await tx
+          .update(board)
+          .set({ docSchemaVersion: 2, updatedAt: sql`${board.updatedAt}` })
+          .where(eq(board.id, id));
+        return n;
+      });
+    const deleteProject = (id: string) =>
+      app.inject({
+        method: 'DELETE',
+        url: `/api/v1/projects/${id}`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      });
+    // Until the other connection waits for a row this one holds.
+    const someoneWaits = async () => {
+      for (let i = 0; i < 250; i += 1) {
+        const [row] = await client<{ n: number }[]>`select count(*)::int as n from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'`;
+        if (row && row.n > 0) return;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      throw new Error('nobody waits for a lock');
+    };
+    const left = async (project: string, id: string) => ({
+      rows: (
+        await db
+          .select({ id: boardElementIndex.elementId })
+          .from(boardElementIndex)
+          .where(eq(boardElementIndex.boardId, id))
+      ).length,
+      boards: (await db.select({ id: board.id }).from(board).where(eq(board.projectId, project)))
+        .length,
+    });
+    for (let i = 0; i < 5; i += 1) {
+      // The store indexes first; the deletion arrives while its transaction is open.
+      const first = await indexedBoard();
+      let deleting: ReturnType<typeof deleteProject> | undefined;
+      const stored = indexStore(first.id, first.doc, async () => {
+        deleting = deleteProject(first.project);
+        await someoneWaits();
+      });
+      await expect(stored).resolves.toBe(6);
+      expect((await deleting)?.statusCode).toBe(204);
+      expect(await left(first.project, first.id)).toEqual({ rows: 0, boards: 0 });
+
+      // The deletion goes first; the store finds the board gone and indexes nothing.
+      const second = await indexedBoard();
+      let storing: ReturnType<typeof indexStore> | undefined;
+      await db.transaction(async (tx) => {
+        await tx.delete(projectTable).where(eq(projectTable.id, second.project));
+        storing = indexStore(second.id, second.doc);
+        await someoneWaits();
+      });
+      await expect(storing).resolves.toBe(0);
+      expect(await left(second.project, second.id)).toEqual({ rows: 0, boards: 0 });
+    }
   });
 
   it('hides boards in the trash', async () => {

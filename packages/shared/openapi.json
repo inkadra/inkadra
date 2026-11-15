@@ -4686,7 +4686,23 @@
           },
           "bucket": {
             "type": "boolean",
-            "description": "Files live in S3: backups are copied there."
+            "description": "Archives are copied to a bucket: `remote`, or the files bucket."
+          },
+          "remote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The bucket archives are copied to, as `s3://bucket/prefix/` (#899)."
+          },
+          "directory": {
+            "type": "string",
+            "description": "Folder of the archives on the server: BACKUP_DIR or `DATA_DIR/backups`."
+          },
+          "mediaBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "About what `includeMedia` adds to each backup now: the stored files it would copy."
           },
           "nextRunAt": {
             "type": [
@@ -4729,6 +4745,10 @@
             "minimum": 1,
             "maximum": 90,
             "description": "Successful backups kept; older ones are removed. Default 7."
+          },
+          "includeMedia": {
+            "type": "boolean",
+            "description": "Stored files go into the archive too, not only the database (#899): originals and thumbnails, never the playable copies of videos. Default false; always present in answers of servers with the `backup-targets` capability, absent on older ones."
           }
         },
         "required": [
@@ -4772,7 +4792,7 @@
               "string",
               "null"
             ],
-            "description": "Name of the archive in `DATA_DIR/backups` (and `backups/` of the bucket)."
+            "description": "Name of the archive in `directory` (and in the bucket of `remote`, when copied)."
           },
           "size": {
             "type": [
@@ -4804,7 +4824,28 @@
               "count",
               "bytes"
             ],
-            "description": "Stored files the backup lists (they are not inside it)."
+            "description": "Stored files the backup lists (inside it only when `media` is set)."
+          },
+          "media": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "count",
+              "bytes"
+            ],
+            "description": "Files copied into the archive (#899); null for a database-only backup. Absent on older servers."
           },
           "failure": {
             "type": [
@@ -4897,6 +4938,10 @@
             "minimum": 1,
             "maximum": 90,
             "description": "Successful backups kept; older ones are removed. Default 7."
+          },
+          "includeMedia": {
+            "type": "boolean",
+            "description": "Stored files go into the archive too, not only the database (#899): originals and thumbnails, never the playable copies of videos. Default false; always present in answers of servers with the `backup-targets` capability, absent on older ones."
           }
         },
         "additionalProperties": false

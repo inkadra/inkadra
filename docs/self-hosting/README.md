@@ -15,6 +15,7 @@ release are marked below and in [Upgrades](upgrades.md#after-090-current-main).
 | [Upgrades](upgrades.md)               | Versions, updating, verifying images                 |
 | [Troubleshooting](troubleshooting.md) | What to check when something does not work           |
 | [Office previews](office.md)          | The optional LibreOffice worker                      |
+| [Capacity](capacity.md)               | Load test presets, how to run it, measured numbers   |
 
 ## What you need
 
@@ -235,17 +236,19 @@ installs Debian's security updates of the day.
 
 The image's command selects the role. Each role has its own health check.
 
-| Command                 | Role                                                                |
-| ----------------------- | ------------------------------------------------------------------- |
-| `all` (default)         | Web app, API, collaboration and background jobs in one container    |
-| `web`                   | Web app and API on port 3000                                        |
-| `collab`                | Real-time collaboration (WebSocket) on port 3001                    |
-| `worker`                | Background jobs (thumbnails, email, maintenance)                    |
-| `migrate`               | Apply database migrations and exit (`web` and `all` do it on start) |
-| `unlock-auth`           | Clear the sign-in counters of one account, then exit                |
-| `admin-2fa off`         | Turn off the "require 2FA for administrators" setting, then exit    |
-| `backup create`         | Write a backup of the database to `/data/backups`, then exit        |
-| `backup restore <file>` | Restore a backup into an empty database, then exit                  |
+| Command                       | Role                                                                   |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `all` (default)               | Web app, API, collaboration and background jobs in one container       |
+| `web`                         | Web app and API on port 3000                                           |
+| `collab`                      | Real-time collaboration (WebSocket) on port 3001                       |
+| `worker`                      | Background jobs (thumbnails, email, maintenance)                       |
+| `migrate`                     | Apply database migrations and exit (`web` and `all` do it on start)    |
+| `unlock-auth`                 | Clear the sign-in counters of one account, then exit                   |
+| `admin-2fa off`               | Turn off the "require 2FA for administrators" setting, then exit       |
+| `backup create`               | Write a backup to the backup folder (`/data/backups`), then exit       |
+| `backup list`                 | List the backups in the backup folder and the backup bucket            |
+| `backup restore <file>`       | Restore a backup into an empty database, then exit                     |
+| `backup restore-files <file>` | Put the files of a backup with files back into storage only, then exit |
 
 ### Requirements and security
 
@@ -271,6 +274,7 @@ after it; they combine, in this order:
 | `deploy/compose.split.yaml`         | `web`, `collab` and `worker` in separate containers           |
 | `deploy/compose.s3.yaml`            | Files in an S3-compatible bucket you already have             |
 | `deploy/compose.rustfs.yaml`        | Files in a bundled S3-compatible store (RustFS)               |
+| `deploy/compose.backups.yaml`       | Backups on a disk of their own, optionally in a bucket too    |
 | `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (standard image) |
 | `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (standard image)       |
 | `deploy/compose.office.yaml`        | Office document previews: a worker on the `-office` image     |
@@ -306,22 +310,40 @@ and keeps the last 7 successful backups. Administrators change the schedule and 
 and see the history in **Settings → Backups**. Backups need the `worker` role (in `all` it is
 always there); without Valkey they run only when started from Settings.
 
-A backup is one zip, `inkadra-backup-<date>-<id>.zip`, in `/data/backups` (the `inkadra-data`
-volume or your `INKADRA_DATA` folder). When files are in S3 it is also copied to `backups/` in
-the bucket. It holds database rows and a file inventory, with
-[exclusions](../formats/instance-backup.md) for derived data and job bookkeeping. It does not
-contain the files: files never change once written, so **back up the
+A backup is one zip, `inkadra-backup-<date>-<id>.zip`, in the backup folder: `/data/backups` (the
+`inkadra-data` volume or your `INKADRA_DATA` folder) unless you set `BACKUP_DIR`. When files are in
+S3 it is also copied to `backups/` in the bucket, or to the [bucket for backups](#a-bucket-for-backups)
+when you set one. It holds database rows and a file inventory, with
+[exclusions](../formats/instance-backup.md) for derived data and job bookkeeping. By default it
+does not contain the files: files never change once written, so **back up the
 data volume or the bucket too**, with your usual tool (restic, Borg, a snapshot of the volume,
-bucket versioning or replication). The format is described in
+bucket versioning or replication), or turn on **Include files** (below). The format is described in
 [instance-backup.md](../formats/instance-backup.md).
+
+### Including the files
+
+**Settings → Backups → Include files** puts the uploaded files and their thumbnails in every
+backup too, so one zip brings back a whole server. It is off by default. Settings shows about how
+much it adds, which is every backup's size from then on, times the number kept (each kept backup
+holds its own copy of every file), and how much the kept backups take now: count the free space
+before turning it on. Each backup checks the free space of the backup folder first and
+fails as _not enough free space_ instead of filling the disk. The files are copied one at a time
+after the database (streamed, never held in memory); an interrupted backup leaves only a
+`.partial` file, removed later, and never counts. The verification reads every file back against
+its SHA-256, and `backup restore` writes the files back into storage (the data volume or the
+bucket), each one hashed on the way and kept only when it matches, before it checks them. Playable copies of videos, ladder rungs and Office page previews
+are not included: they can be made again after a restore (Settings → Video). The backup before an upgrade always holds the database only.
 
 Every backup is **read back once written**: each table is counted and hashed against the
 manifest, and the files it lists are looked up in storage (all of them up to 20,000 files, an
 even sample of 20,000 above that). An archive that does not read back fails as `corrupt`; files
 the backup lists but storage lacks are shown in the history and on **Settings → Server** (a
 restore of that backup would miss them). A file storage answers with an error for, twice, is
-counted as not checked rather than missing. The check stops after 30 minutes, or 5 minutes
-without progress: the backup is then kept, marked _verification incomplete_.
+counted as not checked rather than missing. The tables and the file list are checked within 30
+minutes; the files inside a backup with files come last, with 30 minutes plus the time to read
+them at 25 MiB/s. A part that runs out of time, or 5 minutes without progress, stops: the backup
+is then kept, marked _verification incomplete_, and the server log names the parts that were
+not finished.
 
 Files of deleted projects, accounts and exports are **kept while a kept backup may list them**:
 they are removed once every kept backup started at least an hour after the deletion, but never
@@ -331,10 +353,51 @@ miss files deleted since. A copy of the files taken at any time after the backup
 it.
 
 By default these backups stay on the same disk as your files, so they do not protect you from
-losing that disk. To keep them elsewhere, mount another disk or a network share at
-`/data/backups` (for example `- /mnt/backup-disk/inkadra:/data/backups` under `volumes:`), or
-use S3 for files: archives are then copied to `backups/` in the bucket too. **A complete backup,
-copied to another machine, is:**
+losing that disk. To keep them elsewhere, set `BACKUP_DIR` to a folder on another disk or a
+network share. With compose, add `deploy/compose.backups.yaml` and set the host folder in `.env`:
+
+```sh
+INKADRA_BACKUPS=/mnt/backup-disk/inkadra     # the backups: another disk or a NAS mount
+```
+
+```sh
+docker compose -f compose.yaml -f deploy/compose.backups.yaml up -d
+```
+
+It mounts that folder at `/backups` (a second volume next to `/data`) and sets
+`BACKUP_DIR=/backups`; at startup the folder is given to uid 1000, and the server does not start
+when it cannot write there. In split mode, give `worker` the same `environment` and `volumes`
+lines: it writes the nightly backups. The server never changes the owner of what is inside that
+folder: if uid 1000 cannot write to it, it gives the folder itself to uid 1000 when it can, and
+otherwise stops with the folder's name (on a NAS share, set the owner or the share's user there).
+
+Backups already written stay where they were when `BACKUP_DIR` changes: the history still lists
+them, but retention can no longer remove them and `backup restore <name>` no longer finds them by
+name. Move them from `/data/backups` to the new folder yourself, or remove them there by hand.
+
+#### A bucket for backups
+
+Archives can also go to a bucket of their own, whether files are on the data volume or in S3. Set
+in `.env` (with `deploy/compose.backups.yaml`, or in the `environment` of your compose file):
+
+```sh
+BACKUP_S3_ENDPOINT=https://s3.example.com   # empty for AWS
+BACKUP_S3_REGION=us-east-1
+BACKUP_S3_BUCKET=inkadra-backups
+BACKUP_S3_ACCESS_KEY_ID=…
+BACKUP_S3_SECRET_ACCESS_KEY=…
+BACKUP_S3_PREFIX=backups/                   # folder in the bucket
+BACKUP_S3_FORCE_PATH_STYLE=false            # true for self-hosted stores
+```
+
+Each archive is uploaded once it was written and verified in the backup folder; the history
+says _copied to the bucket_, or that the copy failed (the local archive is kept either way).
+Retention removes old archives from the bucket too. The keys are read from the environment only:
+they are never stored in the database or written to the log. Set, this bucket replaces the copy
+to `backups/` of the files bucket; copies already there stay until you remove them. The key needs
+to read, write, list and delete objects under the prefix.
+
+**A complete backup, copied to another machine, is:**
 
 1. the data: the `inkadra-data` volume or your `INKADRA_DATA` folder, which holds the nightly
    zips too, or the bucket;
@@ -391,10 +454,39 @@ docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-2026
 docker compose up -d
 ```
 
+`backup list` prints the backups of the backup folder and of the bucket for backups. Given only a
+name, `backup restore` looks for it in the backup folder, then downloads it from the bucket:
+
+```sh
+docker compose run --rm inkadra backup list
+docker compose run --rm inkadra backup restore inkadra-backup-20261102-030000-0193f0a4.zip
+```
+
+An archive downloaded from the bucket goes to the backup folder first, when it has room for it,
+and is removed once the restore succeeded (the bucket keeps it). Every archive is read back whole
+before anything is restored, so a damaged one never touches the database.
+
+A backup with files puts them back into storage after the database; files storage already has
+with the same size (and on the data volume, the same SHA-256) are left as they are. Each file is
+tried again a few times when storage fails for a moment. If some still could not be written, for
+example when the bucket went away mid-way, the restore ends with exit code 1 and names them; the
+database is restored, and the downloaded archive is kept. Then put the remaining files back, as
+often as needed (it only writes what storage still lacks):
+
+```sh
+docker compose run --rm inkadra backup restore-files inkadra-backup-20261102-030000-0193f0a4.zip
+```
+
+Archives with files hold one zip entry per file, and the server keeps the list of entries in
+memory while it writes or reads one, about 1 KiB a file: 100,000 files take about 100 MB. A
+backup with files holds at most 499,000 files (originals, thumbnails and attachments together);
+above that it fails with a message saying so, and the data volume or the bucket has to be
+backed up on its own instead.
+
 The restore loads the tables in order, rebuilds the search index on the next start, records a
 `backup.restored` event in the audit log, and lists any file named by the backup that storage
 does not have (a warning, not an error: restore the
-volume or the bucket and they come back). To restore a backup copied elsewhere, put it in the
+volume or the bucket, or use a backup with files, and they come back). To restore a backup copied elsewhere, put it in the
 data folder first, for example with `docker compose cp`.
 
 ## The activity log (audit log)
