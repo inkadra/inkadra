@@ -1048,7 +1048,7 @@ export function createCollabServer(deps: {
     hocuspocus.documents.get(document.name) === document && shouldUnload(document);
 
   /** The signed-in people on a document and its board; null when nobody signed in is on it. */
-  function signedIn(document: Document) {
+  function whoIsOn(document: Document) {
     const users = new Set<string>();
     let boardId: string | null = null;
     for (const connection of document.getConnections() as Array<Connection<Context>>) {
@@ -1064,7 +1064,7 @@ export function createCollabServer(deps: {
   function presence(): PresenceBoard[] {
     const out: PresenceBoard[] = [];
     for (const document of server.hocuspocus.documents.values()) {
-      const on = signedIn(document);
+      const on = whoIsOn(document);
       if (on)
         out.push({
           boardId: on.boardId,
@@ -1078,7 +1078,7 @@ export function createCollabServer(deps: {
   const sizes = new DocSizes();
   /** Encoded size of the boards `presence` lists (#911). */
   const boardBytes = () =>
-    sizes.total([...server.hocuspocus.documents.values()].filter((d) => signedIn(d)));
+    sizes.total([...server.hocuspocus.documents.values()].filter((d) => whoIsOn(d)));
 
   return Object.assign(server, {
     recheck: () => recheck(server),

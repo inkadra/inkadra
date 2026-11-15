@@ -4,9 +4,9 @@ import {
   formatReport,
   PRESETS,
   parseMetrics,
-  RSS_MIN_BOARDS,
   percentile,
   type Result,
+  RSS_MIN_BOARDS,
   readServer,
   summarizeServer,
 } from './report.ts';

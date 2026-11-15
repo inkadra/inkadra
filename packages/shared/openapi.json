@@ -5357,7 +5357,22 @@
                 "type": [
                   "number",
                   "null"
-                ]
+                ],
+                "description": "Resident memory growth at the peak over the boards open then."
+              },
+              "perBoardInfo": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Why `perBoardMiB` is information only and not a limit: `shared_process`, the boards share an `all` process with other roles (and the load clients of a run from the settings), or `few_boards`, fewer than 20 were open at the peak. Null: it decides. Absent in older reports (#911); unknown values may come later."
+              },
+              "docPerBoardKiB": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Largest mean encoded size of an open board document (Yjs) over the run; null when the server does not report it, absent in older reports (#911)."
               },
               "storeP95Ms": {
                 "type": [
@@ -5452,6 +5467,10 @@
           },
           "perBoardMiB": {
             "type": "number"
+          },
+          "docPerBoardKiB": {
+            "type": "number",
+            "description": "Absent in reports of runs before it existed (#911)."
           },
           "errors": {
             "type": "number"

@@ -209,7 +209,9 @@ export function summarizeServer(baseline: ServerReading, readings: ServerReading
   const peak = readings.reduce((a, b) => (b.rssBytes > a.rssBytes ? b : a), baseline);
   const peakOpenBoards = Math.max(0, ...readings.map((r) => r.openBoards));
   const docPerBoard = maxOf(
-    readings.map((r) => (r.boardBytes !== null && r.openBoards > 0 ? r.boardBytes / r.openBoards : null)),
+    readings.map((r) =>
+      r.boardBytes !== null && r.openBoards > 0 ? r.boardBytes / r.openBoards : null,
+    ),
   );
   return {
     baselineRssMiB: baseline.rssBytes / MiB,

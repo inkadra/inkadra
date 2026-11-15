@@ -73,11 +73,15 @@ export const LoadTestReport = z
               '`few_boards`, fewer than 20 were open at the peak. Null: it decides. Absent in older reports ' +
               '(#911); unknown values may come later.',
           }),
-        docPerBoardKiB: z.number().nullable().optional().openapi({
-          description:
-            'Largest mean encoded size of an open board document (Yjs) over the run; null when ' +
-            'the server does not report it, absent in older reports (#911).',
-        }),
+        docPerBoardKiB: z
+          .number()
+          .nullable()
+          .optional()
+          .openapi({
+            description:
+              'Largest mean encoded size of an open board document (Yjs) over the run; null when ' +
+              'the server does not report it, absent in older reports (#911).',
+          }),
         storeP95Ms: z.number().nullable(),
         storeMaxMs: z.number().nullable(),
         poolWaitMaxMs: z.number().nullable(),

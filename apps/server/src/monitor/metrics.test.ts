@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { renderMetrics } from './metrics.ts';
 import * as Y from 'yjs';
+import { renderMetrics } from './metrics.ts';
 import { DocSizes, StoreRecorder } from './sampler.ts';
 
 describe('renderMetrics (#817)', () => {
