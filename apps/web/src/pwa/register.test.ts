@@ -149,6 +149,24 @@ describe('service worker updates across tabs', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
+  it('asks the new worker to take over only once the active one has finished activating', async () => {
+    // A same-build worker took over silently; Chromium runs its activate event a second later,
+    // and a skipWaiting() during that event can leave the new worker waiting for minutes (#914).
+    const matching = new Worker(true);
+    await offer(matching);
+    matching.state = 'activating';
+    activate(matching);
+    const waiting = new Worker(false);
+    await offer(waiting);
+    register.applyUpdate();
+    expect(waiting.postMessage).not.toHaveBeenCalledWith({ type: 'skip-waiting' });
+    matching.state = 'activated';
+    matching.dispatchEvent(new Event('statechange'));
+    expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'skip-waiting' });
+    activate(waiting);
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
   it('does not reload the tab already running the silently activated version', async () => {
     const matching = new Worker(true);
     await offer(matching);
