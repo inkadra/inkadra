@@ -39,8 +39,8 @@ export interface LoadOptions {
   /** Every 2 s: the live numbers. */
   onProgress?(progress: LoadTestProgress): Promise<void> | void;
   /**
-   * Checked with each server reading of the run phase: a reason ends the run at once
-   * (Settings → Server stops when real people feel it).
+   * Checked with each server reading (every 5 s, while seeding and running): a reason ends the
+   * run at once (Settings → Server stops when real people feel it).
    */
   guard?(progress: LoadTestProgress): Promise<string | null> | string | null;
 }
@@ -217,6 +217,8 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
   let phase = 'seeding' as LoadTestProgress['phase'];
   let runStart = 0;
   let lastReading: ServerReading | null = null;
+  let baseline: ServerReading | null = null;
+  const readings: ServerReading[] = [];
 
   const recent = (values: number[], at: number[]) => {
     const since = performance.now() - RECENT_MS;
@@ -242,6 +244,28 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
     while (!stop.signal.aborted && phase !== 'cleaning') {
       await pause(2000);
       await Promise.resolve(opts.onProgress?.(progress())).catch((err) => log(String(err)));
+    }
+  })();
+  /** Every 5 s from the start: a server reading (kept for the report while running), then the
+   * guard, so a large seeding is stopped as well. Without a guard nothing reads during seeding. */
+  const watch = (async () => {
+    while (!stop.signal.aborted && phase !== 'cleaning') {
+      await pause(5000);
+      // Read again: the phase moves on during the pause.
+      const now = phase as LoadTestProgress['phase'];
+      if (stop.signal.aborted || now === 'cleaning') return;
+      const running = now === 'running';
+      if (!running && !opts.guard) continue;
+      const reading = await scrape();
+      if (reading) {
+        if (running) readings.push(reading);
+        lastReading = reading;
+      }
+      const reason = await opts.guard?.(progress());
+      if (reason && !stop.signal.aborted) {
+        aborted = reason;
+        stop.abort();
+      }
     }
   })();
 
@@ -346,8 +370,6 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
     }
   }
 
-  let baseline: ServerReading | null = null;
-  const readings: ServerReading[] = [];
   try {
     baseline = await scrape();
     // A collab role started a moment ago may not have sent its first heartbeat: wait for it,
@@ -410,25 +432,9 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
       phase = 'running';
       runStart = Date.now();
       const end = runStart + opts.durationS * 1000;
-      const poll = (async () => {
-        while (Date.now() < end && !stop.signal.aborted) {
-          await pause(5000);
-          const reading = await scrape();
-          if (reading) {
-            readings.push(reading);
-            lastReading = reading;
-          }
-          const reason = await opts.guard?.(progress());
-          if (reason && !stop.signal.aborted) {
-            aborted = reason;
-            stop.abort();
-          }
-        }
-      })();
       await Promise.all([
         ...Array.from({ length: preset.editors }, (_, i) => editor(i, end)),
         ...Array.from({ length: preset.readers }, (_, i) => reader(i, preset.editors, end)),
-        poll,
       ]);
     }
   } catch (err) {
@@ -443,7 +449,7 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
     if (projectId) await sleep(3000);
     opts.signal.removeEventListener('abort', onStop);
     stop.abort();
-    await ticker;
+    await Promise.all([ticker, watch]);
   }
   const result: Result = {
     preset: opts.presetName,

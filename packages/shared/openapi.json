@@ -4995,6 +4995,10 @@
           "guard": {
             "$ref": "#/components/schemas/LoadTestGuard"
           },
+          "separateWorker": {
+            "type": "boolean",
+            "description": "A worker role runs apart from the web and collaboration roles. Without one (`all` mode) the load clients share the live server’s event loop, and `large` is refused (`shared_process`)."
+          },
           "items": {
             "type": "array",
             "items": {
@@ -5008,6 +5012,7 @@
           "timeZone",
           "presets",
           "guard",
+          "separateWorker",
           "items"
         ]
       },
@@ -5070,7 +5075,7 @@
               "string",
               "null"
             ],
-            "description": "One of store_slow, api_slow, api_errors, edits_slow, backup_running, transfer_running, loadtest_running, under_load, no_worker, internal; unknown values may come later."
+            "description": "One of store_slow, api_slow, api_errors, edits_slow, backup_running, transfer_running, loadtest_running, under_load, no_worker, no_metrics, shared_process, internal; unknown values may come later."
           },
           "scheduledFor": {
             "type": [
@@ -21302,7 +21307,7 @@
             }
           },
           "409": {
-            "description": "Refused: `details.reason` is `loadtest_running`, `backup_running`, `transfer_running`, `under_load` or `no_worker`",
+            "description": "Refused: `details.reason` is `loadtest_running`, `backup_running`, `transfer_running`, `under_load`, `no_worker`, `no_metrics` (no recent heartbeat of the web and collaboration roles) or `shared_process` (`large` without a separate worker role)",
             "content": {
               "application/json": {
                 "schema": {

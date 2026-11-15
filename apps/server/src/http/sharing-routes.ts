@@ -47,6 +47,7 @@ import {
   invitationTarget,
   invitedRole,
 } from '../invitations.ts';
+import { notTestAccount } from '../loadtest/accounts.ts';
 import { type Mailer, maskAddress } from '../mailer.ts';
 import { inviteMail } from '../mails.ts';
 import { addressBucket, hourlyRetryAfter, RateLimiter } from '../rate-limits.ts';
@@ -445,6 +446,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       .where(
         and(
           ne(user.id, actor.id),
+          notTestAccount,
           or(
             eq(user.email, q.toLowerCase()),
             and(

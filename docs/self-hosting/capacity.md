@@ -43,16 +43,24 @@ instance, so it needs Valkey (`REDIS_URL`) and a worker (`all`, or a `worker` co
 - Pick a preset, read the warning, tick the confirmation, then start now or schedule a time
   within the next 7 days, in the server's time zone (for example tonight at 03:00).
 - It does not start while a backup, an export or an import runs, or when the last minute already
-  shows API answers or board saves over 1 s, or the CPU over 80 %. A scheduled run checks again
-  when its time comes.
+  shows API answers or board saves over 1 s, or the CPU over 80 %. It does not start either
+  without a recent heartbeat of the web and collaboration roles: the guard below would be blind
+  (`no_metrics`). A scheduled run checks again when its time comes.
 - While it runs the page shows a progress bar, the live numbers and **Stop**.
 - **The guard** stops it when the people using the instance feel it: two readings in a row (5 s
   apart) with board saves p95 over 2 s, the API answers of everyone but the test over 2 s at p95
-  or more than 5 % server errors, or the test's own edit round trip over 3 s.
+  or more than 5 % server errors, or the test's own edit round trip over 3 s. A reading that is
+  missing (no heartbeat, or the monitor cannot be read) counts as past the limits. The guard
+  reads from the start, also while the test boards are being created.
+- A backup (also the nightly one or the one before an upgrade), an export or an import that
+  starts during the run stops it at the next reading: the load test gives way, the backup does
+  not wait.
 - The report has the fields and limits of the CLI report; the last 10 runs are kept.
 - It signs in with an account it creates in the database (no open registration needed) and a
   personal token, and records that account and its `Load test …` project on the run. They are
-  deleted at the end, also after a stop. After a crash or a restart the worker finds the run
+  deleted at the end, also after a stop, with any other project that account created (by its id,
+  never by name). While it exists the account is not in Settings → Members, its count, or the
+  people you can share with. After a crash or a restart the worker finds the run
   without a heartbeat within a minute and deletes them at its start, or within 5 minutes.
 - Starts, stops and results are in the audit log (`loadtest.started`, `loadtest.stopped`,
   `loadtest.finished`).
@@ -61,6 +69,12 @@ The worker reaches the instance on its loopback with `all` (`http://127.0.0.1:PO
 `PUBLIC_URL` in split mode, where the proxy must route `/collab` as for browsers. The clients run
 in the worker, so they take some of the machine's CPU: on a small server the numbers read lower
 than from a separate machine.
+
+With `all` (one process) the load clients also share the **event loop of the live server**:
+every edit the test sends and every update it receives is handled in the same thread that answers
+people. The numbers are a little pessimistic and people feel the load sooner, and the card says
+so. `large` (50 editors, 1000 boards) is therefore refused there (`shared_process`): run it with a
+separate `worker` role, or with the CLI from another machine.
 
 ## Running it
 

@@ -6310,10 +6310,12 @@
         "large": "Grande"
       },
       "presetText": "{{editors}} editores, {{readers}} leitores, {{boards}} quadros · {{time}}",
+      "sharedProcess": "Modo tudo em um: os editores de teste rodam dentro do servidor em uso e dividem o tempo dele, então as pessoas sentem a carga antes e os números ficam um pouco pessimistas. Grande precisa de um papel worker separado.",
+      "needsWorker": "precisa de um papel worker separado",
       "warningTitle": "Isto carrega a própria instância",
       "warning": "Durante {{time}} o servidor trabalha a fundo para editores de teste: quem usar quadros e vídeos nesse momento pode achá-los mais lentos. Cria uma conta de teste e um projeto com {{boards}} quadros, e os exclui no fim, também após uma parada ou reinício.",
       "when": "Quando",
-      "guard": "Ele para sozinho se as pessoas que usam a instância sentirem.",
+      "guard": "Ele para sozinho se as pessoas que usam a instância sentirem, se faltarem as medições do servidor ou se começar um backup, uma exportação ou uma importação.",
       "now": "Agora",
       "later": "Mais tarde",
       "at": "Início",
@@ -6336,11 +6338,13 @@
         "loadtest_running": "Um teste de carga já está agendado ou em andamento.",
         "under_load": "A instância já está ocupada: tente mais tarde.",
         "no_worker": "Os testes de carga precisam de um worker (REDIS_URL).",
+        "no_metrics": "Faltam as medições do servidor: a proteção não conseguia ver se as pessoas sentem.",
+        "shared_process": "Grande precisa de um papel worker separado: no modo tudo em um o teste deixaria lento o servidor que mede.",
         "internal": "algo deu errado"
       },
       "scheduledFor": "Teste de carga {{preset}} agendado para {{time}}",
       "starting": "Teste de carga {{preset}} iniciando…",
-      "scheduledHelp": "Ele não começa se nesse momento houver um backup ou uma importação em andamento, ou se a instância estiver ocupada.",
+      "scheduledHelp": "Ele não começa se nesse momento houver um backup ou uma importação em andamento, ou se a instância estiver ocupada. Se um começar durante o teste, o teste para.",
       "cancel": "Cancelar",
       "phase": {
         "starting": "Iniciando…",

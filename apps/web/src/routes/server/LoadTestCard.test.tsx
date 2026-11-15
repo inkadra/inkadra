@@ -41,8 +41,9 @@ const run = (patch: Partial<LoadTestRun>): LoadTestRun => ({
   cleanedUp: true,
   ...patch,
 });
-const page = (items: LoadTestRun[], available = true): LoadTests => ({
+const page = (items: LoadTestRun[], available = true, separateWorker = true): LoadTests => ({
   available,
+  separateWorker,
   timeZone: 'Europe/Rome',
   presets: [
     { name: 'small', editors: 5, readers: 2, boards: 50, durationS: 60 },
@@ -96,6 +97,23 @@ it('schedules at a date and time of the server time zone', async () => {
   const body = vi.mocked(api.post).mock.calls[0]?.[1] as { preset: string; at: object };
   expect(body.preset).toBe('medium');
   expect(body.at).toMatchObject({ time: '03:00' });
+});
+
+it('in all-in-one mode, says the test shares the server and keeps Large for a worker', async () => {
+  vi.mocked(api.get).mockResolvedValue(page([], true, false));
+  await act(async () => root.render(<LoadTestCard />));
+  expect(host.textContent).toContain('server.loadTest.sharedProcess');
+  const large = host.querySelector<HTMLInputElement>('input[value="large"]');
+  expect(large?.disabled).toBe(true);
+  expect(host.querySelector<HTMLInputElement>('input[value="medium"]')?.disabled).toBe(false);
+  expect(host.textContent).toContain('server.loadTest.needsWorker');
+});
+
+it('offers Large and no note with a worker role of its own', async () => {
+  vi.mocked(api.get).mockResolvedValue(page([]));
+  await act(async () => root.render(<LoadTestCard />));
+  expect(host.textContent).not.toContain('server.loadTest.sharedProcess');
+  expect(host.querySelector<HTMLInputElement>('input[value="large"]')?.disabled).toBe(false);
 });
 
 it('says why a start is refused', async () => {

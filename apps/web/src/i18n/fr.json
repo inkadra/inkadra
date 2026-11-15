@@ -6310,10 +6310,12 @@
         "large": "Grand"
       },
       "presetText": "{{editors}} éditeurs, {{readers}} lecteurs, {{boards}} tableaux · {{time}}",
+      "sharedProcess": "Mode tout-en-un : les éditeurs de test tournent dans le serveur en service et partagent son temps, les personnes sentent donc la charge plus tôt et les chiffres sont un peu pessimistes. Grand demande un rôle worker séparé.",
+      "needsWorker": "demande un rôle worker séparé",
       "warningTitle": "Cela charge cette instance elle-même",
       "warning": "Pendant {{time}}, le serveur travaille à plein pour des éditeurs de test : les personnes qui utilisent tableaux et vidéos à ce moment peuvent les trouver plus lents. Il crée un compte de test et un projet de {{boards}} tableaux, et les supprime à la fin, même après un arrêt ou un redémarrage.",
       "when": "Quand",
-      "guard": "Il s’arrête tout seul si les personnes qui utilisent l’instance en souffrent.",
+      "guard": "Il s’arrête tout seul si les personnes qui utilisent l’instance en souffrent, si les mesures du serveur manquent, ou si une sauvegarde, un export ou un import démarre.",
       "now": "Maintenant",
       "later": "Plus tard",
       "at": "Début à",
@@ -6336,11 +6338,13 @@
         "loadtest_running": "Un test de charge est déjà planifié ou en cours.",
         "under_load": "L’instance est déjà occupée : réessayez plus tard.",
         "no_worker": "Les tests de charge demandent un worker (REDIS_URL).",
+        "no_metrics": "Les mesures du serveur manquent : la protection ne pouvait pas voir si les personnes en souffrent.",
+        "shared_process": "Grand demande un rôle worker séparé : en mode tout-en-un, le test ralentirait le serveur qu’il mesure.",
         "internal": "un problème est survenu"
       },
       "scheduledFor": "Test de charge {{preset}} planifié pour {{time}}",
       "starting": "Test de charge {{preset}} en démarrage…",
-      "scheduledHelp": "Il ne démarre pas si une sauvegarde ou un import tourne à ce moment, ou si l’instance est occupée.",
+      "scheduledHelp": "Il ne démarre pas si une sauvegarde ou un import tourne à ce moment, ou si l’instance est occupée. S’il en démarre un pendant le test, le test s’arrête.",
       "cancel": "Annuler",
       "phase": {
         "starting": "Démarrage…",

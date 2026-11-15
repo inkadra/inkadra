@@ -14,6 +14,7 @@ import {
   listLoadTests,
   presetList,
   scheduleTime,
+  separateWorker,
   toLoadTestRun,
 } from '../loadtest/runs.ts';
 import type { MonitorStore } from '../monitor/store.ts';
@@ -43,6 +44,7 @@ export function registerLoadTestRoutes(
       timeZone: serverTimeZone(),
       presets: presetList(),
       guard: GUARD,
+      separateWorker: await separateWorker(store),
       items: await listLoadTests(db),
     } satisfies LoadTests;
   });
@@ -54,10 +56,14 @@ export function registerLoadTestRoutes(
     const scheduledFor = input.at ? scheduleTime(input.at) : null;
     if (input.at && !scheduledFor)
       throw new HttpError('bad_request', 'Choose a time in the next 7 days.');
+    // In `all` mode the load clients share the live server's event loop: `large` would measure
+    // (and slow) the test itself. A scheduled run checks again when its time comes.
+    if (input.preset === 'large' && !(await separateWorker(store)))
+      throw busy('shared_process', 'The large preset needs a worker role of its own.');
     // Started now: refused at once rather than queued to be refused; a scheduled run checks
     // again when its time comes.
     if (!scheduledFor) {
-      const reason = await busyReason(db, store);
+      const reason = await busyReason(db, store, input.preset);
       if (reason) throw busy(reason, 'The instance is busy: try again later.');
     }
     const row = await createRun(db, { preset: input.preset, scheduledFor, requestedBy: actor.id });

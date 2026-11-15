@@ -6310,10 +6310,12 @@
         "large": "Grande"
       },
       "presetText": "{{editors}} editores, {{readers}} lectores, {{boards}} tableros · {{time}}",
+      "sharedProcess": "Modo todo en uno: los editores de prueba corren dentro del servidor en uso y comparten su tiempo, así que las personas notan antes la carga y las cifras son algo pesimistas. Grande necesita un rol worker aparte.",
+      "needsWorker": "necesita un rol worker aparte",
       "warningTitle": "Carga esta misma instancia",
       "warning": "Durante {{time}} el servidor trabaja a fondo para editores de prueba: quien use tableros y vídeos en ese momento puede notarlos más lentos. Crea una cuenta de prueba y un proyecto con {{boards}} tableros, y los elimina al final, también tras una parada o un reinicio.",
       "when": "Cuándo",
-      "guard": "Se detiene sola si las personas que usan la instancia lo notan.",
+      "guard": "Se detiene sola si las personas que usan la instancia lo notan, si faltan las mediciones del servidor o si empieza una copia de seguridad, una exportación o una importación.",
       "now": "Ahora",
       "later": "Más tarde",
       "at": "Inicio",
@@ -6336,11 +6338,13 @@
         "loadtest_running": "Ya hay una prueba de carga programada o en curso.",
         "under_load": "La instancia ya está ocupada: inténtalo más tarde.",
         "no_worker": "Las pruebas de carga necesitan un worker (REDIS_URL).",
+        "no_metrics": "Faltan las mediciones del servidor: la protección no podía ver si las personas lo notan.",
+        "shared_process": "Grande necesita un rol worker aparte: en modo todo en uno la prueba ralentizaría el servidor que mide.",
         "internal": "algo salió mal"
       },
       "scheduledFor": "Prueba de carga {{preset}} programada para {{time}}",
       "starting": "Prueba de carga {{preset}} iniciándose…",
-      "scheduledHelp": "No empieza si en ese momento hay una copia de seguridad o una importación en curso, o si la instancia está ocupada.",
+      "scheduledHelp": "No empieza si en ese momento hay una copia de seguridad o una importación en curso, o si la instancia está ocupada. Si una empieza durante la prueba, la prueba se detiene.",
       "cancel": "Cancelar",
       "phase": {
         "starting": "Iniciando…",

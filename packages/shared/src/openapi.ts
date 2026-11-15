@@ -1532,7 +1532,9 @@ registry.registerPath({
     409: {
       description:
         'Refused: `details.reason` is `loadtest_running`, `backup_running`, ' +
-        '`transfer_running`, `under_load` or `no_worker`',
+        '`transfer_running`, `under_load`, `no_worker`, `no_metrics` (no recent heartbeat of ' +
+        'the web and collaboration roles) or `shared_process` (`large` without a separate ' +
+        'worker role)',
       ...json(ApiError),
     },
     ...errors,

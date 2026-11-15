@@ -120,7 +120,21 @@ export async function createRun(
   return rows[0] ?? null;
 }
 
-/** What the board roles report in their heartbeats, as the CLI reads it from /metrics. */
+/** No recent heartbeat from a role the guard reads: the run cannot see what people feel. */
+export class NoMetrics extends Error {}
+
+/**
+ * True when a worker role runs apart from the web and collaboration roles. Otherwise (`all`
+ * mode) the load clients share the event loop of the live server.
+ */
+export async function separateWorker(store: MonitorStore, now = Date.now()) {
+  return (await store.beats()).some((b) => now - b.at < ALIVE_MS && b.role === 'worker');
+}
+
+/**
+ * What the board roles report in their heartbeats, as the CLI reads it from /metrics. Throws
+ * `NoMetrics` without a recent heartbeat of a collaboration role.
+ */
 export async function readBoardRoles(
   store: MonitorStore,
   db: Database,
@@ -129,6 +143,7 @@ export async function readBoardRoles(
   const beats = (await store.beats()).filter(
     (b) => now - b.at < ALIVE_MS && (b.role === 'collab' || b.role === 'all'),
   );
+  if (!beats.length) throw new NoMetrics('No heartbeat from the collaboration roles');
   const max = (values: Array<number | undefined>) => {
     const list = values.filter((v): v is number => v !== undefined);
     return list.length ? Math.max(...list) : null;
@@ -147,11 +162,13 @@ export async function readBoardRoles(
  * The API answers of the web roles over `windowMs`: the slowest p95 of a sample, answers and
  * server errors. shortcut: the test's own requests count too; in the run phase they are a tus
  * upload a minute per editor, whose chunks do not count (recordsLatency), so the rest is people.
+ * Throws `NoMetrics` without a recent heartbeat of a web role.
  */
 export async function readApi(store: MonitorStore, windowMs: number, now = Date.now()) {
   const beats = (await store.beats()).filter(
     (b) => now - b.at < ALIVE_MS && (b.role === 'web' || b.role === 'all'),
   );
+  if (!beats.length) throw new NoMetrics('No heartbeat from the web roles');
   const points = await store.points('raw', beats.map(processKey), now - windowMs);
   let p95: number | null = null;
   let requests = 0;
@@ -167,8 +184,11 @@ export async function readApi(store: MonitorStore, windowMs: number, now = Date.
   return { p95, requests, errors, cpu };
 }
 
-/** Why a run cannot start now, or null. */
-export async function busyReason(db: Database, store: MonitorStore, now = Date.now()) {
+/**
+ * A backup, an export or an import that is queued or running, or null. A load test does not
+ * start next to one, and stops when one starts during it (the guard): the backup matters more.
+ */
+export async function otherWork(db: Database) {
   const [backup] = await db
     .select({ id: instanceBackup.id })
     .from(instanceBackup)
@@ -181,14 +201,37 @@ export async function busyReason(db: Database, store: MonitorStore, now = Date.n
     .where(inArray(projectTransfer.status, ['queued', 'running']))
     .limit(1);
   if (transfer) return 'transfer_running';
-  const api = await readApi(store, BUSY_WINDOW_MS, now).catch(() => null);
-  if (api && ((api.p95 ?? 0) > BUSY.apiP95Ms || api.cpu > BUSY.cpu)) return 'under_load';
-  const boards = await readBoardRoles(store, db, now).catch(() => null);
-  if (boards && (boards.storeP95Ms ?? 0) > BUSY.storeP95Ms) return 'under_load';
   return null;
 }
 
+/**
+ * Why a run cannot start now, or null. Fails closed: without the heartbeats of the web and
+ * collaboration roles (or when they cannot be read) the answer is `no_metrics`, since the guard
+ * would be blind. `large` needs a worker role of its own (`shared_process`).
+ */
+export async function busyReason(
+  db: Database,
+  store: MonitorStore,
+  preset?: LoadTestPreset,
+  now = Date.now(),
+) {
+  try {
+    const other = await otherWork(db);
+    if (other) return other;
+    if (preset === 'large' && !(await separateWorker(store, now))) return 'shared_process';
+    const api = await readApi(store, BUSY_WINDOW_MS, now);
+    if ((api.p95 ?? 0) > BUSY.apiP95Ms || api.cpu > BUSY.cpu) return 'under_load';
+    const boards = await readBoardRoles(store, db, now);
+    if ((boards.storeP95Ms ?? 0) > BUSY.storeP95Ms) return 'under_load';
+    return null;
+  } catch {
+    return 'no_metrics';
+  }
+}
+
 export interface GuardReading {
+  /** False when a role's heartbeat is missing or could not be read: a breach (`no_metrics`). */
+  metrics: boolean;
   storeP95Ms: number | null;
   apiP95Ms: number | null;
   apiRequests: number;
@@ -198,6 +241,7 @@ export interface GuardReading {
 
 /** The first guard limit a reading is past, or null. */
 export function guardBreach(r: GuardReading, guard = GUARD): string | null {
+  if (!r.metrics) return 'no_metrics';
   if ((r.storeP95Ms ?? 0) > guard.storeP95Ms) return 'store_slow';
   if ((r.apiP95Ms ?? 0) > guard.apiP95Ms) return 'api_slow';
   if (r.apiRequests >= GUARD_MIN_REQUESTS && r.apiErrors / r.apiRequests > guard.apiErrorRate)
@@ -268,7 +312,17 @@ export async function deleteTestData(
 ) {
   const { db } = deps;
   const keys = await db.transaction(async (tx) => {
-    const projects = row.testProjectId ? [row.testProjectId] : [];
+    // Also the projects the account made but the run never recorded (a crash between the
+    // project's creation and onProject): by creator id, never by name.
+    const made = row.testUserId
+      ? await tx
+          .select({ id: project.id })
+          .from(project)
+          .where(eq(project.createdBy, row.testUserId))
+      : [];
+    const projects = [
+      ...new Set([...(row.testProjectId ? [row.testProjectId] : []), ...made.map((p) => p.id)]),
+    ];
     // Files first, in one order, as the account deletion does (#879).
     if (projects.length || row.testUserId)
       await tx
@@ -329,7 +383,7 @@ export async function reapLoadTests(db: Database, staleMs = STALE_MS, now = Date
 }
 
 /**
- * At worker start and every hour: runs left by a crash or a restart are marked, and the test
+ * At worker start and every 5 minutes: runs left by a crash or a restart are marked, and the test
  * data of every finished run is deleted (also a stop's or a failed cleanup's), then the history
  * is pruned.
  */
@@ -406,7 +460,7 @@ export async function runLoadTestJob(deps: LoadTestDeps, id: string) {
     .returning();
   // Cancelled, or delivered again after it ran: nothing to do.
   if (!row) return { skipped: true };
-  const busy = await busyReason(db, store).catch(() => null);
+  const busy = await busyReason(db, store, row.preset);
   if (busy) {
     await finish(db, id, { status: 'refused', reason: busy, cleanedAt: new Date() });
     return { refused: busy };
@@ -417,6 +471,8 @@ export async function runLoadTestJob(deps: LoadTestDeps, id: string) {
   deps.shutdown?.addEventListener('abort', onShutdown);
   let latest: LoadTestProgress | null = null;
   let apiP95Ms: number | null = null;
+  // Whether the last reading of the board roles came: missing, the guard counts a breach.
+  let boardsRead = true;
   const beat = async () => {
     const [current] = await db
       .update(loadTestRun)
@@ -460,7 +516,16 @@ export async function runLoadTestJob(deps: LoadTestDeps, id: string) {
       preset,
       durationS: deps.durationS ?? preset.durationS,
       signal: stop.signal,
-      scrape: () => readBoardRoles(store, db),
+      scrape: async () => {
+        try {
+          const reading = await readBoardRoles(store, db);
+          boardsRead = true;
+          return reading;
+        } catch (err) {
+          boardsRead = false;
+          throw err;
+        }
+      },
       log: (line) => log.info({ run: id }, line),
       onProject: async (projectId) => {
         await db
@@ -472,10 +537,14 @@ export async function runLoadTestJob(deps: LoadTestDeps, id: string) {
         latest = { ...p, apiP95Ms };
       },
       guard: async (p) => {
+        // A backup, export or import that starts during the run stops it at once.
+        const other = await otherWork(db).catch(() => null);
+        if (other) return other;
         const api = await readApi(store, API_WINDOW_MS).catch(() => null);
         apiP95Ms = api?.p95 ?? null;
         latest = { ...p, apiP95Ms };
         return guard({
+          metrics: boardsRead && api !== null,
           storeP95Ms: p.storeP95Ms,
           apiP95Ms,
           apiRequests: api?.requests ?? 0,
@@ -495,7 +564,7 @@ export async function runLoadTestJob(deps: LoadTestDeps, id: string) {
   try {
     if (after) await deleteTestData(deps, after);
   } catch (err) {
-    // The hourly sweep and the next start try again.
+    // The sweep (every 5 minutes) and the next start try again.
     log.error({ err, run: id }, 'load test data not deleted');
   }
   const report = outcome ? toReport(outcome.result) : null;

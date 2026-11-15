@@ -36,6 +36,8 @@ const REASONS = new Set([
   'loadtest_running',
   'under_load',
   'no_worker',
+  'no_metrics',
+  'shared_process',
   'internal',
 ]);
 const STATUSES = new Set([
@@ -163,16 +165,24 @@ export function LoadTestCard() {
               label={t('server.loadTest.preset')}
               value={preset}
               onChange={setPreset}
-              options={data.presets.map((p) => ({
-                value: p.name,
-                label: t(`server.loadTest.presets.${p.name}`),
-                description: t('server.loadTest.presetText', {
+              // `all` mode: the test shares the live server's process, and `large` waits for a
+              // worker role of its own.
+              hint={data.separateWorker ? undefined : t('server.loadTest.sharedProcess')}
+              options={data.presets.map((p) => {
+                const blocked = p.name === 'large' && !data.separateWorker;
+                const text = t('server.loadTest.presetText', {
                   editors: p.editors,
                   readers: p.readers,
                   boards: p.boards,
                   time: minutes(p.durationS),
-                }),
-              }))}
+                });
+                return {
+                  value: p.name,
+                  label: t(`server.loadTest.presets.${p.name}`),
+                  description: blocked ? `${text} · ${t('server.loadTest.needsWorker')}` : text,
+                  disabled: blocked,
+                };
+              })}
             />
           </div>
           {chosen && (

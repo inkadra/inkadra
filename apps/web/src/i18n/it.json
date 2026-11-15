@@ -6310,10 +6310,12 @@
         "large": "Grande"
       },
       "presetText": "{{editors}} editor, {{readers}} lettori, {{boards}} board · {{time}}",
+      "sharedProcess": "Modalità tutto in uno: gli editor di prova girano dentro il server in uso e ne condividono il tempo, quindi chi lavora sente prima il carico e i numeri sono un po’ pessimisti. Grande richiede un ruolo worker separato.",
+      "needsWorker": "richiede un ruolo worker separato",
       "warningTitle": "Carica proprio questa istanza",
       "warning": "Per {{time}} il server lavora a pieno ritmo per degli editor di prova: chi usa board e video in quel momento può trovarli più lenti. Crea un account di prova e un progetto con {{boards}} board, e li elimina alla fine, anche dopo uno stop o un riavvio.",
       "when": "Quando",
-      "guard": "Si ferma da solo se chi usa l’istanza ne risente.",
+      "guard": "Si ferma da solo se chi usa l’istanza ne risente, se mancano le misure del server o se parte un backup, un’esportazione o un’importazione.",
       "now": "Adesso",
       "later": "Più tardi",
       "at": "Inizio",
@@ -6336,11 +6338,13 @@
         "loadtest_running": "Un test di carico è già pianificato o in corso.",
         "under_load": "L’istanza è già impegnata: riprova più tardi.",
         "no_worker": "I test di carico richiedono un worker (REDIS_URL).",
+        "no_metrics": "Mancano le misure del server: la protezione non poteva vedere se chi lavora ne risente.",
+        "shared_process": "Grande richiede un ruolo worker separato: in modalità tutto in uno il test rallenterebbe il server che misura.",
         "internal": "qualcosa è andato storto"
       },
       "scheduledFor": "Test di carico {{preset}} pianificato per {{time}}",
       "starting": "Test di carico {{preset}} in partenza…",
-      "scheduledHelp": "Non parte se in quel momento è in corso un backup o un’importazione, o se l’istanza è impegnata.",
+      "scheduledHelp": "Non parte se in quel momento è in corso un backup o un’importazione, o se l’istanza è impegnata. Se uno parte durante il test, il test si ferma.",
       "cancel": "Annulla",
       "phase": {
         "starting": "Avvio…",

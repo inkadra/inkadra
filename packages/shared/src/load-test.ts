@@ -113,6 +113,8 @@ export const LOAD_TEST_REASONS = [
   'loadtest_running',
   'under_load',
   'no_worker',
+  'no_metrics',
+  'shared_process',
   'internal',
 ] as const;
 
@@ -173,6 +175,12 @@ export const LoadTests = z
       }),
     ),
     guard: LoadTestGuard,
+    separateWorker: z.boolean().openapi({
+      description:
+        'A worker role runs apart from the web and collaboration roles. Without one (`all` ' +
+        'mode) the load clients share the live server’s event loop, and `large` is refused ' +
+        '(`shared_process`).',
+    }),
     items: z.array(LoadTestRun).openapi({ description: 'Newest first, at most 10.' }),
   })
   .openapi('LoadTests');
