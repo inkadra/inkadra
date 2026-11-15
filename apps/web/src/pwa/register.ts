@@ -84,6 +84,20 @@ function runsVersionOf(worker: ServiceWorker): Promise<boolean> {
   });
 }
 
+/**
+ * Asks `waiting` to take over once the worker running this page has finished activating.
+ * Chromium runs a worker's activate event a second after it takes over, and a skipWaiting()
+ * that arrives during that event can leave the new worker waiting for minutes (#914).
+ */
+function skipWaiting(waiting: ServiceWorker) {
+  const active = navigator.serviceWorker.controller;
+  if (active?.state === 'activating') {
+    active.addEventListener('statechange', () => skipWaiting(waiting), { once: true });
+    return;
+  }
+  waiting.postMessage({ type: 'skip-waiting' });
+}
+
 const HOUR = 60 * 60 * 1000;
 
 export function registerServiceWorker() {
@@ -112,12 +126,12 @@ export function registerServiceWorker() {
     if (await runsVersionOf(waiting)) {
       // Nothing to reload here; tabs on the old version get the prompt from controllerchange.
       silent = waiting;
-      waiting.postMessage({ type: 'skip-waiting' });
+      skipWaiting(waiting);
       return;
     }
     offer(() => {
       requested = true;
-      waiting.postMessage({ type: 'skip-waiting' });
+      skipWaiting(waiting);
     });
   };
 
