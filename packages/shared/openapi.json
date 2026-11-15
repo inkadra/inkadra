@@ -21634,6 +21634,9 @@
                 "account.deleted",
                 "backup.started",
                 "backup.restored",
+                "loadtest.started",
+                "loadtest.stopped",
+                "loadtest.finished",
                 "auth.sign_in_failed",
                 "auth.locked_out"
               ]
