@@ -33,8 +33,8 @@ import { DrawingEditor } from './DrawingEditor.tsx';
 import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
-import { SceneToBring } from './SceneToBring.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
+import { SceneToBring } from './SceneToBring.tsx';
 import { inShotList, sceneName, useStoryboard } from './storyboard-data.ts';
 import {
   applyDrop,

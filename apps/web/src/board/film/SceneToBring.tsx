@@ -40,7 +40,8 @@ export function listsOfScene(elements: Iterable<Element>, sceneId: string): Scen
   return [...elements]
     .filter((e): e is SceneList => e.type === 'todo' && !!e.list && e.sceneId === sceneId)
     .sort(
-      (a, b) => TODO_LISTS.indexOf(a.list) - TODO_LISTS.indexOf(b.list) || a.createdAt - b.createdAt,
+      (a, b) =>
+        TODO_LISTS.indexOf(a.list) - TODO_LISTS.indexOf(b.list) || a.createdAt - b.createdAt,
     );
 }
 
@@ -206,7 +207,7 @@ function ToBringPanel({
   const [naming, setNaming] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
-  const [days, setDays] = useState('');
+  const [shooting, setShooting] = useState<Array<{ n: number; date: string }>>([]);
   const doc = store.doc;
   const typeName = (list: TodoList) => t(`board.todo.lists.${list}`);
   const nameOf = (l: SceneList) => l.title?.trim() || typeName(l.list);
@@ -258,23 +259,31 @@ function ToBringPanel({
       .then((all) => {
         if (!live) return;
         const byId = store.getSnapshot().byId;
-        const date = new Intl.DateTimeFormat(i18n.language, {
-          weekday: 'short',
-          day: 'numeric',
-          timeZone: 'UTC',
-        });
-        const shooting = all.flatMap((day, n) =>
-          sceneIdsOf(day, byId).includes(scene.id)
-            ? [t('needed.scene.day', { n: n + 1, date: date.format(Date.parse(`${day.date}T00:00:00Z`)) })]
-            : [],
+        setShooting(
+          all.flatMap((day, n) =>
+            sceneIdsOf(day, byId).includes(scene.id) ? [{ n: n + 1, date: day.date }] : [],
+          ),
         );
-        setDays(shooting.length ? t('needed.scene.days', { days: shooting.join(', ') }) : '');
       })
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [boardId, projectId, scene.id, store, t, i18n.language]);
+  }, [boardId, projectId, scene.id, store]);
+  const date = new Intl.DateTimeFormat(i18n.language, {
+    weekday: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+  const days = shooting.length
+    ? t('needed.scene.days', {
+        days: shooting
+          .map(({ n, date: d }) =>
+            t('needed.scene.day', { n, date: date.format(Date.parse(`${d}T00:00:00Z`)) }),
+          )
+          .join(', '),
+      })
+    : '';
 
   const openMenu = (e: MouseEvent<HTMLElement>, next: (r: DOMRect) => Menu) => {
     menuAnchor.current = e.currentTarget;
@@ -384,7 +393,10 @@ function ToBringPanel({
                           const person = people.find((p) => p.id === item.assigneeId);
                           const key = `${l.id}/${item.id}`;
                           return (
-                            <li key={item.id} className={`to-bring__item${item.done ? ' is-done' : ''}`}>
+                            <li
+                              key={item.id}
+                              className={`to-bring__item${item.done ? ' is-done' : ''}`}
+                            >
                               <Checkbox
                                 checked={item.done}
                                 disabled={readOnly}
@@ -431,7 +443,9 @@ function ToBringPanel({
                                   />
                                 </span>
                               )}
-                              {person && <Avatar name={person.name} image={person.image} size={20} />}
+                              {person && (
+                                <Avatar name={person.name} image={person.image} size={20} />
+                              )}
                             </li>
                           );
                         })}
@@ -442,7 +456,8 @@ function ToBringPanel({
                               value=""
                               keepOnEnter
                               onSave={(text) => {
-                                if (text) step(store, () => addTodoItem(doc, l.id, text, undefined, LOCAL));
+                                if (text)
+                                  step(store, () => addTodoItem(doc, l.id, text, undefined, LOCAL));
                               }}
                               onCancel={() => setAdding(null)}
                               onBlur={() => setAdding(null)}
