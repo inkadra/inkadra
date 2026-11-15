@@ -55,7 +55,7 @@ async function main() {
   const storyUrl = `/p/${project.id}/b/${storyboard.id}`;
   for (const theme of themes) {
     const { page, close } = await open(browser, sample.cookie, theme);
-    await shoot(page, boardUrl, join(readme, `board-${theme}.png`));
+    await shoot(page, `${boardUrl}?view=canvas`, join(readme, `board-${theme}.png`));
     await shoot(page, storyUrl, join(readme, `storyboard-${theme}.png`));
     await shoot(page, `${storyUrl}?view=shotlist`, join(readme, `shotlist-${theme}.png`));
     await shoot(page, '/', join(readme, `home-${theme}.png`));
@@ -107,10 +107,12 @@ async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
   await page.locator('.comments-panel').waitFor();
   await save(page, file('comments'));
 
-  // A frame's panel, then Draw, on the arrow the sample drew over the first frame.
-  await fit(page, canvas(storyboard.id));
-  await page.locator('.card--frame').first().dblclick();
+  // A frame's panel in the Storyboard view, then Draw on its annotated picture.
+  await page.goto(`/p/${project.id}/b/${storyboard.id}`);
+  await page.locator('.story__side-item').nth(1).click();
+  await page.locator('[data-story-frame]').first().click();
   await page.locator('.film-panel').waitFor();
+  await page.locator('.ink-main').evaluate((el) => el.scrollTo(0, 0));
   await save(page, file('frame-panel'));
   await page.getByRole('button', { name: 'Draw', exact: true }).last().click();
   await page.locator('.pen').waitFor();
@@ -137,6 +139,8 @@ async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
   await fit(page, canvas(rushes.id));
   await page.locator('.card--file').first().locator('.fcard__footer').click();
   await page.keyboard.press('Shift+Digit2');
+  // Leave room for the minimap beside the selected card's caption.
+  await page.keyboard.press('Minus');
   await page.waitForTimeout(800);
   await page.locator('.card--file .fcard__play').first().click();
   const video = page.locator('.card--file video').first();
@@ -162,6 +166,8 @@ async function shootGuide(page: Page, sample: SampleProject, theme: Theme) {
     .getByLabel('Description', { exact: true })
     .fill('At 1280 px the dock sits on top of the Palette column until I zoom out.');
   await save(page, file('report-dialog'));
+  // Keep the preview's disclosure and footer inside the picture.
+  await page.setViewportSize({ width: 1440, height: 1100 });
   await form.getByRole('button', { name: 'Preview', exact: true }).click();
   await page.getByRole('dialog', { name: 'Preview of what you send', exact: true }).waitFor();
   await save(page, file('report-preview'));
@@ -188,7 +194,7 @@ async function shootPhone(browser: Browser, sample: SampleProject, theme: Theme)
 }
 
 async function shoot(page: Page, path: string, file: string) {
-  if (path !== '/' && !path.includes('view=')) await fit(page, path);
+  if (path.includes('view=canvas')) await fit(page, path);
   else await page.goto(path);
   await page.waitForLoadState('networkidle');
   await save(page, file);
