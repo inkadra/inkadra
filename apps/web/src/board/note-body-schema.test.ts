@@ -150,7 +150,7 @@ it('declares the content model of the editor, for clients that write notes witho
   expect(excludes).toEqual(NOTE_MARK_EXCLUDES);
   for (const [mark, defaults] of Object.entries(NOTE_MARK_DEFAULTS))
     for (const [attr, value] of Object.entries(defaults))
-      expect(schema.marks[mark]?.attrs[attr]?.default).toBe(value);
+      expect(schema.marks[mark]?.create().attrs[attr]).toBe(value);
 });
 
 it('keeps a note written with the doc-schema operations as it is when the editor opens it', async () => {
