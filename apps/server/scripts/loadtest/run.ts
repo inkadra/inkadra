@@ -64,7 +64,11 @@ async function api(method: string, path: string, body?: unknown) {
   const res = await fetch(new URL(path, origin), {
     method,
     // No content type without a body: the server refuses an empty JSON body (DELETE).
-    headers: { origin, cookie, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+    headers: {
+      origin,
+      cookie,
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok)
