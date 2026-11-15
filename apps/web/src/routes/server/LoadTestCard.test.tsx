@@ -225,7 +225,7 @@ const memoryReport = (perBoardInfo: string | null) => ({
     poolWaitMaxMs: 3,
     peakDbConnections: 9,
   },
-  limits: { ...limits, docPerBoardKiB: 1024 },
+  limits: { ...limits, docPerBoardKiB: 256 },
   failures: [],
   text: 'Inkadra load test · preset small',
 });

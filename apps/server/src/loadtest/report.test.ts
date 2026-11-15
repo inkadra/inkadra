@@ -171,9 +171,9 @@ describe('load test report (#902)', () => {
     const r = result({
       server: server({ perBoardInfo: 'shared_process', docPerBoardKiB: 3000 }),
     });
-    expect(evaluate(r, PRESETS.small.limits)).toEqual(['board document size 3000 KiB > 1024 KiB']);
+    expect(evaluate(r, PRESETS.small.limits)).toEqual(['board document size 3000 KiB > 256 KiB']);
     expect(formatReport(r, PRESETS.small.limits, [])).toContain(
-      'Board documents       3000 KiB per open board (Yjs, encoded)   limit 1024 KiB',
+      'Board documents       3000 KiB per open board (Yjs, encoded)   limit 256 KiB',
     );
   });
 
@@ -210,7 +210,7 @@ describe('load test report (#902)', () => {
       'board save p95 1200 ms > 1000 ms',
       'peak memory 2000 MiB > 1024 MiB',
       'memory per open board 12 MiB > 8 MiB',
-      'board document size 2048 KiB > 1024 KiB',
+      'board document size 2048 KiB > 256 KiB',
     ]);
   });
 
