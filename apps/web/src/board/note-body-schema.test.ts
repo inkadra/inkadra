@@ -1,9 +1,27 @@
 // @vitest-environment happy-dom
-import { addElement, checkCard, createBoardDoc, NOTE_BODY_SCHEMA } from '@inkadra/doc-schema';
+import {
+  addElement,
+  appendParagraph,
+  checkCard,
+  createBoardDoc,
+  formatText,
+  insertBlock,
+  insertInline,
+  NOTE_BODY_CONTENT,
+  NOTE_BODY_SCHEMA,
+  NOTE_MARK_DEFAULTS,
+  NOTE_MARK_EXCLUDES,
+  noteStructureIssues,
+  replaceText,
+  setTaskChecked,
+  setTextBlock,
+  splitBlock,
+  toggleList,
+} from '@inkadra/doc-schema';
 import { Editor, getSchema, type JSONContent } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
 import { expect, it } from 'vitest';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { NOTE_EXTENSIONS } from './note.tsx';
 
 /** Attribute names by node or mark name; `doc` and `text` are never stored as such. */
@@ -104,5 +122,67 @@ it('keeps a note written by the editor known to the strict check', async () => {
   ])
     expect(xml).toContain(part);
   expect(checkCard(note)).toEqual({ status: 'known' });
+  editor.destroy();
+});
+
+it('declares the content model of the editor, for clients that write notes without it', () => {
+  const schema = getSchema(NOTE_EXTENSIONS);
+  const model = Object.fromEntries(
+    Object.entries(schema.nodes).map(([name, type]) => {
+      const spec = type.spec;
+      return [
+        name,
+        {
+          content: spec.content ?? '',
+          group: spec.group ?? '',
+          inline: type.isInline,
+          ...(spec.marks === undefined ? {} : { marks: spec.marks }),
+        },
+      ];
+    }),
+  );
+  expect(model).toEqual(NOTE_BODY_CONTENT);
+  const excludes = Object.fromEntries(
+    Object.entries(schema.marks)
+      .filter(([, type]) => type.spec.excludes !== undefined)
+      .map(([name, type]) => [name, type.spec.excludes]),
+  );
+  expect(excludes).toEqual(NOTE_MARK_EXCLUDES);
+  for (const [mark, defaults] of Object.entries(NOTE_MARK_DEFAULTS))
+    for (const [attr, value] of Object.entries(defaults))
+      expect(schema.marks[mark]?.create().attrs[attr]).toBe(value);
+});
+
+it('keeps a note written with the doc-schema operations as it is when the editor opens it', async () => {
+  const doc = new Y.Doc();
+  const fragment = doc.getXmlFragment('body');
+  doc.transact(() => {
+    const first = appendParagraph(fragment).block;
+    replaceText(first, 0, 0, 'Ferry timing');
+    setTextBlock(first, 'heading', 2);
+    const text = splitBlock(fragment.get(0) as Y.XmlElement, 12).block;
+    replaceText(text, 0, 0, 'Leaves at 08:55, keep 12E ready.');
+    formatText(text, 0, 6, 'bold', {});
+    formatText(text, 10, 15, 'code', {});
+    formatText(text, 17, 20, 'link', { ...NOTE_MARK_DEFAULTS.link, href: 'https://example.com' });
+    insertInline(text, 16, 'mention', { id: 'u1', label: 'Anna' });
+    const todo = splitBlock(text, 33).block;
+    replaceText(todo, 0, 0, 'Radio the harbour');
+    const list = toggleList(todo, 'taskList')?.block as Y.XmlElement;
+    setTaskChecked(list.parent as Y.XmlElement, true);
+    const second = splitBlock(list, 17).block;
+    replaceText(second, 0, 0, 'Clear the frame');
+    insertBlock(fragment, null, 'noteImage', { assetId: 'asset-1' });
+  });
+  expect(noteStructureIssues(fragment)).toEqual([]);
+  const before = fragment.toString();
+  const editor = new Editor({
+    element: document.createElement('div'),
+    extensions: [...NOTE_EXTENSIONS, Collaboration.configure({ fragment })],
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(fragment.toString()).toBe(before);
+  const kinds = (editor.getJSON().content ?? []).map((node) => node.type);
+  expect(kinds).toEqual(['heading', 'paragraph', 'taskList', 'noteImage', 'paragraph']);
   editor.destroy();
 });
