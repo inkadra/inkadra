@@ -391,6 +391,34 @@ describe('whole characters (two UTF-16 units: emoji)', () => {
   });
 });
 
+describe('whole characters in code and attributes', () => {
+  it('Enter inside an emoji in code puts the new line before it and the caret after the new line', () => {
+    const fragment = body(el('codeBlock', {}, 'go 👍'));
+    const caret = splitBlock(at(fragment, 0), 4);
+    expect(textOf(at(fragment, 0))).toBe('go \n👍');
+    expect(caret).toEqual({ block: at(fragment, 0), offset: 4 });
+    expectSameElsewhere(fragment);
+  });
+
+  it('keeps a mention label and a picture alt on whole characters, cut to their longest', () => {
+    const fragment = body(p('hi'));
+    insertInline(at(fragment, 0), 2, 'mention', {
+      id: 'u1',
+      label: `A\uD83D${'é'.repeat(198)}👍👍`,
+    });
+    const label = String(at(fragment, 0, 1).getAttribute('label'));
+    expect(label).toBe(`A${'é'.repeat(198)}👍`.slice(0, 199));
+    expect(label.length).toBeLessThanOrEqual(200);
+    insertBlock(fragment, at(fragment, 0), 'noteImage', {
+      assetId: 'a1',
+      alt: `${'x'.repeat(499)}👍`,
+    });
+    expect(at(fragment, 1).getAttribute('alt')).toBe('x'.repeat(499));
+    expectSameElsewhere(fragment);
+    expectValid(fragment);
+  });
+});
+
 describe('marks', () => {
   it('stores code alone, as formatText: other known marks go, unknown ones stay', () => {
     const fragment = body(p('a'));
@@ -437,12 +465,27 @@ describe('nested lists', () => {
       ),
     );
 
-  it('Enter on an empty nested item lifts it one level, the items after it under it', () => {
+  it('Enter on an empty item in the middle of a nested list: an empty paragraph of the item around it, the list split (Tiptap 3.32)', () => {
     const fragment = nested();
     const caret = splitBlock(at(fragment, 0, 0, 1, 1, 0), 0);
     expect(show(fragment)).toBe(
+      '<bulletList><listItem><paragraph>a</paragraph>' +
+        '<bulletList><listItem><paragraph>b</paragraph></listItem></bulletList>' +
+        '<paragraph></paragraph>' +
+        '<bulletList><listItem><paragraph>c</paragraph></listItem></bulletList></listItem></bulletList>',
+    );
+    expect(caret.block).toBe(at(fragment, 0, 0, 2));
+    expectValid(fragment);
+  });
+
+  it('Enter on the empty last item of a nested list lifts it one level', () => {
+    const fragment = body(
+      el('bulletList', {}, el('listItem', {}, p('a'), el('bulletList', {}, item('b'), item('')))),
+    );
+    const caret = splitBlock(at(fragment, 0, 0, 1, 1, 0), 0);
+    expect(show(fragment)).toBe(
       '<bulletList><listItem><paragraph>a</paragraph><bulletList><listItem><paragraph>b</paragraph></listItem></bulletList></listItem>' +
-        '<listItem><paragraph></paragraph><bulletList><listItem><paragraph>c</paragraph></listItem></bulletList></listItem></bulletList>',
+        '<listItem><paragraph></paragraph></listItem></bulletList>',
     );
     expect(caret.block).toBe(at(fragment, 0, 1, 0));
     expectValid(fragment);
