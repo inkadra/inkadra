@@ -195,6 +195,7 @@ export const SETTINGS: SettingEntry[] = [
   s('server.alerts', 'server.alerts.enabled', ['server.alerts.title']),
   s('server.alertsHow', 'server.alerts.how'),
   s('server.admin', 'server.admin.title'),
+  s('server.loadTest', 'server.loadTest.title', ['server.loadTest.start']),
   s('updates.notify', 'updates.notify'),
   s('updates.channel', 'updates.channel'),
   s('updates.releaseNews', 'settingsUi.notifications.releaseNews'),

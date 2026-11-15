@@ -5797,6 +5797,10 @@
           "4": {
             "title": "Alerts",
             "text": "Tells you when something is wrong."
+          },
+          "5": {
+            "title": "Load test",
+            "text": "Puts the instance under test load and stops if people are affected; the report stays here."
           }
         }
       },
@@ -6321,6 +6325,116 @@
       "title": "For whoever runs the server",
       "lead": "Charts over time, processes, job queues and the error log are in the Advanced view.",
       "open": "Open Advanced"
+    },
+    "loadTest": {
+      "title": "Load test",
+      "lead": "Puts this instance under the load of many people editing at once, measures how it holds up, and keeps the report.",
+      "loadError": "The load tests could not be loaded.",
+      "unavailable": "Load tests need a worker",
+      "unavailableHelp": "They run as a background job: start the instance with Valkey (REDIS_URL) and a worker.",
+      "preset": "Size",
+      "presets": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      },
+      "presetText": "{{editors}} editors, {{readers}} readers, {{boards}} boards · {{time}}",
+      "sharedProcess": "All-in-one mode: the test editors run inside the live server and share its time, so people feel the load sooner and the numbers are a little pessimistic. Large needs a separate worker role.",
+      "needsWorker": "needs a separate worker role",
+      "warningTitle": "This loads the instance itself",
+      "warning": "For {{time}} the server works hard for test editors: everyone using boards and videos now may find them slower. It creates a test account and a project of {{boards}} boards, and deletes them at the end, also after a stop or a restart.",
+      "when": "When",
+      "guard": "It stops by itself if people using the instance are affected, if the server’s measurements go missing, or if a backup, export or import starts.",
+      "now": "Now",
+      "later": "Later",
+      "at": "Start at",
+      "timeZone": "Server time zone: {{zone}}",
+      "date": "Date",
+      "time": "Time",
+      "understand": "I understand that this generates real load on this instance.",
+      "start": "Start load test",
+      "schedule": "Schedule load test",
+      "startError": "The load test could not start. Try again.",
+      "badTime": "Choose a time within the next 7 days.",
+      "stopError": "The load test could not be stopped. Try again.",
+      "reasons": {
+        "store_slow": "stopped: board saves became slow",
+        "api_slow": "stopped: the app became slow for other people",
+        "api_errors": "stopped: other people got errors",
+        "edits_slow": "stopped: edits became slow",
+        "backup_running": "A backup is running: try again when it is done.",
+        "transfer_running": "An export or import is running: try again when it is done.",
+        "loadtest_running": "A load test is already scheduled or running.",
+        "under_load": "The instance is already busy: try again later.",
+        "no_worker": "Load tests need a worker (REDIS_URL).",
+        "no_metrics": "The server’s measurements are missing: the guard could not see whether people are affected.",
+        "shared_process": "Large needs a separate worker role: in all-in-one mode the test would slow down the server it measures.",
+        "internal": "something went wrong"
+      },
+      "scheduledFor": "{{preset}} load test scheduled for {{time}}",
+      "starting": "{{preset}} load test starting…",
+      "scheduledHelp": "It does not start if a backup or an import is running then, or if the instance is busy. One that starts during the run stops it.",
+      "cancel": "Cancel",
+      "phase": {
+        "starting": "Starting…",
+        "seeding": "Creating test boards: {{done}} of {{total}}",
+        "running": "Running: {{done}} of {{total}}",
+        "cleaning": "Deleting the test data…"
+      },
+      "running": "{{preset}} load test running",
+      "stop": "Stop",
+      "progress": "Load test progress",
+      "ms": "{{value}} ms",
+      "mib": "{{value}} MiB",
+      "live": {
+        "edits": "Edits",
+        "editP95": "Edit round trip p95",
+        "deliveryP95": "Delivery to readers p95",
+        "storeP95": "Board saves p95",
+        "apiP95": "App for other people p95",
+        "errors": "Errors · reconnects"
+      },
+      "history": "Last load tests",
+      "notCleaned": "test data still being deleted",
+      "status": {
+        "passed": "Passed",
+        "failed": "Failed",
+        "aborted": "Stopped by guard",
+        "stopped": "Stopped",
+        "cancelled": "Cancelled",
+        "refused": "Not started",
+        "interrupted": "Interrupted"
+      },
+      "report": {
+        "times_one": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} sample)",
+        "times_other": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} samples)",
+        "editsValue": "{{edits}} ({{switches}} board switches, {{uploads}} uploads, {{failed}} failed)",
+        "p95p99": "p95 {{p95}}, p99 {{p99}}",
+        "p95": "p95 {{value}}",
+        "storesValue": "p95 {{p95}} · slowest {{max}}",
+        "memoryValue": "{{before}} before → peak {{peak}}",
+        "perBoardValue_one": "{{value}} over {{count}} board",
+        "perBoardValue_other": "{{value}} over {{count}} boards",
+        "setup": "{{editors}} editors, {{readers}} readers, {{boards}} boards, {{time}}",
+        "measure": "Measure",
+        "value": "Result",
+        "limit": "Limit",
+        "rows": {
+          "edits": "Edits",
+          "editMs": "Edit round trip",
+          "deliveryMs": "Delivery to readers",
+          "errors": "Errors",
+          "reconnects": "Reconnects",
+          "stores": "Board saves",
+          "poolWait": "Pool wait (saves)",
+          "connections": "Database connections",
+          "memory": "Memory (board roles)",
+          "perBoard": "Per open board"
+        },
+        "overLimit": "(over the limit)",
+        "noServer": "The server side was not measured.",
+        "text": "Report as text"
+      }
     }
   },
   "updates": {
@@ -6876,7 +6990,10 @@
       "backup_started": "Backup started",
       "backup_restored": "Backup restored",
       "auth_sign_in_failed": "Sign-in failed",
-      "auth_locked_out": "Sign-in locked"
+      "auth_locked_out": "Sign-in locked",
+      "loadtest_started": "Load test started",
+      "loadtest_stopped": "Load test stopped",
+      "loadtest_finished": "Load test finished"
     }
   }
 }

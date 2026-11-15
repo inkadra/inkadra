@@ -5797,6 +5797,10 @@
           "4": {
             "title": "Os alertas",
             "text": "Avisa se algo não estiver bem."
+          },
+          "5": {
+            "title": "Teste de carga",
+            "text": "Coloca a instância sob carga de teste e para se as pessoas sentirem; o relatório fica aqui."
           }
         }
       },
@@ -6321,6 +6325,116 @@
       "title": "Para quem gere o servidor",
       "lead": "Os gráficos ao longo do tempo, os processos, as filas de tarefas e o registo de erros estão na vista Avançada.",
       "open": "Abrir Avançada"
+    },
+    "loadTest": {
+      "title": "Teste de carga",
+      "lead": "Coloca esta instância sob a carga de muitas pessoas editando ao mesmo tempo, mede como ela aguenta e guarda o relatório.",
+      "loadError": "Não foi possível carregar os testes de carga.",
+      "unavailable": "Os testes de carga precisam de um worker",
+      "unavailableHelp": "Eles rodam como tarefa em segundo plano: inicie a instância com Valkey (REDIS_URL) e um worker.",
+      "preset": "Tamanho",
+      "presets": {
+        "small": "Pequeno",
+        "medium": "Médio",
+        "large": "Grande"
+      },
+      "presetText": "{{editors}} editores, {{readers}} leitores, {{boards}} quadros · {{time}}",
+      "sharedProcess": "Modo tudo em um: os editores de teste rodam dentro do servidor em uso e dividem o tempo dele, então as pessoas sentem a carga antes e os números ficam um pouco pessimistas. Grande precisa de um papel worker separado.",
+      "needsWorker": "precisa de um papel worker separado",
+      "warningTitle": "Isto carrega a própria instância",
+      "warning": "Durante {{time}} o servidor trabalha a fundo para editores de teste: quem usar quadros e vídeos nesse momento pode achá-los mais lentos. Cria uma conta de teste e um projeto com {{boards}} quadros, e os exclui no fim, também após uma parada ou reinício.",
+      "when": "Quando",
+      "guard": "Ele para sozinho se as pessoas que usam a instância sentirem, se faltarem as medições do servidor ou se começar um backup, uma exportação ou uma importação.",
+      "now": "Agora",
+      "later": "Mais tarde",
+      "at": "Início",
+      "timeZone": "Fuso horário do servidor: {{zone}}",
+      "date": "Data",
+      "time": "Hora",
+      "understand": "Entendo que isto gera carga real nesta instância.",
+      "start": "Iniciar o teste de carga",
+      "schedule": "Agendar o teste de carga",
+      "startError": "Não foi possível iniciar o teste de carga. Tente de novo.",
+      "badTime": "Escolha um horário dentro dos próximos 7 dias.",
+      "stopError": "Não foi possível parar o teste de carga. Tente de novo.",
+      "reasons": {
+        "store_slow": "parado: o salvamento dos quadros ficou lento",
+        "api_slow": "parado: o app ficou lento para os outros",
+        "api_errors": "parado: os outros recebiam erros",
+        "edits_slow": "parado: as alterações ficaram lentas",
+        "backup_running": "Um backup está em andamento: tente quando terminar.",
+        "transfer_running": "Uma exportação ou importação está em andamento: tente quando terminar.",
+        "loadtest_running": "Um teste de carga já está agendado ou em andamento.",
+        "under_load": "A instância já está ocupada: tente mais tarde.",
+        "no_worker": "Os testes de carga precisam de um worker (REDIS_URL).",
+        "no_metrics": "Faltam as medições do servidor: a proteção não conseguia ver se as pessoas sentem.",
+        "shared_process": "Grande precisa de um papel worker separado: no modo tudo em um o teste deixaria lento o servidor que mede.",
+        "internal": "algo deu errado"
+      },
+      "scheduledFor": "Teste de carga {{preset}} agendado para {{time}}",
+      "starting": "Teste de carga {{preset}} iniciando…",
+      "scheduledHelp": "Ele não começa se nesse momento houver um backup ou uma importação em andamento, ou se a instância estiver ocupada. Se um começar durante o teste, o teste para.",
+      "cancel": "Cancelar",
+      "phase": {
+        "starting": "Iniciando…",
+        "seeding": "Criando quadros de teste: {{done}} de {{total}}",
+        "running": "Em andamento: {{done}} de {{total}}",
+        "cleaning": "Excluindo os dados de teste…"
+      },
+      "running": "Teste de carga {{preset}} em andamento",
+      "stop": "Parar",
+      "progress": "Progresso do teste de carga",
+      "ms": "{{value}} ms",
+      "mib": "{{value}} MiB",
+      "live": {
+        "edits": "Alterações",
+        "editP95": "Ida e volta das alterações p95",
+        "deliveryP95": "Entrega aos leitores p95",
+        "storeP95": "Salvamento de quadros p95",
+        "apiP95": "App para os outros p95",
+        "errors": "Erros · reconexões"
+      },
+      "history": "Últimos testes de carga",
+      "notCleaned": "dados de teste ainda sendo excluídos",
+      "status": {
+        "passed": "Aprovado",
+        "failed": "Reprovado",
+        "aborted": "Parado pela proteção",
+        "stopped": "Parado",
+        "cancelled": "Cancelado",
+        "refused": "Não iniciado",
+        "interrupted": "Interrompido"
+      },
+      "report": {
+        "times_one": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} medida)",
+        "times_other": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} medidas)",
+        "editsValue": "{{edits}} ({{switches}} trocas de quadro, {{uploads}} envios, {{failed}} com falha)",
+        "p95p99": "p95 {{p95}}, p99 {{p99}}",
+        "p95": "p95 {{value}}",
+        "storesValue": "p95 {{p95}} · o mais lento {{max}}",
+        "memoryValue": "{{before}} antes → pico {{peak}}",
+        "perBoardValue_one": "{{value}} em {{count}} quadro",
+        "perBoardValue_other": "{{value}} em {{count}} quadros",
+        "setup": "{{editors}} editores, {{readers}} leitores, {{boards}} quadros, {{time}}",
+        "measure": "Medida",
+        "value": "Resultado",
+        "limit": "Limite",
+        "rows": {
+          "edits": "Alterações",
+          "editMs": "Ida e volta das alterações",
+          "deliveryMs": "Entrega aos leitores",
+          "errors": "Erros",
+          "reconnects": "Reconexões",
+          "stores": "Salvamento de quadros",
+          "poolWait": "Espera de conexão (salvamentos)",
+          "connections": "Conexões ao banco de dados",
+          "memory": "Memória (papéis dos quadros)",
+          "perBoard": "Por quadro aberto"
+        },
+        "overLimit": "(acima do limite)",
+        "noServer": "O lado do servidor não foi medido.",
+        "text": "Relatório em texto"
+      }
     }
   },
   "updates": {
@@ -6876,7 +6990,10 @@
       "backup_started": "Backup iniciado",
       "backup_restored": "Backup restaurado",
       "auth_sign_in_failed": "Falha ao entrar",
-      "auth_locked_out": "Acesso bloqueado"
+      "auth_locked_out": "Acesso bloqueado",
+      "loadtest_started": "Teste de carga iniciado",
+      "loadtest_stopped": "Teste de carga parado",
+      "loadtest_finished": "Teste de carga concluído"
     }
   }
 }

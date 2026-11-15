@@ -33,6 +33,7 @@ import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, storageTotal, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import type { Jobs } from '../jobs.ts';
+import { notTestAccount } from '../loadtest/accounts.ts';
 import { recipesFor } from '../media/ladder.ts';
 import { diskSpace, growthPerMonth } from '../monitor/health.ts';
 import {
@@ -261,7 +262,13 @@ export function registerInstanceAdminRoutes(
       })
       .from(user)
       .leftJoin(storageTotal, eq(storageTotal.userId, user.id))
-      .where(after ? sql`(${user.name}, ${user.id}) > (${after[0]}, ${after[1]}::uuid)` : undefined)
+      // The account of a running load test is not a member (#908).
+      .where(
+        and(
+          notTestAccount,
+          after ? sql`(${user.name}, ${user.id}) > (${after[0]}, ${after[1]}::uuid)` : undefined,
+        ),
+      )
       .orderBy(asc(user.name), asc(user.id))
       .limit(page.limit === undefined ? Number.MAX_SAFE_INTEGER : page.limit + 1);
     const items = page.limit === undefined ? rows : rows.slice(0, page.limit);
@@ -313,7 +320,11 @@ export function registerInstanceAdminRoutes(
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
-      const [target] = await tx.select().from(user).where(eq(user.id, userId)).for('update');
+      const [target] = await tx
+        .select()
+        .from(user)
+        .where(and(eq(user.id, userId), notTestAccount))
+        .for('update');
       if (!target) throw new HttpError('not_found', 'Member not found.');
       if (
         target.role === 'admin' &&

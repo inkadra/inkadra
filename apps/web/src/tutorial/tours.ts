@@ -490,6 +490,7 @@ export const TOURS: Tour[] = [
       { anchor: 'server-health', media: 'gear', side: 'top' },
       { anchor: 'server-problems', media: 'bell', side: 'top' },
       { anchor: 'server-alerts', media: 'bell', side: 'top' },
+      { anchor: 'server-loadtest', media: 'gear', side: 'top' },
     ],
   },
   {

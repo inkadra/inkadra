@@ -20,6 +20,7 @@ export * from './feedback-redaction.ts';
 export * from './guests.ts';
 export * from './instance.ts';
 export * from './instance-admin.ts';
+export * from './load-test.ts';
 export * from './maps.ts';
 export * from './modules.ts';
 export * from './notification-words.ts';

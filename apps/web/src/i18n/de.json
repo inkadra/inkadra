@@ -5797,6 +5797,10 @@
           "4": {
             "title": "Warnungen",
             "text": "Sagt dir, wenn etwas nicht stimmt."
+          },
+          "5": {
+            "title": "Lasttest",
+            "text": "Setzt die Instanz unter Testlast und stoppt, wenn Personen etwas merken; der Bericht bleibt hier."
           }
         }
       },
@@ -6321,6 +6325,116 @@
       "title": "Für alle, die den Server betreiben",
       "lead": "Verläufe, Prozesse, Warteschlangen und das Fehlerprotokoll findest du in der erweiterten Ansicht.",
       "open": "Erweitert öffnen"
+    },
+    "loadTest": {
+      "title": "Lasttest",
+      "lead": "Setzt diese Instanz der Last vieler gleichzeitig bearbeitender Personen aus, misst, wie sie standhält, und behält den Bericht.",
+      "loadError": "Die Lasttests konnten nicht geladen werden.",
+      "unavailable": "Lasttests brauchen einen Worker",
+      "unavailableHelp": "Sie laufen als Hintergrundaufgabe: starte die Instanz mit Valkey (REDIS_URL) und einem Worker.",
+      "preset": "Größe",
+      "presets": {
+        "small": "Klein",
+        "medium": "Mittel",
+        "large": "Groß"
+      },
+      "presetText": "{{editors}} Bearbeitende, {{readers}} Lesende, {{boards}} Boards · {{time}}",
+      "sharedProcess": "All-in-one-Modus: Die Test-Bearbeitenden laufen im laufenden Server und teilen sich seine Zeit, daher merken Personen die Last früher und die Zahlen sind etwas pessimistisch. Groß braucht eine eigene Worker-Rolle.",
+      "needsWorker": "braucht eine eigene Worker-Rolle",
+      "warningTitle": "Das belastet diese Instanz selbst",
+      "warning": "{{time}} lang arbeitet der Server mit voller Kraft für Test-Bearbeitende: Wer gerade Boards und Videos nutzt, kann sie langsamer finden. Es legt ein Testkonto und ein Projekt mit {{boards}} Boards an und löscht sie am Ende, auch nach einem Stopp oder Neustart.",
+      "when": "Wann",
+      "guard": "Er stoppt von selbst, wenn Personen auf der Instanz etwas davon merken, wenn die Messwerte des Servers fehlen oder wenn ein Backup, Export oder Import startet.",
+      "now": "Jetzt",
+      "later": "Später",
+      "at": "Start um",
+      "timeZone": "Zeitzone des Servers: {{zone}}",
+      "date": "Datum",
+      "time": "Uhrzeit",
+      "understand": "Mir ist klar, dass das echte Last auf dieser Instanz erzeugt.",
+      "start": "Lasttest starten",
+      "schedule": "Lasttest planen",
+      "startError": "Der Lasttest konnte nicht starten. Versuche es erneut.",
+      "badTime": "Wähle eine Zeit innerhalb der nächsten 7 Tage.",
+      "stopError": "Der Lasttest konnte nicht gestoppt werden. Versuche es erneut.",
+      "reasons": {
+        "store_slow": "gestoppt: Boards wurden langsam gespeichert",
+        "api_slow": "gestoppt: die App wurde für andere langsam",
+        "api_errors": "gestoppt: andere bekamen Fehler",
+        "edits_slow": "gestoppt: Änderungen wurden langsam",
+        "backup_running": "Ein Backup läuft: versuche es danach erneut.",
+        "transfer_running": "Ein Export oder Import läuft: versuche es danach erneut.",
+        "loadtest_running": "Ein Lasttest ist schon geplant oder läuft.",
+        "under_load": "Die Instanz ist schon ausgelastet: versuche es später.",
+        "no_worker": "Lasttests brauchen einen Worker (REDIS_URL).",
+        "no_metrics": "Die Messwerte des Servers fehlen: Der Schutz konnte nicht sehen, ob Personen etwas merken.",
+        "shared_process": "Groß braucht eine eigene Worker-Rolle: Im All-in-one-Modus würde der Test den Server bremsen, den er misst.",
+        "internal": "etwas ist schiefgegangen"
+      },
+      "scheduledFor": "Lasttest {{preset}} geplant für {{time}}",
+      "starting": "Lasttest {{preset}} startet…",
+      "scheduledHelp": "Er startet nicht, wenn dann ein Backup oder Import läuft oder die Instanz ausgelastet ist. Startet einer während des Tests, stoppt der Test.",
+      "cancel": "Abbrechen",
+      "phase": {
+        "starting": "Startet…",
+        "seeding": "Test-Boards werden angelegt: {{done}} von {{total}}",
+        "running": "Läuft: {{done}} von {{total}}",
+        "cleaning": "Testdaten werden gelöscht…"
+      },
+      "running": "Lasttest {{preset}} läuft",
+      "stop": "Stoppen",
+      "progress": "Fortschritt des Lasttests",
+      "ms": "{{value}} ms",
+      "mib": "{{value}} MiB",
+      "live": {
+        "edits": "Änderungen",
+        "editP95": "Umlaufzeit der Änderungen p95",
+        "deliveryP95": "Zustellung an Lesende p95",
+        "storeP95": "Speichern der Boards p95",
+        "apiP95": "App für andere p95",
+        "errors": "Fehler · Neuverbindungen"
+      },
+      "history": "Letzte Lasttests",
+      "notCleaned": "Testdaten werden noch gelöscht",
+      "status": {
+        "passed": "Bestanden",
+        "failed": "Nicht bestanden",
+        "aborted": "Vom Schutz gestoppt",
+        "stopped": "Gestoppt",
+        "cancelled": "Abgebrochen",
+        "refused": "Nicht gestartet",
+        "interrupted": "Unterbrochen"
+      },
+      "report": {
+        "times_one": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} Messung)",
+        "times_other": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} Messungen)",
+        "editsValue": "{{edits}} ({{switches}} Board-Wechsel, {{uploads}} Uploads, {{failed}} fehlgeschlagen)",
+        "p95p99": "p95 {{p95}}, p99 {{p99}}",
+        "p95": "p95 {{value}}",
+        "storesValue": "p95 {{p95}} · langsamste {{max}}",
+        "memoryValue": "{{before}} vorher → Spitze {{peak}}",
+        "perBoardValue_one": "{{value}} bei {{count}} Board",
+        "perBoardValue_other": "{{value}} bei {{count}} Boards",
+        "setup": "{{editors}} Bearbeitende, {{readers}} Lesende, {{boards}} Boards, {{time}}",
+        "measure": "Messgröße",
+        "value": "Ergebnis",
+        "limit": "Grenze",
+        "rows": {
+          "edits": "Änderungen",
+          "editMs": "Umlaufzeit der Änderungen",
+          "deliveryMs": "Zustellung an Lesende",
+          "errors": "Fehler",
+          "reconnects": "Neuverbindungen",
+          "stores": "Speichern der Boards",
+          "poolWait": "Warten auf Verbindung (Speichern)",
+          "connections": "Datenbankverbindungen",
+          "memory": "Speicher (Board-Rollen)",
+          "perBoard": "Pro offenem Board"
+        },
+        "overLimit": "(über der Grenze)",
+        "noServer": "Die Serverseite wurde nicht gemessen.",
+        "text": "Bericht als Text"
+      }
     }
   },
   "updates": {
@@ -6876,7 +6990,10 @@
       "backup_started": "Backup gestartet",
       "backup_restored": "Backup wiederhergestellt",
       "auth_sign_in_failed": "Anmeldung fehlgeschlagen",
-      "auth_locked_out": "Anmeldung gesperrt"
+      "auth_locked_out": "Anmeldung gesperrt",
+      "loadtest_started": "Lasttest gestartet",
+      "loadtest_stopped": "Lasttest gestoppt",
+      "loadtest_finished": "Lasttest beendet"
     }
   }
 }

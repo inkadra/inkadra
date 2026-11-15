@@ -11,6 +11,7 @@ import {
   IDEMPOTENT_IMPORT_CAPABILITY,
   type Instance,
   type InstanceVersion,
+  LOAD_TEST_CAPABILITY,
   PLAN_SHEET_PDF_CAPABILITY,
   SCHEDULE_SOURCES_CAPABILITY,
   SERVER_LIVE_CAPABILITY,
@@ -42,6 +43,8 @@ interface Deps {
   db: Database;
   auth: Auth;
   mailer: Mailer;
+  /** Background work; `runLoadTest` only where a worker runs it. */
+  jobs: Pick<import('../jobs.ts').Jobs, 'runLoadTest'>;
   pingQueue?: () => Promise<boolean>;
   /** Live playback of video rungs (decision 0128), where it runs. */
   live?: LiveContext;
@@ -178,6 +181,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         // GET /instance/audit.csv: the filtered events as one CSV file (#897).
         AUDIT_CSV_CAPABILITY,
         BACKUP_TARGETS_CAPABILITY,
+        // Settings → Server runs the load test (#908): only where a worker can run it.
+        ...(deps.jobs.runLoadTest ? [LOAD_TEST_CAPABILITY] : []),
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).
         ...(deps.live && (await deps.live.settings()).live.enabled ? [VIDEO_LIVE_CAPABILITY] : []),
       ],

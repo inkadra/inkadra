@@ -11,6 +11,7 @@ on:
   pull_request:
     paths:
       - apps/server/scripts/loadtest/**
+      - apps/server/src/loadtest/**
       - .github/workflows/loadtest.yml
 
 permissions:

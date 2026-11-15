@@ -33,4 +33,8 @@ export interface Jobs {
   runBackup?(backupId: string): Promise<void>;
   /** Moves the nightly backup to the time of the settings, or stops it. */
   scheduleBackups?(settings: import('@inkadra/shared').BackupSettings): Promise<void>;
+  /** A load test row already created, run by a worker after `delayMs` (#908). */
+  runLoadTest?(runId: string, delayMs: number): Promise<void>;
+  /** Drops the job of a scheduled load test that was cancelled. */
+  cancelLoadTest?(runId: string): Promise<void>;
 }
