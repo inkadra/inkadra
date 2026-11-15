@@ -17,6 +17,7 @@ import { probeWebSocket } from '../Diagnostics.tsx';
 import { trackSave } from '../settings-save.ts';
 import { AdvancedView } from './AdvancedView.tsx';
 import { mergeLive, peekProblem, type ServerActions, technicalSummary, usePeek } from './common.ts';
+import { LoadTestCard } from './LoadTestCard.tsx';
 import { SimpleView } from './SimpleView.tsx';
 import './server.css';
 
@@ -257,6 +258,7 @@ export function ServerSettings() {
       ) : (
         <SimpleView status={withBrowser} checks={checks} actions={actions} />
       )}
+      <LoadTestCard />
     </div>
   );
 }

@@ -5768,6 +5768,10 @@
           "4": {
             "title": "Gli avvisi",
             "text": "Ti avvisa se qualcosa non va."
+          },
+          "5": {
+            "title": "Test di carico",
+            "text": "Mette l’istanza sotto un carico di prova e si ferma se le persone ne risentono; il resoconto resta qui."
           }
         }
       },
@@ -6292,6 +6296,116 @@
       "title": "Per chi gestisce il server",
       "lead": "Grafici nel tempo, processi, code dei lavori e registro errori sono nella vista Avanzata.",
       "open": "Apri Avanzata"
+    },
+    "loadTest": {
+      "title": "Test di carico",
+      "lead": "Mette questa istanza sotto il carico di tante persone che modificano insieme, misura come regge e conserva il resoconto.",
+      "loadError": "Impossibile caricare i test di carico.",
+      "unavailable": "I test di carico richiedono un worker",
+      "unavailableHelp": "Girano come lavoro in background: avvia l’istanza con Valkey (REDIS_URL) e un worker.",
+      "preset": "Dimensione",
+      "presets": {
+        "small": "Piccolo",
+        "medium": "Medio",
+        "large": "Grande"
+      },
+      "presetText": "{{editors}} editor, {{readers}} lettori, {{boards}} board · {{time}}",
+      "sharedProcess": "Modalità tutto in uno: gli editor di prova girano dentro il server in uso e ne condividono il tempo, quindi chi lavora sente prima il carico e i numeri sono un po’ pessimisti. Grande richiede un ruolo worker separato.",
+      "needsWorker": "richiede un ruolo worker separato",
+      "warningTitle": "Carica proprio questa istanza",
+      "warning": "Per {{time}} il server lavora a pieno ritmo per degli editor di prova: chi usa board e video in quel momento può trovarli più lenti. Crea un account di prova e un progetto con {{boards}} board, e li elimina alla fine, anche dopo uno stop o un riavvio.",
+      "when": "Quando",
+      "guard": "Si ferma da solo se chi usa l’istanza ne risente, se mancano le misure del server o se parte un backup, un’esportazione o un’importazione.",
+      "now": "Adesso",
+      "later": "Più tardi",
+      "at": "Inizio",
+      "timeZone": "Fuso orario del server: {{zone}}",
+      "date": "Data",
+      "time": "Ora",
+      "understand": "Ho capito che genera un carico reale su questa istanza.",
+      "start": "Avvia il test di carico",
+      "schedule": "Pianifica il test di carico",
+      "startError": "Impossibile avviare il test di carico. Riprova.",
+      "badTime": "Scegli un orario entro i prossimi 7 giorni.",
+      "stopError": "Impossibile fermare il test di carico. Riprova.",
+      "reasons": {
+        "store_slow": "fermato: i salvataggi delle board erano lenti",
+        "api_slow": "fermato: l’app era lenta per gli altri",
+        "api_errors": "fermato: gli altri ricevevano errori",
+        "edits_slow": "fermato: le modifiche erano lente",
+        "backup_running": "È in corso un backup: riprova quando ha finito.",
+        "transfer_running": "È in corso un’esportazione o un’importazione: riprova quando ha finito.",
+        "loadtest_running": "Un test di carico è già pianificato o in corso.",
+        "under_load": "L’istanza è già impegnata: riprova più tardi.",
+        "no_worker": "I test di carico richiedono un worker (REDIS_URL).",
+        "no_metrics": "Mancano le misure del server: la protezione non poteva vedere se chi lavora ne risente.",
+        "shared_process": "Grande richiede un ruolo worker separato: in modalità tutto in uno il test rallenterebbe il server che misura.",
+        "internal": "qualcosa è andato storto"
+      },
+      "scheduledFor": "Test di carico {{preset}} pianificato per {{time}}",
+      "starting": "Test di carico {{preset}} in partenza…",
+      "scheduledHelp": "Non parte se in quel momento è in corso un backup o un’importazione, o se l’istanza è impegnata. Se uno parte durante il test, il test si ferma.",
+      "cancel": "Annulla",
+      "phase": {
+        "starting": "Avvio…",
+        "seeding": "Creazione delle board di prova: {{done}} di {{total}}",
+        "running": "In corso: {{done}} di {{total}}",
+        "cleaning": "Eliminazione dei dati di prova…"
+      },
+      "running": "Test di carico {{preset}} in corso",
+      "stop": "Ferma",
+      "progress": "Avanzamento del test di carico",
+      "ms": "{{value}} ms",
+      "mib": "{{value}} MiB",
+      "live": {
+        "edits": "Modifiche",
+        "editP95": "Andata e ritorno delle modifiche p95",
+        "deliveryP95": "Consegna ai lettori p95",
+        "storeP95": "Salvataggi delle board p95",
+        "apiP95": "App per gli altri p95",
+        "errors": "Errori · riconnessioni"
+      },
+      "history": "Ultimi test di carico",
+      "notCleaned": "dati di prova in eliminazione",
+      "status": {
+        "passed": "Superato",
+        "failed": "Non superato",
+        "aborted": "Fermato dalla protezione",
+        "stopped": "Fermato",
+        "cancelled": "Annullato",
+        "refused": "Non avviato",
+        "interrupted": "Interrotto"
+      },
+      "report": {
+        "times_one": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} misura)",
+        "times_other": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} misure)",
+        "editsValue": "{{edits}} ({{switches}} cambi di board, {{uploads}} caricamenti, {{failed}} falliti)",
+        "p95p99": "p95 {{p95}}, p99 {{p99}}",
+        "p95": "p95 {{value}}",
+        "storesValue": "p95 {{p95}} · il più lento {{max}}",
+        "memoryValue": "{{before}} prima → picco {{peak}}",
+        "perBoardValue_one": "{{value}} su {{count}} board",
+        "perBoardValue_other": "{{value}} su {{count}} board",
+        "setup": "{{editors}} editor, {{readers}} lettori, {{boards}} board, {{time}}",
+        "measure": "Misura",
+        "value": "Risultato",
+        "limit": "Limite",
+        "rows": {
+          "edits": "Modifiche",
+          "editMs": "Andata e ritorno delle modifiche",
+          "deliveryMs": "Consegna ai lettori",
+          "errors": "Errori",
+          "reconnects": "Riconnessioni",
+          "stores": "Salvataggi delle board",
+          "poolWait": "Attesa di connessione (salvataggi)",
+          "connections": "Connessioni al database",
+          "memory": "Memoria (ruoli delle board)",
+          "perBoard": "Per board aperta"
+        },
+        "overLimit": "(oltre il limite)",
+        "noServer": "Il lato server non è stato misurato.",
+        "text": "Resoconto come testo"
+      }
     }
   },
   "updates": {
@@ -6844,7 +6958,10 @@
       "backup_started": "Backup avviato",
       "backup_restored": "Backup ripristinato",
       "auth_sign_in_failed": "Accesso non riuscito",
-      "auth_locked_out": "Accesso bloccato"
+      "auth_locked_out": "Accesso bloccato",
+      "loadtest_started": "Test di carico avviato",
+      "loadtest_stopped": "Test di carico fermato",
+      "loadtest_finished": "Test di carico concluso"
     }
   }
 }

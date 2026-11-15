@@ -27,6 +27,10 @@ export const AUDIT_ACTIONS = [
   'account.deleted',
   'backup.started',
   'backup.restored',
+  /** The load test of Settings → Server (#908): started or scheduled, stopped, finished. */
+  'loadtest.started',
+  'loadtest.stopped',
+  'loadtest.finished',
   'auth.sign_in_failed',
   'auth.locked_out',
 ] as const;
@@ -46,7 +50,15 @@ export const AUDIT_GROUPS = {
     'share_link.removed',
   ],
   security: ['auth.sign_in_failed', 'auth.locked_out', 'token.created', 'token.revoked'],
-  data: ['project.deleted', 'backup.started', 'backup.restored', 'settings.changed'],
+  data: [
+    'project.deleted',
+    'backup.started',
+    'backup.restored',
+    'settings.changed',
+    'loadtest.started',
+    'loadtest.stopped',
+    'loadtest.finished',
+  ],
 } as const satisfies Record<string, readonly AuditAction[]>;
 export type AuditGroup = keyof typeof AUDIT_GROUPS;
 

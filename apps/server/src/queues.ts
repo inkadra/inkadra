@@ -32,6 +32,7 @@ import type { Database } from './db/client.ts';
 import { asset, clientAsset, creationRequest } from './db/schema.ts';
 import { removeDeletedFiles, sweepDeletions } from './file-deletions.ts';
 import type { Jobs } from './jobs.ts';
+import { type LoadTestDeps, runLoadTestJob, sweepLoadTests } from './loadtest/runs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { recipesOf } from './media/ladder.ts';
 import { officeConverterInstalled } from './media/office.ts';
@@ -88,6 +89,8 @@ export const QUEUES = {
   collab: 'collab',
   /** Project exports and imports, one at a time (decision 0037). */
   transfers: 'transfers',
+  /** Load tests of Settings → Server, one at a time (#908). */
+  loadtest: 'loadtest',
 } as const;
 
 export type JobPayloads = {
@@ -118,6 +121,7 @@ export type JobPayloads = {
   'maintenance:backup': { backupId?: string };
   'maintenance:transfer-sweep': Record<string, never>;
   'transfers:run': { transferId: string };
+  'loadtest:run': { runId: string };
   /** Grouped `immediate` notification emails, every minute. */
   'email:notifications': Record<string, never>;
   /** `daily` digests, checked every hour. */
@@ -157,6 +161,7 @@ export function createQueues(
   const proxies = new Queue(QUEUES.proxies, { connection, prefix: opts.prefix });
   const office = new Queue(QUEUES.office, { connection, prefix: opts.prefix });
   const email = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
+  const loadtest = new Queue(QUEUES.loadtest, { connection, prefix: opts.prefix });
   if (opts.log) {
     const onError = queueErrors(opts.log);
     for (const [name, q] of Object.entries({
@@ -166,6 +171,7 @@ export function createQueues(
       proxies,
       office,
       email,
+      loadtest,
     }))
       q.on('error', onError(name));
   }
@@ -255,6 +261,17 @@ export function createQueues(
     async scheduleBackups(settings) {
       await scheduleBackups(maintenance, settings);
     },
+    async runLoadTest(runId, delayMs) {
+      // Not retried: the row says how it ended, and a second delivery finds it claimed.
+      await loadtest.add('run', withRequestId({ runId }), {
+        jobId: `loadtest-${runId}`,
+        delay: Math.max(0, delayMs),
+        ...KEEP,
+      });
+    },
+    async cancelLoadTest(runId) {
+      await (await loadtest.getJob(`loadtest-${runId}`))?.remove();
+    },
   };
   return {
     connection,
@@ -272,6 +289,7 @@ export function createQueues(
         proxies.close(),
         office.close(),
         email.close(),
+        loadtest.close(),
       ]);
       connection.disconnect();
     },
@@ -415,6 +433,8 @@ export async function startWorkers(
     monitor?: { store: MonitorStore; role: 'worker' | 'all' };
     /** Open boards told when a regeneration remakes the copies of their files (#787). */
     notices?: BoardNotifier;
+    /** Where load tests reach the instance (#908); off without it or without `monitor`. */
+    loadTest?: LoadTestDeps['target'];
   },
   opts: { prefix?: string } = {},
 ) {
@@ -430,6 +450,21 @@ export async function startWorkers(
     databaseUrl: deps.transfers.databaseUrl,
     log,
   };
+
+  // Stops a running load test when the worker closes, so it cleans up before the process goes.
+  const shutdown = new AbortController();
+  const loadTestDeps: LoadTestDeps | undefined =
+    deps.loadTest && deps.monitor
+      ? {
+          db: deps.db,
+          store: deps.monitor.store,
+          log,
+          removeFiles: (keys) =>
+            removeFilesLater({ db: deps.db, jobs: queues.jobs, storage: deps.storage }, keys, log),
+          target: deps.loadTest,
+          shutdown: shutdown.signal,
+        }
+      : undefined;
 
   const maintenance = new Worker(
     QUEUES.maintenance,
@@ -471,6 +506,7 @@ export async function startWorkers(
       if (job.name === 'anonymise-guests') return clearExpiredGuestNames(deps.db);
       if (job.name === 'backup' && backupDeps)
         return backupJob(backupDeps, (job.data as JobPayloads['maintenance:backup']).backupId);
+      if (job.name === 'loadtest-sweep' && loadTestDeps) return sweepLoadTests(loadTestDeps);
       if (job.name === 'transfer-sweep' && deps.transfers) {
         await reapStaleBackups(deps.db);
         await sweepPartialBackups(deps.transfers.backupDir);
@@ -658,6 +694,13 @@ export async function startWorkers(
       { every: 60 * 60 * 1000 },
       { name: 'anonymise-guests', data: {}, opts: KEEP },
     );
+    // Every 5 minutes: a restart quicker than a stale heartbeat is caught by the next one.
+    if (loadTestDeps)
+      await scheduler.upsertJobScheduler(
+        'loadtest-sweep',
+        { every: 5 * 60 * 1000 },
+        { name: 'loadtest-sweep', data: {}, opts: KEEP },
+      );
     if (deps.transfers) {
       await scheduler.upsertJobScheduler(
         'transfer-sweep',
@@ -689,6 +732,21 @@ export async function startWorkers(
     // Big archives take long: keep the lock alive well past the default 30 seconds.
     { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
   );
+  // One at a time, long: the lock outlives the 5-minute preset with room to spare.
+  const loadtest = loadTestDeps
+    ? new Worker(
+        QUEUES.loadtest,
+        async (job) => {
+          if (job.name !== 'run') throw new Error(`Unknown job ${job.name}`);
+          return runLoadTestJob(loadTestDeps, (job.data as JobPayloads['loadtest:run']).runId);
+        },
+        { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 60 * 1000 },
+      )
+    : undefined;
+  if (loadTestDeps) {
+    // A run left by a process that stopped mid-test: marked, and its account and project go.
+    await sweepLoadTests(loadTestDeps).catch((err) => log.error({ err }, 'load test sweep failed'));
+  }
   if (deps.transfers) {
     // Backups run only in workers: one left running by a worker that died is over.
     const reaped = await reapStaleBackups(deps.db, STARTUP_STALE_MS);
@@ -696,7 +754,15 @@ export async function startWorkers(
   }
 
   const monitor = deps.monitor;
-  for (const w of [maintenance, media, proxies, email, transfers, ...(office ? [office] : [])]) {
+  for (const w of [
+    maintenance,
+    media,
+    proxies,
+    email,
+    transfers,
+    ...(office ? [office] : []),
+    ...(loadtest ? [loadtest] : []),
+  ]) {
     w.on('error', onError(w.name));
     w.on('failed', (job, err) => {
       const requestId = (job?.data as { requestId?: string } | undefined)?.requestId;
@@ -730,7 +796,9 @@ export async function startWorkers(
   return {
     async close() {
       clearInterval(reregister);
+      shutdown.abort();
       await Promise.all([
+        loadtest?.close(),
         maintenance.close(),
         media.close(),
         proxies.close(),

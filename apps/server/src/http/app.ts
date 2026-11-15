@@ -47,6 +47,7 @@ import { registerGuestRoutes } from './guest-routes.ts';
 import type { LiveContext } from './hls.ts';
 import { registerInstanceAdminRoutes } from './instance-admin-routes.ts';
 import { registerLinkPreviews } from './link-previews.ts';
+import { registerLoadTestRoutes } from './loadtest-routes.ts';
 import { registerMapPreviews } from './map-previews.ts';
 import { registerMapTiles } from './map-tiles.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
@@ -239,6 +240,7 @@ export async function createApp(deps: AppDeps) {
   registerMapTiles(app, deps);
   registerDiagnostics(app, deps);
   registerServerRoutes(app, { ...deps, ...monitor });
+  registerLoadTestRoutes(app, { ...deps, store: monitor.store });
   registerCommentRoutes(app, deps);
   registerReviewRoutes(app, deps);
   registerScheduleRoutes(app, deps);

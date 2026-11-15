@@ -4946,6 +4946,570 @@
         },
         "additionalProperties": false
       },
+      "LoadTests": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "False without a worker (no REDIS_URL): runs cannot start."
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "Time zone of the server for `at`."
+          },
+          "presets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "enum": [
+                    "small",
+                    "medium",
+                    "large"
+                  ]
+                },
+                "editors": {
+                  "type": "integer"
+                },
+                "readers": {
+                  "type": "integer"
+                },
+                "boards": {
+                  "type": "integer"
+                },
+                "durationS": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "name",
+                "editors",
+                "readers",
+                "boards",
+                "durationS"
+              ]
+            }
+          },
+          "guard": {
+            "$ref": "#/components/schemas/LoadTestGuard"
+          },
+          "separateWorker": {
+            "type": "boolean",
+            "description": "A worker role runs apart from the web and collaboration roles. Without one (`all` mode) the load clients share the live server’s event loop, and `large` is refused (`shared_process`)."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoadTestRun"
+            },
+            "description": "Newest first, at most 10."
+          }
+        },
+        "required": [
+          "available",
+          "timeZone",
+          "presets",
+          "guard",
+          "separateWorker",
+          "items"
+        ]
+      },
+      "LoadTestGuard": {
+        "type": "object",
+        "properties": {
+          "storeP95Ms": {
+            "type": "number"
+          },
+          "apiP95Ms": {
+            "type": "number"
+          },
+          "apiErrorRate": {
+            "type": "number"
+          },
+          "editP95Ms": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "storeP95Ms",
+          "apiP95Ms",
+          "apiErrorRate",
+          "editP95Ms"
+        ]
+      },
+      "LoadTestRun": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "small",
+              "medium",
+              "large"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "running",
+              "passed",
+              "failed",
+              "aborted",
+              "stopped",
+              "cancelled",
+              "refused",
+              "interrupted"
+            ],
+            "description": "`aborted`: stopped by the guard because real people were affected (see `reason`); `stopped`: by an administrator; `refused`: not started (see `reason`); `interrupted`: the worker stopped during the run. Clients must treat unknown values as finished."
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One of store_slow, api_slow, api_errors, edits_slow, backup_running, transfer_running, loadtest_running, under_load, no_worker, no_metrics, shared_process, internal; unknown values may come later."
+          },
+          "scheduledFor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "Null for a run started now."
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "finishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/LoadTestProgress"
+          },
+          "report": {
+            "$ref": "#/components/schemas/LoadTestReport"
+          },
+          "cleanedUp": {
+            "type": "boolean",
+            "description": "The test account, its project, boards and files are deleted."
+          }
+        },
+        "required": [
+          "id",
+          "preset",
+          "status",
+          "reason",
+          "scheduledFor",
+          "startedAt",
+          "finishedAt",
+          "createdAt",
+          "progress",
+          "report",
+          "cleanedUp"
+        ]
+      },
+      "LoadTestProgress": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "phase": {
+            "type": "string",
+            "enum": [
+              "seeding",
+              "running",
+              "cleaning"
+            ]
+          },
+          "seeded": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Boards created so far."
+          },
+          "boards": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "elapsedS": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Seconds of the run phase so far."
+          },
+          "durationS": {
+            "type": "number"
+          },
+          "edits": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "editP95Ms": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "deliveryP95Ms": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reconnects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "storeP95Ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Board saves, all sessions."
+          },
+          "apiP95Ms": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "API answers to everyone but the test, last 30 s."
+          }
+        },
+        "required": [
+          "phase",
+          "seeded",
+          "boards",
+          "elapsedS",
+          "durationS",
+          "edits",
+          "editP95Ms",
+          "deliveryP95Ms",
+          "errors",
+          "reconnects",
+          "storeP95Ms",
+          "apiP95Ms"
+        ]
+      },
+      "LoadTestReport": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "preset": {
+            "type": "string",
+            "enum": [
+              "small",
+              "medium",
+              "large"
+            ]
+          },
+          "durationS": {
+            "type": "number"
+          },
+          "editors": {
+            "type": "integer"
+          },
+          "readers": {
+            "type": "integer"
+          },
+          "boards": {
+            "type": "integer"
+          },
+          "edits": {
+            "type": "integer"
+          },
+          "switches": {
+            "type": "integer"
+          },
+          "uploads": {
+            "type": "object",
+            "properties": {
+              "ok": {
+                "type": "integer"
+              },
+              "failed": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "ok",
+              "failed"
+            ]
+          },
+          "editMs": {
+            "type": "object",
+            "properties": {
+              "p50": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "p95": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "p99": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "n": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "p50",
+              "p95",
+              "p99",
+              "n"
+            ]
+          },
+          "deliveryMs": {
+            "type": "object",
+            "properties": {
+              "p50": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "p95": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "p99": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "n": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "p50",
+              "p95",
+              "p99",
+              "n"
+            ]
+          },
+          "errors": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reconnects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "server": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "baselineRssMiB": {
+                "type": "number"
+              },
+              "peakRssMiB": {
+                "type": "number"
+              },
+              "peakOpenBoards": {
+                "type": "number"
+              },
+              "perBoardMiB": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "storeP95Ms": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "storeMaxMs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "poolWaitMaxMs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "peakDbConnections": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "baselineRssMiB",
+              "peakRssMiB",
+              "peakOpenBoards",
+              "perBoardMiB",
+              "storeP95Ms",
+              "storeMaxMs",
+              "poolWaitMaxMs",
+              "peakDbConnections"
+            ]
+          },
+          "limits": {
+            "$ref": "#/components/schemas/LoadTestLimits"
+          },
+          "failures": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Each limit exceeded, in English."
+          },
+          "text": {
+            "type": "string",
+            "description": "The report as the CLI prints it."
+          }
+        },
+        "required": [
+          "preset",
+          "durationS",
+          "editors",
+          "readers",
+          "boards",
+          "edits",
+          "switches",
+          "uploads",
+          "editMs",
+          "deliveryMs",
+          "errors",
+          "reconnects",
+          "server",
+          "limits",
+          "failures",
+          "text"
+        ]
+      },
+      "LoadTestLimits": {
+        "type": "object",
+        "properties": {
+          "editP95Ms": {
+            "type": "number"
+          },
+          "editP99Ms": {
+            "type": "number"
+          },
+          "deliveryP95Ms": {
+            "type": "number"
+          },
+          "storeP95Ms": {
+            "type": "number"
+          },
+          "poolWaitMaxMs": {
+            "type": "number"
+          },
+          "rssMiB": {
+            "type": "number"
+          },
+          "perBoardMiB": {
+            "type": "number"
+          },
+          "errors": {
+            "type": "number"
+          },
+          "reconnects": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "editP95Ms",
+          "editP99Ms",
+          "deliveryP95Ms",
+          "storeP95Ms",
+          "poolWaitMaxMs",
+          "rssMiB",
+          "perBoardMiB",
+          "errors",
+          "reconnects"
+        ]
+      },
+      "StartLoadTest": {
+        "type": "object",
+        "properties": {
+          "preset": {
+            "type": "string",
+            "enum": [
+              "small",
+              "medium",
+              "large"
+            ]
+          },
+          "at": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "time": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              }
+            },
+            "required": [
+              "date",
+              "time"
+            ],
+            "description": "Wall-clock date and time in `timeZone`, within the next 7 days; absent or null: now."
+          }
+        },
+        "required": [
+          "preset"
+        ],
+        "additionalProperties": false
+      },
       "AuditEvents": {
         "type": "object",
         "properties": {
@@ -5005,6 +5569,9 @@
               "account.deleted",
               "backup.started",
               "backup.restored",
+              "loadtest.started",
+              "loadtest.stopped",
+              "loadtest.finished",
               "auth.sign_in_failed",
               "auth.locked_out"
             ]
@@ -20588,6 +21155,280 @@
         }
       }
     },
+    "/api/v1/instance/load-tests": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session (capability `load-test`): presets, guard limits and the last load tests run by the instance on itself (#908).",
+        "responses": {
+          "200": {
+            "description": "Load tests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadTests"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session: start a load test now or schedule it. It loads this instance, creates a test account and project and deletes them at the end. A 400 when `at` is past or more than 7 days ahead.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartLoadTest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Scheduled (starts at once without `at`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadTestRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Refused: `details.reason` is `loadtest_running`, `backup_running`, `transfer_running`, `under_load`, `no_worker`, `no_metrics` (no recent heartbeat of the web and collaboration roles) or `shared_process` (`large` without a separate worker role)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/load-tests/{runId}/stop": {
+      "post": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Administrator only, signed-in session: cancel a scheduled load test, or stop a running one (it cleans up, then reads `stopped`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "runId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled or stopping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadTestRun"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already over",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/instance/audit": {
       "get": {
         "tags": [
@@ -20638,6 +21479,9 @@
                 "account.deleted",
                 "backup.started",
                 "backup.restored",
+                "loadtest.started",
+                "loadtest.stopped",
+                "loadtest.finished",
                 "auth.sign_in_failed",
                 "auth.locked_out"
               ]

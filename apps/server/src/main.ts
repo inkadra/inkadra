@@ -340,6 +340,15 @@ async function main() {
       instanceName: config.INSTANCE_NAME,
       transfers,
       monitor: { store: monitor, role: command },
+      // Load tests (#908): with `all` the HTTP server of this process, on the loopback when it
+      // listens on every address; a separate worker goes through the public address.
+      loadTest:
+        command === 'all'
+          ? {
+              baseUrl: `http://${['0.0.0.0', '::'].includes(config.HOST) ? '127.0.0.1' : config.HOST}:${config.PORT}`,
+              origin: new URL(config.PUBLIC_URL).origin,
+            }
+          : { baseUrl: config.PUBLIC_URL, origin: new URL(config.PUBLIC_URL).origin },
     });
     closers.unshift(async () => {
       // Jobs still running past the wait are left to BullMQ, which runs them again (#796).

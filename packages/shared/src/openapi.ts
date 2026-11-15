@@ -118,6 +118,7 @@ import {
   UpdateInstanceSettings,
   UpdateStorageLimits,
 } from './instance-admin.ts';
+import { LoadTestRun, LoadTests, StartLoadTest } from './load-test.ts';
 import {
   CreateMapPreview,
   MapPreview,
@@ -1503,6 +1504,54 @@ registry.registerPath({
   responses: {
     202: { description: 'Backup started', ...json(InstanceBackup) },
     409: { description: 'A backup is already running', ...json(ApiError) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/load-tests'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session (capability `load-test`): presets, guard limits ' +
+    'and the last load tests run by the instance on itself (#908).',
+  responses: { 200: { description: 'Load tests', ...json(LoadTests) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/load-tests'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: start a load test now or schedule it. It loads ' +
+    'this instance, creates a test account and project and deletes them at the end. A 400 ' +
+    'when `at` is past or more than 7 days ahead.',
+  request: { body: { required: true, ...json(StartLoadTest) } },
+  responses: {
+    202: { description: 'Scheduled (starts at once without `at`)', ...json(LoadTestRun) },
+    409: {
+      description:
+        'Refused: `details.reason` is `loadtest_running`, `backup_running`, ' +
+        '`transfer_running`, `under_load`, `no_worker`, `no_metrics` (no recent heartbeat of ' +
+        'the web and collaboration roles) or `shared_process` (`large` without a separate ' +
+        'worker role)',
+      ...json(ApiError),
+    },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/load-tests/{runId}/stop'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: cancel a scheduled load test, or stop a running ' +
+    'one (it cleans up, then reads `stopped`).',
+  request: { params: idParam('runId') },
+  responses: {
+    200: { description: 'Cancelled or stopping', ...json(LoadTestRun) },
+    409: { description: 'Already over', ...json(ApiError) },
     ...errors,
   },
 });

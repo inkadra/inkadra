@@ -32,6 +32,8 @@ const session = vi.hoisted(() => ({
 }));
 vi.mock('../../lib/session.tsx', () => ({ useSession: () => session }));
 vi.mock('../Diagnostics.tsx', () => ({ probeWebSocket: async () => true }));
+// The load test card has its own requests and tests (LoadTestCard.test.tsx).
+vi.mock('./LoadTestCard.tsx', () => ({ LoadTestCard: () => null }));
 
 const host = document.createElement('div');
 document.body.append(host);

@@ -624,3 +624,79 @@
     margin-left: auto;
   }
 }
+
+/* The load test (#908): preset choices, the warning, start or schedule, live numbers, reports. */
+.load-test__at {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.load-test__start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.load-test__confirm {
+  display: flex;
+  flex: 1 1 240px;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.load-test__error {
+  margin: 0;
+  color: var(--ink-status-danger);
+  font-size: 13px;
+}
+.load-test__history li {
+  padding: 0;
+}
+.load-test__run {
+  flex: 1;
+  min-width: 0;
+}
+div.load-test__run,
+.load-test__summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 10px 14px;
+}
+.load-test__summary .settings-list__text {
+  flex: 1;
+  min-width: 0;
+}
+.load-test__table td {
+  white-space: normal;
+}
+.load-test__over th,
+.load-test__over td:first-of-type {
+  color: var(--ink-status-warn);
+  font-weight: 600;
+}
+.load-test__text {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.load-test__text summary {
+  color: var(--ink-text-secondary);
+  cursor: pointer;
+}
+.load-test__text pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+  font:
+    11px / 1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}

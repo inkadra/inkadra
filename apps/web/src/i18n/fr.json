@@ -5768,6 +5768,10 @@
           "4": {
             "title": "Les alertes",
             "text": "Vous prévient si quelque chose ne va pas."
+          },
+          "5": {
+            "title": "Test de charge",
+            "text": "Soumet l’instance à une charge de test et s’arrête si les personnes en souffrent ; le rapport reste ici."
           }
         }
       },
@@ -6292,6 +6296,116 @@
       "title": "Pour qui gère le serveur",
       "lead": "Les graphiques dans le temps, les processus, les files de tâches et le journal des erreurs sont dans la vue Avancé.",
       "open": "Ouvrir Avancé"
+    },
+    "loadTest": {
+      "title": "Test de charge",
+      "lead": "Soumet cette instance à la charge de nombreuses personnes qui modifient en même temps, mesure sa tenue et garde le rapport.",
+      "loadError": "Impossible de charger les tests de charge.",
+      "unavailable": "Les tests de charge demandent un worker",
+      "unavailableHelp": "Ils tournent en tâche de fond : démarrez l’instance avec Valkey (REDIS_URL) et un worker.",
+      "preset": "Taille",
+      "presets": {
+        "small": "Petit",
+        "medium": "Moyen",
+        "large": "Grand"
+      },
+      "presetText": "{{editors}} éditeurs, {{readers}} lecteurs, {{boards}} tableaux · {{time}}",
+      "sharedProcess": "Mode tout-en-un : les éditeurs de test tournent dans le serveur en service et partagent son temps, les personnes sentent donc la charge plus tôt et les chiffres sont un peu pessimistes. Grand demande un rôle worker séparé.",
+      "needsWorker": "demande un rôle worker séparé",
+      "warningTitle": "Cela charge cette instance elle-même",
+      "warning": "Pendant {{time}}, le serveur travaille à plein pour des éditeurs de test : les personnes qui utilisent tableaux et vidéos à ce moment peuvent les trouver plus lents. Il crée un compte de test et un projet de {{boards}} tableaux, et les supprime à la fin, même après un arrêt ou un redémarrage.",
+      "when": "Quand",
+      "guard": "Il s’arrête tout seul si les personnes qui utilisent l’instance en souffrent, si les mesures du serveur manquent, ou si une sauvegarde, un export ou un import démarre.",
+      "now": "Maintenant",
+      "later": "Plus tard",
+      "at": "Début à",
+      "timeZone": "Fuseau horaire du serveur : {{zone}}",
+      "date": "Date",
+      "time": "Heure",
+      "understand": "Je comprends que cela génère une vraie charge sur cette instance.",
+      "start": "Lancer le test de charge",
+      "schedule": "Planifier le test de charge",
+      "startError": "Le test de charge n’a pas pu démarrer. Réessayez.",
+      "badTime": "Choisissez une heure dans les 7 prochains jours.",
+      "stopError": "Le test de charge n’a pas pu être arrêté. Réessayez.",
+      "reasons": {
+        "store_slow": "arrêté : les enregistrements des tableaux ralentissaient",
+        "api_slow": "arrêté : l’app ralentissait pour les autres",
+        "api_errors": "arrêté : les autres recevaient des erreurs",
+        "edits_slow": "arrêté : les modifications ralentissaient",
+        "backup_running": "Une sauvegarde est en cours : réessayez quand elle sera finie.",
+        "transfer_running": "Un export ou un import est en cours : réessayez quand il sera fini.",
+        "loadtest_running": "Un test de charge est déjà planifié ou en cours.",
+        "under_load": "L’instance est déjà occupée : réessayez plus tard.",
+        "no_worker": "Les tests de charge demandent un worker (REDIS_URL).",
+        "no_metrics": "Les mesures du serveur manquent : la protection ne pouvait pas voir si les personnes en souffrent.",
+        "shared_process": "Grand demande un rôle worker séparé : en mode tout-en-un, le test ralentirait le serveur qu’il mesure.",
+        "internal": "un problème est survenu"
+      },
+      "scheduledFor": "Test de charge {{preset}} planifié pour {{time}}",
+      "starting": "Test de charge {{preset}} en démarrage…",
+      "scheduledHelp": "Il ne démarre pas si une sauvegarde ou un import tourne à ce moment, ou si l’instance est occupée. S’il en démarre un pendant le test, le test s’arrête.",
+      "cancel": "Annuler",
+      "phase": {
+        "starting": "Démarrage…",
+        "seeding": "Création des tableaux de test : {{done}} sur {{total}}",
+        "running": "En cours : {{done}} sur {{total}}",
+        "cleaning": "Suppression des données de test…"
+      },
+      "running": "Test de charge {{preset}} en cours",
+      "stop": "Arrêter",
+      "progress": "Avancement du test de charge",
+      "ms": "{{value}} ms",
+      "mib": "{{value}} Mio",
+      "live": {
+        "edits": "Modifications",
+        "editP95": "Aller-retour des modifications p95",
+        "deliveryP95": "Livraison aux lecteurs p95",
+        "storeP95": "Enregistrements des tableaux p95",
+        "apiP95": "App pour les autres p95",
+        "errors": "Erreurs · reconnexions"
+      },
+      "history": "Derniers tests de charge",
+      "notCleaned": "données de test en cours de suppression",
+      "status": {
+        "passed": "Réussi",
+        "failed": "Échoué",
+        "aborted": "Arrêté par la protection",
+        "stopped": "Arrêté",
+        "cancelled": "Annulé",
+        "refused": "Non lancé",
+        "interrupted": "Interrompu"
+      },
+      "report": {
+        "times_one": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} mesure)",
+        "times_other": "p50 {{p50}} · p95 {{p95}} · p99 {{p99}} ({{count}} mesures)",
+        "editsValue": "{{edits}} ({{switches}} changements de tableau, {{uploads}} envois, {{failed}} échoués)",
+        "p95p99": "p95 {{p95}}, p99 {{p99}}",
+        "p95": "p95 {{value}}",
+        "storesValue": "p95 {{p95}} · le plus lent {{max}}",
+        "memoryValue": "{{before}} avant → pic {{peak}}",
+        "perBoardValue_one": "{{value}} sur {{count}} tableau",
+        "perBoardValue_other": "{{value}} sur {{count}} tableaux",
+        "setup": "{{editors}} éditeurs, {{readers}} lecteurs, {{boards}} tableaux, {{time}}",
+        "measure": "Mesure",
+        "value": "Résultat",
+        "limit": "Limite",
+        "rows": {
+          "edits": "Modifications",
+          "editMs": "Aller-retour des modifications",
+          "deliveryMs": "Livraison aux lecteurs",
+          "errors": "Erreurs",
+          "reconnects": "Reconnexions",
+          "stores": "Enregistrements des tableaux",
+          "poolWait": "Attente de connexion (enregistrements)",
+          "connections": "Connexions à la base de données",
+          "memory": "Mémoire (rôles des tableaux)",
+          "perBoard": "Par tableau ouvert"
+        },
+        "overLimit": "(au-delà de la limite)",
+        "noServer": "Le côté serveur n’a pas été mesuré.",
+        "text": "Rapport en texte"
+      }
     }
   },
   "updates": {
@@ -6844,7 +6958,10 @@
       "backup_started": "Sauvegarde lancée",
       "backup_restored": "Sauvegarde restaurée",
       "auth_sign_in_failed": "Connexion échouée",
-      "auth_locked_out": "Connexion bloquée"
+      "auth_locked_out": "Connexion bloquée",
+      "loadtest_started": "Test de charge lancé",
+      "loadtest_stopped": "Test de charge arrêté",
+      "loadtest_finished": "Test de charge terminé"
     }
   }
 }
