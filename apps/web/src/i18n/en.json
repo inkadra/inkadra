@@ -3583,7 +3583,37 @@
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
     "empty": "The scenes of this day have no lists to bring. From a to-do card's menu pick Wardrobe, Props or Equipment and the scene.",
-    "emptyMine": "You bring nothing on this day."
+    "emptyMine": "You bring nothing on this day.",
+    "scene": {
+      "label": "To bring for Scene {{number}}, {{ready}} of {{total}} ready",
+      "labelEmpty": "To bring for Scene {{number}}, no lists yet",
+      "dialog": "To bring for Scene {{number}}",
+      "title": "To bring · Scene {{number}}",
+      "close": "Close",
+      "emptyTitle": "No lists for Scene {{number}} yet",
+      "emptyBody": "Gather wardrobe, props and equipment here. Each list shows in To bring on the days that shoot this scene.",
+      "listName": "List name",
+      "listOptions": "List options, {{name}}",
+      "itemName": "Item",
+      "rename": "Rename {{name}}",
+      "delete": "Delete {{name}}",
+      "addItem": "Add an item",
+      "addList": "Add list",
+      "listType": "List type",
+      "renameList": "Rename list",
+      "changeType": "Change type",
+      "deleteList": "Delete list…",
+      "deleteTitle": "Delete the list “{{name}}”?",
+      "deleteBody_one": "{{type}} for Scene {{number}}, with its item. It goes for everyone on this storyboard; Undo brings it back.",
+      "deleteBody_other": "{{type}} for Scene {{number}}, with its {{count}} items. It goes for everyone on this storyboard; Undo brings it back.",
+      "deleteConfirm": "Delete list",
+      "cancel": "Cancel",
+      "days": "In To bring on {{days}}",
+      "day": "Day {{n}} ({{date}})",
+      "readOnly": "You can view these lists. Owners and editors change them.",
+      "itemDeleted": "Item deleted",
+      "listDeleted": "List deleted"
+    }
   },
   "clientReview": {
     "cardProgress": "{{approved}} of {{total}} cards approved",
@@ -5440,6 +5470,10 @@
           "3": {
             "title": "A new draft of the script",
             "text": "Import it again and choose Update from revision: scenes are updated, frames stay as they are."
+          },
+          "4": {
+            "title": "What a scene needs",
+            "text": "Wardrobe, props and equipment for the scene, in lists by type. The days that shoot the scene gather them in To bring."
           }
         }
       },
@@ -6756,7 +6790,7 @@
     "desc": {
       "board": "Notes, images, links, files, to-dos, columns and comments.",
       "storyboard": "Storyboard boards, Shot list, the Frame tool, screenplay import into scenes.",
-      "production": "Schedule, Crew, call sheets and scene sheets.",
+      "production": "Schedule, Crew, call sheets, scene sheets and each scene’s To bring.",
       "moodboard": "Moodboard boards and the Moodboard view of a board: groups, notes, palettes.",
       "review": "Links for clients without an account, approvals and change requests.",
       "plan": "Floor plans with lights, cameras, actors and walls, linked to scenes and frames."

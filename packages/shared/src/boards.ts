@@ -284,8 +284,9 @@ export const BoardCount = z
       .optional()
       .openapi({
         description:
-          'Cards other than scenes, frames and the set plans of a scene; arrows, columns and ' +
-          'headings excluded. On a storyboard they are the cards outside the storyboard.',
+          'Cards other than scenes, frames, the set plans of a scene and the typed lists of a ' +
+          'scene; arrows, columns and headings excluded. On a storyboard they are the cards ' +
+          'outside the storyboard.',
       }),
     clientReview: z.boolean().optional().openapi({
       description:

@@ -178,6 +178,8 @@ export const TOURS: Tour[] = [
       { anchor: 'storyboard-draw', media: 'draw', side: 'right' },
       // A new draft of the script updates the scenes, never the frames (decision 0084).
       { anchor: 'storyboard-import', media: 'scenes', side: 'bottom' },
+      // A scene's To bring (decision 0058): Production's, so skipped while that module is off.
+      { anchor: 'storyboard-to-bring', media: 'rows', side: 'bottom' },
     ],
   },
   {

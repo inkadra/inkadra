@@ -17,6 +17,7 @@ describe('the module registry (decision 0121)', () => {
     expect(moduleOf('notifications', 'review')).toBe('review');
     expect(moduleOf('exports', 'callSheet')).toBe('production');
     expect(moduleOf('calendar', 'shooting')).toBe('production');
+    expect(moduleOf('menus', 'sceneToBring')).toBe('production');
     expect(moduleOf('calendar', 'tasks')).toBeNull();
   });
 

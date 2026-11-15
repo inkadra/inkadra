@@ -13135,7 +13135,7 @@
           "looseCount": {
             "type": "integer",
             "minimum": 0,
-            "description": "Cards other than scenes, frames and the set plans of a scene; arrows, columns and headings excluded. On a storyboard they are the cards outside the storyboard."
+            "description": "Cards other than scenes, frames, the set plans of a scene and the typed lists of a scene; arrows, columns and headings excluded. On a storyboard they are the cards outside the storyboard."
           },
           "clientReview": {
             "type": "boolean",

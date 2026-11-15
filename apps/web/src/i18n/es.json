@@ -3583,7 +3583,37 @@
     "scenes": "Esc. {{scenes}}",
     "sceneNumber": "Esc. {{number}}",
     "empty": "Las escenas de esta jornada no tienen listas de cosas que llevar. En el menú de una tarjeta de tareas elige Vestuario, Atrezo o Equipamiento y la escena.",
-    "emptyMine": "En esta jornada no llevas nada."
+    "emptyMine": "En esta jornada no llevas nada.",
+    "scene": {
+      "label": "Para llevar de la escena {{number}}, {{ready}} de {{total}} listos",
+      "labelEmpty": "Para llevar de la escena {{number}}, aún sin listas",
+      "dialog": "Para llevar de la escena {{number}}",
+      "title": "Para llevar · Escena {{number}}",
+      "close": "Cerrar",
+      "emptyTitle": "Aún no hay listas para la escena {{number}}",
+      "emptyBody": "Reúne aquí vestuario, atrezo y equipamiento. Cada lista aparece en Para llevar los días que ruedan esta escena.",
+      "listName": "Nombre de la lista",
+      "listOptions": "Opciones de la lista, {{name}}",
+      "itemName": "Elemento",
+      "rename": "Renombrar {{name}}",
+      "delete": "Eliminar {{name}}",
+      "addItem": "Añadir un elemento",
+      "addList": "Añadir lista",
+      "listType": "Tipo de lista",
+      "renameList": "Renombrar lista",
+      "changeType": "Cambiar tipo",
+      "deleteList": "Eliminar lista…",
+      "deleteTitle": "¿Eliminar la lista «{{name}}»?",
+      "deleteBody_one": "{{type}} de la escena {{number}}, con su elemento. Desaparece para todos en este storyboard; Deshacer la recupera.",
+      "deleteBody_other": "{{type}} de la escena {{number}}, con sus {{count}} elementos. Desaparece para todos en este storyboard; Deshacer la recupera.",
+      "deleteConfirm": "Eliminar lista",
+      "cancel": "Cancelar",
+      "days": "En Para llevar: {{days}}",
+      "day": "día {{n}} ({{date}})",
+      "readOnly": "Puedes ver estas listas. Las cambian propietarios y editores.",
+      "itemDeleted": "Elemento eliminado",
+      "listDeleted": "Lista eliminada"
+    }
   },
   "clientReview": {
     "cardProgress": "{{approved}} de {{total}} tarjetas aprobadas",
@@ -5440,6 +5470,10 @@
           "3": {
             "title": "Una nueva versión del guion",
             "text": "Impórtala otra vez y elige Actualizar desde revisión: las escenas se actualizan, los fotogramas quedan como están."
+          },
+          "4": {
+            "title": "Lo que necesita una escena",
+            "text": "Vestuario, atrezo y equipamiento de la escena, en listas por tipo. Los días que ruedan la escena los reúnen en Para llevar."
           }
         }
       },
@@ -6756,7 +6790,7 @@
     "desc": {
       "board": "Notas, imágenes, enlaces, archivos, tareas, columnas y comentarios.",
       "storyboard": "Tableros storyboard, lista de planos, la herramienta Plano, importación del guion en escenas.",
-      "production": "Plan de rodaje, equipo, órdenes de trabajo y hojas por escena.",
+      "production": "Plan de rodaje, equipo, órdenes de trabajo, hojas por escena y Para llevar de cada escena.",
       "moodboard": "Tableros moodboard y la vista Moodboard de un tablero: grupos, notas, paletas.",
       "review": "Enlaces para clientes sin cuenta, aprobaciones y solicitudes de cambio.",
       "plan": "Planos con luces, cámaras, actores y paredes, vinculados a escenas y planos."

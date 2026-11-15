@@ -3583,7 +3583,37 @@
     "scenes": "Cena {{scenes}}",
     "sceneNumber": "Cena {{number}}",
     "empty": "As cenas desta diária não têm listas do que levar. No menu de um card de tarefas, escolha Figurino, Objetos de cena ou Equipamento e a cena.",
-    "emptyMine": "Você não leva nada nesta diária."
+    "emptyMine": "Você não leva nada nesta diária.",
+    "scene": {
+      "label": "A levar para a cena {{number}}, {{ready}} de {{total}} prontos",
+      "labelEmpty": "A levar para a cena {{number}}, ainda sem listas",
+      "dialog": "A levar para a cena {{number}}",
+      "title": "A levar · Cena {{number}}",
+      "close": "Fechar",
+      "emptyTitle": "Ainda não há listas para a cena {{number}}",
+      "emptyBody": "Junte aqui figurino, objetos de cena e equipamento. Cada lista aparece em A levar nos dias que filmam esta cena.",
+      "listName": "Nome da lista",
+      "listOptions": "Opções da lista, {{name}}",
+      "itemName": "Item",
+      "rename": "Mudar o nome de {{name}}",
+      "delete": "Eliminar {{name}}",
+      "addItem": "Adicionar um item",
+      "addList": "Adicionar lista",
+      "listType": "Tipo de lista",
+      "renameList": "Mudar o nome da lista",
+      "changeType": "Mudar tipo",
+      "deleteList": "Eliminar lista…",
+      "deleteTitle": "Eliminar a lista “{{name}}”?",
+      "deleteBody_one": "{{type}} para a cena {{number}}, com o seu item. Desaparece para todos neste storyboard; Anular repõe-na.",
+      "deleteBody_other": "{{type}} para a cena {{number}}, com os seus {{count}} itens. Desaparece para todos neste storyboard; Anular repõe-na.",
+      "deleteConfirm": "Eliminar lista",
+      "cancel": "Cancelar",
+      "days": "Em A levar: {{days}}",
+      "day": "dia {{n}} ({{date}})",
+      "readOnly": "Pode ver estas listas. Os proprietários e os editores alteram-nas.",
+      "itemDeleted": "Item eliminado",
+      "listDeleted": "Lista eliminada"
+    }
   },
   "clientReview": {
     "cardProgress": "{{approved}} de {{total}} cards aprovados",
@@ -5440,6 +5470,10 @@
           "3": {
             "title": "Uma nova versão do guião",
             "text": "Importe-a de novo e escolha Atualizar a partir da revisão: as cenas atualizam-se, os fotogramas ficam como estão."
+          },
+          "4": {
+            "title": "O que uma cena precisa",
+            "text": "Figurino, objetos de cena e equipamento da cena, em listas por tipo. Os dias que filmam a cena juntam-nos em A levar."
           }
         }
       },
@@ -6756,7 +6790,7 @@
     "desc": {
       "board": "Notas, imagens, ligações, ficheiros, tarefas, colunas e comentários.",
       "storyboard": "Quadros storyboard, lista de planos, a ferramenta Frame, importação do roteiro em cenas.",
-      "production": "Plano de filmagem, equipa, folhas de serviço e fichas por cena.",
+      "production": "Plano de filmagem, equipa, folhas de serviço, fichas por cena e o A levar de cada cena.",
       "moodboard": "Quadros moodboard e a vista Moodboard de um quadro: grupos, notas, paletas.",
       "review": "Ligações para clientes sem conta, aprovações e pedidos de alteração.",
       "plan": "Plantas com luzes, câmaras, atores e paredes, ligadas a cenas e frames."

@@ -3583,7 +3583,37 @@
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
     "empty": "Le scene di questo giorno non hanno liste da portare. Dal menu di una card to-do scegli Costumi, Attrezzeria o Attrezzatura e la scena.",
-    "emptyMine": "Per questo giorno non porti niente."
+    "emptyMine": "Per questo giorno non porti niente.",
+    "scene": {
+      "label": "Da portare per la scena {{number}}, {{ready}} di {{total}} pronti",
+      "labelEmpty": "Da portare per la scena {{number}}, ancora nessuna lista",
+      "dialog": "Da portare per la scena {{number}}",
+      "title": "Da portare · Scena {{number}}",
+      "close": "Chiudi",
+      "emptyTitle": "Ancora nessuna lista per la scena {{number}}",
+      "emptyBody": "Raccogli qui costumi, attrezzeria e attrezzatura. Ogni lista compare in Da portare nei giorni che girano questa scena.",
+      "listName": "Nome della lista",
+      "listOptions": "Opzioni della lista, {{name}}",
+      "itemName": "Elemento",
+      "rename": "Rinomina {{name}}",
+      "delete": "Elimina {{name}}",
+      "addItem": "Aggiungi un elemento",
+      "addList": "Aggiungi lista",
+      "listType": "Tipo di lista",
+      "renameList": "Rinomina lista",
+      "changeType": "Cambia tipo",
+      "deleteList": "Elimina lista…",
+      "deleteTitle": "Eliminare la lista “{{name}}”?",
+      "deleteBody_one": "{{type}} per la scena {{number}}, con il suo elemento. Sparisce per tutti in questo storyboard; Annulla la riporta.",
+      "deleteBody_other": "{{type}} per la scena {{number}}, con i suoi {{count}} elementi. Sparisce per tutti in questo storyboard; Annulla la riporta.",
+      "deleteConfirm": "Elimina lista",
+      "cancel": "Annulla",
+      "days": "In Da portare: {{days}}",
+      "day": "giorno {{n}} ({{date}})",
+      "readOnly": "Puoi vedere queste liste. Le cambiano proprietari ed editor.",
+      "itemDeleted": "Elemento eliminato",
+      "listDeleted": "Lista eliminata"
+    }
   },
   "clientReview": {
     "cardProgress": "{{approved}} di {{total}} card approvate",
@@ -5440,6 +5470,10 @@
           "3": {
             "title": "Una nuova stesura del copione",
             "text": "Importala di nuovo e scegli Aggiorna da revisione: le scene si aggiornano, i frame restano come sono."
+          },
+          "4": {
+            "title": "Da portare della scena",
+            "text": "Costumi, attrezzeria e attrezzatura della scena, in liste per tipo. I giorni che girano la scena le raccolgono in Da portare."
           }
         }
       },
@@ -6756,7 +6790,7 @@
     "desc": {
       "board": "Note, immagini, link, file, to-do, colonne e commenti.",
       "storyboard": "Board Storyboard, Shot list, strumento Inquadratura, importazione del copione in scene.",
-      "production": "Piano riprese, Troupe, ordini del giorno e fogli per scena.",
+      "production": "Piano riprese, Troupe, ordini del giorno, fogli per scena e Da portare delle scene.",
       "moodboard": "Board Moodboard e la vista Moodboard delle board: gruppi, note, palette.",
       "review": "Link per i clienti senza account, approvazioni e richieste di modifica.",
       "plan": "Piante con luci, camere, attori e muri, collegate a scene e inquadrature."

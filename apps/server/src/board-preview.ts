@@ -185,12 +185,15 @@ export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
 /** The navigation counts of a loaded document; stored with it so lists need not decode it. */
 export function docCounts(doc: Y.Doc): ReturnType<typeof contentCounts> {
   return contentCounts(
-    [...roots(doc).elements.values()]
-      .filter((el) => el instanceof Y.Map)
-      .map((el) => ({
+    [...roots(doc).elements.entries()]
+      .filter((entry): entry is [string, Y.Map<unknown>] => entry[1] instanceof Y.Map)
+      .map(([id, el]) => ({
+        id,
         type: el.get('type'),
         status: el.get('status'),
         sceneIds: el.get('sceneIds'),
+        list: el.get('list'),
+        sceneId: el.get('sceneId'),
       })),
   );
 }

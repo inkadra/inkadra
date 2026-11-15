@@ -3583,7 +3583,37 @@
     "scenes": "Sz. {{scenes}}",
     "sceneNumber": "Sz. {{number}}",
     "empty": "Die Szenen dieses Tages haben keine Listen zum Mitbringen. Wähle im Menü einer To-do-Karte Kostüm, Requisite oder Equipment und die Szene.",
-    "emptyMine": "An diesem Tag bringst du nichts mit."
+    "emptyMine": "An diesem Tag bringst du nichts mit.",
+    "scene": {
+      "label": "Mitbringen für Szene {{number}}, {{ready}} von {{total}} bereit",
+      "labelEmpty": "Mitbringen für Szene {{number}}, noch keine Listen",
+      "dialog": "Mitbringen für Szene {{number}}",
+      "title": "Mitbringen · Szene {{number}}",
+      "close": "Schließen",
+      "emptyTitle": "Noch keine Listen für Szene {{number}}",
+      "emptyBody": "Sammle hier Kostüm, Requisite und Equipment. Jede Liste erscheint unter Mitbringen an den Tagen, an denen diese Szene gedreht wird.",
+      "listName": "Name der Liste",
+      "listOptions": "Listenoptionen, {{name}}",
+      "itemName": "Eintrag",
+      "rename": "{{name}} umbenennen",
+      "delete": "{{name}} löschen",
+      "addItem": "Eintrag hinzufügen",
+      "addList": "Liste hinzufügen",
+      "listType": "Art der Liste",
+      "renameList": "Liste umbenennen",
+      "changeType": "Art ändern",
+      "deleteList": "Liste löschen…",
+      "deleteTitle": "Die Liste „{{name}}“ löschen?",
+      "deleteBody_one": "{{type}} für Szene {{number}}, mit ihrem Eintrag. Sie verschwindet für alle in diesem Storyboard; Rückgängig holt sie zurück.",
+      "deleteBody_other": "{{type}} für Szene {{number}}, mit ihren {{count}} Einträgen. Sie verschwindet für alle in diesem Storyboard; Rückgängig holt sie zurück.",
+      "deleteConfirm": "Liste löschen",
+      "cancel": "Abbrechen",
+      "days": "Unter Mitbringen am {{days}}",
+      "day": "Tag {{n}} ({{date}})",
+      "readOnly": "Du kannst diese Listen ansehen. Ändern können sie Eigentümer und Bearbeiter.",
+      "itemDeleted": "Eintrag gelöscht",
+      "listDeleted": "Liste gelöscht"
+    }
   },
   "clientReview": {
     "cardProgress": "{{approved}} von {{total}} Karten freigegeben",
@@ -5440,6 +5470,10 @@
           "3": {
             "title": "Eine neue Drehbuchfassung",
             "text": "Importiere sie erneut und wähle Aus Revision aktualisieren: Szenen werden aktualisiert, Frames bleiben, wie sie sind."
+          },
+          "4": {
+            "title": "Was eine Szene braucht",
+            "text": "Kostüm, Requisite und Equipment der Szene, in Listen nach Art. Die Drehtage der Szene sammeln sie unter Mitbringen."
           }
         }
       },
@@ -6756,7 +6790,7 @@
     "desc": {
       "board": "Notizen, Bilder, Links, Dateien, To-dos, Spalten und Kommentare.",
       "storyboard": "Storyboard-Boards, Shotlist, das Werkzeug Frame, Drehbuchimport in Szenen.",
-      "production": "Drehplan, Crew, Dispos und Szenenblätter.",
+      "production": "Drehplan, Crew, Dispos, Szenenblätter und das Mitbringen jeder Szene.",
       "moodboard": "Moodboard-Boards und die Moodboard-Ansicht eines Boards: Gruppen, Notizen, Paletten.",
       "review": "Links für Kunden ohne Konto, Freigaben und Änderungswünsche.",
       "plan": "Pläne mit Licht, Kameras, Darstellern und Wänden, verknüpft mit Szenen und Frames."
