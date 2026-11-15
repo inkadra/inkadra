@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { LoadTests, LoadTestRun as RunSchema } from '@inkadra/shared';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
@@ -372,8 +372,8 @@ describe.skipIf(!url)('load tests from Settings → Server (needs DATABASE_URL)'
     const [finished] = await db
       .select()
       .from(auditEvent)
-      .where(eq(auditEvent.action, 'loadtest.finished'));
-    expect(finished?.targetId).toBe(row!.id);
+      .where(and(eq(auditEvent.action, 'loadtest.finished'), eq(auditEvent.targetId, row!.id)));
+    expect(finished?.details).toMatchObject({ status: done.status });
   }, 90_000);
 
   it('stops when asked, and still cleans up', async () => {
