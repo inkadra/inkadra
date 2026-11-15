@@ -6,7 +6,7 @@ import * as Y from 'yjs';
 import { docCounts, openTasks, unsortedInDoc } from '../board-preview.ts';
 import { reviveUsed } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
-import { asset, board, boardDoc, boardElementIndex } from '../db/schema.ts';
+import { asset, board, boardDoc, boardElementIndex, project } from '../db/schema.ts';
 
 /** One row of board_element_index, before the board and project ids are added. */
 export interface IndexEntry {
@@ -261,24 +261,69 @@ function rowKey(r: Omit<IndexEntry, 'elementId'> & { projectId: string }): strin
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /**
- * Makes the index rows of a board match the content of `doc`, writing only the rows that differ.
- * Idempotent: running it twice on the same document leaves the same rows, and writes none.
- * Holds the board's document row until the transaction ends: two writes of the same board (a
- * store and the backfill, or a retried store) take turns, and each reads `doc` only once it has
- * the turn. A caller that read the stored state itself rereads it after this lock
- * (backfillIndex), so an older state never lands after a newer one.
+ * Locks a board for an index write, in the order every deletion takes the same rows (#906):
+ * the project (shared, as the index rows' foreign key does), the board, then its document row.
+ * Deleting a project or an account starts from the project and cascades down; taking the rows
+ * the other way round (document row first) deadlocked with them. Returns the project id, or null
+ * when the board is gone, deleted meanwhile: nothing to index, not an error.
  */
-export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y.Doc) {
+export async function lockBoardForIndex(tx: Tx | Database, boardId: string) {
+  const [owner] = await tx
+    .select({ projectId: board.projectId })
+    .from(board)
+    .where(eq(board.id, boardId));
+  if (!owner) return null;
+  const [kept] = await tx
+    .select({ id: project.id })
+    .from(project)
+    .where(eq(project.id, owner.projectId))
+    .for('key share');
+  if (!kept) return null;
+  const [locked] = await tx
+    .select({ id: board.id })
+    .from(board)
+    .where(and(eq(board.id, boardId), eq(board.projectId, owner.projectId)))
+    .for('no key update');
+  if (!locked) return null;
   await tx
     .select({ boardId: boardDoc.boardId })
     .from(boardDoc)
     .where(eq(boardDoc.boardId, boardId))
     .for('update');
-  const [row] = await tx
-    .select({ projectId: board.projectId })
-    .from(board)
-    .where(eq(board.id, boardId));
-  if (!row) return 0;
+  return owner.projectId;
+}
+
+/**
+ * Makes the index rows of a board match the content of `doc`, writing only the rows that differ.
+ * Idempotent: running it twice on the same document leaves the same rows, and writes none.
+ * Holds the board and its document row until the transaction ends (lockBoardForIndex): two
+ * writes of the same board (a store and the backfill, or a retried store) take turns, and each
+ * reads `doc` only once it has the turn. A caller that read the stored state itself rereads it
+ * after this lock (backfillIndex), so an older state never lands after a newer one.
+ */
+export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y.Doc) {
+  // A tag or storyboard value removed while this document still held it comes back (0126). Its
+  // locks (classification uses, then the administration lock) come before any row (#906). The
+  // entries are read for it only if some value was removed, and read again under the lock.
+  let early: IndexEntry[] | undefined;
+  const seen = () => {
+    early ??= entriesFor(doc);
+    return early;
+  };
+  await reviveUsed(tx, {
+    tags: {
+      *[Symbol.iterator]() {
+        for (const e of seen()) yield* e.tags;
+      },
+    },
+    text: {
+      *[Symbol.iterator]() {
+        for (const e of seen()) if (e.type === 'frame') yield e.text;
+      },
+    },
+  });
+  const projectId = await lockBoardForIndex(tx, boardId);
+  if (!projectId) return 0;
   const entries = entriesFor(doc);
   // File cards are searchable by both their file name and their caption.
   const fileIds = entries.flatMap((e) => (e.type === 'file' && e.assetId ? [e.assetId] : []));
@@ -297,11 +342,6 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
       e.text = join(name, e.text);
     }
   }
-  // A tag or storyboard value removed while this document still held it comes back (0126).
-  await reviveUsed(tx, {
-    tags: entries.flatMap((e) => e.tags),
-    text: entries.flatMap((e) => (e.type === 'frame' ? [e.text] : [])),
-  });
   // #797: only the rows that changed are written. Rewriting every row of the board on every
   // store churned the GIN indexes and the WAL in proportion to the board, not to the edit.
   // shortcut: the rows are read back to compare them, which costs no WAL; keep the last indexed
@@ -320,7 +360,7 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
     .from(boardElementIndex)
     .where(eq(boardElementIndex.boardId, boardId));
   const was = new Map(kept.map((r) => [r.elementId, rowKey(r)]));
-  const rows = entries.map((e) => ({ ...e, boardId, projectId: row.projectId }));
+  const rows = entries.map((e) => ({ ...e, boardId, projectId }));
   const changed = rows.filter((r) => was.get(r.elementId) !== rowKey(r));
   const live = new Set(entries.map((e) => e.elementId));
   const gone = kept.flatMap((r) => (live.has(r.elementId) ? [] : [r.elementId]));
@@ -393,6 +433,10 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
     try {
       // Reread under the lock: a store may have written a newer state and its index since.
       const done = await db.transaction(async (tx) => {
+        // shortcut: the rows are locked before reviveUsed (in writeBoardIndex) takes its
+        // advisory locks, the other way round from a store; only a revived value deleted at the
+        // same moment as an account can still deadlock, and the next hourly run retries it.
+        if (!(await lockBoardForIndex(tx, row.boardId))) return false;
         const [locked] = await tx
           .select({
             state: boardDoc.state,
