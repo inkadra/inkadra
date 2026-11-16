@@ -94,7 +94,10 @@ test("a scene's To bring makes, ticks and deletes typed lists on the storyboard"
     await page.keyboard.press('Escape');
   };
   await addList('Costumi', 'Nora', ['Cappotto di lana grigio', 'Scarponi, taglia 39']);
-  await addList('Attrezzeria', 'Pontile', ['Corda, 6 m più una di scorta', 'Biglietto del traghetto']);
+  await addList('Attrezzeria', 'Pontile', [
+    'Corda, 6 m più una di scorta',
+    'Biglietto del traghetto',
+  ]);
   await expect(popup.getByRole('checkbox')).toHaveCount(4);
 
   await popup.getByRole('checkbox', { name: 'Cappotto di lana grigio' }).check();
