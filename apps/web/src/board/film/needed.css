@@ -336,8 +336,12 @@ span.needed__who {
 }
 .to-bring__add {
   width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
   color: var(--ink-text-secondary);
   text-align: left;
+  cursor: pointer;
 }
 .to-bring__add:hover {
   background: var(--ink-surface-2);

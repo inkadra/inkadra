@@ -25,6 +25,8 @@ async function shoot(page: Page, name: string) {
   if (!shots) return;
   for (const theme of ['light', 'dark'] as const) {
     await setTheme(page, theme);
+    // The theme fades its colours: let it finish before the picture.
+    await page.waitForTimeout(600);
     await page.screenshot({ path: join(out, `${name}-${theme}.png`) });
   }
 }
