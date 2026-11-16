@@ -214,6 +214,12 @@ describe('blocks', () => {
       p('three'),
     );
     expect(joinBackward(at(fragment, 1))).toEqual({ block: at(fragment, 0), offset: 3 });
+    // One text node, as the web's editor keeps a block (y-tiptap would rewrite two).
+    expect(at(fragment, 0).length).toBe(1);
+    expect((at(fragment, 0).get(0) as Y.XmlText).toDelta()).toEqual([
+      { insert: 'one', attributes: { bold: {} } },
+      { insert: 'two' },
+    ]);
     const intoList = joinBackward(at(fragment, 2));
     expect(intoList?.offset).toBe(1);
     const intoItem = joinBackward(at(fragment, 1, 1, 0));
@@ -314,6 +320,164 @@ describe('blocks', () => {
     const first = appendParagraph(fragment);
     expect(appendParagraph(fragment).block).toBe(first.block);
     expect(fragment.length).toBe(1);
+    expectValid(fragment);
+  });
+});
+
+/** The body as another client receives it: the same, and no character turned into U+FFFD. */
+function expectSameElsewhere(fragment: Y.XmlFragment) {
+  const copy = new Y.Doc();
+  Y.applyUpdate(copy, Y.encodeStateAsUpdate(fragment.doc as Y.Doc));
+  const there = show(copy.getXmlFragment('body'));
+  expect(there).toBe(show(fragment));
+  expect(there).not.toContain('\uFFFD');
+}
+const textOf = (block: Y.XmlElement) =>
+  block
+    .toArray()
+    .map((c) => (c instanceof Y.XmlText ? c.toString() : `[${(c as Y.XmlElement).nodeName}]`))
+    .join('');
+
+describe('whole characters (two UTF-16 units: emoji)', () => {
+  it('replaces 👍 with 👎 when the edit was worked out unit by unit', () => {
+    const fragment = body(p('ok 👍'));
+    // A common-prefix diff of "ok 👍" and "ok 👎" replaces only the second unit.
+    replaceText(at(fragment, 0), 4, 5, '\uDC4E');
+    expect(textOf(at(fragment, 0))).toBe('ok 👎');
+    expectSameElsewhere(fragment);
+  });
+
+  it('deletes an emoji whole, types before it, formats it whole, never half', () => {
+    const fragment = body(p('ok 👍 go'));
+    const block = at(fragment, 0);
+    replaceText(block, 4, 4, 'x');
+    expect(textOf(block)).toBe('ok x👍 go');
+    formatText(block, 0, 5, 'bold', {});
+    expect(show(fragment)).toBe('<paragraph><bold>ok x👍</bold> go</paragraph>');
+    replaceText(block, 5, 6, '');
+    expect(textOf(block)).toBe('<bold>ok x</bold> go');
+    expectSameElsewhere(fragment);
+  });
+
+  it('splits and joins at an emoji without cutting it', () => {
+    const fragment = body(p(['ok 👍', { italic: {} }], ' go'));
+    const tail = splitBlock(at(fragment, 0), 4).block;
+    expect(textOf(at(fragment, 0))).toBe('<italic>ok </italic>');
+    expect(textOf(tail)).toBe('<italic>👍</italic> go');
+    expectSameElsewhere(fragment);
+    expect(joinBackward(tail)).toEqual({ block: at(fragment, 0), offset: 3 });
+    expect(at(fragment, 0).length).toBe(1);
+    expect(textOf(at(fragment, 0))).toBe('<italic>ok 👍</italic> go');
+    expectSameElsewhere(fragment);
+  });
+
+  it('puts a mention before an emoji, not inside it', () => {
+    const fragment = body(p('hi 👋'));
+    insertInline(at(fragment, 0), 4, 'mention', { id: 'u1', label: 'Anna' });
+    expect(textOf(at(fragment, 0))).toBe('hi [mention]👋');
+    expectSameElsewhere(fragment);
+  });
+
+  it('keeps a ZWJ sequence readable wherever it is split and joined', () => {
+    const word = '👩‍💻 dev';
+    for (let i = 0; i <= word.length; i++) {
+      const fragment = body(p(word));
+      const tail = splitBlock(at(fragment, 0), i).block;
+      expectSameElsewhere(fragment);
+      joinBackward(tail);
+      expect(textOf(at(fragment, 0))).toBe(word);
+      expectSameElsewhere(fragment);
+    }
+  });
+});
+
+describe('marks', () => {
+  it('stores code alone, as formatText: other known marks go, unknown ones stay', () => {
+    const fragment = body(p('a'));
+    const block = at(fragment, 0);
+    replaceText(block, 1, 1, 'b', { code: {}, bold: {}, future: { x: 1 } });
+    expect((block.get(0) as Y.XmlText).toDelta()).toEqual([
+      { insert: 'a' },
+      { insert: 'b', attributes: { code: {}, future: { x: 1 } } },
+    ]);
+  });
+
+  it('keeps the marks of a task item through a split and a join', () => {
+    const fragment = body(el('taskList', {}, task(true, ['Radio', { bold: {} }], ' the harbour')));
+    const second = splitBlock(at(fragment, 0, 0, 0), 3).block;
+    expect(textOf(at(fragment, 0, 0, 0))).toBe('<bold>Rad</bold>');
+    expect(textOf(second)).toBe('<bold>io</bold> the harbour');
+    joinBackward(second);
+    expect(at(fragment, 0).length).toBe(1);
+    expect(at(fragment, 0, 0, 0).length).toBe(1);
+    expect(textOf(at(fragment, 0, 0, 0))).toBe('<bold>Radio</bold> the harbour');
+    expectValid(fragment);
+  });
+
+  it('splits and joins across a mark it does not know, keeping it', () => {
+    const fragment = body(p(['abcdef', { future: { x: 1 } }]));
+    const tail = splitBlock(at(fragment, 0), 3).block;
+    expect((tail.get(0) as Y.XmlText).toDelta()).toEqual([
+      { insert: 'def', attributes: { future: { x: 1 } } },
+    ]);
+    joinBackward(tail);
+    expect((at(fragment, 0).get(0) as Y.XmlText).toDelta()).toEqual([
+      { insert: 'abcdef', attributes: { future: { x: 1 } } },
+    ]);
+  });
+});
+
+describe('nested lists', () => {
+  const nested = () =>
+    body(
+      el(
+        'bulletList',
+        {},
+        el('listItem', {}, p('a'), el('bulletList', {}, item('b'), item(''), item('c'))),
+      ),
+    );
+
+  it('Enter on an empty nested item lifts it one level, the items after it under it', () => {
+    const fragment = nested();
+    const caret = splitBlock(at(fragment, 0, 0, 1, 1, 0), 0);
+    expect(show(fragment)).toBe(
+      '<bulletList><listItem><paragraph>a</paragraph><bulletList><listItem><paragraph>b</paragraph></listItem></bulletList></listItem>' +
+        '<listItem><paragraph></paragraph><bulletList><listItem><paragraph>c</paragraph></listItem></bulletList></listItem></bulletList>',
+    );
+    expect(caret.block).toBe(at(fragment, 0, 1, 0));
+    expectValid(fragment);
+  });
+
+  it('splits a nested item into a new nested item', () => {
+    const fragment = nested();
+    const caret = splitBlock(at(fragment, 0, 0, 1, 0, 0), 1);
+    expect(at(fragment, 0, 0, 1).length).toBe(4);
+    expect(caret.block).toBe(at(fragment, 0, 0, 1, 1, 0));
+    expectValid(fragment);
+  });
+
+  it('Backspace at a first nested item lifts it; at a later one joins the item before', () => {
+    const fragment = nested();
+    joinBackward(at(fragment, 0, 0, 1, 2, 0));
+    expect(show(at(fragment, 0, 0, 1) as unknown as Y.XmlFragment)).toBe(
+      '<listItem><paragraph>b</paragraph></listItem><listItem><paragraph>c</paragraph></listItem>',
+    );
+    joinBackward(at(fragment, 0, 0, 1, 0, 0));
+    expect(show(fragment)).toBe(
+      '<bulletList><listItem><paragraph>a</paragraph></listItem>' +
+        '<listItem><paragraph>b</paragraph><bulletList><listItem><paragraph>c</paragraph></listItem></bulletList></listItem></bulletList>',
+    );
+    expectValid(fragment);
+  });
+
+  it('the list buttons lift a nested item, or turn its nested list into the other kind', () => {
+    const fragment = nested();
+    toggleList(at(fragment, 0, 0, 1, 0, 0), 'taskList');
+    expect(at(fragment, 0, 0, 1).nodeName).toBe('taskList');
+    expect(at(fragment, 0, 0, 1, 0).getAttribute('checked')).toBe(false);
+    toggleList(at(fragment, 0, 0, 1, 0, 0), 'taskList');
+    expect(at(fragment, 0, 1).nodeName).toBe('listItem');
+    expect(textOf(at(fragment, 0, 1, 0))).toBe('b');
     expectValid(fragment);
   });
 });

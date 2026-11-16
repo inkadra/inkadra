@@ -162,9 +162,105 @@ export type NoteMarks = Record<string, Record<string, unknown>>;
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
+// ---------------------------------------------------------------------------------------------
+// Characters written as two UTF-16 units (an emoji): Yjs turns half of one into U+FFFD for
+// everyone, so no operation ever cuts, formats or inserts between the two halves.
+
+const isHigh = (c: number) => c >= 0xd800 && c <= 0xdbff;
+const isLow = (c: number) => c >= 0xdc00 && c <= 0xdfff;
+
+/** The string of a text node (an embed, never in a known body, counts as one character). */
+const plainOf = (text: Y.XmlText) =>
+  deltaOf(text)
+    .map((op) => (typeof op.insert === 'string' ? op.insert : '\uFFFC'))
+    .join('');
+
+/** A position of a text block moved off the middle of a two-unit character, `down` or `up`. */
+function onCodePoint(block: Y.XmlElement, pos: number, dir: 'down' | 'up'): number {
+  let start = 0;
+  for (const child of block.toArray()) {
+    const len = lengthOf(child);
+    if (child instanceof Y.XmlText && pos > start && pos < start + len) {
+      const s = plainOf(child);
+      const k = pos - start;
+      if (isHigh(s.charCodeAt(k - 1)) && isLow(s.charCodeAt(k)))
+        return dir === 'down' ? pos - 1 : pos + 1;
+      return pos;
+    }
+    start += len;
+  }
+  return pos;
+}
+
+/** The text between two positions of the same text node of a block ('' across nodes). */
+function textBetween(block: Y.XmlElement, from: number, to: number): string {
+  let start = 0;
+  for (const child of block.toArray()) {
+    const len = lengthOf(child);
+    if (child instanceof Y.XmlText && from >= start && to <= start + len)
+      return plainOf(child).slice(from - start, to - start);
+    start += len;
+  }
+  return '';
+}
+
+/** Whether a string has no half of a two-unit character on its own. */
+function isWellFormed(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (isHigh(c) && isLow(text.charCodeAt(i + 1))) i++;
+    else if (isHigh(c) || isLow(c)) return false;
+  }
+  return true;
+}
+
+/** The string without halves of two-unit characters on their own. */
+function wellFormed(text: string): string {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (isHigh(c) && isLow(text.charCodeAt(i + 1))) out += text.slice(i, ++i + 1);
+    else if (!isHigh(c) && !isLow(c)) out += text.charAt(i);
+  }
+  return out;
+}
+
+/**
+ * A replacement of `[from, to)` by `text` on whole characters (every operation's offsets go
+ * through it). A range edge inside a two-unit character takes the whole character, and the half
+ * the edit did not mean to change goes back into the text, so an edit worked out unit by unit
+ * (👍 → 👎 is "replace the second unit") replaces the emoji whole. What still holds a half on
+ * its own (deleting one half, typing between the two) keeps whole characters only: the character
+ * is deleted whole, or the typing goes before it.
+ */
+function onCharacters(
+  block: Y.XmlElement,
+  from: number,
+  to: number,
+  text = '',
+): { from: number; to: number; text: string } {
+  const a = onCodePoint(block, from, 'down');
+  const b = onCodePoint(block, to, 'up');
+  if (a === from && b === to) return { from, to, text: wellFormed(text) };
+  const wrapped = textBetween(block, a, from) + text + textBetween(block, to, b);
+  if (isWellFormed(wrapped)) return { from: a, to: b, text: wrapped };
+  if (from === to) return { from: a, to: a, text: wellFormed(text) };
+  return { from: a, to: b, text: wellFormed(wrapped) };
+}
+
+/** Marks that may be stored together: with `code` (it excludes the others) no other known mark. */
+function together(marks: NoteMarks): NoteMarks {
+  const only = Object.keys(marks).find((k) => NOTE_MARK_EXCLUDES[baseName(k)] === '_');
+  if (!only) return marks;
+  return Object.fromEntries(
+    Object.entries(marks).filter(([k]) => k === only || !KNOWN_MARKS.has(baseName(k))),
+  );
+}
+
 /**
  * Replaces the inline content between `from` and `to` with `text` carrying exactly `marks`
- * (none in a code block). An inline node in the range goes whole; marks of the text around are
+ * (none in a code block; with `code`, no other known mark, as `formatText`). An inline node in
+ * the range goes whole, a two-unit character too (`onCharacters`); marks of the text around are
  * not touched.
  */
 export function replaceText(
@@ -176,9 +272,10 @@ export function replaceText(
 ): void {
   const length = inlineLength(block);
   const a = clamp(from, 0, length);
-  const b = clamp(to, a, length);
-  if (b > a) deleteInline(block, a, b);
-  if (text) insertText(block, a, text, block.nodeName === 'codeBlock' ? {} : marks);
+  const edit = onCharacters(block, a, clamp(to, a, length), text);
+  if (edit.to > edit.from) deleteInline(block, edit.from, edit.to);
+  if (edit.text)
+    insertText(block, edit.from, edit.text, block.nodeName === 'codeBlock' ? {} : together(marks));
 }
 
 function deleteInline(block: Y.XmlElement, from: number, to: number): void {
@@ -237,6 +334,9 @@ export function formatText(
   attrs: Record<string, unknown> | null,
 ): void {
   if (block.nodeName === 'codeBlock' || !KNOWN_MARKS.has(mark)) return;
+  const range = onCharacters(block, from, to);
+  from = range.from;
+  to = range.to;
   let start = 0;
   for (const child of block.toArray()) {
     const end = start + lengthOf(child);
@@ -287,35 +387,85 @@ export function insertInline(
   const node = new Y.XmlElement(name);
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
   const tail = cutInline(block, clamp(at, 0, inlineLength(block)));
-  block.insert(block.length, [node, ...tail]);
+  block.insert(block.length, [node, ...nodesOf(tail)]);
   return true;
 }
 
-/** Takes the inline content from `from` to the end out of the block, as new nodes. */
-function cutInline(block: Y.XmlElement, from: number): Child[] {
-  const out: Child[] = [];
+/** Inline content taken out of a block: text as its runs, an inline node as a copy. */
+type Cut = Op[] | Y.XmlElement;
+
+/**
+ * Takes the inline content from `from` to the end out of the block (from a whole character on),
+ * text as runs, so where it goes it joins the text already there (`nodesOf`, `appendInline`).
+ */
+function cutInline(block: Y.XmlElement, from: number): Cut[] {
+  const at = onCodePoint(block, from, 'down');
+  const out: Cut[] = [];
   const children = block.toArray();
   let first = children.length;
   let start = 0;
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
-    if (start >= from) {
+    if (start >= at) {
       first = i;
       break;
     }
     const len = lengthOf(child);
-    if (child instanceof Y.XmlText && from < start + len) {
-      const off = from - start;
-      const tail = new Y.XmlText();
-      tail.applyDelta(sliceDelta(deltaOf(child), off));
+    if (child instanceof Y.XmlText && at < start + len) {
+      const off = at - start;
+      out.push(sliceDelta(deltaOf(child), off));
       child.delete(off, len - off);
-      out.push(tail);
     }
     start += len;
   }
-  for (const child of children.slice(first)) out.push((child as Child).clone());
+  for (const child of children.slice(first))
+    out.push(
+      child instanceof Y.XmlText ? sliceDelta(deltaOf(child), 0) : (child as Y.XmlElement).clone(),
+    );
   if (first < children.length) block.delete(first, children.length - first);
   return out;
+}
+
+/** Cut content as new nodes: neighbouring text in one text node, as the web's editor keeps it. */
+function nodesOf(cut: Cut[]): Child[] {
+  const out: Child[] = [];
+  let runs: Op[] = [];
+  const flush = () => {
+    if (!runs.length) return;
+    const text = new Y.XmlText();
+    text.applyDelta(runs);
+    out.push(text);
+    runs = [];
+  };
+  for (const part of cut) {
+    if (Array.isArray(part)) runs.push(...part);
+    else {
+      flush();
+      out.push(part);
+    }
+  }
+  flush();
+  return out;
+}
+
+/** Puts cut content at the end of a block, its first text into the block's last text node. */
+function appendInline(target: Y.XmlElement, cut: Cut[]): void {
+  const last = target.length ? target.get(target.length - 1) : null;
+  let rest = cut;
+  if (last instanceof Y.XmlText) {
+    let at = last.length;
+    while (rest.length && Array.isArray(rest[0])) {
+      for (const op of rest[0] as Op[])
+        if (typeof op.insert === 'string') {
+          // Given attributes are exactly the run's marks (Yjs clears those of the text before).
+          last.insert(at, op.insert, copyMarks(op.attributes ?? {}));
+          at += op.insert.length;
+        }
+      rest = rest.slice(1);
+    }
+  }
+  const nodes = nodesOf(rest);
+  if (nodes.length) target.insert(target.length, nodes);
 }
 
 function sliceDelta(delta: Op[], from: number): Op[] {
@@ -412,9 +562,37 @@ function splitOut(container: Y.XmlElement, index: number, replacement: Child[]):
   if (container.length === 0) outer.delete(at, 1);
 }
 
-/** Takes a list item out of its list: its blocks go where it was, the list split around it. */
+/**
+ * Takes a list item out of its list, one level, as the web's editor does: from a nested list it
+ * becomes an item of the list around it, after the item it was in, the items after it nested
+ * under it; from a top list its blocks go where it was, the list split around it.
+ */
 function liftItem(item: Y.XmlElement, offset = 0): NoteCaret {
   const list = parentOf(item) as Y.XmlElement;
+  const holder = list.parent;
+  if (isItem(holder)) {
+    const outer = parentOf(holder) as Y.XmlElement;
+    const i = indexIn(list, item);
+    const content = item.toArray().map((c) => (c as Child).clone());
+    const after = list
+      .toArray()
+      .slice(i + 1)
+      .map((c) => (c as Child).clone());
+    if (after.length) {
+      const rest = new Y.XmlElement(list.nodeName);
+      copyAttributes(list, rest);
+      rest.insert(0, after);
+      content.push(rest);
+    }
+    const lifted = newItem(outer.nodeName === 'taskList' ? 'taskItem' : 'listItem');
+    if (lifted.nodeName === 'taskItem' && item.nodeName === 'taskItem')
+      lifted.setAttribute('checked', item.getAttribute('checked') as string);
+    lifted.insert(0, content);
+    list.delete(i, list.length - i);
+    outer.insert(indexIn(outer, holder) + 1, [lifted]);
+    if (list.length === 0) holder.delete(indexIn(holder, list), 1);
+    return { block: firstTextBlock(content[0]) as Y.XmlElement, offset };
+  }
   const moved = item.toArray().map((c) => (c as Child).clone());
   splitOut(list, indexIn(list, item), moved);
   return { block: firstTextBlock(moved[0]) as Y.XmlElement, offset };
@@ -445,7 +623,7 @@ export function splitBlock(block: Y.XmlElement, at: number): NoteCaret {
   const next = new Y.XmlElement(type);
   copyAttributes(block, next, type === block.nodeName ? undefined : ['textAlign']);
   const tail = cutInline(block, clamp(at, 0, length));
-  if (tail.length) next.insert(0, tail);
+  if (tail.length) next.insert(0, nodesOf(tail));
   if (item) {
     const list = parentOf(item);
     const added = newItem(item.nodeName);
@@ -471,8 +649,7 @@ export function joinBackward(block: Y.XmlElement): NoteCaret | null {
     const target = lastTextBlock(list.get(i - 1));
     if (!target || target.nodeName === 'codeBlock') return null;
     const offset = inlineLength(target);
-    const moved = cutInline(block, 0);
-    if (moved.length) target.insert(target.length, moved);
+    appendInline(target, cutInline(block, 0));
     const rest = parent
       .toArray()
       .slice(1)
@@ -495,8 +672,7 @@ export function joinBackward(block: Y.XmlElement): NoteCaret | null {
     // Code holds plain text only: an empty block goes, any other stays.
     if (inlineLength(block) > 0) return null;
   } else {
-    const moved = cutInline(block, 0);
-    if (moved.length) target.insert(target.length, moved);
+    appendInline(target, cutInline(block, 0));
   }
   parent.delete(index, 1);
   return { block: target, offset };
@@ -524,7 +700,7 @@ export function setTextBlock(
   const next = new Y.XmlElement(type);
   copyAttributes(block, next, ['textAlign']);
   if (type === 'heading') next.setAttribute('level', level as unknown as string);
-  const content = cutInline(block, 0);
+  const content = nodesOf(cutInline(block, 0));
   if (content.length) next.insert(0, content);
   parent.insert(index + 1, [next]);
   parent.delete(index, 1);
@@ -568,7 +744,7 @@ export function toggleList(
   }
   const paragraph = new Y.XmlElement('paragraph');
   copyAttributes(block, paragraph, ['textAlign']);
-  const content = cutInline(block, 0);
+  const content = nodesOf(cutInline(block, 0));
   if (content.length) paragraph.insert(0, content);
   const item = newItem(itemType);
   item.insert(0, [paragraph]);
