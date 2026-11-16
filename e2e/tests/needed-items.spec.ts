@@ -110,6 +110,9 @@ for (const theme of ['dark', 'light'] as const)
       list(scenes.s5, 'props', [['Thermos e due tazze di latta', { mine: true }]]);
       list(scenes.s8, 'props', [['Mappa cartacea', { mine: true, done: true }]]);
       list(scenes.s8, 'equipment', [['Pannello LED a batteria']]);
+      // A scene's typed lists show in its To bring, not outside the storyboard: a note keeps the
+      // old canvas, whose card menu this test reads.
+      createElement(doc, 'note', { x: 1400, y: 40 }, {}, opts);
       await pushBoardDoc(baseURL!, cookie, board.id, doc);
       doc.destroy();
 
