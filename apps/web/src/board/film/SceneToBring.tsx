@@ -514,6 +514,7 @@ function ToBringPanel({
       {menu?.kind === 'add' && (
         <ContextMenu
           style={menu.style}
+          className="to-bring__menu"
           anchor={menuAnchor}
           label={t('needed.scene.listType')}
           onClose={closeMenu}
@@ -523,6 +524,7 @@ function ToBringPanel({
       {menu?.kind === 'list' && menuList && (
         <ContextMenu
           style={menu.style}
+          className="to-bring__menu"
           anchor={menuAnchor}
           label={t('needed.scene.listOptions', { name: nameOf(menuList) })}
           onClose={closeMenu}
@@ -544,6 +546,7 @@ function ToBringPanel({
       {menu?.kind === 'type' && menuList && (
         <ContextMenu
           style={menu.style}
+          className="to-bring__menu"
           anchor={menuAnchor}
           label={t('needed.scene.changeType')}
           onClose={closeMenu}
