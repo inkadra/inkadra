@@ -151,6 +151,16 @@ it('with Production off, keeps the button only for a scene with lists: read and 
   await click(byLabel('needed.scene.label'));
   expect(byText('needed.scene.addList')).toBeUndefined();
   expect(byText('needed.scene.addItem')).toBeUndefined();
+  // Nothing renames, retypes or deletes: the list's ⋯, an item's pencil and ×, its double-click.
+  expect(byLabel('needed.scene.listOptions')).toBeUndefined();
+  expect(byLabel('needed.scene.rename')).toBeUndefined();
+  expect(byLabel('needed.scene.delete')).toBeUndefined();
+  await act(async () => {
+    document
+      .querySelector('.to-bring__text')
+      ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  });
+  expect(byLabel('needed.scene.itemName')).toBeUndefined();
   await click(byLabel('Dolly'));
   expect(lists(store, scene())[0]?.items[0]?.done).toBe(true);
 });
@@ -168,6 +178,16 @@ it('shows a viewer the lists read only, and no button on a scene without lists',
   expect(byLabel('needed.scene.listOptions')).toBeUndefined();
   expect(byText('needed.scene.addList')).toBeUndefined();
   expect(document.body.textContent).toContain('needed.scene.readOnly');
+});
+
+it('cuts a long name on a whole character, never half an emoji', async () => {
+  const { store, scene } = storyboard();
+  await mount(store, scene());
+  await click(byLabel('needed.scene.labelEmpty'));
+  await click(byText('needed.scene.addList'));
+  await click(byText('board.todo.lists.props'));
+  await type('needed.scene.listName', `${'a'.repeat(199)}😀b`);
+  expect(lists(store, scene())[0]?.title).toBe(`${'a'.repeat(199)}😀`);
 });
 
 it('names the shooting days of the scene in the footer', async () => {

@@ -74,6 +74,9 @@ function step(store: BoardStore, change: () => void) {
   store.undo.stopCapturing();
 }
 
+/** The first `max` characters, never half of one (an emoji is two UTF-16 units). */
+export const clip = (text: string, max: number) => Array.from(text).slice(0, max).join('');
+
 const filled = (lists: readonly SceneList[]) =>
   lists.flatMap((l) => l.items.filter((i) => i.text.trim()));
 
@@ -81,7 +84,8 @@ const filled = (lists: readonly SceneList[]) =>
  * "To bring" on a scene of the Storyboard view: the scene's wardrobe, props and equipment lists,
  * which the shooting days of the scene gather (decision 0058). It belongs to Production
  * (decision 0121): off, a scene that has lists keeps the button to read and tick them, and
- * offers no new list or item; without lists there is no button. Viewers only read.
+ * nothing more (no list or item made, renamed, retyped or deleted); without lists there is no
+ * button. Viewers only read.
  */
 export function SceneToBring({
   store,
@@ -360,7 +364,7 @@ function ToBringPanel({
                             value={l.title ?? ''}
                             placeholder={typeName(l.list)}
                             onSave={(typed) => {
-                              const text = typed.slice(0, 200);
+                              const text = clip(typed, 200);
                               setNaming(null);
                               if (text !== (l.title ?? ''))
                                 step(store, () =>
@@ -376,7 +380,7 @@ function ToBringPanel({
                         <span className="to-bring__count">
                           {done.filter((i) => i.done).length}/{done.length}
                         </span>
-                        {!readOnly && (
+                        {canCreate && (
                           <IconButton
                             icon="more"
                             label={t('needed.scene.listOptions', { name: nameOf(l) })}
@@ -424,12 +428,12 @@ function ToBringPanel({
                                 // biome-ignore lint/a11y/noStaticElementInteractions: a shortcut for the Rename button beside it
                                 <span
                                   className="to-bring__text"
-                                  onDoubleClick={() => !readOnly && setRenaming(key)}
+                                  onDoubleClick={() => canCreate && setRenaming(key)}
                                 >
                                   {item.text}
                                 </span>
                               )}
-                              {!readOnly && renaming !== key && (
+                              {canCreate && renaming !== key && (
                                 <span className="to-bring__actions">
                                   <IconButton
                                     icon="pen"
@@ -615,7 +619,7 @@ function InlineField({
 }) {
   const [text, setText] = useState(value);
   const done = useRef(false);
-  const save = () => onSave(text.trim().slice(0, 2000));
+  const save = () => onSave(clip(text.trim(), 2000));
   return (
     <input
       // biome-ignore lint/a11y/noAutofocus: the field opens on purpose, from a button

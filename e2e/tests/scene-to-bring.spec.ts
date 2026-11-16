@@ -142,6 +142,12 @@ test("a scene's To bring makes, ticks and deletes typed lists on the storyboard"
     await button.click();
     await expect(popup.getByRole('button', { name: 'Aggiungi lista' })).toHaveCount(0);
     await expect(popup.getByRole('button', { name: 'Aggiungi un elemento' })).toHaveCount(0);
+    // View and tick only: no list menu, no rename or delete of an item, no rename on double-click.
+    await expect(popup.getByRole('button', { name: /^Opzioni della lista/ })).toHaveCount(0);
+    await expect(popup.getByRole('button', { name: /^Rinomina / })).toHaveCount(0);
+    await expect(popup.getByRole('button', { name: /^Elimina / })).toHaveCount(0);
+    await popup.getByText('Cappotto di lana grigio', { exact: true }).dblclick();
+    await expect(popup.getByRole('textbox')).toHaveCount(0);
     await popup.getByRole('checkbox', { name: 'Cappotto di lana grigio' }).uncheck();
     await expect(button).toHaveAccessibleName('Da portare per la scena 1, 0 di 1 pronti');
     await shoot(page, 'production-off');
