@@ -191,7 +191,14 @@ it('takes a note written with the doc-schema operations as it is, and edits only
     insertBlock(fragment, rule.block, 'noteImage', { assetId: 'asset-1' });
   });
   expect(noteStructureIssues(fragment)).toEqual([]);
+  // Every Yjs object of the body, block by block: an editor that rewrites a block replaces them.
+  const objectsOf = (node: Y.XmlElement | Y.XmlText): unknown[] =>
+    node instanceof Y.XmlText
+      ? [node]
+      : [node, ...node.toArray().flatMap((c) => objectsOf(c as Y.XmlElement))];
+  const objects = () => fragment.toArray().map((node) => objectsOf(node as Y.XmlElement));
   const before = fragment.toArray().map((node) => node.toString());
+  const objectsBefore = objects();
   const editor = new Editor({
     element: document.createElement('div'),
     extensions: [...NOTE_EXTENSIONS, Collaboration.configure({ fragment })],
@@ -201,6 +208,16 @@ it('takes a note written with the doc-schema operations as it is, and edits only
   // project invalid content unchecked).
   expect(() => editor.state.doc.check()).not.toThrow();
   expect(fragment.toArray().map((node) => node.toString())).toEqual(before);
+  const sameObjects = (now: unknown[][], from: number) => {
+    expect(now.length).toBe(objectsBefore.length);
+    now.slice(from).forEach((list, i) => {
+      expect(list.length).toBe(objectsBefore[i + from]?.length);
+      list.forEach((object, j) => {
+        expect(object === objectsBefore[i + from]?.[j]).toBe(true);
+      });
+    });
+  };
+  sameObjects(objects(), 0);
   const kinds = (editor.getJSON().content ?? []).map((node) => node.type);
   expect(kinds).toEqual(['heading', 'paragraph', 'taskList', 'taskList', 'noteImage', 'paragraph']);
   // One edit in the editor changes the heading only: everything the operations wrote is what the
@@ -210,5 +227,7 @@ it('takes a note written with the doc-schema operations as it is, and edits only
   const after = fragment.toArray().map((node) => node.toString());
   expect(after[0]).toContain('XFerry timing');
   expect(after.slice(1)).toEqual(before.slice(1));
+  // The blocks the edit did not touch are the very objects the operations wrote.
+  sameObjects(objects(), 1);
   editor.destroy();
 });

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import * as Y from 'yjs';
+import { NoteImage, NoteMention } from './doc.ts';
 import { NOTE_BODY_SCHEMA } from './strict.ts';
 
 /**
@@ -248,6 +249,25 @@ function onCharacters(
   return { from: a, to: b, text: wellFormed(wrapped) };
 }
 
+/** The longest value each text attribute of an inline node or a picture may hold. */
+const ATTRIBUTE_MAX: Readonly<Record<string, number | null>> = {
+  id: NoteMention.shape.id.maxLength,
+  label: NoteMention.shape.label.maxLength,
+  assetId: NoteImage.shape.assetId.maxLength,
+  alt: NoteImage.shape.alt.unwrap().unwrap().maxLength,
+};
+
+/**
+ * A text attribute (a mention's label, a picture's alt) on whole characters: no half of a
+ * two-unit character, cut to its longest length before a character, never inside one.
+ */
+function attributeText(name: string, value: string): string {
+  const text = wellFormed(value);
+  const max = ATTRIBUTE_MAX[name];
+  if (max == null || text.length <= max) return text;
+  return text.slice(0, isHigh(text.charCodeAt(max - 1)) ? max - 1 : max);
+}
+
 /** Marks that may be stored together: with `code` (it excludes the others) no other known mark. */
 function together(marks: NoteMarks): NoteMarks {
   const only = Object.keys(marks).find((k) => NOTE_MARK_EXCLUDES[baseName(k)] === '_');
@@ -385,7 +405,7 @@ export function insertInline(
 ): boolean {
   if (block.nodeName === 'codeBlock') return false;
   const node = new Y.XmlElement(name);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, attributeText(k, v));
   const tail = cutInline(block, clamp(at, 0, inlineLength(block)));
   block.insert(block.length, [node, ...nodesOf(tail)]);
   return true;
@@ -605,14 +625,28 @@ function liftItem(item: Y.XmlElement, offset = 0): NoteCaret {
  */
 export function splitBlock(block: Y.XmlElement, at: number): NoteCaret {
   if (block.nodeName === 'codeBlock') {
-    replaceText(block, at, at, '\n');
-    return { block, offset: at + 1 };
+    // The new line goes before a two-unit character the position is inside, the caret after it.
+    const pos = onCodePoint(block, clamp(at, 0, inlineLength(block)), 'down');
+    replaceText(block, pos, pos, '\n');
+    return { block, offset: pos + 1 };
   }
   const parent = parentOf(block);
   const index = indexIn(parent, block);
   const length = inlineLength(block);
   const item = isItem(parent) && index === 0 ? parent : null;
-  if (length === 0 && item && item.length === 1) return liftItem(item);
+  if (length === 0 && item && item.length === 1) {
+    // As the web's editor (Tiptap 3.32): only the last item of a nested list leaves it a level;
+    // an empty item in the middle becomes an empty paragraph of the item around the list, the
+    // list split there.
+    const list = parentOf(item) as Y.XmlElement;
+    const index = indexIn(list, item);
+    if (isItem(list.parent) && index < list.length - 1) {
+      const empty = new Y.XmlElement('paragraph');
+      splitOut(list, index, [empty]);
+      return { block: empty, offset: 0 };
+    }
+    return liftItem(item);
+  }
   if (length === 0 && parent instanceof Y.XmlElement && parent.nodeName === 'blockquote') {
     const empty = new Y.XmlElement('paragraph');
     splitOut(parent, index, [empty]);
@@ -788,7 +822,7 @@ export function insertBlock(
   attrs: Record<string, string> = {},
 ): NoteCaret {
   const node = new Y.XmlElement(name);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, attributeText(k, v));
   const parent = after ? parentOf(after) : body;
   let index = after ? indexIn(parent, after) + 1 : parent.length;
   const replaces =
