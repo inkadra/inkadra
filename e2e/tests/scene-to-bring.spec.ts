@@ -23,6 +23,8 @@ async function setTheme(page: Page, theme: 'light' | 'dark') {
 
 async function shoot(page: Page, name: string) {
   if (!shots) return;
+  // No leftover hover in the pictures.
+  await page.mouse.move(1, 1);
   for (const theme of ['light', 'dark'] as const) {
     await setTheme(page, theme);
     // The theme fades its colours: let it finish before the picture.
