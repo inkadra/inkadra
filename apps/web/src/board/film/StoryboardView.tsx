@@ -34,6 +34,7 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
+import { SceneToBring } from './SceneToBring.tsx';
 import { inShotList, sceneName, useStoryboard } from './storyboard-data.ts';
 import {
   applyDrop,
@@ -456,6 +457,8 @@ export function StoryboardView({
               key={g.scene?.id ?? 'loose'}
               group={g}
               store={store}
+              boardId={boardId}
+              projectId={projectId}
               readOnly={readOnly}
               userId={userId}
               onAddFrame={() => newFrame(g.scene?.id ?? null)}
@@ -655,6 +658,8 @@ function SceneList({
 function SceneSection({
   group,
   store,
+  boardId,
+  projectId,
   readOnly,
   userId,
   onAddFrame,
@@ -663,6 +668,8 @@ function SceneSection({
 }: {
   group: SceneGroup;
   store: BoardStore;
+  boardId: string;
+  projectId: string;
   readOnly: boolean;
   userId: string;
   onAddFrame: () => void;
@@ -786,6 +793,14 @@ function SceneSection({
         <ScenePlanButton
           plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)}
           onNew={readOnly ? undefined : () => addScenePlan(store, scene, userId)}
+        />
+        <SceneToBring
+          store={store}
+          scene={scene}
+          boardId={boardId}
+          projectId={projectId}
+          userId={userId}
+          readOnly={readOnly}
         />
         {/* An editor's pressed toggle already says the scene is hidden. */}
         {(readOnly || !scene.guestHidden) && <GuestVisibility store={store} element={scene} />}

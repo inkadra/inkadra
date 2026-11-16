@@ -49,7 +49,8 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     kinds: ['production'],
     views: [],
     tools: [],
-    menus: [],
+    // A scene's To bring in the Storyboard view: off, only scenes that have lists keep it.
+    menus: ['sceneToBring'],
     tours: ['schedule', 'troupe'],
     notifications: [],
     exports: ['scenesheets', 'callSheet', 'callsheets'],

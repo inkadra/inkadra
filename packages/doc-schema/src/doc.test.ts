@@ -767,6 +767,18 @@ describe('column colours and section headings', () => {
     expect(counts.referenceCount).toBe(2);
     expect(counts.looseCount).toBe(3);
   });
+
+  it('leaves the typed lists of a scene out of the loose cards, unless the scene is gone', () => {
+    const counts = contentCounts([
+      { id: 's1', type: 'scene' },
+      { id: 'a', type: 'todo', list: 'props', sceneId: 's1' },
+      { id: 'b', type: 'todo', sceneId: 's1' },
+      { id: 'c', type: 'todo', list: 'wardrobe' },
+      { id: 'd', type: 'todo', list: 'equipment', sceneId: 'gone' },
+    ]);
+    // b is an ordinary to-do, c has no scene, d's scene was deleted: the old canvas shows them.
+    expect(counts.looseCount).toBe(3);
+  });
 });
 
 describe('table cards', () => {

@@ -3583,7 +3583,37 @@
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
     "empty": "Les scènes de cette journée n’ont pas de liste à apporter. Depuis le menu d’une carte À faire, choisissez Costumes, Accessoires ou Matériel et la scène.",
-    "emptyMine": "Vous n’apportez rien pour cette journée."
+    "emptyMine": "Vous n’apportez rien pour cette journée.",
+    "scene": {
+      "label": "À apporter pour la scène {{number}}, {{ready}} sur {{total}} prêts",
+      "labelEmpty": "À apporter pour la scène {{number}}, pas encore de liste",
+      "dialog": "À apporter pour la scène {{number}}",
+      "title": "À apporter · Scène {{number}}",
+      "close": "Fermer",
+      "emptyTitle": "Pas encore de liste pour la scène {{number}}",
+      "emptyBody": "Rassemblez ici costumes, accessoires et matériel. Chaque liste apparaît dans À apporter les jours qui tournent cette scène.",
+      "listName": "Nom de la liste",
+      "listOptions": "Options de la liste, {{name}}",
+      "itemName": "Élément",
+      "rename": "Renommer {{name}}",
+      "delete": "Supprimer {{name}}",
+      "addItem": "Ajouter un élément",
+      "addList": "Ajouter une liste",
+      "listType": "Type de liste",
+      "renameList": "Renommer la liste",
+      "changeType": "Changer de type",
+      "deleteList": "Supprimer la liste…",
+      "deleteTitle": "Supprimer la liste « {{name}} » ?",
+      "deleteBody_one": "{{type}} pour la scène {{number}}, avec son élément. Elle disparaît pour tout le monde sur ce storyboard ; Annuler la ramène.",
+      "deleteBody_other": "{{type}} pour la scène {{number}}, avec ses {{count}} éléments. Elle disparaît pour tout le monde sur ce storyboard ; Annuler la ramène.",
+      "deleteConfirm": "Supprimer la liste",
+      "cancel": "Annuler",
+      "days": "Dans À apporter : {{days}}",
+      "day": "jour {{n}} ({{date}})",
+      "readOnly": "Vous pouvez voir ces listes. Les propriétaires et les éditeurs les modifient.",
+      "itemDeleted": "Élément supprimé",
+      "listDeleted": "Liste supprimée"
+    }
   },
   "clientReview": {
     "cardProgress": "{{approved}} cartes approuvées sur {{total}}",
@@ -5440,6 +5470,10 @@
           "3": {
             "title": "Une nouvelle version du scénario",
             "text": "Importez-la à nouveau et choisissez Mettre à jour depuis une révision : les scènes sont mises à jour, les images restent telles quelles."
+          },
+          "4": {
+            "title": "Ce qu’il faut à une scène",
+            "text": "Costumes, accessoires et matériel de la scène, en listes par type. Les jours qui tournent la scène les rassemblent dans À apporter."
           }
         }
       },
@@ -6756,7 +6790,7 @@
     "desc": {
       "board": "Notes, images, liens, fichiers, tâches, colonnes et commentaires.",
       "storyboard": "Tableaux storyboard, liste des plans, l’outil Plan, import du scénario en scènes.",
-      "production": "Plan de tournage, équipe, feuilles de service et fiches par scène.",
+      "production": "Plan de tournage, équipe, feuilles de service, fiches par scène et À apporter de chaque scène.",
       "moodboard": "Tableaux moodboard et la vue Moodboard d’un tableau : groupes, notes, palettes.",
       "review": "Liens pour les clients sans compte, validations et demandes de modification.",
       "plan": "Plans avec lumières, caméras, acteurs et murs, liés aux scènes et aux plans."

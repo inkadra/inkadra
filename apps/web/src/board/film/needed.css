@@ -197,3 +197,182 @@ span.needed__who {
     transition: none;
   }
 }
+
+/* A scene's "To bring" in the Storyboard view: its button and pop-up (decision 0058, 0121). */
+.to-bring-btn__count {
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.to-bring-root {
+  display: contents;
+}
+.to-bring {
+  position: fixed;
+  z-index: 310;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-menu);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  color: var(--ink-text-primary);
+}
+/* Its menus open over it. */
+.menu.to-bring__menu {
+  z-index: 311;
+}
+.to-bring__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px 8px 16px;
+  border-bottom: 1px solid var(--ink-border-subtle);
+}
+.to-bring__heading {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.to-bring__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.to-bring__slug,
+.to-bring__days,
+.to-bring__note,
+.to-bring__count {
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.to-bring__slug,
+.to-bring__days,
+.to-bring__name,
+.to-bring__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.to-bring__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 8px;
+  overflow-y: auto;
+}
+.to-bring__type {
+  margin: 0;
+  padding: 12px 16px 2px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-secondary);
+}
+.to-bring__list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 2px 8px 0 16px;
+}
+.to-bring__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+}
+.to-bring__count {
+  font-variant-numeric: tabular-nums;
+}
+.to-bring__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.to-bring__item,
+.to-bring__add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 12px 0 16px;
+}
+.to-bring__item:hover {
+  background: var(--ink-surface-2);
+}
+.to-bring__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.to-bring__item.is-done .to-bring__text {
+  color: var(--ink-text-secondary);
+}
+.to-bring__field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+}
+.to-bring__list-head .to-bring__field {
+  margin-right: 8px;
+}
+.to-bring__actions {
+  display: inline-flex;
+  flex: none;
+}
+.to-bring__actions .ink-iconbtn {
+  width: 28px;
+  height: 28px;
+}
+/* Rename and delete show on hover and focus where there is a pointer; touch always shows them. */
+@media (hover: hover) {
+  .to-bring__item:not(:hover):not(:focus-within) .to-bring__actions {
+    opacity: 0;
+  }
+}
+.to-bring__add {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+.to-bring__add:hover {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}
+.to-bring__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 32px 24px;
+  text-align: center;
+  color: var(--ink-text-secondary);
+}
+.to-bring__empty strong {
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.to-bring__foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px 8px 16px;
+  border-top: 1px solid var(--ink-border-subtle);
+}
+.to-bring__days {
+  min-width: 0;
+}
+.to-bring__foot .ink-btn {
+  margin-left: auto;
+}

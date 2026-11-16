@@ -157,6 +157,7 @@ describe('board counts for the navigation', () => {
       map.set('type', type);
       if (status) map.set('status', status);
       if (sceneIds) map.set('sceneIds', sceneIds);
+      return map;
     };
     add('scene', 'scene');
     add('a', 'frame');
@@ -167,12 +168,16 @@ describe('board counts for the navigation', () => {
     add('photo', 'image');
     add('scene-plan', 'plan', undefined, ['scene']);
     add('loose-plan', 'plan');
+    // A scene's typed list shows in its To bring, not outside the storyboard.
+    const list = add('scene-list', 'todo');
+    list.set('list', 'props');
+    list.set('sceneId', 'scene');
     // References feed the moodboard; loose cards are what a storyboard keeps outside it (0121).
     expect(boardCounts(Y.encodeStateAsUpdate(doc))).toEqual({
-      elementCount: 9,
+      elementCount: 10,
       frameCount: 3,
       framesToShoot: 2,
-      cardCount: 7,
+      cardCount: 8,
       fileCount: 1,
       boardCount: 0,
       referenceCount: 1,

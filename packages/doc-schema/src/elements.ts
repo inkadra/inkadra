@@ -1182,8 +1182,9 @@ export interface ContentCounts {
   /** Images, links and colours: what a moodboard shows (decision 0121). */
   referenceCount: number;
   /**
-   * Cards other than frames and the set plans of a scene: on a storyboard, the cards outside
-   * the storyboard, which its old canvas still shows (decision 0121).
+   * Cards other than frames, the set plans of a scene and the typed lists of a scene that is
+   * there: on a storyboard, the cards outside the storyboard, which its old canvas still shows
+   * (decision 0121). The scene's To bring shows those lists instead.
    */
   looseCount: number;
 }
@@ -1194,8 +1195,17 @@ const REFERENCES: ReadonlySet<unknown> = new Set(['image', 'link', 'color']);
 
 /** Counts elements by what they are; takes plain elements or the fields read from Y.Maps. */
 export function contentCounts(
-  items: Iterable<{ type?: unknown; status?: unknown; sceneIds?: unknown }>,
+  items: Iterable<{
+    id?: unknown;
+    type?: unknown;
+    status?: unknown;
+    sceneIds?: unknown;
+    list?: unknown;
+    sceneId?: unknown;
+  }>,
 ): ContentCounts {
+  const all = [...items];
+  const scenes = new Set(all.filter((el) => el.type === 'scene').map((el) => el.id));
   const counts: ContentCounts = {
     elementCount: 0,
     frameCount: 0,
@@ -1206,14 +1216,16 @@ export function contentCounts(
     referenceCount: 0,
     looseCount: 0,
   };
-  for (const { type, status, sceneIds } of items) {
+  for (const { type, status, sceneIds, list, sceneId } of all) {
     counts.elementCount++;
     if (type === 'board') counts.boardCount++;
     else if (type === 'file') counts.fileCount++;
     else if (!STRUCTURE.has(type)) counts.cardCount++;
     if (REFERENCES.has(type)) counts.referenceCount++;
     const scenePlan = type === 'plan' && Array.isArray(sceneIds) && sceneIds.length > 0;
-    if (!STRUCTURE.has(type) && type !== 'frame' && !scenePlan) counts.looseCount++;
+    // A list whose scene is gone stays loose, so the old canvas still reaches it.
+    const sceneList = type === 'todo' && !!list && scenes.has(sceneId);
+    if (!STRUCTURE.has(type) && type !== 'frame' && !scenePlan && !sceneList) counts.looseCount++;
     if (type !== 'frame') continue;
     counts.frameCount++;
     if (status !== 'shot') counts.framesToShoot++;
