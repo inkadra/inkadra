@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { deflateSync } from 'node:zlib';
 import { addFrame, addScene, createElement, updateElement } from '@inkadra/canvas-core';
 import { initBoardDoc, roots } from '@inkadra/doc-schema';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as Y from 'yjs';
 import { chooseSelect } from '../helpers/select.ts';
@@ -449,14 +449,19 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   // no comments. The options are there at once: no presets, nothing to open.
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  // A click that lands while the freshly opened dialog still shifts misses its control (the
+  // scheduled firefox run of 604469e0, #920): each choice is repeated until it is taken.
+  const settle = (control: Locator, on = true) =>
+    expect(() => control.setChecked(on, { timeout: 2_000 })).toPass();
   const check = (name: string | RegExp, on: boolean) =>
-    dialog.getByRole('checkbox', { name }).setChecked(on);
+    settle(dialog.getByRole('checkbox', { name }), on);
+  const choose = (name: string) => settle(dialog.getByRole('radio', { name, exact: true }));
   await expect(dialog.getByRole('radio', { name: /Pitch cliente/ })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: /Personalizza/ })).toHaveCount(0);
   await expect(dialog.getByText(/Riepilogo kickoff/)).toHaveCount(0);
-  await dialog.getByRole('radio', { name: 'Clienti' }).click();
+  await choose('Clienti');
   await chooseSelect(dialog.getByRole('combobox', { name: 'Formato pagina' }), 'slide');
-  await dialog.getByRole('radio', { name: '1', exact: true }).click();
+  await choose('1');
   await check(/Copertina/, true);
   await check('Solo inquadrature approvate', true);
   await check('Includi i commenti', false);
@@ -484,9 +489,9 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   // portrait, every frame, with the call sheet.
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  await dialog.getByRole('radio', { name: 'Il team' }).click();
+  await choose('Il team');
   await chooseSelect(dialog.getByRole('combobox', { name: 'Formato pagina' }), 'a4');
-  await dialog.getByRole('radio', { name: 'Verticale' }).click();
+  await choose('Verticale');
   await check('Solo inquadrature approvate', false);
   await check('Escludi le card nascoste agli ospiti', false);
   await check(/Foglio di lavorazione/, true);
@@ -518,8 +523,8 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   await page.getByRole('tab', { name: 'Storyboard' }).click();
   await page.locator('.board-header-export').click();
   await expect(dialog.getByRole('radio', { name: 'Il team' })).toBeChecked();
-  await dialog.getByRole('radio', { name: 'Orizzontale' }).click();
-  await dialog.getByRole('radio', { name: '4', exact: true }).click();
+  await choose('Orizzontale');
+  await choose('4');
   await check('Includi i commenti', true);
   await check(/Foglio di lavorazione/, false);
   await expect(dialog.getByText('4 pagine')).toBeVisible();
