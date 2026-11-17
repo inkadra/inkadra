@@ -9,7 +9,7 @@ major version does.
 Pin a version in `.env`, so an upgrade happens when you decide:
 
 ```sh
-INKADRA_TAG=0.9.0
+INKADRA_TAG=0.10.0
 ```
 
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
@@ -107,7 +107,7 @@ run `backup restore-files <file>` until it reports none failed (see
 [Restoring](README.md#restoring)). CI runs this rollback with the backup the upgrade wrote, and the upgrade from
 the last release with its sample data, on every change (`scripts/test-release-upgrade.sh`).
 
-From the version after 0.9.0, a server refuses to start on a database that a newer version
+From 0.10.0, a server refuses to start on a database that a newer version
 migrated, with a message that points here, instead of running on a schema it does not know.
 Boards follow the same rule: a server opens only documents of its own schema or older (a
 newer document can only come from a newer server, whose database it refuses), a backup or a
@@ -118,11 +118,9 @@ to a newer server stay read-only on boards they would damage
 The sections below list what to do for each version, newest first. Read every one between
 your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
-## After 0.9.0 (current main)
+## Upgrading to 0.10
 
-These changes are on `main`, not in 0.9.0.
-
-- **A database backup before migrations.** The first start of these builds on a 0.9.0
+- **A database backup before migrations.** The first start of 0.10 on a 0.9.0
   database writes `inkadra-backup-pre-upgrade-….zip` before migrating, and refuses to migrate
   if it fails: check the free space in `/data/backups` first. See
   [The backup before an upgrade](#the-backup-before-an-upgrade).
@@ -141,11 +139,24 @@ These changes are on `main`, not in 0.9.0.
   A hand-edited copy of the old `compose.yaml` keeps working unchanged.
 
 - **Media tools are now in the standard image.** Remove `-media` from `INKADRA_TAG` when
-  moving to these builds, not when installing 0.9.0. Standard still excludes LibreOffice.
+  moving to 0.10 (`-media` images are no longer published), not when installing 0.9.0.
+  Standard still excludes LibreOffice.
 - **Video copies use quality presets and multiple resolutions.** Review
   [Settings → Video](configuration.md#media-previews). Existing copies remain playable;
   regeneration is explicit. The default source-size limit is now unlimited, while the
   two-hour duration limit remains.
+- **Board documents move from schema 22 to 27.** Each board is brought to the new schema when
+  it is first opened; nothing to run by hand. Browser tabs and installed apps from 0.9 stay
+  read-only on boards until they reload ([decision 0102](../decisions/0102-min-writer-schema.md)).
+  A board, backup or project archive written by 0.10 does not go back to 0.9: to go back, restore
+  the backup taken before the upgrade with 0.9 (see
+  [Going back to an older version](#going-back-to-an-older-version)). Apps learn what the server
+  accepts from `GET /api/v1/instance/version`: `docSchemaVersion` (27), `minWriterSchema` (27)
+  and the capabilities `min-writer-schema` and `board-restore-marker`
+  ([decision 0109](../decisions/0109-board-restore-marker.md)).
+- **Board size limits.** A board takes at most 64 MiB of document and 20,000 cards
+  (`BOARD_MAX_STATE_BYTES`, `BOARD_MAX_ELEMENTS`). Boards already larger stay readable and accept
+  deletions.
 - **Modules are personal settings.** Storyboard, Production, Moodboard, Client review and
   Set plan can be switched off in Settings → Modules. This hides creation tools, not existing
   data. There is no server environment variable for modules.
@@ -576,13 +587,13 @@ in this repository, and a software bill of materials. To check that an image was
 repository by its CI and nothing else:
 
 ```sh
-gh attestation verify oci://ghcr.io/inkadra/inkadra:0.9.0 --repo inkadra/inkadra
+gh attestation verify oci://ghcr.io/inkadra/inkadra:0.10.0 --repo inkadra/inkadra
 ```
 
 To list the packages inside it:
 
 ```sh
-docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.9.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.10.0 --format '{{ json .SBOM }}'
 ```
 
 ## How releases are made

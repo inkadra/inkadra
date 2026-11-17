@@ -5,7 +5,7 @@ original download. CSV and XLSX grid previews and first-sheet-to-table work with
 
 ## The worker image
 
-Every tag from 0.8.0 on also exists with the suffix `-office` (`ghcr.io/inkadra/inkadra:0.9.0-office`,
+Every tag from 0.8.0 on also exists with the suffix `-office` (`ghcr.io/inkadra/inkadra:0.10.0-office`,
 `latest-office`, `edge-office`…): the standard image plus LibreOffice (Writer, Calc, Impress),
 fonts, Poppler, bubblewrap and `prlimit`, everything the converter needs. It is built, attested
 and published like the other variants, for linux/amd64 and linux/arm64. Pin the version you run,
@@ -17,7 +17,7 @@ To build the worker image:
 docker build --build-arg OFFICE=true -t inkadra-office-worker .
 ```
 
-After 0.9.0, Office images also include all media tools. Use the image for an extra **worker** role
+From 0.10.0, Office images also include all media tools. Use the image for an extra **worker** role
 only, with your existing database, Redis and storage settings. The web/collab roles keep their
 ordinary image.
 
@@ -60,7 +60,7 @@ docker compose -f compose.yaml -f deploy/compose.office.yaml up -d
 ```
 
 It starts an `office-worker` service (command `worker`) on the same version as the other roles
-with `-office` added (`INKADRA_TAG` stays without suffix, for example `0.9.0`; `INKADRA_IMAGE`
+with `-office` added (`INKADRA_TAG` stays without suffix, for example `0.10.0`; `INKADRA_IMAGE`
 works as usual), with the same database, Redis, storage and data volume, and sets
 `OFFICE_PREVIEWS=true` on it and on `inkadra`. The worker waits for `inkadra` to be healthy,
 drops every capability, keeps `no-new-privileges`, and has its own limits and log rotation:

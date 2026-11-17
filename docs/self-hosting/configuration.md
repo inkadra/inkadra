@@ -128,8 +128,8 @@ installation. See [demo configuration](../demo.md) before enabling it.
 
 ## Media previews
 
-Media tools are included in standard builds after 0.9.0; that release needs `0.9.0-media`
-(see [The image](README.md#the-image)). Current `main` adds the controls below.
+Media tools are included in standard images from 0.10.0; 0.9.0 needs `0.9.0-media`
+(see [The image](README.md#the-image)). 0.10 adds the controls below.
 
 In **Settings → Video**, administrators choose Light, Balanced (default) or High quality,
 resolutions to store, and whether to encode while someone watches. By default, 480p, 720p and
@@ -300,7 +300,7 @@ These change `compose.yaml` itself. They reach the container too, which ignores 
 
 | Variable                  | Default                   | Meaning                                                                        |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.9.0` (recommended), `latest` or `edge`         |
+| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.10.0` (recommended), `latest` or `edge`        |
 | `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                     |
 | `INKADRA_ENV_FILE`        | `.env`                    | File whose lines reach the container; set it when you use `--env-file`         |
 | `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |
