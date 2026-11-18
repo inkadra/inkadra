@@ -120,15 +120,25 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
 ## Upgrading to 0.10
 
+Back up first, as for any release with migrations: the way back is that backup, restored with
+0.9 (see [Going back to an older version](#going-back-to-an-older-version)).
+
 - **A database backup before migrations.** The first start of 0.10 on a 0.9.0
   database writes `inkadra-backup-pre-upgrade-….zip` before migrating, and refuses to migrate
   if it fails: check the free space in `/data/backups` first. See
   [The backup before an upgrade](#the-backup-before-an-upgrade).
+- **Board documents move from schema 22 to 27.** Each board is brought to the new schema when
+  it is first opened; nothing to run by hand. Browser tabs and installed apps from 0.9 stay
+  read-only on boards until they reload ([decision 0102](../decisions/0102-min-writer-schema.md)).
+  A board, backup or project archive written by 0.10 does not go back to 0.9. Apps learn what the
+  server accepts from `GET /api/v1/instance/version`: `docSchemaVersion` (27), `minWriterSchema` (27)
+  and the capabilities `min-writer-schema` and `board-restore-marker`
+  ([decision 0109](../decisions/0109-board-restore-marker.md)).
 - **`compose.yaml` hands the whole `.env` to the container** (`env_file`), instead of a list of
   about 50 settings: every documented setting now works from `.env` alone, `TZ`,
   `IMPORT_MAX_SIZE`, `OFFICE_PREVIEWS` and the video settings included. If you take the new file:
-  - use it with this version or a newer one: an empty line such as `OIDC_SCOPES=` means the
-    default only from this version on, and can stop 0.9.0 at start;
+  - use it with 0.10 or newer: an empty line such as `OIDC_SCOPES=` means the default only
+    from 0.10 on, and can stop 0.9.0 at start;
   - if you start Compose with `--env-file <other file>`, also set `INKADRA_ENV_FILE` to that
     file, in the file itself or in the shell: otherwise the container reads `.env`;
   - a stack manager that passes variables without a `.env` file next to `compose.yaml` needs one,
@@ -145,15 +155,6 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
   [Settings → Video](configuration.md#media-previews). Existing copies remain playable;
   regeneration is explicit. The default source-size limit is now unlimited, while the
   two-hour duration limit remains.
-- **Board documents move from schema 22 to 27.** Each board is brought to the new schema when
-  it is first opened; nothing to run by hand. Browser tabs and installed apps from 0.9 stay
-  read-only on boards until they reload ([decision 0102](../decisions/0102-min-writer-schema.md)).
-  A board, backup or project archive written by 0.10 does not go back to 0.9: to go back, restore
-  the backup taken before the upgrade with 0.9 (see
-  [Going back to an older version](#going-back-to-an-older-version)). Apps learn what the server
-  accepts from `GET /api/v1/instance/version`: `docSchemaVersion` (27), `minWriterSchema` (27)
-  and the capabilities `min-writer-schema` and `board-restore-marker`
-  ([decision 0109](../decisions/0109-board-restore-marker.md)).
 - **Board size limits.** A board takes at most 64 MiB of document and 20,000 cards
   (`BOARD_MAX_STATE_BYTES`, `BOARD_MAX_ELEMENTS`). Boards already larger stay readable and accept
   deletions.
@@ -161,18 +162,18 @@ your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
   Set plan can be switched off in Settings → Modules. This hides creation tools, not existing
   data. There is no server environment variable for modules.
 
-- **Shooting days move to a Production board.** The schedule becomes the project's
-  ([decision 0123](../decisions/0123-production-board.md)): when the new version starts, every
-  project (archived ones included) whose boards have shooting days, or whose Troupe has people,
-  gets a board called "Production" (in its creator's language) at the end of its root board, and
-  the days of its boards move there, as they are. Days on boards in the trash stay where they
-  are. A project that already has a Production board, even one in the trash, is left alone.
-  It is one query, then one short transaction per project; a project that fails is logged
-  ("Production board not made") and tried again at the next start.
-  With a live Production board, new days belong there; without one, the old board schedule
-  remains available.
-- **Back up first,** as for any release with migrations. The way back for the instance is that
-  backup, restored with the older version.
+### The Production board move
+
+The schedule becomes the project's ([decision 0123](../decisions/0123-production-board.md)):
+when 0.10 starts, every project (archived ones included) whose boards have shooting days, or
+whose Troupe has people, gets a board called "Production" (in its creator's language) at the end of its root board, and
+the days of its boards move there, as they are. Days on boards in the trash stay where they
+are. A project that already has a Production board, even one in the trash, is left alone.
+It is one query, then one short transaction per project; a project that fails is logged
+("Production board not made") and tried again at the next start.
+With a live Production board, new days belong there; without one, the old board schedule
+remains available.
+
 - **To hold the move back,** set `PRODUCTION_BOARD_MOVE=false` in `.env` before upgrading: the
   server starts without moving anything, and the next start with `true` (the default) does it.
   Only `true` and `false` are accepted: any other value stops the server at start. Importing a
