@@ -38,7 +38,7 @@ in Settings override them.
 
 | Variable                                                 | Default              | Meaning                                                                                                                                    |
 | -------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PRODUCTION_BOARD_MOVE`                                  | `true`               | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main)                      |
+| `PRODUCTION_BOARD_MOVE`                                  | `true`               | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#upgrading-to-010)                            |
 | `SKIP_PRE_MIGRATION_BACKUP`                              | `false`              | `true` or `false` only. `true` starts an upgrade without the [database backup before migrations](upgrades.md#the-backup-before-an-upgrade) |
 | `BACKUP_DIR`                                             | `<DATA_DIR>/backups` | Folder of the [backups](README.md#backups), for example another disk; it must be writable or the server does not start                     |
 | `BACKUP_S3_BUCKET`                                       |                      | A bucket the backups are copied to once verified, whatever `STORAGE_DRIVER` is. See [Backups](README.md#a-bucket-for-backups)              |

@@ -3,7 +3,7 @@
 Run Inkadra with Docker Compose on an amd64 or arm64 machine. The default setup runs the app, PostgreSQL and Valkey.
 
 This guide follows `main`. The latest release is **0.9.0 (9 November 2026)**. Changes after that
-release are marked below and in [Upgrades](upgrades.md#after-090-current-main).
+release are marked below and in [Upgrades](upgrades.md#upgrading-to-010).
 
 | Page                                  | What it covers                                       |
 | ------------------------------------- | ---------------------------------------------------- |
