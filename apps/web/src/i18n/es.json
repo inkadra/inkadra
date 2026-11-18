@@ -420,7 +420,8 @@
       "table": "Tabla",
       "map": "Mapa",
       "plan": "Planta del set",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "production": "Producción"
     },
     "tools": {
       "select": "Seleccionar",

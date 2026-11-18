@@ -33,6 +33,7 @@ import {
   crewCastKeys,
   linkCastName,
 } from '../cast-crew.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
   board,
@@ -42,6 +43,7 @@ import {
   shootingDayAttendance,
   user,
 } from '../db/schema.ts';
+import { checkDemoCrew } from '../demo-crew.ts';
 import { requireProductionBoardDays } from '../production.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -152,7 +154,17 @@ type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 export function registerScheduleRoutes(
   app: FastifyInstance,
-  { db, auth, boardReader }: { db: Database; auth: Auth; boardReader?: BoardReader },
+  {
+    db,
+    auth,
+    boardReader,
+    config,
+  }: {
+    db: Database;
+    auth: Auth;
+    boardReader?: BoardReader;
+    config?: Pick<Config, 'DEMO_MODE'>;
+  },
 ) {
   /**
    * Drops calls to rows that are not in the project. Runs in the transaction that writes the
@@ -330,9 +342,12 @@ export function registerScheduleRoutes(
       if (!roles.has(userId))
         throw new HttpError('bad_request', 'That person has no access to this board.');
     }
-    await db.transaction((tx) =>
-      linkCastName(tx, boardReader, { projectId: access.board.projectId, boardId, name, userId }),
-    );
+    await db.transaction(async (tx) => {
+      const { projectId } = access.board;
+      await linkCastName(tx, boardReader, { projectId, boardId, name, userId });
+      // A link may add a row in Cast: a demo project keeps its cap (decision 0132).
+      if (config?.DEMO_MODE) await checkDemoCrew(tx, projectId);
+    });
     return reply.code(204).send();
   });
   // The person answering is always the signed-in one: the request cannot name anybody else.

@@ -15,8 +15,10 @@ import type { FastifyInstance } from 'fastify';
 import { boardRoles, requireBoardRole, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedCharacters } from '../board-content.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { board, crewMember, shootingDay, user } from '../db/schema.ts';
+import { board, crewMember, projectMember, shootingDay, user } from '../db/schema.ts';
+import { checkDemoCrew } from '../demo-crew.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { idempotentCreation } from './idempotency.ts';
@@ -40,8 +42,19 @@ const present = (row: typeof crewMember.$inferSelect) => ({
 
 export function registerCrewRoutes(
   app: FastifyInstance,
-  { db, auth, boardReader }: { db: Database; auth: Auth; boardReader?: BoardReader },
+  {
+    db,
+    auth,
+    boardReader,
+    config,
+  }: {
+    db: Database;
+    auth: Auth;
+    boardReader?: BoardReader;
+    config?: Pick<Config, 'DEMO_MODE'>;
+  },
 ) {
+  const demo = config?.DEMO_MODE === true;
   const base = `${API_PREFIX}/projects/:projectId/crew`;
   /** Every response carries the same shape as the list: the row and its linked account. */
   const readCrew = async (where: SQL | undefined) =>
@@ -80,6 +93,16 @@ export function registerCrewRoutes(
         .from(user)
         .where(eq(user.id, input.userId));
       if (!account) throw new HttpError('bad_request', 'Account not found.');
+      // A sandbox links only its own people: no account of another sandbox (decision 0132).
+      if (demo) {
+        const [member] = await db
+          .select({ id: projectMember.userId })
+          .from(projectMember)
+          .where(
+            and(eq(projectMember.projectId, projectId), eq(projectMember.userId, input.userId)),
+          );
+        if (!member) throw new HttpError('bad_request', 'Account not found.');
+      }
     }
     // An unchanged link to a card deleted since stays savable: the inspector offers Unlink.
     const unchanged =
@@ -145,6 +168,7 @@ export function registerCrewRoutes(
           .values({ ...input, projectId })
           .returning();
         if (!row) throw new Error('Crew member missing');
+        if (demo) await checkDemoCrew(tx, projectId);
         return row;
       },
     );
@@ -180,7 +204,9 @@ export function registerCrewRoutes(
           return true;
         })
         .map((input) => ({ ...input, projectId }));
-      return values.length ? tx.insert(crewMember).values(values).returning() : [];
+      const made = values.length ? await tx.insert(crewMember).values(values).returning() : [];
+      if (demo) await checkDemoCrew(tx, projectId);
+      return made;
     });
     return reply.code(201).send({ items: await readRows(rows), nextCursor: null });
   });

@@ -7,9 +7,10 @@ page has the rules of the demo, for visitors, and how to run one, for whoever ho
 ## Rules of the demo
 
 - "Try the demo" opens a sandbox for one hour, with copies of two sample projects: the short film
-  "Last Train" (moodboard, storyboard, shot list, shooting schedule) and the photo shoot
-  "Low Tide" (moodboard, shot list by look, the day of the shoot, the selects). When the hour is
-  over the sandbox is deleted with every file in it, for good.
+  "Last Train" (moodboard, two storyboards, set plans, and a Production board with the shooting
+  calendar, call sheets and the Troupe) and the photo shoot "Low Tide" (moodboard, shot list by
+  look, the set-up on the beach, the day of the shoot and its Troupe, the selects). Everyone in
+  them is invented. When the hour is over the sandbox is deleted with every file in it, for good.
 - You can upload up to 100 MB of files, 10 MB each: pictures (JPEG, PNG, WebP, GIF), PDFs and
   plain text. Do not upload personal data or your clients' material.
 - Only you see your sandbox. Sharing, invitations, guest and review links, calendar feeds and
@@ -46,6 +47,8 @@ server that does not set it. On, the server:
 - caps each board at 500 cards and 2 MB, checked as it changes, and live messages at 1 MB: a
   board past a cap turns read-only, is not saved and is not copied into a version; a sandbox
   makes at most 30 boards;
+- lets a sandbox read and edit the Troupe of its own projects, up to 200 rows a project, linked
+  to no account but its own ([decision 0132](decisions/0132-demo-troupe-fixture.md));
 - deletes every sandbox past `DEMO_TTL` with its project, files and sessions, every minute and at
   start: the only data Inkadra ever deletes on its own.
 
@@ -69,9 +72,12 @@ same time.
 The sample projects are `apps/server/demo/last-train.inkadra` and `low-tide.inkadra`
 ([the demo projects](demo-project.md), [decision 0085](decisions/0085-two-demo-projects.md)),
 imported in that order; "Try the demo" opens the first. Their shooting days keep the distance
-from today they had when the archive was exported. Rebuild them after a change to the archive
-format or to a sample, in the daytime, against an empty instance that is not a demo; add
-`last-train` or `low-tide` to rebuild one:
+from today they had when the archive was exported. Archives carry no crew, so each has its Troupe
+and day calls beside it in `last-train.crew.json` and `low-tide.crew.json`, which every sandbox
+writes into its copy ([decision 0132](decisions/0132-demo-troupe-fixture.md)). `DEMO_SEED`
+archives without such a file get an empty Troupe. Rebuild them after a change to the archive
+format or to a sample, in the daytime, against an empty instance that is not a demo; the script
+writes the crew files too. Add `last-train` or `low-tide` to rebuild one:
 
 ```sh
 SHOTS_BASE_URL=http://localhost:3100 pnpm --filter @inkadra/e2e exec tsx scripts/demo-seed.ts

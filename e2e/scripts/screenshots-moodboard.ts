@@ -103,7 +103,7 @@ async function main(browser: Browser) {
   mkdirSync(out, { recursive: true });
   const sample = await seedSampleProject(browser, base);
   await enrich(sample);
-  // A board with no pictures, links or colors: the casting board holds some.
+  // A board with no pictures, links or colors: Cast and sets holds some.
   const nothing = await api<{ id: string }>(
     base,
     sample.cookie,

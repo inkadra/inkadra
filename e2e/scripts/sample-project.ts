@@ -14,7 +14,9 @@ import {
 } from '@inkadra/canvas-core';
 import {
   initBoardDoc,
-  type PlanIcon,
+  PlanIcon,
+  PlanOpening,
+  PlanWall,
   readElement,
   roots,
   STROKE_GRID,
@@ -26,9 +28,10 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/s
 import { STILL_NAMES, stillSize, stillSvg } from './sample-stills.ts';
 
 /**
- * The sample project of the screenshot scripts, built on an empty instance: "Last Train", a
- * short film with a moodboard, a storyboard of three scenes, a casting board, a set plan, the
- * rushes, the production office and three shooting days from today, a crew who comment and
+ * The sample project of the screenshot scripts and of the demo, built on an empty instance:
+ * "Last Train", a short film with a moodboard, a storyboard of three scenes and the second unit's,
+ * the characters, locations and set plan of Cast and sets, the rushes, the production office and
+ * the Production board with three shooting days from today and the Troupe, a crew who comment and
  * review, a client who decides through a share link, and the production company's next project.
  * docs/demo-project.md is its story bible: names, scenes and dates here follow it.
  *
@@ -303,7 +306,9 @@ export interface SampleProject {
   project: { id: string; rootBoardId: string };
   storyboard: { id: string };
   casting: { id: string };
-  /** The board with the set plan; its plan card is `planId`. */
+  /** The second storyboard: the second unit's inserts. */
+  secondUnit: { id: string };
+  /** The board with the set plan of the diner (Cast and sets); its plan card is `planId`. */
   setPlan: { id: string };
   planId: string;
   /** The board with the uploaded take, the voice note and the teaser. */
@@ -346,6 +351,86 @@ function strokeOf(id: string, path: Array<[number, number]>): Stroke {
   return { id: id.padEnd(12, 'x'), tool: 'pencil', color: '#E5484D', width: 3, points };
 }
 
+/**
+ * The Troupe of the bible: the crew, with the account of those who have one, and the cast,
+ * linked to their characters. Phone numbers are made up on a prefix no Italian line uses.
+ */
+const TROUPE: Array<{
+  name: string;
+  role: string;
+  department: string;
+  phone: string;
+  email: string;
+  pickup: string;
+  notes: string;
+  onSetContact: boolean;
+  account?: Member | 'giulia';
+  character?: string;
+}> = [
+  ...(
+    [
+      ['Giulia Bianchi', 'Director', 'Direction', '0101', 'giulia', ''],
+      ['Marco Gallo', 'First AD', 'Direction', '0102', 'marco', ''],
+      ['Chiara Fontana', 'Producer', 'Production', '0103', 'chiara', ''],
+      ['Tommaso Riva', 'Cinematographer', 'Camera', '0104', 'tommaso', ''],
+      ['Bruno Ferri', 'Second unit camera', 'Camera', '0105', undefined, 'Night of day 1 only.'],
+      ['Luca Marchi', 'Drone pilot', 'Camera', '0106', undefined, 'Permit for Capo Bianco.'],
+      ['Ivo Santoro', 'Sound recordist', 'Sound', '0107', 'ivo', ''],
+      ['Sara Leone', 'Production designer', 'Art', '0108', 'sara', ''],
+      ['Nadia Greco', 'Costume designer', 'Costume', '0109', 'nadia', ''],
+    ] as const
+  ).map(([name, role, department, phone, account, notes]) => ({
+    name,
+    role,
+    department,
+    phone: `+39 555 010 ${phone}`,
+    email: account ? `${account}@example.com` : `${name.split(' ')[0]?.toLowerCase()}@example.com`,
+    pickup: '',
+    notes,
+    onSetContact: account === 'marco' || account === 'chiara',
+    ...(account ? { account } : {}),
+  })),
+  ...(
+    [
+      ['Marta Neri', 'Anna', 'Hotel Stazione'],
+      ['Paolo Verdi', 'Leo', ''],
+      ['Lucia Amato', 'Rosa', ''],
+      ['Davide Russo', 'Sandro', ''],
+    ] as const
+  ).map(([name, character, pickup], i) => ({
+    name,
+    role: character,
+    department: 'Cast',
+    phone: '',
+    email: 'lumen@example.com',
+    pickup,
+    notes: `Agenzia Lumen${i === 0 ? '. Second coat in the costume van.' : ''}`,
+    onSetContact: false,
+    character,
+  })),
+];
+
+/** A set plan's drawing is 1000 view units wide and 1000 / 1.5 high, on the stroke grid. */
+export const gx = (x: number) => Math.round((x / 1000) * STROKE_GRID);
+export const gy = (y: number) => Math.round((y / (1000 / 1.5)) * STROKE_GRID);
+/** Ids of plan items: readable names, long enough for an element id. */
+export const planItemId = (name: string) => name.padEnd(13, 'A');
+/** A set icon at a place of the drawing, in view units. */
+export const planIcon = (
+  name: string,
+  kind: PlanIcon['kind'],
+  color: string,
+  x: number,
+  y: number,
+) => ({ id: planItemId(`icon${name}`), kind, color, x: gx(x), y: gy(y) });
+/**
+ * The items of a plan, checked one by one: a plan reads its lists leniently and would drop a
+ * wrong item without a word, so the seed fails instead.
+ */
+export function checked<T>(schema: { parse: (value: unknown) => T }, items: unknown[]): T[] {
+  return items.map((item) => schema.parse(item));
+}
+
 export async function seedSampleProject(browser: Browser, base: string): Promise<SampleProject> {
   const pictures = await renderStills(browser);
   const cookie = await signIn(base, account);
@@ -359,6 +444,8 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     icon: { shape: 'clapperboard', color: 'orange' },
     shootingStart: localDate(0),
     shootingEnd: localDate(3),
+    // The project's clock: call sheets and the sun of the set plans read it.
+    timeZone: 'Europe/Rome',
   });
   const people = {} as Record<Member, { id: string; cookie: string }>;
   for (const who of Object.keys(team) as Member[])
@@ -372,12 +459,16 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       title,
     });
   const storyboard = await board('Storyboard', 'storyboard');
-  const casting = await board('Casting');
-  const setPlan = await board('Set plan');
+  // A second storyboard: the inserts of the second unit, on the same calendar (decision 0123).
+  const secondUnit = await board('Second unit', 'storyboard');
+  // The story bible on a canvas: characters, locations and the set plan of the diner, which
+  // links its actors to the characters and itself to the diner's location card.
+  const casting = await board('Cast and sets');
   const rushes = await board('Rushes');
-  // The production office: a board of tables and maps (the Production board comes with the
-  // shooting days, below).
+  // The production office: a board of tables and maps.
   const production = await board('Office');
+  // The Production board: the shooting days of both storyboards and the Troupe.
+  const schedule = await board('Production', 'production');
 
   const asset: Record<string, string> = {};
   const upload = async (
@@ -428,22 +519,37 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       ],
       320,
     );
-    createElement(mood, 'board', { x: 0, y: 210 }, { boardId: storyboard.id, w: 320 }, opts);
+    createElement(mood, 'board', { x: 0, y: 210 }, { boardId: secondUnit.id, w: 320 }, opts);
     createElement(mood, 'board', { x: 0, y: 300 }, { boardId: casting.id, w: 320 }, opts);
-    createElement(mood, 'board', { x: 0, y: 390 }, { boardId: setPlan.id, w: 320 }, opts);
-    createElement(mood, 'board', { x: 0, y: 480 }, { boardId: rushes.id, w: 320 }, opts);
-    // Contacts and money stay with the team: the client's link does not show this board.
+    createElement(mood, 'board', { x: 0, y: 390 }, { boardId: rushes.id, w: 320 }, opts);
+    // Contacts and money stay with the team: the client's link does not show these boards.
     createElement(
       mood,
       'board',
-      { x: 0, y: 570 },
+      { x: 0, y: 480 },
       { boardId: production.id, w: 320, guestHidden: true },
+      opts,
+    );
+    // Under the moodboard, two tall cards that preview their board (decision 0121): the
+    // storyboard's frames, and the Production board's next shooting day and Troupe.
+    createElement(
+      mood,
+      'board',
+      { x: 0, y: 900 },
+      { boardId: storyboard.id, w: 320, h: 260 },
+      opts,
+    );
+    createElement(
+      mood,
+      'board',
+      { x: 360, y: 900 },
+      { boardId: schedule.id, w: 520, h: 260, guestHidden: true },
       opts,
     );
     createElement(
       mood,
       'todo',
-      { x: 0, y: 670 },
+      { x: 0, y: 580 },
       {
         title: 'Before the shoot',
         items: [
@@ -826,12 +932,154 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     list(0, 'Rain night', 'equipment', '1', ['Rain machine', 'Six sodium lamps', 'Haze machine']);
     list(220, 'Anna, night 1', 'wardrobe', '1', ['Grey wool coat ×2', 'Red scarf']);
     list(420, 'At the counter', 'props', '2', ['Two cups and saucers', 'Punched train ticket']);
+
+    // The set plan of scene 3, placed under it as "New set plan" does: the coast line at dawn,
+    // the drone camera on 3C, the sun at sunrise, the light in the carriage on batteries. It
+    // prints on the call sheet of day 3 with its power.
+    const third = readElement(roots(story).elements.get(scenes['3'] as string)!)!;
+    const drone = planItemId('iconDrone');
+    createElement(
+      story,
+      'plan',
+      { x: third.x, y: third.y + (third.h ?? 0) + 40 },
+      {
+        w: 720,
+        title: 'Coast line, scene 3',
+        sceneIds: [scenes['3'] as string],
+        north: 0,
+        sun: { time: 6 * 60 + 58 },
+        circuits: [{ id: planItemId('circuitBattery'), name: 'V-mount batteries', amps: 10 }],
+        icons: checked(PlanIcon, [
+          {
+            ...planIcon('Sea', 'water', '#5E8CA6', 860, 333),
+            rotation: 90,
+            w: 667,
+            h: 180,
+            locked: true,
+          },
+          {
+            ...planIcon('SeaWall', 'fence', '#8E8E93', 660, 333),
+            rotation: 90,
+            w: 640,
+            h: 14,
+            label: 'Sea wall',
+            locked: true,
+          },
+          {
+            ...planIcon('Rails', 'road', '#8E8E93', 560, 333),
+            rotation: 90,
+            w: 667,
+            h: 40,
+            label: 'Coast line',
+            locked: true,
+          },
+          { ...planIcon('Train', 'mark', '#E5484D', 560, 150), label: 'First train, 5:52' },
+          { ...planIcon('Anna', 'actor', '#B897F0', 560, 320), pose: 'seated', label: 'Anna' },
+          {
+            ...planIcon('Carriage', 'led', '#F2C76E', 590, 300),
+            rotation: 180,
+            label: 'LED in the carriage',
+            watts: 100,
+            role: 'key',
+            circuit: planItemId('circuitBattery'),
+          },
+          { ...planIcon('Drone', 'drone', '#9DB8F2', 820, 220), label: 'Drone, 60 m' },
+          {
+            ...planIcon('DroneCam', 'camera', '#9DB8F2', 820, 220),
+            rotation: 180,
+            label: 'Drone cam',
+            frameId: shot['3C'],
+            on: drone,
+            height: 60,
+            tilt: -30,
+          },
+          { ...planIcon('Pilot', 'crew', '#8E8E93', 330, 520), label: 'Pilot' },
+          { ...planIcon('Monitor', 'monitor', '#8E8E93', 380, 560), label: 'Monitor' },
+          {
+            ...planIcon('Sun', 'sun', '#F2C76E', 960, 460),
+            rotation: 200,
+            note: 'Sunrise 6:58: 3B after it',
+          },
+        ]),
+      },
+      opts,
+    );
   });
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
-  // The casting board: four character sheets and the four places of the shoot.
+  // The second unit's storyboard: inserts at the station on the night of day 1, drawn by the
+  // second unit's camera. 1H has no picture yet.
+  const second = new Y.Doc();
+  initBoardDoc(second, secondUnit.id);
+  second.transact(() => {
+    const s = addScene(
+      second,
+      {
+        number: '1',
+        title: 'Station inserts',
+        setting: 'int',
+        time: 'night',
+        location: 'Central station',
+        synopsis: 'The details of the station after the last train, for the cut of scene 1.',
+      },
+      opts,
+      { x: 0, y: 0 },
+    );
+    shot['1F'] = addFrame(
+      second,
+      s.id,
+      null,
+      {
+        label: '1F',
+        assetId: pic('clock'),
+        action: 'The station clock at 1:52.',
+        shot: 'cu',
+        angle: 'low',
+        movement: 'static',
+        lens: '100mm',
+        status: 'ready',
+      },
+      opts,
+    ).id;
+    shot['1G'] = addFrame(
+      second,
+      s.id,
+      null,
+      {
+        label: '1G',
+        assetId: pic('departures'),
+        action: 'The departures board: the 0:42 has gone.',
+        shot: 'insert',
+        angle: 'eye',
+        movement: 'static',
+        lens: '50mm',
+        status: 'ready',
+      },
+      opts,
+    ).id;
+    shot['1H'] = addFrame(
+      second,
+      s.id,
+      null,
+      {
+        label: '1H',
+        action: "Anna's hand flat on the closed door.",
+        shot: 'insert',
+        angle: 'eye',
+        movement: 'handheld',
+        lens: '85mm',
+        status: 'draft',
+        cast: ['Anna'],
+      },
+      opts,
+    ).id;
+  });
+  await pushBoardDoc(base, cookie, secondUnit.id, second);
+
+  // Cast and sets: four character sheets, the four places of the shoot and the diner's set.
   const cast = new Y.Doc();
   initBoardDoc(cast, casting.id);
+  let planId = '';
   cast.transact(() => {
     createElement(cast, 'section', { x: 0, y: 0 }, { title: 'Characters', w: 1600 }, opts);
     const character = (x: number, fields: { name: string } & Record<string, unknown>) =>
@@ -958,101 +1206,149 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     createArrow(cast, end(leo), end(rosa), rect, { label: 'old friends', heads: 'both' }, opts);
     createArrow(cast, end(anna), end(station), rect, { label: 'waits here' }, opts);
     createArrow(cast, end(rosa), end(diner), rect, { label: 'her diner', line: 'dashed' }, opts);
-  });
-  await pushBoardDoc(base, cookie, casting.id, cast);
 
-  // The set plan of the diner: walls and window, the counter, stools and a booth, the people,
-  // the practicals, the sodium light through the window and two cameras.
-  const planDoc = new Y.Doc();
-  initBoardDoc(planDoc, setPlan.id);
-  const planId = planDoc.transact(() => {
-    const gx = (x: number) => Math.round((x / 1000) * STROKE_GRID);
-    const gy = (y: number) => Math.round((y / (1000 / 1.5)) * STROKE_GRID);
-    const id = (name: string) => name.padEnd(13, 'A');
-    const wall = (n: number, x0: number, y0: number, x1: number, y1: number) => ({
-      id: id(`wall${n}`),
-      kind: 'line' as const,
-      color: '#8E8E93',
-      width: 6,
-      x0: gx(x0),
-      y0: gy(y0),
-      x1: gx(x1),
-      y1: gy(y1),
-    });
-    const icon = (name: string, kind: PlanIcon['kind'], color: string, x: number, y: number) => ({
-      id: id(`icon${name}`),
-      kind,
-      color,
-      x: gx(x),
-      y: gy(y),
-    });
+    // The set of the diner from above, beside its location card: walls with the door and the
+    // windows, the counter, the people playing the characters of this board, the practicals and
+    // the sodium head on their circuits, two cameras. The walls and the counter are locked.
+    createElement(cast, 'section', { x: 0, y: 680 }, { title: 'Sets', w: 1600 }, opts);
+    const walls = [
+      {
+        id: planItemId('wallRoom'),
+        points: [gx(140), gy(90), gx(860), gy(90), gx(860), gy(580), gx(140), gy(580)],
+        thickness: 10,
+        closed: true,
+        label: "Rosa's diner",
+        locked: true,
+      },
+    ];
+    // Along the wall from its first corner, in view units: the top wall is 720 long, the right
+    // one 490, then the bottom one runs back from x = 860.
+    const openings = [
+      { id: planItemId('openWin1'), wall: walls[0]!.id, kind: 'window', at: 180, width: 200 },
+      { id: planItemId('openWin2'), wall: walls[0]!.id, kind: 'window', at: 500, width: 200 },
+      {
+        id: planItemId('openDoor'),
+        wall: walls[0]!.id,
+        kind: 'door',
+        at: 720 + 490 + (860 - 240),
+        width: 80,
+        side: 'right',
+        label: 'From the station hall',
+        locked: true,
+      },
+    ];
     const grey = '#8E8E93';
-    return createElement(
-      planDoc,
+    const lamp = '#EDD963';
+    const stool1 = planItemId('iconStool1');
+    const stool2 = planItemId('iconStool2');
+    const icons = [
+      { ...planIcon('Counter', 'counter', grey, 500, 250), w: 360, h: 70, locked: true },
+      { ...planIcon('Coffee', 'kitchen', grey, 640, 135), w: 180, h: 40, label: 'Espresso bar' },
+      { ...planIcon('Stool1', 'stool', grey, 420, 310), w: 34, h: 34 },
+      { ...planIcon('Stool2', 'stool', grey, 580, 310), w: 34, h: 34 },
+      { ...planIcon('Booth', 'table', grey, 770, 470), w: 90, h: 70 },
+      { ...planIcon('Sofa', 'sofa', grey, 770, 540), w: 110, h: 36 },
+      ...[360, 500, 640].map((x, i) => ({
+        ...planIcon(`Pendant${i}`, 'pendant', lamp, x, 220),
+        label: `Pendant ${i + 1}`,
+        role: 'practical' as const,
+        watts: 60,
+        circuit: planItemId('circuitWall'),
+      })),
+      {
+        ...planIcon('Neon', 'neon', '#E5484D', 760, 110),
+        label: 'Neon cup',
+        role: 'practical' as const,
+        watts: 40,
+        circuit: planItemId('circuitWall'),
+      },
+      {
+        ...planIcon('Sodium', 'fresnel', '#F79B54', 640, 30),
+        rotation: 110,
+        reach: 160,
+        label: 'Sodium 2K',
+        power: '2K',
+        watts: 2000,
+        beam: 40,
+        intensity: 0.6,
+        role: 'key' as const,
+        gel: 'CTO ½',
+        stand: 'cstand' as const,
+        circuit: planItemId('circuitDistro'),
+      },
+      {
+        ...planIcon('Tube', 'tube', '#9DB8F2', 250, 400),
+        rotation: 30,
+        label: 'Tube',
+        watts: 75,
+        role: 'fill' as const,
+        circuit: planItemId('circuitWall'),
+      },
+      { ...planIcon('Distro', 'distro', grey, 920, 520), label: 'Distro 32 A' },
+      {
+        ...planIcon('Rosa', 'actor', '#5FC2B5', 440, 160),
+        rotation: 90,
+        characterId: rosa,
+      },
+      {
+        ...planIcon('Anna', 'actor', '#B897F0', 420, 310),
+        rotation: 270,
+        characterId: anna,
+        pose: 'seated' as const,
+        on: stool1,
+      },
+      {
+        ...planIcon('Leo', 'actor', '#F79B54', 580, 310),
+        rotation: 270,
+        characterId: leo,
+        pose: 'seated' as const,
+        on: stool2,
+        steps: [{ x: gx(240), y: gy(540), note: 'Comes in' }],
+        stepNote: 'Sits next to her',
+      },
+      {
+        ...planIcon('Cam', 'camera', '#9DB8F2', 500, 520),
+        rotation: 270,
+        label: 'A cam',
+        lens: 32,
+        showLens: true,
+        support: 'dolly' as const,
+        height: 1.2,
+      },
+      { ...planIcon('Track', 'track', grey, 500, 545), w: 300, h: 20 },
+      {
+        ...planIcon('CamB', 'camera', '#9DB8F2', 760, 330),
+        rotation: 180,
+        label: 'B cam',
+        lens: 85,
+        showLens: true,
+        support: 'tripod' as const,
+      },
+      { ...planIcon('Boom', 'boom', grey, 660, 400), rotation: 225, label: 'Boom' },
+    ];
+    planId = createElement(
+      cast,
       'plan',
-      { x: 0, y: 0 },
+      { x: 0, y: 750 },
       {
         w: 720,
         title: "Rosa's diner, scene 2",
-        shapes: [
-          wall(0, 140, 90, 860, 90),
-          wall(1, 860, 90, 860, 580),
-          wall(2, 860, 580, 140, 580),
-          wall(3, 140, 580, 140, 90),
+        locationId: diner,
+        walls: checked(PlanWall, walls),
+        openings: checked(PlanOpening, openings),
+        icons: checked(PlanIcon, icons),
+        circuits: [
+          { id: planItemId('circuitWall'), name: 'Wall sockets', amps: 16 },
+          { id: planItemId('circuitDistro'), name: 'Distro', amps: 32 },
         ],
-        icons: [
-          { ...icon('Window1', 'window', grey, 320, 90), w: 220, h: 16 },
-          { ...icon('Window2', 'window', grey, 640, 90), w: 220, h: 16 },
-          { ...icon('Door', 'door', grey, 140, 480), rotation: 90, w: 70, h: 70 },
-          { ...icon('Counter', 'table', grey, 500, 250), w: 360, h: 80 },
-          { ...icon('Stool1', 'chair', grey, 420, 310), w: 34, h: 34 },
-          { ...icon('Stool2', 'chair', grey, 580, 310), w: 34, h: 34 },
-          { ...icon('Booth', 'table', grey, 770, 470), w: 90, h: 70 },
-          { ...icon('Sofa', 'sofa', grey, 770, 540), w: 110, h: 36 },
-          { ...icon('Lamp1', 'practical', '#EDD963', 360, 220), size: 'L' as const },
-          icon('Lamp2', 'practical', '#EDD963', 500, 220),
-          icon('Lamp3', 'practical', '#EDD963', 640, 220),
-          {
-            ...icon('Sodium', 'fresnel', '#F79B54', 640, 30),
-            rotation: 110,
-            reach: 160,
-            label: 'Sodium 2K',
-            power: '2K',
-            beam: 40,
-            intensity: 0.6,
-          },
-          { ...icon('Bounce', 'bounce', grey, 250, 400), rotation: 30 },
-          { ...icon('Rosa', 'actor', '#5FC2B5', 440, 160), rotation: 90, label: 'Rosa' },
-          { ...icon('Anna', 'actor', '#B897F0', 420, 340), rotation: 270, label: 'Anna' },
-          {
-            ...icon('Leo', 'actor', '#F79B54', 580, 340),
-            rotation: 270,
-            label: 'Leo',
-            steps: [{ x: gx(180), y: gy(480), note: 'Comes in' }],
-            note: 'Sits next to her',
-          },
-          {
-            ...icon('Cam', 'camera', '#9DB8F2', 500, 520),
-            rotation: 270,
-            label: 'A cam',
-            lens: 32,
-            showLens: true,
-          },
-          { ...icon('Track', 'track', grey, 500, 545), w: 300, h: 20 },
-          {
-            ...icon('CamB', 'camera', '#9DB8F2', 760, 330),
-            rotation: 180,
-            label: 'B cam',
-            lens: 85,
-            showLens: true,
-          },
-          { ...icon('Boom', 'boom', grey, 660, 400), rotation: 225 },
-        ],
+        // 80 view units a metre: the room is 9 by 6 metres.
+        scale: 80,
+        grid: '0.5',
       },
       opts,
     ).id;
   });
-  await pushBoardDoc(base, cookie, setPlan.id, planDoc);
+  await pushBoardDoc(base, cookie, casting.id, cast);
 
   // The rushes, in one column so that the take fills a phone: Tommaso's take of the platform, a frame grabbed from it, Ivo's voice note of the
   // lamps' hum and Chiara's link to the rough cut of the teaser (its thumbnail is a still).
@@ -1183,13 +1479,59 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
   });
   await pushBoardDoc(base, cookie, production.id, office);
 
-  // Three shooting days from today, a rest day before the dawn one: the card on Home, the
-  // schedule and the call sheets.
+  // The Troupe, Chiara's: the crew with their accounts and the cast linked to the characters
+  // of Cast and sets. The demo keeps it in last-train.crew.json, made by demo-seed.ts.
+  const character = (name: string) => {
+    const el = [...roots(cast).elements.values()]
+      .map((m) => readElement(m))
+      .find((e) => e?.type === 'character' && e.name === name);
+    return el ? { boardId: casting.id, elementId: el.id } : null;
+  };
+  const crew = await api<{ items: Array<{ id: string; name: string }> }>(
+    base,
+    people.chiara.cookie,
+    `/projects/${project.id}/crew/bulk`,
+    {
+      items: TROUPE.map(({ account: who, character: plays, ...row }, position) => ({
+        ...row,
+        userId: who === 'giulia' ? me.id : who ? people[who].id : null,
+        character: plays ? character(plays) : null,
+        position,
+      })),
+    },
+  );
+  const crewId = (name: string) => {
+    const row = crew.items.find((r) => r.name === name);
+    if (!row) throw new Error(`No crew row ${name}`);
+    return row.id;
+  };
+  /** Calls of a day that differ from its call: [name, call or null, pick-up or null, absent?]. */
+  const calls = (rows: Array<[string, string | null, string | null, boolean?]>) =>
+    rows.map(([name, call, pickup, absent]) => ({
+      crewMemberId: crewId(name),
+      call,
+      pickup,
+      ...(absent === undefined ? {} : { absent }),
+    }));
+
+  // Three shooting days of the main unit from today, a rest day before the dawn one, and the
+  // second unit's night at the station: the card on Home, the calendar and the call sheets, on
+  // the Production board. A block names its frame and the storyboard that holds it (0123).
+  const boardOf: Record<string, { id: string }> = {};
+  for (const label of Object.keys(shot))
+    boardOf[label] = ['1F', '1G', '1H'].includes(label) ? secondUnit : storyboard;
   const block = (
     type: string,
     title: string,
     duration: number,
-    more: { start?: string; shot?: string; cast?: string[]; departments?: string[] } = {},
+    more: {
+      start?: string;
+      shot?: string;
+      scene?: string;
+      cast?: string[];
+      departments?: string[];
+      notes?: string;
+    } = {},
   ) => ({
     id: randomUUID(),
     type,
@@ -1197,17 +1539,35 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     start: more.start ?? null,
     duration,
     shotId: more.shot ? (shot[more.shot] as string) : null,
+    ...(more.shot ? { shotBoardId: boardOf[more.shot]?.id as string, shotLabel: more.shot } : {}),
+    // A scene block plans a whole scene, drawn or not.
+    ...(more.scene
+      ? {
+          sceneId: scenes[more.scene] as string,
+          sceneBoardId: storyboard.id,
+          sceneLabel: more.scene,
+        }
+      : {}),
     cast: more.cast ?? [],
     departments: more.departments ?? [],
+    ...(more.notes ? { notes: more.notes } : {}),
   });
   const day = (offset: number, fields: Record<string, unknown>) =>
-    api(base, cookie, `/boards/${storyboard.id}/schedule`, { date: localDate(offset), ...fields });
+    api<{ id: string }>(base, cookie, `/boards/${schedule.id}/schedule`, {
+      date: localDate(offset),
+      ...fields,
+    });
   await day(0, {
     callTime: '18:30',
     wrap: '04:00',
     location: 'Central station',
     notes:
       'The last train leaves at 0:42; platform 4 is ours from 0:30. Crew parking in Via dei Binari.',
+    calls: calls([
+      ['Ivo Santoro', '18:00', null],
+      ['Marta Neri', '19:15', 'Hotel Stazione, 18:55'],
+      ['Bruno Ferri', null, null, true],
+    ]),
     blocks: [
       block('setup', 'Lamps, haze and rain machine', 90, {
         start: '18:30',
@@ -1217,6 +1577,7 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
         shot: '1B',
         cast: ['Anna'],
         departments: ['Costume: second coat standing by', 'Makeup: wet look'],
+        notes: 'Rain on the forecourt only: keep the canopy and the lens dry.',
       }),
       block('break', 'Dinner', 45),
       block('move', 'Company moves to platform 4', 30),
@@ -1237,15 +1598,46 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
       }),
     ],
   });
+  // The second unit, the same night: its own column in the calendar. 1H books Anna while the
+  // main unit shoots 1C with her: the calendar shows the conflict, for Marco to settle.
+  await day(0, {
+    callTime: '23:00',
+    wrap: '02:30',
+    location: 'Central station, the hall',
+    notes: 'Second unit: Bruno on camera, one assistant. Stay off platform 4 until 2:15.',
+    calls: calls([['Bruno Ferri', '22:30', null]]),
+    blocks: [
+      block('setup', 'Camera and a small LED kit in the hall', 30, { start: '23:00' }),
+      block('shot', 'The station clock', 45, { shot: '1F', departments: ['Camera: 100mm'] }),
+      block('shot', 'The departures board', 45, { shot: '1G' }),
+      block('shot', "Anna's hand on the door", 30, {
+        start: '01:15',
+        shot: '1H',
+        cast: ['Anna'],
+        notes: 'Marta is with the main unit until 2:15: move this after 1D, or use a hand double.',
+      }),
+    ],
+  });
   await day(1, {
     callTime: '19:00',
     wrap: '05:30',
     location: "Rosa's diner",
     notes: 'The diner closes to the public at 23:00. Keep the counter dressing overnight.',
+    calls: calls([
+      ['Sara Leone', '17:00', null],
+      ['Paolo Verdi', '20:00', 'Via del Porto 12, 19:40'],
+      ['Lucia Amato', '20:00', null],
+      ['Bruno Ferri', null, null, true],
+    ]),
     blocks: [
       block('setup', 'Pendants, neon and window rain', 120, {
         start: '19:00',
         departments: ['Art: dress the counter', 'Lighting: pendants on dimmers'],
+      }),
+      block('scene', 'Rehearsal at the counter', 30, {
+        scene: '2',
+        cast: ['Anna', 'Leo', 'Rosa'],
+        notes: 'The whole scene once, for the dolly and the boom.',
       }),
       block('shot', 'Missed it too?', 150, { shot: '2A', cast: ['Anna', 'Leo', 'Rosa'] }),
       block('break', 'Dinner', 45),
@@ -1258,6 +1650,14 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     wrap: '09:00',
     location: 'Signal box, coast line',
     notes: 'Railway escort from 3:30. Drone permit for Capo Bianco from 5:00 to 7:00.',
+    calls: calls([
+      ['Tommaso Riva', '03:00', null],
+      ['Luca Marchi', '04:30', null],
+      ['Marta Neri', '04:45', 'Hotel Stazione, 4:30'],
+      ['Sara Leone', null, null, true],
+      ['Nadia Greco', null, null, true],
+      ['Bruno Ferri', null, null, true],
+    ]),
     blocks: [
       // 03:30 + 45 + 45 + 30 ends at 05:30, before the train shot fixed at 05:45.
       block('setup', 'Signal box practicals', 45, { start: '03:30' }),
@@ -1268,13 +1668,11 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
         shot: '3C',
         cast: ['Anna'],
         departments: ['Drone: two batteries charged', 'Production: train passes at 5:52'],
+        notes: 'The train passes Capo Bianco at 5:52. One take, maybe two.',
       }),
       block('shot', 'The signal turns green', 45, { shot: '3B' }),
     ],
   });
-  // The days move to the project's Production board, made as "Add → Production" does (0123):
-  // its Schedule and Crew.
-  const schedule = await board('Production', 'production');
 
   // The crew at work: comments with replies, a pin on a detail and a resolved thread, mentions
   // that reach Giulia's inbox, reactions, and the team's review of the frames.
@@ -1443,7 +1841,8 @@ export async function seedSampleProject(browser: Browser, base: string): Promise
     project,
     storyboard,
     casting,
-    setPlan,
+    secondUnit,
+    setPlan: casting,
     planId,
     rushes,
     production,

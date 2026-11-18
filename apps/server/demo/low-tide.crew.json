@@ -1,0 +1,101 @@
+{
+  "crew": [
+    {
+      "name": "Lia Moretti",
+      "role": "Photographer",
+      "department": "Photography",
+      "phone": "+39 555 010 0201",
+      "email": "lia@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": true,
+      "character": null
+    },
+    {
+      "name": "Pietro Sala",
+      "role": "Photo assistant",
+      "department": "Photography",
+      "phone": "+39 555 010 0202",
+      "email": "pietro@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Nora Conti",
+      "role": "Stylist, hair and make-up",
+      "department": "Styling",
+      "phone": "+39 555 010 0203",
+      "email": "nora@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Mara",
+      "role": "Model, looks 1 to 3",
+      "department": "Cast",
+      "phone": "+39 555 010 0204",
+      "email": "",
+      "pickup": "Hotel in Punta Grigia",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Ivo",
+      "role": "Model, looks 2 and 3",
+      "department": "Cast",
+      "phone": "+39 555 010 0205",
+      "email": "",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Irene Galli",
+      "role": "Studio Maree",
+      "department": "Client",
+      "phone": "+39 555 010 0206",
+      "email": "irene@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    }
+  ],
+  "calls": [
+    {
+      "date": "2026-11-16",
+      "dayCall": "06:00",
+      "name": "Nora Conti",
+      "call": "05:45",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-16",
+      "dayCall": "06:00",
+      "name": "Mara",
+      "call": "06:30",
+      "pickup": "Hotel in Punta Grigia, 6:15"
+    },
+    {
+      "date": "2026-11-16",
+      "dayCall": "06:00",
+      "name": "Ivo",
+      "call": "07:15",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-16",
+      "dayCall": "06:00",
+      "name": "Irene Galli",
+      "call": null,
+      "pickup": null,
+      "absent": true
+    }
+  ]
+}

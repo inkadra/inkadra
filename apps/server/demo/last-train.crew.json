@@ -1,0 +1,264 @@
+{
+  "crew": [
+    {
+      "name": "Giulia Bianchi",
+      "role": "Director",
+      "department": "Direction",
+      "phone": "+39 555 010 0101",
+      "email": "giulia@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Marco Gallo",
+      "role": "First AD",
+      "department": "Direction",
+      "phone": "+39 555 010 0102",
+      "email": "marco@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": true,
+      "character": null
+    },
+    {
+      "name": "Chiara Fontana",
+      "role": "Producer",
+      "department": "Production",
+      "phone": "+39 555 010 0103",
+      "email": "chiara@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": true,
+      "character": null
+    },
+    {
+      "name": "Tommaso Riva",
+      "role": "Cinematographer",
+      "department": "Camera",
+      "phone": "+39 555 010 0104",
+      "email": "tommaso@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Bruno Ferri",
+      "role": "Second unit camera",
+      "department": "Camera",
+      "phone": "+39 555 010 0105",
+      "email": "bruno@example.com",
+      "pickup": "",
+      "notes": "Night of day 1 only.",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Luca Marchi",
+      "role": "Drone pilot",
+      "department": "Camera",
+      "phone": "+39 555 010 0106",
+      "email": "luca@example.com",
+      "pickup": "",
+      "notes": "Permit for Capo Bianco.",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Ivo Santoro",
+      "role": "Sound recordist",
+      "department": "Sound",
+      "phone": "+39 555 010 0107",
+      "email": "ivo@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Sara Leone",
+      "role": "Production designer",
+      "department": "Art",
+      "phone": "+39 555 010 0108",
+      "email": "sara@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Nadia Greco",
+      "role": "Costume designer",
+      "department": "Costume",
+      "phone": "+39 555 010 0109",
+      "email": "nadia@example.com",
+      "pickup": "",
+      "notes": "",
+      "onSetContact": false,
+      "character": null
+    },
+    {
+      "name": "Marta Neri",
+      "role": "Anna",
+      "department": "Cast",
+      "phone": "",
+      "email": "lumen@example.com",
+      "pickup": "Hotel Stazione",
+      "notes": "Agenzia Lumen. Second coat in the costume van.",
+      "onSetContact": false,
+      "character": {
+        "board": "Cast and sets",
+        "elementId": "zSAdHRkiTvqDY4niohGqo"
+      }
+    },
+    {
+      "name": "Paolo Verdi",
+      "role": "Leo",
+      "department": "Cast",
+      "phone": "",
+      "email": "lumen@example.com",
+      "pickup": "",
+      "notes": "Agenzia Lumen",
+      "onSetContact": false,
+      "character": {
+        "board": "Cast and sets",
+        "elementId": "VqtSMhfMNG9SQgGr4xKO1"
+      }
+    },
+    {
+      "name": "Lucia Amato",
+      "role": "Rosa",
+      "department": "Cast",
+      "phone": "",
+      "email": "lumen@example.com",
+      "pickup": "",
+      "notes": "Agenzia Lumen",
+      "onSetContact": false,
+      "character": {
+        "board": "Cast and sets",
+        "elementId": "k6cN4WNgFbffZxiF2Vm9d"
+      }
+    },
+    {
+      "name": "Davide Russo",
+      "role": "Sandro",
+      "department": "Cast",
+      "phone": "",
+      "email": "lumen@example.com",
+      "pickup": "",
+      "notes": "Agenzia Lumen",
+      "onSetContact": false,
+      "character": {
+        "board": "Cast and sets",
+        "elementId": "nmiVDIPLr0AwMzrKUPyNF"
+      }
+    }
+  ],
+  "calls": [
+    {
+      "date": "2026-11-18",
+      "dayCall": "18:30",
+      "name": "Ivo Santoro",
+      "call": "18:00",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-18",
+      "dayCall": "18:30",
+      "name": "Marta Neri",
+      "call": "19:15",
+      "pickup": "Hotel Stazione, 18:55"
+    },
+    {
+      "date": "2026-11-18",
+      "dayCall": "18:30",
+      "name": "Bruno Ferri",
+      "call": null,
+      "pickup": null,
+      "absent": true
+    },
+    {
+      "date": "2026-11-18",
+      "dayCall": "23:00",
+      "name": "Bruno Ferri",
+      "call": "22:30",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-19",
+      "dayCall": "19:00",
+      "name": "Sara Leone",
+      "call": "17:00",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-19",
+      "dayCall": "19:00",
+      "name": "Paolo Verdi",
+      "call": "20:00",
+      "pickup": "Via del Porto 12, 19:40"
+    },
+    {
+      "date": "2026-11-19",
+      "dayCall": "19:00",
+      "name": "Lucia Amato",
+      "call": "20:00",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-19",
+      "dayCall": "19:00",
+      "name": "Bruno Ferri",
+      "call": null,
+      "pickup": null,
+      "absent": true
+    },
+    {
+      "date": "2026-11-21",
+      "dayCall": "03:30",
+      "name": "Tommaso Riva",
+      "call": "03:00",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-21",
+      "dayCall": "03:30",
+      "name": "Luca Marchi",
+      "call": "04:30",
+      "pickup": null
+    },
+    {
+      "date": "2026-11-21",
+      "dayCall": "03:30",
+      "name": "Marta Neri",
+      "call": "04:45",
+      "pickup": "Hotel Stazione, 4:30"
+    },
+    {
+      "date": "2026-11-21",
+      "dayCall": "03:30",
+      "name": "Sara Leone",
+      "call": null,
+      "pickup": null,
+      "absent": true
+    },
+    {
+      "date": "2026-11-21",
+      "dayCall": "03:30",
+      "name": "Nadia Greco",
+      "call": null,
+      "pickup": null,
+      "absent": true
+    },
+    {
+      "date": "2026-11-21",
+      "dayCall": "03:30",
+      "name": "Bruno Ferri",
+      "call": null,
+      "pickup": null,
+      "absent": true
+    }
+  ]
+}

@@ -968,6 +968,82 @@ function signalbox() {
   return wrap(c, body, { grade: '#4A6A5A', gradeOpacity: 0.25 });
 }
 
+/** Second unit, 1F: the station clock under the canopy at 1:52, haze in the sodium light. */
+function clock() {
+  const c = new Canvas(W, H);
+  const cx = 820;
+  const cy = 420;
+  const ticks = [...Array(60)]
+    .map((_, i) => {
+      const a = (i / 60) * Math.PI * 2;
+      const long = i % 5 === 0;
+      const r0 = long ? 196 : 212;
+      return `<path d="M${f(cx + Math.sin(a) * r0)} ${f(cy - Math.cos(a) * r0)}L${f(cx + Math.sin(a) * 226)} ${f(cy - Math.cos(a) * 226)}" stroke="#1A1410" stroke-width="${long ? 12 : 4}"/>`;
+    })
+    .join('');
+  // 1:52 — the hour hand just short of two, the minute hand on 52.
+  const hand = (deg: number, len: number, w: number, color = '#120C08') =>
+    `<path d="M${cx} ${cy + 26}L${cx} ${cy - len}" stroke="${color}" stroke-width="${w}" stroke-linecap="round" transform="rotate(${deg} ${cx} ${cy})"/>`;
+  const body = `
+  <rect width="${W}" height="${H}" fill="${c.linear([
+    [0, '#0B1520'],
+    [0.6, '#1E3A4C'],
+    [1, '#0A0F14'],
+  ])}"/>
+  ${c.glow(820, 300, 900, '#E07A3F', 0.28)}
+  <path d="M0 120L1600 40L1600 0L0 0Z" fill="#05080B"/>
+  ${[160, 480, 1160, 1480].map((x) => `${c.glow(x, 110, 130, '#FFB565', 0.7)}<rect x="${x - 40}" y="96" width="80" height="16" rx="6" fill="#FFE2B0"/>`).join('')}
+  <rect x="${cx - 8}" y="0" width="16" height="${cy - 230}" fill="#07090B"/>
+  <g filter="url(#b3)">${skyline(c, 0, 1600, 900, 31, '#0E1A24', '#F2C76E')}</g>
+  <circle cx="${cx}" cy="${cy}" r="252" fill="#07090B"/>
+  <circle cx="${cx}" cy="${cy}" r="236" fill="${c.radial([
+    [0, '#FFF3D6'],
+    [0.75, '#F2C76E'],
+    [1, '#C9862F'],
+  ])}"/>
+  ${c.glow(cx, cy, 420, '#FFB565', 0.5)}
+  ${ticks}
+  ${hand(56, 128, 18)}
+  ${hand(312, 196, 11)}
+  ${hand(312, 206, 4, '#B4302A')}
+  <circle cx="${cx}" cy="${cy}" r="14" fill="#120C08"/>
+  <g filter="url(#b10)" opacity=".5">${rain(70, 41, 1600, 900, '#9CC0D8')}</g>`;
+  return wrap(c, body, { grade: '#A0582A', gradeOpacity: 0.28 });
+}
+
+/** Second unit, 1G: the departures board after the last train, one line left and flashing. */
+function departures() {
+  const c = new Canvas(W, H);
+  const rows = [
+    ['0:42', 'CAPO BIANCO', '4', 'PARTITO'],
+    ['5:31', 'CAPO BIANCO', '4', ''],
+    ['5:58', 'CITTÀ', '2', ''],
+    ['6:20', 'CITTÀ', '1', ''],
+    ['6:47', 'CAPO BIANCO', '4', ''],
+  ];
+  const line = (r: string[], i: number) => {
+    const y = 300 + i * 92;
+    const lit = i === 0 ? '#FFB565' : '#F2C76E';
+    const op = i === 0 ? 1 : 0.55;
+    return `<g font-family="monospace" font-size="50" fill="${lit}" opacity="${op}" letter-spacing="4">
+      <text x="230" y="${y}">${r[0]}</text><text x="440" y="${y}">${r[1]}</text>
+      <text x="960" y="${y}">${r[2]}</text><text x="1070" y="${y}">${r[3]}</text></g>
+      <rect x="200" y="${y + 22}" width="1200" height="4" fill="#000" opacity=".5"/>`;
+  };
+  const body = `
+  <rect width="${W}" height="${H}" fill="#06090C"/>
+  ${c.glow(800, 450, 900, '#E07A3F', 0.18)}
+  <rect x="170" y="150" width="1260" height="640" rx="14" fill="#0D1116" stroke="#2A3038" stroke-width="10"/>
+  <text x="230" y="222" font-family="monospace" font-size="40" fill="#9AA6B2" letter-spacing="10">PARTENZE · DEPARTURES</text>
+  <rect x="200" y="244" width="1200" height="3" fill="#2A3038"/>
+  ${rows.map(line).join('')}
+  ${c.glow(1290, 300, 160, '#FFB565', 0.6)}
+  <g filter="url(#b30)" opacity=".5"><rect x="230" y="250" width="1150" height="70" fill="#FFB565"/></g>
+  <rect x="0" y="820" width="${W}" height="80" fill="#05070A"/>
+  ${c.glow(1500, 860, 200, '#FFB565', 0.3)}`;
+  return wrap(c, body, { grade: '#A0582A', gradeOpacity: 0.22 });
+}
+
 /** A casting portrait: a profile lit from behind, the character's world out of focus. */
 function portrait(o: {
   bg: [string, string];
@@ -1470,6 +1546,8 @@ const stills: Record<string, () => string> = {
   sea,
   field,
   signalbox,
+  clock,
+  departures,
   anna: () =>
     portrait({
       bg: ['#0C1B2A', '#05090E'],

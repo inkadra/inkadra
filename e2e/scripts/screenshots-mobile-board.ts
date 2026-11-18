@@ -29,7 +29,7 @@ interface Seed extends SampleProject {
 /** The ids of the sample's cards that the screens open. */
 async function seedExtras(sample: SampleProject): Promise<Seed> {
   const { cookie, project, casting, asset } = sample;
-  // The sample's casting board holds Anna, the station and the arrow between them.
+  // The sample's Cast and sets board holds Anna, the station and the arrow between them.
   const cast = [...roots(await readBoard(base, cookie, casting.id)).elements.values()].map(
     (m) => readElement(m)!,
   );

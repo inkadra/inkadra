@@ -56,6 +56,9 @@ const ALLOWED: Record<string, readonly string[]> = {
     '/projects/:projectId/board-counts',
     '/projects/:projectId/boards',
     '/projects/:projectId/cast-appearances',
+    // The sample's Troupe (decision 0132): a sandbox reads and edits its own project's crew.
+    '/projects/:projectId/crew',
+    '/projects/:projectId/crew/characters',
     '/projects/:projectId/export-settings',
     '/projects/:projectId/members',
     '/projects/:projectId/plan-kit',
@@ -95,6 +98,9 @@ const ALLOWED: Record<string, readonly string[]> = {
   POST: [
     '/demo/sandbox',
     '/projects/:projectId/boards',
+    '/projects/:projectId/crew',
+    '/projects/:projectId/crew/bulk',
+    '/projects/:projectId/crew/:memberId/merge',
     '/projects/:projectId/exports',
     '/project-groups',
     '/boards/:boardId/comments',
@@ -124,6 +130,7 @@ const ALLOWED: Record<string, readonly string[]> = {
     '/uploads/:uploadId',
   ],
   PUT: [
+    '/projects/:projectId/crew/:memberId',
     '/projects/:projectId/group',
     '/projects/:projectId/pin',
     '/boards/:boardId/elements/:elementId/review',
@@ -135,6 +142,7 @@ const ALLOWED: Record<string, readonly string[]> = {
   ],
   DELETE: [
     '/demo/sandbox',
+    '/projects/:projectId/crew/:memberId',
     '/project-groups/:groupId',
     '/boards/:boardId',
     '/boards/:boardId/versions/:versionId',

@@ -20,6 +20,7 @@ import {
   shootingDay,
   user,
 } from './db/schema.ts';
+import { applyDemoCrew, readDemoCrew } from './demo-crew.ts';
 import { recordDeletions } from './file-deletions.ts';
 import { HttpError } from './http/errors.ts';
 import { projectFiles } from './http/projects-routes.ts';
@@ -172,6 +173,9 @@ export async function createSandbox(deps: DemoDeps): Promise<string> {
         seed,
         id,
       );
+      // Archives carry no crew (decision 0091): the sample's Troupe comes from its own file.
+      const crew = await readDemoCrew(seed);
+      if (crew) await applyDemoCrew(db, projectId, crew);
       // The shooting days stay as far from today as they were from the export, whenever the
       // sandbox opens: Last Train shoots today, Low Tide was shot two days ago.
       await db.execute(sql`update ${shootingDay} set date = to_char(${shootingDay.date}::date

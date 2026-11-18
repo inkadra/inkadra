@@ -18,8 +18,17 @@ import { createAuth } from '../auth.ts';
 import { attachCollab, createCollabServer } from '../collab.ts';
 import { DEMO_FILE_MAX, demoConfig, loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, boardDoc, project, projectMember, session, user } from '../db/schema.ts';
-import { DEMO_DOMAIN, demoSeeds, sweepSandboxes, verifyTurnstile } from '../demo.ts';
+import {
+  asset,
+  boardDoc,
+  project,
+  projectMember,
+  session,
+  shootingDay,
+  user,
+} from '../db/schema.ts';
+import { DEMO_DOMAIN, DEMO_SEEDS, demoSeeds, sweepSandboxes, verifyTurnstile } from '../demo.ts';
+import { crewFileOf, DEMO_MAX_CREW, DemoCrew, readDemoCrew } from '../demo-crew.ts';
 import type { safeFetch } from '../safe-fetch.ts';
 import { originalKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
@@ -30,6 +39,21 @@ import { DEMO_MAX_BOARDS } from './boards-routes.ts';
 import { DEMO_REFUSALS, demoAllows } from './demo-routes.ts';
 import { securityHeaders } from './security-headers.ts';
 import { demoBytesMatch, demoTypeAllowed } from './uploads.ts';
+
+/** A crew row as the Troupe sends it. */
+const crewRow = (name: string) => ({
+  name,
+  role: 'Runner',
+  department: 'Production',
+  phone: '',
+  email: '',
+  pickup: '',
+  notes: '',
+  userId: null,
+  character: null,
+  onSetContact: false,
+  position: 0,
+});
 
 const base = {
   NODE_ENV: 'test',
@@ -204,11 +228,36 @@ describe('the demo allowlist', () => {
       ['GET', '/boards/:boardId/share-links'],
       ['GET', '/share-links/:linkId/picks'],
       ['POST', '/projects/:projectId/exports'],
+      ['GET', '/projects/:projectId/crew'],
+      ['GET', '/projects/:projectId/crew/characters'],
+      ['POST', '/projects/:projectId/crew'],
+      ['POST', '/projects/:projectId/crew/bulk'],
+      ['PUT', '/projects/:projectId/crew/:memberId'],
+      ['POST', '/projects/:projectId/crew/:memberId/merge'],
+      ['DELETE', '/projects/:projectId/crew/:memberId'],
       ['POST', '/uploads'],
       ['PATCH', '/uploads/:uploadId'],
       ['DELETE', '/demo/sandbox'],
     ] as const)
       expect(demoAllows(method, api(route), api(route))).toBe(true);
+  });
+});
+
+describe('the Troupe of the sample projects (decision 0132)', () => {
+  it.each(DEMO_SEEDS)('ships invented people next to %s, every call naming a row', async (seed) => {
+    const crew = await readDemoCrew(seed);
+    expect(crew, crewFileOf(seed)).not.toBeNull();
+    const { crew: rows, calls } = DemoCrew.parse(crew);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows)
+      expect(row.email === '' || row.email.endsWith('@example.com')).toBe(true);
+    const names = new Set(rows.map((r) => r.name));
+    for (const c of calls) expect(names, c.name).toContain(c.name);
+  });
+
+  it('reads no crew for an archive without a crew file', async () => {
+    expect(await readDemoCrew('/nowhere/sample.inkadra')).toBeNull();
+    expect(crewFileOf('/demo/last-train.inkadra')).toBe('/demo/last-train.crew.json');
   });
 });
 
@@ -583,6 +632,9 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
       ['GET', `/assets/${file?.id}`, undefined],
       ['GET', `/assets/${file?.id}/file`, undefined],
       ['POST', `/projects/${a.projectId}/exports`, {}],
+      ['GET', `/projects/${a.projectId}/crew`, undefined],
+      ['GET', `/projects/${a.projectId}/crew/characters`, undefined],
+      ['POST', `/projects/${a.projectId}/crew/bulk`, { items: [crewRow('Intruder')] }],
     ] as const) {
       const res = await call(b.cookie, method, `/api/v1${path}`, payload);
       // Refused, or not even read: never served, changed or a hint that it exists.
@@ -598,6 +650,59 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(own.map((p) => p.id)).not.toContain(a.projectId);
     const [mine] = await db.select().from(project).where(eq(project.id, a.projectId));
     expect(mine?.name).toBe('Last Train');
+  });
+
+  it('gives each sandbox the Troupe and day calls of the samples, to edit as its own', async () => {
+    const fixture = (await readDemoCrew(DEMO_SEEDS[0] as string)) as DemoCrew;
+    const crew = (await call(a.cookie, 'GET', `/api/v1/projects/${a.projectId}/crew`)).json()
+      .items as Array<Record<string, unknown> & { id: string; revision: number }>;
+    expect(crew.map((r) => r.name)).toEqual(fixture.crew.map((r) => r.name));
+    expect(crew.every((r) => r.userId === null)).toBe(true);
+    // The cast plays the characters of a board of this sandbox's own project.
+    const boards = (await call(a.cookie, 'GET', `/api/v1/projects/${a.projectId}/boards`)).json()
+      .items as Array<{ id: string }>;
+    const cast = crew.filter((r) => r.character) as unknown as Array<{
+      character: { boardId: string };
+    }>;
+    expect(cast.length).toBe(fixture.crew.filter((r) => r.character).length);
+    for (const row of cast) expect(boards.map((x) => x.id)).toContain(row.character.boardId);
+    const days = await db
+      .select({ calls: shootingDay.calls })
+      .from(shootingDay)
+      .where(eq(shootingDay.projectId, a.projectId));
+    expect(days.flatMap((d) => d.calls)).toHaveLength(fixture.calls.length);
+
+    // A row links the sandbox's own account, never one of another sandbox.
+    const row = crew[0] as (typeof crew)[number];
+    const { id: _, projectId: _p, account: _a, createdAt: _c, updatedAt: _u, ...input } = row;
+    const link = (userId: string, revision: number) =>
+      call(a.cookie, 'PUT', `/api/v1/projects/${a.projectId}/crew/${row.id}`, {
+        ...input,
+        userId,
+        revision,
+      });
+    expect((await link(b.id, row.revision)).status).toBe(400);
+    expect((await link(a.id, row.revision)).status).toBe(200);
+  });
+
+  it(`caps a demo project at ${DEMO_MAX_CREW} crew rows`, async () => {
+    const have = (await call(b.cookie, 'GET', `/api/v1/projects/${b.projectId}/crew`)).json().items
+      .length as number;
+    const bulk = (n: number, from: number) =>
+      call(b.cookie, 'POST', `/api/v1/projects/${b.projectId}/crew/bulk`, {
+        items: Array.from({ length: n }, (_, i) => crewRow(`Extra ${from + i}`)),
+      });
+    expect((await bulk(DEMO_MAX_CREW - have + 1, 0)).status).toBe(409);
+    expect((await bulk(DEMO_MAX_CREW - have, 0)).status).toBe(201);
+    const one = await call(
+      b.cookie,
+      'POST',
+      `/api/v1/projects/${b.projectId}/crew`,
+      crewRow('One more'),
+    );
+    expect(one.status).toBe(409);
+    expect(one.json().error.details).toEqual({ reason: 'demo_limit' });
+    expect((await bulk(1, 999)).status).toBe(409);
   });
 
   function connect(cookie: string, boardId: string) {
