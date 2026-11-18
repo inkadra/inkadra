@@ -300,7 +300,7 @@ These change `compose.yaml` itself. They reach the container too, which ignores 
 
 | Variable                  | Default                   | Meaning                                                                        |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.10.0` (recommended), `latest` or `edge`        |
+| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.10.0` (recommended), `latest`, `next`, `edge`  |
 | `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                     |
 | `INKADRA_ENV_FILE`        | `.env`                    | File whose lines reach the container; set it when you use `--env-file`         |
 | `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |

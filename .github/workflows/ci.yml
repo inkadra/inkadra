@@ -945,12 +945,16 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.IMAGE }}
-          # X.Y.Z and X.Y for every version tag; `latest` for stable versions only;
-          # `edge` for the latest build of main; sha-<short> for every published build.
+          # X.Y.Z and X.Y for every version tag; `latest` for stable versions only; `next` for
+          # every version tag, stable or release candidate; `edge` for the latest build of main;
+          # sha-<short> for every published build. Like `latest`, `next` follows the version
+          # tagged last: shortcut, a patch of an older line would move it back; compare with the
+          # newest tag if older lines get patches.
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref, '-') }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
+            type=raw,value=next,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=edge,branch=main
             type=sha,format=short
           flavor: suffix=${{ matrix.variant != 'standard' && format('-{0}', matrix.variant) || '' }},onlatest=true

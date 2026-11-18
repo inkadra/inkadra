@@ -604,10 +604,12 @@ Release workflow, which checks that CI passed on that commit of `main`, tags `vX
 the GitHub release as a draft and starts CI on the tag. CI runs in full (tests, end-to-end, the
 reverse proxy examples, a vulnerability scan of the image), builds amd64 and arm64, standard and
 office, on native runners without build cache, starts and scans each of those images before
-tagging them, publishes `X.Y.Z`, `X.Y` and `latest`, attaches the deployment files to the
+tagging them, publishes `X.Y.Z`, `X.Y`, `latest` and `next`, attaches the deployment files to the
 release and only then publishes it, so the Updates page never offers a version without an image.
 The deployment files pin `INKADRA_TAG` to that version. Versions with a suffix
-(`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
+(`0.3.0-rc.1`) are pre-releases: they move `next` only, never `latest` or `X.Y`. The channels:
+`latest` follows stable releases, `next` stable releases and release candidates, `edge` `main`
+(see [Tags](README.md#tags)).
 
 What each release candidate must pass before the release, automated or by hand, is in the
 [release checklist](../releases/CHECKLIST.md).
