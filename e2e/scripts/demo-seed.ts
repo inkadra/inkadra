@@ -17,12 +17,89 @@ import { api, seedSampleProject } from './sample-project.ts';
  *
  * The demo keeps the shooting days as far from today as they were from the day of the export,
  * so run it in the daytime: the export date is in UTC, the seed's dates in local time.
+ *
+ * Archives carry no crew (decision 0091): next to each archive goes `<name>.crew.json`, the
+ * sample's Troupe and day calls by name, which the demo writes into each sandbox (decision 0132).
  */
 
 const base = (process.env.SHOTS_BASE_URL ?? 'http://localhost:3100').replace(/\/+$/, '');
 const only = process.argv[2];
-const outOf = (name: string) =>
-  fileURLToPath(new URL(`../../apps/server/demo/${name}.inkadra`, import.meta.url));
+const outOf = (name: string, ext = 'inkadra') =>
+  fileURLToPath(new URL(`../../apps/server/demo/${name}.${ext}`, import.meta.url));
+
+const read = async <T>(cookie: string, path: string): Promise<T> => {
+  const res = await fetch(`${base}/api/v1${path}`, { headers: { cookie } });
+  if (!res.ok) throw new Error(`GET ${path}: ${res.status}`);
+  return (await res.json()) as T;
+};
+
+interface CrewRow {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  phone: string;
+  email: string;
+  pickup: string;
+  notes: string;
+  onSetContact: boolean;
+  character: { boardId: string; elementId: string } | null;
+}
+
+/** The Troupe and the day calls of a project, by board title and name, without accounts. */
+async function writeCrew(cookie: string, projectId: string, out: string) {
+  const boards = await read<{ items: Array<{ id: string; title: string; kind: string }> }>(
+    cookie,
+    `/projects/${projectId}/boards`,
+  );
+  const title = new Map(boards.items.map((b) => [b.id, b.title]));
+  const production = boards.items.find((b) => b.kind === 'production');
+  const { items: rows } = await read<{ items: CrewRow[] }>(cookie, `/projects/${projectId}/crew`);
+  const days = production
+    ? (
+        await read<{
+          items: Array<{
+            date: string;
+            callTime: string;
+            calls?: Array<{
+              crewMemberId: string;
+              call: string | null;
+              pickup: string | null;
+              absent?: boolean;
+            }>;
+          }>;
+        }>(cookie, `/boards/${production.id}/schedule`)
+      ).items
+    : [];
+  const nameOf = new Map(rows.map((r) => [r.id, r.name]));
+  const crew = {
+    crew: rows.map((r) => ({
+      name: r.name,
+      role: r.role,
+      department: r.department,
+      phone: r.phone,
+      email: r.email,
+      pickup: r.pickup,
+      notes: r.notes,
+      onSetContact: r.onSetContact,
+      character: r.character
+        ? { board: title.get(r.character.boardId) as string, elementId: r.character.elementId }
+        : null,
+    })),
+    calls: days.flatMap((d) =>
+      (d.calls ?? []).map((c) => ({
+        date: d.date,
+        dayCall: d.callTime,
+        name: nameOf.get(c.crewMemberId) as string,
+        call: c.call,
+        pickup: c.pickup,
+        ...(c.absent === undefined ? {} : { absent: c.absent }),
+      })),
+    ),
+  };
+  writeFileSync(out, `${JSON.stringify(crew, null, 2)}\n`);
+  console.log(`wrote ${out}`);
+}
 
 async function exportTo(cookie: string, projectId: string, out: string) {
   const started = await api<{ id: string }>(base, cookie, `/projects/${projectId}/exports`, {});
@@ -49,10 +126,12 @@ try {
   if (!only || only === 'last-train') {
     const { cookie, project } = await seedSampleProject(browser, base);
     await exportTo(cookie, project.id, outOf('last-train'));
+    await writeCrew(cookie, project.id, outOf('last-train', 'crew.json'));
   }
   if (!only || only === 'low-tide') {
     const { cookie, project } = await seedLowTide(browser, base);
     await exportTo(cookie, project.id, outOf('low-tide'));
+    await writeCrew(cookie, project.id, outOf('low-tide', 'crew.json'));
   }
 } finally {
   await browser.close();

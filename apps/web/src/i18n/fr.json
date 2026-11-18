@@ -420,7 +420,8 @@
       "table": "Table",
       "map": "Carte",
       "plan": "Plan au sol",
-      "moodboard": "Moodboard"
+      "moodboard": "Moodboard",
+      "production": "Production"
     },
     "tools": {
       "select": "Sélectionner",

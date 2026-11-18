@@ -1,15 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import { addFrame, addScene, createElement, moveIntoParent } from '@inkadra/canvas-core';
-import { initBoardDoc } from '@inkadra/doc-schema';
+import { initBoardDoc, PlanIcon, readElement, roots } from '@inkadra/doc-schema';
 import type { Browser } from '@playwright/test';
 import * as Y from 'yjs';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/seed.ts';
 import {
   account,
   api,
+  checked,
+  gx,
+  gy,
   joinTeam,
   localDate,
   note,
+  planIcon,
+  planItemId,
   renderStills,
   request,
 } from './sample-project.ts';
@@ -57,6 +62,19 @@ const proofing: Record<string, Choice> = {
   LT_0526: ['rejected', 1],
 };
 
+/**
+ * The Troupe of the shoot: Lia's assistant, Nora, the two models in Cast and the client, who was
+ * not on the beach. Phone numbers are made up on a prefix no Italian line uses.
+ */
+const TROUPE = [
+  ['Lia Moretti', 'Photographer', 'Photography', '0201', 'lia@example.com', 'lia', ''],
+  ['Pietro Sala', 'Photo assistant', 'Photography', '0202', 'pietro@example.com', null, ''],
+  ['Nora Conti', 'Stylist, hair and make-up', 'Styling', '0203', 'nora@example.com', 'nora', ''],
+  ['Mara', 'Model, looks 1 to 3', 'Cast', '0204', '', null, 'Hotel in Punta Grigia'],
+  ['Ivo', 'Model, looks 2 and 3', 'Cast', '0205', '', null, ''],
+  ['Irene Galli', 'Studio Maree', 'Client', '0206', 'irene@example.com', null, ''],
+] as const;
+
 export interface LowTide {
   /** The photographer's session: she owns the project. */
   cookie: string;
@@ -78,6 +96,7 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
     icon: { shape: 'moon', color: 'teal' },
     shootingStart: localDate(-2),
     shootingEnd: localDate(-2),
+    timeZone: 'Europe/Rome',
   });
   const lia = await joinTeam(base, admin, project.id, photographer);
   const nora = await joinTeam(base, admin, project.id, stylist);
@@ -92,6 +111,8 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
     });
   const shotList = await board('Shot list', 'storyboard');
   const selects = await board('Selects');
+  // The day of the shoot and the Troupe, as "Add → Production" makes the board (0123).
+  const production = await board('Production', 'production');
 
   const asset: Record<string, string> = {};
   for (const name of TIDE_NAMES) {
@@ -170,6 +191,14 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
     const seawall = image('LT_0412', 360, 0, 520, 'Look 1 · Sea wall', 'Look 1 · Sea wall');
     image('LT_0518', 360, 340, 250, 'Look 1 · Sea wall');
     image('LT_0503', 630, 340, 250, 'Look 2 · Dawn');
+    // The day of the shoot and the Troupe, previewed on a tall card (decision 0121).
+    createElement(
+      mood,
+      'board',
+      { x: 360, y: 660 },
+      { boardId: production.id, w: 520, h: 260, guestHidden: true },
+      by,
+    );
     createElement(
       mood,
       'link',
@@ -240,6 +269,7 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
   const story = new Y.Doc();
   initBoardDoc(story, shotList.id);
   const shot: Record<string, string> = {};
+  const looks: string[] = [];
   story.transact(() => {
     type Setup = [label: string, picture: string, fields: Record<string, unknown>];
     const look = (fields: Parameters<typeof addScene>[1], setups: Setup[], first = false) => {
@@ -256,7 +286,7 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
       ...(cast.length ? { cast } : {}),
       ...more,
     });
-    const scenes = [
+    const scenes: string[] = [
       look(
         {
           number: '1',
@@ -370,19 +400,112 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
         },
         by,
       );
+    looks.push(...scenes);
     list(0, 'Look 1', 'wardrobe', 1, ['Red wool coat (Studio Maree)', 'Red scarf', 'Black boots']);
     list(200, 'Look 2', 'wardrobe', 2, ['Cream knit', 'Wide trousers', 'Ivo: slate shirt']);
     list(400, 'Look 3', 'wardrobe', 3, ['Pale linen dress', 'Ivo: slate shirt, sleeves rolled']);
     list(580, 'On the beach', 'equipment', 2, ['Silver reflector', 'Wellies', 'Towels']);
+
+    // The set-up of look 2 on the beach, under its scene: the low-water line, the sun at
+    // sunrise behind the models, the reflector, the camera on 2A and the battery light.
+    const dawnLook = readElement(roots(story).elements.get(scenes[1] as string)!)!;
+    createElement(
+      story,
+      'plan',
+      { x: dawnLook.x, y: dawnLook.y + (dawnLook.h ?? 0) + 40 },
+      {
+        w: 720,
+        title: 'Look 2 on the wet sand',
+        sceneIds: [scenes[1] as string],
+        north: 0,
+        sun: { time: 7 * 60 + 5 },
+        circuits: [{ id: planItemId('circuitPack'), name: 'Battery pack', amps: 10 }],
+        icons: checked(PlanIcon, [
+          { ...planIcon('Sea', 'water', '#3E4E5E', 500, 80), w: 1000, h: 160, locked: true },
+          {
+            ...planIcon('LowWater', 'mark', '#8FA9A3', 500, 200),
+            label: 'Low water, 7:42',
+            locked: true,
+          },
+          {
+            ...planIcon('Mara', 'actor', '#B897F0', 430, 300),
+            rotation: 90,
+            label: 'Mara',
+            steps: [{ x: gx(200), y: gy(410), note: 'Walks out from the rocks' }],
+            stepNote: 'Stops at the water line',
+          },
+          { ...planIcon('Ivo', 'actor', '#5FC2B5', 640, 250), rotation: 90, label: 'Ivo' },
+          {
+            ...planIcon('Sun', 'sun', '#F2C76E', 900, 120),
+            rotation: 160,
+            note: 'Sunrise 7:05, behind them',
+          },
+          {
+            ...planIcon('Reflector', 'reflector', '#D9DCD6', 420, 400),
+            rotation: 300,
+            label: 'Silver reflector',
+          },
+          {
+            ...planIcon('Fill', 'led', '#F2C76E', 600, 420),
+            rotation: 270,
+            label: 'LED fill',
+            watts: 150,
+            role: 'fill',
+            circuit: planItemId('circuitPack'),
+          },
+          {
+            ...planIcon('Cam', 'camera', '#9DB8F2', 520, 560),
+            rotation: 270,
+            label: 'Lia, 24mm',
+            frameId: shot['2A'],
+            support: 'handheld',
+          },
+          { ...planIcon('Rocks', 'mark', '#B49A7A', 180, 420), label: 'Rock pools' },
+          { ...planIcon('Pietro', 'crew', '#8E8E93', 700, 600), label: 'Pietro' },
+        ]),
+      },
+      by,
+    );
   });
   await pushBoardDoc(base, cookie, shotList.id, story);
 
-  // The day of the shoot, two days ago: call sheet and order of the day.
+  // The Troupe, Lia's: the team, the models in Cast and the client.
+  const crew = await api<{ items: Array<{ id: string; name: string }> }>(
+    base,
+    cookie,
+    `/projects/${project.id}/crew/bulk`,
+    {
+      items: TROUPE.map(([name, role, department, phone, email, who, pickup], position) => ({
+        name,
+        role,
+        department,
+        phone: `+39 555 010 ${phone}`,
+        email,
+        pickup,
+        notes: '',
+        userId: who === 'lia' ? lia.id : who === 'nora' ? nora.id : null,
+        character: null,
+        onSetContact: who === 'lia',
+        position,
+      })),
+    },
+  );
+  const crewId = (name: string) => crew.items.find((r) => r.name === name)?.id as string;
+
+  // The day of the shoot, two days ago, on the Production board: a scene block for each look,
+  // planned as a whole, and the pick-ups as a frame of look 3.
   const block = (
     type: string,
     title: string,
     duration: number,
-    more: { start?: string; shot?: string; cast?: string[]; departments?: string[] } = {},
+    more: {
+      start?: string;
+      look?: number;
+      shot?: string;
+      cast?: string[];
+      departments?: string[];
+      notes?: string;
+    } = {},
   ) => ({
     id: randomUUID(),
     type,
@@ -390,15 +513,30 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
     start: more.start ?? null,
     duration,
     shotId: more.shot ? (shot[more.shot] as string) : null,
+    ...(more.shot ? { shotBoardId: shotList.id, shotLabel: more.shot } : {}),
+    ...(more.look
+      ? {
+          sceneId: looks[more.look - 1] as string,
+          sceneBoardId: shotList.id,
+          sceneLabel: String(more.look),
+        }
+      : {}),
     cast: more.cast ?? [],
     departments: more.departments ?? [],
+    ...(more.notes ? { notes: more.notes } : {}),
   });
-  await api(base, cookie, `/boards/${shotList.id}/schedule`, {
+  await api(base, cookie, `/boards/${production.id}/schedule`, {
     date: localDate(-2),
     callTime: '06:00',
     wrap: '12:30',
     location: 'Punta Grigia',
     notes: 'Sunrise 7:05, low water 7:42. Hair and make-up in the van at the beach car park.',
+    calls: [
+      { crewMemberId: crewId('Nora Conti'), call: '05:45', pickup: null },
+      { crewMemberId: crewId('Mara'), call: '06:30', pickup: 'Hotel in Punta Grigia, 6:15' },
+      { crewMemberId: crewId('Ivo'), call: '07:15', pickup: null },
+      { crewMemberId: crewId('Irene Galli'), call: null, pickup: null, absent: true },
+    ],
     blocks: [
       block('setup', 'Van, wardrobe rail, reflector', 30, { start: '06:00' }),
       block('setup', 'Hair and make-up', 45, {
@@ -406,20 +544,27 @@ export async function seedLowTide(browser: Browser, base: string): Promise<LowTi
         cast: ['Mara'],
         departments: ['Wardrobe: the coat stays dry'],
       }),
-      block('shot', 'Look 1 on the sea wall', 45, { shot: '1A', cast: ['Mara'] }),
-      block('shot', 'Look 2 on the wet sand', 60, {
-        shot: '2A',
+      block('scene', 'Look 1 on the sea wall', 45, {
+        look: 1,
+        cast: ['Mara'],
+        notes: "The coat is Studio Maree's only sample: no salt water on it.",
+      }),
+      block('scene', 'Look 2 on the wet sand', 60, {
+        look: 2,
         cast: ['Mara', 'Ivo'],
         departments: ['Low water at 7:42'],
+        notes: 'The sand mirrors best just after low water: be there at 7:40.',
       }),
       block('break', 'Coffee and change', 30),
       block('move', 'Walk to the dunes', 15),
-      block('shot', 'Look 3 in the dunes', 75, { shot: '3A', cast: ['Mara', 'Ivo'] }),
-      block('shot', 'Pick-ups at the shore', 45, { shot: '3C', cast: ['Ivo'] }),
+      block('scene', 'Look 3 in the dunes', 75, { look: 3, cast: ['Mara', 'Ivo'] }),
+      block('shot', 'Pick-ups at the shore', 45, {
+        shot: '3C',
+        cast: ['Ivo'],
+        notes: 'When the fog comes in: the pier posts, the rock pools, a portrait.',
+      }),
     ],
   });
-  // The day moves to the project's Production board, made as "Add → Production" does (0123).
-  await board('Production', 'production');
 
   // The selects: Lia's note and the 24 pictures, six to a row, in the order they were shot.
   const sel = new Y.Doc();

@@ -20,6 +20,7 @@ The video, the voice note and the script are made by the seed too (the video wit
 | Format     | Short fiction, about 14 minutes, 16:9, shot on digital at 24 fps    |
 | Production | Lanterna Film (invented)                                            |
 | Shoot      | Three days over four, from the day the project is built (see below) |
+| Time zone  | Europe/Rome, the clock of the call sheets and of the set plans' sun |
 | Look       | Sodium orange against wet blue; long lenses, little camera movement |
 
 **Logline.** A sound editor back in her home town for one night misses the last train out, and
@@ -96,6 +97,15 @@ The town and the addresses are invented.
 | 3B   | `field`     | The home signal turns green over the field.         | Wide   | Eye   | Static   | 50mm  | Draft    |                 |
 | 3C   | `sea`       | The first train runs along the sea.                 | EWS    | High  | Drone    | 24mm  | Draft    | Anna            |
 
+The second unit has its own storyboard, _Second unit_: scene 1 again, _Station inserts_ (INT.
+CENTRAL STATION – NIGHT), with three frames numbered after the main unit's.
+
+| Shot | Picture      | Action                                   | Size   | Angle | Movement | Lens  | Status | Cast |
+| ---- | ------------ | ---------------------------------------- | ------ | ----- | -------- | ----- | ------ | ---- |
+| 1F   | `clock`      | The station clock at 1:52.               | CU     | Low   | Static   | 100mm | Ready  |      |
+| 1G   | `departures` | The departures board: the 0:42 has gone. | Insert | Eye   | Static   | 50mm  | Ready  |      |
+| 1H   | none yet     | Anna's hand flat on the closed door.     | Insert | Eye   | Handheld | 85mm  | Draft  | Anna |
+
 The only line of dialogue on the boards, in 2A: _LEO: Missed it too? / ANNA: By about a minute. /
 LEO: Then you have six hours._
 
@@ -124,10 +134,19 @@ The grade lifts to dawn only in scene 3.
 | Sound             | Ivo Santoro    | `ivo@example.com`     | Editor               |
 | Production design | Sara Leone     | `sara@example.com`    | Commenter            |
 | Costume           | Nadia Greco    | `nadia@example.com`   | Viewer               |
+| Second unit       | Bruno Ferri    | none                  | Troupe only          |
+| Drone pilot       | Luca Marchi    | none                  | Troupe only          |
 
 Giulia Bianchi is also the account the screenshots are taken with. Every account has the
 password `correct-horse-battery`; the others join through an invitation link to the project. All
 names are invented.
+
+**The Troupe** of the Production board is Chiara's: the crew above by department (Direction,
+Production, Camera, Sound, Art, Costume), each with their account when they have one, and the four
+actors in Cast, each linked to their character on _Cast and sets_, reached through Agenzia Lumen.
+Marco and Chiara are the on-set contacts. Phone numbers are `+39 555 010 01xx`, a prefix no
+Italian line uses: Giulia 0101, Marco 0102, Chiara 0103, Tommaso 0104, Bruno 0105, Luca 0106,
+Ivo 0107, Sara 0108, Nadia 0109. Marta's default pick-up is Hotel Stazione.
 
 The client is **Fondazione Cinema Costa** (invented), the film's co-funder. Its reviewer, Elena
 Marino, has no account: she opens a share link of the project that lets guests approve.
@@ -135,30 +154,54 @@ Marino, has no account: she opens a share link of the project that lets guests a
 The shoot is three days: two nights back to back, a rest day, then the dawn. The sample puts
 day 1 on the day it is built, so Home always shows "shooting today"; day 3 is three days later.
 
-| Day | Location               | Call  | Wrap  | Shoots                     |
-| --- | ---------------------- | ----- | ----- | -------------------------- |
-| 1   | Central station        | 18:30 | 04:00 | 1B, then 1A, 1C, 1D, 1E    |
-| 2   | Rosa's diner           | 19:00 | 05:30 | 2A, 2B, 2C at 4:40         |
-| 3   | Signal box, coast line | 03:30 | 09:00 | 3A, 3C (train at 5:52), 3B |
+| Day | Location                  | Call  | Wrap  | Shoots                                     |
+| --- | ------------------------- | ----- | ----- | ------------------------------------------ |
+| 1   | Central station           | 18:30 | 04:00 | 1B, then 1A, 1C, 1D, 1E                    |
+| 1   | Central station, the hall | 23:00 | 02:30 | Second unit: 1F, 1G, 1H at 1:15            |
+| 2   | Rosa's diner              | 19:00 | 05:30 | Scene 2 rehearsed, then 2A, 2B, 2C at 4:40 |
+| 3   | Signal box, coast line    | 03:30 | 09:00 | 3A, 3C (train at 5:52), 3B                 |
+
+The days are on the Production board, the main unit's and the second unit's side by side on the
+night of day 1. 1H books Anna at 1:15 while the main unit shoots 1C with her: the calendar shows
+that conflict, and the block's note asks Marco to move it or use a hand double. Day 2 opens with a
+scene block, the whole of scene 2 rehearsed before 2A. Block notes: keep the lens dry on 1B, one
+take or two on 3C. Day calls that differ from the day's call: Ivo at 18:00 and Marta at 19:15
+(pick-up 18:55) on day 1; Bruno at 22:30 on the second unit's night and not called otherwise;
+Sara at 17:00, Paolo (pick-up Via del Porto 12) and Lucia at 20:00 on day 2; Tommaso at 3:00,
+Luca at 4:30 and Marta at 4:45 on day 3, without Sara and Nadia.
 
 ## The boards
 
-| Board      | What is on it                                                                                          |
-| ---------- | ------------------------------------------------------------------------------------------------------ |
-| Last Train | The moodboard (root): the idea, the boards, a to-do list, the stills in groups, a link, Light, Palette |
-| Storyboard | The scenes and shots above, what each scene needs, the shooting days, a saved version                  |
-| Casting    | The four characters and the four locations, with arrows: who is what to whom and where they wait       |
-| Set plan   | Rosa's diner from above: counter, stools, practicals, the sodium light, two cameras                    |
-| Rushes     | Take 3 of 1A (video), a frame grabbed from it, Ivo's voice note of the hum, the teaser link            |
-| Production | Crew and budget tables, maps of the station and of Capo Bianco, the shooting script (PDF)              |
+| Board         | What is on it                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------ |
+| Last Train    | The moodboard (root): the idea, the boards, a to-do list, the stills in groups, a link, Light, Palette |
+| Storyboard    | The scenes and shots above, what each scene needs, the set plan of scene 3, a saved version            |
+| Second unit   | A second storyboard: the station inserts 1F–1H                                                         |
+| Cast and sets | The four characters and the four locations, with arrows, and the set plan of Rosa's diner              |
+| Rushes        | Take 3 of 1A (video), a frame grabbed from it, Ivo's voice note of the hum, the teaser link            |
+| Office        | Crew and budget tables, maps of the station and of Capo Bianco, the shooting script (PDF)              |
+| Production    | The Production board: the shooting days of both storyboards (Schedule) and the Troupe                  |
 
-The Production board is hidden from guests: contacts and money stay with the team.
+Office and Production are hidden from guests: contacts and money stay with the team. On the
+moodboard the boards are small cards in the first column, but for two tall cards under the
+moodboard that preview their board: the Storyboard's frames and the Production board's next day.
+
+**Set plans.** _Rosa's diner, scene 2_ is on Cast and sets, under a Sets heading, so it can link
+to the cards there: walls 9 × 6 m with the door from the station hall and two windows; the
+counter and the walls locked; the espresso bar, two stools, the booth; Rosa, and Anna and Leo
+seated on the stools, each linked to their character (Leo walks in from the door); three
+pendants, the neon cup and a tube on the wall sockets (16 A), the sodium 2K through the window on
+the distro (32 A); A cam on a dolly track (32mm) and B cam on a tripod (85mm), the boom. The plan
+links to the location card of the diner. _Coast line, scene 3_ is the scene's own plan on the
+Storyboard: the rails, the sea wall and the sea locked, the first train at 5:52, Anna in the
+carriage with an LED on V-mount batteries, the drone camera on 3C, the pilot and the monitor, north
+up and the sun at sunrise (6:58); it prints on the call sheet of day 3 with its power.
 
 Moodboard groups: _Night_ (platform, rain, window, tunnel, train and the link), _Rosa's diner_
 (diner, cups), _Dawn_ (signal box, dawn, sea, field) and _Palette_. The dawn pictures in the Light
 column are tagged `dawn`, the sea also `drone`.
 
-Arrows on the casting board: Sandro _lets her stay_ (Anna); Anna and Leo, _strangers_; Leo and
+Arrows on Cast and sets: Sandro _lets her stay_ (Anna); Anna and Leo, _strangers_; Leo and
 Rosa, _old friends_; Anna _waits here_ (Central station); Rosa, _her diner_.
 
 Budget: camera and lenses €2,400, six sodium lamps €660, rain and haze machines €850, the diner
@@ -195,8 +238,9 @@ development_ (Salt Road).
 
 Each still is drawn as SVG at 1600 × 900 (portraits at 1200 × 1200) and named as in the shot
 table. Besides the shots: `anna`, `leo`, `rosa` and `sandro` are the casting portraits, backlit
-profiles in the light of each character's place. `map-station` and `map-coast` are the maps of
-the Production board, flat street maps of the invented town at 1024 × 560, the size of the map
+profiles in the light of each character's place. `clock` and `departures` are the second
+unit's inserts. `map-station` and `map-coast` are the maps of
+the Office board, flat street maps of the invented town at 1024 × 560, the size of the map
 pictures the server makes; the cards carry no coordinates, so nothing is fetched from a map
 server.
 
@@ -226,6 +270,7 @@ the dunes. Cold light, wet sand, one red coat.
 | ----------- | ------------------------- | ------------------ | -------------- |
 | Lia Moretti | Photographer              | `lia@example.com`  | Owner          |
 | Nora Conti  | Stylist, hair and make-up | `nora@example.com` | Editor         |
+| Pietro Sala | Photo assistant           | none               | Troupe only    |
 | Mara        | Model, all three looks    | none               | In the frames  |
 | Ivo         | Model, looks 2 and 3      | none               | In the frames  |
 | Irene Galli | Studio Maree, the client  | none, a share link | Guest          |
@@ -234,6 +279,11 @@ The project is opened by Giulia Bianchi, the first account of the instance, who 
 Nora (registration is by invitation); every card, comment and file in it is Lia's or Nora's. The models have no account: they are
 the cast of the frames, by first name. All names are invented; Ivo the model is not Ivo Santoro of
 Last Train.
+
+The Troupe of the Production board is Lia's: Photography (Lia, on-set contact, and Pietro),
+Styling (Nora), Cast (Mara, default pick-up at the hotel in Punta Grigia, and Ivo) and Client
+(Irene, Studio Maree, not called on the day). Phones are `+39 555 010 02xx`: Lia 0201, Pietro
+0202, Nora 0203, Mara 0204, Ivo 0205, Irene 0206. The project's time zone is Europe/Rome.
 
 ### The looks and the shot list
 
@@ -271,6 +321,15 @@ Call 06:00 at Punta Grigia, wrap 12:30. The van and the reflector; hair and make
 6:30; look 1 on the sea wall at 7:15; look 2 on the wet sand at low water (7:42); coffee and a
 change; the walk to the dunes and look 3; pick-ups at the shore when the fog comes in.
 
+The day is on the Production board: each look is a scene block, planned as a whole (look 1 with a
+note that the coat stays dry, look 2 one to be at the water by 7:40), and the pick-ups are the
+frame 3C. Calls: Nora at 5:45, Mara at 6:30 (pick-up 6:15), Ivo at 7:15; Irene is not called.
+
+Look 2 has its set plan on the shot list, _Look 2 on the wet sand_: the sea and the low-water line
+(locked), Mara walking out from the rock pools to the water line, Ivo further out, the sun at
+sunrise (7:05) behind them, the silver reflector, an LED fill on a battery pack, Lia handheld on
+2A with the 24mm, Pietro.
+
 Sunrise is at 7:05. The pictures are numbered in the order they were shot, so the pick-ups of
 the rock pools, the portrait and the pier come after the dunes. The shoot is two days before the
 day the project is built, and stays two days in the past in the demo.
@@ -287,11 +346,12 @@ day the project is built, and stays two days in the past in the demo.
 
 ### The boards
 
-| Board     | What is on it                                                                                  |
-| --------- | ---------------------------------------------------------------------------------------------- |
-| Low Tide  | The moodboard (root): the brief, the boards, two lists, look 1, the tides link, Looks, Palette |
-| Shot list | The looks and their 14 set-ups, what each look needs, the day of the shoot, a version          |
-| Selects   | Lia's note and the 24 pictures, six to a row, shared with Studio Maree with photo proofing on  |
+| Board      | What is on it                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| Low Tide   | The moodboard (root): the brief, the boards, two lists, look 1, the tides link, Looks, Palette |
+| Shot list  | The looks and their 14 set-ups, what each look needs, the set plan of look 2, a version        |
+| Selects    | Lia's note and the 24 pictures, six to a row, shared with Studio Maree with photo proofing on  |
+| Production | The day of the shoot and the Troupe, on a tall card of the moodboard; hidden from guests       |
 
 The moodboard groups its pictures by look: _Look 1 · Sea wall_ (`LT_0412`, `LT_0518`), _Look 2 ·
 Dawn_ (`LT_0503`, `LT_0431`), _Look 3 · Dunes_ (`LT_0457`, `LT_0526`), and the _Palette_. In the

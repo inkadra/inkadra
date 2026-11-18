@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Words } from '@inkadra/shared';
+import { BoardKind, type Words } from '@inkadra/shared';
 import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { localeBackend, withManyForms } from './backend.ts';
@@ -165,6 +165,15 @@ describe('loading a language on demand', () => {
 describe('translations', () => {
   it('English has every Italian key and nothing more', () => {
     expect(keys(en).sort()).toEqual(keys(itMessages).sort());
+  });
+
+  it('names every board kind, which board cards read as board.types.<kind>', () => {
+    for (const locale of LOCALES) {
+      const types = (catalogue(locale) as { board: { types: Record<string, unknown> } }).board
+        .types;
+      for (const kind of BoardKind.options)
+        expect(typeof types[kind], `${locale}: board.types.${kind}`).toBe('string');
+    }
   });
 
   it('every literal t("…") key used in the sources exists', () => {
