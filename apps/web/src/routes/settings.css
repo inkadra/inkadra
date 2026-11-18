@@ -936,6 +936,21 @@
 .team-tools .team-filter {
   width: auto;
 }
+/* The invite dialog: a link for someone whose email you don't know, under the email form. */
+.team-invite-link {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ink-border-muted);
+}
+.team-invite-link__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.team-invite-link__row .team-filter {
+  width: auto;
+}
 /*
  * One row per person (decision 0124) in aligned columns: who, space, role, right to create, ⋯.
  * Head, body and rows are subgrids of the table, so a column is as wide as its widest cell.

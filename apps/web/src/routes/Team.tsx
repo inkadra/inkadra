@@ -19,6 +19,7 @@ import {
 } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CopyButton } from '../board/ShareDialog.tsx';
 import { api, RequestError } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { useSession } from '../lib/session.tsx';
@@ -353,8 +354,11 @@ export function Team() {
                 className="team-pending"
                 icon={i.kind === 'email' ? 'mail' : 'link'}
                 label={i.email ?? t('admin.linkInvite')}
-                help={t('admin.expires', { when: date(i.expiresAt) })}
+                help={t(i.kind === 'link' ? 'admin.linkPending' : 'admin.expires', {
+                  when: date(i.expiresAt),
+                })}
               >
+                {i.kind === 'link' && i.url && <CopyButton text={i.url} />}
                 {i.kind === 'email' && (
                   <Button
                     variant="ghost"
@@ -386,12 +390,9 @@ export function Team() {
         open={inviting || created !== null}
         created={created}
         busy={busy}
-        onInvite={(email) =>
+        onInvite={(body) =>
           run(async () => {
-            const result = await api.post<InvitationResult>('/invitations', {
-              kind: 'email',
-              email,
-            });
+            const result = await api.post<InvitationResult>('/invitations', body);
             if (result.status !== 'invited')
               throw new Error('Unexpected instance invitation response');
             setCreated(result.invitation);
@@ -449,6 +450,9 @@ export function Team() {
   );
 }
 
+/** Link invitations to the instance: how long they last, the server's default (2 days) first. */
+const LINK_DAYS = [2, 1, 7];
+
 function InviteDialog({
   open,
   created,
@@ -459,54 +463,92 @@ function InviteDialog({
   open: boolean;
   created: Invitation | null;
   busy: boolean;
-  onInvite: (email: string) => Promise<boolean>;
+  onInvite: (
+    body: { kind: 'email'; email: string } | { kind: 'link'; expiresInDays: number },
+  ) => Promise<boolean>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
+  const [days, setDays] = useState(LINK_DAYS[0] ?? 2);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (await onInvite(email.trim())) setEmail('');
+    if (await onInvite({ kind: 'email', email: email.trim() })) setEmail('');
   }
+  const when =
+    created?.kind === 'link'
+      ? formatDateTime(created.expiresAt, { dateStyle: 'medium', timeStyle: 'short' })
+      : '';
   return (
     <Dialog open={open} title={t('settingsUi.members.invite')} onClose={onClose}>
       {created ? (
         <div role="status" className="settings-form">
-          <p>{t(created.emailSent ? 'admin.inviteSent' : 'admin.shareInvite')}</p>
-          {created.url && <TextField label={t('admin.inviteUrl')} readOnly value={created.url} />}
+          <p>
+            {created.kind === 'link'
+              ? t('admin.linkCreated', { when })
+              : t(created.emailSent ? 'admin.inviteSent' : 'admin.shareInvite')}
+          </p>
+          {created.url && (
+            <TextField
+              label={t(created.kind === 'link' ? 'admin.linkInvite' : 'admin.inviteUrl')}
+              readOnly
+              data-feedback-secret
+              value={created.url}
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          )}
           <DialogActions>
-            {created.url && (
-              <Button
-                icon="copy"
-                onClick={() => navigator.clipboard?.writeText(created.url ?? '').catch(() => {})}
-              >
-                {t('share.copy')}
-              </Button>
-            )}
+            {created.url && <CopyButton text={created.url} />}
             <Button variant="primary" onClick={onClose}>
               {t('settings.tokens.done')}
             </Button>
           </DialogActions>
         </div>
       ) : (
-        <form className="settings-form" onSubmit={submit}>
-          <p className="settings-muted">{t('admin.inviteHelp')}</p>
-          <TextField
-            label={t('auth.email')}
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <DialogActions>
-            <Button variant="ghost" onClick={onClose}>
-              {t('project.cancel')}
-            </Button>
-            <Button type="submit" variant="primary" disabled={busy || !email.trim()}>
-              {t('admin.invite')}
-            </Button>
-          </DialogActions>
-        </form>
+        <>
+          <form className="settings-form" onSubmit={submit}>
+            <p className="settings-muted">{t('admin.inviteHelp')}</p>
+            <TextField
+              label={t('auth.email')}
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <DialogActions>
+              <Button variant="ghost" onClick={onClose}>
+                {t('project.cancel')}
+              </Button>
+              <Button type="submit" variant="primary" disabled={busy || !email.trim()}>
+                {t('admin.invite')}
+              </Button>
+            </DialogActions>
+          </form>
+          <div className="settings-form team-invite-link">
+            <p className="settings-muted">{t('admin.linkHelp')}</p>
+            <div className="team-invite-link__row">
+              <Select
+                className="ink-input team-filter"
+                aria-label={t('share.link.expires')}
+                value={days}
+                onChange={(e) => setDays(Number(e))}
+              >
+                {LINK_DAYS.map((d) => (
+                  <option key={d} value={d}>
+                    {t('share.link.days', { count: d })}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                icon="link"
+                disabled={busy}
+                onClick={() => void onInvite({ kind: 'link', expiresInDays: days })}
+              >
+                {t('admin.createLink')}
+              </Button>
+            </div>
+          </div>
+        </>
       )}
     </Dialog>
   );

@@ -203,6 +203,34 @@ it('unwraps the existing invitation result and shows a private link without SMTP
     ),
   ).toBe(true);
 });
+it('creates a one-use invite link with no email and offers to copy it', async () => {
+  vi.mocked(api.post).mockResolvedValue({
+    status: 'invited',
+    invitation: {
+      kind: 'link',
+      email: null,
+      emailSent: false,
+      maxUses: 1,
+      url: 'https://studio.example.com/join/one-use',
+      expiresAt: '2026-11-20T12:00:00Z',
+    },
+  });
+  await render();
+  const create = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'admin.createLink',
+  )!;
+  await act(async () => create.click());
+  expect(api.post).toHaveBeenCalledWith('/invitations', { kind: 'link', expiresInDays: 2 });
+  expect(host.textContent).toContain('admin.linkCreated');
+  expect(
+    [...host.querySelectorAll('input')].some(
+      (input) => input.readOnly && input.value === 'https://studio.example.com/join/one-use',
+    ),
+  ).toBe(true);
+  expect([...host.querySelectorAll('button')].some((b) => b.textContent === 'share.copy')).toBe(
+    true,
+  );
+});
 it('lists pending instance invitations in their own card under the members', async () => {
   vi.mocked(api.get).mockImplementation(async (path) =>
     path === '/instance/members'
@@ -218,6 +246,15 @@ it('lists pending instance invitations in their own card under the members', asy
                 boardId: null,
                 expiresAt: '2026-11-03T12:00:00Z',
               },
+              {
+                id: 'link',
+                kind: 'link',
+                email: null,
+                projectId: null,
+                boardId: null,
+                url: 'https://studio.example.com/join/one-use',
+                expiresAt: '2026-11-03T12:00:00Z',
+              },
             ],
           }
         : path === '/instance/settings'
@@ -231,6 +268,11 @@ it('lists pending instance invitations in their own card under the members', asy
     'settingsUi.members.invitations',
   );
   expect(pending?.closest('table')).toBeNull();
+  // A link invitation says it works once, and can be copied again.
+  const link = host.querySelectorAll('.team-pending')[1];
+  expect(link?.textContent).toContain('admin.linkInvite');
+  expect(link?.textContent).toContain('admin.linkPending');
+  expect(link?.textContent).toContain('share.copy');
   expect(host.textContent).not.toContain('admin.noInvitations');
   const invite = [...host.querySelectorAll('button')].find(
     (b) => b.textContent === 'settingsUi.members.invite',
