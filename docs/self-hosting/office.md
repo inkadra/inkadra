@@ -22,10 +22,10 @@ only, with your existing database, Redis and storage settings. The web/collab ro
 ordinary image.
 
 Office documents travel on their own `office` queue, which only a worker with
-`OFFICE_PREVIEWS=true` **and** LibreOffice reads. Set `OFFICE_PREVIEWS=true` on the `-office`
-worker and also on every other container that runs workers (the single `all` container, or each
-`worker` of the split layout): there it only sends Office documents to that queue and never
-converts them itself, since it has no LibreOffice. A container without `OFFICE_PREVIEWS` reads
+`OFFICE_PREVIEWS=true` **and** LibreOffice reads. With `OFFICE_PREVIEWS=true` in `.env`, every
+container gets it: the ones that run workers without LibreOffice (the single `all` container, or
+each `worker` of the split layout) only send Office documents to that queue and never convert
+them themselves. A container without `OFFICE_PREVIEWS` reads
 Office documents itself, with CSV/XLSX grids and icon cards only, so leave the variable off
 everywhere if you run no `-office` worker: with it on and no such worker, Office cards stay
 "processing" until one starts.
@@ -76,8 +76,8 @@ docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.of
 ```
 
 The ordinary `worker` then only sends Office documents to the queue the `office-worker` reads.
-Other stack layouts: put `OFFICE_PREVIEWS: "true"` on every container that runs workers and
-add the `-office` worker as above.
+Other stack layouts: set `OFFICE_PREVIEWS=true` for every container that runs workers (in `.env`
+with the bundled compose files) and add the `-office` worker as above.
 
 `deploy/office-seccomp.json` is Docker's default seccomp profile at a fixed commit of
 [moby/profiles](https://github.com/moby/profiles/blob/7b5ccfab2d6b4e0aa64c6cce401a2705788eafeb/seccomp/default.json)

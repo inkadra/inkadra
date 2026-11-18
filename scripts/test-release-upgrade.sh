@@ -43,7 +43,7 @@ INKADRA_IMAGE=$image
 FEEDBACK_RELAY_URL=
 ENV
 
-compose() { docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" -f "$root/compose.yaml" "$@"; }
+compose() { INKADRA_ENV_FILE="$work/.env" docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" -f "$root/compose.yaml" "$@"; }
 release() { INKADRA_TAG=$from_tag compose "$@"; }
 current() { INKADRA_TAG=$tag compose "$@"; }
 sql() { compose exec -T postgres psql -U inkadra -d inkadra -Atqc "$1"; }
