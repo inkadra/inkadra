@@ -88,6 +88,21 @@ compose up -d --wait --wait-timeout 120 >/dev/null
 fixes=$(compose logs --no-color inkadra | grep -c "giving /data to uid" || true)
 [[ $fixes == 1 ]] && pass "ownership fixed once, not on every start" || fail "ownership fixed $fixes times"
 
+# A stop reaches the server (#926): tini runs as node, so it can forward SIGTERM. The server
+# shuts down and releases its leases, and a recreated container serves at once.
+compose stop inkadra >/dev/null
+logs=$(compose logs --no-color inkadra)
+leases=$(compose exec -T valkey valkey-cli --no-auth-warning exists inkadra:lease:web inkadra:lease:collab || true)
+if [[ $logs == *'"msg":"shutting down"'* && $logs != *"FATAL tini"* && $leases == 0 ]]; then
+  pass "a stop shuts the server down and releases its leases"
+else
+  fail "stop: leases left $leases, log tail: $(tail -n 5 <<<"$logs")"
+fi
+compose up -d --force-recreate --wait --wait-timeout 120 inkadra >/dev/null
+[[ $(compose logs --no-color inkadra) != *"waiting for the web lease"* ]] &&
+  pass "a recreated container does not wait for the old lease" ||
+  fail "the recreated container waited for the web lease"
+
 [[ $failed == 0 ]] && echo "data folder test passed" || {
   echo "data folder test failed"
   exit 1

@@ -27,6 +27,20 @@ it('waits for a Valkey that is not up yet, then gives up after a bound', async (
   ).rejects.toThrow(/ECONNREFUSED/);
 });
 
+it('logs a release that fails, without throwing', async () => {
+  let calls = 0;
+  const flaky = {
+    eval: async () => {
+      calls += 1;
+      if (calls > 1) throw new Error('connect ECONNREFUSED');
+      return 1;
+    },
+  } as never;
+  const lease = await acquireLease(flaky, 'web', log, { host: 'a', onLost: vi.fn() });
+  await expect(lease.release()).resolves.toBeUndefined();
+  expect(log.warn).toHaveBeenCalledWith(expect.anything(), 'could not release the web lease');
+});
+
 describe.skipIf(!process.env.REDIS_URL)('single-process lease (#790, #819)', () => {
   const redis = new IORedis(process.env.REDIS_URL!);
   // A role name of its own, so parallel runs on one Valkey never meet.

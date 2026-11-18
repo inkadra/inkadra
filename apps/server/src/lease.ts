@@ -130,7 +130,12 @@ export async function acquireLease(
   return {
     async release() {
       clearInterval(timer);
-      await redis.eval(RELEASE, 1, key, me).catch(() => undefined);
+      // Never fatal: the lease then ends with its TTL.
+      await redis
+        .eval(RELEASE, 1, key, me)
+        .catch((err) =>
+          log.warn({ role, err: String(err) }, `could not release the ${role} lease`),
+        );
     },
   };
 }

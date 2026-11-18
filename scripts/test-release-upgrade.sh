@@ -74,7 +74,8 @@ trap 'code=$?; echo "  FAIL line $LINENO: $BASH_COMMAND (exit $code)" >&2; faile
 
 c() { curl -s --max-time 60 -H "Origin: $url" "$@"; }
 # `up --wait` passes on the container's health check, /livez: a recreated container can still be
-# waiting for the web lease of the one it replaces (up to 30 s). Wait for the health answer itself.
+# waiting for the web lease of the one it replaces (only after a crash since #926, up to 30 s).
+# Wait for the health answer itself.
 ready() {
   for _ in $(seq 1 90); do
     [[ $(c "$url/api/v1/health") == *'"status":"ok"'* ]] && return 0
