@@ -68,6 +68,9 @@ fail() {
   echo "  FAIL $1"
   failed=1
 }
+# A command that stops the script (set -e) says which one, instead of leaving only an exit code.
+set -E
+trap 'code=$?; echo "  FAIL line $LINENO: $BASH_COMMAND (exit $code)" >&2; failed=1' ERR
 
 c() { curl -s --max-time 60 -H "Origin: $url" "$@"; }
 # `up --wait` passes on the container's health check, /livez: a recreated container can still be
@@ -83,6 +86,22 @@ jar="$work/cookies"
 sign_up() { c -o /dev/null -w '%{http_code}' -c "$jar" -H 'Content-Type: application/json' --data "{\"name\":\"Upgrade Test\",\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-up/email"; }
 sign_in() { c -o /dev/null -w '%{http_code}' -c "$jar" -H 'Content-Type: application/json' --data "{\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-in/email"; }
 api() { c -b "$jar" "$url/api/v1$1"; }
+# GET path, then the jq filter on its JSON answer. A server that does not answer yet (connection
+# refused, 502, 503) gets ready() and one more try; any other non-JSON answer is reported on
+# stderr with its status and body, and the value is empty so the caller's check fails.
+api_jq() { # path, filter
+  local code try
+  for try in 1 2; do
+    code=$(c -o "$work/api.json" -w '%{http_code}' -b "$jar" "$url/api/v1$1") || true
+    [[ $code == 000 || $code == 502 || $code == 503 ]] && [[ $try == 1 ]] && { ready || true; continue; }
+    break
+  done
+  if [[ $code == 200 ]] && jq -e . "$work/api.json" >/dev/null 2>&1; then
+    jq -r "$2" "$work/api.json"
+  else
+    echo "  FAIL GET $1: HTTP $code $(head -c 300 "$work/api.json" 2>/dev/null)" >&2
+  fi
+}
 newest_backup() { compose exec -T inkadra sh -c 'ls /data/backups/inkadra-backup-*.zip | sort | tail -n1' | tr -d '\r'; }
 
 # What must survive: ids of boards, assets and shooting days, the bytes of the files, the
@@ -146,16 +165,16 @@ pass "$from_tag starts ($(sql 'select count(*) from drizzle.__drizzle_migrations
 
 for sample in last-train low-tide; do
   transfer=$(c -b "$jar" -H 'Content-Type: application/zip' --data-binary "@$root/apps/server/demo/$sample.inkadra" \
-    "$url/api/v1/projects/import" | jq -r '.id // empty')
+    "$url/api/v1/projects/import" | jq -r '.id // empty') || true
   status=
   for _ in $(seq 1 90); do
-    status=$(api "/transfers/$transfer" | jq -r '.status // empty')
+    status=$(api_jq "/transfers/$transfer" '.status // empty')
     [[ $status == ready || $status == failed ]] && break
     sleep 2
   done
   [[ $status == ready ]] && pass "$sample imported through the API" || fail "import of $sample: ${status:-no transfer}"
 done
-mapfile -t names < <(api /projects | jq -r '.. | objects | select(has("rootBoardId")) | .name')
+mapfile -t names < <(api_jq /projects '.. | objects | select(has("rootBoardId")) | .name')
 project_a=${names[0]:-}
 project_b=${names[1]:-}
 [[ -n $project_a && -n $project_b ]] || fail "imported projects not listed"
@@ -178,7 +197,7 @@ digest_before=$(files_digest "$asset_ids")
 # The largest board, the one a missed migration step would most likely break.
 version_board=$(sql "select board_id from board_doc order by length(state) desc limit 1")
 version_id=$(c -b "$jar" -H 'Content-Type: application/json' --data '{"name":"Before the upgrade"}' \
-  "$url/api/v1/boards/$version_board/versions" | jq -r '.. | objects | .id? // empty' | head -n1)
+  "$url/api/v1/boards/$version_board/versions" | jq -r '.. | objects | .id? // empty' | head -n1) || true
 [[ -n $version_id ]] && pass "named version saved on $from_tag" || fail "version on $from_tag"
 migrations_before=$(sql 'select count(*) from drizzle.__drizzle_migrations')
 
@@ -199,7 +218,7 @@ check_data "upgrade"
 # migrations were pending (db/client.ts). `ls` finds none otherwise: not an error here.
 pre_upgrade=$(compose exec -T inkadra sh -c 'ls /data/backups/inkadra-backup-pre-upgrade-*.zip 2>/dev/null || true' | tr -d '\r')
 pre_upgrade_rows=$(sql "select count(*) from instance_backup where trigger = 'pre-upgrade'")
-pre_upgrade_listed=$(api /instance/backups | jq '[.items[] | select(.beforeUpgrade == true)] | length')
+pre_upgrade_listed=$(api_jq /instance/backups '[.items[] | select(.beforeUpgrade == true)] | length')
 if [[ $migrations_after -gt $migrations_before ]]; then
   [[ $(wc -w <<<"$pre_upgrade") == 1 ]] && pass "backup before the migrations written: ${pre_upgrade##*/}" ||
     fail "backup before the migrations: '${pre_upgrade}'"
