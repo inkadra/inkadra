@@ -47,7 +47,7 @@ place in the app that says which version runs and what changed (#515).
 ## Consequences
 
 - An instance without internet access shows "Couldn't reach GitHub" on the page and nothing else.
-- The texts of the release come in the languages its notes are written in (Italian and English
-  today); readers of other languages get the English ones.
+- The texts of the release come in the languages its notes are written in (English only since
+  0.10.1); readers of other languages get the English ones.
 - Releases published before this change have no assets: they show news only once the assets are
   uploaded by hand (`gh release upload`), otherwise just the link.

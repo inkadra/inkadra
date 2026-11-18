@@ -129,7 +129,7 @@ export async function releaseNewsMail(
   const t = mailText(person);
   let notes = '';
   // Plain text only: HTML/Markdown links from notes never become external email resources.
-  // Notes are written in Italian and English: other languages get the English highlights.
+  // Notes are written in English (since 0.10.1): other languages get the English highlights.
   for (const name of [`${version}.${t.lang}.md`, `${version}.en.md`, `${version}.md`]) {
     try {
       notes = await readFile(
