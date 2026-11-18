@@ -54,6 +54,9 @@ failed=0
 cleanup() {
   if [[ $failed != 0 ]]; then compose logs --no-color --tail 80 inkadra || true; fi
   compose down -v --remove-orphans >/dev/null 2>&1 || true
+  # `down -v` misses the volumes .env no longer names (POSTGRES_DATA moves twice): a later run
+  # would restore into a database that is not empty.
+  docker volume ls -q --filter "label=com.docker.compose.project=$project" | xargs -r docker volume rm >/dev/null 2>&1 || true
   # Folders made by containers belong to other users.
   docker run --rm -v "$work:/w" --entrypoint sh postgres:18-alpine -c 'rm -rf /w/* /w/.[!.]*' >/dev/null 2>&1 || true
   rm -rf "$work"
