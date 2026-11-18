@@ -737,6 +737,9 @@ jobs:
       AUTH_SECRET: ci
       POSTGRES_PASSWORD: ci
       INKADRA_TAG: 0.9.0
+      # compose.yaml hands this file to the container (env_file, decision 0131): the example, as
+      # a release archive's .env starts from it.
+      INKADRA_ENV_FILE: .env.example
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
