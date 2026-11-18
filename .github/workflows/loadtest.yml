@@ -66,9 +66,11 @@ jobs:
           } > "$RUNNER_TEMP/.env"
           files=compose.yaml
           [[ $MODE == split ]] && files=compose.yaml:deploy/compose.split.yaml
-          # Read by every docker compose command of this job.
+          # Read by every docker compose command of this job; compose.yaml hands this file to the
+          # container (env_file), --env-file only fills in the compose file.
           echo "COMPOSE_FILE=$files" >> "$GITHUB_ENV"
-          COMPOSE_FILE=$files docker compose --env-file "$RUNNER_TEMP/.env" up -d --quiet-pull --wait --wait-timeout 300
+          echo "INKADRA_ENV_FILE=$RUNNER_TEMP/.env" >> "$GITHUB_ENV"
+          INKADRA_ENV_FILE=$RUNNER_TEMP/.env COMPOSE_FILE=$files docker compose --env-file "$RUNNER_TEMP/.env" up -d --quiet-pull --wait --wait-timeout 300
           # The first account of an instance is its administrator, and the last administrator
           # cannot be deleted: one exists before the load test makes its own.
           curl -fsS -o /dev/null -H 'Origin: http://localhost:3000' -H 'Content-Type: application/json' \

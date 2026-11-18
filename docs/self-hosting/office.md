@@ -5,7 +5,7 @@ original download. CSV and XLSX grid previews and first-sheet-to-table work with
 
 ## The worker image
 
-Every tag from 0.8.0 on also exists with the suffix `-office` (`ghcr.io/inkadra/inkadra:0.9.0-office`,
+Every tag from 0.8.0 on also exists with the suffix `-office` (`ghcr.io/inkadra/inkadra:0.10.0-office`,
 `latest-office`, `edge-office`…): the standard image plus LibreOffice (Writer, Calc, Impress),
 fonts, Poppler, bubblewrap and `prlimit`, everything the converter needs. It is built, attested
 and published like the other variants, for linux/amd64 and linux/arm64. Pin the version you run,
@@ -17,15 +17,15 @@ To build the worker image:
 docker build --build-arg OFFICE=true -t inkadra-office-worker .
 ```
 
-After 0.9.0, Office images also include all media tools. Use the image for an extra **worker** role
+From 0.10.0, Office images also include all media tools. Use the image for an extra **worker** role
 only, with your existing database, Redis and storage settings. The web/collab roles keep their
 ordinary image.
 
 Office documents travel on their own `office` queue, which only a worker with
-`OFFICE_PREVIEWS=true` **and** LibreOffice reads. Set `OFFICE_PREVIEWS=true` on the `-office`
-worker and also on every other container that runs workers (the single `all` container, or each
-`worker` of the split layout): there it only sends Office documents to that queue and never
-converts them itself, since it has no LibreOffice. A container without `OFFICE_PREVIEWS` reads
+`OFFICE_PREVIEWS=true` **and** LibreOffice reads. With `OFFICE_PREVIEWS=true` in `.env`, every
+container gets it: the ones that run workers without LibreOffice (the single `all` container, or
+each `worker` of the split layout) only send Office documents to that queue and never convert
+them themselves. A container without `OFFICE_PREVIEWS` reads
 Office documents itself, with CSV/XLSX grids and icon cards only, so leave the variable off
 everywhere if you run no `-office` worker: with it on and no such worker, Office cards stay
 "processing" until one starts.
@@ -60,7 +60,7 @@ docker compose -f compose.yaml -f deploy/compose.office.yaml up -d
 ```
 
 It starts an `office-worker` service (command `worker`) on the same version as the other roles
-with `-office` added (`INKADRA_TAG` stays without suffix, for example `0.9.0`; `INKADRA_IMAGE`
+with `-office` added (`INKADRA_TAG` stays without suffix, for example `0.10.0`; `INKADRA_IMAGE`
 works as usual), with the same database, Redis, storage and data volume, and sets
 `OFFICE_PREVIEWS=true` on it and on `inkadra`. The worker waits for `inkadra` to be healthy,
 drops every capability, keeps `no-new-privileges`, and has its own limits and log rotation:
@@ -76,8 +76,8 @@ docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.of
 ```
 
 The ordinary `worker` then only sends Office documents to the queue the `office-worker` reads.
-Other stack layouts: put `OFFICE_PREVIEWS: "true"` on every container that runs workers and
-add the `-office` worker as above.
+Other stack layouts: set `OFFICE_PREVIEWS=true` for every container that runs workers (in `.env`
+with the bundled compose files) and add the `-office` worker as above.
 
 `deploy/office-seccomp.json` is Docker's default seccomp profile at a fixed commit of
 [moby/profiles](https://github.com/moby/profiles/blob/7b5ccfab2d6b4e0aa64c6cce401a2705788eafeb/seccomp/default.json)

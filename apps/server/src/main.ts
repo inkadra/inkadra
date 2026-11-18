@@ -89,7 +89,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 /** Kept in step with scripts/healthcheck.mjs. */
 const WORKER_HEARTBEAT = '/tmp/inkadra-worker-heartbeat';
 // In the image the bundle sits in dist/ next to drizzle/; in development main.ts is in src/.
-const migrationsFolder = process.env.MIGRATIONS_DIR ?? join(here, '..', 'drizzle');
+const migrationsFolder = process.env.MIGRATIONS_DIR || join(here, '..', 'drizzle');
 
 async function main() {
   const command = (process.argv[2] ?? 'all') as Command;

@@ -23,9 +23,13 @@ POSTGRES_PASSWORD=$(openssl rand -hex 16)
 INKADRA_TAG=${INKADRA_TAG:-edge}
 INKADRA_IMAGE=${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}
 INKADRA_DATA=$data
+# Only in .env, as compose.yaml lists none of them; the empty ones must read as unset.
+INSTANCE_NAME=Data folder test
+UPLOAD_MAX_SIZE=
+OIDC_SCOPES=
 ENV
 
-compose() { docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" -f "$root/compose.yaml" "$@"; }
+compose() { INKADRA_ENV_FILE="$work/.env" docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" -f "$root/compose.yaml" "$@"; }
 # Runs a command as root in a throwaway container that sees the data folder at /d.
 as_root() { docker run --rm --user 0:0 --entrypoint sh -v "$data:/d" "$image" -c "$1"; }
 
@@ -65,6 +69,10 @@ fi
 
 owners=$(as_root 'stat -c %u:%g /d /d/files /d/files/old.txt | sort -u')
 [[ $owners == "1000:1000" ]] && pass "data folder given to uid 1000" || fail "owners after start: $owners"
+
+name=$(compose exec -T inkadra printenv INSTANCE_NAME || true)
+[[ $name == "Data folder test" ]] && pass "a setting only in .env reaches the container" ||
+  fail "INSTANCE_NAME in the container: $name"
 
 # The server process: uid 1000 and no capabilities left.
 proc=$(compose exec -T inkadra sh -c 'for p in /proc/[0-9]*; do if tr "\0" " " <"$p/cmdline" 2>/dev/null | grep -q "^node /app/dist/main.js "; then grep -E "^(Uid|CapEff):" "$p/status" && break; fi; done' || true)
