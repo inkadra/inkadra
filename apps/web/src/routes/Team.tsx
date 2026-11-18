@@ -475,9 +475,10 @@ function InviteDialog({
     e.preventDefault();
     if (await onInvite({ kind: 'email', email: email.trim() })) setEmail('');
   }
-  const when = created
-    ? formatDateTime(created.expiresAt, { dateStyle: 'medium', timeStyle: 'short' })
-    : '';
+  const when =
+    created?.kind === 'link'
+      ? formatDateTime(created.expiresAt, { dateStyle: 'medium', timeStyle: 'short' })
+      : '';
   return (
     <Dialog open={open} title={t('settingsUi.members.invite')} onClose={onClose}>
       {created ? (
