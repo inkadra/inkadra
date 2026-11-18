@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { instanceSetting, notification, user } from './db/schema.ts';
+import { instanceSetting, notification, notificationPreference, user } from './db/schema.ts';
+import { memoryMailer, noMailer } from './mailer.ts';
+import { EMAIL_GROUP_DELAY_MS, sendImmediateEmails } from './notifications.ts';
 import {
   availableRelease,
   checkForUpdates,
@@ -183,6 +186,8 @@ describe.skipIf(!url)('the update check', () => {
   });
   afterAll(async () => {
     vi.restoreAllMocks();
+    // Left pending, these would reach the emails of the other suites.
+    await db.delete(notification).where(eq(notification.type, 'update_available'));
     await db.delete(user).where(eq(user.id, admin));
     await db.delete(instanceSetting).where(eq(instanceSetting.key, 'updates'));
     await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
@@ -208,7 +213,6 @@ describe.skipIf(!url)('the update check', () => {
       .from(notification)
       .where(and(eq(notification.userId, admin), eq(notification.type, 'update_available')));
     expect(sent).toHaveLength(1);
-    expect(sent[0]?.emailedAt).not.toBeNull();
   });
 
   const sentCount = async () =>
@@ -254,5 +258,70 @@ describe.skipIf(!url)('the update check', () => {
     await failedAt(16);
     await checkForUpdates(db);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it('emails each administrator who allows notification emails, once per release', async () => {
+    const quiet = randomUUID();
+    const gone = randomUUID();
+    await db.insert(user).values([
+      { id: quiet, name: 'Quiet', email: `${quiet}@example.com`, role: 'admin' },
+      {
+        id: gone,
+        name: 'Gone',
+        email: `${gone}@example.com`,
+        role: 'admin',
+        deactivatedAt: new Date(),
+      },
+    ]);
+    await db.insert(notificationPreference).values({ userId: quiet, email: 'off' });
+    await db.delete(notification).where(eq(notification.type, 'update_available'));
+    await channel('preview');
+    vi.spyOn(updateSource, 'fetchReleases').mockResolvedValue([
+      {
+        tag_name: 'v999.2.0-rc.1',
+        prerelease: true,
+        published_at: '2026-11-17T10:00:00Z',
+        body: '## Highlights\n- **Phones:** a [new](https://evil.example) view',
+      },
+    ]);
+    await checkForUpdates(db, 0);
+    const ours = [admin, quiet, gone];
+    const rows = () =>
+      db
+        .select()
+        .from(notification)
+        .where(
+          and(eq(notification.type, 'update_available'), inArray(notification.userId, ours)),
+        );
+    expect((await rows()).map((r) => r.userId).sort()).toEqual([admin, quiet].sort());
+
+    const mailDeps = {
+      db,
+      log: pino({ level: 'silent' }),
+      publicUrl: 'https://ink.example',
+      instanceName: 'Studio',
+    };
+    const due = new Date(Date.now() + EMAIL_GROUP_DELAY_MS + 1000);
+    const mine = (to: string) => ours.some((id) => to === `${id}@example.com`);
+    // Without SMTP nothing is sent and the Inbox notice stays.
+    await sendImmediateEmails({ ...mailDeps, mailer: noMailer }, due);
+    expect((await rows()).every((r) => r.emailedAt === null)).toBe(true);
+
+    const mailer = memoryMailer();
+    await sendImmediateEmails({ ...mailDeps, mailer }, due);
+    const sent = mailer.sent.filter((m) => mine(m.to));
+    expect(sent.map((m) => m.to)).toEqual([`${admin}@example.com`]);
+    const [mail] = sent;
+    expect(mail?.subject).toBe('Inkadra 999.2.0-rc.1 is available for Studio');
+    expect(mail?.text).toContain('Preview (release candidate)');
+    expect(mail?.text).toContain('Phones: a new view');
+    expect(mail?.text).toContain('https://ink.example/settings?section=updates');
+    expect(mail?.text).toContain('https://github.com/inkadra/inkadra/releases/tag/v999.2.0-rc.1');
+    expect(mail?.html).not.toContain('evil.example');
+
+    // The same release, checked again, is not sent again.
+    await checkForUpdates(db, 0);
+    await sendImmediateEmails({ ...mailDeps, mailer }, due);
+    expect(mailer.sent.filter((m) => mine(m.to))).toHaveLength(1);
+    await db.delete(user).where(inArray(user.id, [quiet, gone]));
   });
 });

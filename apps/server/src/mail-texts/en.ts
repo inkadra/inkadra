@@ -177,6 +177,22 @@ export const en: MailTexts = {
     footer: (instance) =>
       `Server alerts of ${instance} for administrators. Change them in Settings › Server.`,
   },
+  update: {
+    subject: (version, instance) => `Inkadra ${version} is available for ${instance}`,
+    title: (version) => `Inkadra ${version} is available`,
+    stable: 'Stable version',
+    preview: 'Preview (release candidate)',
+    intro: (instance, preview) =>
+      preview
+        ? `A preview of Inkadra is out: it comes earlier but may have a few problems. ${instance} doesn’t update itself: you update it, on the server.`
+        : `A new version of Inkadra is out. ${instance} doesn’t update itself: you update it, on the server.`,
+    version: 'Version',
+    released: 'Released',
+    action: 'Open Updates',
+    github: 'Read the release on GitHub',
+    row: (version) => `${version} is available`,
+    unknown: 'has a new version available',
+  },
   calendar: {
     deadline: (task, board) => `Due: ${task} · ${board}`,
     todo: (board) => `To-do · board "${board}" · all day`,

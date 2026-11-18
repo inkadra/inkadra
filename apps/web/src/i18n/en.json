@@ -5847,7 +5847,7 @@
           },
           "1": {
             "title": "Notices",
-            "text": "A notice when a version is out, stable or preview."
+            "text": "A notice, and an email, when a version is out, stable or preview."
           },
           "2": {
             "title": "Earlier versions",
@@ -6496,7 +6496,7 @@
     "offHelp": "Turn on the notice below to know when a new version is out.",
     "alerts": "Notices",
     "notify": "Tell me when a new version is out",
-    "notifyHelp": "Inkadra checks GitHub every 6 hours and shows a notice to administrators. It sends no data about your server.",
+    "notifyHelp": "Inkadra checks GitHub every 6 hours and shows a notice to administrators, with an email if their notification emails are on. It sends no data about your server.",
     "channel": "Which versions",
     "channelHelp": "Previews come earlier but may have a few problems. This only changes what you are told about.",
     "channels": {

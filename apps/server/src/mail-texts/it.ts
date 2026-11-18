@@ -191,6 +191,23 @@ export const it = {
     footer: (instance: string) =>
       `Avvisi del server di ${instance} per gli amministratori. Si cambiano in Impostazioni › Server.`,
   },
+  update: {
+    subject: (version: string, instance: string) =>
+      `Inkadra ${version} è disponibile per ${instance}`,
+    title: (version: string) => `Inkadra ${version} è disponibile`,
+    stable: 'Versione stabile',
+    preview: 'Anteprima (release candidate)',
+    intro: (instance: string, preview: boolean) =>
+      preview
+        ? `È uscita un’anteprima di Inkadra: arriva prima, ma può avere qualche problema. ${instance} non si aggiorna da sola: l’aggiornamento lo fai tu, sul server.`
+        : `È uscita una nuova versione di Inkadra. ${instance} non si aggiorna da sola: l’aggiornamento lo fai tu, sul server.`,
+    version: 'Versione',
+    released: 'Pubblicata',
+    action: 'Apri Aggiornamenti',
+    github: 'Leggi la versione su GitHub',
+    row: (version: string) => `${version} è disponibile`,
+    unknown: 'ha una nuova versione disponibile',
+  },
   calendar: {
     deadline: (task: string, board: string) => `Scadenza: ${task} · ${board}`,
     todo: (board: string) => `To-do · board "${board}" · tutto il giorno`,

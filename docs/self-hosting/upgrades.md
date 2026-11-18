@@ -12,6 +12,10 @@ Pin a version in `.env`, so an upgrade happens when you decide:
 INKADRA_TAG=0.9.0
 ```
 
+Administrators hear about a new version in their Inbox, and by email when email is configured
+(see [What leaves your server](README.md#what-leaves-your-server)); **Settings → Updates** shows it
+with the steps below.
+
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
 back up (see [Backups](README.md#backups): `docker compose exec -u node inkadra node
 /app/dist/main.js backup create`, plus a copy of the data volume or the bucket), change

@@ -5847,7 +5847,7 @@
           },
           "1": {
             "title": "Avis",
-            "text": "Un avis quand une version sort, stable ou préversion."
+            "text": "Un avis, et un e-mail, quand une version sort, stable ou préversion."
           },
           "2": {
             "title": "Versions précédentes",
@@ -6496,7 +6496,7 @@
     "offHelp": "Active l’avis ci-dessous pour savoir quand une nouvelle version sort.",
     "alerts": "Avis",
     "notify": "Me prévenir quand une nouvelle version sort",
-    "notifyHelp": "Inkadra consulte GitHub toutes les 6 heures et affiche un avis aux administrateurs. Aucune donnée de ton serveur n’est envoyée.",
+    "notifyHelp": "Inkadra consulte GitHub toutes les 6 heures et affiche un avis aux administrateurs, avec un e-mail si leurs e-mails de notifications sont activés. Aucune donnée de ton serveur n’est envoyée.",
     "channel": "Quelles versions",
     "channelHelp": "Les préversions arrivent plus tôt mais peuvent avoir quelques problèmes. Cela change seulement ce qui t’est signalé.",
     "channels": {

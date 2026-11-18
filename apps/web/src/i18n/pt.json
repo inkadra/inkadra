@@ -5847,7 +5847,7 @@
           },
           "1": {
             "title": "Avisos",
-            "text": "Um aviso quando sai uma versão, estável ou prévia."
+            "text": "Um aviso, e um e-mail, quando sai uma versão, estável ou prévia."
           },
           "2": {
             "title": "Versões anteriores",
@@ -6496,7 +6496,7 @@
     "offHelp": "Ligue o aviso abaixo para saber quando sai uma nova versão.",
     "alerts": "Avisos",
     "notify": "Avisar quando sair uma nova versão",
-    "notifyHelp": "O Inkadra consulta o GitHub a cada 6 horas e mostra um aviso aos administradores. Não envia dados do seu servidor.",
+    "notifyHelp": "O Inkadra consulta o GitHub a cada 6 horas e mostra um aviso aos administradores, com um e-mail se os e-mails de notificações estiverem ativos. Não envia dados do seu servidor.",
     "channel": "Quais versões",
     "channelHelp": "As prévias chegam antes, mas podem ter alguns problemas. Isso só muda o que é avisado.",
     "channels": {

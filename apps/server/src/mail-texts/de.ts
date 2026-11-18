@@ -182,6 +182,22 @@ export const de: MailTexts = {
     footer: (instance) =>
       `Serverwarnungen von ${instance} für Administratoren. Änderbar unter Einstellungen › Server.`,
   },
+  update: {
+    subject: (version, instance) => `Inkadra ${version} ist für ${instance} verfügbar`,
+    title: (version) => `Inkadra ${version} ist verfügbar`,
+    stable: 'Stabile Version',
+    preview: 'Vorabversion (Release Candidate)',
+    intro: (instance, preview) =>
+      preview
+        ? `Eine Vorabversion von Inkadra ist erschienen: Sie kommt früher, kann aber ein paar Probleme haben. ${instance} aktualisiert sich nicht selbst: Das Update machst du, auf dem Server.`
+        : `Eine neue Version von Inkadra ist erschienen. ${instance} aktualisiert sich nicht selbst: Das Update machst du, auf dem Server.`,
+    version: 'Version',
+    released: 'Veröffentlicht',
+    action: 'Updates öffnen',
+    github: 'Die Version auf GitHub lesen',
+    row: (version) => `${version} ist verfügbar`,
+    unknown: 'hat eine neue Version',
+  },
   calendar: {
     deadline: (task, board) => `Fällig: ${task} · ${board}`,
     todo: (board) => `To-do · Board „${board}“ · ganztägig`,

@@ -108,6 +108,8 @@ export interface MailContent {
   groups?: Array<{ title: string; rows: MailRow[] }>;
   list?: string[];
   action: { label: string; url: string };
+  /** A second, quieter link under the button. */
+  more?: { label: string; url: string };
   /** The line above the copyable address of the action, for links that must work anyway. */
   fallback?: string;
   /** Muted line after the button; `strong` is a part of `text` set in bold. */
@@ -237,6 +239,7 @@ function html(c: MailContent) {
     ...(c.groups ?? []).map((g, i) => group(g.title, g.rows, i === 0)),
     c.list?.length ? list(c.list) : '',
     button(c.action.label, c.action.url),
+    c.more ? para(link(c.more.url, c.more.label)) : '',
     c.note ? note(c.note) : '',
     c.fallback ? fallback(c.fallback, c.action.url) : '',
   ].join('');
@@ -287,7 +290,11 @@ function text(c: MailContent) {
   for (const g of c.groups ?? [])
     blocks.push([g.title, ...g.rows.flatMap((r) => textRow(r, '- '))]);
   if (c.list?.length) blocks.push(c.list.map((item, i) => `${i + 1}. ${item}`));
-  blocks.push([`${c.action.label}: ${c.action.url}`, ...(c.note ? [c.note.text] : [])]);
+  blocks.push([
+    `${c.action.label}: ${c.action.url}`,
+    ...(c.more ? [`${c.more.label}: ${c.more.url}`] : []),
+    ...(c.note ? [c.note.text] : []),
+  ]);
   const { footer } = c;
   blocks.push([
     footer.link ? `${footer.text} ${footer.link.label}: ${footer.link.url}` : footer.text,
