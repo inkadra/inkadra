@@ -122,6 +122,16 @@ to a newer server stay read-only on boards they would damage
 The sections below list what to do for each version, newest first. Read every one between
 your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
+## Upgrading to 0.10.1
+
+No migrations: going back to 0.10.0 only takes `INKADRA_TAG=0.10.0` again.
+
+- **An entrypoint of your own.** The image's `ENTRYPOINT` is now `/app/docker-entrypoint.sh`, which
+  starts `tini` itself once it runs as `node`, so that a stop reaches the server (#926). If your
+  compose file or `docker run` overrides the entrypoint with `/usr/bin/tini -- /app/docker-entrypoint.sh`,
+  start `/app/docker-entrypoint.sh` alone: otherwise a stop still ends the server without its
+  shutdown. The `compose.yaml` of the repository does not override it, and `command:` needs nothing.
+
 ## Upgrading to 0.10
 
 Back up first, as for any release with migrations: the way back is that backup, restored with

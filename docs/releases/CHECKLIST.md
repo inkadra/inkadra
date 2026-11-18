@@ -25,9 +25,10 @@ release candidate (`X.Y.Z-rc.N`) and recorded in the issue or discussion of the 
 
 ## By hand, on the release candidate
 
-1. **Release notes** in every language of `docs/releases/` (at least `en` and `it`), with a
-   "Read before upgrading" section for anything an administrator must do, and the matching
-   section in `docs/self-hosting/upgrades.md`.
+1. **Release notes** in English only, `docs/releases/X.Y.Z.en.md` (since 0.10.1: the Updates page
+   and the release email show them to readers of every language), with a "Read before upgrading"
+   section for anything an administrator must do, and the matching section in
+   `docs/self-hosting/upgrades.md`.
 2. **A copy of a real instance**: restore a recent backup of a long-running instance on the
    previous release, upgrade it to the candidate, open a few large boards, play a video, download
    an original. Large tables are what the CI data does not have: note how long the migrations
