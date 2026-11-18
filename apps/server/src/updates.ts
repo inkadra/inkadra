@@ -242,15 +242,11 @@ export function checkForUpdates(db: Database, maxAge = CHECK_EVERY_MS): Promise<
             .select({ id: user.id })
             .from(user)
             .where(and(eq(user.role, 'admin'), isNull(user.deactivatedAt)));
+          // The notification emails send it too, by each administrator's email preference.
           if (admins.length)
-            await tx.insert(notification).values(
-              // In-app only: emailedAt keeps it out of the notification emails.
-              admins.map((a) => ({
-                userId: a.id,
-                type: 'update_available' as const,
-                emailedAt: new Date(),
-              })),
-            );
+            await tx
+              .insert(notification)
+              .values(admins.map((a) => ({ userId: a.id, type: 'update_available' as const })));
           next.notified = available.version;
         }
         await tx
@@ -294,6 +290,16 @@ export function updatesView(
           )
           .slice(0, 6),
   };
+}
+
+/**
+ * The release administrators were last notified about, for the notification email.
+ * shortcut: the notification row keeps no version, so an email sent after a newer release was
+ * announced describes the newer one; store the version on the row if that ever matters.
+ */
+export async function notifiedRelease(db: Pick<Database, 'select'>) {
+  const stored = await readStored(db);
+  return stored.releases.find((r) => r.version === stored.notified) ?? null;
 }
 
 export async function readUpdates(db: Database): Promise<InstanceUpdates> {

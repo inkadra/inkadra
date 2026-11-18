@@ -2,7 +2,12 @@
  * Every email the server sends, as content for the shared layout (mail-layout.ts).
  * Builders are pure: the callers decide when and how to send.
  */
-import { type Notification, notificationPath, type ServerAlert } from '@inkadra/shared';
+import {
+  type InstanceRelease,
+  type Notification,
+  notificationPath,
+  type ServerAlert,
+} from '@inkadra/shared';
 import { type Chip, type MailContent, type MailRow, renderMail } from './mail-layout.ts';
 import {
   accessWhen,
@@ -202,6 +207,7 @@ function item(
   base: string,
   now: Date,
   timeZone?: string,
+  release?: InstanceRelease | null,
 ): Item {
   const where = n.boardTitle ?? n.projectName ?? '';
   const path = notificationPath(n);
@@ -228,6 +234,8 @@ function item(
     const who = n.subject?.name ?? t.someone;
     return made(who, n.type === 'access_expiring' ? t.otherExpiring(when) : t.otherExpired);
   }
+  if (n.type === 'update_available')
+    return made('Inkadra', release ? t.update.row(release.version) : t.update.unknown);
   if (n.type === 'link_opened') {
     const { who, what } = t.linkOpened(n.shareLinkLabel ?? null);
     return made(who, what);
@@ -264,14 +272,17 @@ export function notificationMail(input: {
   notifications: Notification[];
   daily: boolean;
   instance: MailInstance;
+  /** For `update_available`: the release it announces. */
+  release?: InstanceRelease | null;
   now?: Date;
   timeZone?: string;
 }): Mail {
   const t = mailText(input.recipient);
   const { instanceName, publicUrl } = input.instance;
+  const { release } = input;
   const now = input.now ?? new Date();
   const items = input.notifications.map((n) =>
-    item(t, n, input.recipient.id, publicUrl, now, input.timeZone),
+    item(t, n, input.recipient.id, publicUrl, now, input.timeZone, release),
   );
   const settingsUrl = `${publicUrl}/settings?section=notifications`;
   const base = {
@@ -285,6 +296,41 @@ export function notificationMail(input: {
     },
   };
   const [only] = items;
+  if (
+    items.length === 1 &&
+    only &&
+    release &&
+    input.notifications[0]?.type === 'update_available'
+  ) {
+    // Release notes are plain text already (updates.ts); in the recipient's language if written.
+    const summary =
+      release.notes?.[t.lang]?.highlights ?? release.notes?.en?.highlights ?? release.highlights;
+    const u = t.update;
+    return renderMail({
+      ...base,
+      subject: u.subject(release.version, instanceName),
+      preheader: summary[0] ?? u.intro(instanceName, release.prerelease),
+      badge: release.prerelease
+        ? { label: u.preview, tone: 'warn' }
+        : { label: u.stable, tone: 'accent' },
+      title: u.title(release.version),
+      intro: u.intro(instanceName, release.prerelease),
+      facts: [
+        [u.version, release.version],
+        ...(release.publishedAt
+          ? [
+              [u.released, mailDate(new Date(release.publishedAt), t.locale, input.timeZone)] as [
+                string,
+                string,
+              ],
+            ]
+          : []),
+      ],
+      list: summary,
+      action: { label: u.action, url: `${publicUrl}/settings?section=updates` },
+      more: { label: u.github, url: release.url },
+    });
+  }
   if (items.length === 1 && only) {
     const n = input.notifications[0] as Notification;
     const path = notificationPath(n);

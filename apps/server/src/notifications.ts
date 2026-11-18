@@ -23,6 +23,7 @@ import { afterCursor, atText, type Keyset } from './http/keyset.ts';
 import { RateLimiter } from './http/link-previews.ts';
 import type { Mailer } from './mailer.ts';
 import { notificationMail } from './mails.ts';
+import { notifiedRelease } from './updates.ts';
 
 /**
  * Notifications are written by the server when something happens (decision 0013): the actor is
@@ -367,6 +368,9 @@ async function sendTo(
       .where(eq(user.id, userId));
     if (!me) return false;
     const items = await renderNotifications(db, userId, rows);
+    const release = rows.some((r) => r.type === 'update_available')
+      ? await notifiedRelease(db)
+      : null;
     await mailer.send({
       ...notificationMail({
         to: me.email,
@@ -374,6 +378,7 @@ async function sendTo(
         notifications: items,
         daily: kind === 'daily',
         instance: deps,
+        release,
       }),
       messageId: notificationMessageId([...ids], deps.publicUrl),
     });

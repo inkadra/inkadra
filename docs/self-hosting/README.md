@@ -538,6 +538,12 @@ Inkadra sends no telemetry. It talks to other servers only for what is listed he
 | A request for the list of Inkadra releases, with no data about this server  | `api.github.com`                                                      | Every 6 hours, and on **Check now**. **On by default**                 | **Settings → Updates** → Tell me when a new version is out |
 | Sign-in, email and files                                                    | Your Google or OIDC provider, your mail server, your S3 bucket        | Only if you configure them                                             | Leave them empty                                           |
 
+When the update check finds a new version of the chosen channel (stable, or also previews),
+every active administrator gets a notice in the Inbox, once per version. With email configured
+(`SMTP_URL`) it also arrives by email, through your own mail server and following each
+administrator's notification email settings: the version, whether it is a preview, a short summary
+of its notes and links to **Settings → Updates** and to the release on GitHub.
+
 People's browsers load YouTube (from `youtube-nocookie.com`), Vimeo or Instagram players only when
 someone plays a link card, and Google profile pictures for accounts that sign in with Google.
 

@@ -186,6 +186,22 @@ export const fr: MailTexts = {
     footer: (instance) =>
       `Alertes du serveur de ${instance} pour les administrateurs. Modifiables dans Réglages › Serveur.`,
   },
+  update: {
+    subject: (version, instance) => `Inkadra ${version} est disponible pour ${instance}`,
+    title: (version) => `Inkadra ${version} est disponible`,
+    stable: 'Version stable',
+    preview: 'Préversion (release candidate)',
+    intro: (instance, preview) =>
+      preview
+        ? `Une préversion d’Inkadra est sortie : elle arrive plus tôt, mais peut avoir quelques problèmes. ${instance} ne se met pas à jour toute seule : c’est toi qui la mets à jour, sur le serveur.`
+        : `Une nouvelle version d’Inkadra est sortie. ${instance} ne se met pas à jour toute seule : c’est toi qui la mets à jour, sur le serveur.`,
+    version: 'Version',
+    released: 'Publiée',
+    action: 'Ouvrir Mises à jour',
+    github: 'Lire la version sur GitHub',
+    row: (version) => `${version} est disponible`,
+    unknown: 'a une nouvelle version disponible',
+  },
   calendar: {
     deadline: (task, board) => `Échéance : ${task} · ${board}`,
     todo: (board) => `À faire · tableau « ${board} » · toute la journée`,

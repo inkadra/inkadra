@@ -5847,7 +5847,7 @@
           },
           "1": {
             "title": "Hinweise",
-            "text": "Ein Hinweis, wenn eine Version erscheint, stabil oder vorab."
+            "text": "Ein Hinweis und eine E-Mail, wenn eine Version erscheint, stabil oder vorab."
           },
           "2": {
             "title": "Frühere Versionen",
@@ -6496,7 +6496,7 @@
     "offHelp": "Schalte den Hinweis unten ein, um zu erfahren, wenn eine neue Version erscheint.",
     "alerts": "Hinweise",
     "notify": "Bei neuer Version benachrichtigen",
-    "notifyHelp": "Inkadra fragt alle 6 Stunden bei GitHub nach und zeigt Administratoren einen Hinweis. Es sendet keine Daten deines Servers.",
+    "notifyHelp": "Inkadra fragt alle 6 Stunden bei GitHub nach und zeigt Administratoren einen Hinweis, mit einer E-Mail, wenn ihre Benachrichtigungs-E-Mails an sind. Es sendet keine Daten deines Servers.",
     "channel": "Welche Versionen",
     "channelHelp": "Vorabversionen kommen früher, können aber Probleme haben. Das ändert nur, worüber du benachrichtigt wirst.",
     "channels": {
