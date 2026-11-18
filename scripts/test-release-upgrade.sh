@@ -65,6 +65,15 @@ fail() {
 }
 
 c() { curl -s --max-time 60 -H "Origin: $url" "$@"; }
+# `up --wait` passes on the container's health check, /livez: a recreated container can still be
+# waiting for the web lease of the one it replaces (up to 30 s). Wait for the health answer itself.
+ready() {
+  for _ in $(seq 1 90); do
+    [[ $(c "$url/api/v1/health") == *'"status":"ok"'* ]] && return 0
+    sleep 1
+  done
+  return 1
+}
 jar="$work/cookies"
 sign_up() { c -o /dev/null -w '%{http_code}' -c "$jar" -H 'Content-Type: application/json' --data "{\"name\":\"Upgrade Test\",\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-up/email"; }
 sign_in() { c -o /dev/null -w '%{http_code}' -c "$jar" -H 'Content-Type: application/json' --data "{\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-in/email"; }
@@ -126,7 +135,7 @@ check_data() { # label
 echo "== Upgrade from $from_tag to $tag"
 
 # ------------------------------------------------------------------ 1. the release
-release up -d --quiet-pull --wait --wait-timeout 240
+release up -d --quiet-pull --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 pass "$from_tag starts ($(sql 'select count(*) from drizzle.__drizzle_migrations') migrations)"
 [[ $(sign_up) == 200 ]] && pass "first account created" || fail "sign-up"
 
@@ -174,7 +183,7 @@ compose exec -T -u node inkadra node /app/dist/main.js backup create >"$work/bac
 release stop inkadra
 
 # ------------------------------------------------------- 2. upgrade on the same database
-current up -d --wait --wait-timeout 240
+current up -d --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 migrations_after=$(sql 'select count(*) from drizzle.__drizzle_migrations')
 [[ $migrations_after -ge $migrations_before ]] &&
   pass "$tag starts on the data of $from_tag ($migrations_before migrations before, $migrations_after now)" ||
@@ -201,7 +210,7 @@ if current run --rm inkadra backup restore "$backup_file" >"$work/restore.log" 2
 else
   fail "restore: $(tail -n8 "$work/restore.log")"
 fi
-current up -d --wait --wait-timeout 240
+current up -d --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 check_data "restore"
 open_boards "After the restore"
 current stop inkadra
@@ -215,7 +224,7 @@ compose up -d --wait --wait-timeout 120 postgres valkey
 release run --rm inkadra backup restore "$pre_upgrade" >"$work/rollback.log" 2>&1 &&
   pass "rollback: $from_tag restores the backup taken before the upgrade into a new database" ||
   fail "rollback restore: $(tail -n8 "$work/rollback.log")"
-release up -d --wait --wait-timeout 240
+release up -d --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 check_data "rollback"
 
 if [[ $failed != 0 ]]; then
