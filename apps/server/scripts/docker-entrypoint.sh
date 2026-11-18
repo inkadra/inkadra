@@ -68,4 +68,7 @@ if ! mkdir -p "${TMPDIR:-$data/tmp}" 2>/dev/null || [ ! -w "$data" ]; then
     "which fixes the owner at startup."
 fi
 
-exec node /app/dist/main.js "$@"
+# tini (reaps the worker's ffmpeg, forwards signals) runs as node too: as root without CAP_KILL
+# (compose.yaml drops every capability) it could not pass SIGTERM on, the container died at once
+# and the server skipped its shutdown: boards unsaved, the lease held for its whole TTL (#926).
+exec tini -- node /app/dist/main.js "$@"

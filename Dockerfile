@@ -92,5 +92,6 @@ VOLUME ["/data"]
 EXPOSE 3000 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD ["node", "/app/healthcheck.mjs"]
-ENTRYPOINT ["/usr/bin/tini", "--", "/app/docker-entrypoint.sh"]
+# The entrypoint starts tini itself, once it runs as node (#926).
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["all"]
