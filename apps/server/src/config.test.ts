@@ -87,7 +87,7 @@ describe('empty variables', () => {
     expect(c).toMatchObject({
       UPLOAD_MAX_SIZE: 20 * 1024 ** 3,
       LOG_LEVEL: 'info',
-      HSTS_ENABLED: false,
+      HSTS_ENABLED: true,
       VIDEO_PROXY_MAX_DURATION: 7200,
       OIDC_ALLOWED_DOMAINS: [],
       OIDC_SCOPES: 'openid email profile',
@@ -118,8 +118,12 @@ it('defaults board caps and requires positive safe integers', () => {
   expect(loadConfig(base).BOARD_MAX_STATE_BYTES).toBe(64 * 1024 * 1024);
   expect(loadConfig(base).BOARD_MAX_ELEMENTS).toBe(20_000);
   for (const key of ['BOARD_MAX_STATE_BYTES', 'BOARD_MAX_ELEMENTS']) {
-    for (const value of ['0', '-1', 'Infinity', 'lots', '9007199254740992', ''])
+    for (const value of ['0', '-1', 'Infinity', 'lots', '9007199254740992'])
       expect(() => loadConfig({ ...base, [key]: value })).toThrow(key);
+    // Empty is unset (compose.yaml hands every line of .env to the container): the default.
+    expect(loadConfig({ ...base, [key]: '' })[key as 'BOARD_MAX_ELEMENTS']).toBe(
+      loadConfig(base)[key as 'BOARD_MAX_ELEMENTS'],
+    );
     expect(loadConfig({ ...base, [key]: '100' })[key as 'BOARD_MAX_ELEMENTS']).toBe(100);
   }
   expect(() => loadConfig({ ...base, BOARD_MAX_ELEMENTS: '1.5' })).toThrow('BOARD_MAX_ELEMENTS');
