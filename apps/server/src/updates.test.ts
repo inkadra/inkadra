@@ -289,9 +289,7 @@ describe.skipIf(!url)('the update check', () => {
       db
         .select()
         .from(notification)
-        .where(
-          and(eq(notification.type, 'update_available'), inArray(notification.userId, ours)),
-        );
+        .where(and(eq(notification.type, 'update_available'), inArray(notification.userId, ours)));
     expect((await rows()).map((r) => r.userId).sort()).toEqual([admin, quiet].sort());
 
     const mailDeps = {

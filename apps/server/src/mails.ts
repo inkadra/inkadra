@@ -296,7 +296,12 @@ export function notificationMail(input: {
     },
   };
   const [only] = items;
-  if (items.length === 1 && only && release && input.notifications[0]?.type === 'update_available') {
+  if (
+    items.length === 1 &&
+    only &&
+    release &&
+    input.notifications[0]?.type === 'update_available'
+  ) {
     // Release notes are plain text already (updates.ts); in the recipient's language if written.
     const summary =
       release.notes?.[t.lang]?.highlights ?? release.notes?.en?.highlights ?? release.highlights;
@@ -313,10 +318,12 @@ export function notificationMail(input: {
       facts: [
         [u.version, release.version],
         ...(release.publishedAt
-          ? [[u.released, mailDate(new Date(release.publishedAt), t.locale, input.timeZone)] as [
-              string,
-              string,
-            ]]
+          ? [
+              [u.released, mailDate(new Date(release.publishedAt), t.locale, input.timeZone)] as [
+                string,
+                string,
+              ],
+            ]
           : []),
       ],
       list: summary,

@@ -244,9 +244,9 @@ export function checkForUpdates(db: Database, maxAge = CHECK_EVERY_MS): Promise<
             .where(and(eq(user.role, 'admin'), isNull(user.deactivatedAt)));
           // The notification emails send it too, by each administrator's email preference.
           if (admins.length)
-            await tx.insert(notification).values(
-              admins.map((a) => ({ userId: a.id, type: 'update_available' as const })),
-            );
+            await tx
+              .insert(notification)
+              .values(admins.map((a) => ({ userId: a.id, type: 'update_available' as const })));
           next.notified = available.version;
         }
         await tx
