@@ -2,8 +2,8 @@
 
 Run Inkadra with Docker Compose on an amd64 or arm64 machine. The default setup runs the app, PostgreSQL and Valkey.
 
-This guide follows `main`. The latest release is **0.9.0 (9 November 2026)**. Changes after that
-release are marked below and in [Upgrades](upgrades.md#upgrading-to-010).
+This guide follows `main`. The latest release is **0.10.0 (19 November 2026)**. Changes after that
+release are marked below and in [Upgrades](upgrades.md).
 
 | Page                                  | What it covers                                       |
 | ------------------------------------- | ---------------------------------------------------- |
@@ -192,10 +192,16 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 | `0.10.0`      | One release. Recommended: pin it in `INKADRA_TAG`           |
 | `0.10`        | The latest patch release of 0.10                            |
 | `latest`      | The latest stable release                                   |
+| `next`        | The latest release, stable or release candidate (`-rc.N`)   |
 | `edge`        | The latest commit of `main`: for testing, not for real work |
 | `sha-1a2b3c4` | One commit                                                  |
 
-Every tag also exists with the suffix `-office` (`0.10.0-office`, `latest-office`, `edge-office`…).
+`latest`, `next` and `edge` are the three channels: stable releases; stable releases and release
+candidates; every commit of `main`. To try release candidates before they become stable, set
+`INKADRA_TAG=next`; it moves back to the stable release when that comes out.
+
+Every tag also exists with the suffix `-office` (`0.10.0-office`, `latest-office`, `next-office`,
+`edge-office`…).
 **In 0.9.0**, media tools still require `0.9.0-media`; `0.9.0` does not include them: pin
 `INKADRA_TAG=0.9.0-media` for video, PDF and RAW previews.
 **From 0.10.0**, standard includes media tools and `-media` is no longer published.
