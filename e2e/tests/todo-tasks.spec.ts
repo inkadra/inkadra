@@ -6,6 +6,7 @@ import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
 import { perfUser, pushBoardDoc, signIn } from './perf/seed.ts';
+import { signUpViaInvite } from './support/accounts.ts';
 
 const out = process.env.TODO_SHOTS ?? join(tmpdir(), 'inkadra-todo304');
 const date = (offset: number) => {
@@ -26,7 +27,22 @@ for (const theme of ['light', 'dark'] as const)
         await page.route('**/api/v1/me/notifications/unread-count', (route) =>
           route.fulfill({ json: { unread: 1 } }),
         );
-      const cookie = await signIn(baseURL!, perfUser);
+      // Home lists only the first HOME_TASKS tasks, overdue first: the administrator collects
+      // overdue tasks from other specs (qa08-tools) and from earlier runs, which pushed this
+      // project's task off the list. A new person per test sees only the tasks made here.
+      const admin = await signIn(baseURL!, perfUser);
+      const created = await fetch(`${baseURL}/api/v1/projects`, {
+        method: 'POST',
+        headers: { cookie: admin, origin: baseURL!, 'content-type': 'application/json' },
+        body: JSON.stringify({ name: `Spot Aurora ${prefix}` }),
+      });
+      expect(created.ok).toBe(true);
+      const project = (await created.json()) as { id: string; rootBoardId: string };
+      const cookie = await signUpViaInvite(baseURL!, admin, project.id, 'editor', {
+        name: 'Gaia Bruno',
+        email: `todo-tasks-${prefix}-${Date.now()}@example.com`,
+        password: 'correct-horse-battery',
+      });
       await page.context().addCookies(
         cookie.split('; ').map((pair) => {
           const i = pair.indexOf('=');
@@ -37,21 +53,7 @@ for (const theme of ['light', 'dark'] as const)
       await page.setViewportSize(
         phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
       );
-      const previous = await (await page.request.get('/api/v1/projects')).json();
-      for (const old of previous.items)
-        if (/^Spot Aurora (desktop|phone)-(light|dark)$/.test(old.name)) {
-          await page.request.patch(`/api/v1/projects/${old.id}`, {
-            headers: { origin: baseURL! },
-            data: { archived: true },
-          });
-        }
       const me = await (await page.request.get('/api/v1/me')).json();
-      const created = await page.request.post('/api/v1/projects', {
-        headers: { origin: baseURL! },
-        data: { name: `Spot Aurora ${prefix}` },
-      });
-      expect(created.ok()).toBe(true);
-      const project = await created.json();
       const doc = createBoardDoc(project.rootBoardId);
       const todo = createElement(
         doc,
@@ -68,7 +70,7 @@ for (const theme of ['light', 'dark'] as const)
         const item = addTodoItem(doc, todo.id, text)!;
         updateTodoItem(doc, todo.id, item, { assigneeId: me.id, dueDate: date(offset) });
       }
-      await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
+      await pushBoardDoc(baseURL!, admin, project.rootBoardId, doc);
       doc.destroy();
       await page.goto(`/p/${project.id}?view=canvas`);
       const card = page.locator(`[data-el="${todo.id}"]`);
@@ -83,7 +85,7 @@ for (const theme of ['light', 'dark'] as const)
       ).toBeVisible();
       const assignees = card.locator('.todo-assignment__person');
       await expect(assignees.first()).toHaveText('GB');
-      await expect(assignees.first()).toHaveAttribute('title', 'Giulia Bianchi');
+      await expect(assignees.first()).toHaveAttribute('title', 'Gaia Bruno');
       const colors = await assignees.evaluateAll((nodes) =>
         nodes.map((node) => getComputedStyle(node).color),
       );
@@ -94,9 +96,9 @@ for (const theme of ['light', 'dark'] as const)
         'Scrivi @ per assegnare · clic sulla data per cambiarla',
       );
       await page.screenshot({ path: join(out, `${prefix}-chips.png`) });
-      await card.getByRole('button', { name: 'Giulia Bianchi', exact: true }).first().click();
+      await card.getByRole('button', { name: 'Gaia Bruno', exact: true }).first().click();
       await expect(card.getByRole('combobox')).toBeVisible();
-      await card.getByRole('combobox').fill('Giulia');
+      await card.getByRole('combobox').fill('Gaia');
       await expect(card.getByRole('option')).toBeVisible();
       await page.screenshot({ path: join(out, `${prefix}-people.png`) });
       await card.getByRole('option').click();
