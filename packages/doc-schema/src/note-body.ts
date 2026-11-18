@@ -265,17 +265,24 @@ const ATTRIBUTE_IDS: Readonly<Record<string, { safeParse: (v: unknown) => { succ
     assetId: NoteImage.shape.assetId,
   };
 
+/** The id each node must carry: a mention names a person, a picture an asset. */
+const REQUIRED_ID: Readonly<Record<string, string>> = { mention: 'id', noteImage: 'assetId' };
+
 /**
  * Sets the attributes of a new inline node or picture, before it goes into the body. A null or
- * missing value is not stored (as y-prosemirror stores attributes). An id (`id`, `assetId`) that
- * does not fit its schema, or holds half of a two-unit character, refuses the whole insert: it is
- * never cut or changed, since another id would name another person or picture.
+ * missing free-text value (`alt`, `label`) is not stored (as y-prosemirror stores attributes). An
+ * id (`id`, `assetId`) that is missing or null where the node needs one, does not fit its schema,
+ * or holds half of a two-unit character, refuses the whole insert with a RangeError: it is never
+ * cut, changed or left out, since another id (or none) would name another person or picture.
  */
 function setAttributes(node: Y.XmlElement, attrs: Record<string, unknown>): void {
+  const required = REQUIRED_ID[node.nodeName];
+  if (required && attrs[required] == null)
+    throw new RangeError(`a ${node.nodeName} needs its ${required}`);
   const values: [string, unknown][] = [];
   for (const [k, v] of Object.entries(attrs)) {
-    if (v == null) continue;
     const id = ATTRIBUTE_IDS[k];
+    if (v == null && !id) continue;
     if (id && (typeof v !== 'string' || !isWellFormed(v) || !id.safeParse(v).success))
       throw new RangeError(`the ${k} of a ${node.nodeName} does not fit its schema`);
     values.push([k, attributeText(k, v)]);
