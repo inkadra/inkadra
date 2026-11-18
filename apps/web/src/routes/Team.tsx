@@ -526,7 +526,7 @@ function InviteDialog({
           </form>
           <div className="settings-form team-invite-link">
             <p className="settings-muted">{t('admin.linkHelp')}</p>
-            <div className="team-tools">
+            <div className="team-invite-link__row">
               <Select
                 className="ink-input team-filter"
                 aria-label={t('share.link.expires')}
