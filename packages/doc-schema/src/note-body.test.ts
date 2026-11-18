@@ -435,6 +435,23 @@ describe('whole characters in code and attributes', () => {
     expectValid(fragment);
   });
 
+  it('a mention or a picture without its id refuses the insert, nothing changed', () => {
+    const fragment = body(p('hi'));
+    const before = show(fragment);
+    expect(() => insertInline(at(fragment, 0), 2, 'mention', { label: 'x' })).toThrow(RangeError);
+    expect(() => insertInline(at(fragment, 0), 2, 'mention', { id: null, label: 'x' })).toThrow(
+      RangeError,
+    );
+    expect(() => insertBlock(fragment, at(fragment, 0), 'noteImage', { assetId: null })).toThrow(
+      RangeError,
+    );
+    expect(() => insertBlock(fragment, at(fragment, 0), 'noteImage', {})).toThrow(RangeError);
+    expect(show(fragment)).toBe(before);
+    // A mention whose label is null goes in without one.
+    insertInline(at(fragment, 0), 2, 'mention', { id: 'u1', label: null });
+    expect(at(fragment, 0, 1).getAttributes()).toEqual({ id: 'u1' });
+  });
+
   it('a picture whose alt is null (an untyped caller) goes in without one', () => {
     const fragment = body(p(''));
     insertBlock(fragment, at(fragment, 0), 'noteImage', { assetId: 'a1', alt: null });
