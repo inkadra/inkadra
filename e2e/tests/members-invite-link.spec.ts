@@ -17,14 +17,12 @@ const stamp = Date.now();
 async function shoot(page: Page, name: string) {
   if (!shots) return;
   // The link grants an account: never in a picture.
-  await page
-    .locator('input[data-feedback-secret]')
-    .evaluateAll((els) =>
-      els.forEach((el) => {
-        const input = el as HTMLInputElement;
-        input.value = input.value.replace(/\/join\/.*/, '/join/••••••••••••');
-      }),
-    );
+  await page.locator('input[data-feedback-secret]').evaluateAll((els) =>
+    els.forEach((el) => {
+      const input = el as HTMLInputElement;
+      input.value = input.value.replace(/\/join\/.*/, '/join/••••••••••••');
+    }),
+  );
   for (const theme of ['dark', 'light']) {
     await page.evaluate((value) => {
       localStorage.setItem('inkadra.theme', value);
