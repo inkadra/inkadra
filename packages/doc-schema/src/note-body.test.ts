@@ -417,6 +417,30 @@ describe('whole characters in code and attributes', () => {
     expectSameElsewhere(fragment);
     expectValid(fragment);
   });
+
+  it('never cuts or changes an id: one that does not fit its schema refuses the insert, nothing changed', () => {
+    const fragment = body(p('hi'));
+    const before = show(fragment);
+    for (const id of ['u'.repeat(65), 'u\uD83D', ''])
+      expect(() => insertInline(at(fragment, 0), 2, 'mention', { id, label: 'Ana' })).toThrow(
+        RangeError,
+      );
+    expect(() =>
+      insertBlock(fragment, at(fragment, 0), 'noteImage', { assetId: 'a'.repeat(65) }),
+    ).toThrow(RangeError);
+    expect(show(fragment)).toBe(before);
+    // At its longest it is kept exactly.
+    insertInline(at(fragment, 0), 2, 'mention', { id: 'u'.repeat(64), label: 'Ana' });
+    expect(at(fragment, 0, 1).getAttribute('id')).toBe('u'.repeat(64));
+    expectValid(fragment);
+  });
+
+  it('a picture whose alt is null (an untyped caller) goes in without one', () => {
+    const fragment = body(p(''));
+    insertBlock(fragment, at(fragment, 0), 'noteImage', { assetId: 'a1', alt: null });
+    expect(at(fragment, 0).getAttributes()).toEqual({ assetId: 'a1' });
+    expectValid(fragment);
+  });
 });
 
 describe('marks', () => {
@@ -513,15 +537,122 @@ describe('nested lists', () => {
     expectValid(fragment);
   });
 
-  it('the list buttons lift a nested item, or turn its nested list into the other kind', () => {
+  it('the list buttons turn a nested list into the other kind; then an item of it leaves the list into the bullet item around it', () => {
     const fragment = nested();
     toggleList(at(fragment, 0, 0, 1, 0, 0), 'taskList');
     expect(at(fragment, 0, 0, 1).nodeName).toBe('taskList');
     expect(at(fragment, 0, 0, 1, 0).getAttribute('checked')).toBe(false);
-    toggleList(at(fragment, 0, 0, 1, 0, 0), 'taskList');
-    expect(at(fragment, 0, 1).nodeName).toBe('listItem');
-    expect(textOf(at(fragment, 0, 1, 0))).toBe('b');
+    // A task list in a bullet item: its item is not lifted into the bullet list as a new item
+    // (that is only between items of the same type); its blocks go into the bullet item, where
+    // the task was, the task list split around it.
+    const caret = toggleList(at(fragment, 0, 0, 1, 0, 0), 'taskList');
+    expect(show(fragment)).toBe(
+      '<bulletList><listItem><paragraph>a</paragraph><paragraph>b</paragraph>' +
+        '<taskList><taskItem checked="false"><paragraph></paragraph></taskItem>' +
+        '<taskItem checked="false"><paragraph>c</paragraph></taskItem></taskList></listItem></bulletList>',
+    );
+    expect(caret?.block).toBe(at(fragment, 0, 0, 1));
     expectValid(fragment);
+  });
+});
+
+describe('lists nested in an item of the other type', () => {
+  /** A bullet item holding a task list: `a > [b ✓, '' ✓, c]`, the empty task ticked. */
+  const mixed = (...tasks: Y.XmlElement[]) =>
+    body(el('bulletList', {}, el('listItem', {}, p('a'), el('taskList', {}, ...tasks))));
+
+  it('Enter on the empty last task: an empty paragraph of the bullet item, after the task list', () => {
+    const fragment = mixed(task(true, 'b'), task(true, ''));
+    const caret = splitBlock(at(fragment, 0, 0, 1, 1, 0), 0);
+    expect(show(fragment)).toBe(
+      '<bulletList><listItem><paragraph>a</paragraph>' +
+        '<taskList><taskItem checked="true"><paragraph>b</paragraph></taskItem></taskList>' +
+        '<paragraph></paragraph></listItem></bulletList>',
+    );
+    expect(caret).toEqual({ block: at(fragment, 0, 0, 2), offset: 0 });
+    expectValid(fragment);
+  });
+
+  it('Enter on an empty task in the middle: an empty paragraph of the bullet item, the task list split', () => {
+    const fragment = mixed(task(true, 'b'), task(true, ''), task(false, 'c'));
+    const caret = splitBlock(at(fragment, 0, 0, 1, 1, 0), 0);
+    expect(show(fragment)).toBe(
+      '<bulletList><listItem><paragraph>a</paragraph>' +
+        '<taskList><taskItem checked="true"><paragraph>b</paragraph></taskItem></taskList>' +
+        '<paragraph></paragraph>' +
+        '<taskList><taskItem checked="false"><paragraph>c</paragraph></taskItem></taskList></listItem></bulletList>',
+    );
+    expect(caret.block).toBe(at(fragment, 0, 0, 2));
+    expectValid(fragment);
+  });
+
+  it('Backspace at the first task: its blocks go into the bullet item, never a new bullet item', () => {
+    const fragment = mixed(el('taskItem', { checked: true }, p('b'), p('more')), task(false, 'c'));
+    const caret = joinBackward(at(fragment, 0, 0, 1, 0, 0));
+    expect(show(fragment)).toBe(
+      '<bulletList><listItem><paragraph>a</paragraph><paragraph>b</paragraph><paragraph>more</paragraph>' +
+        '<taskList><taskItem checked="false"><paragraph>c</paragraph></taskItem></taskList></listItem></bulletList>',
+    );
+    expect(caret).toEqual({ block: at(fragment, 0, 0, 1), offset: 0 });
+    expectValid(fragment);
+  });
+
+  it('a bullet list in a task item: Enter on its empty last item stays in the task item', () => {
+    const fragment = body(
+      el(
+        'taskList',
+        {},
+        el('taskItem', { checked: true }, p('a'), el('bulletList', {}, item('b'), item(''))),
+      ),
+    );
+    const caret = splitBlock(at(fragment, 0, 0, 1, 1, 0), 0);
+    expect(show(fragment)).toBe(
+      '<taskList><taskItem checked="true"><paragraph>a</paragraph>' +
+        '<bulletList><listItem><paragraph>b</paragraph></listItem></bulletList>' +
+        '<paragraph></paragraph></taskItem></taskList>',
+    );
+    expect(caret.block).toBe(at(fragment, 0, 0, 2));
+    expectValid(fragment);
+  });
+});
+
+describe('a ticked task lifted out of a nested task list', () => {
+  const ticked = () =>
+    body(
+      el(
+        'taskList',
+        {},
+        el(
+          'taskItem',
+          { checked: false },
+          p('a'),
+          el('taskList', {}, task(true, 'b'), task(true, '')),
+        ),
+      ),
+    );
+
+  it('Enter on the empty last task starts a new task, unticked', () => {
+    const fragment = ticked();
+    const caret = splitBlock(at(fragment, 0, 0, 1, 1, 0), 0);
+    expect(show(fragment)).toBe(
+      '<taskList><taskItem checked="false"><paragraph>a</paragraph>' +
+        '<taskList><taskItem checked="true"><paragraph>b</paragraph></taskItem></taskList></taskItem>' +
+        '<taskItem checked="false"><paragraph></paragraph></taskItem></taskList>',
+    );
+    expect(caret.block).toBe(at(fragment, 0, 1, 0));
+    expectValid(fragment);
+  });
+
+  it('Backspace and the list button move the same task: it keeps its tick', () => {
+    const backspace = ticked();
+    joinBackward(at(backspace, 0, 0, 1, 0, 0));
+    expect(at(backspace, 0, 1).getAttribute('checked')).toBe(true);
+    expect(textOf(at(backspace, 0, 1, 0))).toBe('b');
+    expectValid(backspace);
+    const button = ticked();
+    toggleList(at(button, 0, 0, 1, 0, 0), 'taskList');
+    expect(at(button, 0, 1).getAttribute('checked')).toBe(true);
+    expectValid(button);
   });
 });
 

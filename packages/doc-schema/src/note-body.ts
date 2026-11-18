@@ -249,19 +249,47 @@ function onCharacters(
   return { from: a, to: b, text: wellFormed(wrapped) };
 }
 
-/** The longest value each text attribute of an inline node or a picture may hold. */
+/**
+ * The longest value each free-text attribute of an inline node or a picture may hold. Ids
+ * (`id`, `assetId`) are not here: a cut id would name another person or picture.
+ */
 const ATTRIBUTE_MAX: Readonly<Record<string, number | null>> = {
-  id: NoteMention.shape.id.maxLength,
   label: NoteMention.shape.label.maxLength,
-  assetId: NoteImage.shape.assetId.maxLength,
   alt: NoteImage.shape.alt.unwrap().unwrap().maxLength,
 };
 
+/** The id attributes, checked against their schema and never changed. */
+const ATTRIBUTE_IDS: Readonly<Record<string, { safeParse: (v: unknown) => { success: boolean } }>> =
+  {
+    id: NoteMention.shape.id,
+    assetId: NoteImage.shape.assetId,
+  };
+
 /**
- * A text attribute (a mention's label, a picture's alt) on whole characters: no half of a
- * two-unit character, cut to its longest length before a character, never inside one.
+ * Sets the attributes of a new inline node or picture, before it goes into the body. A null or
+ * missing value is not stored (as y-prosemirror stores attributes). An id (`id`, `assetId`) that
+ * does not fit its schema, or holds half of a two-unit character, refuses the whole insert: it is
+ * never cut or changed, since another id would name another person or picture.
  */
-function attributeText(name: string, value: string): string {
+function setAttributes(node: Y.XmlElement, attrs: Record<string, unknown>): void {
+  const values: [string, unknown][] = [];
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null) continue;
+    const id = ATTRIBUTE_IDS[k];
+    if (id && (typeof v !== 'string' || !isWellFormed(v) || !id.safeParse(v).success))
+      throw new RangeError(`the ${k} of a ${node.nodeName} does not fit its schema`);
+    values.push([k, attributeText(k, v)]);
+  }
+  for (const [k, v] of values) node.setAttribute(k, v as string);
+}
+
+/**
+ * A free-text attribute (a mention's label, a picture's alt) on whole characters: no half of a
+ * two-unit character, cut to its longest length before a character, never inside one. Any other
+ * attribute, and a value that is not a string, is stored as given.
+ */
+function attributeText(name: string, value: unknown): unknown {
+  if (typeof value !== 'string' || !(name in ATTRIBUTE_MAX)) return value;
   const text = wellFormed(value);
   const max = ATTRIBUTE_MAX[name];
   if (max == null || text.length <= max) return text;
@@ -396,16 +424,19 @@ function formatRuns(
   }
 }
 
-/** Inserts a mention (`{ id, label }`) or a line break at `at`; not in a code block. */
+/**
+ * Inserts a mention (`{ id, label }`) or a line break at `at`; not in a code block. An id that
+ * does not fit its schema throws a RangeError, nothing changed (`setAttributes`).
+ */
 export function insertInline(
   block: Y.XmlElement,
   at: number,
   name: 'mention' | 'hardBreak',
-  attrs: Record<string, string> = {},
+  attrs: Record<string, string | null | undefined> = {},
 ): boolean {
   if (block.nodeName === 'codeBlock') return false;
   const node = new Y.XmlElement(name);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, attributeText(k, v));
+  setAttributes(node, attrs);
   const tail = cutInline(block, clamp(at, 0, inlineLength(block)));
   block.insert(block.length, [node, ...nodesOf(tail)]);
   return true;
@@ -583,14 +614,19 @@ function splitOut(container: Y.XmlElement, index: number, replacement: Child[]):
 }
 
 /**
- * Takes a list item out of its list, one level, as the web's editor does: from a nested list it
- * becomes an item of the list around it, after the item it was in, the items after it nested
- * under it; from a top list its blocks go where it was, the list split around it.
+ * Takes a list item out of its list, one level, as the web's editor does. From a list nested in
+ * an item of the same type (a task list in a task item, a bullet list in a list item) it becomes
+ * an item of the list around it, after the item it was in, the items after it nested under it.
+ * Otherwise (a top list, or a list nested in an item of the other type: a task list in a bullet
+ * item) its blocks go where it was, the list split around it.
+ *
+ * `checked`: a task item lifted into a task list keeps its tick (Backspace, the list button move
+ * the same item); false for Enter, which starts a new task, unticked.
  */
-function liftItem(item: Y.XmlElement, offset = 0): NoteCaret {
+function liftItem(item: Y.XmlElement, offset = 0, keepChecked = true): NoteCaret {
   const list = parentOf(item) as Y.XmlElement;
   const holder = list.parent;
-  if (isItem(holder)) {
+  if (isItem(holder) && holder.nodeName === item.nodeName) {
     const outer = parentOf(holder) as Y.XmlElement;
     const i = indexIn(list, item);
     const content = item.toArray().map((c) => (c as Child).clone());
@@ -604,8 +640,8 @@ function liftItem(item: Y.XmlElement, offset = 0): NoteCaret {
       rest.insert(0, after);
       content.push(rest);
     }
-    const lifted = newItem(outer.nodeName === 'taskList' ? 'taskItem' : 'listItem');
-    if (lifted.nodeName === 'taskItem' && item.nodeName === 'taskItem')
+    const lifted = newItem(item.nodeName);
+    if (keepChecked && item.nodeName === 'taskItem')
       lifted.setAttribute('checked', item.getAttribute('checked') as string);
     lifted.insert(0, content);
     list.delete(i, list.length - i);
@@ -635,17 +671,20 @@ export function splitBlock(block: Y.XmlElement, at: number): NoteCaret {
   const length = inlineLength(block);
   const item = isItem(parent) && index === 0 ? parent : null;
   if (length === 0 && item && item.length === 1) {
-    // As the web's editor (Tiptap 3.32): only the last item of a nested list leaves it a level;
-    // an empty item in the middle becomes an empty paragraph of the item around the list, the
-    // list split there.
+    // As the web's editor (Tiptap 3.32): only the last item of a list nested in an item of the
+    // same type leaves it a level, as a new item (a new task is unticked); an empty item in the
+    // middle becomes an empty paragraph of the item around the list, the list split there. In a
+    // list nested in an item of the other type, the empty paragraph goes into that item, where
+    // the empty item was, the list split around it, last item or not (`liftItem`).
     const list = parentOf(item) as Y.XmlElement;
     const index = indexIn(list, item);
-    if (isItem(list.parent) && index < list.length - 1) {
+    const holder = list.parent;
+    if (isItem(holder) && holder.nodeName === item.nodeName && index < list.length - 1) {
       const empty = new Y.XmlElement('paragraph');
       splitOut(list, index, [empty]);
       return { block: empty, offset: 0 };
     }
-    return liftItem(item);
+    return liftItem(item, 0, false);
   }
   if (length === 0 && parent instanceof Y.XmlElement && parent.nodeName === 'blockquote') {
     const empty = new Y.XmlElement('paragraph');
@@ -813,16 +852,17 @@ export function taskItemOf(block: Y.XmlElement): Y.XmlElement | null {
 
 /**
  * Inserts a picture (`{ assetId, alt? }`) or a rule after `after` (an empty paragraph is
- * replaced), or at the end of the body; a text block follows it, for the caret.
+ * replaced), or at the end of the body; a text block follows it, for the caret. An asset id
+ * that does not fit its schema throws a RangeError, nothing changed (`setAttributes`).
  */
 export function insertBlock(
   body: Y.XmlFragment,
   after: Y.XmlElement | null,
   name: 'noteImage' | 'horizontalRule',
-  attrs: Record<string, string> = {},
+  attrs: Record<string, string | null | undefined> = {},
 ): NoteCaret {
   const node = new Y.XmlElement(name);
-  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, attributeText(k, v));
+  setAttributes(node, attrs);
   const parent = after ? parentOf(after) : body;
   let index = after ? indexIn(parent, after) + 1 : parent.length;
   const replaces =
