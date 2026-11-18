@@ -9,7 +9,7 @@ major version does.
 Pin a version in `.env`, so an upgrade happens when you decide:
 
 ```sh
-INKADRA_TAG=0.9.0
+INKADRA_TAG=0.10.0
 ```
 
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
@@ -24,8 +24,8 @@ docker compose up -d --wait
 
 Database migrations run when the new version starts, before it accepts requests, right after
 an automatic [backup of the database](#the-backup-before-an-upgrade). Compare your
-`compose.yaml` and `deploy/` files with the ones attached to the release: new settings arrive
-there.
+`compose.yaml` and `deploy/` files with the ones attached to the release, and your `.env` with
+its `.env.example`, which lists new settings.
 
 Migrations only go forward. To go back, follow
 [Going back to an older version](#going-back-to-an-older-version). A backup restores on the same
@@ -107,7 +107,7 @@ run `backup restore-files <file>` until it reports none failed (see
 [Restoring](README.md#restoring)). CI runs this rollback with the backup the upgrade wrote, and the upgrade from
 the last release with its sample data, on every change (`scripts/test-release-upgrade.sh`).
 
-From the version after 0.9.0, a server refuses to start on a database that a newer version
+From 0.10.0, a server refuses to start on a database that a newer version
 migrated, with a message that points here, instead of running on a schema it does not know.
 Boards follow the same rule: a server opens only documents of its own schema or older (a
 newer document can only come from a newer server, whose database it refuses), a backup or a
@@ -118,36 +118,62 @@ to a newer server stay read-only on boards they would damage
 The sections below list what to do for each version, newest first. Read every one between
 your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
-## After 0.9.0 (current main)
+## Upgrading to 0.10
 
-These changes are on `main`, not in 0.9.0.
+Back up first, as for any release with migrations: the way back is that backup, restored with
+0.9 (see [Going back to an older version](#going-back-to-an-older-version)).
 
-- **A database backup before migrations.** The first start of these builds on a 0.9.0
+- **A database backup before migrations.** The first start of 0.10 on a 0.9.0
   database writes `inkadra-backup-pre-upgrade-….zip` before migrating, and refuses to migrate
   if it fails: check the free space in `/data/backups` first. See
   [The backup before an upgrade](#the-backup-before-an-upgrade).
+- **Board documents move from schema 22 to 27.** Each board is brought to the new schema when
+  it is first opened; nothing to run by hand. Browser tabs and installed apps from 0.9 stay
+  read-only on boards until they reload ([decision 0102](../decisions/0102-min-writer-schema.md)).
+  A board, backup or project archive written by 0.10 does not go back to 0.9. Apps learn what the
+  server accepts from `GET /api/v1/instance/version`: `docSchemaVersion` (27), `minWriterSchema` (27)
+  and the capabilities `min-writer-schema` and `board-restore-marker`
+  ([decision 0109](../decisions/0109-board-restore-marker.md)).
+- **`compose.yaml` hands the whole `.env` to the container** (`env_file`), instead of a list of
+  about 50 settings: every documented setting now works from `.env` alone, `TZ`,
+  `IMPORT_MAX_SIZE`, `OFFICE_PREVIEWS` and the video settings included. If you take the new file:
+  - use it with 0.10 or newer: an empty line such as `OIDC_SCOPES=` means the default only
+    from 0.10 on, and can stop 0.9.0 at start;
+  - if you start Compose with `--env-file <other file>`, also set `INKADRA_ENV_FILE` to that
+    file, in the file itself or in the shell: otherwise the container reads `.env`;
+  - a stack manager that passes variables without a `.env` file next to `compose.yaml` needs one,
+    or `INKADRA_ENV_FILE` naming the file it keeps them in;
+  - variables set only in the shell, not in the file, no longer reach the container;
+  - `DATABASE_URL` and `REDIS_URL` in `.env` are still ignored, as `compose.yaml` sets them.
+
+  A hand-edited copy of the old `compose.yaml` keeps working unchanged.
+
 - **Media tools are now in the standard image.** Remove `-media` from `INKADRA_TAG` when
-  moving to these builds, not when installing 0.9.0. Standard still excludes LibreOffice.
+  moving to 0.10 (`-media` images are no longer published), not when installing 0.9.0.
+  Standard still excludes LibreOffice.
 - **Video copies use quality presets and multiple resolutions.** Review
   [Settings → Video](configuration.md#media-previews). Existing copies remain playable;
   regeneration is explicit. The default source-size limit is now unlimited, while the
   two-hour duration limit remains.
+- **Board size limits.** A board takes at most 64 MiB of document and 20,000 cards
+  (`BOARD_MAX_STATE_BYTES`, `BOARD_MAX_ELEMENTS`). Boards already larger stay readable and accept
+  deletions.
 - **Modules are personal settings.** Storyboard, Production, Moodboard, Client review and
   Set plan can be switched off in Settings → Modules. This hides creation tools, not existing
   data. There is no server environment variable for modules.
 
-- **Shooting days move to a Production board.** The schedule becomes the project's
-  ([decision 0123](../decisions/0123-production-board.md)): when the new version starts, every
-  project (archived ones included) whose boards have shooting days, or whose Troupe has people,
-  gets a board called "Production" (in its creator's language) at the end of its root board, and
-  the days of its boards move there, as they are. Days on boards in the trash stay where they
-  are. A project that already has a Production board, even one in the trash, is left alone.
-  It is one query, then one short transaction per project; a project that fails is logged
-  ("Production board not made") and tried again at the next start.
-  With a live Production board, new days belong there; without one, the old board schedule
-  remains available.
-- **Back up first,** as for any release with migrations. The way back for the instance is that
-  backup, restored with the older version.
+### The Production board move
+
+The schedule becomes the project's ([decision 0123](../decisions/0123-production-board.md)):
+when 0.10 starts, every project (archived ones included) whose boards have shooting days, or
+whose Troupe has people, gets a board called "Production" (in its creator's language) at the end of its root board, and
+the days of its boards move there, as they are. Days on boards in the trash stay where they
+are. A project that already has a Production board, even one in the trash, is left alone.
+It is one query, then one short transaction per project; a project that fails is logged
+("Production board not made") and tried again at the next start.
+With a live Production board, new days belong there; without one, the old board schedule
+remains available.
+
 - **To hold the move back,** set `PRODUCTION_BOARD_MOVE=false` in `.env` before upgrading: the
   server starts without moving anything, and the next start with `true` (the default) does it.
   Only `true` and `false` are accepted: any other value stops the server at start. Importing a
@@ -485,7 +511,7 @@ made: stop everything, empty the volume and unpack `postgres-data-16.tgz` into i
 
 0.4 hardens sign-in. Before you change `INKADRA_TAG`:
 
-1. **Pass the new settings to the container.** The `compose.yaml` on `main` forwards
+1. **Pass the new settings to the container.** The `compose.yaml` of later releases passes
    `OIDC_ALLOWED_DOMAINS`, `CSP_ENFORCE` and `HSTS_ENABLED` from `.env`. The
    files attached to the 0.4.0 release do not: if you use them and want any of these, add them
    under `environment` of the `inkadra` service, for example `HSTS_ENABLED: ${HSTS_ENABLED:-false}`.
@@ -562,13 +588,13 @@ in this repository, and a software bill of materials. To check that an image was
 repository by its CI and nothing else:
 
 ```sh
-gh attestation verify oci://ghcr.io/inkadra/inkadra:0.9.0 --repo inkadra/inkadra
+gh attestation verify oci://ghcr.io/inkadra/inkadra:0.10.0 --repo inkadra/inkadra
 ```
 
 To list the packages inside it:
 
 ```sh
-docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.9.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.10.0 --format '{{ json .SBOM }}'
 ```
 
 ## How releases are made
@@ -578,10 +604,12 @@ Release workflow, which checks that CI passed on that commit of `main`, tags `vX
 the GitHub release as a draft and starts CI on the tag. CI runs in full (tests, end-to-end, the
 reverse proxy examples, a vulnerability scan of the image), builds amd64 and arm64, standard and
 office, on native runners without build cache, starts and scans each of those images before
-tagging them, publishes `X.Y.Z`, `X.Y` and `latest`, attaches the deployment files to the
+tagging them, publishes `X.Y.Z`, `X.Y`, `latest` and `next`, attaches the deployment files to the
 release and only then publishes it, so the Updates page never offers a version without an image.
 The deployment files pin `INKADRA_TAG` to that version. Versions with a suffix
-(`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
+(`0.3.0-rc.1`) are pre-releases: they move `next` only, never `latest` or `X.Y`. The channels:
+`latest` follows stable releases, `next` stable releases and release candidates, `edge` `main`
+(see [Tags](README.md#tags)).
 
 What each release candidate must pass before the release, automated or by hand, is in the
 [release checklist](../releases/CHECKLIST.md).

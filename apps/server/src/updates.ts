@@ -16,7 +16,7 @@ import { safeFetch } from './safe-fetch.ts';
 
 // UPDATE_CHECK_URL is for the end-to-end tests only, which must not reach GitHub.
 const RELEASES_URL =
-  process.env.UPDATE_CHECK_URL ??
+  process.env.UPDATE_CHECK_URL ||
   'https://api.github.com/repos/inkadra/inkadra/releases?per_page=30';
 export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 /** After a failed check GitHub is asked again this soon; the job runs this often. */

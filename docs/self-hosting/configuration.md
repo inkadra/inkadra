@@ -4,19 +4,10 @@ Inkadra reads its settings from the environment. With Compose, put them in `.env
 `compose.yaml` and run `docker compose up -d`; [`.env.example`](../../.env.example) lists them with
 their defaults. Never commit or share the real `.env`.
 
-`compose.yaml` passes on the settings people change most. The others, in the tables below, reach
-the server only if you add them to `environment`, for example `TZ`, `IMPORT_MAX_SIZE` and the
-`VIDEO_PROXY_` limits and quality settings other than `VIDEO_PROXY_HWACCEL` and
-`VIDEO_PROXY_VAAPI_DEVICE`. Put them in a `compose.override.yaml` next to `compose.yaml`, which
-Compose reads by itself:
-
-```yaml
-services:
-  inkadra: # add `collab` and `worker` too in split mode
-    environment:
-      TZ: Europe/Rome
-      IMPORT_MAX_SIZE: 50GB
-```
+Every line of `.env` reaches the Inkadra containers (`collab` and `worker` too in split mode), so
+any setting below works as soon as it is there. An empty value, such as `OIDC_SCOPES=`, means the
+default; only `FEEDBACK_RELAY_URL=` means something else (no reports to the developers). To keep
+the settings in another file, set `INKADRA_ENV_FILE` (see [Compose only](#compose-only)).
 
 ## Server
 
@@ -26,8 +17,8 @@ services:
 | `PUBLIC_URL`           | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path             |
 | `AUTH_SECRET_PREVIOUS` | unset                            | Optional previous encryption secret (at least 32 characters); see rotation below                     |
 | `AUTH_SECRET`          | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out                |
-| `DATABASE_URL`         | set by compose                   | Postgres connection string                                                                           |
-| `REDIS_URL`            | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`     |
+| `DATABASE_URL`         | set by compose, not from `.env`  | Postgres connection string                                                                           |
+| `REDIS_URL`            | set by compose, not from `.env`  | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`     |
 | `INSTANCE_NAME`        | `Inkadra`                        | Name shown in the app                                                                                |
 | `REGISTRATION`         | `invite`                         | `invite`: invitation required; `open`: anyone; `closed`: no new accounts, even with an invitation    |
 | `HOST`                 | `0.0.0.0`                        | Interface the web server listens on                                                                  |
@@ -43,12 +34,11 @@ services:
 `INSTANCE_NAME` and `REGISTRATION` are installation defaults; saved administrator choices
 in Settings override them.
 
-`TZ` sets the container time zone used for scheduled backups (UTC unless configured). It is
-not forwarded by default. The image bundles Node 26.13; the host does not need Node.
+`TZ` sets the container time zone used for scheduled backups (UTC unless configured). The image bundles Node 26.13; the host does not need Node.
 
 | Variable                                                 | Default              | Meaning                                                                                                                                    |
 | -------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PRODUCTION_BOARD_MOVE`                                  | `true`               | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#after-090-current-main)                      |
+| `PRODUCTION_BOARD_MOVE`                                  | `true`               | `true` or `false` only. Move existing shooting days at startup; [upgrade details](upgrades.md#upgrading-to-010)                            |
 | `SKIP_PRE_MIGRATION_BACKUP`                              | `false`              | `true` or `false` only. `true` starts an upgrade without the [database backup before migrations](upgrades.md#the-backup-before-an-upgrade) |
 | `BACKUP_DIR`                                             | `<DATA_DIR>/backups` | Folder of the [backups](README.md#backups), for example another disk; it must be writable or the server does not start                     |
 | `BACKUP_S3_BUCKET`                                       |                      | A bucket the backups are copied to once verified, whatever `STORAGE_DRIVER` is. See [Backups](README.md#a-bucket-for-backups)              |
@@ -138,8 +128,8 @@ installation. See [demo configuration](../demo.md) before enabling it.
 
 ## Media previews
 
-Media tools are included in standard builds after 0.9.0; that release needs `0.9.0-media`
-(see [The image](README.md#the-image)). Current `main` adds the controls below.
+Media tools are included in standard images from 0.10.0; 0.9.0 needs `0.9.0-media`
+(see [The image](README.md#the-image)). 0.10 adds the controls below.
 
 In **Settings → Video**, administrators choose Light, Balanced (default) or High quality,
 resolutions to store, and whether to encode while someone watches. By default, 480p, 720p and
@@ -150,8 +140,7 @@ and a successful worker benchmark. Without it, live resolutions are stored inste
 Changing settings affects new copies; use the page's regeneration control for missing or
 outdated copies. Existing copies stay available until replacements are ready.
 
-These four overrides are unset by default. Add them to each role's `environment` in Compose;
-setting them locks the corresponding control in Settings.
+These four overrides are unset by default. Setting them in `.env` locks the corresponding control in Settings.
 
 | Variable                  | Allowed values                               | Meaning                                                            |
 | ------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
@@ -224,10 +213,9 @@ services:
       - /dev/dri/renderD128:/dev/dri/renderD128 # same path as VIDEO_PROXY_VAAPI_DEVICE
     group_add:
       - "${RENDER_GID}" # the group that owns /dev/dri/renderD128 on the host, nothing else
-    environment:
-      VIDEO_PROXY_HWACCEL: auto # or qsv / vaapi
-      VIDEO_PROXY_VAAPI_DEVICE: /dev/dri/renderD128
 ```
+
+`VIDEO_PROXY_HWACCEL` (`auto`, or `qsv` / `vaapi`) and `VIDEO_PROXY_VAAPI_DEVICE` go in `.env`.
 
 The image has Intel's media driver and the oneVPL runtime of Quick Sync (amd64) and Mesa's
 VAAPI drivers for AMD, all from Debian main. Intel's free driver only has the low-power encoder
@@ -253,8 +241,9 @@ services:
               capabilities: [gpu, video, compute, utility]
     environment:
       NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
-      VIDEO_PROXY_HWACCEL: auto # or nvenc
 ```
+
+To name the backend, set `VIDEO_PROXY_HWACCEL=nvenc` in `.env`.
 
 On older Docker versions, `runtime: nvidia` with `NVIDIA_VISIBLE_DEVICES: all` does the same.
 The driver can limit concurrent NVENC sessions. Count other programs using the card when
@@ -307,12 +296,13 @@ Nominatim instance or a compatible provider whose policy permits it.
 
 ## Compose only
 
-These change `compose.yaml` itself, not the server.
+These change `compose.yaml` itself. They reach the container too, which ignores them.
 
 | Variable                  | Default                   | Meaning                                                                        |
 | ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.9.0` (recommended), `latest` or `edge`         |
+| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.10.0` (recommended), `latest`, `next`, `edge`  |
 | `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                     |
+| `INKADRA_ENV_FILE`        | `.env`                    | File whose lines reach the container; set it when you use `--env-file`         |
 | `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |
 | `INKADRA_COLLAB_PORT`     | `3001`                    | Host port of `collab`, in split mode                                           |
 | `INKADRA_BIND`            | `127.0.0.1`               | Host address the ports listen on. `0.0.0.0` if the proxy is on another machine |

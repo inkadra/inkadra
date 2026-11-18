@@ -68,6 +68,37 @@ describe('CSP_REPORT_URI', () => {
   });
 });
 
+describe('empty variables', () => {
+  // compose.yaml hands the container every line of .env, `OIDC_SCOPES=` included.
+  it('read as unset, except FEEDBACK_RELAY_URL, where empty turns the relay off', () => {
+    const empty = {
+      UPLOAD_MAX_SIZE: '',
+      LOG_LEVEL: '',
+      HSTS_ENABLED: '',
+      VIDEO_PROXY_MAX_DURATION: '',
+      OIDC_ALLOWED_DOMAINS: '',
+      OIDC_SCOPES: '',
+      TRUST_PROXY: '',
+      MAP_GEOCODER_URL: '',
+      INSTANCE_NAME: '',
+    };
+    const c = loadConfig({ ...base, ...empty });
+    expect(c).toEqual(loadConfig(base));
+    expect(c).toMatchObject({
+      UPLOAD_MAX_SIZE: 20 * 1024 ** 3,
+      LOG_LEVEL: 'info',
+      HSTS_ENABLED: true,
+      VIDEO_PROXY_MAX_DURATION: 7200,
+      OIDC_ALLOWED_DOMAINS: [],
+      OIDC_SCOPES: 'openid email profile',
+      TRUST_PROXY: 'loopback,linklocal,uniquelocal',
+      INSTANCE_NAME: 'Inkadra',
+      FEEDBACK_RELAY_URL: 'https://relay.inkadra.com',
+    });
+    expect(loadConfig({ ...base, ...empty, FEEDBACK_RELAY_URL: '' }).FEEDBACK_RELAY_URL).toBe('');
+  });
+});
+
 it('identifies edge revisions without changing release versions', async () => {
   try {
     vi.stubEnv('INKADRA_VERSION', 'edge');
@@ -87,8 +118,12 @@ it('defaults board caps and requires positive safe integers', () => {
   expect(loadConfig(base).BOARD_MAX_STATE_BYTES).toBe(64 * 1024 * 1024);
   expect(loadConfig(base).BOARD_MAX_ELEMENTS).toBe(20_000);
   for (const key of ['BOARD_MAX_STATE_BYTES', 'BOARD_MAX_ELEMENTS']) {
-    for (const value of ['0', '-1', 'Infinity', 'lots', '9007199254740992', ''])
+    for (const value of ['0', '-1', 'Infinity', 'lots', '9007199254740992'])
       expect(() => loadConfig({ ...base, [key]: value })).toThrow(key);
+    // Empty is unset (compose.yaml hands every line of .env to the container): the default.
+    expect(loadConfig({ ...base, [key]: '' })[key as 'BOARD_MAX_ELEMENTS']).toBe(
+      loadConfig(base)[key as 'BOARD_MAX_ELEMENTS'],
+    );
     expect(loadConfig({ ...base, [key]: '100' })[key as 'BOARD_MAX_ELEMENTS']).toBe(100);
   }
   expect(() => loadConfig({ ...base, BOARD_MAX_ELEMENTS: '1.5' })).toThrow('BOARD_MAX_ELEMENTS');

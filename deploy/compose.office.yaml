@@ -6,7 +6,7 @@
 #
 # Run it from the folder of compose.yaml: the seccomp profile is read from deploy/office-seccomp.json,
 # so keep the deploy folder next to compose.yaml. INKADRA_TAG must be a version without suffix
-# (for example 0.9.0), as for the other roles: this worker uses the same one with `-office`.
+# (for example 0.10.0), as for the other roles: this worker uses the same one with `-office`.
 
 x-logging: &logging
   driver: json-file

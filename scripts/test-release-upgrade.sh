@@ -5,14 +5,16 @@
 #
 # 1. The release (INKADRA_FROM_TAG) imports the two sample projects (boards, files, schedule,
 #    crew) through the API, saves a named version, and makes an Inkadra backup.
-# 2. This version (INKADRA_TAG) starts on that database: it writes a backup before the pending
-#    migrations (listed, verified), then migrations run on real rows. The data, the files (same
-#    bytes) and the old version are there, and every board opens in the collaboration server
-#    (a saved version loads it there).
+# 2. This version (INKADRA_TAG) starts on that database. With migrations pending, it writes a
+#    backup before them (listed, verified), then migrations run on real rows; with none (a
+#    release straight after the last one), it writes no such backup. Either way the data, the
+#    files (same bytes) and the old version are there, and every board opens in the
+#    collaboration server (a saved version loads it there).
 # 3. The backup of the release is restored by this version into a new, empty database (its
 #    migrations, the data, then the newer migrations on top), with the same checks.
-# 4. Rollback (docs/self-hosting/upgrades.md): the release restores the backup this version
-#    wrote before migrating into a new, empty database and finds everything it had.
+# 4. Rollback (docs/self-hosting/upgrades.md): the release restores the backup taken before the
+#    upgrade into a new, empty database and finds everything it had: the one this version wrote
+#    before migrating or, with no migrations, the release's own backup of step 1.
 #
 #   INKADRA_FROM_TAG=0.9.0 INKADRA_TAG=edge scripts/test-release-upgrade.sh
 #
@@ -43,7 +45,7 @@ INKADRA_IMAGE=$image
 FEEDBACK_RELAY_URL=
 ENV
 
-compose() { docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" -f "$root/compose.yaml" "$@"; }
+compose() { INKADRA_ENV_FILE="$work/.env" docker compose --progress quiet -p "$project" --project-directory "$root" --env-file "$work/.env" -f "$root/compose.yaml" "$@"; }
 release() { INKADRA_TAG=$from_tag compose "$@"; }
 current() { INKADRA_TAG=$tag compose "$@"; }
 sql() { compose exec -T postgres psql -U inkadra -d inkadra -Atqc "$1"; }
@@ -52,6 +54,9 @@ failed=0
 cleanup() {
   if [[ $failed != 0 ]]; then compose logs --no-color --tail 80 inkadra || true; fi
   compose down -v --remove-orphans >/dev/null 2>&1 || true
+  # `down -v` misses the volumes .env no longer names (POSTGRES_DATA moves twice): a later run
+  # would restore into a database that is not empty.
+  docker volume ls -q --filter "label=com.docker.compose.project=$project" | xargs -r docker volume rm >/dev/null 2>&1 || true
   # Folders made by containers belong to other users.
   docker run --rm -v "$work:/w" --entrypoint sh postgres:18-alpine -c 'rm -rf /w/* /w/.[!.]*' >/dev/null 2>&1 || true
   rm -rf "$work"
@@ -65,6 +70,15 @@ fail() {
 }
 
 c() { curl -s --max-time 60 -H "Origin: $url" "$@"; }
+# `up --wait` passes on the container's health check, /livez: a recreated container can still be
+# waiting for the web lease of the one it replaces (up to 30 s). Wait for the health answer itself.
+ready() {
+  for _ in $(seq 1 90); do
+    [[ $(c "$url/api/v1/health") == *'"status":"ok"'* ]] && return 0
+    sleep 1
+  done
+  return 1
+}
 jar="$work/cookies"
 sign_up() { c -o /dev/null -w '%{http_code}' -c "$jar" -H 'Content-Type: application/json' --data "{\"name\":\"Upgrade Test\",\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-up/email"; }
 sign_in() { c -o /dev/null -w '%{http_code}' -c "$jar" -H 'Content-Type: application/json' --data "{\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-in/email"; }
@@ -126,7 +140,7 @@ check_data() { # label
 echo "== Upgrade from $from_tag to $tag"
 
 # ------------------------------------------------------------------ 1. the release
-release up -d --quiet-pull --wait --wait-timeout 240
+release up -d --quiet-pull --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 pass "$from_tag starts ($(sql 'select count(*) from drizzle.__drizzle_migrations') migrations)"
 [[ $(sign_up) == 200 ]] && pass "first account created" || fail "sign-up"
 
@@ -174,21 +188,34 @@ compose exec -T -u node inkadra node /app/dist/main.js backup create >"$work/bac
 release stop inkadra
 
 # ------------------------------------------------------- 2. upgrade on the same database
-current up -d --wait --wait-timeout 240
+current up -d --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 migrations_after=$(sql 'select count(*) from drizzle.__drizzle_migrations')
 [[ $migrations_after -ge $migrations_before ]] &&
   pass "$tag starts on the data of $from_tag ($migrations_before migrations before, $migrations_after now)" ||
   fail "migrations: $migrations_before before, $migrations_after now"
 [[ $(c "$url/api/v1/health") == *'"status":"ok"'* ]] && pass "health ok" || fail "health"
 check_data "upgrade"
-# The backup written before the migrations (#805): one archive, listed and verified.
-pre_upgrade=$(compose exec -T inkadra sh -c 'ls /data/backups/inkadra-backup-pre-upgrade-*.zip 2>/dev/null' | tr -d '\r')
-[[ $(wc -w <<<"$pre_upgrade") == 1 ]] && pass "backup before the migrations written: ${pre_upgrade##*/}" ||
-  fail "backup before the migrations: '${pre_upgrade}'"
-row=$(sql "select status || ',' || coalesce(verify_complete::text, '-') || ',' || coalesce(missing_files::text, '-') from instance_backup where trigger = 'pre-upgrade'")
-[[ $row == 'ready,true,0' ]] && pass "it is in the history, verified, no file missing" || fail "pre-upgrade row: '$row'"
-[[ $(api /instance/backups | jq '[.items[] | select(.beforeUpgrade == true)] | length') == 1 ]] &&
-  pass "the API lists it as taken before the upgrade" || fail "pre-upgrade backup not in /instance/backups"
+# The backup written before the migrations (#805): one archive, listed and verified, only when
+# migrations were pending (db/client.ts). `ls` finds none otherwise: not an error here.
+pre_upgrade=$(compose exec -T inkadra sh -c 'ls /data/backups/inkadra-backup-pre-upgrade-*.zip 2>/dev/null || true' | tr -d '\r')
+pre_upgrade_rows=$(sql "select count(*) from instance_backup where trigger = 'pre-upgrade'")
+pre_upgrade_listed=$(api /instance/backups | jq '[.items[] | select(.beforeUpgrade == true)] | length')
+if [[ $migrations_after -gt $migrations_before ]]; then
+  [[ $(wc -w <<<"$pre_upgrade") == 1 ]] && pass "backup before the migrations written: ${pre_upgrade##*/}" ||
+    fail "backup before the migrations: '${pre_upgrade}'"
+  row=$(sql "select status || ',' || coalesce(verify_complete::text, '-') || ',' || coalesce(missing_files::text, '-') from instance_backup where trigger = 'pre-upgrade'")
+  [[ $row == 'ready,true,0' ]] && pass "it is in the history, verified, no file missing" || fail "pre-upgrade row: '$row'"
+  [[ $pre_upgrade_listed == 1 ]] &&
+    pass "the API lists it as taken before the upgrade" || fail "pre-upgrade backup not in /instance/backups"
+  rollback_backup=$pre_upgrade
+  rollback_what="the backup $tag wrote before migrating"
+else
+  [[ -z $pre_upgrade && $pre_upgrade_rows == 0 && $pre_upgrade_listed == 0 ]] &&
+    pass "no migrations pending: no backup before the upgrade (none on disk, in the history or the API)" ||
+    fail "no migrations pending, yet a backup before the upgrade: '${pre_upgrade}', $pre_upgrade_rows rows, $pre_upgrade_listed listed"
+  rollback_backup=$backup_file
+  rollback_what="its own backup taken before the upgrade"
+fi
 open_boards "After the upgrade"
 current stop inkadra
 
@@ -201,7 +228,7 @@ if current run --rm inkadra backup restore "$backup_file" >"$work/restore.log" 2
 else
   fail "restore: $(tail -n8 "$work/restore.log")"
 fi
-current up -d --wait --wait-timeout 240
+current up -d --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 check_data "restore"
 open_boards "After the restore"
 current stop inkadra
@@ -212,10 +239,12 @@ docker run --rm -v "$work/pg-rollback:/p" --entrypoint chown postgres:18-alpine 
 sed -i '/^POSTGRES_DATA=/d' "$work/.env"
 echo "POSTGRES_DATA=$work/pg-rollback" >>"$work/.env"
 compose up -d --wait --wait-timeout 120 postgres valkey
-release run --rm inkadra backup restore "$pre_upgrade" >"$work/rollback.log" 2>&1 &&
-  pass "rollback: $from_tag restores the backup taken before the upgrade into a new database" ||
-  fail "rollback restore: $(tail -n8 "$work/rollback.log")"
-release up -d --wait --wait-timeout 240
+if [[ -n ${rollback_backup:-} ]] && release run --rm inkadra backup restore "$rollback_backup" >"$work/rollback.log" 2>&1; then
+  pass "rollback: $from_tag restores $rollback_what into a new database"
+else
+  fail "rollback restore of '${rollback_backup:-}': $(tail -n8 "$work/rollback.log" 2>/dev/null)"
+fi
+release up -d --wait --wait-timeout 240 && { ready || fail "no health answer within 90 s"; }
 check_data "rollback"
 
 if [[ $failed != 0 ]]; then

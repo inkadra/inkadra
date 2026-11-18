@@ -14,6 +14,8 @@ checks the network, the proxy and the services from the app.
 
 **`set AUTH_SECRET in .env`, or another `set … in .env`.** `docker compose` cannot find the value:
 you are in another folder, or the line in `.env` is empty. See [Install](README.md#install), step 2.
+**`env file …/.env not found`** is the same: with `--env-file <file>`, also set
+`INKADRA_ENV_FILE=<file>`.
 
 **`permission denied while trying to connect to the Docker daemon socket`.** Your user is not in the
 `docker` group: run `sudo usermod -aG docker $USER`, sign out and in again, or use `sudo docker`.
