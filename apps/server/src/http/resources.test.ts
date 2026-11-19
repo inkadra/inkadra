@@ -688,10 +688,10 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     const { id, post } = clientCreation();
     expect((await post()).statusCode).toBe(201);
     expect((await patchBytes(id, 0, Buffer.from('hello'))).statusCode).toBe(204);
-    await expect
-      .poll(async () => (await db.select().from(asset).where(eq(asset.id, id)))[0]?.status)
-      .not.toBe('pending');
+    // The processing queued by the last byte runs on; the row is final only once it ends.
+    await deps.jobs.idle();
     const [finished] = await db.select().from(asset).where(eq(asset.id, id));
+    expect(finished?.status).toBe('ready');
     const processAsset = deps.jobs.processAsset;
     let processed = 0;
     deps.jobs.processAsset = async (assetId) => {
