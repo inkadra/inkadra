@@ -1,6 +1,6 @@
 # 0134 — Scoped locks and a project order per member
 
-Status: Proposed, 2026-11-19. For issue #818. Amends [0126](0126-delete-unused-classification-values.md)
+Status: accepted, 2026-11-19. For issue #818. Amends [0126](0126-delete-unused-classification-values.md)
 (which lock orders a removal against project writes) and follows the capability pattern of
 [0120](0120-board-writers.md) and [0122](0122-set-plan-sheet-from-the-server.md). Multi-tenancy
 itself is out of scope.
@@ -102,7 +102,10 @@ What each path takes:
   lock; then the project row (`lockMembers`), before the member rows a deletion cascades to.
 - **Account deletion**: `account:<self>`; then it reads its own role (a role change takes the same
   account lock, so it cannot move) and takes `instance-roles` exclusive if it is an administrator,
-  for the last-admin check. Rows: its `user` row `FOR UPDATE` first, then every project it owns
+  for the last-admin check. Rows: its `user` row `FOR NO KEY UPDATE` first (not `FOR UPDATE`:
+  the person's own upload in progress holds a key-share lock on that row through its foreign key,
+  and `FOR UPDATE` would deadlock with it; role changes and other writes to the row still wait),
+  then every project it owns
   **or** created, `ORDER BY id FOR UPDATE`, then assets as today. Two deletions run in parallel and
   take shared projects in the same order; the final cascade only reaches rows below them.
 - **Member change** (`PATCH /instance/members/:id`): `account:<target>`, then `instance-roles`
