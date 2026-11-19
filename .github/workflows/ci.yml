@@ -344,6 +344,11 @@ jobs:
           path: /var/cache/apt/archives/*.deb
           key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: apt-e2e-ubuntu-24.04-
+      # A slow mirror times out and is retried instead of crawling for a quarter of an hour.
+      - name: Make apt give up on a stalled mirror
+        run: &apt-timeouts |
+          printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' \
+            | sudo tee /etc/apt/apt.conf.d/80-ci-timeouts
       - run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.
       - name: Media tools of the standard image
@@ -423,13 +428,26 @@ jobs:
           cache: pnpm # zizmor: ignore[cache-poisoning] publishes nothing; publish jobs use no cache
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run build
-      # The packages the end-to-end shards keep; this job only reads them.
       - run: sudo chown "$USER" /var/cache/apt/archives
-      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Chromium only: the packages the end-to-end shards keep; this job only reads them.
+      - if: matrix.browsers == 'chromium'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /var/cache/apt/archives/*.deb
           key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: apt-e2e-ubuntu-24.04-
+      # Another browser needs its own system packages (WebKit's GStreamer and codecs): keep them
+      # under their own key, outside the shards' prefix, or every run downloads them again.
+      - if: matrix.browsers != 'chromium'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 # zizmor: ignore[cache-poisoning] publishes nothing; apt checks the files
+        with:
+          path: /var/cache/apt/archives/*.deb
+          key: apt-e2e-browsers-ubuntu-24.04-${{ matrix.browsers }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            apt-e2e-browsers-ubuntu-24.04-${{ matrix.browsers }}-
+            apt-e2e-ubuntu-24.04-
+      - name: Make apt give up on a stalled mirror
+        run: *apt-timeouts
       - env:
           BROWSERS: ${{ matrix.browsers }}
         run: |
@@ -497,6 +515,9 @@ jobs:
           path: /var/cache/apt/archives/*.deb
           key: apt-e2e-ubuntu-24.04-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: apt-e2e-ubuntu-24.04-
+      - if: steps.suite.outputs.present
+        name: Make apt give up on a stalled mirror
+        run: *apt-timeouts
       - if: steps.suite.outputs.present
         run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
       - if: steps.suite.outputs.present
