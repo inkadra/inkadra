@@ -42,7 +42,7 @@ import {
 } from '../db/schema.ts';
 import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
-import { lockAccount, lockRoles } from '../locks.ts';
+import { lockActiveAccount, lockDeletions, lockRoles } from '../locks.ts';
 import { type Mailer, securityNotification } from '../mailer.ts';
 import { removeFilesLater } from '../queues.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
@@ -491,11 +491,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     }
 
     const keys = await db.transaction(async (tx) => {
-      // Their creations, imports and role changes wait for this or come first (decision 0134);
-      // an administrator also holds who is one, for the check below.
-      await lockAccount(tx, userId);
-      const [self] = await tx.select({ role: user.role }).from(user).where(eq(user.id, userId));
-      if (self?.role === 'admin') await lockRoles(tx, 'exclusive');
+      // One deletion at a time: two cascades meet in rows that refer to both people (a
+      // notification from one to the other). Their creations, imports and role changes wait for
+      // their account or come first; gone or deactivated meanwhile, 401. An administrator also
+      // holds who is one, for the check below (decision 0134).
+      await lockDeletions(tx);
+      const self = await lockActiveAccount(tx, userId);
+      if (self.role === 'admin') await lockRoles(tx, 'exclusive');
       // Rows in the order of locks.ts: their own first. `no key update`, not `update`: a write
       // of theirs that already holds a project row (an upload into it) then takes a key-share
       // lock on this row, which must not wait for this while this waits for that project.
@@ -568,6 +570,16 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
         )
         .orderBy(asset.id)
         .for('update');
+      // Then the row itself, before anything below locks their storage total (deleting a project
+      // with their files). An upload of theirs elsewhere takes a key-share lock on this row, then
+      // the total; so does a file's save (its second change of a total checks the person again),
+      // which is why this waits until their files are locked: each would otherwise wait for this
+      // while the final delete waited for it. New uploads now wait for the deletion.
+      // shortcut: a write of theirs that holds a row inside a project deleted below (a board
+      // saved in another tab, a file uploaded since the files were locked and saved now) and
+      // only then refers to them can still deadlock, once, answered 503 to retry; lock those
+      // rows here too if that ever shows up.
+      await tx.select({ id: user.id }).from(user).where(eq(user.id, userId)).for('update');
       const files = await projectFiles(tx, alone);
       if (alone.length > 0) await tx.delete(project).where(inArray(project.id, alone));
       // The person's events keep what happened and when, under one opaque id: no name, email

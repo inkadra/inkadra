@@ -551,15 +551,17 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         const target = boardId ?? (await rootBoardId(db, projectId));
         // One transaction, the person first, before any row: their deletion comes first or
         // waits (decision 0134).
-        await db.transaction(async (tx) => {
+        const entry = await db.transaction(async (tx) => {
           await lockAccount(tx, existing.id);
           const [still] = await tx
             .select({ id: user.id })
             .from(user)
             .where(eq(user.id, existing.id));
           if (!still) throw new HttpError('not_found', 'User not found.');
+          // The answer is read before the commit: their deletion may come right after it.
+          const entry = () => entryFor(tx as unknown as Database, target, existing.id);
           const current = await boardAccess(tx, existing, target);
-          if (atLeast(current?.role ?? null, role)) return;
+          if (atLeast(current?.role ?? null, role)) return entry();
           if (boardId) {
             if (current?.role && mine && higher(current.role, mine))
               throw new HttpError('forbidden', 'This person has more access than you here.');
@@ -623,11 +625,9 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
             ip: req.ip,
             details: { userId: existing.id, role, invited: true },
           });
+          return entry();
         });
-        const body: InvitationResult = {
-          status: 'added',
-          entry: await entryFor(db, target, existing.id),
-        };
+        const body: InvitationResult = { status: 'added', entry };
         return reply.status(200).send(body);
       }
     }

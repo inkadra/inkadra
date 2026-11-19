@@ -1,5 +1,7 @@
-import { type SQL, sql } from 'drizzle-orm';
+import { and, eq, isNull, type SQL, sql } from 'drizzle-orm';
 import type { Database } from './db/client.ts';
+import { user } from './db/schema.ts';
+import { HttpError } from './http/errors.ts';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -13,14 +15,16 @@ type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
  *
  * 1. `classification-uses`, shared or exclusive: `lockUses` in classifications.ts (0126).
  * 2. `classifications` (10892, 1): the catalog and its removed values (`lockCatalog`).
- * 3. `account:<user>` (10894, hashtext(id)): anything that creates for, adds, changes or deletes
+ * 3. `account-deletions` (10892, 6): taken only by an account deletion, so two never run
+ *    together (`lockDeletions`): their cascades meet in rows that refer to both people.
+ * 4. `account:<user>` (10894, hashtext(id)): anything that creates for, adds, changes or deletes
  *    that person (`lockAccount`). Several go in ascending key, never by id.
- * 4. The idempotency key: `rememberedCreation` in idempotency.ts.
- * 5. `instance-roles` (10892, 2): exclusive to change a role or deactivate, or to delete an
+ * 5. The idempotency key: `rememberedCreation` in idempotency.ts.
+ * 6. `instance-roles` (10892, 2): exclusive to change a role or deactivate, or to delete an
  *    administrator's account; shared for every admin-only write (`lockRoles`).
- * 6. `setting:<key>` (10892, 3–5): the read-modify-write of one `instance_setting` row.
- * 7. Rows, `FOR UPDATE`: `user`, then `project` by id, `project_member`, other rows.
- * 8. `storage-limits[:user]`: `assertSpace` in storage-limits.ts (#799), then only `asset` by id
+ * 7. `setting:<key>` (10892, 3–5): the read-modify-write of one `instance_setting` row.
+ * 8. Rows, `FOR UPDATE`: `user`, then `project` by id, `project_member`, other rows.
+ * 9. `storage-limits[:user]`: `assertSpace` in storage-limits.ts (#799), then only `asset` by id
  *    and `storage_total` (#879). A leaf: whoever holds it waits for no row another path holds
  *    first, so an import takes it at the end, held only for its files.
  *
@@ -43,9 +47,37 @@ const lock = (
 /** The `classifications` and `classifications_deleted` settings rows (decision 0126). */
 export const lockCatalog = (tx: Tx | Database) => lock(tx, CLASS.instance, 1);
 
-/** One person: their creations, imports, memberships, deletion and role. */
-export const lockAccount = (tx: Tx | Database, userId: string) =>
-  lock(tx, CLASS.account, sql`hashtext(${userId})`);
+/** Account deletions, one at a time. */
+export const lockDeletions = (tx: Tx | Database) => lock(tx, CLASS.instance, 6);
+
+/**
+ * People: their creations, imports, memberships, deletion and role. Several are locked in
+ * ascending key, so two transactions locking the same people never wait on each other in turn.
+ */
+export async function lockAccount(tx: Tx | Database, ...userIds: string[]) {
+  const keys = await tx.execute<{ k: number }>(
+    sql`select distinct hashtext(id) as k
+      from (values ${sql.join(
+        userIds.map((id) => sql`(${id}::text)`),
+        sql`, `,
+      )}) v(id) order by k`,
+  );
+  for (const { k } of keys) await lock(tx, CLASS.account, k);
+}
+
+/**
+ * `lockAccount`, then the first person read under it: still there and not deactivated, or 401
+ * (their deletion or deactivation came first).
+ */
+export async function lockActiveAccount(tx: Tx | Database, userId: string, ...others: string[]) {
+  await lockAccount(tx, userId, ...others);
+  const [self] = await tx
+    .select({ role: user.role })
+    .from(user)
+    .where(and(eq(user.id, userId), isNull(user.deactivatedAt)));
+  if (!self) throw new HttpError('unauthorized', 'Sign in to continue.');
+  return self;
+}
 
 /** Who is an active administrator. */
 export const lockRoles = (tx: Tx | Database, mode: 'shared' | 'exclusive') =>

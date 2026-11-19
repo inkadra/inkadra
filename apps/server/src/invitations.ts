@@ -13,7 +13,7 @@ import {
   user,
 } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
-import { lockAccount } from './locks.ts';
+import { lockActiveAccount } from './locks.ts';
 import { nextOwnPosition } from './project-order.ts';
 import { sha256 } from './secrets.ts';
 
@@ -122,9 +122,23 @@ export async function acceptInvitation(
   { reserved = false }: { reserved?: boolean } = {},
 ): Promise<AcceptedInvitation> {
   return db.transaction(async (tx) => {
-    // The person first, before any row: their deletion comes first or waits (decision 0134).
-    // Their row is read again below.
-    await lockAccount(tx, userId);
+    // Who and what it is for, read before any lock (decision 0134): the person and whoever
+    // invited them (a grant and a notification refer to them) first, so their deletions come
+    // first or wait; the person gone or deactivated meanwhile, 401. Then the project before the
+    // invitation, which its deletion reaches through the cascade. The inviter can only become
+    // nobody meanwhile (their deletion came first): then nothing below refers to them.
+    const [about] = await tx
+      .select({ projectId: invitation.projectId, invitedBy: invitation.invitedBy })
+      .from(invitation)
+      .where(eq(invitation.id, invitationId));
+    if (!about) throw new HttpError('not_found', 'This invitation can no longer be used.');
+    await lockActiveAccount(tx, userId, ...(about.invitedBy ? [about.invitedBy] : []));
+    if (about.projectId)
+      await tx
+        .select({ id: project.id })
+        .from(project)
+        .where(eq(project.id, about.projectId))
+        .for('key share');
     const [row] = await tx
       .select()
       .from(invitation)

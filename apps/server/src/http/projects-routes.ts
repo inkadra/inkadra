@@ -167,7 +167,7 @@ async function loadProject(db: Database, actor: Actor, projectId: string) {
 
 /** The members of a project in the order they joined; a page of them with `limit` (#804). */
 async function listMembers(
-  db: Database,
+  db: Pick<Database, 'select'>,
   projectId: string,
   page: { limit?: number; cursor?: string } = {},
 ): Promise<{ items: ProjectMember[]; nextCursor: string | null }> {
@@ -355,12 +355,6 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       'projects',
       input,
       async (tx) => {
-        // Still there and active: their deletion or deactivation came first otherwise.
-        const [creator] = await tx
-          .select({ id: user.id })
-          .from(user)
-          .where(and(eq(user.id, actor.id), isNull(user.deactivatedAt)));
-        if (!creator) throw new HttpError('unauthorized', 'Sign in to continue.');
         validateProjectType((await readClassifications(tx)).projectTypes, input.type);
         // The project's own position too: older servers and archives read that one.
         const position = await nextOwnPosition(tx, actor.id);
@@ -398,13 +392,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
           .values({ projectId: p.id, userId: actor.id, role: 'owner', position });
         return toProject(p, root.id, 'owner');
       },
-      // Before the key and its rows: a removal of the type sees this project, or this creation
-      // sees the removal (0126); the creator's deletion sees it, or this waits and finds them
-      // gone. Nobody else waits (decision 0134).
-      async (tx) => {
-        await lockUses(tx, 'shared');
-        await lockAccount(tx, actor.id);
-      },
+      // Before the creator's account, the key and its rows: a removal of the type sees this
+      // project, or this creation sees the removal (0126). Nobody else waits (decision 0134).
+      (tx) => lockUses(tx, 'shared'),
     );
     // A retry is answered with the project as it is now, like a read: 404 once it is gone.
     if ('replayed' in result)
@@ -672,7 +662,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     await requireProjectRole(db, actor, projectId, 'editor');
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
-    await db.transaction(async (tx) => {
+    return db.transaction(async (tx) => {
       // The person first, before any row: their deletion comes first or waits (decision 0134).
       await lockAccount(tx, userId);
       const [still] = await tx.select({ id: user.id }).from(user).where(eq(user.id, userId));
@@ -726,10 +716,11 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { role, before: current?.role ?? null, expiresAt: end?.toISOString() ?? null },
       });
+      // Read before the commit: their deletion may come right after it.
+      const member = (await listMembers(tx, projectId)).items.find((m) => m.user.id === userId);
+      if (!member) throw new Error('Member vanished after upsert');
+      return member;
     });
-    const member = (await listMembers(db, projectId)).items.find((m) => m.user.id === userId);
-    if (!member) throw new Error('Member vanished after upsert');
-    return member;
   });
 
   app.delete(v1('/projects/:projectId/members/:userId'), async (req, reply) => {
@@ -738,6 +729,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     // Anyone can leave a project; removing someone else is for owners.
     await requireProjectRole(db, actor, projectId, userId === actor.id ? 'viewer' : 'owner');
     await db.transaction(async (tx) => {
+      // The person first, before any row: leaving, their deletion would otherwise wait for
+      // their membership here while this waits for their row (decision 0134).
+      await lockAccount(tx, userId);
       await lockMembers(tx, projectId, actor.id, userId === actor.id ? 'viewer' : 'owner');
       const [current] = await tx
         .select({ role: projectMember.role })

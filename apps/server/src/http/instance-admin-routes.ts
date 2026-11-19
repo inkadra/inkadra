@@ -334,7 +334,9 @@ export function registerInstanceAdminRoutes(
         .select()
         .from(user)
         .where(and(eq(user.id, userId), notTestAccount))
-        .for('update');
+        // Not `update`: the audit event below refers to the actor, a key-share lock on their row,
+        // and two administrators changing each other would each wait for the other's.
+        .for('no key update');
       if (!target) throw new HttpError('not_found', 'Member not found.');
       if (
         target.role === 'admin' &&
