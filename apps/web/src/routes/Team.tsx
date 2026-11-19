@@ -347,41 +347,50 @@ export function Team() {
           {invitations.length === 0 ? (
             <p className="settings-card__empty settings-muted">{t('admin.noInvitations')}</p>
           ) : (
-            invitations.map((i) => (
-              <Row
-                key={i.id}
-                anchor={`invite:${i.id}`}
-                className="team-pending"
-                icon={i.kind === 'email' ? 'mail' : 'link'}
-                label={i.email ?? t('admin.linkInvite')}
-                help={t(i.kind === 'link' ? 'admin.linkPending' : 'admin.expires', {
-                  when: date(i.expiresAt),
-                })}
-              >
-                {i.kind === 'link' && i.url && <CopyButton text={i.url} />}
-                {i.kind === 'email' && (
+            invitations.map((i) => {
+              const help = t(i.kind === 'link' ? 'admin.linkPending' : 'admin.expires', {
+                when: date(i.expiresAt),
+              });
+              // Each row's buttons carry its name, so two invitations never share "Revoke".
+              const name = i.email ?? `${t('admin.linkInvite')}, ${help}`;
+              return (
+                <Row
+                  key={i.id}
+                  anchor={`invite:${i.id}`}
+                  className="team-pending"
+                  icon={i.kind === 'email' ? 'mail' : 'link'}
+                  label={i.email ?? t('admin.linkInvite')}
+                  help={help}
+                >
+                  {i.kind === 'link' && i.url && (
+                    <CopyButton text={i.url} label={t('admin.copyFor', { name })} />
+                  )}
+                  {i.kind === 'email' && (
+                    <Button
+                      variant="ghost"
+                      aria-label={t('admin.resendFor', { name })}
+                      disabled={busy || !instance?.auth.email}
+                      data-ink-tooltip={!instance?.auth.email ? t('admin.smtpRequired') : undefined}
+                      onClick={() =>
+                        void run(async () =>
+                          setCreated(await api.post<Invitation>(`/invitations/${i.id}/resend`, {})),
+                        )
+                      }
+                    >
+                      {t('admin.resend')}
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
-                    disabled={busy || !instance?.auth.email}
-                    data-ink-tooltip={!instance?.auth.email ? t('admin.smtpRequired') : undefined}
-                    onClick={() =>
-                      void run(async () =>
-                        setCreated(await api.post<Invitation>(`/invitations/${i.id}/resend`, {})),
-                      )
-                    }
+                    disabled={busy}
+                    aria-label={t('admin.revokeFor', { name })}
+                    onClick={() => void run(() => api.delete(`/invitations/${i.id}`))}
                   >
-                    {t('admin.resend')}
+                    {t('admin.revoke')}
                   </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => void run(() => api.delete(`/invitations/${i.id}`))}
-                >
-                  {t('admin.revoke')}
-                </Button>
-              </Row>
-            ))
+                </Row>
+              );
+            })
           )}
         </Card>
       )}

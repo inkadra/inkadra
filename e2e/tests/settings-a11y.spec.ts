@@ -59,6 +59,18 @@ test('settings controls have distinct accessible names', async ({ page, baseURL 
       email: `settings-a11y-${i}-${Date.now()}@example.com`,
       password: 'correct-horse-battery',
     });
+  // Two pending invitations, so each row's Resend and Revoke need their own name (#939).
+  for (const i of [0, 1]) {
+    const res = await fetch(`${base}/api/v1/invitations`, {
+      method: 'POST',
+      headers: { cookie, origin: base, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'email',
+        email: `settings-a11y-pending-${i}-${Date.now()}@example.com`,
+      }),
+    });
+    expect(res.status).toBe(201);
+  }
   await page.context().addCookies(
     cookie.split('; ').map((pair) => {
       const index = pair.indexOf('=');
