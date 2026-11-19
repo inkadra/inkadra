@@ -85,8 +85,16 @@ async function mockGuest(page: Page, password = false) {
   return state;
 }
 
-async function poll(page: Page) {
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+/**
+ * Pokes the page's poller with a focus until `until` passes. A poke that lands while a request
+ * is still in flight is dropped on purpose (focus and visibilitychange often come together), and
+ * that request may carry the answer from before the test changed `state`; the next poke asks again.
+ */
+async function poll(page: Page, until: () => Promise<unknown>) {
+  await expect(async () => {
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await until();
+  }).toPass({ timeout: 10_000 });
 }
 
 test('blocked cookies stop after a single successful open', async ({ page }) => {
@@ -104,8 +112,9 @@ test('a password entered again after a minute starts a fresh cookie check', asyn
   await page.getByRole('button', { name: 'Apri la board' }).click();
   await expect(page.locator('.guest__header')).toBeVisible();
   state.snapshot = (route) => deny(route, 'password_required');
-  await poll(page);
-  await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
+  await poll(page, () =>
+    expect(page.getByLabel('Password', { exact: true })).toBeVisible({ timeout: 1000 }),
+  );
   await page.clock.setFixedTime(epoch + 120_000);
   state.snapshot = (route) => deny(route);
   await page.getByLabel('Password', { exact: true }).fill('new-password');
@@ -135,8 +144,7 @@ test('a late no_session from the old guest cannot stop a reopened page', async (
     }
     return route.fulfill({ json: snapshot });
   };
-  await poll(page);
-  await expect.poll(() => state.opens).toBe(2);
+  await poll(page, () => expect.poll(() => state.opens, { timeout: 1000 }).toBe(2));
   await expect(page.locator('.guest__header')).toBeVisible();
   const response = page.waitForResponse(
     (r) => r.request().method() === 'POST' && r.status() === 401,
@@ -145,8 +153,9 @@ test('a late no_session from the old guest cannot stop a reopened page', async (
   await response;
   // Another successful poll proves the late error did not unmount or stop the recovered page.
   const count = state.snapshots;
-  await poll(page);
-  await expect.poll(() => state.snapshots).toBeGreaterThan(count);
+  await poll(page, () =>
+    expect.poll(() => state.snapshots, { timeout: 1000 }).toBeGreaterThan(count),
+  );
   await expect(page.getByLabel('Scrivi un commento')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Servono i cookie' })).toHaveCount(0);
   expect(state.opens).toBe(2);
@@ -160,8 +169,9 @@ test('a 304 refreshes old session rights and keeps team controls out', async ({ 
   state.session.sharedBy = 'Updated editor';
   state.snapshot = (route) => route.fulfill({ status: 304 });
   await page.clock.setFixedTime(epoch + 61_000);
-  await poll(page);
-  await expect(page.getByText('Ospite · può vedere')).toBeVisible();
+  await poll(page, () =>
+    expect(page.getByText('Ospite · può vedere')).toBeVisible({ timeout: 1000 }),
+  );
   await expect(page.getByLabel('Scrivi un commento')).toHaveCount(0);
   await expect(page.locator('.guest__shared')).toHaveText('Condiviso da Updated editor');
   expect(state.checks).toBe(1);
@@ -197,14 +207,16 @@ test('a late successful session update cannot restore the old guest state', asyn
     }
     return route.fulfill({ json: snapshot });
   };
-  await poll(page);
-  await expect(page.getByText('Sei Recovered (ospite)')).toBeVisible();
+  await poll(page, () =>
+    expect(page.getByText('Sei Recovered (ospite)')).toBeVisible({ timeout: 1000 }),
+  );
   const response = page.waitForResponse((r) => r.request().method() === 'PATCH');
   await pending!.fulfill({ json: { ...session, guest: { id: 'guest', name: 'Old response' } } });
   await response;
   const count = state.snapshots;
-  await poll(page);
-  await expect.poll(() => state.snapshots).toBeGreaterThan(count);
+  await poll(page, () =>
+    expect.poll(() => state.snapshots, { timeout: 1000 }).toBeGreaterThan(count),
+  );
   await expect(page.getByText('Sei Recovered (ospite)')).toBeVisible();
   await expect(page.getByText('Sei Old response (ospite)')).toHaveCount(0);
 });

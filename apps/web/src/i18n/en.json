@@ -2068,6 +2068,26 @@
       "liveCopy": "copy at {{percent}}%",
       "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it.",
       "liveOnlyNote": "«Live» qualities are converted by the graphics card as you watch, without storing a copy."
+    },
+    "player": {
+      "play": "Play",
+      "pause": "Pause",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "volume": "Volume",
+      "seek": "Position in the video",
+      "openViewer": "Open in viewer",
+      "previousFrame": "Previous frame (,)",
+      "nextFrame": "Next frame (.)",
+      "back10": "Back 10 seconds",
+      "forward10": "Forward 10 seconds",
+      "speed": "Speed: {{rate}}×",
+      "fullscreen": "Full screen (F)",
+      "exitFullscreen": "Exit full screen (F)",
+      "pip": "Picture in picture",
+      "loading": "Loading",
+      "showClock": "Show minutes and seconds",
+      "showTimecode": "Show timecode"
     }
   },
   "search": {
@@ -5453,7 +5473,7 @@
           },
           "3": {
             "title": "Video quality",
-            "text": "In the viewer, Quality picks the resolution; Auto follows the connection."
+            "text": "On the card and in the viewer, Quality picks the resolution; Auto follows the connection."
           }
         }
       },

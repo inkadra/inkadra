@@ -675,11 +675,6 @@ button.fcard__play:focus-visible {
   object-fit: contain;
   background: #000;
 }
-.fcard__video:focus-visible {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: -2px;
-  box-shadow: none;
-}
 .fcard__play svg {
   fill: currentColor;
 }
@@ -3972,6 +3967,15 @@ button.crumb--editable:focus-visible {
 .viewer__stage-nav--next {
   right: 20px;
 }
+/* Over a phone-sized video they would cover its controls (decision 0133): beside the thumbnails. */
+.viewer__stage:has(.vplayer--phone) .viewer__stage-nav {
+  top: auto;
+  bottom: 48px;
+  transform: none;
+}
+.viewer__stage:has(.vplayer--phone) .viewer__stage-nav:hover:not(:disabled) {
+  transform: scale(1.05);
+}
 .viewer__thumbnails {
   position: absolute;
   bottom: 48px;
@@ -5910,37 +5914,417 @@ button.card__play {
   resize: none;
 }
 
-/* The Quality menu over a video in the viewer (decision 0128). */
-.viewer-quality {
-  position: absolute;
-  z-index: 1;
-  top: 10px;
-  right: 10px;
+/*
+ * Inkadra's video player (decision 0133): a dark bar over the video in both themes, laid out by
+ * the player's own width (.vplayer--compact, .vplayer--phone). Only opacity and transform move.
+ */
+.vplayer {
+  --vplayer-fg: #ededed;
+  --vplayer-muted: #c8c8cc;
+  --vplayer-chip: rgb(255 255 255 / 0.12);
+  --vplayer-chip-hover: rgb(255 255 255 / 0.2);
+  --vplayer-btn: 36px;
+  --vplayer-pad: 12px;
+  position: relative;
   display: grid;
-  justify-items: end;
-  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--vplayer-fg);
+  -webkit-tap-highlight-color: transparent;
 }
-.viewer-quality__button {
-  display: inline-flex;
+.vplayer > video {
+  grid-area: 1 / 1;
+}
+.vplayer--card {
+  width: 100%;
+  height: 100%;
+}
+.vplayer--viewer {
+  --vplayer-btn: 40px;
+  --vplayer-pad: 16px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-xs);
+}
+.vplayer--compact {
+  --vplayer-btn: 32px;
+  --vplayer-pad: 6px;
+}
+.vplayer--phone {
+  --vplayer-btn: 44px;
+  --vplayer-pad: 8px;
+}
+.vplayer:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  place-items: center;
+  background: #000;
+}
+.vplayer:fullscreen > video {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+.vplayer__scrim {
+  position: absolute;
+  inset: auto 0 0;
+  height: min(60%, 150px);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0));
+  pointer-events: none;
+}
+.vplayer__bar {
+  position: absolute;
+  left: var(--vplayer-pad);
+  right: var(--vplayer-pad);
+  bottom: calc(var(--vplayer-pad) / 2 + 2px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vplayer__scrim,
+.vplayer__bar,
+.vplayer__center {
+  transition:
+    opacity var(--ink-dur-base) var(--ink-ease-out),
+    transform var(--ink-dur-base) var(--ink-ease-out);
+}
+/* Playing without the pointer moving: the controls go, unless the keyboard is in them or a menu is open. */
+.vplayer--idle:not(:has(:focus-visible, [aria-expanded="true"])) {
+  cursor: none;
+}
+.vplayer--idle:not(:has(:focus-visible, [aria-expanded="true"]))
+  :is(.vplayer__scrim, .vplayer__bar, .vplayer__center) {
+  opacity: 0;
+  pointer-events: none;
+}
+.vplayer--idle:not(:has(:focus-visible, [aria-expanded="true"])) .vplayer__bar {
+  transform: translateY(4px);
+}
+.vplayer__row {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 10px;
+  gap: 2px;
+  min-width: 0;
+}
+.vplayer__btn,
+.vplayer__chip,
+.vplayer .viewer-quality__button,
+.vplayer__time--button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
   border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: rgb(0 0 0 / 0.62);
-  color: #fff;
-  font-size: 12px;
+  color: var(--vplayer-fg);
+  font: inherit;
   cursor: pointer;
 }
-.viewer-quality__button:focus-visible {
+.vplayer__btn {
+  width: var(--vplayer-btn);
+  height: var(--vplayer-btn);
+  padding: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+}
+.vplayer__btn:hover,
+.vplayer__time--button:hover {
+  background: var(--vplayer-chip);
+}
+.vplayer__btn svg {
+  stroke-width: 2;
+}
+.vplayer__toggle svg {
+  fill: currentColor;
+}
+.vplayer__chip,
+.vplayer .viewer-quality__button {
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--ink-radius-full);
+  background: var(--vplayer-chip);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.vplayer__chip:hover,
+.vplayer .viewer-quality__button:hover,
+.vplayer .viewer-quality__button[aria-expanded="true"] {
+  background: var(--vplayer-chip-hover);
+}
+.vplayer .viewer-quality__button svg {
+  stroke-width: 2.4;
+  transform: rotate(180deg);
+}
+.vplayer .viewer-quality__button[aria-expanded="true"] svg {
+  transform: none;
+}
+.vplayer--compact .vplayer__chip,
+.vplayer--compact .viewer-quality__button {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.vplayer--compact .viewer-quality__button svg {
+  display: none;
+}
+.vplayer
+  :is(
+    .vplayer__btn,
+    .vplayer__chip,
+    .vplayer__time--button,
+    .viewer-quality__button,
+    .vplayer__timeline
+  ):focus-visible {
   outline: none;
   box-shadow: var(--ink-focus-ring);
 }
+.vplayer__time {
+  flex: none;
+  padding: 0 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vplayer--card .vplayer__time,
+.vplayer--compact .vplayer__time {
+  font-size: 12px;
+}
+.vplayer__time--button {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+}
+.vplayer__total {
+  color: var(--vplayer-muted);
+  white-space: pre;
+}
+.vplayer__spacer {
+  flex: 1;
+  min-width: 0;
+}
+.vplayer__volume {
+  --ink-slider-track: linear-gradient(
+    to right,
+    var(--vplayer-fg) var(--ink-slider-fill, 0%),
+    rgb(255 255 255 / 0.3) var(--ink-slider-fill, 0%)
+  );
+  --ink-slider-thumb: var(--vplayer-fg);
+  --ink-slider-border-color: #1c1c1f;
+  --ink-slider-ring: none;
+  --ink-slider-size: 14px;
+  width: 84px;
+  margin: 0 6px;
+}
+.vplayer__volume:focus-visible {
+  --ink-slider-ring: var(--ink-focus-ring);
+}
+/* Timeline: track, what is loaded, what was played in the accent colour, a thumb and the time under the pointer. */
+.vplayer__timeline {
+  --played: 0;
+  --buffered: 0;
+  --hover: 0;
+  position: relative;
+  height: 16px;
+  border-radius: var(--ink-radius-full);
+  cursor: pointer;
+  touch-action: none;
+}
+.vplayer--phone .vplayer__timeline {
+  height: 20px;
+  margin: 0 8px;
+}
+.vplayer__track {
+  position: absolute;
+  inset: 6px 0;
+  overflow: hidden;
+  border-radius: var(--ink-radius-full);
+  background: rgb(255 255 255 / 0.2);
+}
+.vplayer--viewer .vplayer__track {
+  inset: 5.5px 0;
+}
+.vplayer__track i {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+}
+.vplayer__buffered {
+  background: rgb(255 255 255 / 0.35);
+  transform: scaleX(var(--buffered));
+}
+.vplayer__played {
+  background: var(--ink-accent-primary);
+  transform: scaleX(var(--played));
+}
+.vplayer__thumb-track,
+.vplayer__tip-track {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.vplayer__thumb-track {
+  transform: translateX(calc(var(--played) * 100%));
+}
+.vplayer__tip-track {
+  transform: translateX(calc(var(--hover) * 100%));
+}
+.vplayer__thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  transform: translate(-50%, -50%);
+}
+.vplayer--viewer .vplayer__thumb {
+  width: 14px;
+  height: 14px;
+}
+.vplayer--compact .vplayer__thumb {
+  width: 10px;
+  height: 10px;
+}
+.vplayer__tip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  padding: 3px 8px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: var(--ink-radius-xs);
+  background: #232327;
+  color: var(--vplayer-fg);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity var(--ink-dur-fast) var(--ink-ease-out);
+}
+.vplayer__timeline:hover .vplayer__tip,
+.vplayer__timeline.is-scrubbing .vplayer__tip {
+  opacity: 1;
+}
+@media (hover: none) {
+  .vplayer__timeline:not(.is-scrubbing) .vplayer__tip {
+    opacity: 0;
+  }
+}
+/* Phone: big buttons in the middle (−10 s, play, +10 s). */
+.vplayer__center {
+  position: absolute;
+  inset: 0 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  pointer-events: none;
+}
+.vplayer__center > * {
+  pointer-events: auto;
+}
+.vplayer__btn--round {
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.4);
+}
+.vplayer__btn--big {
+  width: 56px;
+  height: 56px;
+}
+.vplayer__spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border: 3px solid rgb(255 255 255 / 0.25);
+  border-top-color: var(--vplayer-fg);
+  border-radius: 50%;
+  animation: vplayer-spin 900ms linear infinite;
+  pointer-events: none;
+}
+@keyframes vplayer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vplayer__scrim,
+  .vplayer__bar,
+  .vplayer__center,
+  .vplayer__tip {
+    transition: none;
+  }
+  .vplayer--idle .vplayer__bar {
+    transform: none;
+  }
+  .vplayer__spinner {
+    animation: none;
+  }
+}
+
+/* The Quality chip of the player and its menu (decisions 0128, 0133). */
+.viewer-quality {
+  position: relative;
+  flex: none;
+}
+.viewer-quality__pop {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  color: var(--ink-text-primary);
+}
 .viewer-quality__menu {
-  /* Under its button, not over it: `.menu` places popovers on their own elsewhere. */
+  /* Over its chip, inside the player: `.menu` places popovers on their own elsewhere. */
   position: static;
+  width: max-content;
   min-width: 210px;
+  max-width: min(320px, calc(100vw - 32px));
+  max-height: max(120px, calc(var(--vplayer-h, 400px) - 64px));
+  overflow-y: auto;
+  --ink-origin: bottom right;
+}
+.viewer-quality__title {
+  padding: 6px 8px 4px;
+  color: var(--ink-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Phone: the menu is a sheet from the bottom, over a scrim. */
+.vplayer--phone .viewer-quality__pop {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  align-content: end;
+  justify-items: stretch;
+  background: rgb(10 10 12 / 0.5);
+}
+.vplayer--phone .viewer-quality__menu {
+  width: 100%;
+  max-width: none;
+  max-height: 70vh;
+  padding: 8px 8px 28px;
+  border-width: 1px 0 0;
+  border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
+  --ink-origin: bottom center;
+}
+.vplayer--phone .viewer-quality__item {
+  min-height: 48px;
+  font-size: 15px;
+}
+.vplayer--phone .viewer-quality__note {
+  order: -1;
+  justify-self: center;
 }
 .viewer-quality__note {
   max-width: 240px;

@@ -10,6 +10,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AudioPlayer, useWaveform } from './AudioPlayer.tsx';
@@ -32,7 +33,14 @@ import { MapSurface, useExploring } from './MapExplore.tsx';
 import { formatClimb, formatDistance } from './maps.ts';
 import { rungLabel } from './QualityMenu.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
-import { type PlaybackSource, playbackSource, useVideoSource } from './video-source.ts';
+import { VideoPlayer } from './VideoPlayer.tsx';
+import {
+  type PlaybackSource,
+  playbackSource,
+  type QualityChoice,
+  useKeepPosition,
+  useVideoSource,
+} from './video-source.ts';
 
 type FileElement = Extract<Element, { type: 'file' }>;
 
@@ -445,22 +453,25 @@ function RungsProgress({
 
 function CardVideo({
   element,
+  asset,
   source,
   poster,
-  name,
   hadFocus,
 }: {
   element: FileElement;
+  asset: Asset;
   source: PlaybackSource;
   poster: string;
-  name: string;
   hadFocus: RefObject<boolean>;
 }) {
   const { t } = useTranslation();
   const { openElement } = useBoard();
   const video = useRef<HTMLVideoElement>(null);
-  // Auto on the card: the playlist where there is one, the plain file otherwise.
-  const { src, hls } = useVideoSource(video, source);
+  // Auto on the card unless the Quality chip says otherwise (decision 0133).
+  const [quality, setQuality] = useState<QualityChoice>('auto');
+  const rungs = asset.playback?.renditions ?? [];
+  const { src, hls, height } = useVideoSource(video, source, quality, rungs);
+  useKeepPosition(video, quality);
   // hls.js attaches after the first play was asked: ask again once it feeds the video.
   useEffect(() => {
     if (hls) void video.current?.play()?.catch(() => {});
@@ -471,31 +482,39 @@ function CardVideo({
   // effect, because its cleanup still finds the video in the page and can read the focus.
   useLayoutEffect(() => {
     const el = video.current;
-    if (!el) return;
+    const player = el?.parentElement;
+    if (!el || !player) return;
     hadFocus.current = false;
-    el.focus({ preventScroll: true });
+    // The keyboard goes to the player: Space pauses, the arrows seek (decision 0133).
+    player.querySelector<HTMLElement>('.vplayer__toggle')?.focus({ preventScroll: true });
     void el.play()?.catch(() => {});
     return () => {
-      hadFocus.current = document.activeElement === el;
+      hadFocus.current = player.contains(document.activeElement);
       el.pause();
     };
   }, [hadFocus]);
   return (
-    // biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions
-    <video
-      ref={video}
-      className="fcard__video"
-      data-tour="video"
-      data-play-link={id}
-      aria-label={t('board.menu.videoPlayer', { title: name })}
-      src={src}
-      poster={poster || undefined}
-      controls
-      playsInline
-      onEnded={() => stopInline(id)}
-      onError={() => {
-        stopInline(id);
-        openElement?.(element);
+    <VideoPlayer
+      videoRef={video}
+      variant="card"
+      tour="video"
+      playLink={id}
+      frameRate={asset.frameRate}
+      durationMs={asset.durationMs}
+      quality={
+        rungs.length > 0 ? { asset, choice: quality, onChoose: setQuality, playing: height } : null
+      }
+      onOpenViewer={openElement ? () => openElement(element) : undefined}
+      video={{
+        className: 'fcard__video',
+        'aria-label': t('board.menu.videoPlayer', { title: asset.filename }),
+        src,
+        poster: poster || undefined,
+        onEnded: () => stopInline(id),
+        onError: () => {
+          stopInline(id);
+          openElement?.(element);
+        },
       }}
     />
   );
@@ -551,9 +570,9 @@ function VideoPreview({
       {playing && source ? (
         <CardVideo
           element={element}
+          asset={asset}
           source={playable}
           poster={poster}
-          name={asset.filename}
           hadFocus={hadFocus}
         />
       ) : (

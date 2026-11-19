@@ -2068,6 +2068,26 @@
       "liveCopy": "copia al {{percent}} %",
       "liveNote": "Las calidades «al vuelo» las convierte la tarjeta gráfica mientras miras; cuando la copia está lista se pasa a ella.",
       "liveOnlyNote": "Las calidades «al vuelo» las convierte la tarjeta gráfica mientras miras, sin guardar una copia."
+    },
+    "player": {
+      "play": "Reproducir",
+      "pause": "Pausa",
+      "mute": "Silenciar",
+      "unmute": "Activar sonido",
+      "volume": "Volumen",
+      "seek": "Posición en el vídeo",
+      "openViewer": "Abrir en el visor",
+      "previousFrame": "Fotograma anterior (,)",
+      "nextFrame": "Fotograma siguiente (.)",
+      "back10": "Atrás 10 segundos",
+      "forward10": "Adelante 10 segundos",
+      "speed": "Velocidad: {{rate}}×",
+      "fullscreen": "Pantalla completa (F)",
+      "exitFullscreen": "Salir de pantalla completa (F)",
+      "pip": "Imagen en imagen",
+      "loading": "Cargando",
+      "showClock": "Mostrar minutos y segundos",
+      "showTimecode": "Mostrar el código de tiempo"
     }
   },
   "search": {
@@ -5453,7 +5473,7 @@
           },
           "3": {
             "title": "Calidad del vídeo",
-            "text": "En el visor, «Calidad» elige la resolución; Auto sigue la conexión."
+            "text": "En la tarjeta y en el visor, «Calidad» elige la resolución; Auto sigue la conexión."
           }
         }
       },

@@ -146,7 +146,7 @@ describe('VideoUnplayable overlay', () => {
 });
 
 describe('MediaViewer video playback', () => {
-  it('renders a video element with controls and poster initially', () => {
+  it("renders a video in Inkadra's player, without the browser's controls", () => {
     mockState.asset = videoAsset;
     vi.stubGlobal('window', {
       innerWidth: 1920,
@@ -173,7 +173,9 @@ describe('MediaViewer video playback', () => {
 
     expect(html).toContain('<video');
     expect(html).toContain('src="/api/v1/assets/video-prores/file"');
-    expect(html).toContain('controls=""');
+    expect(html).not.toContain('controls=""');
+    expect(html).toContain('data-video-player');
+    expect(html).toContain('aria-label="viewer.player.play"');
     expect(html).toContain('poster="https://example.com/poster.jpg"');
 
     vi.unstubAllGlobals();
@@ -524,11 +526,13 @@ describe('mounted viewer error events', () => {
       expect(container.querySelector('.viewer__unplayable a')?.getAttribute('href')).toBe(
         videoAsset.url,
       );
-      expect(container.querySelector('video')?.style.display).toBe('none');
+      expect(container.querySelector<HTMLElement>('[data-video-player]')?.style.display).toBe(
+        'none',
+      );
       mockState.asset = { ...videoAsset, id: 'other', url: '/other-video' };
       await render(member({ ...fileElement, assetId: 'other' }));
       expect(container.querySelector('.viewer__unplayable')).toBeNull();
-      expect(container.querySelector('video')?.style.display).toBe('');
+      expect(container.querySelector<HTMLElement>('[data-video-player]')?.style.display).toBe('');
     },
   );
 
@@ -536,7 +540,7 @@ describe('mounted viewer error events', () => {
     await render(member());
     await fail(code);
     expect(container.querySelector('.viewer__unplayable')).toBeNull();
-    expect(container.querySelector('video')?.style.display).toBe('');
+    expect(container.querySelector<HTMLElement>('[data-video-player]')?.style.display).toBe('');
   });
 
   it('offers only the guest download URL after a codec error, and removes it when rights change', async () => {
