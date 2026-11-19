@@ -328,14 +328,24 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     if (!live) throw new HttpError('not_found', 'Project not found.');
   }
 
-  /** Checks the actor may change the access of `userId` on the board and give `role`. */
-  async function checkGrant(actor: Actor, boardId: string, userId: string, role?: ProjectRole) {
-    const mine = await requireBoardRole(db, actor, boardId, 'editor');
+  /**
+   * Checks the actor may change the access of `userId` on the board and give `role`. Run before
+   * the transaction (fail fast, find the project) and again inside it once `lockGrant` holds both
+   * accounts: a role change of either person committed meanwhile is then seen.
+   */
+  async function checkGrant(
+    q: Pick<Database, 'select' | 'execute'>,
+    actor: Actor,
+    boardId: string,
+    userId: string,
+    role?: ProjectRole,
+  ) {
+    const mine = await requireBoardRole(q, actor, boardId, 'editor');
     if (mine.board.parentBoardId === null)
       throw new HttpError('bad_request', 'For the root board, change the project members.');
     if (role && higher(role, mine.role))
       throw new HttpError('forbidden', 'You cannot give a role higher than yours.');
-    const theirs = await boardAccess(db, { id: userId }, boardId);
+    const theirs = await boardAccess(q, { id: userId }, boardId);
     if (theirs?.role && higher(theirs.role, mine.role))
       throw new HttpError('forbidden', 'This person has more access than you here.');
     return mine;
@@ -348,11 +358,12 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const expiresAt = readExpiry(requested, role);
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
-    const mine = await checkGrant(actor, boardId, userId, role);
+    const { board: found } = await checkGrant(db, actor, boardId, userId, role);
     return db.transaction(async (tx) => {
-      await lockGrant(tx, actor.id, userId, mine.board.projectId);
+      await lockGrant(tx, actor.id, userId, found.projectId);
       const [still] = await tx.select({ id: user.id }).from(user).where(eq(user.id, userId));
       if (!still) throw new HttpError('not_found', 'User not found.');
+      const mine = await checkGrant(tx, actor, boardId, userId, role);
       const [current] = await tx
         .select({ expiresAt: boardGrant.expiresAt })
         .from(boardGrant)
@@ -400,9 +411,10 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   app.delete(v1('/boards/:boardId/grants/:userId'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, userId } = GrantParams.parse(req.params);
-    const mine = await checkGrant(actor, boardId, userId);
+    const { board: found } = await checkGrant(db, actor, boardId, userId);
     await db.transaction(async (tx) => {
-      await lockGrant(tx, actor.id, userId, mine.board.projectId);
+      await lockGrant(tx, actor.id, userId, found.projectId);
+      const mine = await checkGrant(tx, actor, boardId, userId);
       const removed = await tx
         .delete(boardGrant)
         .where(and(eq(boardGrant.boardId, boardId), eq(boardGrant.userId, userId)))

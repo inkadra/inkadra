@@ -14,6 +14,7 @@ import { createDatabase, type Database, runMigrations } from '../db/client.ts';
 import {
   asset,
   auditEvent,
+  boardGrant,
   creationRequest,
   invitation,
   notification,
@@ -538,6 +539,75 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
         expect(deleted.statusCode).toBe(204);
         expect(removed.statusCode).toBe(401);
       }
+    }
+  });
+
+  it('refuses a grant by an editor demoted meanwhile, after it waited for them', async () => {
+    const p = await create('root', 'Da declassare');
+    const sub = await call('root', 'POST', `/projects/${p.id}/boards`, {
+      parentBoardId: p.rootBoardId,
+      title: 'Sotto',
+    });
+    expect(sub.statusCode).toBe(201);
+    for (const via of ['put', 'delete'] as const) {
+      const editor = `declassato-${via}`;
+      const editorId = await signUp(editor);
+      const guestId = await signUp(`ospite-${via}`);
+      const member = `/projects/${p.id}/members/${editorId}`;
+      expect((await call('root', 'PUT', member, { role: 'editor' })).statusCode).toBe(200);
+      const path = `/boards/${sub.json().id}/grants/${guestId}`;
+      if (via === 'delete')
+        expect((await call('root', 'PUT', path, { role: 'viewer' })).statusCode).toBe(200);
+      // The editor passes the check before the transaction, then waits for their account.
+      const [demoted, changed] = await inOrder(
+        () => call('root', 'PUT', member, { role: 'viewer' }),
+        () =>
+          via === 'put'
+            ? call(editor, 'PUT', path, { role: 'viewer' })
+            : call(editor, 'DELETE', path),
+      );
+      expect(demoted.statusCode).toBe(200);
+      expect(changed.statusCode).toBe(403);
+      const grants = await db
+        .select()
+        .from(boardGrant)
+        .where(sql`${boardGrant.boardId} = ${sub.json().id} and ${boardGrant.userId} = ${guestId}`);
+      expect(grants.length).toBe(via === 'put' ? 0 : 1);
+    }
+  });
+
+  it('answers a grant to a person deleted right after it', async () => {
+    const p = await create('root', 'Risposta concessa');
+    const sub = await call('root', 'POST', `/projects/${p.id}/boards`, {
+      parentBoardId: p.rootBoardId,
+      title: 'Sotto',
+    });
+    expect(sub.statusCode).toBe(201);
+    const guestId = await signUp('concessa-poi-via');
+    const transaction = db.transaction.bind(db);
+    let fired = false;
+    let deletion: Awaited<ReturnType<typeof deleteMe>> | undefined;
+    // Their deletion commits right after the transaction that granted them the board.
+    const spy = vi.spyOn(db, 'transaction').mockImplementation((async (
+      ...args: Parameters<typeof transaction>
+    ) => {
+      const result = await transaction(...args);
+      const [grant] = await db.select().from(boardGrant).where(eq(boardGrant.userId, guestId));
+      if (grant && !fired) {
+        fired = true;
+        deletion = await deleteMe('concessa-poi-via');
+      }
+      return result;
+    }) as never);
+    try {
+      const granted = await call('root', 'PUT', `/boards/${sub.json().id}/grants/${guestId}`, {
+        role: 'viewer',
+      });
+      expect(deletion?.statusCode).toBe(204);
+      expect(granted.statusCode).toBe(200);
+      expect(granted.json().user.id).toBe(guestId);
+    } finally {
+      spy.mockRestore();
     }
   });
 
