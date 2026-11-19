@@ -69,20 +69,22 @@ never collides with the one-bigint keys still in use). The keys and the order li
 | -------------------------- | ----------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------ |
 | 1. `classification-uses`   | `hashtext('classification-uses')`, one key, unchanged | shared / exclusive | 0126; **plus** creation, type change and import, shared, before the catalog.   |
 | 2. `classifications`       | `(10892, 1)`                                          | exclusive          | catalog save and `reviveUsed`: the two settings rows.                          |
-| 3. `account:<user>`        | `(10894, hashtext(<user id>))`                        | exclusive          | anything that creates for, adds, changes or deletes that person (below).       |
-| 4. Idempotency key         | `hashtextextended(<key hash>, 0)`, one key, unchanged | exclusive          | `rememberedCreation`, now after the locks above.                               |
-| 5. `instance-roles`        | `(10892, 2)`                                          | shared / exclusive | exclusive for a change of role or activity; shared for every admin-only write. |
-| 6. `setting:<key>`         | `(10892, 3)` administration, `4` storage, `5` backup  | exclusive          | each `instance_setting` read-modify-write.                                     |
-| 7. Rows                    | `FOR UPDATE`                                          |                    | `user` → `project` (by id) → `project_member` → other rows.                    |
-| 8. `storage-limits[:user]` | `hashtext(...)`, one key, unchanged                   | exclusive          | `assertSpace`, then only `asset` (by id) → `storage_total`.                    |
+| 3. `account-deletions`     | `(10892, 6)`                                          | exclusive          | account deletion only, so two never run together (below).                      |
+| 4. `account:<user>`        | `(10894, hashtext(<user id>))`                        | exclusive          | anything that creates for, adds, changes or deletes that person (below).       |
+| 5. Idempotency key         | `hashtextextended(<key hash>, 0)`, one key, unchanged | exclusive          | `rememberedCreation`, now after the locks above.                               |
+| 6. `instance-roles`        | `(10892, 2)`                                          | shared / exclusive | exclusive for a change of role or activity; shared for every admin-only write. |
+| 7. `setting:<key>`         | `(10892, 3)` administration, `4` storage, `5` backup  | exclusive          | each `instance_setting` read-modify-write.                                     |
+| 8. Rows                    | `FOR UPDATE`                                          |                    | `user` → `project` (by id) → `project_member` → other rows.                    |
+| 9. `storage-limits[:user]` | `hashtext(...)`, one key, unchanged                   | exclusive          | `assertSpace`, then only `asset` (by id) → `storage_total`.                    |
 
 **Rule:** a transaction takes locks only in this order, may skip any, and never takes an earlier
-one after a later one; no advisory lock after its first row lock, except the storage lock (8).
+one after a later one; no advisory lock after its first row lock, except the storage lock (9).
 That one is a leaf: whoever holds it only inserts or finishes asset rows and updates the person's
 total, and no path waits for it while holding a row an upload needs. So it can stay at the end of
 an import, held only for the files, as #879 put it. Taking it first would hold the instance-wide
 `storage-limits` key, once a total is set, for a whole import. Where several `account` locks are
-ever needed, they go in ascending key, not id. Classes 10892 and 10894 are new; 377 stays release
+needed (`acceptInvitation`: the person and who invited them), they go in ascending key, not id.
+Classes 10892 and 10894 are new; 377 stays release
 news and updates; 10893 is left as it is.
 
 What each path takes:
@@ -90,7 +92,11 @@ What each path takes:
 - **Creation** (`POST /projects`): `classification-uses` shared, `account:<actor>`, then the
   idempotency key: `idempotentCreation` gets a callback run before `rememberedCreation`. Then it
   re-reads the actor (exists, not deactivated; otherwise 401) before any insert. No other person
-  waits.
+  waits. `idempotentCreation` takes the account and the re-check itself, after the callback, so
+  every creation through it (boards, comments, crew, schedule) does the same: an expired key's
+  row, deleted under the key, would otherwise wait for the person's deletion that waits for it,
+  and a lost race would end in an unmapped foreign-key error. The import route's transaction
+  that writes the transfer row and its key does the same.
 - **Import**: at the start of its transaction, before the fence: `classification-uses` shared,
   then `reviveUsed` once for the type, tags and frame text of the whole archive (collected from its
   documents before the transaction), so the later calls in `writeBoardIndex` find nothing left to
@@ -100,20 +106,42 @@ What each path takes:
   back archived through that same `reviveUsed`, as 0126 wants.
 - **Project change**: `classification-uses` shared when `type` changes, otherwise no advisory
   lock; then the project row (`lockMembers`), before the member rows a deletion cascades to.
-- **Account deletion**: `account:<self>`; then it reads its own role (a role change takes the same
-  account lock, so it cannot move) and takes `instance-roles` exclusive if it is an administrator,
-  for the last-admin check. Rows: its `user` row `FOR NO KEY UPDATE` first (not `FOR UPDATE`:
-  the person's own upload in progress holds a key-share lock on that row through its foreign key,
-  and `FOR UPDATE` would deadlock with it; role changes and other writes to the row still wait),
-  then every project it owns
-  **or** created, `ORDER BY id FOR UPDATE`, then assets as today. Two deletions run in parallel and
-  take shared projects in the same order; the final cascade only reaches rows below them.
+- **Account deletion**: `account-deletions`, then `account:<self>` and the same re-check (gone or
+  deactivated meanwhile: 401, so a second deletion of the same account records nothing). Then it
+  reads its own role (a role change takes the same account lock, so it cannot move) and takes
+  `instance-roles` exclusive if it is an administrator, for the last-admin check. Rows: its `user`
+  row `FOR NO KEY UPDATE` first (not `FOR UPDATE`: the person's own upload in progress holds a
+  project row and then takes a key-share lock on that row through its foreign key, and
+  `FOR UPDATE` would deadlock with it; role changes and other writes to the row still wait), then
+  every project it owns **or** created, `ORDER BY id FOR UPDATE`, then assets as today, and only
+  then its `user` row `FOR UPDATE`, before deleting the projects it owns alone. Deleting them
+  changes the person's storage total, and an upload of theirs into any other project takes a
+  key-share lock on the `user` row and then that total: the final delete of the row would wait
+  for it while it waited for the total. Not earlier: a file being saved (#879) changes the total
+  twice, and Postgres checks the foreign key of a row the transaction already changed again, a
+  key-share lock on the `user` row while it holds the file. Writes of the person that hold a row
+  inside a project deleted alone and only then refer to them (a board saved in another tab) can
+  still deadlock once and are answered 503; that is left as a commented shortcut.
+  Two deletions never run together: their cascades meet in rows that refer to both people (a
+  notification from one to the other, a comment by one in a project the other deletes) in an
+  order no lock taken beforehand can fix. Deletions are rare, and `account-deletions` is taken by
+  nothing else.
 - **Member change** (`PATCH /instance/members/:id`): `account:<target>`, then `instance-roles`
   always: exclusive when role or activity changes, shared otherwise (so the actor's in-transaction
-  admin check cannot race their own demotion), then the target row.
-- **Memberships** (`PUT /projects/:id/members/:userId`, `acceptInvitation`, `POST /invitations`
-  for an existing person, which moves into one transaction): `account:<target>` before any row
-  (the invitation `FOR UPDATE`, `lockMembers`), then a re-check that the target exists.
+  admin check cannot race their own demotion), then the target row `FOR NO KEY UPDATE`: the audit
+  event refers to the actor, a key-share lock on their row, and two administrators changing each
+  other would each wait for the row the other holds `FOR UPDATE`.
+- **Memberships** (`PUT` and `DELETE /projects/:id/members/:userId`, `acceptInvitation`,
+  `POST /invitations` for an existing person, which moves into one transaction): `account:<target>`
+  before any row (`lockMembers`), then a re-check that the target exists. A person leaving holds
+  their membership and records an event that refers to them: without the lock their deletion
+  would wait for one while this waited for the other. `acceptInvitation` reads the invitation
+  first without a lock, then takes the accounts of the person and of who invited them (a grant
+  and a notification refer to the inviter, whose deletion clears the invitation's `invited_by`),
+  re-checks the person (401), locks the project `FOR KEY SHARE` and only then the invitation
+  `FOR UPDATE`, which a project deletion reaches through its cascade. The answer (the member, the
+  access entry) is read inside the transaction: a deletion right after the commit would make it
+  a 500 or a 404.
 - **Settings**: `instance-roles` shared, then `setting:<key>`. Two settings no longer wait on each
   other; a demotion still cannot interleave with a write by the demoted admin.
 - **Catalog save**: `classification-uses` exclusive (every save, as now), `classifications`, then
@@ -159,14 +187,19 @@ Restoring an older backup runs it too: `restoreBackup` applies this version's mi
 data. No document schema change. `position-collation.test.ts` lists `project_member`.
 
 Every change lands with a test in `apps/server/src/http/*.test.ts` against the real Postgres;
-races run with `Promise.all` over many rounds and assert no `40P01` and no 500:
+races assert no `40P01` and no 500. A race that only runs requests side by side mostly tests
+whichever comes first (the password check alone takes long enough to decide it): the contested
+order is forced instead, every time, by a transaction holding a table or row lock that one side
+reaches first, and by waiting in `pg_stat_activity` until the other side waits too. The password
+check is stubbed. The cases:
 
 1. **No global wait**: user A holds a creation transaction open after its locks; B's creation and
    import and an admin's settings writes finish under a short `lock_timeout`.
 2. **Deletion vs creation**, with and without an `Idempotency-Key` whose row has expired: never an
    orphan project; the creation either commits first or answers 401.
 3. **Deletion vs import** by the same person: the import commits first or fails cleanly.
-4. **Deletion vs deletion**: two co-owners of the same projects, and two people each owning a
+4. **Deletion vs deletion**: one at a time, including two people with notifications from each to
+   the other; two co-owners of the same projects, and two people each owning a
    project the other created.
 5. **Deletion vs project change, member change, `PUT` member, invitation accept** for that person.
 6. **Classification removal vs creation, type change and import** with that value: the removal is
