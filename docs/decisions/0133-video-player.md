@@ -28,7 +28,9 @@ attachment, not footage, and has no copies to choose from.
   (volume, ±10 s and the total time go, m:ss, the chip names only the rung). The phone layout
   (−10 s, play, +10 s in the middle, a short row, the Quality menu as a sheet from the bottom)
   belongs to the device, not the player: a window under 768 px or a touch screen without a
-  mouse. A narrow portrait video on a desktop stays compact, with the menu over its chip.
+  mouse. A narrow portrait video on a desktop stays compact, with the menu over its chip; on a
+  phone, a player under 280 px keeps the phone layout with that short row, and under 184 px
+  only play stays in the middle.
 - The player's box never follows the stream: a card's fills its preview, a viewer's takes the
   stored size of the video, so the poster and every HLS level show at one size. On a card the
   bar keeps its screen size at and below 100% zoom (it is counter-scaled by the board's

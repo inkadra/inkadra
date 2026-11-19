@@ -87,6 +87,8 @@ export function playerAction(e: Key, paused: boolean): PlayerAction | null {
 export const COMPACT_WIDTH = 360;
 /** A viewer player narrower than this on a desktop gets the compact row, never the phone one. */
 export const VIEWER_COMPACT_WIDTH = 560;
+/** A phone's player narrower than this (a portrait video in a short stage) gets a short row too. */
+export const PHONE_COMPACT_WIDTH = 280;
 
 export type PlayerVariant = 'card' | 'viewer';
 
@@ -94,12 +96,14 @@ export type PlayerVariant = 'card' | 'viewer';
  * How the controls are laid out at `width` CSS pixels of the player. The phone layout (big
  * buttons in the middle, the Quality menu as a sheet) belongs to a phone, `onPhone`: a narrow
  * window or a touch screen. A narrow player on a desktop, such as a portrait video, keeps the
- * desktop controls and drops the ones that do not fit.
+ * desktop controls and drops the ones that do not fit; a narrow one on a phone keeps the phone
+ * layout with a short row (no total time, the chip without its arrow).
  */
 export function playerLayout(width: number, variant: PlayerVariant, onPhone = false) {
   const phone = variant === 'viewer' && onPhone;
-  const min = variant === 'card' ? COMPACT_WIDTH : VIEWER_COMPACT_WIDTH;
-  return { compact: !phone && width > 0 && width < min, phone };
+  const min =
+    variant === 'card' ? COMPACT_WIDTH : phone ? PHONE_COMPACT_WIDTH : VIEWER_COMPACT_WIDTH;
+  return { compact: width > 0 && width < min, phone };
 }
 
 /** The short side of a picture: a portrait 1080×1920 copy is a 1080p one, as the server names rungs. */

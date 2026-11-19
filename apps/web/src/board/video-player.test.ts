@@ -58,6 +58,8 @@ describe('video player', () => {
     // On a phone, whatever the width of the player.
     expect(playerLayout(340, 'viewer', true)).toEqual({ compact: false, phone: true });
     expect(playerLayout(700, 'viewer', true)).toEqual({ compact: false, phone: true });
+    // A portrait video in a short phone stage: still the phone layout, with a short row.
+    expect(playerLayout(150, 'viewer', true)).toEqual({ compact: true, phone: true });
     // Not measured yet: the full layout.
     expect(playerLayout(0, 'card')).toEqual({ compact: false, phone: false });
   });

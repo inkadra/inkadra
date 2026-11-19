@@ -371,8 +371,21 @@ test('the phone keeps the phone layout in the viewer, its centre buttons inside 
     isMobile: true,
     storageState: await page.context().storageState(),
   });
+  // Portrait, with ready copies so the Quality chip is there; each copy plays the uploaded clip.
+  const copy = (name: string, width: number, height: number) => ({
+    ...{ name, status: 'ready', progress: 100, width, height, bitrate: 1, size: 1 },
+    url: asset.url,
+  });
+  const renditions = [copy('480', 480, 854), copy('720', 720, 1280), copy('1080', 1080, 1920)];
   await context.route(`**/api/v1/assets/${assetId}`, (route) =>
-    route.fulfill({ json: { ...asset, width: 2160, height: 3840, playback: null } }),
+    route.fulfill({
+      json: {
+        ...asset,
+        width: 2160,
+        height: 3840,
+        playback: { hls: null, original: true, renditions },
+      },
+    }),
   );
   const phone = await context.newPage();
   await phone.goto(boardUrl);
@@ -397,6 +410,16 @@ test('the phone keeps the phone layout in the viewer, its centre buttons inside 
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(1);
   await video.evaluate((v: HTMLVideoElement) => v.pause());
   await expect(phone.getByRole('dialog').locator('.viewer__hints')).toBeHidden();
+  // The short row keeps the Quality chip, inside the player.
+  const chip = phone.getByRole('dialog').locator('.viewer-quality__button');
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText('Auto');
+  const c = await chip.boundingBox();
+  const now = await phone.getByRole('dialog').locator('.vplayer').boundingBox();
+  if (!c || !now) throw new Error('no chip');
+  expect(c.x).toBeGreaterThanOrEqual(now.x);
+  expect(c.x + c.width).toBeLessThanOrEqual(now.x + now.width);
+  expect(c.y + c.height).toBeLessThanOrEqual(now.y + now.height);
   await context.close();
 });
 

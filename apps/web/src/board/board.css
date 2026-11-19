@@ -5986,6 +5986,19 @@ button.card__play {
   --vplayer-btn: 44px;
   --vplayer-pad: 8px;
 }
+/* A phone's narrow player: the touch targets stay, the time and the chip give way first. */
+.vplayer--phone.vplayer--compact {
+  & .vplayer__time--button {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  & .viewer-quality__button {
+    padding: 0 6px;
+  }
+}
 .vplayer:fullscreen {
   width: 100vw;
   height: 100vh;
