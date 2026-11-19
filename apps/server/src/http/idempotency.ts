@@ -61,7 +61,8 @@ export const rememberCreation = (
 /**
  * The creation and the id it made commit together, as with feedback request ids. A retry
  * gets back only the id: the caller reads the resource as it is now, so a replay never
- * answers with a state (role, title, deletion) older than the request.
+ * answers with a state (role, title, deletion) older than the request. `lock` runs first, before
+ * the key's lock and its rows, for the scoped locks that come before it (decision 0134).
  */
 export async function idempotentCreation<T extends { id: string }>(
   db: Database,
@@ -70,11 +71,19 @@ export async function idempotentCreation<T extends { id: string }>(
   scope: string,
   input: unknown,
   create: (tx: Transaction) => Promise<T>,
+  lock: (tx: Transaction) => Promise<void> = async () => {},
 ): Promise<{ created: T } | { replayed: string }> {
   const keyHash = requestKeyHash(req, userId, scope);
-  if (keyHash === undefined) return { created: await db.transaction(create) };
+  if (keyHash === undefined)
+    return {
+      created: await db.transaction(async (tx) => {
+        await lock(tx);
+        return create(tx);
+      }),
+    };
   const fingerprint = sha256(JSON.stringify(input));
   return db.transaction(async (tx) => {
+    await lock(tx);
     const previous = await rememberedCreation(tx, keyHash, fingerprint);
     if (previous) return { replayed: previous };
     const created = await create(tx);

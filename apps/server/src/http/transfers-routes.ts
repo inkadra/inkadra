@@ -40,6 +40,7 @@ import {
 } from '../db/schema.ts';
 import { exportsOf, refuse } from '../demo.ts';
 import type { Jobs } from '../jobs.ts';
+import { lockRoles, lockSetting } from '../locks.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { sha256 } from '../secrets.ts';
 import {
@@ -419,7 +420,8 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await admin(req);
     const patch = UpdateBackupSettings.parse(req.body ?? {});
     const settings = await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      await lockRoles(tx, 'shared');
+      await lockSetting(tx, 'backup');
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');

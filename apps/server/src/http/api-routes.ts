@@ -12,6 +12,7 @@ import {
   type Instance,
   type InstanceVersion,
   LOAD_TEST_CAPABILITY,
+  PER_MEMBER_PROJECT_ORDER_CAPABILITY,
   PLAN_SHEET_PDF_CAPABILITY,
   SCHEDULE_SOURCES_CAPABILITY,
   SERVER_LIVE_CAPABILITY,
@@ -181,6 +182,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         // GET /instance/audit.csv: the filtered events as one CSV file (#897).
         AUDIT_CSV_CAPABILITY,
         BACKUP_TARGETS_CAPABILITY,
+        // Project.position is the caller's own order (decision 0134).
+        PER_MEMBER_PROJECT_ORDER_CAPABILITY,
         // Settings → Server runs the load test (#908): only where a worker can run it.
         ...(deps.jobs.runLoadTest ? [LOAD_TEST_CAPABILITY] : []),
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).

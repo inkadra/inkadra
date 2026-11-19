@@ -42,6 +42,7 @@ import {
 } from '../db/schema.ts';
 import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
+import { lockAccount, lockRoles } from '../locks.ts';
 import { type Mailer, securityNotification } from '../mailer.ts';
 import { removeFilesLater } from '../queues.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
@@ -490,13 +491,27 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     }
 
     const keys = await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
-      const owned = await tx
-        .select({ id: project.id, name: project.name })
-        .from(projectMember)
-        .innerJoin(project, eq(project.id, projectMember.projectId))
-        .where(and(eq(projectMember.userId, userId), eq(projectMember.role, 'owner')))
-        .for('update', { of: project });
+      // Their creations, imports and role changes wait for this or come first (decision 0134);
+      // an administrator also holds who is one, for the check below.
+      await lockAccount(tx, userId);
+      const [self] = await tx.select({ role: user.role }).from(user).where(eq(user.id, userId));
+      if (self?.role === 'admin') await lockRoles(tx, 'exclusive');
+      // Rows in the order of locks.ts: their own first. `no key update`, not `update`: a write
+      // of theirs that already holds a project row (an upload into it) then takes a key-share
+      // lock on this row, which must not wait for this while this waits for that project.
+      await tx.select({ id: user.id }).from(user).where(eq(user.id, userId)).for('no key update');
+      // Every project the deletion changes, by id: those they own, and those they created,
+      // whose `created_by` it clears. A project change locks its row before its root board
+      // (made by the same person), so it never waits for this the other way (decision 0134).
+      const owner = sql<boolean>`exists(select 1 from project_member m
+        where m.project_id = ${project.id} and m.user_id = ${userId} and m.role = 'owner')`;
+      const touched = await tx
+        .select({ id: project.id, name: project.name, owner })
+        .from(project)
+        .where(or(eq(project.createdBy, userId), owner))
+        .orderBy(project.id)
+        .for('update');
+      const owned = touched.filter((p) => p.owner).map(({ id, name }) => ({ id, name }));
       const soleOwnerOf: DeleteMeBlocked['soleOwnerOf'] = [];
       const alone: string[] = [];
       for (const p of owned) {

@@ -13,6 +13,8 @@ import {
   user,
 } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
+import { lockAccount } from './locks.ts';
+import { nextOwnPosition } from './project-order.ts';
 import { sha256 } from './secrets.ts';
 
 /** Cookie set by POST /invitations/by-token/{token}/claim, read when an account is created. */
@@ -120,6 +122,9 @@ export async function acceptInvitation(
   { reserved = false }: { reserved?: boolean } = {},
 ): Promise<AcceptedInvitation> {
   return db.transaction(async (tx) => {
+    // The person first, before any row: their deletion comes first or waits (decision 0134).
+    // Their row is read again below.
+    await lockAccount(tx, userId);
     const [row] = await tx
       .select()
       .from(invitation)
@@ -191,13 +196,15 @@ export async function acceptInvitation(
           ),
         );
       const next = mergeInvitedRole(held ?? null, incoming);
+      // A new membership, or one that had ended, goes last in their list (decision 0134).
+      const position = next && !held ? await nextOwnPosition(tx, userId) : undefined;
       if (next)
         await tx
           .insert(projectMember)
-          .values({ projectId: row.projectId, userId, ...next })
+          .values({ projectId: row.projectId, userId, ...next, position })
           .onConflictDoUpdate({
             target: [projectMember.projectId, projectMember.userId],
-            set: { ...next, expiryWarnedAt: null },
+            set: { ...next, expiryWarnedAt: null, ...(held ? {} : { position }) },
           });
     }
     // The person who invited hears about it (decision 0013), unless they used their own link.
