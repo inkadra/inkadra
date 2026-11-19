@@ -40,6 +40,7 @@ import {
 } from '../db/schema.ts';
 import { exportsOf, refuse } from '../demo.ts';
 import type { Jobs } from '../jobs.ts';
+import { lockActiveAccount, lockRoles, lockSetting } from '../locks.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { sha256 } from '../secrets.ts';
 import {
@@ -175,7 +176,10 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
         return reply.status(202).header('location', location(first.id)).send(toTransfer(first));
       };
       if (keyHash) {
-        const previous = await db.transaction((tx) => rememberedCreation(tx, keyHash, fingerprint));
+        const previous = await db.transaction(async (tx) => {
+          await lockActiveAccount(tx, actor.id);
+          return rememberedCreation(tx, keyHash, fingerprint);
+        });
         if (previous) return replay(previous);
       }
       // One at a time per person (also enforced by a unique index): checked before receiving.
@@ -226,6 +230,9 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
       let outcome: { row?: TransferRow; replayed?: string };
       try {
         outcome = await db.transaction(async (tx) => {
+          // The importer's account before the key and the row (decision 0134): their deletion
+          // comes first or waits, and a person gone or deactivated meanwhile gets 401.
+          await lockActiveAccount(tx, actor.id);
           if (keyHash) {
             const previous = await rememberedCreation(tx, keyHash, fingerprint);
             if (previous) return { replayed: previous };
@@ -419,7 +426,8 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await admin(req);
     const patch = UpdateBackupSettings.parse(req.body ?? {});
     const settings = await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      await lockRoles(tx, 'shared');
+      await lockSetting(tx, 'backup');
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');

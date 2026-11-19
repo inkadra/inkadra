@@ -34,6 +34,7 @@ import { instanceSetting, personalToken, session, storageTotal, user } from '../
 import { readInstanceSettings } from '../instance-settings.ts';
 import type { Jobs } from '../jobs.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
+import { lockAccount, lockCatalog, lockRoles, lockSetting } from '../locks.ts';
 import { recipesFor } from '../media/ladder.ts';
 import { diskSpace, growthPerMonth } from '../monitor/health.ts';
 import {
@@ -81,7 +82,8 @@ export function registerInstanceAdminRoutes(
     const saved = await db.transaction(async (tx) => {
       // A removal counts uses: no write that adds one may run meanwhile (decision 0126).
       await lockUses(tx, 'exclusive');
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      await lockCatalog(tx);
+      await lockRoles(tx, 'shared');
       const [currentAdmin] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (currentAdmin?.role !== 'admin' || currentAdmin.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
@@ -99,7 +101,8 @@ export function registerInstanceAdminRoutes(
     const actor = await admin(req);
     const patch = UpdateInstanceSettings.parse(req.body ?? {});
     return db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      await lockRoles(tx, 'shared');
+      await lockSetting(tx, 'administration');
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
@@ -165,7 +168,8 @@ export function registerInstanceAdminRoutes(
     const patch = UpdateStorageLimits.parse(req.body ?? {});
     // A limit under what is used is allowed: nothing is deleted, new files are refused.
     return db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      await lockRoles(tx, 'shared');
+      await lockSetting(tx, 'storage');
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
@@ -316,7 +320,13 @@ export function registerInstanceAdminRoutes(
         'The server environment sets the space of each person: it can only be lowered.',
       );
     await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      // The target's account first (their deletion, creations and imports), then who is an
+      // administrator: exclusive when the change may leave none (decision 0134).
+      await lockAccount(tx, userId);
+      await lockRoles(
+        tx,
+        patch.role !== undefined || patch.active !== undefined ? 'exclusive' : 'shared',
+      );
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
@@ -324,7 +334,9 @@ export function registerInstanceAdminRoutes(
         .select()
         .from(user)
         .where(and(eq(user.id, userId), notTestAccount))
-        .for('update');
+        // Not `update`: the audit event below refers to the actor, a key-share lock on their row,
+        // and two administrators changing each other would each wait for the other's.
+        .for('no key update');
       if (!target) throw new HttpError('not_found', 'Member not found.');
       if (
         target.role === 'admin' &&

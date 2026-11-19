@@ -17,10 +17,12 @@ describe.skipIf(!url)('position columns (needs DATABASE_URL)', () => {
         where table_schema = 'public' and column_name = 'position' and data_type = 'text'
         order by table_name`);
       expect([...columns]).toEqual(
-        ['board', 'project', 'project_group', 'project_group_item'].map((table_name) => ({
-          table_name,
-          collation_name: 'C',
-        })),
+        ['board', 'project', 'project_group', 'project_group_item', 'project_member'].map(
+          (table_name) => ({
+            table_name,
+            collation_name: 'C',
+          }),
+        ),
       );
       // fractional-indexing has 'a0V' < 'a0l'; a linguistic collation folds case and swaps them.
       await db.execute(sql`

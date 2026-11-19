@@ -99,13 +99,20 @@ export const ProjectTimeZone = z
   }, 'Use an IANA time zone.');
 const ShootingDate = z.iso.date();
 
+/** `Project.position` is the caller's own order, and any member may change it (decision 0134). */
+export const PER_MEMBER_PROJECT_ORDER_CAPABILITY = 'per-member-project-order';
+
 export const Project = z
   .object({
     id: Id,
     name: z.string().min(1).max(120),
     icon: ProjectIcon,
     rootBoardId: Id,
-    position: FractionalIndex,
+    position: FractionalIndex.openapi({
+      description:
+        'The project’s place in the caller’s own list, on servers with the capability ' +
+        '`per-member-project-order` (decision 0134); on older ones the same order for everyone.',
+    }),
     archivedAt: Timestamp.nullable(),
     createdAt: Timestamp,
     updatedAt: Timestamp,
@@ -139,7 +146,12 @@ export const UpdateProject = z
   .object({
     name: z.string().trim().min(1).max(120),
     icon: ProjectIcon,
-    position: FractionalIndex,
+    position: FractionalIndex.openapi({
+      description:
+        'Moves the project in the caller’s own list: any member may, on servers with the ' +
+        'capability `per-member-project-order`; on older ones it moves it for everyone and ' +
+        'needs the editor role.',
+    }),
     archived: z.boolean(),
     type: ProjectType.nullable(),
     timeZone: ProjectTimeZone.nullable().openapi({

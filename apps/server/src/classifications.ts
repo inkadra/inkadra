@@ -10,6 +10,7 @@ import { count, eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from './db/client.ts';
 import { instanceSetting, project } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
+import { lockCatalog } from './locks.ts';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 type CatalogKey = 'projectTypes' | 'tags' | ShotCatalogKey;
@@ -62,7 +63,7 @@ async function writeSetting(tx: Tx | Database, key: string, value: Record<string
 /**
  * Orders a removal against the writes that add uses (decision 0126). A removal holds it
  * exclusively while it counts; a write that may add a use holds it shared from before it reads the
- * removed values until its commit. Taken before the administration lock (10892), never after.
+ * removed values until its commit. The first of the scoped locks (locks.ts), never taken after one.
  */
 export async function lockUses(tx: Tx | Database, mode: 'shared' | 'exclusive') {
   await tx.execute(
@@ -137,7 +138,7 @@ export async function withUses(
 
 /**
  * Saves `next` (already checked by `validateCatalogUpdate`), the caller holding `lockUses`
- * exclusively and then the administration lock. A removed value must be used nowhere at this
+ * exclusively and then `lockCatalog`. A removed value must be used nowhere at this
  * moment; it is remembered so its id is never taken again and a late use brings it back.
  */
 export async function saveCatalogs(
@@ -204,7 +205,7 @@ export async function reviveUsed(
         ? tags.has(d.id.toLowerCase())
         : text.includes(d.id);
   if (!deleted.some(hit)) return false;
-  await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+  await lockCatalog(tx);
   const again = await readDeleted(tx);
   const back = again.filter(hit);
   if (!back.length) return false;

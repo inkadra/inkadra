@@ -40,7 +40,7 @@ import { type Actor, activeMember, atLeast, higher, live, requireProjectRole } f
 import { readExpiry, requireProjectCreation } from '../access-expiry.ts';
 import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
-import { readClassifications, validateProjectType } from '../classifications.ts';
+import { lockUses, readClassifications, validateProjectType } from '../classifications.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
@@ -56,7 +56,9 @@ import {
 } from '../db/schema.ts';
 import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
+import { lockAccount, lockActiveAccount } from '../locks.ts';
 import { officeFiles } from '../media/office.ts';
+import { isOrderKey, nextOwnPosition, ownPosition } from '../project-order.ts';
 import { removeFilesLater } from '../queues.ts';
 import { animatedVariantKey, type Storage } from '../storage.ts';
 import { storageUsage } from '../storage-usage.ts';
@@ -134,7 +136,7 @@ async function ownGroup(db: Pick<Database, 'select'>, actor: Actor, groupId: str
 
 async function loadProject(db: Database, actor: Actor, projectId: string) {
   const [row] = await db
-    .select({ project, role: projectMember.role, rootBoardId: board.id })
+    .select({ project, position: ownPosition, role: projectMember.role, rootBoardId: board.id })
     .from(projectMember)
     .innerJoin(project, eq(project.id, projectMember.projectId))
     .innerJoin(board, and(eq(board.projectId, project.id), isNull(board.parentBoardId)))
@@ -154,12 +156,18 @@ async function loadProject(db: Database, actor: Actor, projectId: string) {
     .select()
     .from(projectGroupItem)
     .where(and(eq(projectGroupItem.projectId, projectId), eq(projectGroupItem.userId, actor.id)));
-  return toProject(row.project, row.rootBoardId, row.role, !!pin, group ?? null);
+  return toProject(
+    { ...row.project, position: row.position },
+    row.rootBoardId,
+    row.role,
+    !!pin,
+    group ?? null,
+  );
 }
 
 /** The members of a project in the order they joined; a page of them with `limit` (#804). */
 async function listMembers(
-  db: Database,
+  db: Pick<Database, 'select'>,
   projectId: string,
   page: { limit?: number; cursor?: string } = {},
 ): Promise<{ items: ProjectMember[]; nextCursor: string | null }> {
@@ -295,8 +303,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       .from(projectGroupItem)
       .where(eq(projectGroupItem.userId, actor.id));
     const after = query.cursor ? decodeTextCursor(query.cursor) : null;
+    // The caller's own order (decision 0134).
     const rows = await db
-      .select({ project, role: projectMember.role, rootBoardId: board.id })
+      .select({ project, position: ownPosition, role: projectMember.role, rootBoardId: board.id })
       .from(projectMember)
       .innerJoin(project, eq(project.id, projectMember.projectId))
       .innerJoin(board, and(eq(board.projectId, project.id), isNull(board.parentBoardId)))
@@ -307,20 +316,20 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
           query.archived === 'true' ? isNotNull(project.archivedAt) : isNull(project.archivedAt),
           after
             ? or(
-                gt(project.position, after[0]),
-                and(eq(project.position, after[0]), gt(project.id, after[1])),
+                gt(ownPosition, after[0]),
+                and(eq(ownPosition, after[0]), gt(project.id, after[1])),
               )
             : undefined,
         ),
       )
-      .orderBy(asc(project.position), asc(project.id))
+      .orderBy(asc(ownPosition), asc(project.id))
       .limit(query.limit + 1);
     const items = rows.slice(0, query.limit);
     const last = items.at(-1);
     return {
       items: items.map((r) =>
         toProject(
-          r.project,
+          { ...r.project, position: r.position },
           r.rootBoardId,
           r.role,
           pins.some((pin) => pin.projectId === r.project.id),
@@ -328,9 +337,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         ),
       ),
       nextCursor:
-        rows.length > query.limit && last
-          ? encodeTextCursor(last.project.position, last.project.id)
-          : null,
+        rows.length > query.limit && last ? encodeTextCursor(last.position, last.project.id) : null,
     };
   });
 
@@ -341,46 +348,54 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     validateDates(input.shootingStart ?? null, input.shootingEnd ?? null);
     const id = randomUUID();
     const icon = input.icon ?? defaultProjectIcon(id);
-    const result = await idempotentCreation(db, req, actor.id, 'projects', input, async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
-      validateProjectType((await readClassifications(tx)).projectTypes, input.type);
-      const [last] = await tx
-        .select({ position: project.position })
-        .from(project)
-        .orderBy(desc(project.position))
-        .limit(1);
-      const [p] = await tx
-        .insert(project)
-        .values({
-          id,
-          name: input.name,
-          type: input.type,
-          timeZone: input.timeZone,
-          shootingStart: input.shootingStart,
-          shootingEnd: input.shootingEnd,
-          iconShape: icon.shape,
-          iconColor: icon.color,
-          iconEmoji: icon.emoji ?? null,
-          position: generateKeyBetween(last?.position ?? null, null),
-          createdBy: actor.id,
-        })
-        .returning();
-      if (!p) throw new Error('Project insert returned nothing');
-      const [root] = await tx
-        .insert(board)
-        .values({
-          projectId: p.id,
-          title: input.name,
-          position: 'a0',
-          // A new board shows only its own view (decision 0121).
-          views: [],
-          createdBy: actor.id,
-        })
-        .returning({ id: board.id });
-      if (!root) throw new Error('Board insert returned nothing');
-      await tx.insert(projectMember).values({ projectId: p.id, userId: actor.id, role: 'owner' });
-      return toProject(p, root.id, 'owner');
-    });
+    const result = await idempotentCreation(
+      db,
+      req,
+      actor.id,
+      'projects',
+      input,
+      async (tx) => {
+        validateProjectType((await readClassifications(tx)).projectTypes, input.type);
+        // The project's own position too: older servers and archives read that one.
+        const position = await nextOwnPosition(tx, actor.id);
+        const [p] = await tx
+          .insert(project)
+          .values({
+            id,
+            name: input.name,
+            type: input.type,
+            timeZone: input.timeZone,
+            shootingStart: input.shootingStart,
+            shootingEnd: input.shootingEnd,
+            iconShape: icon.shape,
+            iconColor: icon.color,
+            iconEmoji: icon.emoji ?? null,
+            position,
+            createdBy: actor.id,
+          })
+          .returning();
+        if (!p) throw new Error('Project insert returned nothing');
+        const [root] = await tx
+          .insert(board)
+          .values({
+            projectId: p.id,
+            title: input.name,
+            position: 'a0',
+            // A new board shows only its own view (decision 0121).
+            views: [],
+            createdBy: actor.id,
+          })
+          .returning({ id: board.id });
+        if (!root) throw new Error('Board insert returned nothing');
+        await tx
+          .insert(projectMember)
+          .values({ projectId: p.id, userId: actor.id, role: 'owner', position });
+        return toProject(p, root.id, 'owner');
+      },
+      // Before the creator's account, the key and its rows: a removal of the type sees this
+      // project, or this creation sees the removal (0126). Nobody else waits (decision 0134).
+      (tx) => lockUses(tx, 'shared'),
+    );
     // A retry is answered with the project as it is now, like a read: 404 once it is gone.
     if ('replayed' in result)
       return reply.status(201).send(await loadProject(db, actor, result.replayed));
@@ -397,13 +412,16 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     const patch = UpdateProject.parse(req.body ?? {});
-    // Archiving hides the project from everyone, so it is the owner's call.
-    await requireProjectRole(
-      db,
-      actor,
-      projectId,
-      patch.archived === undefined ? 'editor' : 'owner',
-    );
+    // Archiving hides the project from everyone, so it is the owner's call. The position is the
+    // caller's own order (decision 0134): any member moves it in their list.
+    const { position, ...shared } = patch;
+    // FractionalIndex checks only the length: a key that is not one would break every later
+    // addition after it.
+    if (position !== undefined && !isOrderKey(position))
+      throw new HttpError('bad_request', 'position is not a valid order key.');
+    const needed: ProjectRole =
+      patch.archived !== undefined ? 'owner' : Object.keys(shared).length > 0 ? 'editor' : 'viewer';
+    await requireProjectRole(db, actor, projectId, needed);
     const set: Partial<typeof project.$inferInsert> = {};
     if (patch.type !== undefined) set.type = patch.type;
     if (patch.timeZone !== undefined) set.timeZone = patch.timeZone;
@@ -415,18 +433,22 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       set.iconColor = patch.icon.color;
       set.iconEmoji = patch.icon.emoji ?? null;
     }
-    if (patch.position !== undefined) set.position = patch.position;
     if (patch.archived !== undefined) set.archivedAt = patch.archived ? new Date() : null;
-    if (Object.keys(set).length > 0) {
-      await db.transaction(async (tx) => {
-        // Account deletion takes this global lock before locking project rows too.
-        await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
-        await lockMembers(
-          tx,
-          projectId,
-          actor.id,
-          patch.archived === undefined ? 'editor' : 'owner',
-        );
+    if (position === undefined && Object.keys(set).length === 0)
+      return loadProject(db, actor, projectId);
+    await db.transaction(async (tx) => {
+      // A new type is a use a removal counts (decision 0126); the project row comes next,
+      // before the member rows an account deletion removes (0134).
+      if (patch.type !== undefined) await lockUses(tx, 'shared');
+      // Their own order: a creation or a join computing their next position waits (0134).
+      if (position !== undefined) await lockAccount(tx, actor.id);
+      await lockMembers(tx, projectId, actor.id, needed);
+      if (position !== undefined)
+        await tx
+          .update(projectMember)
+          .set({ position })
+          .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, actor.id)));
+      if (Object.keys(set).length > 0) {
         const [current] = await tx.select().from(project).where(eq(project.id, projectId));
         if (!current) throw new HttpError('not_found', 'Project not found.');
         validateProjectType((await readClassifications(tx)).projectTypes, patch.type, current.type);
@@ -441,8 +463,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
             .update(board)
             .set({ title: set.name })
             .where(and(eq(board.projectId, projectId), isNull(board.parentBoardId)));
-      });
-    }
+      }
+    });
     return loadProject(db, actor, projectId);
   });
 
@@ -642,7 +664,11 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     await requireProjectRole(db, actor, projectId, 'editor');
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
-    await db.transaction(async (tx) => {
+    return db.transaction(async (tx) => {
+      // Both people first, before any row: either one's deletion comes first or waits (0134).
+      await lockActiveAccount(tx, actor.id, userId);
+      const [still] = await tx.select({ id: user.id }).from(user).where(eq(user.id, userId));
+      if (!still) throw new HttpError('not_found', 'User not found.');
       const mine = await lockMembers(tx, projectId, actor.id, 'editor');
       const [current] = await tx
         .select({ role: projectMember.role, expiresAt: projectMember.expiresAt })
@@ -667,9 +693,12 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
             ? (current?.expiresAt ?? null)
             : expiresAt;
       const changed = end?.getTime() !== current?.expiresAt?.getTime();
+      // A new member, or one whose access had ended, goes last in their list; a change keeps
+      // the place (decision 0134).
+      const position = current ? undefined : await nextOwnPosition(tx, userId);
       await tx
         .insert(projectMember)
-        .values({ projectId, userId, role, expiresAt: end })
+        .values({ projectId, userId, role, expiresAt: end, position })
         .onConflictDoUpdate({
           target: [projectMember.projectId, projectMember.userId],
           // A row that had ended but was not swept yet starts again.
@@ -677,7 +706,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
             role,
             expiresAt: end,
             ...(changed || !current ? { expiryWarnedAt: null } : {}),
-            ...(current ? {} : { addedAt: sql`now()` }),
+            ...(current ? {} : { addedAt: sql`now()`, position }),
           },
         });
       await recordAudit(tx, {
@@ -689,10 +718,11 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { role, before: current?.role ?? null, expiresAt: end?.toISOString() ?? null },
       });
+      // Read before the commit: their deletion may come right after it.
+      const member = (await listMembers(tx, projectId)).items.find((m) => m.user.id === userId);
+      if (!member) throw new Error('Member vanished after upsert');
+      return member;
     });
-    const member = (await listMembers(db, projectId)).items.find((m) => m.user.id === userId);
-    if (!member) throw new Error('Member vanished after upsert');
-    return member;
   });
 
   app.delete(v1('/projects/:projectId/members/:userId'), async (req, reply) => {
@@ -701,6 +731,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     // Anyone can leave a project; removing someone else is for owners.
     await requireProjectRole(db, actor, projectId, userId === actor.id ? 'viewer' : 'owner');
     await db.transaction(async (tx) => {
+      // The person first, before any row: leaving, their deletion would otherwise wait for
+      // their membership here while this waits for their row (decision 0134).
+      await lockAccount(tx, userId);
       await lockMembers(tx, projectId, actor.id, userId === actor.id ? 'viewer' : 'owner');
       const [current] = await tx
         .select({ role: projectMember.role })

@@ -303,7 +303,7 @@ export async function lockBoardForIndex(tx: Tx | Database, boardId: string) {
  */
 export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y.Doc) {
   // A tag or storyboard value removed while this document still held it comes back (0126). Its
-  // locks (classification uses, then the administration lock) come before any row (#906). The
+  // locks (classification uses, then the catalog: locks.ts) come before any row (#906). The
   // entries are read for it only if some value was removed, and read again under the lock.
   let early: IndexEntry[] | undefined;
   const seen = () => {
@@ -434,8 +434,9 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
       // Reread under the lock: a store may have written a newer state and its index since.
       const done = await db.transaction(async (tx) => {
         // shortcut: the rows are locked before reviveUsed (in writeBoardIndex) takes its
-        // advisory locks, the other way round from a store; only a revived value deleted at the
-        // same moment as an account can still deadlock, and the next hourly run retries it.
+        // advisory locks, the other way round from a store; only a store of the same board that
+        // brings back a value at the same moment can still deadlock, and the next hourly run
+        // retries it.
         if (!(await lockBoardForIndex(tx, row.boardId))) return false;
         const [locked] = await tx
           .select({

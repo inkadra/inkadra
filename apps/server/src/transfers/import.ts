@@ -32,7 +32,7 @@ import {
   type TransferSummary,
   z,
 } from '@inkadra/shared';
-import { desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { PgInsertValue, PgTable } from 'drizzle-orm/pg-core';
 import { generateKeyBetween } from 'fractional-indexing';
 import type { Logger } from 'pino';
@@ -60,9 +60,11 @@ import { clearDeletions, recordDeletions, removeFiles } from '../file-deletions.
 import { readPreferences, readTheme } from '../http/export-settings-routes.ts';
 import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
+import { lockAccount } from '../locks.ts';
 import { mailText } from '../mail-texts.ts';
 import { adoptDays } from '../production.ts';
-import { writeBoardIndex } from '../search/index-doc.ts';
+import { isOrderKey, nextOwnPosition } from '../project-order.ts';
+import { entriesFor, writeBoardIndex } from '../search/index-doc.ts';
 import { newSecret, sha256 } from '../secrets.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { assertSpace, type StorageEnv, StorageFullError } from '../storage-limits.ts';
@@ -359,13 +361,42 @@ export async function importProject(
       return doc;
     };
 
+    // What the boards' search index will hold: a value removed here since the export comes
+    // back, archived (decision 0126), in one go before any row (decision 0134), so the index
+    // of each board below finds nothing left to bring back and takes no lock.
+    const tags = new Set<string>();
+    const text: string[] = [];
+    for (const b of boards) {
+      const doc = await document(`boards/${b.id}/document.yjs`, boardIds.get(b.id) as string);
+      try {
+        for (const e of entriesFor(doc)) {
+          for (const t of e.tags) tags.add(t);
+          if (e.type === 'frame') text.push(e.text);
+        }
+      } finally {
+        doc.destroy();
+      }
+    }
+
     const projectId = randomUUID();
     const commentIds = new Map(comments.map((c) => [c.id, randomUUID()]));
     let elements = 0;
     const created = await db.transaction(async (tx) => {
+      // Locks in the order of locks.ts (decision 0134), all before the transfer row `fence`
+      // locks: the classification uses and the catalog (reviveUsed), then the importer's
+      // account, which their deletion and their other creations wait for.
+      await reviveUsed(tx, { projectTypes: meta.type ? [meta.type] : [], tags, text });
+      await lockAccount(tx, userId);
+      const [importer] = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(and(eq(user.id, userId), isNull(user.deactivatedAt)));
+      if (!importer) throw new ArchiveError('invalid_archive', 'gone');
       await fence(tx);
       // The files belong to the rows made here: no longer to remove.
       await clearDeletions(tx, written);
+      // After the importer's own projects (decision 0134), the project's own position too.
+      const position = await nextOwnPosition(tx, userId);
       await tx.insert(project).values({
         id: projectId,
         name: meta.name,
@@ -376,13 +407,10 @@ export async function importProject(
         timeZone: meta.timeZone ?? null,
         shootingStart: meta.shootingStart,
         shootingEnd: meta.shootingEnd,
-        // Set at the end, under the instance lock (see below).
-        position: 'a0',
+        position,
         createdBy: userId,
       });
-      await tx.insert(projectMember).values({ projectId, userId, role: 'owner' });
-      // A type removed here since the export comes back, archived (decision 0126).
-      await reviveUsed(tx, { projectTypes: meta.type ? [meta.type] : [] });
+      await tx.insert(projectMember).values({ projectId, userId, role: 'owner', position });
 
       // Boards one by one, parents first: each carries its document and search index.
       for (const b of boards) {
@@ -556,19 +584,15 @@ export async function importProject(
         await adoptDays(tx, projectId, productionId);
       }
 
-      // Locks in the order every other path takes them (#879): the storage lock, then the
-      // instance lock, then rows. The asset rows lock their uploader's storage total, which an
-      // upload holding the storage lock or an account deletion holding the instance lock may
-      // wait for, so they come last: the locks are held only for the files, what points at
-      // them and the commit, not for the boards, versions and comments above. The files must
-      // still fit: another upload may have taken the space meanwhile.
+      // The storage lock, then the asset rows (#879, locks.ts). The asset rows lock their
+      // uploader's storage total, which an upload holding the storage lock may wait for, so
+      // they come last: the storage lock is held only for the files, what points at them and
+      // the commit, not for the boards, versions and comments above. The files must still
+      // fit: another upload may have taken the space meanwhile.
       await fits(
         tx,
         [...stored.values()].reduce((n, f) => n + f.size, 0),
       );
-      // The instance lock orders projects (the position set at the end) and guards account
-      // deletion, which removes projects, transfers and files under it.
-      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       await insertBatches(
         tx,
         asset,
@@ -629,16 +653,6 @@ export async function importProject(
         });
       }
 
-      const [last] = await tx
-        .select({ position: project.position })
-        .from(project)
-        .where(ne(project.id, projectId))
-        .orderBy(desc(project.position))
-        .limit(1);
-      await tx
-        .update(project)
-        .set({ position: generateKeyBetween(last?.position ?? null, null) })
-        .where(eq(project.id, projectId));
       return { commentCount: comments.length };
     });
     // From here the project exists: its files belong to it and are never removed on error.
@@ -782,16 +796,6 @@ async function importGuests(
       updatedAt: new Date(p.updatedAt),
     })),
   );
-}
-
-/** Is `key` a fractional-index key, as board positions are? */
-function isOrderKey(key: string): boolean {
-  try {
-    generateKeyBetween(key, null);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /** Multi-row inserts, a few hundred rows per statement. */

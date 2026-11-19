@@ -6858,7 +6858,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 64,
-            "description": "Fractional index, compared as a plain string.",
+            "description": "The project’s place in the caller’s own list, on servers with the capability `per-member-project-order` (decision 0134); on older ones the same order for everyone.",
             "example": "a0"
           },
           "archivedAt": {
@@ -8063,7 +8063,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 64,
-            "description": "Fractional index, compared as a plain string.",
+            "description": "Moves the project in the caller’s own list: any member may, on servers with the capability `per-member-project-order`; on older ones it moves it for everyone and needs the editor role.",
             "example": "a0"
           },
           "archived": {

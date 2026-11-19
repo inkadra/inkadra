@@ -2,6 +2,7 @@ import { and, eq, lt, sql } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import type { Database } from '../db/client.ts';
 import { creationRequest } from '../db/schema.ts';
+import { lockActiveAccount } from '../locks.ts';
 import { sha256 } from '../secrets.ts';
 import { HttpError } from './errors.ts';
 
@@ -61,7 +62,10 @@ export const rememberCreation = (
 /**
  * The creation and the id it made commit together, as with feedback request ids. A retry
  * gets back only the id: the caller reads the resource as it is now, so a replay never
- * answers with a state (role, title, deletion) older than the request.
+ * answers with a state (role, title, deletion) older than the request. `lock` runs first, then
+ * the person's account, before the key's lock and its rows (decision 0134): their deletion
+ * comes first or waits, and a person gone or deactivated meanwhile gets 401, never a row that
+ * refers to nobody.
  */
 export async function idempotentCreation<T extends { id: string }>(
   db: Database,
@@ -70,11 +74,14 @@ export async function idempotentCreation<T extends { id: string }>(
   scope: string,
   input: unknown,
   create: (tx: Transaction) => Promise<T>,
+  lock: (tx: Transaction) => Promise<void> = async () => {},
 ): Promise<{ created: T } | { replayed: string }> {
   const keyHash = requestKeyHash(req, userId, scope);
-  if (keyHash === undefined) return { created: await db.transaction(create) };
   const fingerprint = sha256(JSON.stringify(input));
   return db.transaction(async (tx) => {
+    await lock(tx);
+    await lockActiveAccount(tx, userId);
+    if (keyHash === undefined) return { created: await create(tx) };
     const previous = await rememberedCreation(tx, keyHash, fingerprint);
     if (previous) return { replayed: previous };
     const created = await create(tx);

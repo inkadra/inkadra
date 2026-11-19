@@ -36,7 +36,7 @@ import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { board, boardGrant, invitation, projectMember, user } from '../db/schema.ts';
+import { board, boardGrant, invitation, project, projectMember, user } from '../db/schema.ts';
 import {
   acceptInvitation,
   findInvitation,
@@ -48,8 +48,10 @@ import {
   invitedRole,
 } from '../invitations.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
+import { lockActiveAccount } from '../locks.ts';
 import { type Mailer, maskAddress } from '../mailer.ts';
 import { inviteMail } from '../mails.ts';
+import { nextOwnPosition } from '../project-order.ts';
 import { addressBucket, hourlyRetryAfter, RateLimiter } from '../rate-limits.ts';
 import { requestOrigin } from '../request-origin.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
@@ -547,12 +549,29 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         throw new HttpError('conflict', 'This person already has an account.');
       if (existing && projectId && role) {
         const target = boardId ?? (await rootBoardId(db, projectId));
-        const current = await boardAccess(db, existing, target);
-        if (!atLeast(current?.role ?? null, role)) {
+        // One transaction, both people first, then the project row, before any other row: a
+        // deletion of either, or of the project, comes first or waits (decision 0134).
+        const entry = await db.transaction(async (tx) => {
+          await lockActiveAccount(tx, actor.id, existing.id);
+          const [still] = await tx
+            .select({ id: user.id })
+            .from(user)
+            .where(eq(user.id, existing.id));
+          if (!still) throw new HttpError('not_found', 'User not found.');
+          const [live] = await tx
+            .select({ id: project.id })
+            .from(project)
+            .where(eq(project.id, projectId))
+            .for('key share');
+          if (!live) throw new HttpError('not_found', 'Project not found.');
+          // The answer is read before the commit: their deletion may come right after it.
+          const entry = () => entryFor(tx as unknown as Database, target, existing.id);
+          const current = await boardAccess(tx, existing, target);
+          if (atLeast(current?.role ?? null, role)) return entry();
           if (boardId) {
             if (current?.role && mine && higher(current.role, mine))
               throw new HttpError('forbidden', 'This person has more access than you here.');
-            const [held] = await db
+            const [held] = await tx
               .select({ role: boardGrant.role, expiresAt: boardGrant.expiresAt })
               .from(boardGrant)
               .where(
@@ -569,7 +588,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
                 'conflict',
                 'This person already has a role here without an end date: change it in the list instead.',
               );
-            await db
+            await tx
               .insert(boardGrant)
               .values({ boardId, userId: existing.id, grantedBy: actor.id, ...next })
               .onConflictDoUpdate({
@@ -577,14 +596,21 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
                 set: { ...next, grantedBy: actor.id, expiryWarnedAt: null },
               });
           } else {
-            const pRole = await projectRole(db, existing, projectId);
+            const pRole = await projectRole(tx, existing, projectId);
             // Changing an existing member's role is for owners (PUT /members does that).
             if (pRole)
               throw new HttpError('conflict', 'Already a member: change the role instead.');
-            // An ended membership not swept yet is replaced.
-            await db
+            // An ended membership not swept yet is replaced, and goes last in their list.
+            const position = await nextOwnPosition(tx, existing.id);
+            await tx
               .insert(projectMember)
-              .values({ projectId, userId: existing.id, role, expiresAt: accessExpiresAt })
+              .values({
+                projectId,
+                userId: existing.id,
+                role,
+                expiresAt: accessExpiresAt,
+                position,
+              })
               .onConflictDoUpdate({
                 target: [projectMember.projectId, projectMember.userId],
                 set: {
@@ -592,10 +618,11 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
                   expiresAt: accessExpiresAt,
                   expiryWarnedAt: null,
                   addedAt: sql`now()`,
+                  position,
                 },
               });
           }
-          await recordAudit(db, {
+          await recordAudit(tx, {
             action: boardId ? 'board.grant_set' : 'project.member_set',
             actorId: actor.id,
             targetType: boardId ? 'board' : 'user',
@@ -604,11 +631,9 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
             ip: req.ip,
             details: { userId: existing.id, role, invited: true },
           });
-        }
-        const body: InvitationResult = {
-          status: 'added',
-          entry: await entryFor(db, target, existing.id),
-        };
+          return entry();
+        });
+        const body: InvitationResult = { status: 'added', entry };
         return reply.status(200).send(body);
       }
     }
