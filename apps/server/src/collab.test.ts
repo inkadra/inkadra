@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -289,6 +289,10 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     await c.synced;
     const errors = vi.spyOn(console, 'error');
     const logged = vi.spyOn(log, 'error');
+    const told = vi.spyOn(log, 'info');
+    // The store finds no board row and writes nothing (#935): no rejected insert reaches the
+    // database log, so no store transaction fails.
+    const writes = vi.spyOn(db, 'transaction');
     try {
       const deleted = await app.inject({
         method: 'DELETE',
@@ -308,10 +312,42 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
         .toBe(false);
       expect(errors).not.toHaveBeenCalled();
       expect(logged).not.toHaveBeenCalled();
+      expect(told).toHaveBeenCalledWith(
+        { boardId: goneBoard },
+        'board deleted while open: document not stored',
+      );
+      expect(writes).toHaveBeenCalled();
+      await Promise.allSettled(writes.mock.results.map((r) => r.value));
+      expect(writes.mock.settledResults.map((r) => r.type)).not.toContain('rejected');
       expect(await db.select().from(boardDoc).where(eq(boardDoc.boardId, goneBoard))).toEqual([]);
     } finally {
       errors.mockRestore();
       logged.mockRestore();
+      told.mockRestore();
+      writes.mockRestore();
+    }
+  });
+
+  it('drops a board kept on disk whose board was deleted, without a rejected write', async () => {
+    const goneBoard = randomUUID();
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const doc = new Y.Doc();
+    addElement(doc, column('Kept for a deleted board'));
+    writeFileSync(join(dir, `${goneBoard}.yupdate`), Y.encodeStateAsUpdate(doc));
+    const told = vi.spyOn(log, 'info');
+    const writes = vi.spyOn(db, 'transaction');
+    try {
+      await replayUnsavedBoards(db, dir, log);
+      expect(told).toHaveBeenCalledWith(
+        { boardId: goneBoard },
+        'board kept on disk at the last shutdown was deleted: dropped',
+      );
+      await Promise.allSettled(writes.mock.results.map((r) => r.value));
+      expect(writes.mock.settledResults.map((r) => r.type)).toEqual(['fulfilled']);
+      expect(readdirSync(dir)).toEqual([]);
+    } finally {
+      told.mockRestore();
+      writes.mockRestore();
     }
   });
 
@@ -1027,18 +1063,21 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   }
 });
 
-/** `db` whose inserts throw while `down()` holds, inside transactions too. */
-function failingInserts<T extends object>(target: T, down: () => boolean): T {
+/**
+ * `db` whose inserts throw while `down()` holds, inside transactions too, where raw statements
+ * (the board store's conditional insert) throw as well.
+ */
+function failingInserts<T extends object>(target: T, down: () => boolean, inTx = false): T {
   return new Proxy(target, {
     get(t, key) {
-      if (key === 'insert' && down())
+      if ((key === 'insert' || (inTx && key === 'execute')) && down())
         return () => {
           throw new Error('database down');
         };
       if (key === 'transaction')
         return (fn: (tx: object) => unknown, ...rest: unknown[]) =>
           (t as { transaction: (...a: unknown[]) => unknown }).transaction(
-            (tx: object) => fn(failingInserts(tx, down)),
+            (tx: object) => fn(failingInserts(tx, down, true)),
             ...rest,
           );
       const value = Reflect.get(t, key);
