@@ -183,6 +183,7 @@ import { viewableInOrder } from './gallery.ts';
 import { toggleGuestHidden } from './guest-visibility.tsx';
 import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
 import { hasImageTransform } from './image-crop.ts';
+import { useInlineActive } from './inline-player.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { useBoardCounts } from './live-counts.ts';
 import { MapDraft, type MapSource } from './MapDraft.tsx';
@@ -530,6 +531,7 @@ export function Canvas({
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   /** The card with the keyboard focus (#825), and what the live region last said. */
   const [cardFocus, setCardFocus] = useState<string | null>(null);
+  const playingInline = useInlineActive();
   const [spoken, setSpoken] = useState('');
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
@@ -3769,8 +3771,11 @@ export function Canvas({
     (selection.size === 1 && visible.find((el) => selection.has(el.id))?.id) ||
     firstCard(focusBoxes());
 
+  // The card playing a video gets the zoom too: its controls keep their screen size.
   const drawsOutline = (el: Element) =>
     el.id === cardFocus ||
+    el.id === playingInline ||
+    (isContainer(el) && !!snap.columns.get(el.id)?.some((c) => c.id === playingInline)) ||
     selection.has(el.id) ||
     !!overlay.moving?.has(el.id) ||
     (isContainer(el) && !!snap.columns.get(el.id)?.some((c) => selection.has(c.id)));

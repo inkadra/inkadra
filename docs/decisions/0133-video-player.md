@@ -24,9 +24,19 @@ attachment, not footage, and has no copies to choose from.
   "Open in viewer". The viewer adds frame steps while paused, volume, a timecode it switches to
   m:ss on click, speed, picture in picture and full screen.
 - The layout follows the player's own width, measured with a `ResizeObserver`, never the
-  window's: under 360 px volume and the total time go and the chip names only the height; a
-  viewer under 600 px gets the phone layout (−10 s, play, +10 s in the middle, a short row, the
-  Quality menu as a sheet from the bottom).
+  window's: a card under 360 px of its controls, or a viewer player under 560 px, goes compact
+  (volume, ±10 s and the total time go, m:ss, the chip names only the rung). The phone layout
+  (−10 s, play, +10 s in the middle, a short row, the Quality menu as a sheet from the bottom)
+  belongs to the device, not the player: a window under 768 px or a touch screen without a
+  mouse. A narrow portrait video on a desktop stays compact, with the menu over its chip; on a
+  phone, a player under 280 px keeps the phone layout with that short row, and under 184 px
+  only play stays in the middle.
+- The player's box never follows the stream: a card's fills its preview, a viewer's takes the
+  stored size of the video, so the poster and every HLS level show at one size. On a card the
+  bar keeps its screen size at and below 100% zoom (it is counter-scaled by the board's
+  `--zoom`, which the card playing receives).
+- Copies are named by their short side, as the server names rungs: a portrait 1080×1920 copy is
+  1080p, 4K from 2000 up.
 - Position, buffer and time are painted straight into the page once a frame while playing;
   React state holds only what changes rarely (paused, muted, layout, controls shown), so a
   playing video renders neither its card nor the board again. Scrubbing captures the pointer and

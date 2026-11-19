@@ -292,6 +292,137 @@ test('a finger plays a video on a phone', async ({ page, browser, baseURL }) => 
   await context.close();
 });
 
+/**
+ * A phone video: the asset says portrait 1080×1920 while the stream is the 160×90 clip, as
+ * when the card's ratio comes from the stored size and the level playing has another shape.
+ */
+async function portraitBoard(page: Page, base: string, zoom: number) {
+  const seeded = await seedVideos(page, base);
+  const { asset, assetId, project } = seeded;
+  await page.route(`**/api/v1/assets/${assetId}`, (route) =>
+    route.fulfill({ json: { ...asset, width: 1080, height: 1920, playback: null } }),
+  );
+  await page.addInitScript(
+    ([id, z]) =>
+      localStorage.setItem(`inkadra.viewport.${id}`, JSON.stringify({ x: 0, y: 0, zoom: z })),
+    [project.rootBoardId, zoom] as const,
+  );
+  return seeded;
+}
+
+test('a portrait video keeps its controls in the card at 62% and the desktop layout in the viewer', async ({
+  page,
+  baseURL,
+}) => {
+  test.setTimeout(120_000);
+  const { boardUrl } = await portraitBoard(page, baseURL as string, 0.62);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(boardUrl);
+  const card = page.locator('.card--file').first();
+  await card.locator('.fcard__play').click();
+  await running(card.locator('video'));
+  await card.locator('video').hover();
+
+  // The player is its preview box, so the whole bar is inside what the card shows.
+  const preview = await card.locator('.fcard__preview').boundingBox();
+  const player = await card.locator('.vplayer').boundingBox();
+  const row = await card.locator('.vplayer__row').boundingBox();
+  if (!preview || !player || !row) throw new Error('no boxes');
+  expect(Math.abs(player.height - preview.height)).toBeLessThan(1);
+  expect(row.y + row.height).toBeLessThanOrEqual(preview.y + preview.height);
+  expect(row.y).toBeGreaterThanOrEqual(preview.y);
+  // The controls keep their screen size when the board is zoomed out.
+  const toggle = await card.locator('.vplayer__toggle').boundingBox();
+  expect(toggle?.width).toBeGreaterThanOrEqual(30);
+  expect(row.x + row.width).toBeLessThanOrEqual(preview.x + preview.width + 1);
+
+  // In the viewer on a desktop: no phone layout for a narrow player, and its box comes from the
+  // stored shape (portrait), not from the landscape stream, before and after the first frame.
+  await card.locator('.fcard__footer').dblclick();
+  const viewer = page.getByRole('dialog').locator('.vplayer');
+  await expect(viewer).toBeVisible();
+  const shape = async () => {
+    const box = await viewer.boundingBox();
+    if (!box) throw new Error('no player');
+    return box;
+  };
+  await expect(viewer).not.toHaveClass(/vplayer--phone/);
+  await expect(page.getByRole('dialog').locator('.vplayer__center')).toHaveCount(0);
+  const first = await shape();
+  expect(first.height / first.width).toBeCloseTo(1920 / 1080, 1);
+  const video = page.getByRole('dialog').locator('video');
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.videoWidth)).toBe(160);
+  await video.evaluate((v: HTMLVideoElement) => v.dispatchEvent(new Event('resize')));
+  expect(await shape()).toEqual(first);
+  // Paused on a desktop, the frame keys are told under the video.
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  await expect(page.getByRole('dialog').locator('.viewer__hints')).toBeVisible();
+});
+
+test('the phone keeps the phone layout in the viewer, its centre buttons inside a portrait video', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const { asset, assetId, boardUrl } = await seedVideos(page, baseURL as string);
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+    storageState: await page.context().storageState(),
+  });
+  // Portrait, with ready copies so the Quality chip is there; each copy plays the uploaded clip.
+  const copy = (name: string, width: number, height: number) => ({
+    ...{ name, status: 'ready', progress: 100, width, height, bitrate: 1, size: 1 },
+    url: asset.url,
+  });
+  const renditions = [copy('480', 480, 854), copy('720', 720, 1280), copy('1080', 1080, 1920)];
+  await context.route(`**/api/v1/assets/${assetId}`, (route) =>
+    route.fulfill({
+      json: {
+        ...asset,
+        width: 2160,
+        height: 3840,
+        playback: { hls: null, original: true, renditions },
+      },
+    }),
+  );
+  const phone = await context.newPage();
+  await phone.goto(boardUrl);
+  const card = phone.locator('.card--file').first();
+  await card.locator('.fcard__footer').dblclick();
+  await expect(phone.getByRole('dialog').locator('.vplayer')).toHaveClass(/vplayer--phone/);
+  // A portrait player is narrow here: the cluster in the middle never sticks out of it.
+  const box = await phone.getByRole('dialog').locator('.vplayer').boundingBox();
+  const centre = phone.getByRole('dialog').locator('.vplayer__center > button');
+  await expect(
+    phone.getByRole('dialog').locator('.vplayer__center .vplayer__toggle'),
+  ).toBeVisible();
+  if (!box) throw new Error('no player');
+  for (const button of await centre.all()) {
+    if (!(await button.isVisible())) continue;
+    const b = await button.boundingBox();
+    if (!b) throw new Error('no button');
+    expect(b.x).toBeGreaterThanOrEqual(box.x);
+    expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width);
+  }
+  const video = phone.getByRole('dialog').locator('video');
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(1);
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  await expect(phone.getByRole('dialog').locator('.viewer__hints')).toBeHidden();
+  // The short row keeps the Quality chip, inside the player.
+  const chip = phone.getByRole('dialog').locator('.viewer-quality__button');
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText('Auto');
+  const c = await chip.boundingBox();
+  const now = await phone.getByRole('dialog').locator('.vplayer').boundingBox();
+  if (!c || !now) throw new Error('no chip');
+  expect(c.x).toBeGreaterThanOrEqual(now.x);
+  expect(c.x + c.width).toBeLessThanOrEqual(now.x + now.width);
+  expect(c.y + c.height).toBeLessThanOrEqual(now.y + now.height);
+  await context.close();
+});
+
 test('screenshots for the pull request', async ({ browser, page, baseURL }) => {
   test.skip(!shots, 'Only when E2E_SHOTS is set');
   test.setTimeout(120_000);

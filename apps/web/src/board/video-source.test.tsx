@@ -66,7 +66,7 @@ function fakeHls(supported = true) {
     loaded?: string;
     media?: HTMLMediaElement;
     currentLevel: number;
-    levels: Array<{ height: number }>;
+    levels: Array<{ height: number; width?: number }>;
     handlers: Record<string, (e: string, d: Record<string, unknown>) => void>;
     destroyed: boolean;
   }> = [];
@@ -125,6 +125,21 @@ function Player({
     <video ref={ref} src={played.src} data-height={played.height ?? ''} />
   );
 }
+
+it('reports a portrait level by its short side: 480×854 plays as 480p', async () => {
+  const instances = fakeHls();
+  const rungs = [rung('480'), rung('720')];
+  const source = playbackSource(asset(rungs));
+  await act(async () => root.render(<Player source={source} choice="auto" rungs={rungs} />));
+  const [hls] = instances;
+  if (hls)
+    hls.levels = [
+      { width: 480, height: 854 },
+      { width: 720, height: 1280 },
+    ];
+  await act(async () => hls?.handlers.switched?.('switched', { level: 0 }));
+  expect(host.querySelector('video')?.dataset.height).toBe('480');
+});
 
 it('attaches hls.js, follows a rung chosen by hand, and falls back to the file on a fatal error', async () => {
   const instances = fakeHls();

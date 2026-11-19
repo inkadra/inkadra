@@ -96,6 +96,15 @@ export function useInlineStops(id: string, frame: RefObject<Element | null>): vo
   }, [id, frame]);
 }
 
+/** The id of what plays on the board, if anything. */
+export function useInlineActive(): string | null {
+  return useSyncExternalStore(
+    subscribeInline,
+    () => active,
+    () => null,
+  );
+}
+
 export function useInlinePlaying(id: string): boolean {
   return useSyncExternalStore(
     subscribeInline,

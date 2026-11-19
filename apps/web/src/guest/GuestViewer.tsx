@@ -89,6 +89,7 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
               videoRef={videoRef}
               variant="viewer"
               hidden={unplayable}
+              size={asset}
               durationMs={asset.durationMs}
               quality={
                 streams

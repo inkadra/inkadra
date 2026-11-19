@@ -690,6 +690,7 @@ export function MediaViewer({
                   videoRef={videoRef}
                   variant="viewer"
                   hidden={unplayable}
+                  size={ready}
                   frameRate={ready.frameRate}
                   durationMs={ready.durationMs}
                   quality={
