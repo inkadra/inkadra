@@ -482,6 +482,65 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
     }
   });
 
+  it('grants a board before its sole owner is deleted, or refuses once they are gone', async () => {
+    for (const grantFirst of [true, false]) {
+      const owner = `concede${grantFirst}`;
+      const guest = `concesso${grantFirst}`;
+      await signUp(owner);
+      const guestId = await signUp(guest);
+      const p = await create(owner, 'Da concedere');
+      const sub = await call(owner, 'POST', `/projects/${p.id}/boards`, {
+        parentBoardId: p.rootBoardId,
+        title: 'Sotto',
+      });
+      expect(sub.statusCode).toBe(201);
+      const grant = () =>
+        call(owner, 'PUT', `/boards/${sub.json().id}/grants/${guestId}`, { role: 'viewer' });
+      if (grantFirst) {
+        const [granted, deleted] = await inOrder(grant, () => deleteMe(owner));
+        expect(granted.statusCode).toBe(200);
+        expect(granted.json().user.id).toBe(guestId);
+        // The guest's grant counts: the deletion no longer deletes the project with it.
+        expect(deleted.statusCode).toBe(409);
+      } else {
+        const [deleted, granted] = await inOrder(() => deleteMe(owner), grant);
+        expect(deleted.statusCode).toBe(204);
+        expect(granted.statusCode).toBe(401);
+      }
+    }
+  });
+
+  it('removes a grant for an editor deleting their own account meanwhile, or refuses after', async () => {
+    const p = await create('root', 'Da revocare');
+    const sub = await call('root', 'POST', `/projects/${p.id}/boards`, {
+      parentBoardId: p.rootBoardId,
+      title: 'Sotto',
+    });
+    expect(sub.statusCode).toBe(201);
+    for (const removeFirst of [true, false]) {
+      const editor = `revoca${removeFirst}`;
+      const editorId = await signUp(editor);
+      const guestId = await signUp(`revocato${removeFirst}`);
+      expect(
+        (await call('root', 'PUT', `/projects/${p.id}/members/${editorId}`, { role: 'editor' }))
+          .statusCode,
+      ).toBe(200);
+      const path = `/boards/${sub.json().id}/grants/${guestId}`;
+      // Granted by the editor: their deletion clears `granted_by` on it.
+      expect((await call(editor, 'PUT', path, { role: 'viewer' })).statusCode).toBe(200);
+      const remove = () => call(editor, 'DELETE', path);
+      if (removeFirst) {
+        const [removed, deleted] = await inOrder(remove, () => deleteMe(editor));
+        expect(removed.statusCode).toBe(204);
+        expect(deleted.statusCode).toBe(204);
+      } else {
+        const [deleted, removed] = await inOrder(() => deleteMe(editor), remove);
+        expect(deleted.statusCode).toBe(204);
+        expect(removed.statusCode).toBe(401);
+      }
+    }
+  });
+
   it('adds a member for an editor deleting their own account meanwhile, or refuses after', async () => {
     const p = await create('root', 'Aggiunte da editor');
     for (const addFirst of [true, false]) {
