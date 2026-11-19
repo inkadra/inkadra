@@ -931,19 +931,29 @@ export function createCollabServer(deps: {
           began = performance.now();
           // A database that stopped answering fails the store (retried) instead of holding it.
           await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
-          await tx
-            .insert(boardDoc)
-            .values({ boardId, state, schemaVersion, size: state.byteLength })
-            .onConflictDoUpdate({
-              target: boardDoc.boardId,
-              set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
-            });
+          // Written only while the board row exists (#935): a board deleted for good (its
+          // project, or emptied from the trash) while open writes no row instead of a rejected
+          // insert in the database log.
+          const bytes = Buffer.from(state.buffer, state.byteOffset, state.byteLength);
+          const rows = await tx.execute(sql`
+            insert into ${boardDoc} (board_id, state, schema_version, size)
+            select ${board.id}, ${bytes}::bytea, ${schemaVersion}::int, ${state.byteLength}::int
+            from ${board} where ${board.id} = ${boardId}
+            on conflict (board_id) do update set state = excluded.state,
+              schema_version = excluded.schema_version, size = excluded.size,
+              updated_at = ${new Date().toISOString()}::timestamptz
+            returning board_id`);
+          return rows.length > 0;
         });
-        await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
+        const written = await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
         storeTimes.record(began - asked, performance.now() - asked);
+        if (!written) {
+          log.info({ boardId }, 'board deleted while open: document not stored');
+          return stored(document);
+        }
       } catch (err) {
-        // The board was deleted for good (its project, or emptied from the trash) while open:
-        // there is nothing to keep it for. Returning lets Hocuspocus unload the document.
+        // Deleted between the check and the write: there is nothing to keep it for either.
+        // Returning lets Hocuspocus unload the document.
         if (boardGone(err)) {
           log.info({ boardId }, 'board deleted while open: document not stored');
           return stored(document);
