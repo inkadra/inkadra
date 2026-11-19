@@ -359,19 +359,38 @@ test('a portrait video keeps its controls in the card at 62% and the desktop lay
   await expect(page.getByRole('dialog').locator('.viewer__hints')).toBeVisible();
 });
 
-test('the phone keeps the phone layout in the viewer', async ({ page, browser, baseURL }) => {
-  const { boardUrl } = await seedVideos(page, baseURL as string);
+test('the phone keeps the phone layout in the viewer, its centre buttons inside a portrait video', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const { asset, assetId, boardUrl } = await seedVideos(page, baseURL as string);
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     hasTouch: true,
     isMobile: true,
     storageState: await page.context().storageState(),
   });
+  await context.route(`**/api/v1/assets/${assetId}`, (route) =>
+    route.fulfill({ json: { ...asset, width: 2160, height: 3840, playback: null } }),
+  );
   const phone = await context.newPage();
   await phone.goto(boardUrl);
   const card = phone.locator('.card--file').first();
   await card.locator('.fcard__footer').dblclick();
   await expect(phone.getByRole('dialog').locator('.vplayer')).toHaveClass(/vplayer--phone/);
+  // A portrait player is narrow here: the cluster in the middle never sticks out of it.
+  const box = await phone.getByRole('dialog').locator('.vplayer').boundingBox();
+  const centre = phone.getByRole('dialog').locator('.vplayer__center > button');
+  await expect(phone.getByRole('dialog').locator('.vplayer__center .vplayer__toggle')).toBeVisible();
+  if (!box) throw new Error('no player');
+  for (const button of await centre.all()) {
+    if (!(await button.isVisible())) continue;
+    const b = await button.boundingBox();
+    if (!b) throw new Error('no button');
+    expect(b.x).toBeGreaterThanOrEqual(box.x);
+    expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width);
+  }
   const video = phone.getByRole('dialog').locator('video');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(1);
   await video.evaluate((v: HTMLVideoElement) => v.pause());

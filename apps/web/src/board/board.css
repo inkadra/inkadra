@@ -6268,14 +6268,22 @@ button.card__play {
   }
 }
 /* Phone: big buttons in the middle (−10 s, play, +10 s). */
+/* The phone's −10 s, play, +10 s: the gaps follow the player's width (a portrait video can be
+   200 px wide), and under three 44 px targets with room around them only play stays. */
 .vplayer__center {
   position: absolute;
   inset: 0 0 48px;
+  container-type: inline-size;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 40px;
+  gap: clamp(8px, 10%, 40px);
   pointer-events: none;
+}
+@container (width < 184px) {
+  .vplayer__center > .vplayer__btn:not(.vplayer__btn--big) {
+    display: none;
+  }
 }
 .vplayer__center > * {
   pointer-events: auto;
