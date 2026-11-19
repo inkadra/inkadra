@@ -122,6 +122,21 @@ to a newer server stay read-only on boards they would damage
 The sections below list what to do for each version, newest first. Read every one between
 your version and the new one. 0.6 and 0.8 need nothing beyond the usual update.
 
+## Upgrading to 0.11
+
+Back up first, as for any release with migrations: the first start writes
+[the backup before an upgrade](#the-backup-before-an-upgrade), and the way back is that backup,
+restored with 0.10.1 (see [Going back to an older version](#going-back-to-an-older-version)).
+
+- **A separate worker restarts with the web.** With `deploy/compose.split.yaml`,
+  `deploy/compose.office.yaml` or `deploy/compose.office.split.yaml` the worker runs in its own
+  container. Update and restart it together with the web (`docker compose up -d` with the same
+  files does both): a worker left on 0.10 still takes the instance-wide lock that 0.11 replaced
+  with locks per account and setting ([decision 0134](../decisions/0134-scoped-locks-and-per-member-project-order.md)).
+- **Project order per member.** Migration 0056 copies each project's shared order to every member,
+  who then keeps their own. A list of projects paged across the upgrade may repeat or skip one
+  project once.
+
 ## Upgrading to 0.10.1
 
 No migrations: going back to 0.10.0 only takes `INKADRA_TAG=0.10.0` again.
