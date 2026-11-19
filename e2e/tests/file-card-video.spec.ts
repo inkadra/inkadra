@@ -382,7 +382,9 @@ test('the phone keeps the phone layout in the viewer, its centre buttons inside 
   // A portrait player is narrow here: the cluster in the middle never sticks out of it.
   const box = await phone.getByRole('dialog').locator('.vplayer').boundingBox();
   const centre = phone.getByRole('dialog').locator('.vplayer__center > button');
-  await expect(phone.getByRole('dialog').locator('.vplayer__center .vplayer__toggle')).toBeVisible();
+  await expect(
+    phone.getByRole('dialog').locator('.vplayer__center .vplayer__toggle'),
+  ).toBeVisible();
   if (!box) throw new Error('no player');
   for (const button of await centre.all()) {
     if (!(await button.isVisible())) continue;
