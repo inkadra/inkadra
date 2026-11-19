@@ -56,7 +56,7 @@ import {
 } from '../db/schema.ts';
 import { recordDeletions } from '../file-deletions.ts';
 import type { Jobs } from '../jobs.ts';
-import { lockAccount } from '../locks.ts';
+import { lockAccount, lockActiveAccount } from '../locks.ts';
 import { officeFiles } from '../media/office.ts';
 import { isOrderKey, nextOwnPosition, ownPosition } from '../project-order.ts';
 import { removeFilesLater } from '../queues.ts';
@@ -440,6 +440,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       // A new type is a use a removal counts (decision 0126); the project row comes next,
       // before the member rows an account deletion removes (0134).
       if (patch.type !== undefined) await lockUses(tx, 'shared');
+      // Their own order: a creation or a join computing their next position waits (0134).
+      if (position !== undefined) await lockAccount(tx, actor.id);
       await lockMembers(tx, projectId, actor.id, needed);
       if (position !== undefined)
         await tx
@@ -663,8 +665,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
     return db.transaction(async (tx) => {
-      // The person first, before any row: their deletion comes first or waits (decision 0134).
-      await lockAccount(tx, userId);
+      // Both people first, before any row: either one's deletion comes first or waits (0134).
+      await lockActiveAccount(tx, actor.id, userId);
       const [still] = await tx.select({ id: user.id }).from(user).where(eq(user.id, userId));
       if (!still) throw new HttpError('not_found', 'User not found.');
       const mine = await lockMembers(tx, projectId, actor.id, 'editor');

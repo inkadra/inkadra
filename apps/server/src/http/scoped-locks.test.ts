@@ -454,6 +454,59 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
     }
   });
 
+  it('shares a board before its sole owner is deleted, or refuses once they are gone', async () => {
+    for (const shareFirst of [true, false]) {
+      const owner = `condivide${shareFirst}`;
+      const guest = `ricevente${shareFirst}`;
+      await signUp(owner);
+      await signUp(guest);
+      const p = await create(owner, 'Da condividere');
+      const share = () =>
+        call(owner, 'POST', '/invitations', {
+          kind: 'email',
+          email: `${guest}@example.com`,
+          projectId: p.id,
+          boardId: p.rootBoardId,
+          role: 'viewer',
+        });
+      if (shareFirst) {
+        const [shared, deleted] = await inOrder(share, () => deleteMe(owner));
+        expect(shared.statusCode).toBe(200);
+        // The guest's grant counts: the deletion no longer deletes the project with it.
+        expect(deleted.statusCode).toBe(409);
+      } else {
+        const [deleted, shared] = await inOrder(() => deleteMe(owner), share);
+        expect(deleted.statusCode).toBe(204);
+        expect(shared.statusCode).toBe(401);
+      }
+    }
+  });
+
+  it('adds a member for an editor deleting their own account meanwhile, or refuses after', async () => {
+    const p = await create('root', 'Aggiunte da editor');
+    for (const addFirst of [true, false]) {
+      const editor = `editore${addFirst}`;
+      const added = `aggiunto${addFirst}`;
+      const editorId = await signUp(editor);
+      const addedId = await signUp(added);
+      expect(
+        (await call('root', 'PUT', `/projects/${p.id}/members/${editorId}`, { role: 'editor' }))
+          .statusCode,
+      ).toBe(200);
+      const add = () =>
+        call(editor, 'PUT', `/projects/${p.id}/members/${addedId}`, { role: 'viewer' });
+      if (addFirst) {
+        const [put, deleted] = await inOrder(add, () => deleteMe(editor));
+        expect(put.statusCode).toBe(200);
+        expect(deleted.statusCode).toBe(204);
+      } else {
+        const [deleted, put] = await inOrder(() => deleteMe(editor), add);
+        expect(deleted.statusCode).toBe(204);
+        expect(put.statusCode).toBe(401);
+      }
+    }
+  });
+
   it('lets a person leave a project while deleting their account', async () => {
     const p = await create('root', 'Da lasciare');
     const id = await signUp('partente');

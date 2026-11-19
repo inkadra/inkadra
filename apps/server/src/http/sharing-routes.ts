@@ -36,7 +36,7 @@ import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { board, boardGrant, invitation, projectMember, user } from '../db/schema.ts';
+import { board, boardGrant, invitation, project, projectMember, user } from '../db/schema.ts';
 import {
   acceptInvitation,
   findInvitation,
@@ -48,7 +48,7 @@ import {
   invitedRole,
 } from '../invitations.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
-import { lockAccount } from '../locks.ts';
+import { lockActiveAccount } from '../locks.ts';
 import { type Mailer, maskAddress } from '../mailer.ts';
 import { inviteMail } from '../mails.ts';
 import { nextOwnPosition } from '../project-order.ts';
@@ -549,15 +549,21 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         throw new HttpError('conflict', 'This person already has an account.');
       if (existing && projectId && role) {
         const target = boardId ?? (await rootBoardId(db, projectId));
-        // One transaction, the person first, before any row: their deletion comes first or
-        // waits (decision 0134).
+        // One transaction, both people first, then the project row, before any other row: a
+        // deletion of either, or of the project, comes first or waits (decision 0134).
         const entry = await db.transaction(async (tx) => {
-          await lockAccount(tx, existing.id);
+          await lockActiveAccount(tx, actor.id, existing.id);
           const [still] = await tx
             .select({ id: user.id })
             .from(user)
             .where(eq(user.id, existing.id));
           if (!still) throw new HttpError('not_found', 'User not found.');
+          const [live] = await tx
+            .select({ id: project.id })
+            .from(project)
+            .where(eq(project.id, projectId))
+            .for('key share');
+          if (!live) throw new HttpError('not_found', 'Project not found.');
           // The answer is read before the commit: their deletion may come right after it.
           const entry = () => entryFor(tx as unknown as Database, target, existing.id);
           const current = await boardAccess(tx, existing, target);
