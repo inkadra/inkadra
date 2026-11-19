@@ -271,6 +271,11 @@ export const projectMember = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     /** Set once the "expires soon" notification went out for the current `expiresAt`. */
     expiryWarnedAt: timestamp('expiry_warned_at', { withTimezone: true }),
+    /**
+     * The project's place in this person's own list (decision 0134); null reads as
+     * `project.position` (rows restored from an older backup).
+     */
+    position: customType<{ data: string }>({ dataType: () => 'text COLLATE "C"' })('position'),
   },
   (t) => [
     primaryKey({ columns: [t.projectId, t.userId] }),
