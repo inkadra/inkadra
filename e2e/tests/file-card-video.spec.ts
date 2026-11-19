@@ -65,20 +65,36 @@ test('a video plays in its card and stops with the card, the viewer and other pl
   // A board mounts no video until play is pressed.
   await expect(page.locator('video')).toHaveCount(0);
 
-  // One press plays it here, with the browser's controls, without opening or selecting anything.
+  // One press plays it here, with Inkadra's player (decision 0133), without opening or selecting
+  // anything; the keyboard goes to its play button.
   await first.getByRole('button', { name: 'Riproduci ripresa.webm' }).click();
   const video = first.locator('video');
   await expect(video).toHaveAttribute('src', asset.url);
-  await expect(video).toHaveAttribute('controls', '');
-  await expect(video).toBeFocused();
+  await expect(video).not.toHaveAttribute('controls');
+  await expect(first.locator('[data-video-player] .vplayer__toggle')).toBeFocused();
+  await expect(first.getByRole('button', { name: 'Apri nel visualizzatore' })).toBeVisible();
   await running(video);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(first).not.toHaveClass(/is-selected/);
 
-  // The keyboard belongs to the video: Space pauses it and it stays on the card.
+  // The keyboard belongs to the player: Space pauses it and it stays on the card; the arrows
+  // seek instead of moving the card, and K plays again.
   await page.keyboard.press('Space');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
   await expect(video).toHaveCount(1);
+  const still = await first.boundingBox();
+  await video.evaluate((v: HTMLVideoElement) => {
+    v.currentTime = 0;
+  });
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(5);
+  expect(await first.boundingBox()).toEqual(still);
+  await page.keyboard.press('j');
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(0);
+  await page.keyboard.press('k');
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(false);
+  await page.keyboard.press('k');
+  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
 
   // The pointer on the video neither moves nor selects the card.
   const before = await first.boundingBox();
@@ -121,6 +137,15 @@ test('a video plays in its card and stops with the card, the viewer and other pl
   await second.locator('.fcard__footer').dblclick();
   await expect(page.getByRole('dialog').locator('video')).toBeVisible();
   await expect(second.locator('video')).toHaveCount(0);
+  // There the focused player keeps its keys too: the arrows seek instead of turning the gallery.
+  const inViewer = page.getByRole('dialog').locator('video');
+  await inViewer.evaluate((v: HTMLVideoElement) => {
+    v.pause();
+    v.currentTime = 0;
+  });
+  await page.getByRole('dialog').locator('.vplayer__toggle').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => inViewer.evaluate((v: HTMLVideoElement) => v.currentTime)).toBe(5);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
@@ -299,7 +324,7 @@ test('screenshots for the pull request', async ({ browser, page, baseURL }) => {
       if (name === '1280') {
         // The rings of keyboard focus, on the video and then on the play button of the next card.
         await shot.keyboard.press('Tab');
-        await video.focus();
+        await card.locator('.vplayer__toggle').focus();
         await shot.screenshot({ path: `${shots}/${name}-${theme}-focus-video.png` });
         await shot.locator('.fcard__play').first().focus();
         await shot.screenshot({ path: `${shots}/${name}-${theme}-focus-play.png` });

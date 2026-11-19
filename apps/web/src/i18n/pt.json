@@ -2068,6 +2068,26 @@
       "liveCopy": "cópia a {{percent}}%",
       "liveNote": "As qualidades «em tempo real» são convertidas pela placa gráfica enquanto vê; quando a cópia está pronta, passa-se para ela.",
       "liveOnlyNote": "As qualidades «em tempo real» são convertidas pela placa gráfica enquanto vê, sem guardar uma cópia."
+    },
+    "player": {
+      "play": "Reproduzir",
+      "pause": "Pausa",
+      "mute": "Silenciar",
+      "unmute": "Ativar som",
+      "volume": "Volume",
+      "seek": "Posição no vídeo",
+      "openViewer": "Abrir no visualizador",
+      "previousFrame": "Fotograma anterior (,)",
+      "nextFrame": "Fotograma seguinte (.)",
+      "back10": "Recuar 10 segundos",
+      "forward10": "Avançar 10 segundos",
+      "speed": "Velocidade: {{rate}}×",
+      "fullscreen": "Ecrã inteiro (F)",
+      "exitFullscreen": "Sair do ecrã inteiro (F)",
+      "pip": "Imagem na imagem",
+      "loading": "A carregar",
+      "showClock": "Mostrar minutos e segundos",
+      "showTimecode": "Mostrar o timecode"
     }
   },
   "search": {
@@ -5453,7 +5473,7 @@
           },
           "3": {
             "title": "Qualidade do vídeo",
-            "text": "No visualizador, «Qualidade» escolhe a resolução; Auto segue a ligação."
+            "text": "No cartão e no visualizador, «Qualidade» escolhe a resolução; Auto segue a ligação."
           }
         }
       },

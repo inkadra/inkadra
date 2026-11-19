@@ -21,13 +21,14 @@ import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
 import { isOffice, officeTable, SHEET_PREVIEW, tableable } from './office.ts';
 import { PdfReader } from './PdfReader.tsx';
-import { QualityMenu } from './QualityMenu.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
+import { VideoPlayer } from './VideoPlayer.tsx';
 import { ViewerImage } from './ViewerImage.tsx';
+import { playerAction } from './video-player.ts';
 import {
   NO_SOURCE,
   playbackSource,
@@ -367,6 +368,14 @@ export function MediaViewer({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // The focused video player keeps its own keys (decision 0133): the arrows seek there
+      // instead of turning the gallery, and its Quality menu walks and closes by itself.
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (
+        target?.closest('[data-video-player]') &&
+        (target.closest('[role="menu"]') || playerAction(e, videoRef.current?.paused ?? true))
+      )
+        return;
       if (isTyping(e.target) && e.key !== 'Escape' && e.key !== 'Tab') return;
       // Let the focused image handle local zoom/pan before isolating other viewer keys.
       const image = e.target instanceof HTMLElement && e.target.matches('.viewer__image-view');
@@ -677,34 +686,43 @@ export function MediaViewer({
               />
             ) : ready?.kind === 'video' ? (
               <>
-                {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
-                <video
-                  ref={videoRef}
-                  className="viewer__media viewer__media--contain"
-                  src={played.src}
-                  poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
-                  controls
-                  autoPlay
-                  onError={onVideoError}
-                  onPlay={() => {
-                    videoTurn.onPlay();
-                    setVideoPaused(false);
+                <VideoPlayer
+                  videoRef={videoRef}
+                  variant="viewer"
+                  hidden={unplayable}
+                  frameRate={ready.frameRate}
+                  durationMs={ready.durationMs}
+                  quality={
+                    ready.playback && ready.playback.renditions.length > 0
+                      ? {
+                          asset: ready,
+                          choice: quality,
+                          onChoose: setQuality,
+                          playing: played.height,
+                        }
+                      : null
+                  }
+                  onStep={(direction) =>
+                    videoRef.current && stepper.current.step(videoRef.current, direction)
+                  }
+                  video={{
+                    className: 'viewer__media viewer__media--contain',
+                    'aria-label': t('board.menu.videoPlayer', { title: ready.filename }),
+                    src: played.src,
+                    poster: ready.variants.length > 0 ? pickVariant(ready, wide) : undefined,
+                    autoPlay: true,
+                    onError: onVideoError,
+                    onPlay: () => {
+                      videoTurn.onPlay();
+                      setVideoPaused(false);
+                    },
+                    onPause: () => {
+                      videoTurn.onPause();
+                      setVideoPaused(true);
+                    },
+                    onLoadedData: (e) => setVideoPaused(e.currentTarget.paused),
                   }}
-                  onPause={() => {
-                    videoTurn.onPause();
-                    setVideoPaused(true);
-                  }}
-                  onLoadedData={(e) => setVideoPaused(e.currentTarget.paused)}
-                  style={unplayable ? { display: 'none' } : undefined}
                 />
-                {!unplayable && ready.playback && ready.playback.renditions.length > 0 && (
-                  <QualityMenu
-                    asset={ready}
-                    choice={quality}
-                    onChoose={setQuality}
-                    playing={played.height}
-                  />
-                )}
                 {unplayable && (
                   <VideoUnplayable
                     poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}

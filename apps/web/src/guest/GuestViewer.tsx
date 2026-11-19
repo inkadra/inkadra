@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CroppedImage } from '../board/CroppedImage.tsx';
 import { movingVariantUrl } from '../board/moving.tsx';
-import { QualityMenu } from '../board/QualityMenu.tsx';
+import { VideoPlayer } from '../board/VideoPlayer.tsx';
 import {
   NO_SOURCE,
   playbackSource,
@@ -85,24 +85,29 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
       <div className="guest-viewer__stage">
         {asset?.kind === 'video' && (streams || (actions.rights.download && asset.downloadUrl)) ? (
           <>
-            {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
-            <video
-              ref={videoRef}
-              className="guest-viewer__media"
-              src={streams ? played.src : (asset.downloadUrl ?? undefined)}
-              poster={src || undefined}
-              controls
-              onError={onVideoError}
-              style={unplayable ? { display: 'none' } : undefined}
+            <VideoPlayer
+              videoRef={videoRef}
+              variant="viewer"
+              hidden={unplayable}
+              durationMs={asset.durationMs}
+              quality={
+                streams
+                  ? {
+                      asset: toAsset(asset),
+                      choice: quality,
+                      onChoose: setQuality,
+                      playing: played.height,
+                    }
+                  : null
+              }
+              video={{
+                className: 'guest-viewer__media',
+                'aria-label': title,
+                src: streams ? played.src : (asset.downloadUrl ?? undefined),
+                poster: src || undefined,
+                onError: onVideoError,
+              }}
             />
-            {streams && !unplayable && (
-              <QualityMenu
-                asset={toAsset(asset)}
-                choice={quality}
-                onChoose={setQuality}
-                playing={played.height}
-              />
-            )}
             {unplayable && (
               <VideoUnplayable
                 poster={src || undefined}

@@ -237,6 +237,23 @@ const paths = {
   pause: <path d="M7 5h3v14H7zM14 5h3v14h-3z" />,
   volume: <path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" />,
   mute: <path d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" />,
+  fullscreen: (
+    <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4" />
+  ),
+  fullscreenExit: (
+    <path d="M9 4v4a1 1 0 0 1-1 1H4M15 4v4a1 1 0 0 0 1 1h4M20 15h-4a1 1 0 0 0-1 1v4M4 15h4a1 1 0 0 1 1 1v4" />
+  ),
+  pictureInPicture: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <rect x="12" y="11" width="6" height="5" rx="1" />
+    </>
+  ),
+  expand: <path d="M15 4h5v5M9 20H4v-5M20 4l-6 6M4 20l6-6" />,
+  framePrevious: <path d="M6 5v14M18 6l-8 6 8 6z" />,
+  frameNext: <path d="M18 5v14M6 6l8 6-8 6z" />,
+  back10: <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />,
+  forward10: <path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" />,
   mic: (
     <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
   ),

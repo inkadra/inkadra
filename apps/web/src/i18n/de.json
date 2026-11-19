@@ -2068,6 +2068,26 @@
       "liveCopy": "Kopie bei {{percent}} %",
       "liveNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um; ist die Kopie fertig, wird zu ihr gewechselt.",
       "liveOnlyNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um, ohne eine Kopie zu speichern."
+    },
+    "player": {
+      "play": "Abspielen",
+      "pause": "Pause",
+      "mute": "Ton aus",
+      "unmute": "Ton an",
+      "volume": "Lautstärke",
+      "seek": "Position im Video",
+      "openViewer": "Im Viewer öffnen",
+      "previousFrame": "Vorheriges Bild (,)",
+      "nextFrame": "Nächstes Bild (.)",
+      "back10": "10 Sekunden zurück",
+      "forward10": "10 Sekunden vor",
+      "speed": "Tempo: {{rate}}×",
+      "fullscreen": "Vollbild (F)",
+      "exitFullscreen": "Vollbild beenden (F)",
+      "pip": "Bild-im-Bild",
+      "loading": "Wird geladen",
+      "showClock": "Minuten und Sekunden zeigen",
+      "showTimecode": "Timecode zeigen"
     }
   },
   "search": {
@@ -5453,7 +5473,7 @@
           },
           "3": {
             "title": "Videoqualität",
-            "text": "Im Viewer wählt „Qualität“ die Auflösung; Auto folgt der Verbindung."
+            "text": "In der Karte und im Viewer wählt „Qualität“ die Auflösung; Auto folgt der Verbindung."
           }
         }
       },
