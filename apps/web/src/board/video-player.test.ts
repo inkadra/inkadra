@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { clock, playerAction, playerLayout, timecode } from './video-player.ts';
+import {
+  clock,
+  playerAction,
+  playerLayout,
+  rungLabel,
+  shortSide,
+  timecode,
+} from './video-player.ts';
 
 describe('video player', () => {
   it('writes the time as m:ss, with hours past the hour', () => {
@@ -40,12 +47,26 @@ describe('video player', () => {
     expect(playerAction(key('Escape'), true)).toBeNull();
   });
 
-  it('a card goes compact under 360 px of its own width, a narrow viewer phone-like', () => {
+  it('a card goes compact under 360 px of its own width; the phone layout needs a phone', () => {
     expect(playerLayout(359, 'card')).toEqual({ compact: true, phone: false });
     expect(playerLayout(360, 'card')).toEqual({ compact: false, phone: false });
-    expect(playerLayout(340, 'viewer')).toEqual({ compact: false, phone: true });
+    // A card stays a card on a phone.
+    expect(playerLayout(359, 'card', true)).toEqual({ compact: true, phone: false });
+    // A portrait video on a desktop: narrow, but the desktop controls, fewer of them.
+    expect(playerLayout(375, 'viewer')).toEqual({ compact: true, phone: false });
     expect(playerLayout(1280, 'viewer')).toEqual({ compact: false, phone: false });
+    // On a phone, whatever the width of the player.
+    expect(playerLayout(340, 'viewer', true)).toEqual({ compact: false, phone: true });
+    expect(playerLayout(700, 'viewer', true)).toEqual({ compact: false, phone: true });
     // Not measured yet: the full layout.
     expect(playerLayout(0, 'card')).toEqual({ compact: false, phone: false });
+  });
+
+  it('names a copy by its short side, as the server names rungs', () => {
+    expect(rungLabel(shortSide({ width: 480, height: 854 }))).toBe('480p');
+    expect(rungLabel(shortSide({ width: 1920, height: 1080 }))).toBe('1080p');
+    expect(rungLabel(shortSide({ width: 3840, height: 2160 }))).toBe('4K');
+    expect(rungLabel('720')).toBe('720p');
+    expect(shortSide({ height: 720 })).toBe(720);
   });
 });

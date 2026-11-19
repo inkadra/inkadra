@@ -1,6 +1,7 @@
 import type { Asset, AssetRendition, VideoRung } from '@inkadra/shared';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { playbackUrl } from './assets.ts';
+import { shortSide } from './video-player.ts';
 
 /**
  * What a video plays (decision 0128): the HLS master playlist of its rungs when one is ready,
@@ -40,7 +41,7 @@ const rungHeight = (rungs: AssetRendition[], name: VideoRung) =>
 export type QualityChoice = 'auto' | VideoRung | 'original';
 
 type HlsInstance = {
-  levels: Array<{ height: number }>;
+  levels: Array<{ height: number; width?: number }>;
   currentLevel: number;
   nextLevel: number;
   loadSource(url: string): void;
@@ -66,7 +67,7 @@ export function setHlsLoader(loader: typeof loadHls) {
  * the browser plays HLS natively: only hls.js tells the levels and switches them); without
  * Media Source Extensions (iPhone before iOS 17.1), the playlist natively; when hls.js fails
  * for good, the plain file. Returns the `src` the element takes (undefined while hls.js feeds
- * it) and the height playing on Auto.
+ * it) and the short side of the level playing on Auto (`height`: 1080 for a portrait 1080×1920).
  */
 export function useVideoSource(
   ref: RefObject<HTMLVideoElement | null>,
@@ -102,7 +103,7 @@ export function useVideoSource(
         hls.current = instance;
         instance.on(Hls.Events.LEVEL_SWITCHED ?? 'hlsLevelSwitched', (_e, data) => {
           const level = instance?.levels[Number(data.level)];
-          setHeight(level?.height ?? null);
+          setHeight(level ? shortSide(level) : null);
         });
         instance.on(Hls.Events.ERROR ?? 'hlsError', (_e, data) => {
           if (!data.fatal) return;

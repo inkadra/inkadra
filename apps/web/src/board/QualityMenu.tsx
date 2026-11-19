@@ -2,11 +2,8 @@ import type { Asset, VideoRung } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { rungLabel, shortSide } from './video-player.ts';
 import type { QualityChoice } from './video-source.ts';
-
-/** `720p`, `4K`: how a rung or a height is named. */
-export const rungLabel = (height: number | string) =>
-  Number(height) >= 2000 ? '4K' : `${Number(height)}p`;
 
 /**
  * The Quality chip in the bar of the video player, on cards and in the viewers (decisions 0128,
@@ -23,7 +20,7 @@ export function QualityMenu({
   asset: Asset;
   choice: QualityChoice;
   onChoose: (choice: QualityChoice) => void;
-  /** Height playing on Auto, when the player says it. */
+  /** Short side of the level playing on Auto, when the player says it. */
   playing: number | null;
   /** A narrow player: the chip names only the height. */
   compact?: boolean;
@@ -55,7 +52,7 @@ export function QualityMenu({
         )
       : null;
   const originalNote = [
-    asset.height && asset.width ? rungLabel(Math.min(asset.width, asset.height)) : null,
+    asset.height && asset.width ? rungLabel(shortSide(asset)) : null,
     mbps ? `${mbps} Mbit/s` : null,
   ]
     .filter(Boolean)
@@ -67,7 +64,7 @@ export function QualityMenu({
         : auto
       : choice === 'original'
         ? t('viewer.quality.original')
-        : rungLabel(rungs.find((r) => r.name === choice)?.height ?? choice);
+        : rungLabel(choice);
   const pick = (next: QualityChoice) => {
     onChoose(next);
     setOpen(false);
@@ -146,7 +143,7 @@ export function QualityMenu({
             {rungs.map((r) =>
               item(
                 r.name as VideoRung,
-                rungLabel(r.status === 'ready' ? (r.height ?? r.name) : r.name),
+                rungLabel(r.name),
                 r.status === 'ready' ? null : r.live ? (
                   <>
                     <span className="live-tag">{t('viewer.quality.live')}</span>

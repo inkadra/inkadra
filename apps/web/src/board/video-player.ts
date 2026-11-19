@@ -85,15 +85,27 @@ export function playerAction(e: Key, paused: boolean): PlayerAction | null {
 
 /** A card under this width (its own, not the window's) loses volume and the total time. */
 export const COMPACT_WIDTH = 360;
-/** A viewer narrower than this gets the phone layout: big buttons in the middle. */
-export const PHONE_WIDTH = 600;
+/** A viewer player narrower than this on a desktop gets the compact row, never the phone one. */
+export const VIEWER_COMPACT_WIDTH = 560;
 
 export type PlayerVariant = 'card' | 'viewer';
 
-/** How the controls are laid out at `width` CSS pixels of the player. */
-export function playerLayout(width: number, variant: PlayerVariant) {
-  return {
-    compact: variant === 'card' && width > 0 && width < COMPACT_WIDTH,
-    phone: variant === 'viewer' && width > 0 && width < PHONE_WIDTH,
-  };
+/**
+ * How the controls are laid out at `width` CSS pixels of the player. The phone layout (big
+ * buttons in the middle, the Quality menu as a sheet) belongs to a phone, `onPhone`: a narrow
+ * window or a touch screen. A narrow player on a desktop, such as a portrait video, keeps the
+ * desktop controls and drops the ones that do not fit.
+ */
+export function playerLayout(width: number, variant: PlayerVariant, onPhone = false) {
+  const phone = variant === 'viewer' && onPhone;
+  const min = variant === 'card' ? COMPACT_WIDTH : VIEWER_COMPACT_WIDTH;
+  return { compact: !phone && width > 0 && width < min, phone };
 }
+
+/** The short side of a picture: a portrait 1080×1920 copy is a 1080p one, as the server names rungs. */
+export const shortSide = (size: { width?: number | null; height?: number | null }) =>
+  size.width && size.height ? Math.min(size.width, size.height) : (size.height ?? size.width ?? 0);
+
+/** `720p`, `4K`: how a rung (its name) or a short side is named. */
+export const rungLabel = (side: number | string) =>
+  Number(side) >= 2000 ? '4K' : `${Number(side)}p`;

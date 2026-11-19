@@ -31,9 +31,9 @@ import { playInline, stopInline, useInlinePlaying, useInlineStops } from './inli
 import { MAP_ASPECT, MapCredit, TrackLine } from './MapCard.tsx';
 import { MapSurface, useExploring } from './MapExplore.tsx';
 import { formatClimb, formatDistance } from './maps.ts';
-import { rungLabel } from './QualityMenu.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
 import { VideoPlayer } from './VideoPlayer.tsx';
+import { rungLabel } from './video-player.ts';
 import {
   type PlaybackSource,
   playbackSource,

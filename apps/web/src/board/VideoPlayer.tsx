@@ -12,6 +12,7 @@ import {
   type VideoHTMLAttributes,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsPhoneOrTouch } from '../lib/phone.ts';
 import { QualityMenu } from './QualityMenu.tsx';
 import {
   clock,
@@ -34,7 +35,7 @@ export interface PlayerQuality {
   asset: Asset;
   choice: QualityChoice;
   onChoose: (choice: QualityChoice) => void;
-  /** Height playing on Auto, when the player says it. */
+  /** Short side of the level playing on Auto, when the player says it. */
   playing: number | null;
 }
 
@@ -57,6 +58,7 @@ export function VideoPlayer({
   hidden = false,
   tour,
   playLink,
+  size,
   video,
 }: {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -74,11 +76,18 @@ export function VideoPlayer({
   hidden?: boolean;
   tour?: string;
   playLink?: string;
+  /**
+   * The stored size of the video: a viewer player takes its shape from it, so the poster and
+   * every HLS level show at one size (a 480p level must not shrink the player).
+   */
+  size?: { width?: number | null; height?: number | null } | null;
   /** Attributes and handlers of the `<video>` itself. */
   video: VideoHTMLAttributes<HTMLVideoElement> & { className?: string };
 }) {
   const { t, i18n } = useTranslation();
   const box = useRef<HTMLDivElement>(null);
+  const barBox = useRef<HTMLDivElement>(null);
+  const onPhone = useIsPhoneOrTouch();
   const timeline = useRef<HTMLDivElement>(null);
   const timeText = useRef<HTMLSpanElement>(null);
   const tipText = useRef<HTMLSpanElement>(null);
@@ -89,7 +98,7 @@ export function VideoPlayer({
   const [duration, setDuration] = useState(durationMs ? durationMs / 1000 : 0);
   const [layout, setLayout] = useState({ compact: false, phone: false });
   const [awake, setAwake] = useState(true);
-  // Timecode in a wide viewer, m:ss on cards and phones, until the person clicks the time.
+  // Timecode in a wide viewer, m:ss on cards, phones and narrow players, until the person clicks the time.
   const [clockChoice, setClockChoice] = useState<boolean | null>(null);
   const [rate, setRate] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
@@ -101,7 +110,7 @@ export function VideoPlayer({
   const pointerType = useRef('mouse');
   const viewer = variant === 'viewer';
   const { compact, phone } = layout;
-  const useClock = clockChoice ?? (variant === 'card' || phone || !frameRate);
+  const useClock = clockChoice ?? (variant === 'card' || phone || compact || !frameRate);
   const format = (seconds: number) => (useClock ? clock(seconds) : timecode(seconds, frameRate));
 
   const length = () => {
@@ -190,25 +199,30 @@ export function VideoPlayer({
     return () => cancelAnimationFrame(frame);
   }, [paused]);
 
-  // The player's own size picks the layout, and bounds the Quality menu.
+  // The player's own size picks the layout, and bounds the Quality menu. On a card the bar keeps
+  // its screen size at any zoom (board.css), so its own width is what the controls have.
   useLayoutEffect(() => {
     const el = box.current;
+    const bar = barBox.current;
     if (!el) return;
-    const measure = (width: number, height: number) => {
-      el.style.setProperty('--vplayer-h', `${Math.round(height)}px`);
-      const next = playerLayout(width, variant);
+    const measure = () => {
+      // The bar's own pixels: a card's is counter-scaled, so its menu fits in that many.
+      const scale =
+        variant === 'card' && bar && el.offsetWidth ? bar.offsetWidth / el.offsetWidth : 1;
+      el.style.setProperty('--vplayer-h', `${Math.round(el.offsetHeight * scale)}px`);
+      const width = el.offsetWidth * scale;
+      const next = playerLayout(width, variant, onPhone);
       setLayout((prev) =>
         prev.compact === next.compact && prev.phone === next.phone ? prev : next,
       );
     };
-    measure(el.offsetWidth, el.offsetHeight);
+    measure();
     if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) measure(entry.contentRect.width, entry.contentRect.height);
-    });
+    const observer = new ResizeObserver(measure);
     observer.observe(el);
+    if (bar) observer.observe(bar);
     return () => observer.disconnect();
-  }, [variant]);
+  }, [variant, onPhone]);
 
   useEffect(() => {
     const change = () => setFullscreen(document.fullscreenElement === box.current);
@@ -413,7 +427,12 @@ export function VideoPlayer({
       ]
         .filter(Boolean)
         .join(' ')}
-      style={hidden ? { display: 'none' } : undefined}
+      style={{
+        ...(hidden ? { display: 'none' } : {}),
+        ...(size?.width && size.height
+          ? { ['--vplayer-ratio' as string]: `${size.width} / ${size.height}` }
+          : {}),
+      }}
       data-video-player
       data-tour={tour}
       data-play-link={playLink}
@@ -473,7 +492,7 @@ export function VideoPlayer({
           </button>
         </div>
       )}
-      <div className="vplayer__bar">
+      <div ref={barBox} className="vplayer__bar">
         {!phone && bar}
         <div className="vplayer__row">
           {!phone && (

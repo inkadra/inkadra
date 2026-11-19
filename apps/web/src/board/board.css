@@ -4629,8 +4629,11 @@ button.card__play {
     right: 16px;
     top: 80px;
   }
+}
+/* Keyboard hints mean nothing on a phone layout or a touch screen. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
   .viewer__hints {
-    flex-wrap: wrap;
+    display: none;
   }
 }
 .ctxbar__arrow-styles {
@@ -5916,7 +5919,10 @@ button.card__play {
 
 /*
  * Inkadra's video player (decision 0133): a dark bar over the video in both themes, laid out by
- * the player's own width (.vplayer--compact, .vplayer--phone). Only opacity and transform move.
+ * the player's own width (.vplayer--compact) and, in the viewer, by the device
+ * (.vplayer--phone). Only opacity and transform move. The player's box never comes from the
+ * stream playing: a card fills its preview, a viewer takes the stored shape of the video
+ * (--vplayer-ratio), so the poster and every HLS level show at one size.
  */
 .vplayer {
   --vplayer-fg: #ededed;
@@ -5935,15 +5941,42 @@ button.card__play {
 .vplayer > video {
   grid-area: 1 / 1;
 }
+.vplayer--card,
+.vplayer--viewer {
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+.vplayer--card,
+.vplayer--viewer {
+  & > video {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+  }
+}
+/* A card's player is its preview box, whatever the ratio of the stream. Its bar keeps its screen
+   size at and below 100% zoom: --zoom comes from the board (Canvas gives it to the card playing). */
 .vplayer--card {
-  width: 100%;
-  height: 100%;
+  --vplayer-k: max(1, calc(1 / var(--zoom, 1)));
+  position: absolute;
+  inset: 0;
 }
 .vplayer--viewer {
   --vplayer-btn: 40px;
   --vplayer-pad: 16px;
+  aspect-ratio: var(--vplayer-ratio, 16 / 9);
   overflow: hidden;
+  background: #000;
   border-radius: var(--ink-radius-xs);
+}
+.viewer__stage .vplayer--viewer {
+  width: min(100cqw, calc(min(100cqh, 100vh - 170px) * var(--vplayer-ratio, 16 / 9)));
+}
+.guest-viewer__stage .vplayer--viewer {
+  width: min(calc(100vw - 64px), 1160px, calc((100vh - 120px) * var(--vplayer-ratio, 16 / 9)));
 }
 .vplayer--compact {
   --vplayer-btn: 32px;
@@ -5959,6 +5992,9 @@ button.card__play {
   max-width: none;
   place-items: center;
   background: #000;
+}
+.vplayer--card:fullscreen {
+  --vplayer-k: 1;
 }
 .vplayer:fullscreen > video {
   width: 100%;
@@ -5982,6 +6018,19 @@ button.card__play {
   flex-direction: column;
   gap: 2px;
 }
+.vplayer--card .vplayer__scrim {
+  height: min(100%, max(min(60%, 150px), calc(72px * var(--vplayer-k))));
+}
+.vplayer--card .vplayer__bar {
+  right: auto;
+  left: 0;
+  box-sizing: border-box;
+  width: calc(100% / var(--vplayer-k));
+  padding-inline: var(--vplayer-pad);
+  bottom: calc((var(--vplayer-pad) / 2 + 2px) * var(--vplayer-k));
+  transform: scale(var(--vplayer-k));
+  transform-origin: left bottom;
+}
 .vplayer__scrim,
 .vplayer__bar,
 .vplayer__center {
@@ -6000,6 +6049,9 @@ button.card__play {
 }
 .vplayer--idle:not(:has(:focus-visible, [aria-expanded="true"])) .vplayer__bar {
   transform: translateY(4px);
+}
+.vplayer--card.vplayer--idle:not(:has(:focus-visible, [aria-expanded="true"])) .vplayer__bar {
+  transform: translateY(4px) scale(var(--vplayer-k));
 }
 .vplayer__row {
   display: flex;
@@ -6064,7 +6116,7 @@ button.card__play {
 .vplayer--compact .viewer-quality__button {
   height: 26px;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .vplayer--compact .viewer-quality__button svg {
   display: none;
@@ -6263,6 +6315,9 @@ button.card__play {
   }
   .vplayer--idle .vplayer__bar {
     transform: none;
+  }
+  .vplayer--card.vplayer--idle .vplayer__bar {
+    transform: scale(var(--vplayer-k));
   }
   .vplayer__spinner {
     animation: none;
