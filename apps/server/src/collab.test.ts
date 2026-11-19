@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -323,6 +323,29 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     } finally {
       errors.mockRestore();
       logged.mockRestore();
+      told.mockRestore();
+      writes.mockRestore();
+    }
+  });
+
+  it('drops a board kept on disk whose board was deleted, without a rejected write', async () => {
+    const goneBoard = randomUUID();
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const doc = new Y.Doc();
+    addElement(doc, column('Kept for a deleted board'));
+    writeFileSync(join(dir, `${goneBoard}.yupdate`), Y.encodeStateAsUpdate(doc));
+    const told = vi.spyOn(log, 'info');
+    const writes = vi.spyOn(db, 'transaction');
+    try {
+      await replayUnsavedBoards(db, dir, log);
+      expect(told).toHaveBeenCalledWith(
+        { boardId: goneBoard },
+        'board kept on disk at the last shutdown was deleted: dropped',
+      );
+      await Promise.allSettled(writes.mock.results.map((r) => r.value));
+      expect(writes.mock.settledResults.map((r) => r.type)).toEqual(['fulfilled']);
+      expect(readdirSync(dir)).toEqual([]);
+    } finally {
       told.mockRestore();
       writes.mockRestore();
     }

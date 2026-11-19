@@ -318,6 +318,30 @@ function boardGone(err: unknown): boolean {
 }
 
 /**
+ * Upserts a board's document only while its board row exists (#935): a board deleted for good
+ * (its project, or emptied from the trash) writes no row, instead of an insert the foreign key
+ * rejects in the database log. False means the board is gone; callers keep `boardGone` for a
+ * deletion between this check and the write.
+ */
+async function storeIfBoardExists(
+  tx: Pick<Database, 'execute'>,
+  boardId: string,
+  state: Uint8Array,
+  schemaVersion: number,
+) {
+  const bytes = Buffer.from(state.buffer, state.byteOffset, state.byteLength);
+  const rows = await tx.execute(sql`
+    insert into ${boardDoc} (board_id, state, schema_version, size)
+    select ${board.id}, ${bytes}::bytea, ${schemaVersion}::int, ${state.byteLength}::int
+    from ${board} where ${board.id} = ${boardId}
+    on conflict (board_id) do update set state = excluded.state,
+      schema_version = excluded.schema_version, size = excluded.size,
+      updated_at = ${new Date().toISOString()}::timestamptz
+    returning board_id`);
+  return rows.length > 0;
+}
+
+/**
  * Stores the boards a shutdown kept on disk (#795), merged into what the database has, before any
  * board opens. A file that cannot be stored stays for the next start.
  */
@@ -333,7 +357,7 @@ export async function replayUnsavedBoards(db: Database, dir: string, log: Logger
     const file = join(dir, name);
     try {
       const kept = await readFile(file);
-      await db.transaction(async (tx) => {
+      const written = await db.transaction(async (tx) => {
         const [row] = await tx
           .select({ state: boardDoc.state })
           .from(boardDoc)
@@ -343,17 +367,15 @@ export async function replayUnsavedBoards(db: Database, dir: string, log: Logger
         if (row) Y.applyUpdate(document, row.state);
         Y.applyUpdate(document, kept);
         const state = Y.encodeStateAsUpdate(document);
-        const schemaVersion = getSchemaVersion(document);
-        await tx
-          .insert(boardDoc)
-          .values({ boardId, state, schemaVersion, size: state.byteLength })
-          .onConflictDoUpdate({
-            target: boardDoc.boardId,
-            set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
-          });
+        return storeIfBoardExists(tx, boardId, state, getSchemaVersion(document));
       });
       await rm(file, { force: true });
-      log.info({ boardId }, 'board kept on disk at the last shutdown: stored');
+      log.info(
+        { boardId },
+        written
+          ? 'board kept on disk at the last shutdown: stored'
+          : 'board kept on disk at the last shutdown was deleted: dropped',
+      );
     } catch (err) {
       if (boardGone(err)) {
         await rm(file, { force: true });
@@ -931,19 +953,7 @@ export function createCollabServer(deps: {
           began = performance.now();
           // A database that stopped answering fails the store (retried) instead of holding it.
           await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
-          // Written only while the board row exists (#935): a board deleted for good (its
-          // project, or emptied from the trash) while open writes no row instead of a rejected
-          // insert in the database log.
-          const bytes = Buffer.from(state.buffer, state.byteOffset, state.byteLength);
-          const rows = await tx.execute(sql`
-            insert into ${boardDoc} (board_id, state, schema_version, size)
-            select ${board.id}, ${bytes}::bytea, ${schemaVersion}::int, ${state.byteLength}::int
-            from ${board} where ${board.id} = ${boardId}
-            on conflict (board_id) do update set state = excluded.state,
-              schema_version = excluded.schema_version, size = excluded.size,
-              updated_at = ${new Date().toISOString()}::timestamptz
-            returning board_id`);
-          return rows.length > 0;
+          return storeIfBoardExists(tx, boardId, state, schemaVersion);
         });
         const written = await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
         storeTimes.record(began - asked, performance.now() - asked);
