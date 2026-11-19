@@ -546,13 +546,14 @@ function InviteForm({
   );
 }
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, label }: { text: string; label?: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <Button
       variant="secondary"
       icon="copy"
+      aria-label={copied ? undefined : label}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
