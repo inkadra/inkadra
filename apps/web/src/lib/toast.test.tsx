@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
+import { TOAST_ACTION_MS, TOAST_MS, Toast } from '@inkadra/ui';
+import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { setFeedbackStatus } from '../feedback/state.ts';
-import { TOAST_ACTION_MS, TOAST_MS, Toast } from './Toast.tsx';
+import { DialogTexts } from './DialogTexts.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -27,6 +28,9 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
+// The app gives the toast its words and the report, as main.tsx does.
+const show = (node: ReactNode) => root.render(<DialogTexts>{node}</DialogTexts>);
+
 const button = (label: string) =>
   [...host.querySelectorAll('button')].find(
     (b) => b.textContent === label || b.getAttribute('aria-label') === label,
@@ -34,8 +38,8 @@ const button = (label: string) =>
 
 it('leaves after its time, which hover and focus pause', async () => {
   const onClose = vi.fn();
-  await act(async () => root.render(<Toast text="Done" onUndo={() => {}} onClose={onClose} />));
-  const toast = host.querySelector('.toast') as HTMLElement;
+  await act(async () => show(<Toast text="Done" onUndo={() => {}} onClose={onClose} />));
+  const toast = host.querySelector('.ink-toast') as HTMLElement;
   await act(async () => vi.advanceTimersByTime(TOAST_ACTION_MS - 1000));
   await act(async () => toast.dispatchEvent(new PointerEvent('pointerover', { bubbles: true })));
   await act(async () => vi.advanceTimersByTime(10_000));
@@ -54,12 +58,12 @@ it('leaves after its time, which hover and focus pause', async () => {
 
 it('stays longer when it offers an action than when it only says something', async () => {
   const plain = vi.fn();
-  await act(async () => root.render(<Toast text="Saved" onClose={plain} />));
+  await act(async () => show(<Toast text="Saved" onClose={plain} />));
   await act(async () => vi.advanceTimersByTime(TOAST_MS));
   expect(plain).toHaveBeenCalledOnce();
   const withShow = vi.fn();
   await act(async () =>
-    root.render(<Toast key="show" text="5 scenes imported" onShow={() => {}} onClose={withShow} />),
+    show(<Toast key="show" text="5 scenes imported" onShow={() => {}} onClose={withShow} />),
   );
   await act(async () => vi.advanceTimersByTime(TOAST_MS));
   expect(withShow).not.toHaveBeenCalled();
@@ -77,7 +81,7 @@ it('undoes in one step, and drops Undo once the history moves on', async () => {
   const onShow = vi.fn();
   const onClose = vi.fn();
   const render = () =>
-    root.render(
+    show(
       <Toast text="Added" ok onShow={onShow} onUndo={onUndo} history={history} onClose={onClose} />,
     );
   await act(async () => render());
@@ -89,7 +93,7 @@ it('undoes in one step, and drops Undo once the history moves on', async () => {
   expect(onClose).toHaveBeenCalledOnce();
   expect(map.get('a')).toBeUndefined();
 
-  await act(async () => root.render(<div />));
+  await act(async () => show(<div />));
   await act(async () => render());
   expect(button('board.undo')).toBeDefined();
   // Another edit: Undo would take back that one instead, so only ⌘Z is left.
@@ -102,7 +106,7 @@ it('undoes in one step, and drops Undo once the history moves on', async () => {
 it('offers to report a failure, and only a failure, while reporting is on', async () => {
   const open = vi.fn();
   window.addEventListener('inkadra:feedback', open);
-  await act(async () => root.render(<Toast text="Failed" error onClose={() => {}} />));
+  await act(async () => show(<Toast text="Failed" error onClose={() => {}} />));
   expect(button('feedback.report')).toBeUndefined();
   await act(async () =>
     setFeedbackStatus({
@@ -113,9 +117,9 @@ it('offers to report a failure, and only a failure, while reporting is on', asyn
       deviceVideos: true,
     }),
   );
-  await act(async () => root.render(<Toast text="Saved" ok onClose={() => {}} />));
+  await act(async () => show(<Toast text="Saved" ok onClose={() => {}} />));
   expect(button('feedback.report')).toBeUndefined();
-  await act(async () => root.render(<Toast text="Failed" error onClose={() => {}} />));
+  await act(async () => show(<Toast text="Failed" error onClose={() => {}} />));
   await act(async () => button('feedback.report')?.click());
   expect((open.mock.calls[0]?.[0] as CustomEvent | undefined)?.detail).toEqual({ title: 'Failed' });
   window.removeEventListener('inkadra:feedback', open);

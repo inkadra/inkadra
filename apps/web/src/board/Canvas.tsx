@@ -87,7 +87,7 @@ import {
   isMapLink,
   type ModuleId,
 } from '@inkadra/shared';
-import { Button, Icon, Input, kindStyle } from '@inkadra/ui';
+import { Button, Icon, Input, kindStyle, Toast } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
   type DragEvent,
@@ -208,7 +208,6 @@ import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
 import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
-import { Toast } from './Toast.tsx';
 import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
 import { startUpload } from './uploads.ts';
@@ -2654,7 +2653,9 @@ export function Canvas({
     // Enter on the toast's buttons, a colour's copy button and a play button presses them (#310, #308).
     const presses =
       e.target instanceof HTMLElement &&
-      !!e.target.closest('.toast, .card__copy, .screenplay-hint, .frame-upload, [data-play-link]');
+      !!e.target.closest(
+        '.ink-toast, .card__copy, .screenplay-hint, .frame-upload, [data-play-link]',
+      );
     if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {

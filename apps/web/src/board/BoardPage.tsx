@@ -15,7 +15,17 @@ import {
   type Project,
   type ProjectRole,
 } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, IconButton, ProjectGlyph, Tabs } from '@inkadra/ui';
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  Icon,
+  IconButton,
+  type MenuCloseReason,
+  ProjectGlyph,
+  Tabs,
+  Toast,
+} from '@inkadra/ui';
 import {
   Fragment,
   lazy,
@@ -86,7 +96,6 @@ import {
 import { RestoredToast } from './RestoredToast.tsx';
 import { isMac } from './shortcuts.ts';
 import { LOCAL, REPAIR } from './store.ts';
-import { Toast } from './Toast.tsx';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import { beginViewSwitch, slideTabPill, type ViewSwitchMotion } from './view-switch.ts';
 import {
@@ -675,7 +684,7 @@ function BoardScreen({
   }, [editable]);
   const headerMenuAnchor = useRef<HTMLDivElement>(null);
   // An outside click leaves focus where the person clicked; Escape and a chosen item return it.
-  const closeHeaderMenu = useCallback((reason: 'escape' | 'outside' | 'item') => {
+  const closeHeaderMenu = useCallback((reason: MenuCloseReason | 'item') => {
     setHeaderMenu(false);
     if (reason !== 'outside') document.getElementById('board-header-menu')?.focus();
   }, []);

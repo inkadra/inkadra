@@ -19,6 +19,8 @@ import {
   Icon,
   IconButton,
   Input,
+  type MenuCloseReason,
+  Toast,
 } from '@inkadra/ui';
 import {
   type CSSProperties,
@@ -36,7 +38,6 @@ import { api } from '../../lib/api.ts';
 import { useModules } from '../../lib/modules.ts';
 import { ContextMenu } from '../chrome.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
-import { Toast } from '../Toast.tsx';
 import { sceneIdsOf } from './needed.ts';
 import { loadBoardDays } from './production-days.ts';
 import { useSlugline } from './storyboard-data.ts';
@@ -308,7 +309,7 @@ function ToBringPanel({
     left: Math.max(8, r.right - 200),
     top: r.bottom + 4,
   });
-  const closeMenu = (reason: 'escape' | 'outside' | 'item') => {
+  const closeMenu = (reason: MenuCloseReason | 'item') => {
     setMenu(null);
     if (reason === 'escape') menuAnchor.current?.focus();
   };

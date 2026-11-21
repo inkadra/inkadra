@@ -351,7 +351,10 @@ for (const theme of ['dark', 'light'] as const) {
           timeout: 1500,
         });
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-imported`);
-      await page.locator('.toast').getByRole('button', { name: 'Annulla', exact: true }).click();
+      await page
+        .locator('.ink-toast')
+        .getByRole('button', { name: 'Annulla', exact: true })
+        .click();
       await expect(page.locator('.card--board')).toHaveCount(before);
       await expect(page.getByRole('link', { name: /^Sceneggiatura/ })).toHaveCount(0);
       if (!phone) await expect(shots).toHaveCount(0);

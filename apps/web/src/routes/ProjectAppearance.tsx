@@ -7,9 +7,9 @@ import {
   type DialogHandle,
   Icon,
   type IconName,
+  Menu,
   NavItem,
   ProjectGlyph,
-  swallowOutsidePress,
   Tabs,
   tokens,
 } from '@inkadra/ui';
@@ -79,21 +79,6 @@ export function useMenu(label: string, items: ProjectMenuItem[]) {
     setMenu(null);
     opener.current?.focus();
   };
-  useEffect(() => {
-    if (!menu) return;
-    menuRef.current?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)')?.focus();
-    const dismiss = (event: PointerEvent) => {
-      if (
-        menuRef.current?.contains(event.target as Node) ||
-        opener.current?.contains(event.target as Node)
-      )
-        return;
-      swallowOutsidePress(event);
-      setMenu(null);
-    };
-    document.addEventListener('pointerdown', dismiss, true);
-    return () => document.removeEventListener('pointerdown', dismiss, true);
-  }, [menu]);
   // Measured, so the separator, swatches and touch rows count, and kept above the phone's tabs.
   useLayoutEffect(() => {
     const node = menuRef.current;
@@ -169,42 +154,18 @@ export function useMenu(label: string, items: ProjectMenuItem[]) {
     menu &&
     items.length > 0 &&
     createPortal(
-      <div
+      <Menu
+        // A new place (another right click) is a new menu: the focus goes in again.
+        key={`${menu.x},${menu.y}`}
         ref={menuRef}
-        role="menu"
-        aria-label={label}
-        className="ink-menu project-context-menu"
+        label={label}
+        className="project-context-menu"
         style={{ left: menu.x, top: menu.y }}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape' || event.key === 'Tab') {
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              event.stopPropagation();
-            }
-            close();
-          } else if (
-            ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
-          ) {
-            event.preventDefault();
-            const all = [
-              ...(menuRef.current?.querySelectorAll<HTMLButtonElement>(
-                '[role^="menuitem"]:not(:disabled)',
-              ) ?? []),
-            ];
-            const i = all.indexOf(document.activeElement as HTMLButtonElement);
-            const forward = event.key === 'ArrowDown' || event.key === 'ArrowRight';
-            const next =
-              event.key === 'Home'
-                ? 0
-                : event.key === 'End'
-                  ? all.length - 1
-                  : (i + (forward ? 1 : -1) + all.length) % all.length;
-            all[next]?.focus();
-          }
-        }}
+        anchor={opener}
+        onClose={(reason) => (reason === 'outside' ? setMenu(null) : close())}
       >
         {rows}
-      </div>,
+      </Menu>,
       opener.current?.closest('dialog') ?? document.body,
     );
   return { open, close, isOpen: !!menu, opener, layer };

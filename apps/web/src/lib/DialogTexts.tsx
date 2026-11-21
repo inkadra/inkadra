@@ -1,18 +1,26 @@
-import { DateFieldTextsContext, DialogTextsContext, TimeFieldTextsContext } from '@inkadra/ui';
+import {
+  DateFieldTextsContext,
+  DialogTextsContext,
+  TimeFieldTextsContext,
+  ToastTextsContext,
+} from '@inkadra/ui';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { uses12h } from './datetime.ts';
 import { usePreferences } from './preferences.ts';
 
 /**
  * The words the shared components need in the language of the app: the "Discard changes?"
  * question of the dialogs, the date field's calendar and the time field, with the person's
- * clock (12 or 24 h, #302).
+ * clock (12 or 24 h, #302), and the toast's, which offers to report a failure when reporting
+ * is on.
  */
 export function DialogTexts({ children }: { children: ReactNode }) {
   // Re-renders on a change of language too, and the page's lang follows it (i18n/index.ts).
   const { t } = useTranslation();
   const prefs = usePreferences();
+  const feedback = useFeedbackStatus();
   return (
     <DialogTextsContext.Provider
       value={{
@@ -43,7 +51,17 @@ export function DialogTexts({ children }: { children: ReactNode }) {
             hour12: uses12h(prefs),
           }}
         >
-          {children}
+          <ToastTextsContext.Provider
+            value={{
+              show: t('board.show'),
+              undo: t('board.undo'),
+              close: t('board.toastClose'),
+              report: t('feedback.report'),
+              onReport: feedback?.enabled ? (text) => openFeedback({ title: text }) : undefined,
+            }}
+          >
+            {children}
+          </ToastTextsContext.Provider>
         </TimeFieldTextsContext.Provider>
       </DateFieldTextsContext.Provider>
     </DialogTextsContext.Provider>

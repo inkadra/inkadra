@@ -437,7 +437,7 @@ it('sends pictures to the storyboard as frames, keeps the references and skips c
     parent: null,
   });
   expect(store.getSnapshot().byId.has(picture.id)).toBe(true);
-  expect(host.querySelector('.toast')?.textContent).toBe('moodboard.sent');
+  expect(host.querySelector('.ink-toast')?.textContent).toBe('moodboard.sent');
 });
 
 it('asks which storyboard when the project has several, and sends there (decision 0121)', async () => {
