@@ -249,7 +249,7 @@
   },
   "diagnostics": {
     "title": "Diagnostic de l’instance",
-    "subtitle": "Vérifie le proxy, l’adresse publique, la base de données et le stockage.",
+    "subtitle": "Vérifiez le proxy, l’adresse publique, la base de données et le stockage.",
     "summary": {
       "ok": "Tout va bien : l’instance est correctement configurée.",
       "warning": "Tout fonctionne, mais un point est à corriger.",
