@@ -2251,7 +2251,7 @@ span.plan-pill {
 }
 .plan-start__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .plan-main--phone .plan-start__grid {
@@ -2316,6 +2316,21 @@ span.plan-pill {
 }
 .plan-start__size .plan-num {
   width: 76px;
+}
+/* Scanning the room comes with the phone app: a note, never a choice yet. */
+.plan-start__soon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--ink-border-subtle);
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+.plan-start__soon .plan-start__pic {
+  width: 28px;
+  height: 23px;
 }
 .plan-start__actions {
   display: flex;
