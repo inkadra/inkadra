@@ -30,19 +30,19 @@ export const en: MailTexts = {
         title: 'Password changed',
         body: 'The password of your account was changed and your personal access tokens were revoked.',
         after:
-          'Don’t recognise this change? Reset your password and contact your administrator straight away.',
+          'Don’t recognize this change? Reset your password and contact your administrator straight away.',
       },
       twoFactor: {
         title: 'Two-step verification turned off',
         body: 'Your account no longer asks for a verification code when you sign in.',
         after:
-          'Don’t recognise this change? Change your password, turn verification back on and contact your administrator straight away.',
+          'Don’t recognize this change? Change your password, turn verification back on and contact your administrator straight away.',
       },
       token: {
         title: 'New access token',
         body: 'A token that can access your account without a password was created.',
         after:
-          'Don’t recognise this change? Revoke the token and contact your administrator straight away.',
+          'Don’t recognize this change? Revoke the token and contact your administrator straight away.',
       },
     },
     subject: (title, instance) => `${title} on ${instance}`,

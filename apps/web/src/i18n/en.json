@@ -341,7 +341,7 @@
     "toolGroups": {
       "navigate": "Navigate and connect",
       "create": "Create content",
-      "organize": "Organise and plan"
+      "organize": "Organize and plan"
     },
     "canvas": "Board canvas",
     "a11y": {
@@ -378,8 +378,8 @@
         "file_other": "{{count}} files",
         "link_one": "{{count}} link",
         "link_other": "{{count}} links",
-        "color_one": "{{count}} colour",
-        "color_other": "{{count}} colours",
+        "color_one": "{{count}} color",
+        "color_other": "{{count}} colors",
         "note_one": "{{count}} note",
         "note_other": "{{count}} notes",
         "column_one": "{{count}} column",
@@ -408,7 +408,7 @@
       "link": "Link",
       "file": "File",
       "todo": "To-do",
-      "color": "Colour",
+      "color": "Color",
       "column": "Column",
       "board": "Board",
       "scene": "Scene",
@@ -542,7 +542,7 @@
       "noScenes": "No scenes on this board"
     },
     "color": {
-      "label": "Colour name",
+      "label": "Color name",
       "labelPlaceholder": "Name",
       "hex": "Hex",
       "red": "Red",
@@ -550,8 +550,8 @@
       "blue": "Blue",
       "copy": "Copy {{hex}} (RGB {{rgb}})",
       "copied": "Copied {{hex}}",
-      "edit": "Edit colour",
-      "picker": "Colour picker",
+      "edit": "Edit color",
+      "picker": "Color picker",
       "square": "Saturation and brightness",
       "squareValue": "Saturation {{s}}%, brightness {{v}}%",
       "hue": "Hue",
@@ -619,7 +619,7 @@
       "list": "Bulleted list"
     },
     "colors": {
-      "none": "No colour",
+      "none": "No color",
       "blue": "Blue",
       "orange": "Orange",
       "purple": "Purple",
@@ -627,7 +627,7 @@
     },
     "align": {
       "left": "Align left",
-      "center": "Centre",
+      "center": "Center",
       "right": "Align right",
       "top": "Align top",
       "middle": "Align middle",
@@ -669,7 +669,7 @@
       "front": "Bring to front",
       "back": "Send to back",
       "toUnsorted": "Move to Unsorted",
-      "organize": "Organise",
+      "organize": "Organize",
       "share": "Share",
       "delete": "Delete",
       "more": "More actions",
@@ -681,7 +681,7 @@
       "details": "Frame details",
       "draw": "Draw",
       "rename": "Rename",
-      "boardIcon": "Icon and colour…",
+      "boardIcon": "Icon and color…",
       "moveCardsOn": "Move with the cards under it",
       "moveCardsOff": "Move the heading alone",
       "hideGrid": "Hide the dot grid",
@@ -718,7 +718,7 @@
       "cancel": "Cancel",
       "done": "Done",
       "failed": "Failed",
-      "cancelled": "Cancelled",
+      "cancelled": "Canceled",
       "retry": "Retry",
       "offline": "Waiting for network",
       "reconnecting": "Reconnecting…",
@@ -1109,7 +1109,7 @@
         "grid": "egg crate, honeycomb",
         "barn": "barndoors, doors",
         "snoot": "snoot, tube",
-        "gel": "filter, cto, ctb, colour",
+        "gel": "filter, cto, ctb, color",
         "scrim": "scrim, single, double",
         "gobo": "gobo, pattern, template",
         "flag": "flag, solid",
@@ -1292,11 +1292,11 @@
       "searchHint": "Also searches categories and synonyms. Enter places the first icon in the middle.",
       "noMatch": "No icon found",
       "recent": "Recent",
-      "starred": "Favourites",
-      "favourite": "Favourite: {{name}}",
+      "starred": "Favorites",
+      "favourite": "Favorite: {{name}}",
       "sheetHalf": "Shrink the library",
       "sheetFull": "Full-screen library",
-      "color": "Colour",
+      "color": "Color",
       "edit": "Edit",
       "linkScene": "Link to a scene",
       "linkSceneMenu": "Link to a scene…",
@@ -1334,7 +1334,7 @@
       "items_other": "{{count}} items",
       "align": {
         "left": "Align left",
-        "centre": "Align centre",
+        "centre": "Align center",
         "top": "Align top",
         "distribute": "Distribute"
       },
@@ -1342,7 +1342,7 @@
       "ungroup": "Ungroup",
       "scale": "Scale",
       "scaleGrid": "1 square = {{grid}} m",
-      "noScale": "None, no metres",
+      "noScale": "None, no meters",
       "setScale": "Set the scale",
       "scaleHint": "Draw a line along something whose length you know",
       "rulers": "Rulers",
@@ -1351,7 +1351,7 @@
       "clearScale": "Remove the scale",
       "cancel": "Cancel",
       "lineIs": "The line you drew is",
-      "metres": "metres",
+      "metres": "meters",
       "grid": "Grid",
       "apply": "Set",
       "showLayer": "Show {{layer}}",
@@ -1385,8 +1385,8 @@
       "variantField": "Variant name",
       "inPresentation": "In the presentation",
       "layersHintNone": "No active layer: each icon goes to its family’s layer, strokes and shapes to Set. What you hide here is yours alone; what you hide in a variant is for everyone.",
-      "colorOf": "Colour: {{name}}",
-      "nextColor": "Colour of the next strokes",
+      "colorOf": "Color: {{name}}",
+      "nextColor": "Color of the next strokes",
       "undo": "Undo",
       "redo": "Redo",
       "more": "More actions",
@@ -1416,7 +1416,7 @@
       "marqueeHold_one": "Press and hold, then drag · {{count}} item",
       "marqueeHold_other": "Press and hold, then drag · {{count}} items",
       "emptyHint": "Draw the walls with the Walls tool, then add cameras and lights from the library on the left.",
-      "measureMetres": "Measure in metres",
+      "measureMetres": "Measure in meters",
       "measureHint": "The drawing stays as it is: only the number shown changes.",
       "measureWrong": "Enter a number greater than 0.",
       "writeMeasure": "Enter the measure",
@@ -1468,14 +1468,14 @@
       "export": "Export",
       "facing": "Facing",
       "filterLayer": "Filter by layer",
-      "filterTag": "Filter by tag colour",
+      "filterTag": "Filter by tag color",
       "fixture": "Fixture",
       "gel": "Gel",
       "height": "Height",
       "hideGhost": "Hide {{name}}",
       "showGhost": "Show {{name}} as a ghost",
-      "kelvin": "Colour temperature",
-      "kelvinPresets": "Colour temperature presets",
+      "kelvin": "Color temperature",
+      "kelvinPresets": "Color temperature presets",
       "kitEmpty": "No kit on this setup yet: lights, grip and camera add to it.",
       "kitForSetup": "Kit for this setup",
       "kitPillLabel": "Kit: {{items}} items, {{power}}",
@@ -1487,7 +1487,7 @@
         "kitHint": "A light or camera you set up once shows here with its make, power, modifiers and stand, for every plan of the project.",
         "kitResults_one": "{{count}} in the project kit",
         "kitResults_other": "{{count}} in the project kit",
-        "mine": "Favourites and recent",
+        "mine": "Favorites and recent",
         "noFavourites": "Star an icon to keep it here.",
         "noRecent": "The icons you place show here.",
         "projectKit": "Project kit",
@@ -1519,7 +1519,7 @@
       "moreProps": "All properties",
       "movement": "Movement",
       "nameField": "Name",
-      "nameFollows": "Name and colour follow the card",
+      "nameFollows": "Name and color follow the card",
       "newSetup": "Add a setup",
       "noCircuit": "On no circuit",
       "noGel": "No gel",
@@ -1559,7 +1559,7 @@
         "kit": "Kit"
       },
       "tag": "Tag",
-      "tagColour": "Tag colour: {{name}}",
+      "tagColour": "Tag color: {{name}}",
       "textSize": "Text size",
       "tilt": "Tilt",
       "viewLength": "View length",
@@ -1752,8 +1752,8 @@
         "angles": "Angles",
         "free": "Free",
         "typeHint": "Type a length, then Enter",
-        "typedLength": "Length of the next side, in metres",
-        "typedWidth": "Width of the next opening, in metres",
+        "typedLength": "Length of the next side, in meters",
+        "typedWidth": "Width of the next opening, in meters",
         "openings": "Openings",
         "kinds": {
           "door": "Door",
@@ -1800,8 +1800,8 @@
         "failed": "The picture could not be uploaded. Try again.",
         "picture": "Picture",
         "opacity": "Opacity",
-        "grey": "In greys",
-        "greyShort": "grey",
+        "grey": "In grays",
+        "greyShort": "gray",
         "show": "Shown",
         "place": "Move and scale",
         "replace": "Replace",
@@ -1848,7 +1848,7 @@
       },
       "onAnotherSetup": "On another setup",
       "renameHint": "Double-click or F2 to rename",
-      "tagColourFollows": "The colour follows the character card",
+      "tagColourFollows": "The color follows the character card",
       "onTrack": "{{name}} on track",
       "onTrackLength": "{{name}} on {{metres}} m track",
       "seatsAround_one": "{{count}} seat",
@@ -1904,8 +1904,8 @@
       "apply": "Apply",
       "removeLink": "Remove link",
       "invalidLink": "Enter a valid link",
-      "ink": "Text colour and highlight",
-      "textColor": "Text colour",
+      "ink": "Text color and highlight",
+      "textColor": "Text color",
       "highlight": "Highlight",
       "background": "Background",
       "clear": "Clear formatting",
@@ -1928,7 +1928,7 @@
       "appearance": "Appearance",
       "rows": "Rows",
       "columns": "Columns",
-      "cardColor": "Card colour",
+      "cardColor": "Card color",
       "addRow": "Add row",
       "addColumn": "Add column",
       "lists": "Lists",
@@ -1938,7 +1938,7 @@
       "tasksShort": "☑ Tasks",
       "alignShort": {
         "left": "Left",
-        "center": "Centre",
+        "center": "Center",
         "right": "Right"
       },
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
@@ -1973,7 +1973,7 @@
     "sheet": {
       "edit": "Edit",
       "comment": "Comment",
-      "color": "Colour",
+      "color": "Color",
       "connect": "Connect",
       "connectHint": "Drag from the card to another one to connect them",
       "moveTo": "Move to…",
@@ -2003,7 +2003,7 @@
     "title": "Tags",
     "add": "Add a tag",
     "placeholder": "Pick a tag and press Enter",
-    "notInCatalog": "“{{tag}}” is not in the catalogue. Only administrators add tags, in Settings → Classifications.",
+    "notInCatalog": "“{{tag}}” is not in the catalog. Only administrators add tags, in Settings → Classifications.",
     "pressEnterToCreate": "Press Enter to create the tag “{{tag}}”.",
     "createFailed": "The tag could not be created. Try again.",
     "remove": "Remove the tag {{tag}}",
@@ -2023,7 +2023,7 @@
     "palette": "Palette",
     "copied": "{{hex}} copied",
     "copyHex": "Copy {{hex}}",
-    "addColors": "Add the colours to the board",
+    "addColors": "Add the colors to the board",
     "download": "Download the original",
     "size": "Size",
     "fields": {
@@ -2038,7 +2038,7 @@
     "unplayable": "Format not playable in the browser",
     "openOnYoutube": "Open on YouTube",
     "copyAll": "Copy all",
-    "copiedAll": "All colours copied",
+    "copiedAll": "All colors copied",
     "hints": {
       "nav": "to browse"
     },
@@ -2280,7 +2280,7 @@
       "brush": "Brush",
       "marker": "Marker",
       "eraser": "Eraser",
-      "color": "Colour {{color}}",
+      "color": "Color {{color}}",
       "width": "Width",
       "undo": "Undo",
       "redo": "Redo",
@@ -2319,9 +2319,9 @@
       "strip": "Frames of the scene",
       "escape": "Esc to exit",
       "tools": "Tools",
-      "palette": "Colour",
+      "palette": "Color",
       "more": "More actions",
-      "colorCurrent": "Colour: {{color}}",
+      "colorCurrent": "Color: {{color}}",
       "colorNames": {
         "black": "black",
         "white": "white",
@@ -2803,7 +2803,7 @@
     "status": {
       "expired": "This invitation has expired. Ask the person who sent it for a new one.",
       "used": "This invitation has been used already.",
-      "revoked": "This invitation was cancelled."
+      "revoked": "This invitation was canceled."
     }
   },
   "authorize": {
@@ -2848,7 +2848,7 @@
     "pinAdd": "Comment on a point of the card",
     "pinRemove": "Remove the point",
     "pinAttached": "On a point of the card",
-    "pinPlace": "Choose the point to comment on (Enter: centre, Esc: cancel)",
+    "pinPlace": "Choose the point to comment on (Enter: center, Esc: cancel)",
     "pinOpen": "Open the comment at point {{number}}",
     "pinNumber": "Point {{number}}",
     "pinsOnCanvas": "Points only show in the Canvas view, which opens to choose one.",
@@ -3158,7 +3158,7 @@
   "pwa": {
     "updateAvailable": "New version available",
     "update": "Update",
-    "updateWhenSaved": "Updates once your changes are saved and uploads finish or are cancelled",
+    "updateWhenSaved": "Updates once your changes are saved and uploads finish or are canceled",
     "later": "Later",
     "offline": {
       "title": "You are offline",
@@ -3465,11 +3465,11 @@
     "add": "Add",
     "addImage": "Upload images",
     "addLink": "Paste a link",
-    "addColor": "Add a colour",
+    "addColor": "Add a color",
     "noPreview": "No preview was found for that link. It is on the board, and shows here once it has a picture.",
     "filter": "Filter references",
     "all": "All",
-    "empty": "Add images, link previews or colours to this board to build your moodboard.",
+    "empty": "Add images, link previews or colors to this board to build your moodboard.",
     "noMatches": "No references match this filter.",
     "open": "Open {{name}}",
     "unavailable": "Preview unavailable",
@@ -3482,7 +3482,7 @@
     "title": "References",
     "images": "Images",
     "links": "Links",
-    "colors": "Colours",
+    "colors": "Colors",
     "palette": "Palette",
     "copy": "Copy",
     "paletteCopied": "Palette copied",
@@ -3712,7 +3712,7 @@
     "new": "New group",
     "rename": "Rename",
     "name": "Group name",
-    "color": "Colour",
+    "color": "Color",
     "personal": "Only for you. Dissolving a group leaves its projects alone.",
     "create": "Create",
     "group": "Group",
@@ -3903,7 +3903,7 @@
       },
       "reviewHelp": "Approved or changes requested",
       "always": "Always",
-      "alwaysNote": "Grey = always on in the Inbox.",
+      "alwaysNote": "Gray = always on in the Inbox.",
       "releaseNews": "Inkadra news",
       "releaseNewsHelp": "Only when the instance sends them",
       "releaseNewsAdminHelp": "Let people receive release news after an update. Requires SMTP and personal opt-in.",
@@ -4193,7 +4193,7 @@
     "down": "Move {{name}} down",
     "add": "Add option",
     "errorTitle": "Could not save or load",
-    "error": "Another administrator may have changed the catalogues. Reload to get the current configuration.",
+    "error": "Another administrator may have changed the catalogs. Reload to get the current configuration.",
     "reload": "Reload",
     "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable.",
     "archive": "Archive",
@@ -4219,7 +4219,7 @@
     "title": "Project appearance",
     "options": "Project options: {{name}}",
     "symbol": "Symbol",
-    "color": "Colour",
+    "color": "Color",
     "emoji": "Emoji",
     "invalid": "Use a single emoji.",
     "reset": "Reset to default",
@@ -4252,7 +4252,7 @@
     "pasteEmoji": "Paste or type an emoji",
     "sidebarPreview": "How it looks in the sidebar",
     "close": "Close",
-    "boardTitle": "Board icon and colour",
+    "boardTitle": "Board icon and color",
     "boardPreview": "How it looks on board cards"
   },
   "transfer": {
@@ -4309,7 +4309,7 @@
       "storage": "The files could not be stored. Ask the administrator to check the free space.",
       "gone": "You can no longer edit this project, or it was deleted.",
       "interrupted": "The server stopped while working on it. Try again.",
-      "cancelled": "Cancelled.",
+      "cancelled": "Canceled.",
       "internal": "Something went wrong. Try again.",
       "storage_full": "The files of the archive do not fit in the space left. Free some space or ask an administrator."
     },
@@ -4362,7 +4362,7 @@
     "whereIn": "Backups are not downloadable from the browser: copy them from {{directory}} on the server or from {{bucket}}. Restore on an empty database with",
     "failure": {
       "interrupted": "The server stopped while it ran. Start it again.",
-      "stalled": "It stopped making progress and was cancelled. Check the server log for this backup.",
+      "stalled": "It stopped making progress and was canceled. Check the server log for this backup.",
       "no_space": "Not enough free space in the backup folder.",
       "permission": "The server cannot write to its backup folder (BACKUP_DIR).",
       "internal": "Something went wrong. The server log says what, with the id of this backup.",
@@ -4494,7 +4494,7 @@
     "fit": "Framing",
     "fitIn": "Fit",
     "fill": "Fill",
-    "fitHint": "All of the content, with bands in the colour you choose.",
+    "fitHint": "All of the content, with bands in the color you choose.",
     "fillHint": "Fills the format and crops the edges: drag the point in the preview.",
     "many": "Images",
     "manyOne": "Just one",
@@ -4519,10 +4519,10 @@
     "emptyTeam": "There is nothing to export. Change the content or the selection.",
     "notReady_one": "{{count}} picture is not ready yet (still uploading): it will export as an empty box.",
     "notReady_other": "{{count}} pictures are not ready yet (still uploading): they will export as empty boxes.",
-    "band": "Band colour",
+    "band": "Band color",
     "bandBlack": "Black",
     "bandWhite": "White",
-    "bandCustom": "Colour…",
+    "bandCustom": "Color…",
     "bandRemembered": "Remembered for this project.",
     "size": "Size",
     "sizePreview": "Preview",
@@ -4777,7 +4777,7 @@
     "cropHint": "If part of the player or the logo remains, tighten the box: it gets cropped.",
     "noText": "No text is added to the card. The origin can be read in Info.",
     "tabAgain": "Capture again",
-    "deniedTitle": "Sharing cancelled",
+    "deniedTitle": "Sharing canceled",
     "denied": "The browser did not give permission. Nothing was saved.",
     "retry": "Try again",
     "blackTitle": "The frame is black",
@@ -5185,7 +5185,7 @@
     },
     "editScreenshot": "Edit the screenshot",
     "tools": "Tools",
-    "editorHelp": "Drag to cover an area. With the keyboard: Enter adds an area in the centre, arrows move it, Shift + arrows resize it, Delete removes it.",
+    "editorHelp": "Drag to cover an area. With the keyboard: Enter adds an area in the center, arrows move it, Shift + arrows resize it, Delete removes it.",
     "editorHelpPhone": "Drag with your finger to cover an area.",
     "editorMerged": "Blurred areas are merged into the image on your device: the original never leaves.",
     "undo": "Undo the last one",
@@ -5212,8 +5212,8 @@
     "relayFileTooBig": "{{size}}: the relay accepts images and files up to 10 MB.",
     "relayNoDeviceVideo": "This server can’t remove GPS and other metadata from videos from the device, so they can’t leave: record from this dialog.",
     "destinationChanged": "An administrator changed where reports go. Read where it goes now, then try again: nothing was sent.",
-    "relayUncertainBanner_one": "The relay did not confirm {{count}} report: it may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
-    "relayUncertainBanner_other": "The relay did not confirm {{count}} reports: they may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
+    "relayUncertainBanner_one": "The relay did not confirm {{count}} report: it may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognizes a report that already arrived.",
+    "relayUncertainBanner_other": "The relay did not confirm {{count}} reports: they may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognizes a report that already arrived.",
     "relayUncertain_one": "{{count}} not confirmed by the relay",
     "relayUncertain_other": "{{count}} not confirmed by the relay",
     "relayUncertainBadge": "Not confirmed by the relay",
@@ -5340,7 +5340,7 @@
         "steps": {
           "0": {
             "title": "Your projects",
-            "text": "Each project keeps its boards together. The colour tells the kind."
+            "text": "Each project keeps its boards together. The color tells the kind."
           },
           "1": {
             "title": "Search everything",
@@ -5448,7 +5448,7 @@
         "steps": {
           "0": {
             "title": "References in a grid",
-            "text": "The board’s images, links and colours, together."
+            "text": "The board’s images, links and colors, together."
           },
           "1": {
             "title": "Filter",
@@ -5456,7 +5456,7 @@
           },
           "2": {
             "title": "The palette",
-            "text": "The colours of your references, ready to copy."
+            "text": "The colors of your references, ready to copy."
           }
         }
       },
@@ -5511,7 +5511,7 @@
         "steps": {
           "0": {
             "title": "Pens and shapes",
-            "text": "Pen, eraser, shapes and text, with colour and size."
+            "text": "Pen, eraser, shapes and text, with color and size."
           },
           "1": {
             "title": "Frame after frame",
@@ -5549,7 +5549,7 @@
           },
           "1": {
             "title": "Storyboards and bars",
-            "text": "The Storyboard filter shows the frames of one storyboard only; the coloured bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A grey bar: the storyboard is not available, the label stays."
+            "text": "The Storyboard filter shows the frames of one storyboard only; the colored bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A gray bar: the storyboard is not available, the label stays."
           },
           "2": {
             "title": "Move and stretch",
@@ -5598,7 +5598,7 @@
           },
           "5": {
             "title": "Background",
-            "text": "A floor plan or a photo under the drawing to trace over: move it, scale it, set its opacity and greys."
+            "text": "A floor plan or a photo under the drawing to trace over: move it, scale it, set its opacity and grays."
           },
           "6": {
             "title": "Move around the plan",
@@ -5948,7 +5948,7 @@
           },
           "1": {
             "title": "Linked, never copied",
-            "text": "Link an actor to a character and a camera to a storyboard frame: names, colours and lenses follow the cards. With nothing selected, link the plan to its location."
+            "text": "Link an actor to a character and a camera to a storyboard frame: names, colors and lenses follow the cards. With nothing selected, link the plan to its location."
           },
           "2": {
             "title": "The sun, for exteriors",
@@ -6465,7 +6465,7 @@
         "failed": "Failed",
         "aborted": "Stopped by guard",
         "stopped": "Stopped",
-        "cancelled": "Cancelled",
+        "cancelled": "Canceled",
         "refused": "Not started",
         "interrupted": "Interrupted"
       },
@@ -6827,7 +6827,7 @@
     "keep": {
       "storyboard": "Frames that exist stay where they are.",
       "production": "Shooting days and people stay saved.",
-      "moodboard": "Images, links and colours stay on the boards.",
+      "moodboard": "Images, links and colors stay on the boards.",
       "review": "Links already sent keep working.",
       "plan": "Plans already drawn stay visible."
     },
@@ -6868,7 +6868,7 @@
       "high": "High",
       "lightHelp": "Takes little space. Fine for references and work-in-progress cuts.",
       "balancedHelp": "A clean picture even with grain and movement.",
-      "highHelp": "For reviewing footage and colour grading.",
+      "highHelp": "For reviewing footage and color grading.",
       "recommended": "Recommended"
     },
     "mbPerMinute": "MB a minute",
@@ -6976,7 +6976,7 @@
     },
     "advanced": {
       "title": "Advanced",
-      "customised": "Customised",
+      "customised": "Customized",
       "intro": "For people who know video encoding. Wrong values can give grainy or huge copies, or stuttering video: “Reset” brings each field back to the recommended value.",
       "benchmark": "Graphics card performance",
       "benchmarkRunning": "Performance test running",
