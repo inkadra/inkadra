@@ -121,6 +121,18 @@ it('draws a block on empty time, takes its type from a key and undoes it in one 
   expect(created?.getAttribute('aria-label')).toContain('schedule.types.break');
   expect(created?.getAttribute('aria-label')).toContain('schedule.fixed');
   expect(created?.textContent).toContain('10:00');
+  // With New block open again, ⌘Z from its focused item belongs to the menu, not the schedule.
+  await act(async () => column.dispatchEvent(pointer('pointerdown', 662)));
+  await act(async () => column.dispatchEvent(pointer('pointermove', 693)));
+  await act(async () => column.dispatchEvent(pointer('pointerup', 693)));
+  const again = document.querySelector('[role="menu"]');
+  expect(again?.contains(document.activeElement)).toBe(true);
+  await key(document.activeElement ?? window, { key: 'z', ctrlKey: true, metaKey: true });
+  expect(blocksOf(host)).toHaveLength(2);
+  await key(document.activeElement ?? window, { key: 'Escape' });
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  // Drawn with the pointer, it had no origin: the focus goes back to the calendar.
+  expect(document.activeElement).toBe(host.querySelector('.schedule__calendar'));
   await undo();
   expect(blocksOf(host)).toEqual([A]);
 });

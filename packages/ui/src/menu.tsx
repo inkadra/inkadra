@@ -55,11 +55,22 @@ export function Menu({
   latest.current = { onClose, anchor };
   const search = useRef({ text: '', time: 0 });
   const active = useRef<HTMLElement | null>(null);
-  // Roving tabindex, on every render so that items added later join it.
+  // Roving tabindex, on every render so that items added later join it: one tab stop at most,
+  // never on an item that is now disabled.
   useLayoutEffect(() => {
-    const items = [...(menu.current?.querySelectorAll<HTMLElement>(ITEMS) ?? [])];
-    const current = items.includes(active.current as HTMLElement) ? active.current : items[0];
-    for (const item of items) item.tabIndex = item === current ? 0 : -1;
+    const el = menu.current;
+    if (!el) return;
+    const items = [...el.querySelectorAll<HTMLElement>(ITEMS)];
+    const lost = active.current !== null && !items.includes(active.current);
+    const current = lost || !active.current ? items[0] : active.current;
+    for (const item of el.querySelectorAll<HTMLElement>('[role^="menuitem"]'))
+      item.tabIndex = item === current ? 0 : -1;
+    // The focused item went away or was disabled (a Quality level that failed): the focus would
+    // drop to the page with the menu still open, so it moves to the new tab stop.
+    const focus = document.activeElement;
+    if (lost && (!focus || focus === document.body || focus === active.current))
+      (current ?? el).focus({ preventScroll: true });
+    if (lost) active.current = current ?? null;
   });
   useEffect(() => {
     const el = menu.current;
@@ -82,6 +93,7 @@ export function Menu({
   const walk = (event: KeyboardEvent<HTMLDivElement>): boolean => {
     const items = [...(menu.current?.querySelectorAll<HTMLElement>(ITEMS) ?? [])];
     const at = items.indexOf(document.activeElement as HTMLElement);
+    // shortcut: a row is the nearest group, not nested ones; no caller nests rows, upgrade if one does.
     const row = items[at]?.closest(ROW);
     const { key } = event;
     if (key === 'Home') items[0]?.focus();

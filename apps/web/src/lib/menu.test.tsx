@@ -226,3 +226,38 @@ it('puts the focus inside the menu when every item is unavailable', async () => 
   await render(<Menu key="empty" label="Empty" onClose={() => {}} />);
   expect(document.activeElement).toBe(menu());
 });
+
+it('moves the focus and the one tab stop on when the focused item goes away', async () => {
+  const levels = (shown: string[], off: string[] = []) => (
+    <Menu label="Quality" onClose={() => {}}>
+      {shown.map((level) => (
+        <button
+          key={level}
+          type="button"
+          role="menuitemradio"
+          aria-checked={false}
+          disabled={off.includes(level)}
+        >
+          {level}
+        </button>
+      ))}
+    </Menu>
+  );
+  const stops = () =>
+    [...(menu()?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])]
+      .filter((item) => item.tabIndex === 0)
+      .map((item) => item.textContent);
+  await render(levels(['Auto', '720p', '480p']));
+  await key('ArrowDown');
+  expect(focused()).toBe('720p');
+  // Removed while it had the focus.
+  await render(levels(['Auto', '480p']));
+  expect(focused()).toBe('Auto');
+  expect(stops()).toEqual(['Auto']);
+  await key('ArrowDown');
+  expect(focused()).toBe('480p');
+  // Disabled while it had the focus (its copy failed).
+  await render(levels(['Auto', '480p'], ['480p']));
+  expect(focused()).toBe('Auto');
+  expect(stops()).toEqual(['Auto']);
+});

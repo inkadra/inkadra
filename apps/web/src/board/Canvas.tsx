@@ -591,6 +591,11 @@ export function Canvas({
     x: number;
     y: number;
     at: Point;
+    /**
+     * What it was opened on (a card, the bar's More button), for the focus to go back to; every
+     * way of opening the menu sets it, so none inherits another's.
+     */
+    origin: HTMLElement | null;
     fromToolbar?: boolean;
     /** Keep editing actions available when focusing the menu blurs an inline title. */
     fromEditing?: boolean;
@@ -2461,8 +2466,6 @@ export function Canvas({
     }
   }
 
-  /** What the canvas menu was opened on, for the focus to go back to (Menu key, Shift+F10). */
-  const menuOrigin = useRef<HTMLElement | null>(null);
   function onContextMenu(e: ReactMouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
     if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
@@ -2472,7 +2475,6 @@ export function Canvas({
     e.preventDefault();
     // A long press of the fingers of a pinch.
     if (touchHeld.current) return;
-    menuOrigin.current = target.closest<HTMLElement>(FOCUSABLE);
     const id = canvasElementId(target);
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
@@ -2482,6 +2484,7 @@ export function Canvas({
       x: p.x,
       y: p.y,
       at: screenToWorld(vp.current, p),
+      origin: target.closest<HTMLElement>(FOCUSABLE),
       ...(cell && r !== undefined && c !== undefined ? { cell: { r, c } } : {}),
     });
   }
@@ -4108,11 +4111,12 @@ export function Canvas({
               onGuestHidden={() => toggleGuestHidden(store, [...selection])}
               onDelete={removeSelection}
               onDuplicate={duplicate}
-              onMore={(x, y) =>
+              onMore={(x, y, opener) =>
                 setMenu({
                   x,
                   y,
                   at: screenToWorld(vp.current, { x, y }),
+                  origin: opener,
                   fromToolbar: true,
                   fromEditing: Boolean(editing || appearance),
                 })
@@ -4434,7 +4438,7 @@ export function Canvas({
               onClose={(reason) => {
                 setMenu(null);
                 // From the keyboard: back to the card or control it was opened on, or the board.
-                if (reason === 'escape') focusBack(menuOrigin.current, rootRef.current);
+                if (reason === 'escape') focusBack(menu.origin, rootRef.current);
               }}
             />
           ))}

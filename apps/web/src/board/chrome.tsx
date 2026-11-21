@@ -16,6 +16,7 @@ import {
 import type { Editor } from '@tiptap/react';
 import {
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -684,7 +685,7 @@ export function BarButton({
 }: {
   icon: IconName;
   label: string;
-  onClick: () => void;
+  onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   active?: boolean;
   danger?: boolean;
   disabled?: boolean;
@@ -743,7 +744,8 @@ export function ContextBar({
   onGuestHidden: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onMore: (x: number, y: number) => void;
+  /** Opens the card menu at a point of the board, from `opener` (focus goes back there). */
+  onMore: (x: number, y: number, opener: HTMLElement) => void;
   onColor: (color: string | undefined) => void;
   onTags: (x: number, y: number) => void;
   /** Buttons that only some cards have (arrow line style). */
@@ -812,10 +814,10 @@ export function ContextBar({
           <BarButton
             icon="more"
             label={t('board.menu.more')}
-            onClick={() => {
+            onClick={(e) => {
               const rect = bar.current;
               if (!rect) return;
-              onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);
+              onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6, e.currentTarget);
             }}
           />
           <span className="ctxbar__sep" aria-hidden="true" />
@@ -911,7 +913,7 @@ export function ContextBar({
               const root = (
                 e.currentTarget.closest('.canvas') as HTMLElement
               ).getBoundingClientRect();
-              onMore(bar.right - root.left - 200, bar.bottom - root.top + 6);
+              onMore(bar.right - root.left - 200, bar.bottom - root.top + 6, e.currentTarget);
             }}
           >
             <Icon name="more" size={14} />
