@@ -31,6 +31,12 @@ const conn = {
   status: 'synced',
   store: { subscribe: () => () => {}, getSnapshot: () => snapshot },
 } as unknown as BoardConnection;
+let cards: Map<string, BoardCount> = new Map();
+/** The board cards of the next board, with their own counts. */
+function Cards() {
+  cards = useBoardCounts('p', boards);
+  return null;
+}
 function Open() {
   useLiveBoardCounts(conn, 'b');
   return null;
@@ -110,11 +116,6 @@ it('counts again in every view once one of them finds the server caught up', asy
   const root = createRoot(document.createElement('div'));
   // What the server stored before the visit: one frame.
   counts.items = [{ boardId: 'b', elementCount: 1, frameCount: 1, framesToShoot: 1 }];
-  let cards: Map<string, BoardCount> = new Map();
-  function Cards() {
-    cards = useBoardCounts('p', boards);
-    return null;
-  }
   try {
     await act(async () =>
       root.render(
