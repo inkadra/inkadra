@@ -6,6 +6,7 @@ import {
   forgetSeededCounts,
   mergeSeededCounts,
   releaseLiveCounts,
+  STORED_WITHIN_MS,
   setLiveCounts,
   useSeededCounts,
 } from '../routes/seed-queue.tsx';
@@ -31,7 +32,14 @@ export function useLiveBoardCounts(
     setLiveCounts(boardId, contentCounts(snap.byId.values()));
   }, [snap, synced, boardId]);
   useEffect(() => {
-    if (boardId) return () => releaseLiveCounts(boardId);
+    if (!boardId) return;
+    return () => {
+      releaseLiveCounts(boardId);
+      // Counted again once the server has likely stored the last edits, and once it must have:
+      // the local counts hold until then (forgetSeededCounts).
+      setTimeout(refreshBoardCounts, 3000);
+      setTimeout(refreshBoardCounts, STORED_WITHIN_MS);
+    };
   }, [boardId]);
 }
 
@@ -73,13 +81,14 @@ export function useBoardCounts(
       return;
     }
     let live = true;
+    const askedAt = Date.now();
     api
       .get<{ items: BoardCount[] }>(`/projects/${projectId}/board-counts`)
       .then((r) => {
         if (!live) return;
         const next = new Map(r.items.map((c) => [c.boardId, c]));
         setCounts(next);
-        forgetSeededCounts(next);
+        forgetSeededCounts(next, askedAt);
       })
       .catch(() => {
         // Counts are a hint; the navigation works without them.
