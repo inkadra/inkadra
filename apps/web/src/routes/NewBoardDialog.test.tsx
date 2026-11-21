@@ -33,6 +33,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
   await updatePreferences({ modulesOff: [] });
 });
 
@@ -90,4 +91,31 @@ it('keeps a kind whose module is off, dimmed, with Turn on (0121)', async () => 
   expect(turnOn?.textContent).toBe('home.newBoard.turnOn');
   await act(async () => turnOn?.click());
   expect(tile('moodboard')?.disabled).toBe(false);
+});
+
+it('keeps a typed name that happens to be a kind’s, and asks before discarding it', async () => {
+  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.open = true;
+  });
+  const close = vi.spyOn(HTMLDialogElement.prototype, 'close');
+  await render();
+  const name = document.querySelector<HTMLInputElement>('input[type="text"], input:not([type])');
+  await act(async () => {
+    if (!name) return;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      name,
+      'film.views.storyboard',
+    );
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await act(async () => tile('moodboard')?.click());
+  expect(name?.value).toBe('film.views.storyboard');
+  const cancel = [...document.querySelectorAll('button')].find(
+    (b) => b.textContent === 'project.cancel',
+  );
+  await act(async () => cancel?.click());
+  expect(document.querySelector('.ink-dialog__confirm')).not.toBeNull();
+  expect(close).not.toHaveBeenCalled();
 });

@@ -13,7 +13,7 @@ import {
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { boardKindChoices, NEW_BOARDS, type NewBoardKind } from '../board/board-kinds.ts';
+import { boardKindChoices, type NewBoardKind } from '../board/board-kinds.ts';
 import { boardPath, createBoard, productionOf, useProjectBoards } from '../board/boards.ts';
 import { kindIcon } from '../board/views.ts';
 import { setModule, useModules } from '../lib/modules.ts';
@@ -43,6 +43,8 @@ export function NewBoardDialog({
   const [project, setProject] = useState('');
   const [kind, setKind] = useState<NewBoardKind>('board');
   const [title, setTitle] = useState('');
+  /** The person typed the name: picking another kind no longer replaces it. */
+  const [edited, setEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialog = useRef<DialogHandle>(null);
@@ -52,6 +54,7 @@ export function NewBoardDialog({
   useEffect(() => {
     if (!open) return;
     setTitle('');
+    setEdited(false);
     setKind('board');
     setProject((current) =>
       initialProject && projects.some((p) => p.id === initialProject)
@@ -70,16 +73,12 @@ export function NewBoardDialog({
   const chosen = choices.find((c) => c.kind === kind);
   /** The one Production board is there: the dialog opens it instead (decision 0123). */
   const opens = !!chosen?.present && !!production;
-  /** A kind's own name, which picking another kind may replace. */
-  const named = (value: string) =>
-    NEW_BOARDS.some((k) => k !== 'board' && t(kindName(k)) === value);
-  const dirty = !busy && !!title.trim() && !named(title);
+  // A name the dialog proposed is not the person's: closing does not ask about it.
+  const dirty = !busy && edited && !!title.trim();
 
   const pick = (next: NewBoardKind) => {
     setKind(next);
-    setTitle((current) =>
-      current.trim() && !named(current) ? current : next === 'board' ? '' : t(kindName(next)),
-    );
+    if (!edited || !title.trim()) setTitle(next === 'board' ? '' : t(kindName(next)));
   };
 
   async function submit(e: FormEvent) {
@@ -133,7 +132,7 @@ export function NewBoardDialog({
             ))}
           </Select>
         </div>
-        <fieldset className="home-new__kinds" data-tour="new-board-kind">
+        <fieldset className="home-new__kinds">
           <legend className="ink-field__label">{t('home.newBoard.kind')}</legend>
           <div className="home-new__kind-list">
             {choices.map((c) => (
@@ -189,7 +188,10 @@ export function NewBoardDialog({
             label={t('home.newBoard.name')}
             placeholder={t('home.newBoard.namePlaceholder')}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setEdited(true);
+            }}
             error={error}
             maxLength={200}
           />
