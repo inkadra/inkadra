@@ -3009,7 +3009,7 @@
     "reviewStatus": "Revisione",
     "filter": "Filtro inbox",
     "openInbox": "Apri inbox",
-    "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altro per cercare tra le notifiche precedenti.",
+    "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altre per cercare tra le notifiche precedenti.",
     "openInBoard": "Apri nella board",
     "markResolved": "Segna come risolto",
     "markReopen": "Riapri",
@@ -5602,7 +5602,7 @@
           },
           "6": {
             "title": "Muoversi nella pianta",
-            "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, al 100 %, + e − cambiano lo zoom."
+            "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, + e − cambiano lo zoom."
           }
         }
       },
