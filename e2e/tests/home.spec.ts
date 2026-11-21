@@ -97,7 +97,7 @@ test('home shows today’s shooting day and creates empty projects and boards', 
   await page.getByRole('combobox').fill('Nuova board');
   await page.getByRole('option', { name: /^Nuova board/ }).click();
   const board = page.getByRole('dialog', { name: 'Nuova board' });
-  await chooseSelect(board.getByLabel('Progetto'), { label: projectName });
+  await chooseSelect(board.getByLabel('Progetto', { exact: true }), { label: projectName });
   await expect(board.getByRole('radio')).toHaveCount(0);
   await board.getByLabel('Nome della board').fill('Empty board');
   await board.getByRole('button', { name: 'Crea board' }).click();
