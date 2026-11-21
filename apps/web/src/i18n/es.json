@@ -2380,7 +2380,7 @@
       "moreCards": "más",
       "approvedHelper": "Arrastra aquí los planos aprobados",
       "approvedHint": "También se llena con las aprobaciones del cliente",
-      "approvedLocked": "Aprobada en revisión: cambia la revisión desde «{{status}}» y el estado de producción desde la Tabla",
+      "approvedLocked": "Aprobado en revisión: cambia la revisión desde «{{status}}» y el estado de producción desde la Tabla",
       "selectRow": "Seleccionar plano {{label}}",
       "groupSetup": "Setup",
       "noSetup": "Sin setup",
@@ -3431,7 +3431,7 @@
     "dayMoved": "Día movido de {{from}} a {{to}}.",
     "daysSwapped": "{{from}} y {{to}} intercambiados.",
     "blockNotes": "Nota destacada",
-    "blockNotesPlaceholder": "Se imprime en la hoja, p. ej. LUCES Y ESCAPARATES ENCENDIDOS",
+    "blockNotesPlaceholder": "Se imprime en la orden de rodaje, p. ej. LUCES Y ESCAPARATES ENCENDIDOS",
     "unavailable": "Storyboard no disponible",
     "missingScene": "Escena eliminada",
     "noStoryboardShots": "Aún no hay storyboards con escenas o planos. Las escenas y los planos de los storyboards del proyecto aparecen aquí.",
@@ -3827,7 +3827,7 @@
       "instance": "El nombre de la instancia y lo que falta para terminar la configuración.",
       "reports": "Adónde van los informes que se envían desde «Informar de un problema», y los recibidos.",
       "video": "Inkadra prepara copias más ligeras de los vídeos en varias resoluciones: quien mira recibe la adecuada para su conexión. Los originales nunca se tocan.",
-      "audit": "Quién cambió roles, miembros, accesos compartidos, ajustes y tokens, qué se eliminó o se guardó y qué inicios de sesión fallaron."
+      "audit": "Quién cambió roles, miembros, accesos compartidos, ajustes y tokens, qué se eliminó o se respaldó y qué inicios de sesión fallaron."
     },
     "autosave": {
       "idle": "Guardado automático",
@@ -5427,7 +5427,7 @@
           },
           "2": {
             "title": "Nuevos tableros",
-            "text": "Canvas crea tableros, moodboards, storyboards y el único tablero Producción del proyecto (Plan de rodaje y Equipo), e importa un guion."
+            "text": "Lienzo crea tableros, moodboards, storyboards y el único tablero Producción del proyecto (Plan de rodaje y Equipo), e importa un guion."
           },
           "3": {
             "title": "Selecciona una tarjeta",
@@ -6033,7 +6033,7 @@
         "steps": {
           "0": {
             "title": "Quién hizo qué",
-            "text": "Cambios en personas, uso compartido y ajustes, con quién y cuándo."
+            "text": "Cambios en personas, accesos compartidos y ajustes, con quién y cuándo."
           },
           "1": {
             "title": "Acota",
@@ -6055,7 +6055,7 @@
     },
     "loadError": "No puedo leer el estado del servidor.",
     "when": {
-      "night": "esta noche a las {{time}}",
+      "night": "esta madrugada a las {{time}}",
       "today": "hoy a las {{time}}",
       "yesterday": "ayer a las {{time}}",
       "tomorrow": "mañana a las {{time}}"
@@ -6771,8 +6771,8 @@
     "notesPlaceholder": "Solo las ve el equipo del proyecto",
     "characterLabel": "Ficha de personaje",
     "optionalTag": "opcional",
-    "characterHint": "Ninguna. El nombre en el programa basta para la citación; vincula una ficha solo si tiene vestuario y referencias.",
-    "characterNone": "Aún no hay fichas de personaje en el proyecto. No hace falta: un rol igual al nombre del programa basta para la citación.",
+    "characterHint": "Ninguna. El nombre en el plan basta para la citación; vincula una ficha solo si tiene vestuario y referencias.",
+    "characterNone": "Aún no hay fichas de personaje en el proyecto. No hace falta: un rol igual al nombre del plan basta para la citación.",
     "link": "Vincular",
     "unlinkShort": "Desvincular",
     "accountHint": "Vincula una cuenta para enviar la citación al móvil y pedir que confirme su asistencia.",

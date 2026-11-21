@@ -186,8 +186,8 @@ export const es: MailTexts = {
     preview: 'Preliminar (release candidate)',
     intro: (instance, preview) =>
       preview
-        ? `Ha salido una versión preliminar de Inkadra: llega antes, pero puede tener algún problema. ${instance} no se actualiza sola: la actualización la haces tú, en el servidor.`
-        : `Ha salido una nueva versión de Inkadra. ${instance} no se actualiza sola: la actualización la haces tú, en el servidor.`,
+        ? `Ha salido una versión preliminar de Inkadra: llega antes, pero puede tener algún problema. ${instance} no se actualiza automáticamente: la actualización la haces tú, en el servidor.`
+        : `Ha salido una nueva versión de Inkadra. ${instance} no se actualiza automáticamente: la actualización la haces tú, en el servidor.`,
     version: 'Versión',
     released: 'Publicada',
     action: 'Abrir Actualizaciones',
