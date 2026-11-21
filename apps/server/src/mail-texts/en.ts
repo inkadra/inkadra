@@ -30,19 +30,19 @@ export const en: MailTexts = {
         title: 'Password changed',
         body: 'The password of your account was changed and your personal access tokens were revoked.',
         after:
-          'Don’t recognise this change? Reset your password and contact your administrator straight away.',
+          'Don’t recognize this change? Reset your password and contact your administrator straight away.',
       },
       twoFactor: {
         title: 'Two-step verification turned off',
         body: 'Your account no longer asks for a verification code when you sign in.',
         after:
-          'Don’t recognise this change? Change your password, turn verification back on and contact your administrator straight away.',
+          'Don’t recognize this change? Change your password, turn verification back on and contact your administrator straight away.',
       },
       token: {
         title: 'New access token',
         body: 'A token that can access your account without a password was created.',
         after:
-          'Don’t recognise this change? Revoke the token and contact your administrator straight away.',
+          'Don’t recognize this change? Revoke the token and contact your administrator straight away.',
       },
     },
     subject: (title, instance) => `${title} on ${instance}`,
@@ -175,7 +175,7 @@ export const en: MailTexts = {
     } as Record<string, string>,
     action: 'Open Server',
     footer: (instance) =>
-      `Server alerts of ${instance} for administrators. Change them in Settings › Server.`,
+      `Server alerts from ${instance}, for administrators. Change them in Settings › Server.`,
   },
   update: {
     subject: (version, instance) => `Inkadra ${version} is available for ${instance}`,
@@ -195,7 +195,7 @@ export const en: MailTexts = {
   },
   calendar: {
     deadline: (task, board) => `Due: ${task} · ${board}`,
-    todo: (board) => `To-do · board "${board}" · all day`,
+    todo: (board) => `To-do · board “${board}” · all day`,
     call: (time, place, wrap) =>
       [`Call ${time}`, place, wrap && `wrap ${wrap}`].filter(Boolean).join(' · '),
   },
