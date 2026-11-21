@@ -3,12 +3,13 @@ import type { Element } from '@inkadra/doc-schema';
 import type { CrewMember, ShootingDayInput } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import {
-  castCard,
+  castPerformer,
   castPerformers,
   castRows,
   crewInput,
   dayCrew,
   dialNumber,
+  freePerformers,
   onSetContacts,
   personalDayCall,
   sunOfDay,
@@ -77,19 +78,19 @@ describe('character cards on another board of the project', () => {
     expect(dayCrew(day(), [giulia]).map((e) => e.called)).toEqual([false]);
     const [entry] = dayCrew(day(), [giulia], new Map(), characters);
     expect(entry).toMatchObject({ called: true, names: ['luca '] });
-    expect(castCard('luca ', entry, new Map(), characters)).toMatchObject({
+    expect(castPerformer('luca ', entry?.member, new Map(), characters).card).toMatchObject({
       actor: 'Giulia B.',
       contact: '+39 1',
     });
   });
   it('prefers the live card of this board and never lends a card to another name', () => {
     const [entry] = dayCrew(day(), [giulia], elements, characters);
-    expect(castCard('Luca', entry, elements, characters)).toEqual({
+    expect(castPerformer('Luca', entry?.member, elements, characters).card).toEqual({
       name: 'Luca',
       actor: '',
       contact: '',
     });
-    expect(castCard('Giulia', entry, new Map(), characters)).toBeUndefined();
+    expect(castPerformer('Giulia', entry?.member, new Map(), characters).card).toBeUndefined();
   });
 });
 
@@ -270,7 +271,7 @@ describe('a row in Cast whose role is the character', () => {
     expect(entries[0]).toMatchObject({ called: true, names: ['Elena'] });
     const [row] = castRows(shoot, entries);
     expect(row?.entry?.member.name).toBe('Anna Greco');
-    expect(castCard('Elena', row?.entry, new Map())).toBeUndefined();
+    expect(castPerformer('Elena', row?.entry?.member, new Map()).card).toBeUndefined();
     expect(personalDayCall(shoot, entries, undefined, 'u5')).toMatchObject({
       label: 'Elena',
       start: 7 * 60,
@@ -301,7 +302,7 @@ describe('a row in Cast whose role is the character', () => {
       ],
     ]);
     const [row] = castRows(shoot, dayCrew(shoot, [elena], cards));
-    expect(castCard('Elena', row?.entry, cards)).toMatchObject({
+    expect(castPerformer('Elena', row?.entry?.member, cards).card).toMatchObject({
       actor: 'Anna G.',
       contact: '+39 1',
     });
@@ -398,6 +399,26 @@ describe('who plays each name of a frame’s cast (decision 0091)', () => {
       ['Bruno', 'Leo'],
       ['Leo', 'Leo'],
       ['Carla', ''],
+    ]);
+  });
+  it('reads the card the row is linked to, as the call sheet does, not another of that name', () => {
+    const elements = new Map([card('char0003', 'Marta', 'Bea'), card('char0005', 'Marta')]);
+    const ada = member(1, {
+      name: 'Ada',
+      character: { boardId: id(1), elementId: 'char0005' },
+    });
+    expect(castPerformers(['Marta'], [ada], elements)[0]?.performer).toBe('Ada');
+  });
+  it('offers only the rows that play nothing yet, by the call sheet’s rule', () => {
+    const elements = new Map([card('char0004', 'Marta')]);
+    const linked = member(1, { character: { boardId: id(1), elementId: 'char0004' } });
+    const byRole = member(2, { department: 'Cast', role: 'Bruno' });
+    // Person 4 is already a name of the roster: this role plays nothing, so the row is free.
+    const shadowed = member(3, { department: 'Cast', role: 'Person 4' });
+    const free = member(4);
+    expect(freePerformers([linked, byRole, shadowed, free], elements).map((m) => m.name)).toEqual([
+      'Person 3',
+      'Person 4',
     ]);
   });
   it('falls back to the actor on the card of this board when no row plays it', () => {

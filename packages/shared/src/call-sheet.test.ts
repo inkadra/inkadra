@@ -6,6 +6,7 @@ import {
   castCalls,
   castConflicts,
   castKeysOf,
+  castPerformer,
   dayCrew,
   dialNumber,
   isCast,
@@ -229,5 +230,36 @@ describe('dialNumber', () => {
   it('is null without a number long enough to dial', () => {
     expect(dialNumber('')).toBeNull();
     expect(dialNumber('ext. 1234')).toBeNull();
+  });
+});
+
+describe('castPerformer: who plays a cast name (decision 0091)', () => {
+  const card = (id: string, name: string, actor = ''): [string, CallSheetCard] => [
+    id,
+    { type: 'character', name, actor, contact: `${id} contact` },
+  ];
+  it('reads the actor on the card the row is linked to, else the row', () => {
+    const ada = member({ name: 'Ada', character: { boardId: 'b1', elementId: 'c1' } });
+    expect(castPerformer('marta', ada, new Map([card('c1', 'Marta', 'Ada P.')]))).toEqual({
+      card: { name: 'Marta', actor: 'Ada P.', contact: 'c1 contact' },
+      performer: 'Ada P.',
+    });
+    expect(castPerformer('Marta', ada, new Map([card('c1', 'Marta')])).performer).toBe('Ada');
+  });
+  it('reads the card the row is linked to, not the first card with that name', () => {
+    const ada = member({ name: 'Ada', character: { boardId: 'b1', elementId: 'c2' } });
+    const elements = new Map([card('c1', 'Marta', 'Bea'), card('c2', 'Marta')]);
+    expect(castPerformer('Marta', ada, elements)).toEqual({
+      card: { name: 'Marta', actor: '', contact: 'c2 contact' },
+      performer: 'Ada',
+    });
+  });
+  it('falls back to the card’s actor, then to the row playing the name', () => {
+    const leo = member({ name: 'Leo', department: 'Cast', role: 'Bruno' });
+    expect(castPerformer('Bruno', leo, new Map([card('c3', 'Bruno', ' Leo V. ')]))).toMatchObject({
+      performer: 'Leo V.',
+    });
+    expect(castPerformer('Bruno', leo)).toEqual({ card: undefined, performer: 'Leo' });
+    expect(castPerformer('Carla', undefined)).toEqual({ card: undefined, performer: '' });
   });
 });

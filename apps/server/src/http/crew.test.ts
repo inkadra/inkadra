@@ -250,6 +250,62 @@ describe.skipIf(!url)('private project crew', () => {
     });
     expect(Crew.parse(bulk.json()).items[0]?.account).toEqual(account);
   });
+  it('links a character card to one crew row, even when two editors link it at once', async () => {
+    // Added to the board's stored cards, which the tests before wrote.
+    const [stored] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
+    const doc = new Y.Doc();
+    if (stored) Y.applyUpdate(doc, stored.state);
+    const { id: marta } = createElement(
+      doc,
+      'character',
+      { x: 0, y: 0 },
+      { name: 'Marta' },
+      { userId: null },
+    );
+    const state = Buffer.from(Y.encodeStateAsUpdate(doc));
+    doc.destroy();
+    await db
+      .update(boardDoc)
+      .set({ state, size: state.length })
+      .where(eq(boardDoc.boardId, boardId));
+    const rows = await Promise.all(
+      ['Ada', 'Bea'].map(
+        async (name) => (await request('editor', 'POST', base(), { ...input, name })).json().id,
+      ),
+    );
+    const character = { boardId, elementId: marta };
+    const links = await Promise.all(
+      rows.map((id) =>
+        request('editor', 'PUT', `${base()}/${id}`, {
+          ...input,
+          name: 'x',
+          character,
+          revision: 1,
+        }),
+      ),
+    );
+    expect(links.map((r) => r.statusCode).sort()).toEqual([200, 409]);
+    const refused = links.find((r) => r.statusCode === 409);
+    expect(refused?.json().error.details).toMatchObject({
+      reason: 'character_taken',
+      member: { id: links.find((r) => r.statusCode === 200)?.json().id, character },
+    });
+    // A new row cannot take it either, and the row that plays it still saves.
+    const added = await request('editor', 'POST', base(), { ...input, name: 'Carla', character });
+    expect(added.statusCode).toBe(409);
+    const playing = links.find((r) => r.statusCode === 200)?.json();
+    expect(
+      (
+        await request('editor', 'PUT', `${base()}/${playing.id}`, {
+          ...input,
+          name: 'x',
+          role: 'Lead',
+          character,
+          revision: playing.revision,
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
   it('saves a person whose unchanged character link points to a removed card', async () => {
     const [row] = await db
       .insert(crewMember)

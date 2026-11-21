@@ -55,3 +55,14 @@ from the other, keeps "on-set contact" if either had it, moves the other row's d
 (on a day both have one, the kept row's wins) and deletes the other row, in one transaction.
 A day save locks the rows its calls name (`for share`) in the transaction that writes the day, and
 the merge and the delete lock their rows first, so a call to a removed row is never written.
+
+**Who plays a character** (follow-up). A character card is linked to one crew row: `POST`, `PUT`
+and the bulk paste of `…/crew` answer 409 with `details.reason` `character_taken` and the row that
+plays it (`details.member`) when another row already holds the card, checked under the crew lock
+(capability `crew-one-row-per-character`). Rows that already share a card from merged cast links
+keep it until it changes. One rule (`castPerformer` in `packages/shared`) gives the card and the
+performer of a cast name to the shot panel, the call sheet and its PDF: the card the playing row
+is linked to, else this board's card of that name; the actor written on it, else the row's name.
+The shot panel's "Link" shows only to project editors; it never writes the actor on the card, and
+a card it made for a link that then fails is removed. `…/crew/characters` lists storyboards first,
+then boards by age, so every client picks the same card of a name.

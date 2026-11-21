@@ -1148,13 +1148,17 @@ export function ContextMenu({
   const hintId = useId();
   // Opened at a point near an edge (a long press on a phone), the menu moves back inside its
   // container instead of running off the screen; a menu taller than the room scrolls.
+  // A fixed menu (`menu--canvas`) has no offset parent: the window is its container.
   useLayoutEffect(() => {
     const el = ref.current;
-    const room = el?.offsetParent as HTMLElement | null;
-    if (!el || !room || x === undefined || y === undefined || style) return;
-    el.style.maxHeight = `${room.clientHeight - 16}px`;
-    el.style.left = `${Math.max(8, Math.min(x, room.clientWidth - el.offsetWidth - 8))}px`;
-    el.style.top = `${Math.max(8, Math.min(y, room.clientHeight - el.offsetHeight - 8))}px`;
+    if (!el || x === undefined || y === undefined || style) return;
+    const room = el.offsetParent as HTMLElement | null;
+    if (!room && getComputedStyle(el).position !== 'fixed') return;
+    const width = room ? room.clientWidth : window.innerWidth;
+    const height = room ? room.clientHeight : window.innerHeight;
+    el.style.maxHeight = `${height - 16}px`;
+    el.style.left = `${Math.max(8, Math.min(x, width - el.offsetWidth - 8))}px`;
+    el.style.top = `${Math.max(8, Math.min(y, height - el.offsetHeight - 8))}px`;
   }, [x, y, style]);
   return (
     <Menu

@@ -2241,7 +2241,9 @@
       "whoPlays": "Who plays {{name}}?",
       "noFreeCrew": "No free person in the crew",
       "noFreeCrewHint": "Add the performer to the crew on the Production board: one row per character.",
-      "performerFailed": "Couldn’t link. Try again."
+      "performerFailed": "Couldn’t link. Try again.",
+      "performerTaken": "{{name}} is already played by {{performer}}.",
+      "performerChanged": "This person was changed in the crew meanwhile. Try again."
     },
     "shot": {
       "ews": "Extreme wide",
@@ -6783,6 +6785,7 @@
     "characterUnavailable": "Card unavailable · Unlink or choose another card",
     "wholeProject": "for the whole project",
     "characterTag": "Character",
+    "characterTaken": "This character is already played by {{name}}.",
     "emailPlaceholder": "optional",
     "pickupPlaceholder": "Same as the day's call",
     "notesPlaceholder": "Only the project team sees these",

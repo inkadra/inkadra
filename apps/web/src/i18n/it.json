@@ -2241,7 +2241,9 @@
       "whoPlays": "Chi interpreta {{name}}?",
       "noFreeCrew": "Nessuna persona libera in Troupe",
       "noFreeCrewHint": "Aggiungi l’interprete nella Troupe della board Produzione: una riga per personaggio.",
-      "performerFailed": "Collegamento non riuscito. Riprova."
+      "performerFailed": "Collegamento non riuscito. Riprova.",
+      "performerTaken": "{{name}} è già interpretato da {{performer}}.",
+      "performerChanged": "Nel frattempo questa persona è stata modificata nella Troupe. Riprova."
     },
     "shot": {
       "ews": "Campo lunghissimo",
@@ -6783,6 +6785,7 @@
     "characterUnavailable": "Scheda non disponibile · Scollega o scegli un’altra scheda",
     "wholeProject": "per tutto il progetto",
     "characterTag": "Personaggio",
+    "characterTaken": "Questo personaggio è già interpretato da {{name}}.",
     "emailPlaceholder": "facoltativa",
     "pickupPlaceholder": "Come la convocazione del giorno",
     "notesPlaceholder": "Visibili solo al team del progetto",

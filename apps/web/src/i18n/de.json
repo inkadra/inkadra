@@ -2241,7 +2241,9 @@
       "whoPlays": "Wer spielt {{name}}?",
       "noFreeCrew": "Niemand frei im Team",
       "noFreeCrewHint": "Füg die Person dem Team auf dem Board Produktion hinzu: eine Zeile pro Figur.",
-      "performerFailed": "Verknüpfen fehlgeschlagen. Versuch es noch mal."
+      "performerFailed": "Verknüpfen fehlgeschlagen. Versuch es noch mal.",
+      "performerTaken": "{{name}} wird schon von {{performer}} gespielt.",
+      "performerChanged": "Die Person wurde inzwischen im Team geändert. Versuch es noch mal."
     },
     "shot": {
       "ews": "Supertotale",
@@ -6783,6 +6785,7 @@
     "characterUnavailable": "Karte nicht verfügbar · Trennen oder eine andere Karte wählen",
     "wholeProject": "für das ganze Projekt",
     "characterTag": "Figur",
+    "characterTaken": "Diese Figur wird schon von {{name}} gespielt.",
     "emailPlaceholder": "optional",
     "pickupPlaceholder": "Wie der Call des Tages",
     "notesPlaceholder": "Nur für das Projektteam sichtbar",

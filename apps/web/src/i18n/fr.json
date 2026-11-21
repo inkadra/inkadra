@@ -2241,7 +2241,9 @@
       "whoPlays": "Qui joue {{name}} ?",
       "noFreeCrew": "Personne de libre dans l’équipe",
       "noFreeCrewHint": "Ajoutez l’interprète à l’équipe du tableau Production : une ligne par personnage.",
-      "performerFailed": "Liaison impossible. Réessayez."
+      "performerFailed": "Liaison impossible. Réessayez.",
+      "performerTaken": "{{name}} est déjà joué par {{performer}}.",
+      "performerChanged": "Cette personne a été modifiée dans l’équipe entre-temps. Réessayez."
     },
     "shot": {
       "ews": "Plan général",
@@ -6783,6 +6785,7 @@
     "characterUnavailable": "Fiche indisponible · Déliez-la ou choisissez-en une autre",
     "wholeProject": "pour tout le projet",
     "characterTag": "Personnage",
+    "characterTaken": "Ce personnage est déjà joué par {{name}}.",
     "emailPlaceholder": "facultatif",
     "pickupPlaceholder": "Comme la convocation du jour",
     "notesPlaceholder": "Visibles seulement par l’équipe du projet",

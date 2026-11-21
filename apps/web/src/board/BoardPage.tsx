@@ -113,6 +113,7 @@ import {
   viewsOn,
 } from './views.ts';
 import './film/film.css';
+import { CrewEditorContext } from './context.ts';
 import { type Peer, usePeers } from './presence.ts';
 import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
@@ -1437,7 +1438,9 @@ function BoardScreen({
           </Suspense>
         </div>
       )}
-      <Suspense fallback={null}>{content}</Suspense>
+      <CrewEditorContext.Provider value={!!projectRole && atLeast(projectRole, 'editor')}>
+        <Suspense fallback={null}>{content}</Suspense>
+      </CrewEditorContext.Provider>
       {/* A scene's set plan opens on its own wherever there is no canvas around it. */}
       {view !== 'canvas' && !preview && (
         <Suspense fallback={null}>

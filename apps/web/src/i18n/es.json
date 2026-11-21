@@ -2241,7 +2241,9 @@
       "whoPlays": "¿Quién interpreta a {{name}}?",
       "noFreeCrew": "No hay nadie libre en el equipo",
       "noFreeCrewHint": "Añade al intérprete al equipo del tablero Producción: una fila por personaje.",
-      "performerFailed": "No se pudo vincular. Inténtalo de nuevo."
+      "performerFailed": "No se pudo vincular. Inténtalo de nuevo.",
+      "performerTaken": "{{name}} ya lo interpreta {{performer}}.",
+      "performerChanged": "Mientras tanto alguien cambió a esta persona en el equipo. Inténtalo de nuevo."
     },
     "shot": {
       "ews": "Gran plano general",
@@ -6783,6 +6785,7 @@
     "characterUnavailable": "Ficha no disponible · Desvincula o elige otra ficha",
     "wholeProject": "para todo el proyecto",
     "characterTag": "Personaje",
+    "characterTaken": "Este personaje ya lo interpreta {{name}}.",
     "emailPlaceholder": "opcional",
     "pickupPlaceholder": "Igual que la citación del día",
     "notesPlaceholder": "Solo las ve el equipo del proyecto",

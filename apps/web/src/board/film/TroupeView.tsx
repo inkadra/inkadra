@@ -37,7 +37,7 @@ import { PeoplePicker } from '../../people/PeoplePicker.tsx';
 import { ContextMenu } from '../chrome.tsx';
 import type { BoardStore } from '../store.ts';
 import { parseCrewPaste } from './crew-paste.ts';
-import { crewInput } from './day-calls.ts';
+import { characterTakenBy, crewInput } from './day-calls.ts';
 import { whileVisible } from './schedule.ts';
 import './film.css';
 import './troupe.css';
@@ -517,7 +517,9 @@ function CrewPanel({
         setConflict(null);
         onUpdate(saved);
       } catch (e) {
-        if (e instanceof RequestError && e.status === 409) {
+        const taken = characterTakenBy(e);
+        if (taken) setError(t('troupe.characterTaken', { name: taken.name }));
+        else if (e instanceof RequestError && e.status === 409) {
           const current = (e.details as { current?: CrewMember } | undefined)?.current;
           if (current) setConflict(current);
           else setError(t('troupe.error'));
