@@ -75,6 +75,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     log,
     publicUrl: config.PUBLIC_URL,
     recheckMs: 200,
+    keepaliveMs: 500,
   });
   let app: Awaited<ReturnType<typeof createApp>>;
   let base = '';
@@ -687,6 +688,21 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     a.close();
     b.close();
   });
+
+  it('keeps a lone client connected while nobody else writes', async () => {
+    const alone = connect(as('editor'));
+    await alone.synced;
+    // The provider drops a socket that hears nothing for this long (30 s in the app), checked
+    // every 3 s: with nobody else on the board, only the server's keepalive speaks.
+    alone.websocketProvider.configuration.messageReconnectTimeout = 1500;
+    let dropped = false;
+    alone.provider.on('disconnect', () => {
+      dropped = true;
+    });
+    await new Promise((r) => setTimeout(r, 7000));
+    expect(dropped).toBe(false);
+    alone.close();
+  }, 15_000);
 
   it('keeps a viewer from appearing to be typing', async () => {
     const editor = connect(as('editor'));
