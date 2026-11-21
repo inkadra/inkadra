@@ -3451,8 +3451,7 @@
     "hideSide": "Nascondi mese e coda",
     "showSide": "Mostra mese e coda",
     "month": "Mese",
-    "queueCount_one": "Da pianificare: {{count}}",
-    "queueCount_other": "Da pianificare: {{count}}",
+    "queueCount": "Da pianificare: {{what}}",
     "densityLabel": "Densità",
     "densityCompact": "Compatto",
     "densityComfy": "Comodo"

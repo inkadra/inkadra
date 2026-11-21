@@ -3451,8 +3451,7 @@
     "hideSide": "Ocultar mes y cola",
     "showSide": "Mostrar mes y cola",
     "month": "Mes",
-    "queueCount_one": "Por planificar: {{count}}",
-    "queueCount_other": "Por planificar: {{count}}",
+    "queueCount": "Por planificar: {{what}}",
     "densityLabel": "Densidad",
     "densityCompact": "Compacto",
     "densityComfy": "Cómodo"

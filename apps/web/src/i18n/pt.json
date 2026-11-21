@@ -3451,8 +3451,7 @@
     "hideSide": "Ocultar mês e fila",
     "showSide": "Mostrar mês e fila",
     "month": "Mês",
-    "queueCount_one": "Por planear: {{count}}",
-    "queueCount_other": "Por planear: {{count}}",
+    "queueCount": "Por planear: {{what}}",
     "densityLabel": "Densidade",
     "densityCompact": "Compacto",
     "densityComfy": "Confortável"

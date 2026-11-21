@@ -1192,10 +1192,9 @@ export function ScheduleView({
   };
 
   // What waits in the queue: frames, and on the Production board whole scenes (decision 0123).
-  const unscheduled = [
-    ...frames.filter((frame) => !scheduled.has(frameKey(frame.id))),
-    ...(across ? groups.filter((g) => offersWhole(g, scheduled)) : []),
-  ];
+  const waitingShots = frames.filter((frame) => !scheduled.has(frameKey(frame.id)));
+  const waitingScenes = across ? groups.filter((g) => offersWhole(g, scheduled)) : [];
+  const unscheduled = [...waitingShots, ...waitingScenes];
   const statusText = staleCount
     ? t('schedule.statusConflict')
     : failedAny
@@ -1623,7 +1622,12 @@ export function ScheduleView({
           (side ? (
             queue
           ) : (
-            <QueueRail count={loading ? null : unscheduled.length} onOpen={openSide} />
+            <QueueRail
+              waiting={
+                loading ? null : { shots: waitingShots.length, scenes: waitingScenes.length }
+              }
+              onOpen={openSide}
+            />
           ))}
         <div className="schedule__body">
           {phone && !loading && !loadError && (
