@@ -5602,7 +5602,7 @@
           },
           "6": {
             "title": "Navegar pela planta",
-            "text": "Espaço e arrastar, a roda do mouse ou dois dedos movem a planta; Ctrl e a roda ou um gesto de pinça dão zoom. Sem seleção, as setas a movem, 0 a ajusta, a 100 %, + e − mudam o zoom."
+            "text": "Espaço e arrastar, a roda do mouse ou dois dedos movem a planta; Ctrl e a roda ou um gesto de pinça dão zoom. Sem seleção, as setas a movem, 0 a ajusta, + e − mudam o zoom."
           }
         }
       },
