@@ -187,10 +187,12 @@ it('places the list below a field in a low window while it fits, above when only
     // 157 + 8 + 288 = 453: inside the window, though not 8px from its edge.
     await reopen();
     expect(place()).toEqual(['165px', 'auto']);
-    // Room above with the margin wins over room below without it.
-    rect.mockReturnValue({ top: 300, bottom: 336, left: 20, width: 120 } as DOMRect);
+    // Room above with the margin wins over room below without it: 398 + 8 + 288 = 694 fits
+    // a 700px window only without the margin; 362 - 8 - 288 = 66 leaves it above.
+    viewport.mockReturnValue(700);
+    rect.mockReturnValue({ top: 362, bottom: 398, left: 20, width: 120 } as DOMRect);
     await reopen();
-    expect(place()).toEqual(['auto', '165px']);
+    expect(place()).toEqual(['auto', '346px']);
     // Room on neither side: from the top of the window.
     viewport.mockReturnValue(320);
     rect.mockReturnValue({ top: 121, bottom: 157, left: 20, width: 120 } as DOMRect);
@@ -266,4 +268,33 @@ it('keeps each option’s state with its value when the open list changes', asyn
   );
   const text = (v: string) => host.querySelector(`[role="option"][data-value="${v}"]`)?.textContent;
   expect([text('x'), text('a'), text('b')]).toEqual(['X', 'A', 'B']);
+});
+
+it('keeps the list in the window when the page scrolls its field out of sight', async () => {
+  const rect = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue({ top: 100, bottom: 136, left: 20, width: 120 } as DOMRect);
+  const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(288);
+  const viewport = vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+  try {
+    await act(async () => host.querySelector('button')?.click());
+    const layer = host.querySelector('.ink-select__layer') as HTMLElement;
+    const place = () => [
+      layer.style.getPropertyValue('--ink-layer-top'),
+      layer.style.getPropertyValue('--ink-layer-bottom'),
+    ];
+    expect(place()).toEqual(['144px', 'auto']);
+    // Scrolled above the window: the list stays at its top edge instead of y = -22.
+    rect.mockReturnValue({ top: -66, bottom: -30, left: 20, width: 120 } as DOMRect);
+    document.dispatchEvent(new Event('scroll'));
+    expect(place()).toEqual(['8px', 'auto']);
+    // Scrolled below the window: the list above it stays at the bottom edge.
+    rect.mockReturnValue({ top: 820, bottom: 856, left: 20, width: 120 } as DOMRect);
+    document.dispatchEvent(new Event('scroll'));
+    expect(place()).toEqual(['auto', '8px']);
+  } finally {
+    rect.mockRestore();
+    height.mockRestore();
+    viewport.mockRestore();
+  }
 });

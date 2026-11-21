@@ -67,11 +67,12 @@ export function anchorLayer(layer: HTMLElement, box: HTMLElement, onOutside: () 
     );
     layer.style.setProperty(
       '--ink-layer-top',
-      below ? `${fitsBelow ? rect.bottom + gap : 8}px` : 'auto',
+      // A field scrolled past the window's edge leaves its layer at the edge, not beyond it.
+      below ? `${fitsBelow ? Math.max(8, rect.bottom + gap) : 8}px` : 'auto',
     );
     layer.style.setProperty(
       '--ink-layer-bottom',
-      below ? 'auto' : `${window.innerHeight - rect.top + gap}px`,
+      below ? 'auto' : `${Math.max(8, window.innerHeight - rect.top + gap)}px`,
     );
   };
   position();
