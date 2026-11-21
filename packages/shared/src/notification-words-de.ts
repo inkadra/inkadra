@@ -30,7 +30,7 @@ export const NOTIFICATION_WORDS_DE: NotificationWords = {
       review_submitted: 'hat das Review gesendet',
       server_alert_disk_full: 'Speicher fast voll: noch {{free}} von {{total}}',
       server_alert_service_down: '{{service}} antwortet nicht',
-      server_alert_backup_failed: 'Die Sicherung ist fehlgeschlagen',
+      server_alert_backup_failed: 'Das Backup ist fehlgeschlagen',
       server_alert_repeated_errors: 'Derselbe Fehler trat in der letzten Stunde {{times}}-mal auf',
       server_alert_unknown: 'Mit dem Server stimmt etwas nicht',
       update_available: 'Eine neue Version von Inkadra ist verfügbar',

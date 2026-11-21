@@ -32,7 +32,7 @@ export const TRANSFER_WORDS_DE: TransferWords = {
       cancelled: 'Abgebrochen.',
       internal: 'Etwas ist schiefgelaufen. Versuch es noch mal.',
       storage_full:
-        'Die Dateien des Archivs passen nicht in den restlichen Speicher. Gib Speicher frei oder frag eine Administratorin oder einen Administrator.',
+        'Die Dateien des Archivs passen nicht in den restlichen Speicher. Gib Speicher frei oder frag deinen Admin.',
     },
   },
 };
