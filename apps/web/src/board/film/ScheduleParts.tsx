@@ -21,6 +21,7 @@ import {
   TextArea,
   TimeField,
 } from '@inkadra/ui';
+import type { TFunction } from 'i18next';
 import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SetupChips } from '../plan/SetupChips.tsx';
@@ -166,7 +167,9 @@ export function ScheduleQueue({
       whole: !!onAddScene && offersWhole(g, scheduled),
     }))
     .filter((g) => g.frames.length || g.whole);
-  const count = waiting.reduce((sum, g) => sum + g.frames.length + (g.whole ? 1 : 0), 0);
+  const shots = waiting.reduce((sum, g) => sum + g.frames.length, 0);
+  const scenes = waiting.filter((g) => g.whole).length;
+  const count = shots + scenes;
   const total = totalFrames + (onAddScene ? groups.filter((g) => g.scene).length : 0);
   const castNames = [
     ...new Map(
@@ -240,7 +243,8 @@ export function ScheduleQueue({
         onCollapse={onCollapse}
       />
       <h2 className="story__sidebar-title">
-        {t('schedule.toPlan')} <span>{loading || failed ? '' : count}</span>
+        {t('schedule.toPlan')}{' '}
+        <span>{loading || failed ? '' : queueSummary(t, shots, scenes)}</span>
       </h2>
       {loading ? (
         <div className="schedule__queue-loading">
@@ -472,18 +476,34 @@ function QueueShot({
 }
 
 /**
+ * What waits in the queue, frames and whole scenes told apart: one frame offered alone and with
+ * its scene is two rows, which a bare "2" made look like two frames.
+ */
+export function queueSummary(t: TFunction, shots: number, scenes: number): string {
+  return [
+    shots || !scenes ? t('nav.shots', { count: shots }) : '',
+    scenes ? t('story.sceneCount', { count: scenes }) : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/**
  * The month and the queue folded to a 36 px rail (option 2): one button opens the column, the
- * others open it on the month or on the queue, which shows how many frames wait.
+ * others open it on the month or on the queue, which shows how many rows wait.
  */
 export function QueueRail({
-  count,
+  waiting,
   onOpen,
 }: {
-  count: number | null;
+  waiting: { shots: number; scenes: number } | null;
   onOpen: (on: 'side' | 'month' | 'queue') => void;
 }) {
   const { t } = useTranslation();
-  const queue = count === null ? t('schedule.toPlan') : t('schedule.queueCount', { count });
+  const count = waiting && waiting.shots + waiting.scenes;
+  const queue = waiting
+    ? t('schedule.queueCount', { what: queueSummary(t, waiting.shots, waiting.scenes) })
+    : t('schedule.toPlan');
   return (
     <aside className="schedule__rail" aria-label={t('schedule.queue')} data-tour="schedule-queue">
       <IconButton

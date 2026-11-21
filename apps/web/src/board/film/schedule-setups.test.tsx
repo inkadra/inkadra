@@ -14,10 +14,15 @@ import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
 import { BoardStore } from '../store.ts';
+import { queueSummary } from './ScheduleParts.tsx';
 import { ScheduleView } from './ScheduleView.tsx';
 
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    // The queue's count reads its number: "2 shots", not a bare key.
+    t: (key: string, o?: { count?: number }) => (key === 'nav.shots' ? `${o?.count} shots` : key),
+    i18n: { language: 'en' },
+  }),
 }));
 // The account's preferences: what the server holds, and what the schedule asks it to save.
 const prefs = vi.hoisted(() => ({
@@ -174,7 +179,7 @@ it('groups the queue by scene until this person picks Setup, saved in their pref
     ['2 · Close', ['Both']],
   ]);
   // Counted once: Wide and Both wait; the omitted scene's Gone is not offered.
-  expect(queue(host).querySelector('.story__sidebar-title span')?.textContent).toBe('2');
+  expect(queue(host).querySelector('.story__sidebar-title span')?.textContent).toBe('2 shots');
   expect(queue(host).textContent).not.toContain('Gone');
 });
 
@@ -233,4 +238,12 @@ it('offers no grouping on a board without set plans', async () => {
   });
   expect(queue(host).querySelector('[aria-label="film.list.groupBy"]')).toBeNull();
   expect(queue(host).querySelector('.schedule__setup')).toBeNull();
+});
+
+it('tells waiting shots and whole scenes apart, so one shot and its scene never read "2"', () => {
+  const t = ((key: string, o: { count: number }) => `${o.count} ${key}`) as never;
+  expect(queueSummary(t, 1, 1)).toBe('1 nav.shots · 1 story.sceneCount');
+  expect(queueSummary(t, 3, 0)).toBe('3 nav.shots');
+  expect(queueSummary(t, 0, 2)).toBe('2 story.sceneCount');
+  expect(queueSummary(t, 0, 0)).toBe('0 nav.shots');
 });

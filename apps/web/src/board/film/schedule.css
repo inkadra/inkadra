@@ -244,12 +244,17 @@
 }
 .schedule__queue .story__sidebar-title {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px;
+  gap: 2px 8px;
   margin: 12px 4px 0;
 }
+/* Shots and scenes counted apart: in sentence case, on its own line when the column is narrow. */
 .schedule__queue .story__sidebar-title span {
   font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
 }
 .schedule__queue > .schedule__hint {
   margin: 0 4px;

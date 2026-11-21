@@ -3452,8 +3452,7 @@
     "hideSide": "Hide month and queue",
     "showSide": "Show month and queue",
     "month": "Month",
-    "queueCount_one": "To schedule: {{count}}",
-    "queueCount_other": "To schedule: {{count}}",
+    "queueCount": "To schedule: {{what}}",
     "densityLabel": "Density",
     "densityCompact": "Compact",
     "densityComfy": "Comfortable"
