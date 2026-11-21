@@ -15,7 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatClock } from '../../lib/datetime.ts';
 import { ContextMenu } from '../chrome.tsx';
-import { insideDialog, isMac, isTyping } from '../shortcuts.ts';
+import { focusBack, insideDialog, isMac, isTyping } from '../shortcuts.ts';
 import {
   addDays,
   blockBox,
@@ -1116,6 +1116,8 @@ export function ScheduleCalendar({
     <section
       ref={root}
       aria-label={t('schedule.calendarLabel')}
+      // Takes the focus back from the New block menu when nothing else can.
+      tabIndex={-1}
       className="schedule__calendar"
       onPointerMove={move}
       onPointerUp={finish}
@@ -1697,7 +1699,9 @@ export function ScheduleCalendar({
           onClose={(reason) => {
             if (reason === 'item') return;
             setCreating(null);
-            if (reason === 'escape') creating.origin?.focus();
+            // From the keyboard: back to the block or day it was opened from, else (a block drawn
+            // with the pointer, or an origin gone since) to the calendar itself.
+            if (reason === 'escape') focusBack(creating.origin, root.current);
           }}
         />
       )}

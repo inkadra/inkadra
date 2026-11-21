@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 const PRESSABLE =
-  'button, a[href], input, select, textarea, summary, label, [role="button"], [role="menuitem"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [contenteditable="true"]';
+  'button, a[href], input, select, textarea, summary, label, [role="button"], [role="menuitem"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="slider"], [contenteditable="true"]';
 
 /**
  * For the capture-phase `pointerdown` listener of a menu or popover that closes on an outside

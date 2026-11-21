@@ -1,5 +1,6 @@
+// @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { commandFor, type KeyInput } from './shortcuts.ts';
+import { commandFor, focusBack, insideDialog, type KeyInput } from './shortcuts.ts';
 
 const key = (name: string, partial: Partial<KeyInput> = {}): KeyInput => ({
   key: name,
@@ -43,4 +44,25 @@ it('maps Shift+T to tidying into a mosaic and leaves T to the to-do', () => {
   expect(commandFor(key('T', { shiftKey: true }), false)).toEqual({ kind: 'tidy' });
   expect(commandFor(key('t'), false)).toEqual({ kind: 'add', type: 'todo' });
   expect(commandFor(key('T', { shiftKey: true, ctrlKey: true }), false)).toBeNull();
+});
+
+it('leaves the keys pressed in a menu to the menu, not to the board', () => {
+  document.body.innerHTML =
+    '<div role="menu"><button role="menuitem">Rows</button></div><button>Card</button>';
+  const [item, card] = [...document.querySelectorAll('button')];
+  expect(insideDialog(item)).toBe(true);
+  expect(insideDialog(card)).toBe(false);
+});
+
+it('gives the focus back to where a menu was opened, or to the board when that is gone', () => {
+  document.body.innerHTML = '<div tabindex="-1" id="board"><button id="card">Card</button></div>';
+  const board = document.getElementById('board');
+  const card = document.getElementById('card');
+  focusBack(card, board);
+  expect(document.activeElement).toBe(card);
+  card?.remove();
+  focusBack(card, board);
+  expect(document.activeElement).toBe(board);
+  focusBack(null, board);
+  expect(document.activeElement).toBe(board);
 });

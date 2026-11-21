@@ -14,6 +14,17 @@
   outline: none;
   --shadow-float: 0 8px 24px rgb(0 0 0 / 0.35);
 }
+/* The toast of packages/ui: on the board it floats with the board's shadow. */
+.canvas .ink-toast {
+  box-shadow: var(--shadow-float);
+}
+/* Space refusals and warnings (decision 0081): in the bottom-right tray, above the uploads. */
+.storage-notice > .ink-toast {
+  position: static;
+  max-width: min(420px, calc(100vw - 32px));
+  transform: none;
+  white-space: normal;
+}
 .canvas--hand {
   cursor: grab;
 }

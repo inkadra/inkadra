@@ -87,7 +87,7 @@ import {
   isMapLink,
   type ModuleId,
 } from '@inkadra/shared';
-import { Button, Icon, Input, kindStyle } from '@inkadra/ui';
+import { Button, Icon, Input, kindStyle, Toast } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
   type DragEvent,
@@ -206,9 +206,16 @@ import {
 import { type Peer, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
-import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
+import {
+  canSpacePan,
+  commandFor,
+  FOCUSABLE,
+  focusBack,
+  insideDialog,
+  isMac,
+  isTyping,
+} from './shortcuts.ts';
 import { LOCAL } from './store.ts';
-import { Toast } from './Toast.tsx';
 import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
 import { startUpload } from './uploads.ts';
@@ -584,6 +591,11 @@ export function Canvas({
     x: number;
     y: number;
     at: Point;
+    /**
+     * What it was opened on (a card, the bar's More button), for the focus to go back to; every
+     * way of opening the menu sets it, so none inherits another's.
+     */
+    origin: HTMLElement | null;
     fromToolbar?: boolean;
     /** Keep editing actions available when focusing the menu blurs an inline title. */
     fromEditing?: boolean;
@@ -2472,6 +2484,7 @@ export function Canvas({
       x: p.x,
       y: p.y,
       at: screenToWorld(vp.current, p),
+      origin: target.closest<HTMLElement>(FOCUSABLE),
       ...(cell && r !== undefined && c !== undefined ? { cell: { r, c } } : {}),
     });
   }
@@ -2567,7 +2580,7 @@ export function Canvas({
   // Keyboard --------------------------------------------------------------------
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
-    if (insideDialog()) return;
+    if (insideDialog(e.target)) return;
     // A focused video keeps Space (play) and the arrows (seek, volume) for itself.
     if (e.target instanceof HTMLVideoElement && /^( |Arrow)/.test(e.key)) return;
     // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
@@ -2654,7 +2667,9 @@ export function Canvas({
     // Enter on the toast's buttons, a colour's copy button and a play button presses them (#310, #308).
     const presses =
       e.target instanceof HTMLElement &&
-      !!e.target.closest('.toast, .card__copy, .screenplay-hint, .frame-upload, [data-play-link]');
+      !!e.target.closest(
+        '.ink-toast, .card__copy, .screenplay-hint, .frame-upload, [data-play-link]',
+      );
     if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
@@ -2796,7 +2811,10 @@ export function Canvas({
   const clipHandler = useRef<(e: ClipboardEvent) => void>(() => {});
   clipHandler.current = (e: ClipboardEvent) => {
     // A plan being edited has the keyboard; copy and paste never act on its card.
-    if (insideDialog() || store.getSnapshot().byId.get(editingRef.current ?? '')?.type === 'plan')
+    if (
+      insideDialog(e.target) ||
+      store.getSnapshot().byId.get(editingRef.current ?? '')?.type === 'plan'
+    )
       return;
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
@@ -4093,11 +4111,12 @@ export function Canvas({
               onGuestHidden={() => toggleGuestHidden(store, [...selection])}
               onDelete={removeSelection}
               onDuplicate={duplicate}
-              onMore={(x, y) =>
+              onMore={(x, y, opener) =>
                 setMenu({
                   x,
                   y,
                   at: screenToWorld(vp.current, { x, y }),
+                  origin: opener,
                   fromToolbar: true,
                   fromEditing: Boolean(editing || appearance),
                 })
@@ -4414,8 +4433,13 @@ export function Canvas({
               key={menu.scenes ? 'scenes' : 'main'}
               x={menu.x}
               y={menu.y}
+              label={t('board.contextMenu')}
               items={menuItems}
-              onClose={() => setMenu(null)}
+              onClose={(reason) => {
+                setMenu(null);
+                // From the keyboard: back to the card or control it was opened on, or the board.
+                if (reason === 'escape') focusBack(menu.origin, rootRef.current);
+              }}
             />
           ))}
 

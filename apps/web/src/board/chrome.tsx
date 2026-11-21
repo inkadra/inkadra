@@ -7,6 +7,7 @@ import {
   type IconName,
   KeyCap,
   kindStyle,
+  Menu,
   swallowOutsidePress,
   type ToolKind,
   toolStyle,
@@ -15,6 +16,7 @@ import {
 import type { Editor } from '@tiptap/react';
 import {
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -683,7 +685,7 @@ export function BarButton({
 }: {
   icon: IconName;
   label: string;
-  onClick: () => void;
+  onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   active?: boolean;
   danger?: boolean;
   disabled?: boolean;
@@ -742,7 +744,8 @@ export function ContextBar({
   onGuestHidden: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onMore: (x: number, y: number) => void;
+  /** Opens the card menu at a point of the board, from `opener` (focus goes back there). */
+  onMore: (x: number, y: number, opener: HTMLElement) => void;
   onColor: (color: string | undefined) => void;
   onTags: (x: number, y: number) => void;
   /** Buttons that only some cards have (arrow line style). */
@@ -811,10 +814,10 @@ export function ContextBar({
           <BarButton
             icon="more"
             label={t('board.menu.more')}
-            onClick={() => {
+            onClick={(e) => {
               const rect = bar.current;
               if (!rect) return;
-              onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);
+              onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6, e.currentTarget);
             }}
           />
           <span className="ctxbar__sep" aria-hidden="true" />
@@ -910,7 +913,7 @@ export function ContextBar({
               const root = (
                 e.currentTarget.closest('.canvas') as HTMLElement
               ).getBoundingClientRect();
-              onMore(bar.right - root.left - 200, bar.bottom - root.top + 6);
+              onMore(bar.right - root.left - 200, bar.bottom - root.top + 6, e.currentTarget);
             }}
           >
             <Icon name="more" size={14} />
@@ -970,17 +973,6 @@ function ArrangeButton({
         : below
     }px`;
   });
-  useEffect(() => {
-    if (!open) return;
-    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-    const away = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (menu.current?.contains(target) || button.current?.contains(target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('pointerdown', away, true);
-    return () => document.removeEventListener('pointerdown', away, true);
-  }, [open]);
   const run = (how: ArrangeCommand) => {
     setOpen(false);
     onArrange(how);
@@ -1016,38 +1008,13 @@ function ArrangeButton({
       </button>
       {open &&
         createPortal(
-          <div
+          <Menu
             ref={menu}
-            className="ink-menu menu arrange-menu"
-            role="menu"
-            aria-label={label}
+            className="menu arrange-menu"
+            label={label}
             data-chrome
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpen(false);
-                button.current?.focus();
-              }
-              if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
-                // The keys move through the menu, not the selected cards.
-                e.preventDefault();
-                e.stopPropagation();
-                const all = [
-                  ...(menu.current?.querySelectorAll<HTMLElement>(
-                    '[role="menuitem"], [role="menuitemradio"]',
-                  ) ?? []),
-                ];
-                const i = all.indexOf(document.activeElement as HTMLElement);
-                const next =
-                  e.key === 'Home'
-                    ? 0
-                    : e.key === 'End'
-                      ? all.length - 1
-                      : (i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length;
-                all[next]?.focus();
-              }
-            }}
+            anchor={button}
+            onClose={() => setOpen(false)}
           >
             {ALIGN_ITEMS.map(({ how, icon }) => item(how, icon, t(`board.align.${how}`)))}
             {count > 2 && (
@@ -1076,7 +1043,7 @@ function ArrangeButton({
                 </button>
               ))}
             </fieldset>
-          </div>,
+          </Menu>,
           button.current?.closest('.canvas') ?? document.body,
         )}
     </>
@@ -1169,7 +1136,10 @@ export function ContextMenu({
   className?: string;
   label?: string;
   items: MenuItem[];
-  /** Why the menu closes, so a caller can return focus only when the keyboard was used. */
+  /**
+   * Why the menu closes, so a caller can return focus only when the keyboard was used: Escape
+   * and Tab both say `escape` (Tab then moves on from where the focus went back).
+   */
   onClose: (reason: 'escape' | 'outside' | 'item') => void;
   /** The button that toggles the menu: pressing it is left to the button. */
   anchor?: RefObject<HTMLElement | null>;
@@ -1186,42 +1156,15 @@ export function ContextMenu({
     el.style.left = `${Math.max(8, Math.min(x, room.clientWidth - el.offsetWidth - 8))}px`;
     el.style.top = `${Math.max(8, Math.min(y, room.clientHeight - el.offsetHeight - 8))}px`;
   }, [x, y, style]);
-  useEffect(() => {
-    ref.current
-      ?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not([aria-disabled="true"])')
-      // The menu is already placed in view; scrolling to it would shift a clipped list beside it.
-      ?.focus({ preventScroll: true });
-  }, []);
-  useOutsidePress(ref, anchor, onClose);
   return (
-    <div
+    <Menu
       ref={ref}
-      className={className ? `ink-menu menu ${className}` : 'ink-menu menu'}
-      role="menu"
-      aria-label={label}
+      className={className ? `menu ${className}` : 'menu'}
+      label={label}
       style={style ?? (x === undefined ? undefined : { left: x, top: y })}
       data-chrome
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onClose('escape');
-        }
-        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
-          e.preventDefault();
-          const all = [
-            // Disabled items stay in the walk so their "coming soon" hint can be found.
-            ...(ref.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []),
-          ];
-          const i = all.indexOf(document.activeElement as HTMLElement);
-          const next =
-            e.key === 'Home'
-              ? 0
-              : e.key === 'End'
-                ? all.length - 1
-                : (i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length;
-          all[next]?.focus();
-        }
-      }}
+      anchor={anchor}
+      onClose={(reason) => onClose(reason === 'tab' ? 'escape' : reason)}
     >
       {items.map((item, i) =>
         item.divider ? (
@@ -1294,7 +1237,7 @@ export function ContextMenu({
           </button>
         ),
       )}
-    </div>
+    </Menu>
   );
 }
 

@@ -177,7 +177,7 @@ test('the moodboard groups, selects and sends references to the storyboard', asy
 
   // To the storyboard, a document of its own: confirmed by the server, so read it back.
   await bar.getByRole('button', { name: 'Manda allo storyboard' }).click();
-  await expect(page.locator('.toast:not(.ink-motion-exit)')).toContainText('2');
+  await expect(page.locator('.ink-toast:not(.ink-motion-exit)')).toContainText('2');
   const framesSent = async () => {
     const sent = await readBoard(base, cookie, storyboard);
     return [...roots(sent).elements.values()]
@@ -195,7 +195,9 @@ test('the moodboard groups, selects and sends references to the storyboard', asy
   await page.locator('h2.moodboard__title').click();
   await page.keyboard.press('Escape');
   await expect(bar).toHaveCount(0);
-  await expect(page.locator('.toast:not(.ink-motion-exit)')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator('.ink-toast:not(.ink-motion-exit)')).toHaveCount(0, {
+    timeout: 15_000,
+  });
   await shoot(page, 'moodboard-1280-groups');
   await page.reload();
   await expect(gallery.locator('.moodboard__group')).toHaveCount(2);

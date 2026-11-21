@@ -349,6 +349,7 @@
     },
     "toolbar": "Add",
     "contextBar": "Selection actions",
+    "contextMenu": "Board actions",
     "minimap": "Minimap: click to move there",
     "dropFiles": "Drop to upload",
     "undo": "Undo",
