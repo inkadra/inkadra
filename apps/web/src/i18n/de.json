@@ -3779,13 +3779,14 @@
       "clipper": "Im Browser speicherst du mit <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Einstellungen, Einrichtung der Instanz unvollständig",
-    "details": "Details",
-    "detailsHint": "Typ, Termine, Team",
+    "details": "Weitere Details",
+    "detailsHint": "Symbol und Farbe",
     "clearDate": "{{label}} löschen",
     "people": "Personen oder E-Mail",
     "peoplePlaceholder": "Personen oder E-Mail hinzufügen…",
     "createAndInvite_one": "Erstellen und einladen ({{count}})",
-    "createAndInvite_other": "Erstellen und einladen ({{count}})"
+    "createAndInvite_other": "Erstellen und einladen ({{count}})",
+    "manageTypes": "Typen verwalten"
   },
   "settingsUi": {
     "profile": "Profil",
@@ -5393,7 +5394,7 @@
           },
           "2": {
             "title": "Neues Projekt",
-            "text": "Boards entstehen in einem Projekt: Lege es hier an."
+            "text": "Boards gehören zu einem Projekt: Lege es hier an, mit Typ, Drehtagen und Team."
           }
         }
       },

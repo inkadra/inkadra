@@ -2,14 +2,19 @@
 import { DEFAULT_CLASSIFICATIONS, defaultProjectIcon, type Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createBoard } from '../board/boards.ts';
 import { api } from '../lib/api.ts';
 import { ProjectSetupForm } from './NewProjectDialog.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+const session = vi.hoisted(() => ({ role: 'user' }));
 vi.mock('../lib/session.tsx', () => ({
-  useSession: () => ({ user: { id: 'me' }, instance: { auth: { email: false } } }),
+  useSession: () => ({
+    user: { id: 'me', role: session.role },
+    instance: { auth: { email: false } },
+  }),
 }));
 vi.mock('../lib/api.ts', () => ({
   api: {
@@ -67,7 +72,7 @@ const button = (key: string) =>
 async function blank() {
   await input('input[maxlength="120"]', 'Last Run');
 }
-async function openDetails() {
+async function openMore() {
   await act(async () =>
     host.querySelector<HTMLButtonElement>('.project-setup__disclosure')?.click(),
   );
@@ -79,17 +84,38 @@ const submit = () =>
       .querySelector('form')
       ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
   );
-it('shows only the name without templates until Details opens', async () => {
-  expect(host.querySelector('input[name="projectType"]')).toBeNull();
-  expect(host.querySelector('input[type="date"]')).toBeNull();
-  expect(host.querySelector(people)).toBeNull();
+it('shows type, dates and team at once, and the icon under More details', async () => {
+  expect(host.querySelectorAll('input[name="projectType"]').length).toBeGreaterThan(0);
+  expect(host.querySelectorAll('input[type="date"]')).toHaveLength(2);
+  expect(host.querySelector(people)).not.toBeNull();
   expect(host.textContent).not.toContain('onboarding.skip');
-  await openDetails();
+  // Only administrators keep the types: nobody else gets Manage types.
+  expect(host.querySelector('.project-setup__manage')).toBeNull();
+  expect(host.querySelector('[aria-label^="appearance.shapes."]')).toBeNull();
+  await openMore();
   expect(host.querySelector('.project-setup__disclosure')?.getAttribute('aria-expanded')).toBe(
     'true',
   );
-  expect(host.querySelectorAll('input[type="date"]')).toHaveLength(2);
-  expect(host.querySelector(people)).not.toBeNull();
+  expect(host.querySelector('[aria-label^="appearance.shapes."]')).not.toBeNull();
+});
+it('links administrators to the project types in Settings, closing the form', async () => {
+  session.role = 'admin';
+  const leave = vi.fn();
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <ProjectSetupForm onClose={close} onLeave={leave} onCreated={created} />
+      </MemoryRouter>,
+    ),
+  );
+  const link = host.querySelector<HTMLAnchorElement>('.project-setup__manage');
+  expect(link?.textContent).toBe('onboarding.manageTypes');
+  expect(link?.getAttribute('href')).toBe(
+    '/settings?section=classifications&setting=classifications.projectTypes',
+  );
+  await act(async () => link?.click());
+  expect(leave).toHaveBeenCalledOnce();
+  session.role = 'user';
 });
 it('cancels without creating data', async () => {
   await act(async () => button('project.cancel')?.click());
@@ -98,7 +124,6 @@ it('cancels without creating data', async () => {
 });
 it('creates metadata and opens the real project', async () => {
   await blank();
-  await openDetails();
   await input('input[type="date"]', '2026-11-02');
   await act(async () => host.querySelector<HTMLInputElement>('input[name="projectType"]')?.click());
   vi.mocked(api.post).mockResolvedValueOnce({ id: 'p', rootBoardId: 'root' } as Project);
@@ -119,7 +144,6 @@ it('creates metadata and opens the real project', async () => {
 });
 it('keeps a project and successful invites on failure; retries only missing invitations', async () => {
   await blank();
-  await openDetails();
   for (const email of ['one@example.com', 'two@example.com']) {
     await input(people, email);
     await act(async () => button('onboarding.add')?.click());
@@ -166,7 +190,6 @@ it('keeps a project and successful invites on failure; retries only missing invi
 
 it('does not let a half-typed email block Create, and invites a complete one', async () => {
   await blank();
-  await openDetails();
   await input(people, 'team@');
   expect(host.textContent).not.toContain('onboarding.pendingEmail');
   expect(button('project.create')?.disabled).toBe(false);
@@ -192,7 +215,6 @@ it('does not let a half-typed email block Create, and invites a complete one', a
 
 it('suggests people on the instance and leaves out those already added', async () => {
   await blank();
-  await openDetails();
   await input(people, 'gi');
   await act(async () => new Promise((r) => setTimeout(r, 300)));
   expect(api.get).toHaveBeenCalledWith('/users/search?q=gi');
@@ -232,7 +254,6 @@ it('offers configured active project types using stable identifiers', async () =
       projectTypes: [custom, { ...custom, id: 'retired', label: 'Retired', archived: true }],
     }),
   );
-  await openDetails();
   expect(host.textContent).toContain('Feature');
   expect(host.textContent).not.toContain('Retired');
   await blank();
@@ -248,6 +269,7 @@ it('offers configured active project types using stable identifiers', async () =
 });
 
 it('proposes the icon a project got without one, and sends the one chosen', async () => {
+  await openMore();
   expect(
     host.querySelector('[role="radio"][aria-checked="true"]')?.getAttribute('aria-label'),
   ).toBe(`appearance.shapes.${serverDefault.shape}`);
