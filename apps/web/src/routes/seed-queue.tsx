@@ -96,6 +96,18 @@ export function releaseLiveCounts(boardId: string) {
 }
 
 /**
+ * The closed board's local counts expire (`RELEASED_HOLD_MS` after it closed): the server's win
+ * now, also when no answer from the server had the board (its project was left).
+ */
+export function expireReleasedCounts(boardId: string) {
+  if (!released.delete(boardId)) return;
+  const rest = new Map(seeded);
+  rest.delete(boardId);
+  seeded = rest;
+  emit();
+}
+
+/**
  * The server stores a board a couple of seconds after its last edit, so counts fetched when
  * a seed finishes can still be empty: seeded boards keep their local counts until the server
  * reports elements on them. Boards open in a Canvas, and closed ones until the server has
