@@ -28,7 +28,7 @@ export const NOTIFICATION_WORDS_FR: NotificationWords = {
       task_assigned: 'vous a attribué une tâche',
       feedback_received: 'Nouveau signalement reçu dans l’application',
       review_submitted: 'a envoyé sa relecture',
-      server_alert_disk_full: 'Presque plus d’espace : il reste {{free}} sur {{total}}',
+      server_alert_disk_full: 'Presque plus d’espace : il reste {{free}} sur {{total}}',
       server_alert_service_down: '{{service}} ne répond pas',
       server_alert_backup_failed: 'La sauvegarde a échoué',
       server_alert_repeated_errors:
@@ -36,7 +36,7 @@ export const NOTIFICATION_WORDS_FR: NotificationWords = {
       server_alert_unknown: 'Quelque chose ne va pas sur le serveur',
       update_available: 'Une nouvelle version d’Inkadra est disponible',
       server_alert_storage_limit:
-        'Espace de l’instance : {{percent}} % utilisé ({{used}} sur {{limit}})',
+        'Espace de l’instance : {{percent}} % utilisé ({{used}} sur {{limit}})',
       server_alert_storage_request: 'demande plus d’espace',
     },
   },

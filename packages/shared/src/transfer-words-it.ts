@@ -12,19 +12,19 @@ export const TRANSFER_WORDS_IT: TransferWords = {
     exportLead:
       'Uno zip con tutte le board, i file e i commenti, da conservare o da importare su un altro server Inkadra.',
     includedList:
-      'Board e sotto-board, file originali, commenti, revisioni, giorni di ripresa, versioni con nome',
+      'Board e sotto-board, file originali, commenti, revisioni, giorni di riprese, versioni con nome',
     excludedList: 'Membri, link di condivisione e ospiti, board nel cestino, versioni automatiche',
     notifyNote: 'Puoi chiudere questa finestra: una notifica ti avvisa quando ha finito.',
     exportForbidden: 'Solo proprietari ed editor del progetto possono esportarlo.',
-    startError: "Non è stato possibile avviare l'esportazione. Riprova.",
+    startError: 'Non è stato possibile avviare l’esportazione. Riprova.',
     failure: {
-      too_large: "L'archivio è più grande di quanto questo server accetti.",
+      too_large: 'L’archivio è più grande di quanto questo server accetti.',
       invalid_archive: 'Questo file non è un archivio Inkadra valido.',
       unsupported_version:
-        "L'archivio viene da un Inkadra più recente. Aggiorna prima questo server.",
+        'L’archivio viene da un Inkadra più recente. Aggiorna prima questo server.',
       too_new: 'Le board vengono da un Inkadra più recente. Aggiorna prima questo server.',
       storage:
-        "Non è stato possibile salvare i file. Chiedi all'amministratore di controllare lo spazio libero.",
+        'Non è stato possibile salvare i file. Chiedi all’amministratore di controllare lo spazio libero.',
       gone: 'Non puoi più modificare questo progetto, oppure è stato eliminato.',
       interrupted: 'Il server si è fermato durante il lavoro. Riprova.',
       cancelled: 'Annullato.',

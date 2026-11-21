@@ -129,7 +129,7 @@ for (const width of [1280, 390]) {
         menu.getByRole('menuitem', { name: 'Storyboard: modulo spento, accendi' }),
       ).toBeVisible();
       await expect(
-        menu.getByRole('menuitem', { name: 'Importa un copione…: modulo spento, accendi' }),
+        menu.getByRole('menuitem', { name: 'Importa una sceneggiatura…: modulo spento, accendi' }),
       ).toBeVisible();
       if (phone) await expect(menu.getByRole('menuitem', { name: 'Inquadratura' })).toHaveCount(0);
       await shoot(page, 'canvas-menu');

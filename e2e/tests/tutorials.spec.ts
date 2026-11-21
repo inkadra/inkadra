@@ -142,7 +142,7 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   // The tour opens the project's storyboard first, and points at its scenes (QA audit).
   const tour = page.locator('dialog.tour');
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}/b/`));
-  await expect(tour.getByRole('heading', { name: 'Scene e frame' })).toBeVisible();
+  await expect(tour.getByRole('heading', { name: 'Scene e inquadrature' })).toBeVisible();
   await expect(tour).toHaveAttribute('data-anchor', 'storyboard-scene');
   await page.keyboard.press('Escape');
   await expect(tour).toHaveCount(0);
