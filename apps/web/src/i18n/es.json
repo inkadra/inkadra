@@ -5602,7 +5602,7 @@
           },
           "6": {
             "title": "Moverse por la planta",
-            "text": "Espacio y arrastrar, la rueda o dos dedos mueven la planta; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas la mueven, 0 la ajusta, al 100 %, + y − cambian el zoom."
+            "text": "Espacio y arrastrar, la rueda o dos dedos mueven la planta; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas la mueven, 0 la ajusta, + y − cambian el zoom."
           }
         }
       },
