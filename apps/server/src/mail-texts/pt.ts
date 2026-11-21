@@ -151,33 +151,33 @@ export const pt: MailTexts = {
     titles: {
       disk_full: 'Quase sem espaço',
       service_down: 'Um serviço não responde',
-      backup_failed: 'A cópia de segurança falhou',
-      repeated_errors: 'Um erro repete-se',
+      backup_failed: 'O backup falhou',
+      repeated_errors: 'Um erro se repete',
       storage_limit: 'A instância está quase sem espaço',
       storage_request: 'Pedido de mais espaço',
     },
     disk: (free, total, weeks) =>
-      `Restam ${free} de ${total}.${weeks ? ` Ao ritmo atual chega para cerca de ${weeks}.` : ''} Liberte espaço ou adicione um disco antes que os envios parem.`,
+      `Restam ${free} de ${total}.${weeks ? ` Ao ritmo atual chega para cerca de ${weeks}.` : ''} Libere espaço ou adicione um disco antes que os envios parem.`,
     weeks: (n) => plural(n, 'uma semana', 'semanas'),
     storage: (used, total, weeks) =>
-      `A instância usa ${used} de ${total}.${weeks ? ` Ao ritmo atual chega para cerca de ${weeks}.` : ''} Aumente o limite ou liberte espaço antes que os envios parem.`,
+      `A instância usa ${used} de ${total}.${weeks ? ` Ao ritmo atual chega para cerca de ${weeks}.` : ''} Aumente o limite ou libere espaço antes que os envios parem.`,
     storageAction: 'Abrir Armazenamento',
     down: (service) =>
-      `${service} não responde. O resto do Inkadra funciona, mas esta parte está parada até o serviço voltar a arrancar.`,
+      `${service} não responde. O resto do Inkadra funciona, mas esta parte está parada até o serviço voltar a funcionar.`,
     backup:
-      'A cópia de segurança desta noite falhou. Os seus dados estão seguros, mas convém verificar antes da próxima.',
+      'O backup desta noite falhou. Seus dados estão seguros, mas convém verificar antes do próximo.',
     errors: (n) => `O mesmo erro aconteceu ${n} vezes na última hora.`,
     services: {
       web: 'O site e o acesso',
-      collab: 'A colaboração em direto',
-      worker: 'A preparação de vídeos e pré-visualizações',
-      database: 'A base de dados',
-      queue: 'A fila de trabalhos',
+      collab: 'A colaboração ao vivo',
+      worker: 'A preparação de vídeos e prévias',
+      database: 'O banco de dados',
+      queue: 'A fila de tarefas',
       configuration: 'A configuração',
     } as Record<string, string>,
     action: 'Abrir Servidor',
     footer: (instance) =>
-      `Alertas do servidor de ${instance} para os administradores. Mudam-se em Definições › Servidor.`,
+      `Alertas do servidor de ${instance} para os administradores. Você pode alterá-los em Configurações › Servidor.`,
   },
   update: {
     subject: (version, instance) => `O Inkadra ${version} está disponível para ${instance}`,
