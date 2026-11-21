@@ -5602,7 +5602,7 @@
           },
           "6": {
             "title": "Se déplacer dans le plan",
-            "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, à 100 %, + et − zooment."
+            "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, + et − zooment."
           }
         }
       },
