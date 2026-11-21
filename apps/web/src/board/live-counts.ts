@@ -95,7 +95,9 @@ export function useBoardCounts(
         if (!live) return;
         const next = new Map(r.items.map((c) => [c.boardId, c]));
         setCounts(next);
-        forgetSeededCounts(next, askedAt);
+        // The local counts are gone for every view, and another (the navigation, the board
+        // cards) may still hold server counts from before: all of them count again.
+        if (forgetSeededCounts(next, askedAt)) refreshBoardCounts();
       })
       .catch(() => {
         // Counts are a hint; the navigation works without them.

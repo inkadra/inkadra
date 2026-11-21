@@ -62,11 +62,12 @@ it('counts a board again after it closes, keeping its own counts until the serve
     // Stored: the server's counts, asked for without any change to the board list.
     counts.items = [{ boardId: 'b', elementCount: 2, frameCount: 2, framesToShoot: 2 }];
     await act(async () => vi.advanceTimersByTimeAsync(12_000));
-    expect(get.mock.calls.length).toBe(asked + 2);
+    // The one that found the server caught up, and one more for the other views.
+    expect(get.mock.calls.length).toBe(asked + 3);
     expect(shown.get('b')?.frameCount).toBe(2);
     // The server caught up: nothing more to count again.
     await act(async () => vi.advanceTimersByTimeAsync(RELEASED_HOLD_MS));
-    expect(get.mock.calls.length).toBe(asked + 2);
+    expect(get.mock.calls.length).toBe(asked + 3);
   } finally {
     await act(async () => root.unmount());
     vi.useRealTimers();
@@ -95,8 +96,51 @@ it('counts a closed board again while its store is retried, and gives up on its 
     expect(get.mock.calls.length).toBe(asked + 3);
     expect(shown.get('b')?.frameCount).toBe(2);
     await act(async () => vi.advanceTimersByTimeAsync(RELEASED_HOLD_MS));
-    expect(get.mock.calls.length).toBe(asked + 5);
+    // 90 s, 120 s, and once more for the other views when the local counts give way.
+    expect(get.mock.calls.length).toBe(asked + 6);
     expect(shown.get('b')?.frameCount).toBe(1);
+  } finally {
+    await act(async () => root.unmount());
+    vi.useRealTimers();
+  }
+});
+
+it('counts again in every view once one of them finds the server caught up', async () => {
+  vi.useFakeTimers();
+  const root = createRoot(document.createElement('div'));
+  // What the server stored before the visit: one frame.
+  counts.items = [{ boardId: 'b', elementCount: 1, frameCount: 1, framesToShoot: 1 }];
+  let cards: Map<string, BoardCount> = new Map();
+  function Cards() {
+    cards = useBoardCounts('p', boards);
+    return null;
+  }
+  try {
+    await act(async () =>
+      root.render(
+        <>
+          <Navigation />
+          <Open />
+        </>,
+      ),
+    );
+    await act(async () => root.render(<Navigation />));
+    expect(shown.get('b')?.frameCount).toBe(2);
+    // Stored at once; another view (the board cards of the next board) asks first and finds
+    // the server's counts matching: the local ones go, for the navigation too.
+    counts.items = [{ boardId: 'b', elementCount: 2, frameCount: 2, framesToShoot: 2 }];
+    await act(async () =>
+      root.render(
+        <>
+          <Navigation />
+          <Cards />
+        </>,
+      ),
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(cards.get('b')?.frameCount).toBe(2);
+    // The navigation does not keep its counts from before the visit.
+    expect(shown.get('b')?.frameCount).toBe(2);
   } finally {
     await act(async () => root.unmount());
     vi.useRealTimers();

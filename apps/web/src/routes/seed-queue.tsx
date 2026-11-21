@@ -116,7 +116,7 @@ export function mergeSeededCounts(
  * Drops local counts the server has caught up with: a seeded board once it has elements there,
  * a closed one once its counts there match, or once they were asked for (`askedAt`) past
  * `RELEASED_HOLD_MS` after it closed. Only boards in `server` are judged: counts of another
- * project say nothing about them.
+ * project say nothing about them. True when it dropped any.
  */
 export function forgetSeededCounts(
   server: ReadonlyMap<string, BoardCount>,
@@ -134,7 +134,7 @@ export function forgetSeededCounts(
     return matches || askedAt >= closedAt + RELEASED_HOLD_MS;
   };
   const stored = [...seeded].filter(([id, counts]) => !live.has(id) && caughtUp(id, counts));
-  if (stored.length === 0) return;
+  if (stored.length === 0) return false;
   const rest = new Map(seeded);
   for (const [id] of stored) {
     rest.delete(id);
@@ -142,6 +142,7 @@ export function forgetSeededCounts(
   }
   seeded = rest;
   emit();
+  return true;
 }
 
 // The board connection and store load with the first seed, not with every page (#774).
