@@ -319,6 +319,11 @@
 .project-setup__manage:hover {
   text-decoration: underline;
 }
+.project-setup__manage[aria-disabled="true"] {
+  color: var(--ink-text-muted);
+  text-decoration: none;
+  cursor: default;
+}
 /* A finger gets a taller target without moving the line. */
 @media (pointer: coarse) {
   .project-setup__manage {

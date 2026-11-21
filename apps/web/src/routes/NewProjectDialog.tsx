@@ -23,7 +23,7 @@ import {
 } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
@@ -75,21 +75,38 @@ export function NewProjectDialog({
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const dialog = useRef<DialogHandle>(null);
+  const navigate = useNavigate();
+  // Where a link asked to go: only for the close request the link itself makes, so another way
+  // of closing (Cancel, Escape, Keep editing then Cancel) never follows a stale link.
+  const leaveTo = useRef<string | null>(null);
+  const leaving = useRef<string | null>(null);
   return (
     <Dialog
       ref={dialog}
       open={open}
       dirty={dirty}
       title={t('project.dialogTitle')}
-      onClose={onClose}
+      onClose={() => {
+        const to = leaving.current;
+        leaving.current = null;
+        onClose();
+        if (to) navigate(to);
+      }}
       onCancel={(e) => {
+        leaving.current = leaveTo.current;
+        leaveTo.current = null;
         if (busy) e.preventDefault();
       }}
     >
       {open && (
         <ProjectSetupForm
           onClose={() => dialog.current?.requestClose()}
-          onLeave={onClose}
+          onLeave={(to) => {
+            // Asks "Discard changes?" first when the form is filled, like Cancel.
+            leaveTo.current = to;
+            dialog.current?.requestClose();
+            leaveTo.current = null;
+          }}
           onCreated={onCreated}
           onImport={onImport}
           onBusyChange={setBusy}
@@ -115,8 +132,11 @@ export function ProjectSetupForm({
   onDirtyChange,
 }: {
   onClose: () => void;
-  /** Closes at once, for a link that leaves the form (Manage types). */
-  onLeave?: () => void;
+  /**
+   * Leaves the form for a link (Manage types): the owner confirms discarding a filled form,
+   * then closes and goes there. Without it the link simply navigates.
+   */
+  onLeave?: (to: string) => void;
   onCreated: (p: Project) => void;
   /** Shows a quiet Import archive… link in the footer. */
   onImport?: () => void;
@@ -261,7 +281,24 @@ export function ProjectSetupForm({
           <legend>{t('onboarding.type')}</legend>
           {/* The types are the instance's, kept by administrators (Settings → Classifications). */}
           {user?.role === 'admin' && (
-            <Link to={MANAGE_TYPES} className="project-setup__manage" onClick={onLeave}>
+            <Link
+              to={MANAGE_TYPES}
+              className="project-setup__manage"
+              // A link has no disabled state: while saving it is inert and out of the tab order.
+              aria-disabled={locked || undefined}
+              tabIndex={locked ? -1 : undefined}
+              onClick={(e) => {
+                if (locked) {
+                  e.preventDefault();
+                  return;
+                }
+                // Ctrl/Cmd/Shift/middle click opens Settings elsewhere: the form stays.
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                if (!onLeave) return;
+                e.preventDefault();
+                onLeave(MANAGE_TYPES);
+              }}
+            >
               {t('onboarding.manageTypes')}
             </Link>
           )}
