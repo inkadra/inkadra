@@ -1068,6 +1068,9 @@ export function createCollabServer(deps: {
   /** One last store for each board still not stored, then spill what fails, then close. */
   server.destroy = async () => {
     closing = true;
+    // Hocuspocus runs onDestroy only once every board unloaded: a hung store never gets there.
+    clearInterval(timer);
+    clearInterval(keepalive);
     for (const [document, { timer, payload }] of unsaved) {
       clearTimeout(timer);
       if (hocuspocus.documents.get(payload.documentName) === document)

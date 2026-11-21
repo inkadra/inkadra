@@ -432,12 +432,19 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       },
     });
     const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    // Odd periods pick out the server's own intervals among everything else running.
+    const periods = [4321, 4322];
+    const intervals: unknown[] = [];
+    const setSpy = vi.spyOn(globalThis, 'setInterval');
+    const clearSpy = vi.spyOn(globalThis, 'clearInterval');
     const other = createCollabServer({
       db: stuck,
       auth,
       log,
       publicUrl: config.PUBLIC_URL,
       unsavedDir: dir,
+      recheckMs: periods[0],
+      keepaliveMs: periods[1],
     });
     const connection = await other.hocuspocus.openDirectConnection(name);
     hung = true;
@@ -446,6 +453,16 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     await other.destroy();
     expect(Date.now() - started).toBeLessThan(SHUTDOWN_STORE_MS + 3000);
     expect(readdirSync(dir)).toEqual([`${hungBoard}.yupdate`]);
+    // The board never unloaded, so Hocuspocus's onDestroy never ran: the server's own shutdown
+    // still stops the access recheck and the keepalive.
+    setSpy.mock.calls.forEach((args, i) => {
+      if (periods.includes(args[1] as number)) intervals.push(setSpy.mock.results[i]?.value);
+    });
+    expect(intervals).toHaveLength(2);
+    const cleared = clearSpy.mock.calls.map(([handle]) => handle);
+    for (const handle of intervals) expect(cleared).toContain(handle);
+    setSpy.mockRestore();
+    clearSpy.mockRestore();
   });
 
   it.each([
