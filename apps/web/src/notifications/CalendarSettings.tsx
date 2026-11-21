@@ -1,5 +1,5 @@
 import type { CalendarFeed } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Icon } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, Input } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Toast } from '../board/Toast.tsx';
@@ -59,13 +59,7 @@ export function CalendarSettings() {
     }
   }
   const input = (
-    <input
-      className="ink-input"
-      aria-label={t('calendar.link')}
-      readOnly
-      data-feedback-secret
-      value={feed?.url ?? ''}
-    />
+    <Input aria-label={t('calendar.link')} readOnly data-feedback-secret value={feed?.url ?? ''} />
   );
   const copyButton = (
     <Button
@@ -98,12 +92,9 @@ export function CalendarSettings() {
                 {input}
                 {copyButton}
                 {feed?.url && (
-                  <a
-                    className="ink-btn ink-btn--secondary ink-btn--block"
-                    href={feed.url.replace(/^https?:/, 'webcal:')}
-                  >
+                  <Button block href={feed.url.replace(/^https?:/, 'webcal:')}>
                     {t('calendar.open')}
-                  </a>
+                  </Button>
                 )}
               </div>
             </>

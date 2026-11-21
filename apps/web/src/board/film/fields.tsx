@@ -1,6 +1,6 @@
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
 import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
-import { Icon, Select } from '@inkadra/ui';
+import { Icon, Input, Select, TextArea } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -47,10 +47,10 @@ export function TextField({
     <div className={`film-field ${className ?? ''}`}>
       <label htmlFor={id}>{label}</label>
       {multiline ? (
-        <textarea
+        <TextArea
           id={id}
           key={value}
-          className="ink-input film-field__area"
+          className="film-field__area"
           defaultValue={value}
           readOnly={readOnly}
           placeholder={placeholder}
@@ -58,10 +58,9 @@ export function TextField({
           onBlur={(e) => commit(e.target.value)}
         />
       ) : (
-        <input
+        <Input
           id={id}
           key={value}
-          className="ink-input"
           // Text with a decimal keypad: a number field would refuse "2,5" in some locales.
           type="text"
           inputMode={type === 'number' ? 'decimal' : undefined}
@@ -176,9 +175,8 @@ function ChoiceField({
     </Select>
   );
   const text = showText && (
-    <input
+    <Input
       key={value}
-      className="ink-input"
       defaultValue={isCode ? '' : value}
       aria-label={label}
       readOnly={readOnly}

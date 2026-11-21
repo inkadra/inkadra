@@ -7,6 +7,7 @@ import {
   DialogActions,
   Icon,
   IconButton,
+  Input,
   ProjectGlyph,
   Select,
 } from '@inkadra/ui';
@@ -249,8 +250,7 @@ export function Projects() {
       <div className="projects-page__filters">
         <label className="projects-page__search">
           <Icon name="search" size={15} />
-          <input
-            className="ink-input"
+          <Input
             type="search"
             aria-label={t('projectsPage.search')}
             placeholder={t('projectsPage.search')}

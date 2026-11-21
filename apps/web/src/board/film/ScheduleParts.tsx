@@ -14,9 +14,11 @@ import {
   DialogActions,
   Icon,
   IconButton,
+  Input,
   Select,
   TabPanel,
   Tabs,
+  TextArea,
   TimeField,
 } from '@inkadra/ui';
 import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
@@ -258,8 +260,7 @@ export function ScheduleQueue({
         <>
           <label className="schedule__search">
             <Icon name="search" size={14} />
-            <input
-              className="ink-input"
+            <Input
               type="search"
               placeholder={t('schedule.search')}
               aria-label={t('schedule.search')}
@@ -744,8 +745,7 @@ export function BlockEditor({
         {(!seen || full) && (
           <label className="schedule__field">
             {t('schedule.title')}
-            <input
-              className="ink-input"
+            <Input
               maxLength={500}
               value={block.title}
               onChange={(e) => update({ title: e.target.value }, `title:${block.id}`)}
@@ -838,9 +838,8 @@ export function BlockEditor({
         {/* Printed under the description as a highlighted line: "LIGHTS AND WINDOWS ON". */}
         <div className="schedule__field">
           <label htmlFor={`${id}-notes`}>{t('schedule.blockNotes')}</label>
-          <textarea
+          <TextArea
             id={`${id}-notes`}
-            className="ink-input"
             rows={2}
             maxLength={2000}
             placeholder={t('schedule.blockNotesPlaceholder')}
@@ -1125,9 +1124,8 @@ export function DayPanel({
         {/* The first line names the place; the next lines the address and how to get in. */}
         <div className="schedule__wide">
           <label htmlFor={`${idBase}-location`}>{t('schedule.location')}</label>
-          <textarea
+          <TextArea
             id={`${idBase}-location`}
-            className="ink-input"
             rows={3}
             maxLength={1000}
             value={draft.location}
@@ -1147,9 +1145,8 @@ export function DayPanel({
         {/* Labels beside, not around, the text areas: their name stays the label alone. */}
         <div className="schedule__wide">
           <label htmlFor={`${idBase}-notes`}>{t('schedule.notes')}</label>
-          <textarea
+          <TextArea
             id={`${idBase}-notes`}
-            className="ink-input"
             rows={3}
             maxLength={10000}
             value={draft.notes}
@@ -1222,9 +1219,8 @@ function DurationField({
   const valid = parseDuration(value) !== null;
   return (
     <>
-      <input
+      <Input
         id={id}
-        className="ink-input"
         type="text"
         value={value}
         aria-label={t('schedule.duration')}

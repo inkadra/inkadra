@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
+  type AnchorHTMLAttributes,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
+  type TextareaHTMLAttributes,
   useId,
   useState,
 } from 'react';
@@ -51,44 +54,68 @@ export function Wordmark({ size = 26 }: { size?: number }) {
   );
 }
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonLook = {
   /** `positive`: a quiet green for a step that closes something, such as Mark as resolved. */
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'positive';
   size?: 'md' | 'lg';
   block?: boolean;
   icon?: IconName;
-  /** Working on it: the button is disabled and tells assistive technology it is busy. */
-  busy?: boolean;
 };
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+  ButtonLook & {
+    /** Working on it: the button is disabled and tells assistive technology it is busy. */
+    busy?: boolean;
+    href?: undefined;
+    ref?: Ref<HTMLButtonElement>;
+  };
+/** A link drawn as a button: a download, a page elsewhere. */
+type LinkButtonProps = AnchorHTMLAttributes<HTMLAnchorElement> &
+  ButtonLook & { href: string; ref?: Ref<HTMLAnchorElement> };
 
-export function Button({
-  variant = 'secondary',
-  size = 'md',
-  block,
-  icon,
-  className,
-  children,
-  type = 'button',
-  busy,
-  disabled,
-  ...props
-}: ButtonProps) {
+/** A button; with `href` it is a link (`download`, `target`) that looks the same. */
+export function Button(props: ButtonProps | LinkButtonProps) {
+  const { variant = 'secondary', size = 'md', block, icon, className, children } = props;
+  const look = cx(
+    'ink-btn',
+    `ink-btn--${variant}`,
+    size === 'lg' && 'ink-btn--lg',
+    block && 'ink-btn--block',
+    className,
+  );
+  const content = (
+    <>
+      {icon && <Icon name={icon} size={14} />}
+      {children}
+    </>
+  );
+  if (props.href !== undefined) {
+    const { variant: _v, size: _s, block: _b, icon: _i, className: _c, ...link } = props;
+    return (
+      <a {...link} className={look}>
+        {content}
+      </a>
+    );
+  }
+  const {
+    variant: _v,
+    size: _s,
+    block: _b,
+    icon: _i,
+    className: _c,
+    type = 'button',
+    busy,
+    disabled,
+    ...button
+  } = props;
   return (
     <button
       type={type}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      className={cx(
-        'ink-btn',
-        `ink-btn--${variant}`,
-        size === 'lg' && 'ink-btn--lg',
-        block && 'ink-btn--block',
-        className,
-      )}
-      {...props}
+      {...button}
+      className={look}
     >
-      {icon && <Icon name={icon} size={14} />}
-      {children}
+      {content}
     </button>
   );
 }
@@ -98,7 +125,11 @@ export function IconButton({
   label,
   className,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { icon: IconName; label: string }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  icon: IconName;
+  label: string;
+  ref?: Ref<HTMLButtonElement>;
+}) {
   return (
     <button
       type="button"
@@ -110,6 +141,22 @@ export function IconButton({
       <Icon name={icon} />
     </button>
   );
+}
+
+/** A text input in the design system's look, for a field labelled elsewhere or not at all. */
+export function Input({
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
+  return <input {...props} className={cx('ink-input', className)} />;
+}
+
+/** A multi-line text input in the design system's look; see `Input`. */
+export function TextArea({
+  className,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { ref?: Ref<HTMLTextAreaElement> }) {
+  return <textarea {...props} className={cx('ink-input', className)} />;
 }
 
 export function TextField({

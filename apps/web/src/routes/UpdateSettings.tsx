@@ -66,14 +66,14 @@ export function UpdateSettings() {
             </>
           }
           action={
-            <a
-              className="ink-btn ink-btn--primary"
+            <Button
+              variant="primary"
               href={available.url}
               target="_blank"
               rel="noopener noreferrer"
             >
               {t('updates.readAll')}
-            </a>
+            </Button>
           }
         />
       ) : (

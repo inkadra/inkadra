@@ -185,9 +185,9 @@ export function ExportProjectDialog({
                 {t('transfer.exportAgain')}
               </Button>
             )}
-            <a className="ink-btn ink-btn--primary" href={downloadUrl(transfer.id)} download>
+            <Button variant="primary" href={downloadUrl(transfer.id)} download>
               {t('transfer.download')}
-            </a>
+            </Button>
           </>
         ) : (
           <Button variant="primary" disabled={busy || pending} onClick={() => void start()}>

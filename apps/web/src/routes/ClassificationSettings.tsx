@@ -6,7 +6,7 @@ import {
   SHOT_CATALOG_KEYS,
   type ShotCatalogKey,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Icon, IconButton } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, IconButton, Input } from '@inkadra/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
@@ -302,8 +302,8 @@ export function ClassificationSettings() {
                                             />
                                           ))}
                                         </span>
-                                        <input
-                                          className={`ink-input catalogs__name${problem ? ' is-invalid' : ''}`}
+                                        <Input
+                                          className={`catalogs__name${problem ? ' is-invalid' : ''}`}
                                           aria-label={t('catalogs.name')}
                                           aria-invalid={!!problem}
                                           aria-describedby={problem ? hintId : undefined}

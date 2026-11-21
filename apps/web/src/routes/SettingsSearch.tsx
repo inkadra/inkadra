@@ -5,7 +5,7 @@ import type {
   Invitation,
   StorageUsage,
 } from '@inkadra/shared';
-import { Avatar, Icon, KeyCap } from '@inkadra/ui';
+import { Avatar, Icon, Input, KeyCap } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -167,8 +167,7 @@ export function SettingsSearch({
     <>
       <label className="settings-nav__search" data-tour="settings-search">
         <Icon name="search" size={14} />
-        <input
-          className="ink-input"
+        <Input
           type="search"
           role="combobox"
           aria-label={t('settingsUi.search')}

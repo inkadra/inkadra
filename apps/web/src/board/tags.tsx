@@ -1,7 +1,7 @@
 import { normaliseTag } from '@inkadra/canvas-core';
 import { MAX_TAGS } from '@inkadra/doc-schema';
 import type { TagCount } from '@inkadra/shared';
-import { Icon } from '@inkadra/ui';
+import { Icon, Input } from '@inkadra/ui';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -177,9 +177,8 @@ export function TagEditor({
       {!readOnly && (
         <>
           <p className="ink-muted">{t('catalogs.tagHelp')}</p>
-          <input
+          <Input
             id={id}
-            className="ink-input"
             value={draft}
             disabled={full}
             placeholder={full ? t('tags.max', { count: MAX_TAGS }) : t('tags.placeholder')}

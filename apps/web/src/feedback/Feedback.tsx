@@ -20,6 +20,7 @@ import {
   IconButton,
   KeyCap,
   Segmented,
+  TextArea,
   TextField,
 } from '@inkadra/ui';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -843,8 +844,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         </div>
         <label className="ink-field">
           <span className="ink-field__label">{t('feedback.description')}</span>
-          <textarea
-            className="ink-input"
+          <TextArea
             value={description}
             maxLength={guest ? 4000 : 12000}
             placeholder={t(
@@ -1404,15 +1404,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
             {phase === 'done' && (
               <>
                 {receipt?.issueUrl ? (
-                  <a
-                    className="ink-btn ink-btn--secondary"
-                    href={receipt.issueUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Icon name="link" size={14} />
+                  <Button icon="link" href={receipt.issueUrl} target="_blank" rel="noreferrer">
                     {t('feedback.openIssue')}
-                  </a>
+                  </Button>
                 ) : (
                   receipt?.delivery !== 'inbox' &&
                   !receipt?.duplicate && (

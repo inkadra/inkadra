@@ -10,7 +10,16 @@ import {
   type ReactionEmoji,
   type UserSummary,
 } from '@inkadra/shared';
-import { Button, ChoiceTile, Icon, IconButton, Segmented, Select, Switch } from '@inkadra/ui';
+import {
+  Button,
+  ChoiceTile,
+  Icon,
+  IconButton,
+  Segmented,
+  Select,
+  Switch,
+  TextArea,
+} from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import {
   type FormEvent,
@@ -1288,9 +1297,8 @@ export function Composer({
       onSubmit={(e) => void send(e)}
     >
       <div className="comment-composer__field">
-        <textarea
+        <TextArea
           ref={input}
-          className="ink-input"
           rows={initial ? 3 : 2}
           role="combobox"
           aria-label={t('comments.body')}

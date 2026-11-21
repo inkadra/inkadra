@@ -17,6 +17,7 @@ import {
   DialogActions,
   type DialogHandle,
   Icon,
+  Input,
   Select,
   TextField,
 } from '@inkadra/ui';
@@ -390,8 +391,7 @@ export function ProjectSetupForm({
               <p key={invite.id}>
                 {invite.email} · {t(invite.emailSent ? 'onboarding.sent' : 'onboarding.copyLink')}{' '}
                 {invite.url && (
-                  <input
-                    className="ink-input"
+                  <Input
                     aria-label={t('onboarding.linkFor', { email: invite.email })}
                     value={invite.url}
                     readOnly

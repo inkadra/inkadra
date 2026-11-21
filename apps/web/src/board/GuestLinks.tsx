@@ -3,6 +3,7 @@ import {
   Button,
   Icon,
   IconButton,
+  Input,
   RadioGroup,
   Segmented,
   Select,
@@ -631,8 +632,8 @@ function LinkRow({
       </div>
       {/* A link just made is shown whole, ready to copy also where the clipboard is not allowed. */}
       {fresh && link.url && mode === 'view' && (
-        <input
-          className="ink-input guest-link__url"
+        <Input
+          className="guest-link__url"
           readOnly
           data-feedback-secret
           value={link.url}

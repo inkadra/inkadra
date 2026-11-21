@@ -87,7 +87,7 @@ import {
   isMapLink,
   type ModuleId,
 } from '@inkadra/shared';
-import { Button, Icon, kindStyle } from '@inkadra/ui';
+import { Button, Icon, Input, kindStyle } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
   type DragEvent,
@@ -4642,8 +4642,7 @@ function LinkDraft({
         else setError(true);
       }}
     >
-      <input
-        className="ink-input"
+      <Input
         // biome-ignore lint/a11y/noAutofocus: the field opens because the user picked the link tool
         autoFocus
         value={value}

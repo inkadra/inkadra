@@ -1,7 +1,7 @@
 import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, type Element } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
-import { Button, Icon, IconButton, Select } from '@inkadra/ui';
+import { Button, Icon, IconButton, Input, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
@@ -484,9 +484,8 @@ function CastLinks({
       <label className="film-field__label" htmlFor={filterId}>
         {t('film.frame.castLinks')}
       </label>
-      <input
+      <Input
         id={filterId}
-        className="ink-input"
         type="search"
         value={query}
         placeholder={t('film.frame.castFilter')}

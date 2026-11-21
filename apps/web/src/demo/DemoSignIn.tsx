@@ -162,10 +162,9 @@ export function DemoStart({ demo }: { demo: DemoInfo }) {
         {t('demo.start')}
       </Button>
       <div className="demo-card__or">{t('demo.or')}</div>
-      <a className="ink-btn ink-btn--secondary ink-btn--lg ink-btn--block" href={INSTALL_URL}>
-        <Icon name="download" size={14} />
+      <Button size="lg" block icon="download" href={INSTALL_URL}>
         {t('demo.installServer')}
-      </a>
+      </Button>
       <p className="demo-card__fine">
         <Trans
           i18nKey="demo.accept"
@@ -203,10 +202,9 @@ export function DemoEnded({ onAgain }: { onAgain: () => void }) {
         <Button variant="primary" size="lg" icon="play" onClick={() => void again()}>
           {t('demo.again')}
         </Button>
-        <a className="ink-btn ink-btn--secondary ink-btn--lg" href={INSTALL_URL}>
-          <Icon name="download" size={14} />
+        <Button size="lg" icon="download" href={INSTALL_URL}>
           {t('demo.installServer')}
-        </a>
+        </Button>
       </div>
       <p className="demo-card__fine">{t('demo.cloud')}</p>
     </main>

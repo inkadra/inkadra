@@ -1,5 +1,5 @@
 import type { GuestAuthor, GuestComment, GuestCommentThread, ReactionEmoji } from '@inkadra/shared';
-import { Button } from '@inkadra/ui';
+import { Button, TextArea } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactionBar } from '../board/ReactionBar.tsx';
@@ -326,9 +326,9 @@ function Composer({
       <label htmlFor={id} className="guest-sr">
         {label}
       </label>
-      <textarea
+      <TextArea
         id={id}
-        className="ink-input guest-composer__text"
+        className="guest-composer__text"
         placeholder={label}
         value={text}
         rows={2}

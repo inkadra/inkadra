@@ -1,6 +1,6 @@
 import { ImageCrop, Stroke } from '@inkadra/doc-schema';
 import type { GuestElement } from '@inkadra/shared';
-import { IconButton } from '@inkadra/ui';
+import { Button, IconButton } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CroppedImage } from '../board/CroppedImage.tsx';
@@ -152,13 +152,9 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
         {actions.rights.pick && isPicture(element) && <PickControls elementId={element.id} />}
         <span className="guest__spacer" />
         {actions.rights.download && asset?.downloadUrl && (
-          <a
-            className="ink-btn ink-btn--secondary"
-            href={asset.downloadUrl}
-            download={asset.filename ?? ''}
-          >
+          <Button href={asset.downloadUrl} download={asset.filename ?? ''}>
             {t('guest.download')}
-          </a>
+          </Button>
         )}
         <IconButton
           icon="close"

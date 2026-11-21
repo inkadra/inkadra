@@ -226,15 +226,15 @@ export function MapsLink({ location, url }: { location: string; url?: string | u
   });
   if (!href) return null;
   return (
-    <a
-      className="ink-btn ink-btn--secondary sheet__maps"
+    <Button
+      className="sheet__maps"
+      icon="pin"
       href={href}
       target="_blank"
       rel="noopener noreferrer nofollow"
     >
-      <Icon name="pin" size={14} />
       {t('board.map.open')}
-    </a>
+    </Button>
   );
 }
 
