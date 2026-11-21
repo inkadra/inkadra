@@ -30,11 +30,11 @@
     "signOut": "Se déconnecter",
     "signOutFailed": "Impossible de se déconnecter. Vérifiez la connexion et réessayez.",
     "signOutUnsaved": {
-      "title": "Se déconnecter et supprimer les modifications non enregistrées ?",
+      "title": "Se déconnecter et supprimer les modifications non enregistrées ?",
       "body_one": "{{count}} tableau a des modifications enregistrées uniquement sur cet appareil. La déconnexion les supprime. Restez connecté et ouvrez-le en ligne pour les enregistrer.",
       "body_other": "{{count}} tableaux ont des modifications enregistrées uniquement sur cet appareil. La déconnexion les supprime. Restez connecté et ouvrez-les en ligne pour les enregistrer.",
-      "kept_one": "{{count}} tableau a des modifications que le serveur n’a pas acceptées (taille maximale, aucun accès ou dans la corbeille). L’ouvrir ne les enregistre pas, et la déconnexion les supprime : téléchargez-les pour en garder une copie.",
-      "kept_other": "{{count}} tableaux ont des modifications que le serveur n’a pas acceptées (taille maximale, aucun accès ou dans la corbeille). Les ouvrir ne les enregistre pas, et la déconnexion les supprime : téléchargez-les pour en garder une copie.",
+      "kept_one": "{{count}} tableau a des modifications que le serveur n’a pas acceptées (taille maximale, aucun accès ou dans la corbeille). L’ouvrir ne les enregistre pas, et la déconnexion les supprime : téléchargez-les pour en garder une copie.",
+      "kept_other": "{{count}} tableaux ont des modifications que le serveur n’a pas acceptées (taille maximale, aucun accès ou dans la corbeille). Les ouvrir ne les enregistre pas, et la déconnexion les supprime : téléchargez-les pour en garder une copie.",
       "confirm": "Se déconnecter et supprimer",
       "download": "Télécharger les modifications",
       "stay": "Rester connecté"
@@ -249,7 +249,7 @@
   },
   "diagnostics": {
     "title": "Diagnostic de l’instance",
-    "subtitle": "Vérifie le proxy, l’adresse publique, la base de données et le stockage.",
+    "subtitle": "Vérifiez le proxy, l’adresse publique, la base de données et le stockage.",
     "summary": {
       "ok": "Tout va bien : l’instance est correctement configurée.",
       "warning": "Tout fonctionne, mais un point est à corriger.",
@@ -323,7 +323,7 @@
     }
   },
   "board": {
-    "typedValue": "{{label}} : valeur",
+    "typedValue": "{{label}} : valeur",
     "canvasMenu": {
       "label": "Canevas",
       "hint": "Créer un tableau",
@@ -345,7 +345,7 @@
     },
     "canvas": "Canevas du tableau",
     "a11y": {
-      "selected": "Sélection : {{card}}"
+      "selected": "Sélection : {{card}}"
     },
     "toolbar": "Ajouter",
     "contextBar": "Actions sur la sélection",
@@ -503,7 +503,7 @@
       "live": {
         "liveNow": "à la volée",
         "liveNowText": "{{rung}} pendant la préparation de la copie",
-        "noLive": "{{reason}} : pas à la volée, visible bientôt",
+        "noLive": "{{reason}} : pas à la volée, visible bientôt",
         "reasons": {
           "prores": "ProRes",
           "dnx": "DNx",
@@ -758,10 +758,10 @@
       "boardCreate": "Impossible de créer le tableau.",
       "upload": "Échec de l’envoi de {{name}}.",
       "tooBig": "{{name}} dépasse la taille maximale autorisée.",
-      "pasteSkipped_one": "1 élément n’a pas été collé : il n’est pas valide.",
-      "pasteSkipped_other": "{{count}} éléments n’ont pas été collés : ils ne sont pas valides.",
+      "pasteSkipped_one": "1 élément n’a pas été collé : il n’est pas valide.",
+      "pasteSkipped_other": "{{count}} éléments n’ont pas été collés : ils ne sont pas valides.",
       "pasteNewer": "Ces éléments viennent d’une version plus récente. Mettez à jour l’application pour les coller ici.",
-      "pasteInvalid": "Le contenu du presse-papiers n’est pas valide : rien n’a été collé."
+      "pasteInvalid": "Le contenu du presse-papiers n’est pas valide : rien n’a été collé."
     },
     "arrow": {
       "label": "Libellé de la flèche",
@@ -877,7 +877,7 @@
       },
       "snap": "Aligner sur la grille",
       "library": "Icônes de plateau",
-      "categoryTabs": "Catégories d'icônes",
+      "categoryTabs": "Catégories d’icônes",
       "icons": {
         "fresnel": "Fresnel",
         "openface": "Open face",
@@ -910,14 +910,14 @@
         "floorlamp": "Lampadaire",
         "candle": "Bougie",
         "fire": "Feu",
-        "screen": "Lueur d'écran",
+        "screen": "Lueur d’écran",
         "neon": "Enseigne néon",
         "headlights": "Phares",
         "streetlight": "Lampadaire de rue",
         "softbox": "Softbox",
         "octa": "Octabox",
         "para": "Parabole",
-        "grid": "Nid d'abeille",
+        "grid": "Nid d’abeille",
         "barn": "Volets",
         "snoot": "Snoot",
         "gel": "Gélatine",
@@ -962,7 +962,7 @@
         "camera": "Caméra",
         "tripod": "Trépied",
         "hihat": "Hi-hat",
-        "shoulder": "Caméra à l'épaule",
+        "shoulder": "Caméra à l’épaule",
         "gimbal": "Gimbal",
         "steadi": "Steadicam",
         "slider": "Slider",
@@ -1106,7 +1106,7 @@
         "softbox": "boîte à lumière, chimera",
         "octa": "octa, octogonale",
         "para": "parabole, parapluie",
-        "grid": "nid d'abeille",
+        "grid": "nid d’abeille",
         "barn": "volets, coupe-flux",
         "snoot": "snoot, cône",
         "gel": "filtre, cto, ctb",
@@ -1367,7 +1367,7 @@
         "notes": "Notes masquées",
         "grip": "Machinerie et équipe masquées"
       },
-      "hiddenItem": "Masqué : {{layer}}",
+      "hiddenItem": "Masqué : {{layer}}",
       "lockedAs": {
         "set": "Décor verrouillé",
         "lights": "Lumières verrouillées",
@@ -1437,8 +1437,8 @@
       "addToCallSheet": "Ajouter à la feuille de service",
       "alignLabel": "Aligner",
       "all": "Tout",
-      "allSetups_one": "Tous les setups : {{count}} élément",
-      "allSetups_other": "Tous les setups : {{count}} éléments",
+      "allSetups_one": "Tous les setups : {{count}} élément",
+      "allSetups_other": "Tous les setups : {{count}} éléments",
       "back": "Retour au tableau",
       "backToPlan": "Retour au plan",
       "forward": "Avancer",
@@ -1461,7 +1461,7 @@
       "circuitName": "Nom du circuit",
       "circuitNamed": "Circuit {{letter}}",
       "circuitOver": "Au-delà du disjoncteur",
-      "circuitWarning": "Au-delà de 80 %",
+      "circuitWarning": "Au-delà de 80 %",
       "copied": "Copié",
       "copyList": "Copier la liste",
       "detach": "Détacher",
@@ -1476,14 +1476,14 @@
       "showGhost": "Afficher {{name}} en transparence",
       "kelvin": "Température de couleur",
       "kelvinPresets": "Températures prédéfinies",
-      "kitEmpty": "Pas encore de matériel dans ce setup : lumières, machinerie et caméra le remplissent.",
+      "kitEmpty": "Pas encore de matériel dans ce setup : lumières, machinerie et caméra le remplissent.",
       "kitForSetup": "Matériel de ce setup",
-      "kitPillLabel": "Matériel : {{items}} éléments, {{power}}",
+      "kitPillLabel": "Matériel : {{items}} éléments, {{power}}",
       "layer": "Calque",
       "lensFollows": "L’objectif suit le plan du storyboard. Modifié ici, le plan garde sa propre valeur.",
       "lensInFrame": "{{mm}} mm dans le plan",
       "lib": {
-        "alsoCalled": "Aussi appelé : {{names}}",
+        "alsoCalled": "Aussi appelé : {{names}}",
         "kitHint": "Une lumière ou une caméra réglée une fois apparaît ici avec sa marque, sa puissance, ses modificateurs et son pied, pour chaque plan du projet.",
         "kitResults_one": "{{count}} dans le matériel du projet",
         "kitResults_other": "{{count}} dans le matériel du projet",
@@ -1503,8 +1503,8 @@
         "types_one": "{{count}} type",
         "types_other": "{{count}} types",
         "kitScope": {
-          "loading": "Chargement du matériel des autres tableaux : pour l’instant, seulement celui-ci.",
-          "local": "Hors ligne ou injoignable : seulement le matériel de ce tableau."
+          "loading": "Chargement du matériel des autres tableaux : pour l’instant, seulement celui-ci.",
+          "local": "Hors ligne ou injoignable : seulement le matériel de ce tableau."
         }
       },
       "lock": "Verrouiller",
@@ -1514,7 +1514,7 @@
       "makePlaceholder": "p. ex. le nom sur la liste de location",
       "mixed": "Mixte",
       "modifier": "Modificateur",
-      "modifierCount_one": "Modificateurs {{count}}",
+      "modifierCount_one": "Modificateur {{count}}",
       "modifierCount_other": "Modificateurs {{count}}",
       "moreProps": "Toutes les propriétés",
       "movement": "Mouvement",
@@ -1559,7 +1559,7 @@
         "kit": "Matériel"
       },
       "tag": "Couleur",
-      "tagColour": "Couleur : {{name}}",
+      "tagColour": "Couleur : {{name}}",
       "textSize": "Taille du texte",
       "tilt": "Inclinaison",
       "viewLength": "Longueur de vue",
@@ -1611,9 +1611,9 @@
       },
       "snapIcons": "Accrocher les icônes",
       "gripGroup": "Machinerie et équipe",
-      "lockItemHint": "Verrouiller cet élément : il ne se déplace, ne se modifie et ne se supprime plus",
+      "lockItemHint": "Verrouiller cet élément : il ne se déplace, ne se modifie et ne se supprime plus",
       "unlockItemHint": "Déverrouiller cet élément",
-      "itemLocked": "Verrouillé : déverrouille-le pour le déplacer, le modifier ou le supprimer.",
+      "itemLocked": "Verrouillé : déverrouillez-le pour le déplacer, le modifier ou le supprimer.",
       "lockedItem": "Verrouillé",
       "lockGroup": "Verrouiller chaque élément de {{layer}}",
       "unlockGroup": "Déverrouiller chaque élément de {{layer}}",
@@ -1652,7 +1652,7 @@
         "today": "Aujourd’hui",
         "shootDay": "Jour {{n}} du tournage",
         "otherDate": "Une autre date…",
-        "dayGone": "Le jour de tournage a été retiré du plan de travail : le plan garde sa dernière date.",
+        "dayGone": "Le jour de tournage a été retiré du plan de travail : le plan garde sa dernière date.",
         "from": {
           "north": "Du nord",
           "northEast": "Du nord-est",
@@ -1669,8 +1669,8 @@
           "mid": "à mi-hauteur",
           "high": "haut"
         },
-        "sunFromPlace": "Calculé avec le lien de carte de {{place}} : {{degrees}}° au-dessus de l’horizon. Les icônes du soleil tournent avec l’heure.",
-        "sunByClock": "D’après l’heure seule : à l’est le matin, à l’ouest le soir. Ajoutez un lien de carte au décor pour la hauteur du soleil. Les icônes du soleil tournent avec l’heure ; le nord se règle à la main.",
+        "sunFromPlace": "Calculé avec le lien de carte de {{place}} : {{degrees}}° au-dessus de l’horizon. Les icônes du soleil tournent avec l’heure.",
+        "sunByClock": "D’après l’heure seule : à l’est le matin, à l’ouest le soir. Ajoutez un lien de carte au décor pour la hauteur du soleil. Les icônes du soleil tournent avec l’heure ; le nord se règle à la main.",
         "scene": "Scène {{number}}",
         "settings": {
           "int": "INT",
@@ -1743,8 +1743,8 @@
         "only": "Lecture seule",
         "legend": "Légende",
         "hint": "Glissez pour déplacer, pincez ou Ctrl + molette pour zoomer",
-        "note": "Qui peut ouvrir le tableau voit ce plan, la légende, le matériel et la puissance.",
-        "guestNote": "Vous voyez le plan tel qu’il est partagé avec vous : les setups, la légende, le matériel et la puissance."
+        "note": "Quiconque peut ouvrir le tableau voit ce plan, la légende, le matériel et la puissance.",
+        "guestNote": "Vous voyez le plan tel qu’il est partagé avec vous : les setups, la légende, le matériel et la puissance."
       },
       "walls": {
         "options": "Options de l’outil murs",
@@ -1764,8 +1764,8 @@
         },
         "closeClick": "Cliquez ici pour fermer la pièce",
         "closeTap": "Touchez ici pour fermer la pièce",
-        "locked": "Le calque Set est verrouillé : déverrouillez-le dans Éléments pour dessiner des murs.",
-        "hidden": "Le calque Set est masqué : affichez-le dans Éléments pour dessiner des murs.",
+        "locked": "Le calque Set est verrouillé : déverrouillez-le dans Éléments pour dessiner des murs.",
+        "hidden": "Le calque Set est masqué : affichez-le dans Éléments pour dessiner des murs.",
         "done": "Terminer les murs",
         "summaryWalls_one": "{{count}} mur",
         "summaryWalls_other": "{{count}} murs",
@@ -1786,12 +1786,12 @@
         "fromCorners": "à {{before}} et {{after}} des angles",
         "openingWidth": "Largeur de l’ouverture",
         "flip": "Changer de côté",
-        "swing": "Ouvrir depuis l’autre bout",
+        "swing": "Ouvrir de l’autre côté",
         "doorHint": "Faites-la glisser le long de son mur pour la déplacer.",
         "wall": "Mur",
         "wallSummary_one": "{{count}} côté · {{length}}",
         "wallSummary_other": "{{count}} côtés · {{length}}",
-        "cornersHint": "Faites glisser un angle pour le déplacer ; les ouvertures restent sur leur côté."
+        "cornersHint": "Faites glisser un angle pour le déplacer ; les ouvertures restent sur leur côté."
       },
       "background": {
         "button": "Fond",
@@ -1820,7 +1820,7 @@
         "later": "Vous pourrez tout changer ensuite.",
         "how": "Comment commencer",
         "reuse": "Réutiliser le décor de ce lieu",
-        "reuseText": "{{what}} de « {{name}} ». Lumières, caméras et acteurs démarrent vides.",
+        "reuseText": "{{what}} de « {{name}} ». Lumières, caméras et acteurs démarrent vides.",
         "reuseFrom": "Réutiliser le décor de",
         "furniture": "mobilier",
         "reuseGo": "Réutiliser le décor",
@@ -1867,10 +1867,10 @@
         "bench_one": "{{count}} banc",
         "bench_other": "{{count}} bancs"
       },
-      "allSetupsOfScene_one": "Tous les setups de la scène {{scene}} : {{count}} élément",
-      "allSetupsOfScene_other": "Tous les setups de la scène {{scene}} : {{count}} éléments",
+      "allSetupsOfScene_one": "Tous les setups de la scène {{scene}} : {{count}} élément",
+      "allSetupsOfScene_other": "Tous les setups de la scène {{scene}} : {{count}} éléments",
       "editCircuit": "Modifier {{name}}",
-      "doneCircuit": "Terminer {{name}}",
+      "doneCircuit": "Terminer la modification de {{name}}",
       "setProps_one": "{{count}} accessoire",
       "setProps_other": "{{count}} accessoires",
       "tileNames": {
@@ -1886,7 +1886,7 @@
         "plantmic": "Micro caché",
         "polecat": "Autopole",
         "rack": "Portant",
-        "screen": "Lueur d'écran",
+        "screen": "Lueur d’écran",
         "streetlight": "Lampadaire de rue",
         "trackingcar": "Voiture travelling"
       },
@@ -1943,21 +1943,21 @@
       },
       "drawFailed": "Impossible d’enregistrer le trait. Réessayez ; si le problème persiste, rechargez le tableau.",
       "updateApp": "Ce tableau nécessite une version plus récente. Mettez à jour l’application pour le modifier ; vous pouvez continuer à le consulter.",
-      "sizeLimit": "Ce tableau a atteint sa limite de taille. Les ajouts n’ont pas été enregistrés ; le tableau a été rechargé. Vous pouvez supprimer du contenu pour libérer de la place.",
-      "sizeLimitKept": "Ce tableau a atteint sa taille maximale. Les modifications faites sur cet appareil n’ont pas été enregistrées : elles sont conservées sur cet appareil, et le tableau a été rechargé. Supprimez du contenu pour faire de la place et restaurez-les, téléchargez-les pour en garder une copie, ou supprimez-les.",
-      "kept": "Les modifications de ce tableau que le serveur n’a pas acceptées sont conservées sur cet appareil. Elles ne sont pas dans le tableau : restaurez-les quand le tableau peut les accepter, téléchargez-les pour en garder une copie, ou supprimez-les.",
+      "sizeLimit": "Ce tableau a atteint sa limite de taille. Les ajouts n’ont pas été enregistrés ; le tableau a été rechargé. Vous pouvez supprimer du contenu pour libérer de la place.",
+      "sizeLimitKept": "Ce tableau a atteint sa taille maximale. Les modifications faites sur cet appareil n’ont pas été enregistrées : elles sont conservées sur cet appareil, et le tableau a été rechargé. Supprimez du contenu pour faire de la place et restaurez-les, téléchargez-les pour en garder une copie, ou supprimez-les.",
+      "kept": "Les modifications de ce tableau que le serveur n’a pas acceptées sont conservées sur cet appareil. Elles ne sont pas dans le tableau : restaurez-les quand le tableau peut les accepter, téléchargez-les pour en garder une copie, ou supprimez-les.",
       "keptDownload": "Télécharger les modifications",
       "keptDiscard": "Supprimer",
       "keptRestore": "Restaurer dans le tableau",
       "keptRestored": "Les modifications sont de nouveau dans le tableau et enregistrées.",
-      "keptRestoreRefused": "Le serveur a de nouveau refusé ces modifications : elles restent sur cet appareil.",
-      "keptRestoreNotWritable": "Ce tableau ne peut pas être modifié pour l’instant : les modifications restent sur cet appareil. Réessayez quand vous pourrez le modifier.",
-      "keptRestoreTooNew": "Ces modifications ont été faites avec une version plus récente d’Inkadra : mettez l’app à jour pour les restaurer.",
+      "keptRestoreRefused": "Le serveur a de nouveau refusé ces modifications : elles restent sur cet appareil.",
+      "keptRestoreNotWritable": "Ce tableau ne peut pas être modifié pour l’instant : les modifications restent sur cet appareil. Réessayez quand vous pourrez le modifier.",
+      "keptRestoreTooNew": "Ces modifications ont été faites avec une version plus récente d’Inkadra : mettez l’app à jour pour les restaurer.",
       "keptRestoreInvalid": "Ce fichier n’est pas un ensemble de modifications téléchargé depuis Inkadra.",
-      "keptRestoreOtherBoard": "Ce fichier contient des modifications d’un autre tableau : ouvrez ce tableau pour les restaurer.",
+      "keptRestoreOtherBoard": "Ce fichier contient des modifications d’un autre tableau : ouvrez ce tableau pour les restaurer.",
       "keptRestoreTooBig": "Ce fichier est trop volumineux pour contenir les modifications d’un tableau.",
-      "keptConflict": "Non restaurées : le tableau a changé depuis que ces modifications ont été mises de côté, et les fusionner en perdrait certaines ou écraserait des modifications plus récentes. Rien n’a été changé dans le tableau.",
-      "keptConflictOlder": "Elles ont été faites avec une version antérieure d’Inkadra : les fusionner pourrait écraser des modifications plus récentes.",
+      "keptConflict": "Non restaurées : le tableau a changé depuis que ces modifications ont été mises de côté, et les fusionner en perdrait certaines ou écraserait des modifications plus récentes. Rien n’a été changé dans le tableau.",
+      "keptConflictOlder": "Elles ont été faites avec une version antérieure d’Inkadra : les fusionner pourrait écraser des modifications plus récentes.",
       "keptConflictDeleted_one": "{{count}} carte que vous avez modifiée a été supprimée du tableau entre-temps.",
       "keptConflictDeleted_other": "{{count}} cartes que vous avez modifiées ont été supprimées du tableau entre-temps.",
       "keptConflictChanged_one": "{{count}} carte que vous avez modifiée a aussi été modifiée dans le tableau entre-temps.",
@@ -1965,7 +1965,7 @@
       "keptConflictSettings": "Des réglages du tableau que vous avez modifiés ont aussi été modifiés entre-temps.",
       "keptConflictAsNew_one": "Restaurer en nouvelles cartes ajoute votre version de la carte modifiée à côté de celle du tableau, qui reste telle quelle.",
       "keptConflictAsNew_other": "Restaurer en nouvelles cartes ajoute votre version des {{count}} cartes modifiées à côté de celles du tableau, qui restent telles quelles.",
-      "keptConflictNoCards": "Aucune carte ne peut être restaurée en nouvelle : téléchargez les modifications pour en garder une copie.",
+      "keptConflictNoCards": "Aucune carte ne peut être restaurée en nouvelle : téléchargez les modifications pour en garder une copie.",
       "keptRestoreAsNew": "Restaurer en nouvelles cartes",
       "keptRestoredAsNew": "Vos modifications sont de nouveau dans le tableau, en nouvelles cartes, et enregistrées.",
       "sizeLimitReadOnly": "Ce tableau a atteint sa limite de taille et est en lecture seule. Les ajouts n’ont pas été enregistrés."
@@ -2059,7 +2059,7 @@
     "pdfPageNumber": "Page {{page}} sur {{total}}",
     "quality": {
       "title": "Qualité",
-      "label": "Qualité : {{quality}}",
+      "label": "Qualité : {{quality}}",
       "auto": "Auto",
       "autoAt": "Auto · {{quality}}",
       "now": "maintenant {{quality}}",
@@ -2067,8 +2067,8 @@
       "original": "Original",
       "live": "à la volée",
       "liveCopy": "copie à {{percent}} %",
-      "liveNote": "Les qualités «à la volée» sont converties par la carte graphique pendant que vous regardez ; quand la copie est prête, on passe à elle.",
-      "liveOnlyNote": "Les qualités «à la volée» sont converties par la carte graphique pendant que vous regardez, sans enregistrer de copie."
+      "liveNote": "Les qualités « à la volée » sont converties par la carte graphique pendant que vous regardez ; quand la copie est prête, la lecture bascule dessus.",
+      "liveOnlyNote": "Les qualités « à la volée » sont converties par la carte graphique pendant que vous regardez, sans enregistrer de copie."
     },
     "player": {
       "play": "Lire",
@@ -2082,7 +2082,7 @@
       "nextFrame": "Image suivante (.)",
       "back10": "Reculer de 10 secondes",
       "forward10": "Avancer de 10 secondes",
-      "speed": "Vitesse : {{rate}}×",
+      "speed": "Vitesse : {{rate}}×",
       "fullscreen": "Plein écran (F)",
       "exitFullscreen": "Quitter le plein écran (F)",
       "pip": "Image dans l’image",
@@ -2128,7 +2128,7 @@
     },
     "aspect": {
       "label": "Format",
-      "board": "Tableau ({{ratio}})"
+      "board": "Format du storyboard ({{ratio}})"
     },
     "total_one": "{{count}} plan",
     "total_other": "{{count}} plans",
@@ -2172,9 +2172,9 @@
       "menu": "Menu de la scène {{number}}",
       "omittedHeading": "Scène {{number}}, omise",
       "notInScript": "Absente du scénario",
-      "restore": "Rétablir la scène",
+      "restore": "Restaurer la scène",
       "restoreHint": "De retour dans la liste des plans et le plan de tournage",
-      "deleteAll": "Supprimer la scène et ses images",
+      "deleteAll": "Supprimer la scène et ses plans",
       "deleteAllHint": "Une version est enregistrée d’abord",
       "deleteVersion": "Avant la suppression de la scène {{number}}",
       "deleteFailed": "La version n’a pas pu être enregistrée, la scène n’a donc pas été supprimée.",
@@ -2380,7 +2380,7 @@
       "moreCards": "de plus",
       "approvedHelper": "Glissez ici les plans approuvés",
       "approvedHint": "Se remplit aussi avec les approbations du client",
-      "approvedLocked": "Approuvé en révision : changez la révision depuis « {{status}} » et le statut de production depuis la vue Table",
+      "approvedLocked": "Approuvé en révision : changez la révision depuis « {{status}} » et le statut de production depuis la vue Table",
       "selectRow": "Sélectionner le plan {{label}}",
       "groupSetup": "Setup",
       "noSetup": "Sans setup",
@@ -2592,7 +2592,7 @@
       "guest_approve": "Voit et commente, valide ou demande des modifications, compare les versions."
     },
     "download": "Originaux",
-    "downloadHint": "Désactivé : aperçus seulement.",
+    "downloadHint": "Désactivé : aperçus seulement.",
     "subBoards": "Sous-tableaux",
     "subBoardsHint_one": "Aussi celui accessible d’ici.",
     "subBoardsHint_other": "Aussi ceux accessibles d’ici.",
@@ -2600,8 +2600,8 @@
     "passwordField": "Mot de passe du lien",
     "passwordKept": "Le mot de passe actuel est conservé.",
     "copy": "Copier",
-    "copyLabel": "Copier le lien « {{name}} »",
-    "actionsFor": "Actions pour le lien « {{name}} »",
+    "copyLabel": "Copier le lien « {{name}} »",
+    "actionsFor": "Actions pour le lien « {{name}} »",
     "summary": {
       "someone": "Qui ouvre le lien",
       "role": {
@@ -2750,7 +2750,7 @@
         "changes_one": "{{count}} modification",
         "changes_other": "{{count}} modifications",
         "sent": "Relecture envoyée à l’équipe",
-        "alreadySent": "Déjà envoyée : aucune nouvelle décision depuis"
+        "alreadySent": "Déjà envoyée : aucune nouvelle décision depuis le dernier envoi"
       }
     },
     "comments": {
@@ -2982,13 +2982,13 @@
       "task_assigned": "vous a attribué une tâche",
       "feedback_received": "Nouveau signalement reçu dans l’application",
       "review_submitted": "a envoyé sa relecture",
-      "server_alert_disk_full": "Presque plus d’espace : il reste {{free}} sur {{total}}",
+      "server_alert_disk_full": "Presque plus d’espace : il reste {{free}} sur {{total}}",
       "server_alert_service_down": "{{service}} ne répond pas",
       "server_alert_backup_failed": "La sauvegarde a échoué",
       "server_alert_repeated_errors": "La même erreur s’est produite {{times}} fois dans la dernière heure",
       "server_alert_unknown": "Quelque chose ne va pas sur le serveur",
       "update_available": "Une nouvelle version d’Inkadra est disponible",
-      "server_alert_storage_limit": "Espace de l’instance : {{percent}} % utilisé ({{used}} sur {{limit}})",
+      "server_alert_storage_limit": "Espace de l’instance : {{percent}} % utilisé ({{used}} sur {{limit}})",
       "server_alert_storage_request": "demande plus d’espace"
     },
     "emailHint": "Mentions, réponses et révisions aussi par e-mail, si le serveur peut les envoyer.",
@@ -3019,7 +3019,7 @@
     "visibleToClient": "Invités aussi",
     "otherComments": "Autres commentaires sur ce plan",
     "detailEmptyTitle": "Choisissez une notification",
-    "detailEmptyHint": "Elle s'ouvre ici, avec le contexte et les réponses.",
+    "detailEmptyHint": "Elle s’ouvre ici, avec le contexte et les réponses.",
     "replyPlaceholder": "Répondez, @ pour mentionner…",
     "sendReply": "Envoyer",
     "conversation": "Conversation",
@@ -3135,7 +3135,7 @@
       "clipper": {
         "title": "Inkadra Clipper pour Chrome",
         "body": "Enregistrez pages, images, texte et liens depuis le navigateur dans les Non triés d’un tableau.",
-        "address": "Adresse à saisir dans le clipper :",
+        "address": "Adresse à saisir dans le clipper :",
         "copy": "Copier",
         "connected": "Connecté",
         "store": "Disponible sur le Chrome Web Store"
@@ -3368,7 +3368,7 @@
     "noShoot": "Pas de tournage",
     "openDay": "ouvrir la journée",
     "openStoryboard": "Ouvrir dans le storyboard",
-    "phoneHint": "Touchez un bloc pour l’ouvrir : vous y changez son ordre, sa durée et son jour.",
+    "phoneHint": "Touchez un bloc pour l’ouvrir : vous y changez son ordre, sa durée et son jour.",
     "queueShort": "File",
     "quickDuration": "Durées rapides",
     "remove": "Retirer",
@@ -3386,10 +3386,10 @@
     "statusUnsaved": "Non enregistré",
     "saveFailed_one": "Échec de l’enregistrement : {{count}} journée attend d’être enregistrée. Une nouvelle tentative est faite automatiquement ; ne fermez pas l’onglet.",
     "saveFailed_other": "Échec de l’enregistrement : {{count}} journées attendent d’être enregistrées. Une nouvelle tentative est faite automatiquement ; ne fermez pas l’onglet.",
-    "offline_one": "Vous êtes hors ligne : {{count}} journée attend d’être enregistrée. Ne fermez pas l’onglet.",
-    "offline_other": "Vous êtes hors ligne : {{count}} journées attendent d’être enregistrées. Ne fermez pas l’onglet.",
+    "offline_one": "Vous êtes hors ligne : {{count}} journée attend d’être enregistrée. Ne fermez pas l’onglet.",
+    "offline_other": "Vous êtes hors ligne : {{count}} journées attendent d’être enregistrées. Ne fermez pas l’onglet.",
     "sunHint": "Ajoutez au lieu de tournage un lien de carte (Google, Apple ou OpenStreetMap) pour voir le lever et le coucher du soleil.",
-    "sunNote": "Calculé sur cet appareil à partir du lien de carte du lieu de tournage ; rien n’est envoyé à des services externes.",
+    "sunNote": "Calculé sur cet appareil à partir du lien de carte du lieu de tournage ; rien n’est envoyé à des services externes.",
     "sunPolar": "Le soleil ne se lève ou ne se couche pas ce jour-là à cet endroit.",
     "sunrise": "Lever du soleil {{time}}",
     "sunset": "Coucher du soleil {{time}}",
@@ -3418,13 +3418,13 @@
     "castFilterLabel": "Distribution",
     "newBlockMenu": "Type du nouveau bloc",
     "newBlock": "Nouveau bloc · {{time}}",
-    "created": "Nouveau bloc : {{type}}, {{start}}–{{end}}.",
+    "created": "Nouveau bloc : {{type}}, {{start}}–{{end}}.",
     "moveDayLabel": "{{from}} → {{to}}",
     "swapDayLabel": "{{from}} ⇄ {{to}} · échange",
     "moveDay": "Déplacer à une autre date…",
     "moveDayTitle": "Déplacer {{day}}",
     "moveDayPick": "Choisissez une autre date que l’actuelle.",
-    "moveDaySwap": "Cette date a déjà {{day}} : les deux journées s’échangent.",
+    "moveDaySwap": "Cette date a déjà {{day}} : les deux journées s’échangent.",
     "moveDayFree": "La journée passe à cette date avec tous ses blocs.",
     "swapDays": "Échanger",
     "moveDayConfirm": "Déplacer",
@@ -3440,20 +3440,20 @@
     "wholeScene": "Planifier la scène entière",
     "wholeSceneHint_one": "{{count}} plan, en un seul bloc",
     "wholeSceneHint_other": "{{count}} plans, en un seul bloc",
-    "sceneNoFrames": "Pas encore de plans : planifiez-la en un bloc",
-    "conflictNote_one": "{{names}} est dans deux blocs à {{time}} : {{titles}}.",
-    "conflictNote_other": "{{names}} sont dans deux blocs à {{time}} : {{titles}}.",
-    "conflictNoteMany_one": "{{names}} est dans {{blocks}} blocs à {{time}} : {{titles}}.",
-    "conflictNoteMany_other": "{{names}} sont dans {{blocks}} blocs à {{time}} : {{titles}}.",
-    "conflictTitle": "« {{title}} »",
+    "sceneNoFrames": "Pas encore de plans : planifiez-la en un bloc",
+    "conflictNote_one": "{{names}} est dans deux blocs à {{time}} : {{titles}}.",
+    "conflictNote_other": "{{names}} sont dans deux blocs à {{time}} : {{titles}}.",
+    "conflictNoteMany_one": "{{names}} est dans {{blocks}} blocs à {{time}} : {{titles}}.",
+    "conflictNoteMany_other": "{{names}} sont dans {{blocks}} blocs à {{time}} : {{titles}}.",
+    "conflictTitle": "« {{title}} »",
     "freeShort": "libre",
     "earlier": "Avancer",
     "later": "Reculer",
     "hideSide": "Masquer le mois et la file",
     "showSide": "Afficher le mois et la file",
     "month": "Mois",
-    "queueCount_one": "À planifier : {{count}}",
-    "queueCount_other": "À planifier : {{count}}",
+    "queueCount_one": "À planifier : {{count}}",
+    "queueCount_other": "À planifier : {{count}}",
     "densityLabel": "Densité",
     "densityCompact": "Compact",
     "densityComfy": "Confortable"
@@ -3503,9 +3503,9 @@
     "sent_one": "{{count}} plan ajouté au storyboard",
     "sent_other": "{{count}} plans ajoutés au storyboard",
     "sendFailed": "Impossible de les ajouter au storyboard. Vérifiez la connexion et les autorisations, puis réessayez.",
-    "lockedSkipped_one": "{{count}} référence est verrouillée et n'a pas changé.",
-    "lockedSkipped_other": "{{count}} références sont verrouillées et n'ont pas changé.",
-    "whichStoryboard": "Dans quel storyboard ?"
+    "lockedSkipped_one": "{{count}} référence est verrouillée et n’a pas changé.",
+    "lockedSkipped_other": "{{count}} références sont verrouillées et n’ont pas changé.",
+    "whichStoryboard": "Dans quel storyboard ?"
   },
   "callSheet": {
     "day": "Jour",
@@ -3540,13 +3540,13 @@
     "scenes": "Scènes du jour",
     "bringer": "Qui apporte",
     "frames": "Plans de la scène",
-    "plans": "Plan au sol",
+    "plans": "Plans au sol",
     "kit": "Liste du matériel",
     "kitHelp": "Compte les icônes par type et libellé.",
     "moves": "Mouvements numérotés",
     "fullPage": "Plans en pleine page",
     "new": "Nouveau",
-    "yourCall": "Ta convocation",
+    "yourCall": "Votre convocation",
     "confirm": "Je confirme ma présence",
     "decline": "Je ne peux pas",
     "presence": "Présences",
@@ -3554,13 +3554,13 @@
     "presenceLoading": "Chargement des présences…",
     "presenceError": "Impossible de charger les présences.",
     "retry": "Réessayer",
-    "saveError": "Échec de l'enregistrement. Réessaie.",
+    "saveError": "Échec de l’enregistrement. Réessayez.",
     "linkAccount": "Compte de {{name}}",
     "noAccount": "Aucun compte",
     "otherAccount": "Autre compte",
     "answer": {
-      "confirmed": "Tu as confirmé ta présence.",
-      "declined": "Tu as indiqué que tu ne peux pas venir."
+      "confirmed": "Vous avez confirmé votre présence.",
+      "declined": "Vous avez indiqué que vous ne pouvez pas venir."
     },
     "status": {
       "confirmed": "Confirmé",
@@ -3571,11 +3571,11 @@
     "pause": "Pause",
     "cameraWrap": "Camera wrap",
     "crewWrap": "Fin équipe",
-    "times": "Key times",
-    "place": "Place",
+    "times": "Horaires",
+    "place": "Lieu",
     "locationNumber": "Loc. {{n}}",
-    "serve": "Needed: {{items}}",
-    "inScene": "On set",
+    "serve": "À prévoir : {{items}}",
+    "inScene": "Sur le plateau",
     "contact": "Contact",
     "troupe": "Équipe et contacts",
     "onSetContact": "Contact sur le plateau",
@@ -3593,7 +3593,7 @@
     "pickupAt": "navette {{pickup}}"
   },
   "needed": {
-    "locked": "Lecture seule ici : son storyboard n’est pas ouvert en modification.",
+    "locked": "Lecture seule ici : son storyboard n’est pas ouvert en modification.",
     "title": "À apporter",
     "progress": "{{ready}} prêts sur {{total}}",
     "mine": "Les miens seulement",
@@ -3625,12 +3625,12 @@
       "renameList": "Renommer la liste",
       "changeType": "Changer de type",
       "deleteList": "Supprimer la liste…",
-      "deleteTitle": "Supprimer la liste « {{name}} » ?",
-      "deleteBody_one": "{{type}} pour la scène {{number}}, avec son élément. Elle disparaît pour tout le monde sur ce storyboard ; Annuler la ramène.",
-      "deleteBody_other": "{{type}} pour la scène {{number}}, avec ses {{count}} éléments. Elle disparaît pour tout le monde sur ce storyboard ; Annuler la ramène.",
+      "deleteTitle": "Supprimer la liste « {{name}} » ?",
+      "deleteBody_one": "{{type}} pour la scène {{number}}, avec son élément. Elle disparaît pour tout le monde sur ce storyboard ; Annuler la ramène.",
+      "deleteBody_other": "{{type}} pour la scène {{number}}, avec ses {{count}} éléments. Elle disparaît pour tout le monde sur ce storyboard ; Annuler la ramène.",
       "deleteConfirm": "Supprimer la liste",
       "cancel": "Annuler",
-      "days": "Dans À apporter : {{days}}",
+      "days": "Dans À apporter : {{days}}",
       "day": "jour {{n}} ({{date}})",
       "readOnly": "Vous pouvez voir ces listes. Les propriétaires et les éditeurs les modifient.",
       "itemDeleted": "Élément supprimé",
@@ -3658,7 +3658,7 @@
     "breakdown": "{{changes}} avec modifications · {{pending}} en attente"
   },
   "projectsPage": {
-    "counts": "Actifs : {{active}}, archivés : {{archived}}.",
+    "counts": "Actifs : {{active}}, archivés : {{archived}}.",
     "search": "Rechercher des projets",
     "status": "État",
     "all": "Tous",
@@ -3690,7 +3690,7 @@
     "saveError": "Impossible d’enregistrer la modification. Réessayez.",
     "details": "Type et fuseau horaire",
     "timeZone": "Fuseau horaire",
-    "timeZoneAuto": "Automatique (fuseau de l’appareil : {{zone}})",
+    "timeZoneAuto": "Automatique (fuseau de l’appareil : {{zone}})",
     "timeZoneHint": "Le lever et le coucher du soleil de la feuille de service utilisent ce fuseau.",
     "storageShort": "{{bytes}} de fichiers originaux sur cette instance."
   },
@@ -3703,7 +3703,7 @@
     "confirmBefore": "Saisissez",
     "confirmAfter": "pour confirmer",
     "placeholder": "Nom du projet",
-    "copy": "Copier « {{name}} »",
+    "copy": "Copier « {{name}} »",
     "copied": "Copié",
     "confirm": "Supprimer définitivement",
     "error": "Impossible de supprimer le projet. Réessayez."
@@ -3802,7 +3802,7 @@
       "updates": "Mises à jour",
       "modules": "Modules",
       "appearance": "Apparence et langue",
-      "board": "Board",
+      "board": "Tableau",
       "apps": "Applications connectées",
       "help": "Aide et tutoriels",
       "reports": "Signalements",
@@ -3816,17 +3816,17 @@
       "storage": "Espace occupé par les fichiers de l’instance.",
       "access": "Qui peut entrer, ce que les membres peuvent faire et comment on se connecte.",
       "backups": "Copies nocturnes de la base de données, pour restaurer le serveur après une panne.",
-      "toolbar": "Choisissez les outils de « Autres outils » que vous voyez dans la barre du bas. Les autres restent dans ⋯ et dans la palette de commandes.",
+      "toolbar": "Choisissez les outils de « Autres outils » que vous voyez dans la barre du bas. Les autres restent dans ⋯ et dans la palette de commandes.",
       "tutorials": "Revoyez les visites guidées, choisissez de les proposer ou non et demandez de l’aide.",
-      "server": "Comment va le serveur : ressources, services, tâches, problèmes et alertes.",
-      "serverSimple": "Comment va le serveur, en mots simples : espace, sauvegarde, vitesse et problèmes à regarder.",
-      "updates": "La version utilisée, les nouveautés et un avis quand une nouvelle sort. Inkadra ne se met pas à jour tout seul : c’est toi qui le mets à jour, sur le serveur.",
-      "modules": "Choisissez les parties d’Inkadra que vous utilisez. Un module désactivé disparaît de vos menus, de la barre, des notifications et des tutoriels. Cela ne vaut que pour vous et ne supprime rien : ce qui existe reste visible, et en le réactivant vous retrouvez tout.",
-      "board": "Le comportement de vos boards et les outils de la barre du bas. Cela ne vaut que pour vous, sur chaque appareil.",
-      "apps": "Ce qui se connecte à votre compte depuis l’extérieur : calendrier, extension du navigateur, jetons.",
+      "server": "Comment va le serveur : ressources, services, tâches, problèmes et alertes.",
+      "serverSimple": "Comment va le serveur, en mots simples : espace, sauvegarde, vitesse et problèmes à regarder.",
+      "updates": "La version utilisée, les nouveautés et un avis quand une nouvelle sort. Inkadra ne se met pas à jour tout seul : c’est à vous de le mettre à jour, sur le serveur.",
+      "modules": "Choisissez les parties d’Inkadra que vous utilisez. Un module désactivé disparaît de vos menus, de la barre, des notifications et des tutoriels. Cela ne vaut que pour vous et ne supprime rien : ce qui existe reste visible, et en le réactivant vous retrouvez tout.",
+      "board": "Le comportement de vos tableaux et les outils de la barre du bas. Cela ne vaut que pour vous, sur chaque appareil.",
+      "apps": "Ce qui se connecte à votre compte depuis l’extérieur : calendrier, extension du navigateur, jetons.",
       "instance": "Le nom de l’instance et ce qu’il reste pour terminer la configuration.",
-      "reports": "Où vont les signalements envoyés depuis « Signaler un problème », et ceux reçus.",
-      "video": "Inkadra prépare des copies plus légères des vidéos, en plusieurs résolutions : chacun reçoit celle qui convient à sa connexion. Les originaux ne sont jamais modifiés.",
+      "reports": "Où vont les signalements envoyés depuis « Signaler un problème », et ceux reçus.",
+      "video": "Inkadra prépare des copies plus légères des vidéos, en plusieurs résolutions : chacun reçoit celle qui convient à sa connexion. Les originaux ne sont jamais modifiés.",
       "audit": "Qui a changé les rôles, les membres, le partage, les réglages et les jetons, ce qui a été supprimé ou sauvegardé, et quelles connexions ont échoué."
     },
     "autosave": {
@@ -3909,7 +3909,7 @@
       "releaseNewsAdminHelp": "Permet aux personnes de recevoir les actualités après une mise à jour. Nécessite SMTP et leur accord personnel.",
       "what": "Quoi recevoir",
       "frequency": "Quand les envoyer",
-      "frequencyHelp": "Tout de suite : les notifications rapprochées dans un seul e-mail. Résumé : un e-mail par jour."
+      "frequencyHelp": "Tout de suite : les notifications rapprochées dans un seul e-mail. Résumé : un e-mail par jour."
     },
     "members": {
       "invite": "Inviter des membres",
@@ -3958,16 +3958,16 @@
     "noResults": "Aucun paramètre trouvé",
     "find": {
       "people": "Personnes",
-      "settings": "Réglages",
+      "settings": "Paramètres",
       "tours": "Visites",
       "invite": "Invitation en attente",
       "results": "Résultats de la recherche",
       "move": "choisir",
       "open": "ouvrir",
       "enter": "Entrée",
-      "usage": "Utilisation par personne : {{name}}",
-      "more_one": "et 1 autre : tapez plus pour le trouver",
-      "more_other": "et {{count}} autres : tapez plus pour les trouver"
+      "usage": "Utilisation par personne : {{name}}",
+      "more_one": "et 1 autre : tapez plus pour le trouver",
+      "more_other": "et {{count}} autres : tapez plus pour les trouver"
     },
     "close": "Fermer les paramètres",
     "dangerZone": "Zone sensible",
@@ -3976,7 +3976,7 @@
       "reset": "Rétablir la barre par défaut",
       "synced": "Synchronisée avec votre compte",
       "always": "Toujours dans la barre",
-      "more": "Depuis « Autres outils » : mettre dans la barre",
+      "more": "Depuis « Autres outils » : mettre dans la barre",
       "resetAction": "Réinitialiser"
     },
     "board": {
@@ -4005,7 +4005,7 @@
       "createHelp": "Sinon, seuls les administrateurs créent et importent des projets. Pour une personne, modifiez-le dans Membres."
     },
     "reports": {
-      "copyHere": "Une copie reste toujours ci-dessous, dans « Signalements reçus ».",
+      "copyHere": "Une copie reste toujours ci-dessous, dans « Signalements reçus ».",
       "rules": "Règles",
       "relayHelp": "Les signalements arrivent à l’équipe Inkadra, dans le dépôt privé <repo>inkadra/inkadra-feedback</repo>.",
       "facts": {
@@ -4023,7 +4023,7 @@
         },
         "kept": {
           "title": "Combien de temps",
-          "body": "Sur GitHub jusqu’à leur suppression par l’équipe : la conservation locale ne les supprime pas."
+          "body": "Sur GitHub jusqu’à leur suppression par l’équipe : la conservation locale ne les supprime pas."
         }
       }
     },
@@ -4096,16 +4096,16 @@
     "pending": "Invitations à l’instance en attente",
     "noInvitations": "Aucune invitation à l’instance en attente.",
     "linkInvite": "Lien d’invitation",
-    "linkHelp": "Pas d’e-mail ? Créez un lien : il ne sert qu’une fois, pour une personne.",
+    "linkHelp": "Pas d’e-mail ? Créez un lien : il ne sert qu’une fois, pour une personne.",
     "createLink": "Créer un lien d’invitation",
-    "linkCreated": "Ce lien ne sert qu’une fois, pour une personne, et expire le {{when}}. Partagez-le en privé : la première personne qui l’ouvre peut créer un compte.",
+    "linkCreated": "Ce lien ne sert qu’une fois, pour une personne, et expire le {{when}}. Partagez-le en privé : la première personne qui l’ouvre peut créer un compte.",
     "linkPending": "Une seule utilisation · expire le {{when}}",
     "expires": "Expire le {{when}}",
     "resend": "Renvoyer",
     "revoke": "Révoquer",
-    "revokeFor": "Révoquer : {{name}}",
-    "resendFor": "Renvoyer : {{name}}",
-    "copyFor": "Copier le lien : {{name}}",
+    "revokeFor": "Révoquer : {{name}}",
+    "resendFor": "Renvoyer : {{name}}",
+    "copyFor": "Copier le lien : {{name}}",
     "deactivateHelp": "Désactiver {{name}} ? Les sessions et les jetons personnels seront révoqués. Les contenus et les adhésions aux projets seront conservés.",
     "conflict": "Cette modification n’est pas compatible avec l’état actuel. Gardez au moins un administrateur actif ; les comptes existants n’ont pas besoin d’invitation.",
     "theme": "Thème",
@@ -4122,7 +4122,7 @@
       "byUser": "Utilisation par utilisateur",
       "noUser": "Aucun compte associé",
       "usedDetail": "Fichiers originaux {{originals}} · aperçus {{previews}}",
-      "scope": "L’espace utilisé et l’utilisation par projet et par utilisateur comprennent les aperçus et les copies lisibles ; les autres cartes ne comptent que les fichiers originaux. La base de données et les anciens aperçus sans taille enregistrée ne sont pas comptés.",
+      "scope": "L’espace utilisé et l’utilisation par projet et par utilisateur comprennent les aperçus et les copies lisibles ; les autres cartes ne comptent que les fichiers originaux. La base de données et les anciens aperçus sans taille enregistrée ne sont pas comptés.",
       "category": "Catégorie / projet",
       "size": "Taille",
       "share": "Pourcentage",
@@ -4209,10 +4209,10 @@
     "uses_other": "Utilisée {{count}} fois",
     "deleteLabel": "Supprimer {{name}}",
     "delete": "Supprimer",
-    "deleteTitle": "Supprimer « {{name}} » ?",
-    "deleteBody": "Cette valeur n’a jamais été utilisée : aucun projet, carte ou plan ne la perd. Elle quitte la liste à l’enregistrement.",
+    "deleteTitle": "Supprimer « {{name}} » ?",
+    "deleteBody": "Cette valeur n’a jamais été utilisée : aucun projet, carte ou plan ne la perd. Elle quitte la liste à l’enregistrement.",
     "inUseTitle": "Une valeur a été utilisée entre-temps",
-    "inUse": "Quelqu’un vient d’utiliser une valeur que vous supprimez : rien n’a été enregistré. Rechargez : vous pourrez l’archiver."
+    "inUse": "Quelqu’un vient d’utiliser une valeur que vous supprimez : rien n’a été enregistré. Rechargez : vous pourrez l’archiver."
   },
   "appearance": {
     "label": "Apparence",
@@ -4317,7 +4317,7 @@
   },
   "backups": {
     "title": "Sauvegardes",
-    "cardLead": "Chaque sauvegarde contient toute la base de données et est relue une fois écrite. Les fichiers restent où ils sont, sauf si vous les incluez : sauvegardez aussi le volume de données ou le bucket. Les fichiers supprimés sont gardés tant qu'une sauvegarde conservée en a besoin.",
+    "cardLead": "Chaque sauvegarde contient toute la base de données et est relue une fois écrite. Les fichiers restent où ils sont, sauf si vous les incluez : sauvegardez aussi le volume de données ou le bucket. Les fichiers supprimés sont gardés tant qu’une sauvegarde conservée en a besoin.",
     "now": "Sauvegarder maintenant",
     "running": "Sauvegarde en cours…",
     "busy": "Une sauvegarde est déjà en cours.",
@@ -4337,10 +4337,10 @@
     "keepCount_one": "la dernière sauvegarde",
     "keepCount_other": "les {{count}} dernières sauvegardes",
     "media": "Inclure les fichiers",
-    "mediaHelp": "Les fichiers envoyés et leurs miniatures entrent aussi dans chaque sauvegarde : environ {{size}} de plus aujourd'hui. Les copies lisibles des vidéos sont refaites après une restauration.",
+    "mediaHelp": "Les fichiers envoyés et leurs miniatures entrent aussi dans chaque sauvegarde : environ {{size}} de plus aujourd’hui. Les copies lisibles des vidéos sont refaites après une restauration.",
     "mediaHelpPlain": "Les fichiers envoyés et leurs miniatures entrent aussi dans chaque sauvegarde. Les copies lisibles des vidéos sont refaites après une restauration.",
-    "mediaKept_one": "En gardant seulement la dernière sauvegarde, cela fait environ {{total}} au total ; les sauvegardes gardées occupent {{used}} aujourd'hui.",
-    "mediaKept_other": "Chaque sauvegarde gardée a sa propre copie : environ {{total}} pour les {{count}} dernières, alors que les sauvegardes gardées occupent {{used}} aujourd'hui.",
+    "mediaKept_one": "En gardant seulement la dernière sauvegarde, cela fait environ {{total}} au total ; les sauvegardes gardées occupent {{used}} aujourd’hui.",
+    "mediaKept_other": "Chaque sauvegarde gardée a sa propre copie : environ {{total}} pour les {{count}} dernières, alors que les sauvegardes gardées occupent {{used}} aujourd’hui.",
     "history": "Historique",
     "inBucket": "copiée dans le bucket",
     "withMedia_one": "avec {{count}} fichier",
@@ -4358,26 +4358,26 @@
     },
     "where": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis DATA_DIR/backups sur le serveur. Restaurez sur une base de données vide avec",
     "whereBucket": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis DATA_DIR/backups ou backups/ dans le bucket. Restaurez sur une base de données vide avec",
-    "whereLocal": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis {{directory}} sur le serveur. Restaurez dans une base vide avec",
-    "whereIn": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis {{directory}} sur le serveur ou depuis {{bucket}}. Restaurez dans une base vide avec",
+    "whereLocal": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis {{directory}} sur le serveur. Restaurez dans une base vide avec",
+    "whereIn": "Les sauvegardes ne se téléchargent pas depuis le navigateur : copiez-les depuis {{directory}} sur le serveur ou depuis {{bucket}}. Restaurez dans une base vide avec",
     "failure": {
       "interrupted": "Le serveur s’est arrêté pendant l’opération. Relancez-la.",
       "stalled": "Elle a cessé de progresser et a été annulée. Consultez le journal du serveur pour cette sauvegarde.",
-      "no_space": "Pas assez d'espace libre dans le dossier des sauvegardes.",
+      "no_space": "Pas assez d’espace libre dans le dossier des sauvegardes.",
       "permission": "Le serveur ne peut pas écrire dans son dossier de sauvegardes (BACKUP_DIR).",
       "internal": "Une erreur s’est produite. Le journal du serveur en indique la cause, avec l’id de cette sauvegarde.",
       "inconsistent": "Des tableaux ou des commentaires se référencent en boucle et ne peuvent pas être enregistrés dans l’ordre. Le journal du serveur indique la table.",
-      "corrupt": "L’archive relue ne correspond pas à ce qui a été écrit : elle n’a pas été gardée. Vérifiez le volume de données."
+      "corrupt": "L’archive relue ne correspond pas à ce qui a été écrit : elle n’a pas été gardée. Vérifiez le volume de données."
     },
     "notInBucket": "Conservée uniquement sur le serveur : la copie dans le bucket a échoué.",
     "verified": "vérifiée",
-    "missingFiles_one": "{{count}} fichier listé manque dans le stockage : une restauration ne l’aurait pas.",
-    "missingFiles_other": "{{count}} fichiers listés manquent dans le stockage : une restauration ne les aurait pas.",
+    "missingFiles_one": "{{count}} fichier listé manque dans le stockage : une restauration ne l’aurait pas.",
+    "missingFiles_other": "{{count}} fichiers listés manquent dans le stockage : une restauration ne les aurait pas.",
     "verifyIncomplete": "vérification incomplète",
     "verifiedSample_one": "vérifiée sur un échantillon de {{count}} fichier",
     "verifiedSample_other": "vérifiée sur un échantillon de {{count}} fichiers",
-    "unverifiedFiles_one": "{{count}} fichier listé n’a pas pu être vérifié : le stockage a répondu par une erreur.",
-    "unverifiedFiles_other": "{{count}} fichiers listés n’ont pas pu être vérifiés : le stockage a répondu par une erreur."
+    "unverifiedFiles_one": "{{count}} fichier listé n’a pas pu être vérifié : le stockage a répondu par une erreur.",
+    "unverifiedFiles_other": "{{count}} fichiers listés n’ont pas pu être vérifiés : le stockage a répondu par une erreur."
   },
   "export": {
     "title": "Exporter",
@@ -4582,9 +4582,9 @@
       },
       "day": "Jour {{n}}",
       "dayOf": "Jour {{n}} sur {{total}} · scènes {{scenes}}",
-      "continuityBoth": "Scène précédente avec {{name}} : {{previous}}. Suivante : {{next}}.",
-      "continuityPrevious": "Scène précédente avec {{name}} : {{previous}}.",
-      "continuityNext": "Scène suivante avec {{name}} : {{next}}.",
+      "continuityBoth": "Scène précédente avec {{name}} : {{previous}}. Suivante : {{next}}.",
+      "continuityPrevious": "Scène précédente avec {{name}} : {{previous}}.",
+      "continuityNext": "Scène suivante avec {{name}} : {{next}}.",
       "pageOf": "{{n}} / {{total}}",
       "none": "Aucune scène à imprimer.",
       "call": "Convocation",
@@ -4599,7 +4599,7 @@
       "frameNotes": "Notes des plans",
       "light": "Lumière",
       "shootingDay": "Jour de tournage",
-      "needed": "À prévoir",
+      "needed": "À apporter",
       "notes": "Notes",
       "frame": "Plan",
       "count_one": "{{count}} fiche par scène",
@@ -4678,8 +4678,8 @@
     "buildFromFile": "Créer un storyboard depuis ce scénario…",
     "noTextDetail": "Cela ressemble à un scan : Inkadra ne lit pas le texte dans les images. Exportez à nouveau le PDF depuis votre logiciel d’écriture, ou utilisez un fichier Fountain ou Final Draft.",
     "revision": {
-      "hint": "Associe la nouvelle version aux scènes de « {{title}} ». Images, dessins et données de tournage restent tels quels.",
-      "hintShort": "Images, dessins et données de tournage restent tels quels.",
+      "hint": "Associe la nouvelle version aux scènes de « {{title}} ». Plans, dessins et données de tournage restent tels quels.",
+      "hintShort": "Plans, dessins et données de tournage restent tels quels.",
       "show": "Afficher",
       "list": "Scènes de cette version",
       "filters": {
@@ -4705,26 +4705,26 @@
       "restored": "de retour dans cette version",
       "wasScene": "était la scène {{number}}",
       "was": "était {{value}}",
-      "locationWas": "le lieu était « {{location}} »",
-      "titleWas": "le titre était « {{title}} »",
+      "locationWas": "le lieu était « {{location}} »",
+      "titleWas": "le titre était « {{title}} »",
       "synopsis": "synopsis réécrit",
       "sameAs": "Même scène que",
       "asNew": "Une nouvelle scène",
       "nothing": "Rien à afficher pour cette version.",
       "unchanged_one": "{{count}} scène inchangée, {{frames}}",
       "unchanged_other": "{{count}} scènes inchangées, {{frames}}",
-      "framesKept_one": "{{count}} image conservée",
-      "framesKept_other": "{{count}} images conservées",
-      "newFrames_one": "{{count}} nouvelle image",
-      "newFrames_other": "{{count}} nouvelles images",
-      "frames": "Images pour les nouvelles scènes",
+      "framesKept_one": "{{count}} plan conservé",
+      "framesKept_other": "{{count}} plans conservés",
+      "newFrames_one": "{{count}} nouveau plan",
+      "newFrames_other": "{{count}} nouveaux plans",
+      "frames": "Plans pour les nouvelles scènes",
       "framesAction": "Par action",
       "details": "Mettre à jour les scènes",
       "detailsHint": "Numéro, en-tête, lieu, moment et synopsis des scènes modifiées.",
       "omit": "Marquer les scènes omises",
-      "omitHint": "Elles gardent leurs images, atténuées, et sortent de la liste des plans et du plan de tournage.",
+      "omitHint": "Elles gardent leurs plans, atténués, et sortent de la liste des plans et du plan de tournage.",
       "version": "Enregistrer d’abord une version",
-      "versionHint": "« {{name}} », pour revenir en arrière en une étape.",
+      "versionHint": "« {{name}} », pour revenir en arrière en une étape.",
       "versionName": "Avant {{draft}}",
       "updated_one": "{{count}} scène mise à jour",
       "updated_other": "{{count}} scènes mises à jour",
@@ -4735,7 +4735,7 @@
       "summary": "<b>{{updated}}, {{added}}</b> avec {{frames}}, <b>{{omitted}}</b>. {{kept}} inchangées.",
       "summaryPhone": "<b>{{updated}}, {{added}}, {{omitted}}.</b> Une version est enregistrée d’abord.",
       "submit": "Mettre à jour le storyboard",
-      "done": "Storyboard mis à jour : {{updated}}, {{added}}, {{omitted}}."
+      "done": "Storyboard mis à jour : {{updated}}, {{added}}, {{omitted}}."
     },
     "scenesFromFile": "Importer les scènes de ce scénario…",
     "buildScenes": "Importer les scènes…",
@@ -4816,8 +4816,8 @@
     "default": "Par défaut",
     "currentYes": "oui",
     "currentNo": "non",
-    "defaultHintYes": "Comme l’instance : oui pour l’instant",
-    "defaultHintNo": "Comme l’instance : non pour l’instant",
+    "defaultHintYes": "Comme l’instance : oui pour l’instant",
+    "defaultHintNo": "Comme l’instance : non pour l’instant",
     "yesHint": "Toujours, même si l’instance change",
     "noHint": "Uniquement les projets sur invitation"
   },
@@ -5237,7 +5237,7 @@
       "lead": "Un canevas infini pour le cinéma et la photo, sur votre serveur.",
       "go": "Faire la visite · 1 min",
       "skip": "J’explore seul",
-      "foot": "Vous pouvez la revoir quand vous voulez dans Réglages → Aide et tutoriels.",
+      "foot": "Vous pouvez la revoir quand vous voulez dans Paramètres → Aide et tutoriels.",
       "heroNote": "Le dernier train",
       "heroTodoDone": "Repérage",
       "heroTodo": "Test de pluie"
@@ -5258,7 +5258,7 @@
       "count": "{{index}}/{{total}}"
     },
     "pill": {
-      "question": "Première fois dans {{name}} ?",
+      "question": "Première fois dans {{name}} ?",
       "go": "Visite de 30 s",
       "later": "Pas maintenant"
     },
@@ -5270,12 +5270,12 @@
     },
     "toast": {
       "open": "Ouvrir",
-      "welcomeSkipped": "D’accord ! La visite vous attend dans Réglages → Aide et tutoriels.",
-      "tourSkipped": "Visite passée. Vous la retrouverez dans Réglages → Aide et tutoriels.",
-      "pillDismissed": "D’accord, on ne la proposera plus. Elle est dans Réglages → Aide et tutoriels.",
-      "done": "{{name}} : visite terminée.",
-      "guestDismissed": "D’accord. La visite reste sous le bouton ? en haut.",
-      "guestDone": "C’est tout. Bonne relecture !"
+      "welcomeSkipped": "D’accord ! La visite vous attend dans Paramètres → Aide et tutoriels.",
+      "tourSkipped": "Visite passée. Vous la retrouverez dans Paramètres → Aide et tutoriels.",
+      "pillDismissed": "D’accord, on ne la proposera plus. Elle est dans Paramètres → Aide et tutoriels.",
+      "done": "{{name}} : visite terminée.",
+      "guestDismissed": "D’accord. La visite reste sous le bouton ? en haut.",
+      "guestDone": "C’est tout. Bonne relecture !"
     },
     "settings": {
       "welcomeTitle": "Visite de bienvenue",
@@ -5298,7 +5298,7 @@
       "filter": "Afficher",
       "all": "Toutes",
       "allSeen": "Vous avez vu toutes les visites",
-      "allSeenHelp": "Revoyez-les quand vous voulez depuis « Toutes »."
+      "allSeenHelp": "Revoyez-les quand vous voulez depuis « Toutes »."
     },
     "groups": {
       "start": "Pour commencer",
@@ -5313,7 +5313,7 @@
       "scene": "Scène 1 · Quai",
       "picture": "Quai 4, 2 h",
       "approved": "Approuvé",
-      "comment": "Plus serré ?",
+      "comment": "Plus serré ?",
       "dolly": "Travelling",
       "night": "Nuit",
       "day": "Jour {{n}}",
@@ -5356,7 +5356,7 @@
           },
           "4": {
             "title": "Chaque tableau, ses vues",
-            "text": "Un storyboard a aussi une liste de plans et une révision : activez-les depuis le menu ⋯."
+            "text": "Un storyboard a aussi une liste de plans et une révision : activez-les depuis le menu ⋯."
           },
           "5": {
             "title": "Travailler en équipe",
@@ -5364,7 +5364,7 @@
           },
           "6": {
             "title": "La revoir quand vous voulez",
-            "text": "Elle est dans Réglages → Aide et tutoriels."
+            "text": "Elle est dans Paramètres → Aide et tutoriels."
           }
         }
       },
@@ -5372,7 +5372,7 @@
         "steps": {
           "0": {
             "title": "Commenter une carte",
-            "text": "Choisissez-la et écrivez : le commentaire y reste attaché."
+            "text": "Choisissez-la et écrivez : le commentaire y reste attaché."
           },
           "1": {
             "title": "Donner votre accord",
@@ -5393,12 +5393,12 @@
           },
           "2": {
             "title": "Nouveau projet",
-            "text": "Les tableaux naissent dans un projet : créez-le ici."
+            "text": "Les tableaux naissent dans un projet : créez-le ici."
           }
         }
       },
       "inbox": {
-        "name": "Boîte de réception et notifications",
+        "name": "Réception et notifications",
         "steps": {
           "0": {
             "title": "Tout au même endroit",
@@ -5410,7 +5410,7 @@
           },
           "2": {
             "title": "Choisir ce que vous recevez",
-            "text": "Les e-mails se règlent dans Réglages → Notifications."
+            "text": "Les e-mails se règlent dans Paramètres → Notifications."
           }
         }
       },
@@ -5419,15 +5419,15 @@
         "steps": {
           "0": {
             "title": "Les outils",
-            "text": "Notes, photos, liens, listes : choisissez et cliquez sur le canevas."
+            "text": "Notes, photos, liens, listes : choisissez et cliquez sur le canevas."
           },
           "1": {
             "title": "Autres outils",
-            "text": "Colonnes, tableaux, cartes et le reste sont dans ⋯ : « Mettre dans la barre » garde à portée ceux que vous utilisez."
+            "text": "Colonnes, tableaux, cartes et le reste sont dans ⋯ : « Mettre dans la barre » garde à portée ceux que vous utilisez."
           },
           "2": {
             "title": "Nouveaux tableaux",
-            "text": "Canvas crée des tableaux, des moodboards, des storyboards et le tableau Production unique du projet (Plan de travail et Équipe), et importe un scénario."
+            "text": "Canevas crée des tableaux, des moodboards, des storyboards et le tableau Production unique du projet (Plan de travail et Équipe), et importe un scénario."
           },
           "3": {
             "title": "Sélectionner une carte",
@@ -5439,7 +5439,7 @@
           },
           "5": {
             "title": "Limites de taille du tableau",
-            "text": "Si ce tableau atteint sa limite de taille, les ajouts sont refusés et le tableau confirmé est rechargé. Supprimez du contenu pour libérer de la place ; si cela ne suffit pas, demandez à l’administrateur de relever la limite."
+            "text": "Si ce tableau atteint sa limite de taille, les ajouts sont refusés et le tableau confirmé est rechargé. Supprimez du contenu pour libérer de la place ; si cela ne suffit pas, demandez à l’administrateur de relever la limite."
           }
         }
       },
@@ -5465,7 +5465,7 @@
         "steps": {
           "0": {
             "title": "Regarder dans la carte",
-            "text": "Appuyez sur lecture : la vidéo démarre là, avec ses commandes."
+            "text": "Appuyez sur lecture : la vidéo démarre là, avec ses commandes."
           },
           "1": {
             "title": "Une à la fois",
@@ -5477,7 +5477,7 @@
           },
           "3": {
             "title": "Qualité de la vidéo",
-            "text": "Dans la carte et dans la visionneuse, « Qualité » choisit la résolution ; Auto suit la connexion."
+            "text": "Dans la carte et dans la visionneuse, « Qualité » choisit la résolution ; Auto suit la connexion."
           }
         }
       },
@@ -5485,20 +5485,20 @@
         "name": "Storyboard",
         "steps": {
           "0": {
-            "title": "Scènes et images",
-            "text": "Chaque scène regroupe ses images, dans l’ordre."
+            "title": "Scènes et plans",
+            "text": "Chaque scène regroupe ses plans, dans l’ordre."
           },
           "1": {
-            "title": "Chaque image a ses données",
-            "text": "Valeur de plan, objectif, mouvement : elles passent dans la liste des plans."
+            "title": "Chaque plan a ses données",
+            "text": "Valeur de plan, objectif, mouvement : elles passent dans la liste des plans."
           },
           "2": {
-            "title": "Dessiner sur l’image",
-            "text": "Double-cliquez sur une image pour esquisser en plein écran."
+            "title": "Dessiner sur le plan",
+            "text": "Double-cliquez sur un plan pour esquisser en plein écran."
           },
           "3": {
             "title": "Une nouvelle version du scénario",
-            "text": "Importez-la à nouveau et choisissez Mettre à jour depuis une révision : les scènes sont mises à jour, les images restent telles quelles."
+            "text": "Importez-la à nouveau et choisissez Mettre à jour depuis une révision : les scènes sont mises à jour, les plans restent tels quels."
           },
           "4": {
             "title": "Ce qu’il faut à une scène",
@@ -5507,15 +5507,15 @@
         }
       },
       "draw": {
-        "name": "Dessiner sur l’image",
+        "name": "Dessiner sur le plan",
         "steps": {
           "0": {
             "title": "Stylos et formes",
             "text": "Stylo, gomme, formes et texte, avec couleur et épaisseur."
           },
           "1": {
-            "title": "Image après image",
-            "text": "Les flèches passent aux autres images."
+            "title": "Plan après plan",
+            "text": "Les flèches passent aux autres plans."
           },
           "2": {
             "title": "Se déplacer",
@@ -5528,7 +5528,7 @@
         "steps": {
           "0": {
             "title": "Vos plans",
-            "text": "Les images du storyboard, en tableau."
+            "text": "Les plans du storyboard, en tableau."
           },
           "1": {
             "title": "Table ou Kanban",
@@ -5545,31 +5545,31 @@
         "steps": {
           "0": {
             "title": "Le calendrier de tournage",
-            "text": "Sur le tableau Production, un calendrier pour tout le projet : la file réunit les plans et les scènes de chaque storyboard. Jour ou semaine, comme un agenda : les blocs se mettent à la suite tout seuls. Glissez un plan à la bonne heure, ou cliquez dessus pour l’ajouter à la fin. Avec des plans au sol, « Grouper par : Setup » range les plans de chaque scène et de chaque journée sous leur setup. La flèche à côté du mois replie le mois et la file ; « Compact » et « Confortable » changent la hauteur des heures."
+            "text": "Sur le tableau Production, un calendrier pour tout le projet : la file réunit les plans et les scènes de chaque storyboard. Jour ou semaine, comme un agenda : les blocs se mettent à la suite tout seuls. Glissez un plan à la bonne heure, ou cliquez dessus pour l’ajouter à la fin. Avec des plans au sol, « Grouper par : Setup » range les plans de chaque scène et de chaque journée sous leur setup. La flèche à côté du mois replie le mois et la file ; « Compact » et « Confortable » changent la hauteur des heures."
           },
           "1": {
             "title": "Storyboards et barres",
-            "text": "Le filtre Storyboard montre les plans d’un seul ; la barre de couleur à gauche de chaque bloc indique de quel storyboard il vient. « Planifier la scène entière » met une scène dans un bloc, même avant de la dessiner. Une barre grise : storyboard indisponible, l’étiquette reste."
+            "text": "Le filtre Storyboard montre les plans d’un seul ; la barre de couleur à gauche de chaque bloc indique de quel storyboard il vient. « Planifier la scène entière » met une scène dans un bloc, même avant de la dessiner. Une barre grise : storyboard indisponible, l’étiquette reste."
           },
           "2": {
             "title": "Déplacer et allonger",
-            "text": "Glissez pour réordonner, avec Alt pour fixer l’heure, par le bord inférieur pour la durée. Déposez sur une date libre pour créer une journée de tournage ; Ctrl+Z annule tout le geste. Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). La vue Day a aussi « Block » dans la barre. Au clavier, N ajoute un bloc après celui sélectionné, ou à la fin de la journée."
+            "text": "Glissez pour réordonner, avec Alt pour fixer l’heure, par le bord inférieur pour la durée. Déposez sur une date libre pour créer une journée de tournage ; Ctrl+Z annule tout le geste. Glissez sur un temps libre pour dessiner un bloc par pas de 5 minutes, puis choisissez son type (touches 1–5). Dans la vue Jour, il y a aussi « Bloc » dans la barre. Au clavier, N ajoute un bloc après celui sélectionné, ou à la fin de la journée."
           },
           "3": {
             "title": "Déplacer une journée entière",
-            "text": "Glissez son en-tête sur une autre colonne ou sur une date du mois : les blocs suivent, et sur une date prise les deux journées s’échangent. Alt+←/→ ou « Déplacer à une autre date… » dans la journée."
+            "text": "Glissez son en-tête sur une autre colonne ou sur une date du mois : les blocs suivent, et sur une date prise les deux journées s’échangent. Alt+←/→ ou « Déplacer à une autre date… » dans la journée."
           },
           "4": {
             "title": "S’enregistre tout seul",
-            "text": "Chaque modification est enregistrée ; Ctrl+Z l’annule, même d’une journée à l’autre."
+            "text": "Chaque modification est enregistrée ; Ctrl+Z l’annule, même d’une journée à l’autre."
           },
           "5": {
             "title": "Convocations",
-            "text": "Dans l’onglet Convocations du jour, choisissez qui est convoqué et n’indiquez que les exceptions : une autre heure ou une navette."
+            "text": "Dans l’onglet Convocations du jour, choisissez qui est convoqué et n’indiquez que les exceptions : une autre heure ou une navette."
           },
           "6": {
             "title": "Feuille de service",
-            "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe. Le lever et le coucher du soleil suivent le fuseau du projet : changez-le dans Projets, menu ⋯ de la carte, « Type et fuseau horaire ». « Automatique » utilise le fuseau de l’appareil."
+            "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe. Le lever et le coucher du soleil suivent le fuseau du projet : changez-le dans Projets, menu ⋯ de la carte, « Type et fuseau horaire ». « Automatique » utilise le fuseau de l’appareil."
           }
         }
       },
@@ -5578,7 +5578,7 @@
         "steps": {
           "0": {
             "title": "Dessiner le décor",
-            "text": "Lignes, formes, textes et mesures depuis la barre du bas. Faites glisser sur un espace vide pour sélectionner ; cliquez à nouveau pour prendre ce qui est dessous."
+            "text": "Lignes, formes, textes et mesures depuis la barre du bas. Faites glisser sur un espace vide pour sélectionner ; cliquez à nouveau pour prendre ce qui est dessous."
           },
           "1": {
             "title": "La bibliothèque",
@@ -5586,23 +5586,23 @@
           },
           "2": {
             "title": "Propriétés, éléments, matériel",
-            "text": "Ce que vous sélectionnez se règle dans le panneau de droite, et Verrouiller le garde en place ; Éléments liste le plan par groupes, Matériel compte le matériel et la puissance par circuit, les circuits du premier setup valant pour tous."
+            "text": "Ce que vous sélectionnez se règle dans le panneau de droite, et Verrouiller le garde en place ; Éléments liste le plan par groupes, Matériel compte le matériel et la puissance par circuit, les circuits du premier setup valant pour tous."
           },
           "3": {
             "title": "Setups",
-            "text": "Un onglet par setup : double-cliquez pour le renommer, le premier aussi. Sous les onglets, un setup dit ce qui a changé par rapport au premier, qui peut apparaître derrière."
+            "text": "Un onglet par setup : double-cliquez pour le renommer, le premier aussi. Sous les onglets, un setup dit ce qui a changé par rapport au premier, qui peut apparaître derrière."
           },
           "4": {
             "title": "Murs et ouvertures",
-            "text": "Murs : cliquez angle par angle, tapez une longueur et Entrée, cliquez le premier angle pour fermer la pièce. Ouvertures : portes et fenêtres se posent sur un mur. Avec une échelle, la pièce affiche ses dimensions hors de ses murs."
+            "text": "Murs : cliquez angle par angle, tapez une longueur et Entrée, cliquez le premier angle pour fermer la pièce. Ouvertures : portes et fenêtres se posent sur un mur. Avec une échelle, la pièce affiche ses dimensions hors de ses murs."
           },
           "5": {
             "title": "Fond",
-            "text": "Un plan ou une photo sous le dessin à décalquer : déplacez-la, redimensionnez-la, réglez opacité et gris."
+            "text": "Un plan ou une photo sous le dessin à décalquer : déplacez-la, redimensionnez-la, réglez opacité et gris."
           },
           "6": {
             "title": "Se déplacer dans le plan",
-            "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, à 100 %, + et − zooment."
+            "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, + et − zooment."
           }
         }
       },
@@ -5611,11 +5611,11 @@
         "steps": {
           "0": {
             "title": "La fiche",
-            "text": "Identité, apparence, histoire : des sections qui s’ouvrent et se ferment."
+            "text": "Identité, apparence, histoire : des sections qui s’ouvrent et se ferment."
           },
           "1": {
             "title": "Ses scènes",
-            "text": "Elles viennent des images dont la distribution le nomme."
+            "text": "Elles viennent des plans qui le nomment dans la distribution."
           },
           "2": {
             "title": "Pour l’équipe seulement",
@@ -5624,14 +5624,14 @@
         }
       },
       "review": {
-        "name": "Relecture client",
+        "name": "Validation client",
         "steps": {
           "0": {
             "title": "Les plans",
             "text": "Le client les voit un par un, dans l’ordre."
           },
           "1": {
-            "title": "L’image",
+            "title": "Le plan",
             "text": "En grand, avec l’action et les commentaires."
           },
           "2": {
@@ -5653,7 +5653,7 @@
           },
           "2": {
             "title": "Qui le lit",
-            "text": "L’équipe, ou aussi les invités : vous choisissez à chaque fois."
+            "text": "L’équipe, ou aussi les invités : vous choisissez à chaque fois."
           }
         }
       },
@@ -5662,11 +5662,11 @@
         "steps": {
           "0": {
             "title": "Personnes et invités",
-            "text": "Personnes : avec un compte. Liens pour invités : clients sans compte."
+            "text": "Personnes : avec un compte. Liens pour invités : clients sans compte."
           },
           "1": {
             "title": "Inviter",
-            "text": "Choisissez le rôle : la ligne dessous dit ce qu’il permet."
+            "text": "Choisissez le rôle : la ligne dessous dit ce qu’il permet."
           },
           "2": {
             "title": "Rôles",
@@ -5678,7 +5678,7 @@
           },
           "4": {
             "title": "Liens pour invités",
-            "text": "Pour les clients : choisissez ce qu’ils peuvent faire et lisez le résumé."
+            "text": "Pour les clients : choisissez ce qu’ils peuvent faire et lisez le résumé."
           }
         }
       },
@@ -5687,7 +5687,7 @@
         "steps": {
           "0": {
             "title": "Sauvegardes",
-            "text": "Inkadra enregistre tout seul ; vous pouvez nommer un point."
+            "text": "Inkadra enregistre tout seul ; vous pouvez nommer un point."
           },
           "1": {
             "title": "Revenir en arrière",
@@ -5699,11 +5699,11 @@
           },
           "3": {
             "title": "Modifications gardées sur cet appareil",
-            "text": "Quand le serveur ne peut pas accepter vos modifications (taille maximale, aucun accès, dans la corbeille), elles restent sur cet appareil. Dès que le tableau accepte de nouveau des modifications, Restaurer dans le tableau les ramène ; si le tableau a changé entre-temps, restaurez-les en nouvelles cartes."
+            "text": "Quand le serveur ne peut pas accepter vos modifications (taille maximale, aucun accès, dans la corbeille), elles restent sur cet appareil. Dès que le tableau accepte de nouveau des modifications, Restaurer dans le tableau les ramène ; si le tableau a changé entre-temps, restaurez-les en nouvelles cartes."
           },
           "4": {
             "title": "Depuis un fichier téléchargé",
-            "text": "Vous avez téléchargé les modifications ? Dans le menu du tableau, Restaurer des modifications depuis un fichier… les ramène dans le même tableau."
+            "text": "Vous avez téléchargé les modifications ? Dans le menu du tableau, Restaurer des modifications depuis un fichier… les ramène dans le même tableau."
           }
         }
       },
@@ -5737,7 +5737,7 @@
           },
           "2": {
             "title": "Fiches par scène",
-            "text": "Une page par scène pour un département : caméra, lumière, costumes ou production."
+            "text": "Une page par scène pour un département : caméra, lumière, costumes ou production."
           },
           "3": {
             "title": "Style des titres",
@@ -5843,7 +5843,7 @@
         "steps": {
           "0": {
             "title": "D’un coup d’œil",
-            "text": "Une phrase dit si le serveur va bien : vert, orange s’il y a quelque chose à régler, rouge si quelque chose est arrêté."
+            "text": "Une phrase dit si le serveur va bien : vert, orange s’il y a quelque chose à régler, rouge si quelque chose est arrêté."
           },
           "1": {
             "title": "Simple ou avancé",
@@ -5851,7 +5851,7 @@
           },
           "2": {
             "title": "Comment il va",
-            "text": "Espace, sauvegarde et vitesse en mots simples ; dans Avancé, les courbes, mises à jour toutes les quelques secondes. The CPU chart includes GPU use when hardware video encoding and readings are available."
+            "text": "Espace, sauvegarde et vitesse en mots simples ; dans Avancé, les courbes, mises à jour toutes les quelques secondes. La carte CPU inclut le GPU quand le serveur l’utilise pour les vidéos et peut le mesurer."
           },
           "3": {
             "title": "Les problèmes",
@@ -5893,11 +5893,11 @@
           },
           "1": {
             "title": "Gardez votre travail",
-            "text": "Avant la fin, « Télécharger le projet » : importez-le dans votre Inkadra."
+            "text": "Avant la fin, « Télécharger le projet » : importez-le dans votre Inkadra."
           },
           "2": {
             "title": "Inkadra sur votre serveur",
-            "text": "Installez-le : pas d’heures ni d’espace fixés par nous."
+            "text": "Installez-le : pas d’heures ni d’espace fixés par nous."
           }
         }
       },
@@ -5923,15 +5923,15 @@
         "steps": {
           "0": {
             "title": "Équipe du projet",
-            "text": "L’équipe se trouve sur le tableau Production, à côté du plan de travail. Regroupez les personnes par département. Les contacts restent privés à l’équipe du projet. La même personne sur deux lignes ? Menu ⋯ de la ligne, « Fusionner avec… »."
+            "text": "L’équipe se trouve sur le tableau Production, à côté du plan de travail. Regroupez les personnes par département. Les contacts restent privés à l’équipe du projet. La même personne sur deux lignes ? Menu ⋯ de la ligne, « Fusionner avec… »."
           },
           "1": {
             "title": "Modifier une personne",
-            "text": "Ouvrez une ligne : les champs s’enregistrent seuls. Liez si besoin un compte ou une fiche personnage."
+            "text": "Ouvrez une ligne : les champs s’enregistrent seuls. Liez si besoin un compte ou une fiche personnage."
           },
           "2": {
             "title": "Coller depuis une liste",
-            "text": "Ouvrez « Coller depuis une liste » dans la barre Équipe. Vérifiez l’aperçu avant d’ajouter des personnes. Les en-têtes et les doublons sont ignorés."
+            "text": "Ouvrez « Coller depuis une liste » dans la barre Équipe. Vérifiez l’aperçu avant d’ajouter des personnes. Les en-têtes et les doublons sont ignorés."
           },
           "3": {
             "title": "Convocations et feuille de service",
@@ -5948,11 +5948,11 @@
           },
           "1": {
             "title": "Liés, jamais copiés",
-            "text": "Liez un acteur à un personnage et une caméra à un plan du storyboard : noms, couleurs et focales suivent les fiches. Sans sélection, liez le plan à son décor."
+            "text": "Liez un acteur à un personnage et une caméra à un plan du storyboard : noms, couleurs et focales suivent les fiches. Sans sélection, liez le plan à son décor."
           },
           "2": {
             "title": "Le soleil, pour les extérieurs",
-            "text": "Réglez l’heure et la date ou un jour de tournage : les icônes du soleil tournent avec. Le nord se règle à la main."
+            "text": "Réglez l’heure et la date ou un jour de tournage : les icônes du soleil tournent avec. Le nord se règle à la main."
           },
           "3": {
             "title": "Les setups dans la liste des plans",
@@ -5982,7 +5982,7 @@
         "steps": {
           "0": {
             "title": "Seulement ce que vous utilisez",
-            "text": "Désactivez Storyboard, Production, Moodboard, Validation client ou Plan de plateau : ils quittent vos menus et la barre."
+            "text": "Désactivez Storyboard, Production, Moodboard, Validation client ou Plan de plateau : ils quittent vos menus et la barre."
           },
           "1": {
             "title": "Rien ne se perd",
@@ -5995,11 +5995,11 @@
         "steps": {
           "0": {
             "title": "Trouvez n’importe quel réglage",
-            "text": "Tapez un mot : vous trouvez chaque réglage et, si vous administrez, aussi les personnes, invitations, classifications, signalements et l’espace utilisé."
+            "text": "Tapez un mot : vous trouvez chaque réglage et, si vous administrez, aussi les personnes, invitations, classifications, signalements et l’espace utilisé."
           },
           "1": {
             "title": "Droit à la ligne",
-            "text": "Déplacez-vous avec ↑↓ et ouvrez avec Entrée : la page défile jusqu’à la ligne et la met en évidence. Échap efface le texte."
+            "text": "Déplacez-vous avec ↑↓ et ouvrez avec Entrée : la page défile jusqu’à la ligne et la met en évidence. Échap efface le texte."
           }
         }
       },
@@ -6008,7 +6008,7 @@
         "steps": {
           "0": {
             "title": "Ce qui encode",
-            "text": "La carte graphique ou le processeur : le serveur le détecte au démarrage."
+            "text": "La carte graphique ou le processeur : le serveur le détecte au démarrage."
           },
           "1": {
             "title": "Qualité et place",
@@ -6016,15 +6016,15 @@
           },
           "2": {
             "title": "Seulement pour les nouvelles",
-            "text": "Régénère-les quand tu veux : les anciennes copies restent jusqu’à ce que les nouvelles soient prêtes."
+            "text": "Régénérez-les quand vous voulez : les anciennes copies restent jusqu’à ce que les nouvelles soient prêtes."
           },
           "3": {
             "title": "À la volée",
-            "text": "Seulement avec un GPU : les résolutions non gardées sont préparées pendant qu’on regarde, dans la limite de ce que supporte la carte."
+            "text": "Seulement avec un GPU : les résolutions non gardées sont préparées pendant qu’on regarde, dans la limite de ce que supporte la carte."
           },
           "4": {
             "title": "Avancé",
-            "text": "Pour les experts : refaites le test de la carte, changez les sessions à la volée et les valeurs de chaque résolution. «Rétablir» revient au conseillé."
+            "text": "Pour les experts : refaites le test de la carte, changez les sessions à la volée et les valeurs de chaque résolution. « Rétablir » revient au conseillé."
           }
         }
       },
@@ -6079,17 +6079,17 @@
       "downSince": "{{service}} ne répond plus depuis {{time}}.",
       "effects": {
         "web": "Le site ne répond pas.",
-        "collab": "Les tableaux ne se mettent plus à jour en direct ; le reste fonctionne.",
-        "worker": "Les nouvelles vidéos restent en attente ; le reste fonctionne.",
+        "collab": "Les tableaux ne se mettent plus à jour en direct ; le reste fonctionne.",
+        "worker": "Les nouvelles vidéos restent en attente ; le reste fonctionne.",
         "database": "Inkadra ne peut ni lire ni enregistrer.",
         "queue": "Les tâches en arrière-plan sont à l’arrêt."
       },
       "warn": "Ça fonctionne, mais il y a une chose à régler",
       "checks": "Vérifications {{ok}} sur {{total}} ok",
       "reasons": {
-        "space": "L’espace va manquer : il reste {{free}}. Libérez de la place ou ajoutez un disque avant que les envois ne s’arrêtent.",
+        "space": "L’espace va manquer : il reste {{free}}. Libérez de la place ou ajoutez un disque avant que les envois ne s’arrêtent.",
         "backup": "La sauvegarde de {{when}} a échoué. Vos données sont en sécurité, mais vérifiez avant la prochaine sauvegarde.",
-        "check": "Une vérification de la configuration n’est pas passée : {{check}}."
+        "check": "Une vérification de la configuration n’est pas passée : {{check}}."
       }
     },
     "meters": {
@@ -6104,7 +6104,7 @@
         "bucket": "bucket S3",
         "used": "utilisés",
         "s3Hint": "Le fournisseur de stockage n’indique pas le total, nous ne montrons donc pas ce qui reste.",
-        "growth": "Croissance : environ {{size}} par mois.",
+        "growth": "Croissance : environ {{size}} par mois.",
         "compressed": "Moins d’espace est utilisé, car le disque compresse les fichiers."
       },
       "network": {
@@ -6181,7 +6181,7 @@
       "backup": "Sauvegarde",
       "backupFailed": "Sauvegarde échouée",
       "label": "{{metric}}, {{range}}",
-      "empty": "Pas encore de données : les premières arrivent dans quelques secondes."
+      "empty": "Pas encore de données : les premières arrivent dans quelques secondes."
     },
     "videos": {
       "title": "Vidéos en préparation",
@@ -6212,9 +6212,9 @@
       "retry": "Réessayer",
       "seen": "Marquer comme vu",
       "actionError": "Cela n’a pas marché. Réessayez dans un instant.",
-      "retryError": "Impossible de réessayer : la tâche n’existe plus.",
+      "retryError": "Impossible de réessayer : la tâche n’existe plus.",
       "file": "Fichier {{file}}.",
-      "fileOnBoard": "Fichier {{file}} dans le tableau « {{board}} ».",
+      "fileOnBoard": "Fichier {{file}} dans le tableau « {{board}} ».",
       "kinds": {
         "video_failed": {
           "title": "Une vidéo n’a pas été convertie",
@@ -6258,7 +6258,7 @@
         },
         "board_save_failed": {
           "title": "Un tableau n’a pas été enregistré",
-          "text": "Ses dernières modifications ne sont qu’en mémoire. Vérifiez la base de données ; redémarrer avant son retour les perd."
+          "text": "Ses dernières modifications ne sont qu’en mémoire. Vérifiez la base de données ; redémarrer avant son retour les perd."
         },
         "board_load_failed": {
           "title": "Un tableau ne s’est pas ouvert",
@@ -6274,9 +6274,9 @@
         }
       },
       "technicalIn": "Détails techniques dans Avancé",
-      "technicalInNamed": "Détails techniques dans Avancé : {{title}}",
-      "retryNamed": "Réessayer : {{title}}",
-      "seenNamed": "Marquer comme vu : {{title}}"
+      "technicalInNamed": "Détails techniques dans Avancé : {{title}}",
+      "retryNamed": "Réessayer : {{title}}",
+      "seenNamed": "Marquer comme vu : {{title}}"
     },
     "alerts": {
       "title": "Alertes",
@@ -6294,7 +6294,7 @@
       "cpu": "Processeur",
       "memory": "Mémoire",
       "signal": "Signal",
-      "toolOf": "Programme lancé par {{role}} :",
+      "toolOf": "Programme lancé par {{role}} :",
       "runningFor": "depuis {{time}}",
       "queue": "File des tâches",
       "waiting": "En attente",
@@ -6340,7 +6340,7 @@
       "speed": "{{speed}}× temps réel",
       "transcodesFoot": "Aujourd’hui {{ready}} terminés, {{failed}} échoués · durée moyenne {{average}}",
       "queues": "Files de tâches",
-      "noQueues": "Sans Valkey, les tâches tournent dans le site : il n’y a pas de files.",
+      "noQueues": "Sans Valkey, les tâches tournent dans le site : il n’y a pas de files.",
       "processesTitle": "Processus",
       "people": "Personnes connectées",
       "log": "Journal des erreurs",
@@ -6354,7 +6354,7 @@
       "updated": "mis à jour {{time}}",
       "ofLimit": "{{share}} de la limite",
       "limitLine": "limite",
-      "latencyHint": "95 % des requêtes sont plus rapides que cela",
+      "latencyHint": "95 % des requêtes sont plus rapides que cela",
       "networkOnly": "le conteneur seulement",
       "space": {
         "used": "Utilisé",
@@ -6381,7 +6381,7 @@
         "beforeCompression": "Presque tout est occupé par les fichiers envoyés ({{size}} avant la compression du disque)."
       },
       "backup": {
-        "lastSuccess": "Dernière réussie : {{when}}"
+        "lastSuccess": "Dernière réussie : {{when}}"
       }
     },
     "admin": {
@@ -6402,7 +6402,7 @@
         "large": "Grand"
       },
       "presetText": "{{editors}} éditeurs, {{readers}} lecteurs, {{boards}} tableaux · {{time}}",
-      "sharedProcess": "Mode tout-en-un : les éditeurs de test tournent dans le serveur en service et partagent son temps, les personnes sentent donc la charge plus tôt et les chiffres sont un peu pessimistes. Grand demande un rôle worker séparé.",
+      "sharedProcess": "Mode tout-en-un : les éditeurs de test tournent dans le serveur en service et partagent son temps, les personnes sentent donc la charge plus tôt et les chiffres sont un peu pessimistes. Grand demande un rôle worker séparé.",
       "needsWorker": "demande un rôle worker séparé",
       "warningTitle": "Cela charge cette instance elle-même",
       "warning": "Pendant {{time}}, le serveur travaille à plein pour des éditeurs de test : les personnes qui utilisent tableaux et vidéos à ce moment peuvent les trouver plus lents. Il crée un compte de test et un projet de {{boards}} tableaux, et les supprime à la fin, même après un arrêt ou un redémarrage.",
@@ -6430,8 +6430,8 @@
         "loadtest_running": "Un test de charge est déjà planifié ou en cours.",
         "under_load": "L’instance est déjà occupée : réessayez plus tard.",
         "no_worker": "Les tests de charge demandent un worker (REDIS_URL).",
-        "no_metrics": "Les mesures du serveur manquent : la protection ne pouvait pas voir si les personnes en souffrent.",
-        "shared_process": "Grand demande un rôle worker séparé : en mode tout-en-un, le test ralentirait le serveur qu’il mesure.",
+        "no_metrics": "Les mesures du serveur manquent : la protection ne pouvait pas voir si les personnes en souffrent.",
+        "shared_process": "Grand demande un rôle worker séparé : en mode tout-en-un, le test ralentirait le serveur qu’il mesure.",
         "internal": "un problème est survenu"
       },
       "scheduledFor": "Test de charge {{preset}} planifié pour {{time}}",
@@ -6509,25 +6509,25 @@
     }
   },
   "updates": {
-    "loadError": "Impossible de charger les mises à jour. Réessaie plus tard.",
+    "loadError": "Impossible de charger les mises à jour. Réessayez plus tard.",
     "newTitle": "Nouvelle version",
-    "versionTitle": "Ta version",
+    "versionTitle": "Votre version",
     "checking": "Vérification…",
     "checkNow": "Vérifier maintenant",
     "offTitle": "La vérification des mises à jour est désactivée",
     "failedTitle": "GitHub ne répond pas",
-    "upToDate": "Tu es à jour",
+    "upToDate": "Vous êtes à jour",
     "notChecked": "Pas encore vérifié",
     "edgeTitle": "C’est une build edge",
-    "edgeHelp": "Les builds edge ne sont pas comparées aux versions : les nouveautés sont sur GitHub.",
-    "running": "Tu utilises la {{version}}",
+    "edgeHelp": "Les builds edge ne sont pas comparées aux versions : les nouveautés sont sur GitHub.",
+    "running": "Vous utilisez la {{version}}",
     "checkedAt": "vérifié {{time}}",
-    "offHelp": "Active l’avis ci-dessous pour savoir quand une nouvelle version sort.",
+    "offHelp": "Activez l’avis ci-dessous pour savoir quand une nouvelle version sort.",
     "alerts": "Avis",
     "notify": "Me prévenir quand une nouvelle version sort",
-    "notifyHelp": "Inkadra consulte GitHub toutes les 6 heures et affiche un avis aux administrateurs, avec un e-mail si leurs e-mails de notifications sont activés. Aucune donnée de ton serveur n’est envoyée.",
+    "notifyHelp": "Inkadra consulte GitHub toutes les 6 heures et affiche un avis aux administrateurs, avec un e-mail si leurs e-mails de notifications sont activés. Aucune donnée de votre serveur n’est envoyée.",
     "channel": "Quelles versions",
-    "channelHelp": "Les préversions arrivent plus tôt mais peuvent avoir quelques problèmes. Cela change seulement ce qui t’est signalé.",
+    "channelHelp": "Les préversions arrivent plus tôt mais peuvent avoir quelques problèmes. Cela change seulement ce qui vous est signalé.",
     "channels": {
       "stable": "Stables uniquement (recommandé)",
       "preview": "Aussi les préversions (release candidates)"
@@ -6536,7 +6536,7 @@
     "allOnGitHub": "Toutes sur GitHub ↗",
     "noSummary": "Corrections",
     "inUse": "Utilisée",
-    "available": "Une nouvelle version est disponible : {{version}}",
+    "available": "Une nouvelle version est disponible : {{version}}",
     "released": "sortie le {{date}}",
     "preview": "Préversion",
     "stable": "Stable",
@@ -6544,15 +6544,15 @@
     "beforeUpdating_one": "{{count}} chose à savoir avant la mise à jour",
     "beforeUpdating_other": "{{count}} choses à savoir avant la mise à jour",
     "how": "Comment mettre à jour",
-    "howBackup": "Fais une sauvegarde, depuis <backup>Sauvegardes</backup>.",
-    "howTag": "Sur le serveur, dans le fichier <file>.env</file>, écris la nouvelle version :",
-    "howRestart": "Redémarre Inkadra avec la nouvelle version :",
+    "howBackup": "Faites une sauvegarde, depuis <backup>Sauvegardes</backup>.",
+    "howTag": "Sur le serveur, dans le fichier <file>.env</file>, écrivez la nouvelle version :",
+    "howRestart": "Redémarrez Inkadra avec la nouvelle version :",
     "howRest": "Inkadra fait le reste tout seul au démarrage.",
     "guide": "Guide complet ↗",
-    "navAvailable": "Disponible : {{version}}",
+    "navAvailable": "Disponible : {{version}}",
     "popupTitle": "Inkadra {{version}} est disponible",
     "releasedShort": "sortie le {{date}}",
-    "runningShort": "tu utilises la {{version}}",
+    "runningShort": "vous utilisez la {{version}}",
     "close": "Fermer",
     "toRead_one": "{{count}} chose à lire avant la mise à jour",
     "toRead_other": "{{count}} choses à lire avant la mise à jour",
@@ -6571,15 +6571,15 @@
     "used": "utilisés",
     "ofLimit": "sur {{limit}}",
     "detail": "Originaux {{originals}} · copies et aperçus {{derived}}. Compte ce que vous avez envoyé, dans tous les projets.",
-    "instanceFull": "Le serveur n’a plus d’espace : personne ne peut envoyer d’autres fichiers. Prévenez un administrateur.",
+    "instanceFull": "Le serveur n’a plus d’espace : personne ne peut envoyer d’autres fichiers. Prévenez un administrateur.",
     "fullHelp": "Vous ne pouvez plus envoyer de fichiers. Libérez de l’espace ou demandez à un administrateur.",
     "largest": "Voir les plus gros fichiers",
     "largestTitle": "Vos plus gros fichiers",
     "noFiles": "Aucun fichier envoyé.",
     "file": "Fichier",
-    "hidden_one": "1 fichier dans un projet que vous ne pouvez pas ouvrir : {{size}}.",
-    "hidden_other": "{{count}} fichiers dans des projets que vous ne pouvez pas ouvrir : {{size}}.",
-    "filesHelp": "Les fichiers retirés des boards comptent aussi : ils restent dans le projet, car une version peut les ramener. L’espace revient quand le projet est supprimé.",
+    "hidden_one": "1 fichier dans un projet que vous ne pouvez pas ouvrir : {{size}}.",
+    "hidden_other": "{{count}} fichiers dans des projets que vous ne pouvez pas ouvrir : {{size}}.",
+    "filesHelp": "Les fichiers retirés des tableaux comptent aussi : ils restent dans le projet, car une version peut les ramener. L’espace revient quand le projet est supprimé.",
     "filesSub_one": "Le fichier qui prend le plus de place parmi ceux que vous avez importés.",
     "filesSub_other": "Les {{count}} fichiers qui prennent le plus de place parmi ceux que vous avez importés.",
     "filesSubTheirs_one": "Le fichier qui prend le plus de place parmi ceux que cette personne a importés.",
@@ -6613,19 +6613,19 @@
     "uses": "Utilise {{size}}.",
     "asEveryone": "Comme tout le monde ({{size}})",
     "ownLimit": "Limite propre",
-    "ceiling": "L’hébergeur du serveur a fixé {{size}} par personne : vous pouvez seulement la baisser.",
-    "lowerHelp": "En dessous de ce qui est déjà utilisé, rien n’est supprimé : seuls les envois s’arrêtent.",
+    "ceiling": "L’hébergeur du serveur a fixé {{size}} par personne : vous pouvez seulement la baisser.",
+    "lowerHelp": "En dessous de ce qui est déjà utilisé, rien n’est supprimé : seuls les envois s’arrêtent.",
     "save": "Enregistrer",
-    "nearToast": "Vous avez utilisé {{percent}} % de votre espace : il reste {{size}}.",
+    "nearToast": "Vous avez utilisé {{percent}} % de votre espace : il reste {{size}}.",
     "see": "Voir",
     "instanceToast": "Le serveur n’a plus d’espace. Prévenez un administrateur.",
-    "fileToast": "« {{name}} » n’a pas été envoyé : il dépasse l’espace qui vous reste.",
+    "fileToast": "« {{name}} » n’a pas été envoyé : il dépasse l’espace qui vous reste.",
     "details": "Détails",
     "blockedTitle": "Pas assez d’espace",
     "leftOf": "Il vous reste {{size}} sur {{limit}}.",
     "instanceLeft": "Il reste {{size}} au serveur.",
-    "uploadedOf_one": "Nous avons envoyé {{done}} fichiers sur {{total}} ; celui-ci ne tient pas :",
-    "uploadedOf_other": "Nous avons envoyé {{done}} fichiers sur {{total}} ; ces {{count}} ne tiennent pas :",
+    "uploadedOf_one": "Nous avons envoyé {{done}} fichiers sur {{total}} ; celui-ci ne tient pas :",
+    "uploadedOf_other": "Nous avons envoyé {{done}} fichiers sur {{total}} ; ces {{count}} ne tiennent pas :",
     "blockedHelp": "Libérez de l’espace ou demandez à un administrateur d’augmenter votre limite. Les notes, commentaires et modifications continuent de fonctionner.",
     "instanceHelp": "Prévenez un administrateur. Les notes, commentaires et modifications continuent de fonctionner.",
     "ask": "Demander plus d’espace",
@@ -6637,7 +6637,7 @@
     "usedTitle": "Espace utilisé",
     "ofLimit": "sur une limite de {{limit}}",
     "disk": "disque {{size}}",
-    "usedDetail": "Originaux {{originals}} · copies et aperçus {{derived}}. La limite ne peut pas dépasser l’espace libre du disque : s’il se remplit, État du serveur le signale.",
+    "usedDetail": "Originaux {{originals}} · copies et aperçus {{derived}}. La limite ne peut pas dépasser l’espace libre du disque : s’il se remplit, État du serveur le signale.",
     "lastsMonths_one": "Suffit pour environ 1 mois",
     "lastsMonths_other": "Suffit pour environ {{count}} mois",
     "lastsWeeks_one": "Suffit pour environ 1 semaine",
@@ -6653,15 +6653,15 @@
     "limit": "Limite",
     "unit": "Unité de {{label}}",
     "largestFile": "Plus gros fichier",
-    "fromServer": "Depuis le serveur :",
+    "fromServer": "Depuis le serveur :",
     "warn": "Avertir à",
-    "warnHelp": "Les personnes voient un avertissement, les administrateurs le reçoivent dans leur Inbox.",
+    "warnHelp": "Les personnes voient un avertissement, les administrateurs le reçoivent dans leur réception.",
     "openMembers": "Ouvrir dans Membres"
   },
   "demo": {
     "brand": "Inkadra · Démo",
     "title": "Essayez Inkadra sans compte",
-    "lead": "Vous recevez deux projets d’exemple : « Last Train », un court métrage avec moodboard, storyboard, liste de plans et plan de tournage, et « Low Tide », une séance photo avec la sélection du client. Modifiez, importez et dessinez ce que vous voulez.",
+    "lead": "Vous recevez deux projets d’exemple : « Last Train », un court métrage avec moodboard, storyboard, liste de plans et plan de tournage, et « Low Tide », une séance photo avec la sélection du client. Modifiez, importez et dessinez ce que vous voulez.",
     "hours_one": "1 heure",
     "hours_other": "{{count}} heures",
     "minutes_one": "1 minute",
@@ -6681,7 +6681,7 @@
     "installServer": "Installer sur votre serveur",
     "accept": "En continuant, vous acceptez les <rules>règles de la démo</rules>. Aucun cookie de suivi.",
     "endedTitle": "Votre heure de démo est terminée",
-    "endedText": "Nous avons supprimé la démo et les fichiers que vous aviez importés. Vous pouvez en ouvrir une nouvelle, ou installer Inkadra sur votre serveur : vos projets restent à vous.",
+    "endedText": "Nous avons supprimé la démo et les fichiers que vous aviez importés. Vous pouvez en ouvrir une nouvelle, ou installer Inkadra sur votre serveur : vos projets restent à vous.",
     "again": "Nouvelle démo",
     "cloud": "Le Cloud géré arrive avec la 1.0",
     "label": "Démo",
@@ -6693,20 +6693,20 @@
     },
     "goesIn": "Supprimée dans {{time}}",
     "space": "{{used}} / {{limit}}",
-    "pillLabel": "Démo : encore {{time}}, {{space}} utilisés",
+    "pillLabel": "Démo : encore {{time}}, {{space}} utilisés",
     "download": "Télécharger le projet",
     "downloadShort": "Télécharger",
     "install": "Installer Inkadra",
     "installShort": "Installer",
-    "more": "Plus : recommencer, règles de la démo",
+    "more": "Plus : recommencer, règles de la démo",
     "restart": "Recommencer",
-    "restartTitle": "Recommencer ?",
-    "restartText": "Votre démo est supprimée maintenant, avec le projet et tous ses fichiers : personne ne peut la récupérer. Vous pourrez ensuite en ouvrir une nouvelle. Pour garder votre travail, téléchargez d’abord le projet.",
+    "restartTitle": "Recommencer ?",
+    "restartText": "Votre démo est supprimée maintenant, avec le projet et tous ses fichiers : personne ne peut la récupérer. Vous pourrez ensuite en ouvrir une nouvelle. Pour garder votre travail, téléchargez d’abord le projet.",
     "restartConfirm": "Supprimer et recommencer",
     "cancel": "Annuler",
     "rules": "Règles de la démo",
     "warnTitle": "Plus que 5 minutes",
-    "warnText": "À {{time}} la démo est supprimée avec tous ses fichiers. Pour garder votre travail, téléchargez le projet : vous pourrez l’importer dans votre Inkadra.",
+    "warnText": "À {{time}} la démo est supprimée avec tous ses fichiers. Pour garder votre travail, téléchargez le projet : vous pourrez l’importer dans votre Inkadra.",
     "continue": "Continuer",
     "downloadArchive": "Télécharger le projet (.inkadra)",
     "limitToast": "Dans la démo, les fichiers vont jusqu’à {{file}} et {{total}} au total."
@@ -6723,13 +6723,13 @@
     "error": "Impossible de charger ou d’enregistrer l’équipe.",
     "retry": "Réessayer",
     "empty": "Personne dans l’équipe pour l’instant.",
-    "emptyHint": "Utilisez « Coller depuis une liste » pour importer des personnes depuis une ancienne feuille de service.",
+    "emptyHint": "Utilisez « Coller depuis une liste » pour importer des personnes depuis une ancienne feuille de service.",
     "noResults": "Aucune personne trouvée.",
     "noDepartment": "Sans département",
     "name": "Nom",
     "role": "Poste",
     "phone": "Téléphone ou agent",
-    "pickup": "Prise en charge habituelle",
+    "pickup": "Navette habituelle",
     "department": "Département",
     "email": "E-mail",
     "notes": "Notes",
@@ -6749,9 +6749,9 @@
     "saved": "Enregistré",
     "unsaved": "Non enregistré",
     "remove": "Retirer de l’équipe",
-    "removeConfirm": "Retirer {{name}} de l’équipe ?",
+    "removeConfirm": "Retirer {{name}} de l’équipe ?",
     "cancel": "Annuler",
-    "pasteHint": "Une personne par ligne : nom, poste, téléphone. Séparez les colonnes par des tabulations, des points-virgules, des · ou au moins deux espaces. Une ligne en MAJUSCULES devient le département.",
+    "pasteHint": "Une personne par ligne : nom, poste, téléphone. Séparez les colonnes par des tabulations, des points-virgules, des · ou au moins deux espaces. Une ligne en MAJUSCULES devient le département.",
     "pastedText": "Texte collé",
     "preview_one": "{{count}} nouvelle personne",
     "preview_other": "{{count}} nouvelles personnes",
@@ -6771,41 +6771,41 @@
     "notesPlaceholder": "Visibles seulement par l’équipe du projet",
     "characterLabel": "Fiche personnage",
     "optionalTag": "facultative",
-    "characterHint": "Aucune. Le nom dans le déroulé suffit pour la convocation ; liez une fiche seulement si elle a costume et références.",
-    "characterNone": "Pas encore de fiche personnage dans le projet. Pas besoin : un rôle identique au nom dans le déroulé suffit pour la convocation.",
+    "characterHint": "Aucune. Le nom dans le déroulé suffit pour la convocation ; liez une fiche seulement si elle a costume et références.",
+    "characterNone": "Pas encore de fiche personnage dans le projet. Pas besoin : un rôle identique au nom dans le déroulé suffit pour la convocation.",
     "link": "Lier",
     "unlinkShort": "Délier",
     "accountHint": "Liez un compte pour envoyer la convocation sur son téléphone et demander une confirmation.",
     "pasteWhat": "Ce qui sera ajouté",
     "duplicates_one": "{{count}} déjà dans l’équipe",
     "duplicates_other": "{{count}} déjà dans l’équipe",
-    "columnsRead": "Colonnes lues : Nom · Poste · Téléphone",
+    "columnsRead": "Colonnes lues : Nom · Poste · Téléphone",
     "pasteFoot": "Une personne déjà dans l’équipe sous le même nom n’est pas ajoutée deux fois.",
     "tooMany": "500 personnes au maximum à la fois.",
     "noName": "Ligne sans nom",
     "merge": "Fusionner avec…",
     "mergeTitle": "Fusionner {{name}}",
     "mergeWith": "Ligne à fusionner",
-    "mergeHint": "La ligne de {{name}} ({{kept}}) reste : ses informations priment, les champs vides sont complétés par l’autre ligne, qui lui transmet ses convocations et est supprimée.",
+    "mergeHint": "La ligne de {{name}} ({{kept}}) reste : ses informations priment, les champs vides sont complétés par l’autre ligne, qui lui transmet ses convocations et est supprimée.",
     "mergeAction": "Fusionner"
   },
   "dayCalls": {
     "title": "Convocations",
     "times": "Horaires du jour, calculés à partir du plan",
-    "hint": "Vide = convocation du jour. N'indiquez que les personnes qui arrivent à une autre heure ou ont besoin d'une navette.",
-    "unavailable": "Les convocations utilisent l'équipe du projet, visible seulement par ses membres.",
-    "emptyTitle": "Personne dans l'équipe",
-    "emptyBody": "Ajoutez les personnes dans Équipe : ici, vous choisissez qui est convoqué chaque jour.",
-    "openTroupe": "Ouvrir l'Équipe",
-    "calledToday": "{{name}} convoqué aujourd'hui",
+    "hint": "Vide = convocation du jour. N’indiquez que les personnes qui arrivent à une autre heure ou ont besoin d’une navette.",
+    "unavailable": "Les convocations utilisent l’équipe du projet, visible seulement par ses membres.",
+    "emptyTitle": "Personne dans l’équipe",
+    "emptyBody": "Ajoutez les personnes dans Équipe : ici, vous choisissez qui est convoqué chaque jour.",
+    "openTroupe": "Ouvrir l’Équipe",
+    "calledToday": "{{name}} convoqué aujourd’hui",
     "callOf": "Convocation de {{name}}",
     "pickupOf": "Navette de {{name}}",
     "pickup": "Navette",
     "inScene": "En scène à {{time}} ({{block}}), selon le plan",
     "inSceneAt": "En scène à {{time}}, selon le plan",
     "castOnlyScheduled": "seulement les personnes du plan",
-    "notCalled_one": "Non convoqué aujourd'hui · {{names}}",
-    "notCalled_other": "Non convoqués aujourd'hui · {{names}}"
+    "notCalled_one": "Non convoqué aujourd’hui · {{names}}",
+    "notCalled_other": "Non convoqués aujourd’hui · {{names}}"
   },
   "modules": {
     "names": {
@@ -6820,7 +6820,7 @@
       "board": "Notes, images, liens, fichiers, tâches, colonnes et commentaires.",
       "storyboard": "Tableaux storyboard, liste des plans, l’outil Plan, import du scénario en scènes.",
       "production": "Plan de tournage, équipe, feuilles de service, fiches par scène et À apporter de chaque scène.",
-      "moodboard": "Tableaux moodboard et la vue Moodboard d’un tableau : groupes, notes, palettes.",
+      "moodboard": "Tableaux moodboard et la vue Moodboard d’un tableau : groupes, notes, palettes.",
       "review": "Liens pour les clients sans compte, validations et demandes de modification.",
       "plan": "Plans avec lumières, caméras, acteurs et murs, liés aux scènes et aux plans."
     },
@@ -6833,25 +6833,25 @@
     },
     "always": "Toujours activé",
     "turnOn": "Activer",
-    "turnedOn": "{{name}} est activé : vous le trouvez dans Canevas et dans la barre.",
+    "turnedOn": "{{name}} est activé : vous le trouvez dans Canevas et dans la barre.",
     "failed": "Le module n’a pas changé. Réessayez.",
     "off": "Module désactivé.",
-    "kindOff": "{{name}} : module désactivé, activer",
+    "kindOff": "{{name}} : module désactivé, activer",
     "notice": {
       "storyboard": "{{scenes}} sur le tableau. Avec Storyboard, elles deviennent des plans."
     },
-    "offLine": "Module {{name}} désactivé : vous pouvez lire ce tableau."
+    "offLine": "Module {{name}} désactivé : vous pouvez lire ce tableau."
   },
   "production": {
-    "storyboardLink_one": "Jours de tournage : {{count}} · Ouvrir la Production",
-    "storyboardLink_other": "Jours de tournage : {{count}} · Ouvrir la Production",
+    "storyboardLink_one": "Jours de tournage : {{count}} · Ouvrir la Production",
+    "storyboardLink_other": "Jours de tournage : {{count}} · Ouvrir la Production",
     "storyboardMissing": "Le plan de travail et l’équipe sont désormais dans la Production · L’ajouter",
     "storyboardWaiting": "Le plan de travail et l’équipe sont désormais dans la Production · Demandez à une personne qui peut modifier le projet de l’ajouter"
   },
   "videoSettings": {
     "encoder": {
       "off": "Copies vidéo désactivées",
-      "offText": "Le serveur ne prépare pas de copies : VIDEO_PROXIES est désactivé ou le worker n’a pas ffmpeg.",
+      "offText": "Le serveur ne prépare pas de copies : VIDEO_PROXIES est désactivé ou le worker n’a pas ffmpeg.",
       "cpu": "Processeur seul",
       "cpuText": "Aucune carte graphique utilisable · une copie à la fois · plus lent",
       "gpuText_one": "La carte graphique prépare les copies · une à la fois",
@@ -6882,18 +6882,18 @@
       "1080": "1080p",
       "2160": "2160p (4K)",
       "480Help": "Pour les connexions lentes et les données mobiles.",
-      "720Help": "HD : la qualité des cartes sur le board.",
+      "720Help": "HD : la qualité des cartes sur le tableau.",
       "1080Help": "Full HD, en plein écran.",
       "2160Help": "Seulement pour les originaux en 4K. Prend beaucoup de place.",
-      "note": "Une vidéo n’est jamais agrandie : un original en 720p ne reçoit que 480p et 720p."
+      "note": "Une vidéo n’est jamais agrandie : un original en 720p ne reçoit que 480p et 720p."
     },
     "totals": {
       "minute": "Une minute de vidéo",
       "hour": "Une heure de vidéo",
-      "library_one": "Ta vidéo ({{duration}})",
-      "library_other": "Tes {{count}} vidéos ({{duration}})",
+      "library_one": "Votre vidéo ({{duration}})",
+      "library_other": "Vos {{count}} vidéos ({{duration}})",
       "duration": "{{hours}} h {{minutes}} min",
-      "liveNote": "Les résolutions réglées sur « À la volée seulement » sont comptées aussi, pour les vidéos que ce serveur ne sait pas encoder à la volée (ProRes, HDR, pivotées, entrelacées) : il les garde sur disque."
+      "liveNote": "Les résolutions réglées sur « À la volée seulement » sont comptées aussi, pour les vidéos que ce serveur ne sait pas encoder à la volée (ProRes, HDR, pivotées, entrelacées) : il les garde sur disque."
     },
     "examples": {
       "title": "Une minute d’original, et ses copies",
@@ -6915,8 +6915,8 @@
       "detected": "Détecté au démarrage",
       "encoder": "Encodeur",
       "format": "Format",
-      "h264": "H.264 : se lit sur tous les navigateurs et téléphones.",
-      "av1": "Cette carte sait aussi encoder l’AV1 ; Inkadra ne l’utilise pas encore."
+      "h264": "H.264 : se lit sur tous les navigateurs et téléphones.",
+      "av1": "Cette carte sait aussi encoder l’AV1 ; Inkadra ne l’utilise pas encore."
     },
     "existing": {
       "title": "Vidéos existantes",
@@ -6924,14 +6924,14 @@
       "outdated_other": "{{count}} vidéos ont des copies faites avec les réglages précédents",
       "upToDate": "Les copies sont déjà faites avec ces réglages",
       "help": "Les copies actuelles restent jusqu’à ce que les nouvelles soient prêtes.",
-      "noRoom": "Il faut environ {{size}} de plus : libère de la place avant de régénérer.",
+      "noRoom": "Il faut environ {{size}} de plus : libérez de la place avant de régénérer.",
       "regenerate": "Régénérer les copies…",
       "progress": "{{done}} sur {{total}} vidéos refaites",
       "running_one": "une en cours",
       "running_other": "{{count}} en cours",
       "stop": "Arrêter",
       "meter": "Vidéos refaites",
-      "first": "Les nouvelles vidéos passent devant. Tu peux fermer cette page.",
+      "first": "Les nouvelles vidéos passent devant. Vous pouvez fermer cette page.",
       "space": "Place des copies",
       "toAbout": "Go → environ",
       "time": "Temps estimé",
@@ -6939,7 +6939,7 @@
       "hours_other": "heures",
       "free": "Place libre",
       "dialogTitle": "Régénérer les copies des vidéos",
-      "dialogBody": "Le serveur refait les copies avec les réglages de cette page, une vidéo à la fois, après les nouveaux envois. Les copies actuelles restent jusqu’à ce que les nouvelles soient prêtes ; les résolutions qui ne sont plus choisies sont retirées.",
+      "dialogBody": "Le serveur refait les copies avec les réglages de cette page, une vidéo à la fois, après les nouveaux envois. Les copies actuelles restent jusqu’à ce que les nouvelles soient prêtes ; les résolutions qui ne sont plus choisies sont retirées.",
       "scope": "Quelles vidéos",
       "scopes": {
         "outdated": "Toutes celles aux réglages différents",
@@ -6951,7 +6951,7 @@
       "title": "Lecture à la volée",
       "body": "Pendant la préparation des copies, ou pour les résolutions que vous ne gardez pas sur disque, la carte graphique convertit la vidéo pendant que vous la regardez.",
       "enabled": "Convertir à la volée",
-      "modeLabel": "{{rung}} : où elle est gardée",
+      "modeLabel": "{{rung}} : où elle est gardée",
       "modes": {
         "stored": "Sur disque",
         "live": "À la volée seulement"
@@ -6960,44 +6960,44 @@
       "unavailable": "Indisponible",
       "off": "Désactivée",
       "reasons": {
-        "no-gpu": "Nécessite l’encodage matériel de la carte graphique : sur ce serveur, seul le processeur fait les copies.",
+        "no-gpu": "Nécessite l’encodage matériel de la carte graphique : sur ce serveur, seul le processeur fait les copies.",
         "too-slow": "GPU trop lent pour le temps réel (mesuré au démarrage).",
-        "failed": "La mesure au démarrage a échoué : détails dans le journal du serveur.",
+        "failed": "La mesure au démarrage a échoué : détails dans le journal du serveur.",
         "set-off": "Désactivée par le serveur (VIDEO_LIVE_MAX_SESSIONS=0)."
       },
       "on": "Active",
       "upTo_one": "Jusqu’à {{count}} personne à la fois. Au-delà, on reçoit les copies prêtes ou l’original.",
       "upTo_other": "Jusqu’à {{count}} personnes à la fois. Au-delà, on reçoit les copies prêtes ou l’original.",
-      "zero": "Sessions réglées sur 0 dans les paramètres avancés : la lecture à la volée est désactivée.",
-      "rungsHelp": "Pour chaque résolution : la garder sur disque, ou la faire seulement quand quelqu’un regarde.",
+      "zero": "Sessions réglées sur 0 dans les paramètres avancés : la lecture à la volée est désactivée.",
+      "rungsHelp": "Pour chaque résolution : la garder sur disque, ou la faire seulement quand quelqu’un regarde.",
       "onDisk": "environ {{size}} Mo/min sur disque",
       "onlyLive": "à la volée seulement",
-      "never": "Jamais à la volée, ils attendent les copies prêtes : ProRes, DNx, vidéo 4:2:2, entrelacée, HDR, et les vidéos verticales que la carte ne suit pas en temps réel."
+      "never": "Jamais à la volée, ils attendent les copies prêtes : ProRes, DNx, vidéo 4:2:2, entrelacée, HDR, et les vidéos verticales que la carte ne suit pas en temps réel."
     },
     "advanced": {
       "title": "Avancé",
       "customised": "Personnalisés",
-      "intro": "Pour qui connaît l’encodage vidéo. De mauvaises valeurs peuvent donner des copies granuleuses, énormes ou des vidéos saccadées : «Rétablir» remet chaque champ à la valeur conseillée.",
+      "intro": "Pour qui connaît l’encodage vidéo. De mauvaises valeurs peuvent donner des copies granuleuses, énormes ou des vidéos saccadées : « Rétablir » remet chaque champ à la valeur conseillée.",
       "benchmark": "Performances de la carte",
       "benchmarkRunning": "Test de performances en cours",
       "benchmarkRunningHelp": "Environ 10 secondes. Les copies en préparation ralentissent un instant.",
       "benchmarkBusy": "Test en cours…",
       "rerun": "Refaire le test de performances",
-      "measuredAtStart_one": "Mesuré au démarrage : {{count}} session à la volée",
-      "measuredAtStart_other": "Mesuré au démarrage : {{count}} sessions à la volée",
-      "measuredNow_one": "Mesuré à l’instant : {{count}} session à la volée",
-      "measuredNow_other": "Mesuré à l’instant : {{count}} sessions à la volée",
+      "measuredAtStart_one": "Mesuré au démarrage : {{count}} session à la volée",
+      "measuredAtStart_other": "Mesuré au démarrage : {{count}} sessions à la volée",
+      "measuredNow_one": "Mesuré à l’instant : {{count}} session à la volée",
+      "measuredNow_other": "Mesuré à l’instant : {{count}} sessions à la volée",
       "speedAt": "{{speed}}× le temps réel sur un 1080p · {{time}}",
       "neverMeasured": "Pas encore mesuré",
-      "noGpu": "Pas de test : la lecture à la volée exige la carte graphique",
+      "noGpu": "Pas de test : la lecture à la volée exige la carte graphique",
       "noGpuHelp": "Les copies sont faites par le processeur (libx264).",
       "sessions": "Sessions à la volée",
       "sessionsLabel": "Personnes pouvant regarder à la volée en même temps",
-      "sessionsHelp": "Valeur mesurée : {{measured}}. De 0 (désactivé) à {{max}}.",
-      "overMeasured": "Plus que la valeur mesurée : avec beaucoup de monde, les vidéos peuvent saccader et la carte ralentit les copies en préparation.",
+      "sessionsHelp": "Valeur mesurée : {{measured}}. De 0 (désactivé) à {{max}}.",
+      "overMeasured": "Plus que la valeur mesurée : avec beaucoup de monde, les vidéos peuvent saccader et la carte ralentit les copies en préparation.",
       "rates": "Débit et qualité par résolution",
-      "ratesHelp": "Objectif : la moyenne. Pointe : le maximum dans les scènes difficiles.",
-      "qualityHelp": "Qualité : {{name}}, plus bas est meilleur.",
+      "ratesHelp": "Objectif : la moyenne. Pointe : le maximum dans les scènes difficiles.",
+      "qualityHelp": "Qualité : {{name}}, plus bas est meilleur.",
       "qualityNames": {
         "crf": "CRF de libx264",
         "cq": "CQ de NVENC",
