@@ -5276,6 +5276,17 @@
       "guestDismissed": "D’accord. La visite reste sous le bouton ? en haut.",
       "guestDone": "C’est tout. Bonne relecture !"
     },
+    "start": {
+      "noProject": "Cette visite commence sur un tableau : ouvrez ou créez d’abord un projet.",
+      "newProject": "Nouveau projet",
+      "create": "Créer",
+      "unavailable": "{{name}} : cet écran ne s’est pas ouvert. Réessayez dans un instant.",
+      "missing": {
+        "storyboard": "Ce projet n’a pas encore de storyboard : la visite commence là.",
+        "moodboard": "Ce projet n’a pas encore de moodboard : la visite commence là.",
+        "production": "Ce projet n’a pas encore de Production : la visite commence là."
+      }
+    },
     "settings": {
       "welcomeTitle": "Visite de bienvenue",
       "welcomeSub": "Ce qu’est Inkadra et où trouver les choses · 7 étapes · 1 min",
@@ -5440,7 +5451,8 @@
             "title": "Limites de taille du tableau",
             "text": "Si ce tableau atteint sa limite de taille, les ajouts sont refusés et le tableau confirmé est rechargé. Supprimez du contenu pour libérer de la place ; si cela ne suffit pas, demandez à l’administrateur de relever la limite."
           }
-        }
+        },
+        "where": "La visite commence sur le Canevas d’un tableau que vous pouvez modifier."
       },
       "moodboard": {
         "name": "Moodboard",
@@ -5457,7 +5469,8 @@
             "title": "La palette",
             "text": "Les couleurs de vos références, prêtes à copier."
           }
-        }
+        },
+        "where": "Ouvrez un moodboard, ou activez-le dans « Vues de ce tableau » du menu ⋯, puis réessayez."
       },
       "video": {
         "name": "Vidéos dans les cartes",
@@ -5478,7 +5491,8 @@
             "title": "Qualité de la vidéo",
             "text": "Dans la carte et dans la visionneuse, « Qualité » choisit la résolution ; Auto suit la connexion."
           }
-        }
+        },
+        "where": "Placez une vidéo sur ce tableau et relancez la visite d’ici."
       },
       "storyboard": {
         "name": "Storyboard",
@@ -5503,7 +5517,8 @@
             "title": "Ce qu’il faut à une scène",
             "text": "Costumes, accessoires et matériel de la scène, en listes par type. Les jours qui tournent la scène les rassemblent dans À apporter."
           }
-        }
+        },
+        "where": "La visite commence sur un storyboard avec au moins une scène : ajoutez-en une et réessayez."
       },
       "draw": {
         "name": "Dessiner sur l’image",
@@ -5520,7 +5535,8 @@
             "title": "Se déplacer",
             "text": "Espace et glisser, la molette ou deux doigts."
           }
-        }
+        },
+        "where": "Double-cliquez sur un plan du storyboard pour dessiner dessus, puis relancez la visite."
       },
       "shotlist": {
         "name": "Liste des plans",
@@ -5537,7 +5553,8 @@
             "title": "Exporter",
             "text": "CSV ou PDF, pour l’équipe."
           }
-        }
+        },
+        "where": "Activez la Liste de plans dans « Vues de ce tableau » du menu ⋯ du storyboard, puis réessayez."
       },
       "schedule": {
         "name": "Plan de tournage",
@@ -5570,7 +5587,8 @@
             "title": "Feuille de service",
             "text": "Horaires avec lever et coucher du soleil, décors, équipe avec téléphones, plan avec notes et À apporter. Choisissez les sections et imprimez pour l’équipe. Le lever et le coucher du soleil suivent le fuseau du projet : changez-le dans Projets, menu ⋯ de la carte, « Type et fuseau horaire ». « Automatique » utilise le fuseau de l’appareil."
           }
-        }
+        },
+        "where": "La visite commence sur le Plan de travail de la Production : ouvrez-le et réessayez."
       },
       "setplan": {
         "name": "Plan de plateau",
@@ -5603,7 +5621,8 @@
             "title": "Se déplacer dans le plan",
             "text": "Espace et glisser, la molette ou deux doigts déplacent le plan ; Ctrl et la molette ou un pincement zooment. Sans sélection, les flèches le déplacent, 0 l’ajuste, à 100 %, + et − zooment."
           }
-        }
+        },
+        "where": "Ouvrez un plan de plateau (double-clic sur sa carte) et relancez la visite de là."
       },
       "characters": {
         "name": "Fiches personnage",
@@ -5620,7 +5639,8 @@
             "title": "Pour l’équipe seulement",
             "text": "Contacts et notes n’arrivent jamais aux invités."
           }
-        }
+        },
+        "where": "Ouvrez la fiche d’un personnage sur le tableau et relancez la visite de là."
       },
       "review": {
         "name": "Relecture client",
@@ -5637,7 +5657,8 @@
             "title": "Approuver ou demander des modifications",
             "text": "La décision arrive aussitôt à l’équipe."
           }
-        }
+        },
+        "where": "Activez Révision dans « Vues de ce tableau » du menu ⋯ d’un tableau, puis réessayez."
       },
       "comments": {
         "name": "Commentaires",
@@ -5654,7 +5675,8 @@
             "title": "Qui le lit",
             "text": "L’équipe, ou aussi les invités : vous choisissez à chaque fois."
           }
-        }
+        },
+        "where": "Ouvrez Commentaires en haut à droite du tableau et relancez la visite de là."
       },
       "sharing": {
         "name": "Partage et rôles",
@@ -5679,7 +5701,8 @@
             "title": "Liens pour invités",
             "text": "Pour les clients : choisissez ce qu’ils peuvent faire et lisez le résumé."
           }
-        }
+        },
+        "where": "Ouvrez Partager en haut à droite du tableau et relancez la visite de là."
       },
       "versions": {
         "name": "Versions",
@@ -5704,7 +5727,8 @@
             "title": "Depuis un fichier téléchargé",
             "text": "Vous avez téléchargé les modifications ? Dans le menu du tableau, Restaurer des modifications depuis un fichier… les ramène dans le même tableau."
           }
-        }
+        },
+        "where": "Ouvrez les versions (l’horloge en haut à droite du tableau) et relancez la visite de là."
       },
       "present": {
         "name": "Présentation",
@@ -5721,7 +5745,8 @@
             "title": "Avancer et reculer",
             "text": "Avec les flèches ou d’un geste."
           }
-        }
+        },
+        "where": "Appuyez sur Présenter dans le storyboard et relancez la visite de là."
       },
       "export": {
         "name": "Exporter et importer",
@@ -5746,7 +5771,8 @@
             "title": "Tout le projet",
             "text": "Exportez-le en zip et importez-le sur un autre serveur."
           }
-        }
+        },
+        "where": "Ouvrez Exporter… en haut à droite du tableau et relancez la visite de là."
       },
       "clipper": {
         "name": "Clipper pour le navigateur",
@@ -5936,7 +5962,8 @@
             "title": "Convocations et feuille de service",
             "text": "Dans le Plan de tournage, onglet Convocations, choisissez qui est convoqué chaque jour. La feuille de service imprime l’équipe, les téléphones et le contact sur le plateau, jamais pour les invités ni les clients."
           }
-        }
+        },
+        "where": "La visite commence sur l’Équipe de la Production : ouvrez-la et réessayez."
       },
       "setplanLinks": {
         "name": "Liens du plan",
@@ -5957,7 +5984,8 @@
             "title": "Les setups dans la liste des plans",
             "text": "La liste des plans et le plan de travail montrent le setup de chaque plan, et la liste peut les regrouper par setup."
           }
-        }
+        },
+        "where": "Ouvrez le plan d’une scène du storyboard et relancez la visite de là."
       },
       "setplanOutputs": {
         "name": "Sorties du plan",
@@ -5974,7 +6002,8 @@
             "title": "Qui ne peut pas modifier",
             "text": "Invités et lecteurs ouvrent le plan dans une vue avec déplacement et zoom, les setups, la légende et le PDF."
           }
-        }
+        },
+        "where": "Ouvrez un plan de plateau (double-clic sur sa carte) et relancez la visite de là."
       },
       "modules": {
         "name": "Modules",

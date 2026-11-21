@@ -134,11 +134,18 @@ export function TourPill({
   );
 }
 
-export type ToastMessage = { id: number; text: string; ok?: boolean; onOpen?: () => void };
+export type ToastMessage = {
+  id: number;
+  text: string;
+  ok?: boolean;
+  onOpen?: () => void;
+  /** The label of the button that calls `onOpen`; Open by default. */
+  action?: string;
+};
 
 const TOAST_MS = 6000;
 
-/** Says where a skipped tour is now; "Open" goes there. */
+/** Says where a skipped tour is now, or what a tour needs; its button goes there. */
 export function TourToast({ toast, onClose }: { toast: ToastMessage; onClose: () => void }) {
   const { t } = useTranslation();
   const [held, setHeld] = useState(false);
@@ -176,7 +183,7 @@ export function TourToast({ toast, onClose }: { toast: ToastMessage; onClose: ()
               onClose();
             }}
           >
-            {t('tutorial.toast.open')}
+            {toast.action ?? t('tutorial.toast.open')}
           </button>
         )}
       </div>

@@ -5276,6 +5276,17 @@
       "guestDismissed": "Vale. El recorrido queda en el botón ? de arriba.",
       "guestDone": "Eso es todo. ¡Buena revisión!"
     },
+    "start": {
+      "noProject": "Este recorrido empieza en un tablero: abre o crea antes un proyecto.",
+      "newProject": "Nuevo proyecto",
+      "create": "Crear",
+      "unavailable": "{{name}}: esta pantalla no se abrió. Inténtalo de nuevo en un momento.",
+      "missing": {
+        "storyboard": "Este proyecto aún no tiene storyboard: el recorrido empieza ahí.",
+        "moodboard": "Este proyecto aún no tiene moodboard: el recorrido empieza ahí.",
+        "production": "Este proyecto aún no tiene Producción: el recorrido empieza ahí."
+      }
+    },
     "settings": {
       "welcomeTitle": "Recorrido de bienvenida",
       "welcomeSub": "Qué es Inkadra y dónde están las cosas · 7 pasos · 1 min",
@@ -5440,7 +5451,8 @@
             "title": "Límites de tamaño del tablero",
             "text": "Si este tablero alcanza su límite de tamaño, las adiciones se rechazan y el tablero confirmado se recarga. Elimina contenido para liberar espacio; si aun así no cabe, pide a tu administrador que aumente el límite."
           }
-        }
+        },
+        "where": "El recorrido empieza en el Lienzo de un tablero que puedas editar."
       },
       "moodboard": {
         "name": "Moodboard",
@@ -5457,7 +5469,8 @@
             "title": "La paleta",
             "text": "Los colores de tus referencias, listos para copiar."
           }
-        }
+        },
+        "where": "Abre un moodboard, o actívalo en «Vistas de este tablero» del menú ⋯, y vuelve a intentarlo."
       },
       "video": {
         "name": "Vídeos en las tarjetas",
@@ -5478,7 +5491,8 @@
             "title": "Calidad del vídeo",
             "text": "En la tarjeta y en el visor, «Calidad» elige la resolución; Auto sigue la conexión."
           }
-        }
+        },
+        "where": "Pon un vídeo en este tablero y vuelve a iniciar el recorrido desde aquí."
       },
       "storyboard": {
         "name": "Storyboard",
@@ -5503,7 +5517,8 @@
             "title": "Lo que necesita una escena",
             "text": "Vestuario, atrezo y equipamiento de la escena, en listas por tipo. Los días que ruedan la escena los reúnen en Para llevar."
           }
-        }
+        },
+        "where": "El recorrido empieza en un storyboard con al menos una escena: añade una y vuelve a intentarlo."
       },
       "draw": {
         "name": "Dibujar en el fotograma",
@@ -5520,7 +5535,8 @@
             "title": "Muévete",
             "text": "Espacio y arrastrar, la rueda o dos dedos."
           }
-        }
+        },
+        "where": "Haz doble clic en un fotograma del storyboard para dibujar en él y vuelve a iniciar el recorrido."
       },
       "shotlist": {
         "name": "Lista de planos",
@@ -5537,7 +5553,8 @@
             "title": "Exporta",
             "text": "CSV o PDF, para el equipo."
           }
-        }
+        },
+        "where": "Activa la Lista de planos en «Vistas de este tablero» del menú ⋯ del storyboard y vuelve a intentarlo."
       },
       "schedule": {
         "name": "Plan de rodaje",
@@ -5570,7 +5587,8 @@
             "title": "Orden de rodaje",
             "text": "Horarios con amanecer y atardecer, localizaciones, equipo con teléfonos, plan con notas y lo que hay que llevar. Elige las secciones e imprime para el equipo. El amanecer y el atardecer siguen la zona horaria del proyecto: cámbiala en Proyectos, menú ⋯ de la tarjeta, «Tipo y zona horaria». «Automática» usa la zona del dispositivo."
           }
-        }
+        },
+        "where": "El recorrido empieza en el Plan de rodaje de Producción: ábrelo y vuelve a intentarlo."
       },
       "setplan": {
         "name": "Plano del set",
@@ -5603,7 +5621,8 @@
             "title": "Moverse por el plano",
             "text": "Espacio y arrastrar, la rueda o dos dedos mueven el plano; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas lo mueven, 0 lo ajusta, al 100 %, + y − cambian el zoom."
           }
-        }
+        },
+        "where": "Abre un plano del set (doble clic en su tarjeta) y vuelve a iniciar el recorrido desde ahí."
       },
       "characters": {
         "name": "Fichas de personaje",
@@ -5620,7 +5639,8 @@
             "title": "Solo para el equipo",
             "text": "Contactos y notas nunca llegan a los invitados."
           }
-        }
+        },
+        "where": "Abre la ficha de un personaje en el tablero y vuelve a iniciar el recorrido desde ahí."
       },
       "review": {
         "name": "Revisión del cliente",
@@ -5637,7 +5657,8 @@
             "title": "Aprueba o pide cambios",
             "text": "La decisión llega al equipo al instante."
           }
-        }
+        },
+        "where": "Activa Revisión en «Vistas de este tablero» del menú ⋯ de un tablero y vuelve a intentarlo."
       },
       "comments": {
         "name": "Comentarios",
@@ -5654,7 +5675,8 @@
             "title": "Quién lo lee",
             "text": "El equipo, o también los invitados: lo eliges cada vez."
           }
-        }
+        },
+        "where": "Abre Comentarios arriba a la derecha del tablero y vuelve a iniciar el recorrido desde ahí."
       },
       "sharing": {
         "name": "Compartir y roles",
@@ -5679,7 +5701,8 @@
             "title": "Enlaces para invitados",
             "text": "Para clientes: elige qué pueden hacer y lee el resumen."
           }
-        }
+        },
+        "where": "Abre Compartir arriba a la derecha del tablero y vuelve a iniciar el recorrido desde ahí."
       },
       "versions": {
         "name": "Versiones",
@@ -5704,7 +5727,8 @@
             "title": "Desde un archivo descargado",
             "text": "¿Descargaste los cambios? En el menú del tablero, Restaurar cambios desde un archivo… los devuelve al mismo tablero."
           }
-        }
+        },
+        "where": "Abre las versiones (el reloj arriba a la derecha del tablero) y vuelve a iniciar el recorrido desde ahí."
       },
       "present": {
         "name": "Presentación",
@@ -5721,7 +5745,8 @@
             "title": "Adelante y atrás",
             "text": "Con las flechas o un toque."
           }
-        }
+        },
+        "where": "Pulsa Presentar en el storyboard y vuelve a iniciar el recorrido desde ahí."
       },
       "export": {
         "name": "Exportar e importar",
@@ -5746,7 +5771,8 @@
             "title": "El proyecto entero",
             "text": "Expórtalo en zip e impórtalo en otro servidor."
           }
-        }
+        },
+        "where": "Abre Exportar… arriba a la derecha del tablero y vuelve a iniciar el recorrido desde ahí."
       },
       "clipper": {
         "name": "Clipper para el navegador",
@@ -5936,7 +5962,8 @@
             "title": "Citaciones y hoja",
             "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La hoja de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
           }
-        }
+        },
+        "where": "El recorrido empieza en el Equipo de Producción: ábrelo y vuelve a intentarlo."
       },
       "setplanLinks": {
         "name": "Vínculos del plano",
@@ -5957,7 +5984,8 @@
             "title": "Setups en la lista de planos",
             "text": "La lista de planos y el plan de rodaje muestran el setup de cada plano, y la lista puede agruparlos por setup."
           }
-        }
+        },
+        "where": "Abre el plano de una escena del storyboard y vuelve a iniciar el recorrido desde ahí."
       },
       "setplanOutputs": {
         "name": "Salidas del plano",
@@ -5974,7 +6002,8 @@
             "title": "Quien no puede editar",
             "text": "Invitados y lectores abren el plano en una vista con desplazamiento y zoom, los setups, la leyenda y el PDF."
           }
-        }
+        },
+        "where": "Abre un plano del set (doble clic en su tarjeta) y vuelve a iniciar el recorrido desde ahí."
       },
       "modules": {
         "name": "Módulos",

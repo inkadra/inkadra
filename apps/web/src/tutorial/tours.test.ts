@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { Board } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import it_ from '../i18n/it.json';
+import { kindFor, screenOf, startBoard } from './start.ts';
 import { playable } from './TourPlayer.tsx';
 import { GUEST, stepKeys, TOURS, toursFor, WELCOME } from './tours.ts';
 
@@ -50,6 +52,66 @@ describe('the tours (#502), kept up to date with the interface', () => {
       expect(tour.id.length).toBeLessThanOrEqual(40);
     }
     expect(new Set(all.map((t) => t.id)).size).toBe(all.length);
+  });
+});
+
+describe('where the tours start', () => {
+  // Anchors of the shell, on screen on every page: a tour of them plays where it is.
+  const everywhere: Record<string, string> = { demo: 'the demo bar is in every header' };
+
+  it('open the screen their steps point at: a page (`href`) or a board (`start`)', () => {
+    const loose = TOURS.filter(
+      (tour) =>
+        tour.steps.some((step) => step.anchor) && !tour.href && !tour.start && !everywhere[tour.id],
+    ).map((tour) => tour.id);
+    expect(loose, 'give the tour an href or a start in tours.ts').toEqual([]);
+  });
+
+  it('say in one line where a board tour starts, and what a project is missing', () => {
+    const lookup = (key: string) =>
+      key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], it_);
+    const keys = [
+      ...TOURS.filter((tour) => typeof tour.start === 'object').map(
+        (tour) => `tutorial.tours.${tour.id}.where`,
+      ),
+      ...['storyboard', 'moodboard', 'production'].map((kind) => `tutorial.start.missing.${kind}`),
+    ];
+    expect(keys.filter((key) => typeof lookup(key) !== 'string')).toEqual([]);
+  });
+
+  it('wait for the first anchored step: the Shooting schedule waits for its calendar', () => {
+    const schedule = TOURS.find((tour) => tour.id === 'schedule');
+    expect(schedule?.start).toEqual({ view: 'schedule' });
+    expect(schedule && screenOf(schedule)).toBe('schedule-queue');
+  });
+
+  const board = (id: string, kind: Board['kind'], parentBoardId: string | null, position: string) =>
+    ({ id, kind, parentBoardId, position, views: null }) as unknown as Board;
+  const boards = [
+    board('root', 'board', null, 'a0'),
+    board('story', 'storyboard', 'root', 'a1'),
+    board('prod', 'production', 'root', 'a2'),
+  ];
+  const none = new Map();
+
+  it('play on the board on screen when it has the view, else the first that has it', () => {
+    expect(startBoard(boards, none, 'schedule', 'root')?.id).toBe('prod');
+    expect(startBoard(boards, none, 'shotlist', 'story')?.id).toBe('story');
+    expect(startBoard(boards, none, undefined, 'story')?.id).toBe('story');
+    expect(startBoard(boards, none, undefined, undefined)?.id).toBe('root');
+    // A board from before 0121 has Review while a guest review link is live.
+    expect(startBoard(boards, none, 'review', 'root')?.id).toBe('story');
+    const live = new Map([['root', { boardId: 'root', clientReview: true }]]);
+    expect(startBoard(boards, live as never, 'review', 'prod')?.id).toBe('root');
+  });
+
+  it('offer to make the board a view comes with, never one for Review', () => {
+    expect(startBoard(boards.slice(0, 2), none, 'troupe', 'root')).toBeUndefined();
+    expect(kindFor('troupe')).toBe('production');
+    expect(kindFor('shotlist')).toBe('storyboard');
+    expect(kindFor('moodboard')).toBe('moodboard');
+    expect(kindFor('review')).toBeNull();
+    expect(kindFor(undefined)).toBeNull();
   });
 });
 
