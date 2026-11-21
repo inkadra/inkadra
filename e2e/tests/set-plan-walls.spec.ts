@@ -284,7 +284,7 @@ test('sets a background picture, places it and changes its opacity', async ({ pa
   expect(placed?.w).toBeCloseTo(1000, 0);
   expect(placed?.h).toBeCloseTo(500, 0);
   expect([placed?.opacity, placed?.grey]).toEqual([0.4, true]);
-  const bar = editor.getByRole('toolbar', { name: /Trascina l'immagine/ });
+  const bar = editor.getByRole('toolbar', { name: /Trascina l’immagine/ });
   await expect(bar).toBeVisible();
   const a = await pointOf(stage, [500, 300]);
   const b = await pointOf(stage, [500, 360]);
@@ -465,7 +465,7 @@ test('screenshots of the walls tools, the start dialog and the background', asyn
             mimeType: 'image/png',
             buffer: png(),
           });
-          const bar = editor.getByRole('toolbar', { name: /Trascina l'immagine/ });
+          const bar = editor.getByRole('toolbar', { name: /Trascina l’immagine/ });
           await expect(bar).toBeVisible({ timeout: 30_000 });
           await shot('background-placing');
           await bar.getByRole('button', { name: 'Fatto' }).click();
