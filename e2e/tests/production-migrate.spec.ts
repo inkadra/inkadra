@@ -176,7 +176,7 @@ test('a project with days but no Production board says where they are, and adds 
   await boardMenu(page).click();
   await expect(entry).toHaveCount(0);
   await expect(
-    page.getByRole('menuitem', { name: 'Giornate di ripresa: 1 · Apri Produzione', exact: true }),
+    page.getByRole('menuitem', { name: 'Giornate di riprese: 1 · Apri Produzione', exact: true }),
   ).toBeVisible();
 });
 
@@ -235,7 +235,7 @@ test('the startup step moves the days of two storyboards to a Production board',
   }
   await shoot(page, 'storyboard');
   const link = page.getByRole('menuitem', {
-    name: 'Giornate di ripresa: 1 · Apri Produzione',
+    name: 'Giornate di riprese: 1 · Apri Produzione',
     exact: true,
   });
   await shoot(page, 'storyboard-menu', async () => {

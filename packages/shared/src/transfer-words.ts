@@ -27,7 +27,7 @@ export const TRANSFER_WORDS_EN = {
       storage: 'The files could not be stored. Ask the administrator to check the free space.',
       gone: 'You can no longer edit this project, or it was deleted.',
       interrupted: 'The server stopped while working on it. Try again.',
-      cancelled: 'Cancelled.',
+      cancelled: 'Canceled.',
       internal: 'Something went wrong. Try again.',
       storage_full:
         'The files of the archive do not fit in the space left. Free some space or ask an administrator.',
