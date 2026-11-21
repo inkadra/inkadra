@@ -421,12 +421,12 @@ export const PLAN_WORDS_ES: PlanWords = {
       },
       kitGroups: {
         lights: 'Luces',
-        grip: 'Modificadores, maquinaria y soportes',
+        grip: 'Modificadores, maquinaria y pies',
         camera: 'Cámara y movimiento',
       },
       stands: {
         cstand: 'C-stand',
-        combo: 'Soporte combo',
+        combo: 'Pie combo',
         boomarm: 'Brazo',
         rigged: 'Colgado arriba',
         floor: 'En el suelo',
