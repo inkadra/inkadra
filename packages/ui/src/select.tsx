@@ -3,14 +3,16 @@ import {
   type ButtonHTMLAttributes,
   Children,
   isValidElement,
+  type KeyboardEvent,
   type ReactNode,
   useEffect,
   useId,
   useRef,
   useState,
 } from 'react';
-import { swallowOutsidePress } from './components.tsx';
+import { cx } from './cx.ts';
 import { Icon } from './icons.tsx';
+import { anchorLayer } from './layer.ts';
 
 export type SelectOption = {
   value: string;
@@ -41,6 +43,14 @@ function labelText(label: HTMLLabelElement | undefined) {
   return copy.textContent?.trim() ?? '';
 }
 
+/** The text of a label given as React nodes, for type-to-select while the list is closed. */
+function nodeText(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (isValidElement<{ children?: ReactNode }>(node)) return nodeText(node.props.children);
+  return '';
+}
+
 /** Single choice listbox. Native option children are accepted for incremental migrations. */
 export function Select({
   value,
@@ -52,7 +62,7 @@ export function Select({
   emptyText,
   variant = 'default',
   prefix,
-  className = '',
+  className,
   disabled,
   ...props
 }: Props) {
@@ -81,9 +91,15 @@ export function Select({
     collect(children);
   }
   const id = useId();
+  // A key per option that follows its value when the list changes; a repeated value counts on.
+  const seen = new Map<string, number>();
+  const keys = items.map((item) => {
+    const n = seen.get(item.value) ?? 0;
+    seen.set(item.value, n + 1);
+    return `${n}:${item.value}`;
+  });
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -98,6 +114,8 @@ export function Select({
     if (focus) trigger.current?.focus();
   };
   const show = () => {
+    // Nothing to list and nothing to say about it: there is no list to open.
+    if (items.length === 0 && !emptyText) return;
     // The phone sheet is titled with the field's visible label, or its accessible name.
     const button = trigger.current;
     setTitle(
@@ -113,43 +131,12 @@ export function Select({
   useEffect(() => {
     if (!open) return;
     const el = popup.current;
-    const box = panel.current;
-    const listbox = list.current;
     const button = trigger.current;
-    if (!el || !box || !listbox || !button) return;
-    el.showPopover();
-    const position = () => {
-      const rect = button.getBoundingClientRect();
-      const width = Math.min(Math.max(rect.width, 160), window.innerWidth - 16);
-      const height = Math.min(box.scrollHeight, 288, window.innerHeight - 32);
-      el.style.setProperty(
-        '--ink-select-left',
-        `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`,
-      );
-      el.style.setProperty(
-        '--ink-select-top',
-        `${Math.max(8, rect.bottom + 8 + height > window.innerHeight ? rect.top - height - 8 : rect.bottom + 8)}px`,
-      );
-      el.style.setProperty('--ink-select-width', `${width}px`);
-    };
-    position();
-    listbox.focus();
+    if (!el || !button) return;
     // On a phone the layer is the scrim around the sheet: its own click closes the sheet.
-    const outside = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (el.contains(target) || button.contains(target)) return;
-      swallowOutsidePress(event);
-      setOpen(false);
-    };
-    document.addEventListener('pointerdown', outside, true);
-    window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
-    return () => {
-      el.hidePopover();
-      document.removeEventListener('pointerdown', outside, true);
-      window.removeEventListener('resize', position);
-      window.removeEventListener('scroll', position, true);
-    };
+    const cleanup = anchorLayer(el, button, () => setOpen(false), 8);
+    list.current?.focus();
+    return cleanup;
   }, [open]);
   useEffect(() => {
     if (open) document.getElementById(`${id}-${active}`)?.scrollIntoView({ block: 'nearest' });
@@ -160,6 +147,26 @@ export function Select({
     onChange(item.value);
     close(true);
   };
+  /**
+   * Type-to-select, as a native select does: the next enabled option after `from` whose label
+   * starts with the letters typed in quick succession (one letter repeated cycles through them).
+   */
+  const typeahead = (key: string, from: number) => {
+    const now = Date.now();
+    search.current.text =
+      (now - search.current.time > 700 ? '' : search.current.text) + key.toLocaleLowerCase();
+    search.current.time = now;
+    const text = search.current.text;
+    const start = [...text].every((c) => c === text[0]) ? (text[0] ?? text) : text;
+    return [...enabled.filter((i) => i > from), ...enabled.filter((i) => i <= from)].find((i) =>
+      (document.getElementById(`${id}-${i}`)?.textContent ?? nodeText(items[i]?.label))
+        .trim()
+        .toLocaleLowerCase()
+        .startsWith(start),
+    );
+  };
+  const typed = (event: KeyboardEvent) =>
+    event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
   return (
     <>
       {name && <input type="hidden" name={name} value={value} disabled={disabled} />}
@@ -175,19 +182,24 @@ export function Select({
         aria-expanded={open}
         aria-controls={`${id}-list`}
         disabled={disabled}
-        className={`ink-input ink-select ink-select--${variant} ${className}`}
+        className={cx('ink-input ink-select', `ink-select--${variant}`, className)}
         onClick={(event) => {
           props.onClick?.(event);
           if (!event.defaultPrevented) open ? close() : show();
         }}
         onKeyDown={(event) => {
           props.onKeyDown?.(event);
-          if (
-            !event.defaultPrevented &&
-            ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)
-          ) {
+          if (event.defaultPrevented || event.nativeEvent.isComposing) return;
+          if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
             event.preventDefault();
             show();
+          } else if (typed(event)) {
+            const match = typeahead(event.key, selected);
+            if (match === undefined) return;
+            // Only a key that chose something is the Select's: others reach the page's shortcuts.
+            event.preventDefault();
+            const item = items[match];
+            if (item && item.value !== String(value)) onChange(item.value);
           }
         }}
       >
@@ -222,7 +234,7 @@ export function Select({
             if (event.target === event.currentTarget) close(true);
           }}
         >
-          <div ref={panel} className="ink-select__panel">
+          <div className="ink-select__panel">
             <div className="ink-select__sheet-head" aria-hidden="true">
               <span className="ink-select__handle" />
               {title && <span className="ink-select__title">{title}</span>}
@@ -232,12 +244,13 @@ export function Select({
               role="listbox"
               id={`${id}-list`}
               tabIndex={-1}
-              aria-label={props['aria-label'] ?? prefix}
               aria-labelledby={props['aria-labelledby'] ?? props.id ?? `${id}-trigger`}
               aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
               className="ink-select__list"
               onKeyDown={(event) => {
                 event.stopPropagation();
+                // Keys that compose a character (an input method) choose nothing.
+                if (event.nativeEvent.isComposing) return;
                 if (event.key === 'Escape') {
                   event.preventDefault();
                   close(true);
@@ -267,32 +280,16 @@ export function Select({
                   );
                   return;
                 }
-                if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                if (typed(event)) {
                   event.preventDefault();
-                  const now = Date.now();
-                  search.current.text =
-                    (now - search.current.time > 700 ? '' : search.current.text) +
-                    event.key.toLocaleLowerCase();
-                  search.current.time = now;
-                  const text = search.current.text;
-                  const prefix = [...text].every((c) => c === text[0]) ? (text[0] ?? text) : text;
-                  const match = [
-                    ...enabled.filter((i) => i > active),
-                    ...enabled.filter((i) => i <= active),
-                  ].find((i) =>
-                    document
-                      .getElementById(`${id}-${i}`)
-                      ?.textContent?.trim()
-                      .toLocaleLowerCase()
-                      .startsWith(prefix),
-                  );
+                  const match = typeahead(event.key, active);
                   if (match !== undefined) setActive(match);
                 }
               }}
             >
               {items.length === 0 && <div className="ink-select__empty">{emptyText}</div>}
               {items.map((item, index) => (
-                <div key={item.value}>
+                <div key={keys[index]}>
                   {item.group && item.group !== items[index - 1]?.group && (
                     <div className="ink-select__group">{item.group}</div>
                   )}

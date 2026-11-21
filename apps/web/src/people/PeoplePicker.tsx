@@ -177,7 +177,7 @@ export function PeoplePicker({
               onMouseEnter={() => setActive(i)}
               onClick={() => pick(person)}
             >
-              <Avatar name={person.name} image={person.image} size={24} />
+              <Avatar decorative name={person.name} image={person.image} size={24} />
               <span className="people-picker__who">
                 <span className="people-picker__name">{person.name}</span>
                 {person.email && <span className="people-picker__email">{person.email}</span>}

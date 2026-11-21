@@ -567,7 +567,7 @@ function ActivityItem({
             style={{ background: avatarBg(actor) }}
             data-feedback-secret
           >
-            <Avatar name={actor ?? 'Inkadra'} size={24} />
+            <Avatar decorative name={actor ?? 'Inkadra'} size={24} />
           </span>
         </>
       }

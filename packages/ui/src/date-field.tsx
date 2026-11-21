@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { cx } from './cx.ts';
 import {
   addMonths,
   calendarKey,
@@ -20,8 +21,6 @@ import {
 } from './date-grid.ts';
 import { Icon } from './icons.tsx';
 import { anchorLayer } from './layer.ts';
-
-const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
 /** The words of the calendar; the app provides them in its language. */
 export interface DateFieldTexts {

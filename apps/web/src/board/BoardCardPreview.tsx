@@ -467,7 +467,7 @@ function TroupePreview({
         {people.map((p, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: two people may share a name
           <li key={i} className="board-card__person">
-            <Avatar name={p.name} size={20} />
+            <Avatar decorative name={p.name} size={20} />
             <b>{p.name}</b>
             <span className="board-card__role">{p.role}</span>
           </li>

@@ -152,7 +152,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
     <div className="settings-home">
       <SettingsSearch replace={false}>
         <Link to={href('account')} className="settings-home__me">
-          <Avatar name={user?.name ?? ''} image={user?.image} size={44} />
+          <Avatar decorative name={user?.name ?? ''} image={user?.image} size={44} />
           <span className="settings-home__label">
             <strong>{user?.name}</strong>
             <span className="settings-home__sub">

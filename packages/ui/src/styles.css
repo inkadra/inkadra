@@ -1517,9 +1517,10 @@ select {
 .ink-select__layer {
   position: fixed;
   inset: auto;
-  left: var(--ink-select-left);
-  top: var(--ink-select-top);
-  width: var(--ink-select-width);
+  left: var(--ink-layer-left);
+  top: var(--ink-layer-top, auto);
+  bottom: var(--ink-layer-bottom, auto);
+  width: min(max(var(--ink-layer-anchor-width), 160px), calc(100vw - 16px));
   margin: 0;
   padding: 0;
   border: 0;
@@ -1652,9 +1653,9 @@ select {
 .ink-date__layer {
   position: fixed;
   inset: auto;
-  left: var(--ink-date-left);
-  top: var(--ink-date-top, auto);
-  bottom: var(--ink-date-bottom, auto);
+  left: var(--ink-layer-left);
+  top: var(--ink-layer-top, auto);
+  bottom: var(--ink-layer-bottom, auto);
   width: 280px;
   max-width: calc(100vw - 16px);
   margin: 0;

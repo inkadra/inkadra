@@ -9,7 +9,7 @@ import {
   useRef,
 } from 'react';
 
-const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
+import { cx } from './cx.ts';
 
 const KEYS = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
 

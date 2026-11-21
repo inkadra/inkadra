@@ -244,7 +244,12 @@ export function SettingsSearch({
                           >
                             <span className="settings-find__icon">
                               {r.person ? (
-                                <Avatar name={r.person.name} image={r.person.image} size={20} />
+                                <Avatar
+                                  decorative
+                                  name={r.person.name}
+                                  image={r.person.image}
+                                  size={20}
+                                />
                               ) : (
                                 <Icon name={r.icon} size={16} />
                               )}

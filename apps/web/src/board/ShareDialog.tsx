@@ -211,7 +211,7 @@ export function ShareDialog({
                   return (
                     <li key={e.user.id} className="share__row">
                       <span className="share__person">
-                        <Avatar image={e.user.image} name={e.user.name} size={30} />
+                        <Avatar decorative image={e.user.image} name={e.user.name} size={30} />
                         <span className="share__who">
                           <span className="share__name">
                             {me ? t('share.you', { name: e.user.name }) : e.user.name}

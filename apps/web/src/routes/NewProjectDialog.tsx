@@ -344,7 +344,12 @@ export function ProjectSetupForm({
                   <ul className="project-setup__people-list">
                     {invites.map((invite) => (
                       <li key={invite.email}>
-                        <Avatar name={invite.name || invite.email} image={invite.image} size={20} />
+                        <Avatar
+                          decorative
+                          name={invite.name || invite.email}
+                          image={invite.image}
+                          size={20}
+                        />
                         <span className="project-setup__person">
                           {invite.name || invite.email} · {t(`roles.${invite.role}`)}
                         </span>

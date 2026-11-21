@@ -7,6 +7,7 @@ import {
   useId,
   useRef,
 } from 'react';
+import { cx } from './cx.ts';
 import { Icon } from './icons.tsx';
 import { useSlidingIndicator } from './tabs.tsx';
 
@@ -21,7 +22,7 @@ type ChoiceProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
 export function Checkbox({
   indeterminate,
   ref,
-  className = '',
+  className,
   ...props
 }: ChoiceProps & { indeterminate?: boolean }) {
   const input = useRef<HTMLInputElement | null>(null);
@@ -29,7 +30,7 @@ export function Checkbox({
     if (input.current && indeterminate !== undefined) input.current.indeterminate = indeterminate;
   }, [indeterminate]);
   return (
-    <span className={`ink-choice ink-checkbox ${className}`.trim()}>
+    <span className={cx('ink-choice ink-checkbox', className)}>
       <input
         {...props}
         type="checkbox"
@@ -48,18 +49,18 @@ export function Checkbox({
 }
 
 /** An on/off setting that applies at once; in forms that submit later use a Checkbox. */
-export function Switch({ className = '', ...props }: ChoiceProps) {
+export function Switch({ className, ...props }: ChoiceProps) {
   return (
-    <span className={`ink-choice ink-switch ${className}`.trim()}>
+    <span className={cx('ink-choice ink-switch', className)}>
       <input {...props} type="checkbox" role="switch" aria-checked={props.checked} />
       <span className="ink-switch__track" aria-hidden="true" />
     </span>
   );
 }
 
-export function Radio({ className = '', ...props }: ChoiceProps) {
+export function Radio({ className, ...props }: ChoiceProps) {
   return (
-    <span className={`ink-choice ink-radio ${className}`.trim()}>
+    <span className={cx('ink-choice ink-radio', className)}>
       <input {...props} type="radio" />
       <span className="ink-choice__box" aria-hidden="true" />
     </span>
@@ -72,12 +73,12 @@ export function Radio({ className = '', ...props }: ChoiceProps) {
  */
 export function ChoiceTile({
   variant = 'pill',
-  className = '',
+  className,
   children,
   ...props
 }: ChoiceProps & { variant?: 'pill' | 'card'; children: ReactNode }) {
   return (
-    <label className={`ink-tile ink-tile--${variant} ${className}`.trim()}>
+    <label className={cx('ink-tile', `ink-tile--${variant}`, className)}>
       <input {...props} type="radio" className="ink-tile__input" />
       {children}
     </label>
@@ -113,7 +114,7 @@ function Choices<T extends string>({
   disabled,
   hideLabel,
   hint,
-  className = '',
+  className,
   segmented,
 }: RadioGroupProps<T> & { segmented: boolean }) {
   const id = useId();
@@ -122,7 +123,7 @@ function Choices<T extends string>({
   useSlidingIndicator(optionsRef, '[data-checked]', value);
   return (
     <fieldset
-      className={`ink-radio-group ${segmented ? 'ink-segmented' : ''} ${className}`.trim()}
+      className={cx('ink-radio-group', segmented && 'ink-segmented', className)}
       aria-describedby={hint ? `${id}-hint` : undefined}
       disabled={disabled}
     >
