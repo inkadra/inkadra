@@ -341,7 +341,7 @@
     "toolGroups": {
       "navigate": "Navigate and connect",
       "create": "Create content",
-      "organize": "Organize and plan"
+      "organize": "Organise and plan"
     },
     "canvas": "Board canvas",
     "a11y": {
@@ -521,7 +521,7 @@
       "save": "Save",
       "cancel": "Cancel",
       "close": "Close",
-      "denied": "No microphone: check the browser's permissions.",
+      "denied": "No microphone: check the browser’s permissions.",
       "file": "voice-note"
     },
     "todo": {
@@ -669,7 +669,7 @@
       "front": "Bring to front",
       "back": "Send to back",
       "toUnsorted": "Move to Unsorted",
-      "organize": "Organize",
+      "organize": "Organise",
       "share": "Share",
       "delete": "Delete",
       "more": "More actions",
@@ -749,7 +749,7 @@
     },
     "denied": {
       "title": "You cannot open this board",
-      "body": "Ask the project's managers for access.",
+      "body": "Ask the project’s managers for access.",
       "copy": "Copy board link",
       "copied": "Link copied",
       "hint": "Send the copied link to whoever manages the project: they can give you access."
@@ -983,8 +983,8 @@
         "speaker": "Speaker",
         "prompter": "Prompter",
         "crew": "Crew",
-        "dirchair": "Director chair",
-        "hmu": "Hair, make-up",
+        "dirchair": "Director’s chair",
+        "hmu": "Hair and make-up",
         "rack": "Costume rack",
         "crafty": "Catering",
         "tent": "Tent",
@@ -1503,8 +1503,8 @@
         "types_one": "{{count}} type",
         "types_other": "{{count}} types",
         "kitScope": {
-          "loading": "Loading the kit of the other boards: this board's only for now.",
-          "local": "Offline or out of reach: this board's kit only."
+          "loading": "Loading the kit of the other boards: this board’s only for now.",
+          "local": "Offline or out of reach: this board’s kit only."
         }
       },
       "lock": "Lock",
@@ -1611,7 +1611,7 @@
       },
       "snapIcons": "Snap icons together",
       "gripGroup": "Grip and crew",
-      "lockItemHint": "Lock this item: it can't be moved, edited or deleted",
+      "lockItemHint": "Lock this item: it can’t be moved, edited or deleted",
       "unlockItemHint": "Unlock this item",
       "itemLocked": "Locked: unlock it to move, edit or delete it.",
       "lockedItem": "Locked",
@@ -1666,7 +1666,7 @@
         "height": {
           "down": "below the horizon",
           "low": "low",
-          "mid": "half way up",
+          "mid": "halfway up",
           "high": "high"
         },
         "sunFromPlace": "Worked out for the map link of {{place}}: {{degrees}}° above the horizon. The sun icons turn as the time changes.",
@@ -1786,7 +1786,7 @@
         "fromCorners": "{{before}} and {{after}} from the corners",
         "openingWidth": "Width of the opening",
         "flip": "Flip side",
-        "swing": "Swing from the other end",
+        "swing": "Swing from the other side",
         "doorHint": "Drag it along its wall to move it.",
         "wall": "Wall",
         "wallSummary_one": "{{count}} side · {{length}}",
@@ -1860,8 +1860,8 @@
         "chair_other": "{{count}} chairs",
         "armchair_one": "{{count}} armchair",
         "armchair_other": "{{count}} armchairs",
-        "dirchair_one": "{{count}} director's chair",
-        "dirchair_other": "{{count}} director's chairs",
+        "dirchair_one": "{{count}} director’s chair",
+        "dirchair_other": "{{count}} director’s chairs",
         "sofa_one": "{{count}} sofa",
         "sofa_other": "{{count}} sofas",
         "bench_one": "{{count}} bench",
@@ -1904,8 +1904,8 @@
       "apply": "Apply",
       "removeLink": "Remove link",
       "invalidLink": "Enter a valid link",
-      "ink": "Text color and highlight",
-      "textColor": "Text color",
+      "ink": "Text colour and highlight",
+      "textColor": "Text colour",
       "highlight": "Highlight",
       "background": "Background",
       "clear": "Clear formatting",
@@ -1928,7 +1928,7 @@
       "appearance": "Appearance",
       "rows": "Rows",
       "columns": "Columns",
-      "cardColor": "Card color",
+      "cardColor": "Card colour",
       "addRow": "Add row",
       "addColumn": "Add column",
       "lists": "Lists",
@@ -1938,7 +1938,7 @@
       "tasksShort": "☑ Tasks",
       "alignShort": {
         "left": "Left",
-        "center": "Center",
+        "center": "Centre",
         "right": "Right"
       },
       "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
@@ -2067,8 +2067,8 @@
       "original": "Original",
       "live": "live",
       "liveCopy": "copy at {{percent}}%",
-      "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it.",
-      "liveOnlyNote": "«Live» qualities are converted by the graphics card as you watch, without storing a copy."
+      "liveNote": "“Live” qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it.",
+      "liveOnlyNote": "“Live” qualities are converted by the graphics card as you watch, without storing a copy."
     },
     "player": {
       "play": "Play",
@@ -2526,7 +2526,7 @@
       "guest_approve": "Can approve"
     },
     "facts": {
-      "password": "password",
+      "password": "with a password",
       "download": "downloads allowed",
       "proofing": "photo proofing",
       "subBoards": "with sub-boards",
@@ -2991,7 +2991,7 @@
       "server_alert_storage_limit": "Instance space: {{percent}}% used ({{used}} of {{limit}})",
       "server_alert_storage_request": "asks for more space"
     },
-    "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
+    "emailHint": "Mentions, replies and reviews by email too, when the server can send them.",
     "emailLabel": "Send email",
     "frequency": {
       "immediate": "Right away (notifications close together arrive in one email)",
@@ -3146,7 +3146,7 @@
       "body": "Deletes the account and the projects nobody else is in. This cannot be undone.",
       "open": "Delete account…",
       "confirmTitle": "Delete the account?",
-      "confirmBody": "Projects where you are alone are deleted with all their files. In shared projects the work stays, without you. Deleted files remain in the server's backups until they age out of the backup retention (7 nightly backups by default, at most 91 days).",
+      "confirmBody": "Projects where you are alone are deleted with all their files. In shared projects the work stays, without you. Deleted files remain in the server’s backups until they age out of the backup retention (7 nightly backups by default, at most 91 days).",
       "fresh": "For safety, you must have signed in during the last 15 minutes: sign out and back in if needed.",
       "blocked": "You are the only owner of these shared projects: make someone else owner first.",
       "confirm": "Delete for good"
@@ -3216,7 +3216,7 @@
       "forbidden": "Only editors and owners can manage versions.",
       "notFound": "This version is no longer available. Reload the list.",
       "limit": "A board keeps at most 100 named versions: delete one before saving another.",
-      "tooNew": "This version was saved by a newer Inkadra: reload the page.",
+      "tooNew": "This version was saved by a newer version of Inkadra: reload the page.",
       "unconfirmed": "The server did not confirm the action. Reload the list and check the board before trying again.",
       "generic": "Could not complete the action. Check your connection and try again."
     }
@@ -3434,7 +3434,7 @@
     "blockNotesPlaceholder": "Printed on the call sheet, e.g. LIGHTS AND WINDOWS ON",
     "unavailable": "Storyboard not available",
     "missingScene": "Missing scene",
-    "noStoryboardShots": "No storyboard with scenes or frames yet. The scenes and frames of the project’s storyboards come here.",
+    "noStoryboardShots": "No storyboard with scenes or frames yet. Scenes and frames from the project’s storyboards appear here.",
     "filterStoryboard": "Filter by storyboard",
     "storyboardFilterLabel": "Storyboard",
     "wholeScene": "Plan the whole scene",
@@ -3465,11 +3465,11 @@
     "add": "Add",
     "addImage": "Upload images",
     "addLink": "Paste a link",
-    "addColor": "Add a color",
+    "addColor": "Add a colour",
     "noPreview": "No preview was found for that link. It is on the board, and shows here once it has a picture.",
     "filter": "Filter references",
     "all": "All",
-    "empty": "Add images, link previews or colors to this board to build your moodboard.",
+    "empty": "Add images, link previews or colours to this board to build your moodboard.",
     "noMatches": "No references match this filter.",
     "open": "Open {{name}}",
     "unavailable": "Preview unavailable",
@@ -3502,9 +3502,9 @@
     "sendToStoryboard": "Send to storyboard",
     "sent_one": "{{count}} frame added to the storyboard",
     "sent_other": "{{count}} frames added to the storyboard",
-    "sendFailed": "They couldn't be added to the storyboard. Check your connection and permissions, then try again.",
-    "lockedSkipped_one": "{{count}} reference is locked and didn't change.",
-    "lockedSkipped_other": "{{count}} references are locked and didn't change.",
+    "sendFailed": "They couldn’t be added to the storyboard. Check your connection and permissions, then try again.",
+    "lockedSkipped_one": "{{count}} reference is locked and didn’t change.",
+    "lockedSkipped_other": "{{count}} references are locked and didn’t change.",
     "whichStoryboard": "Which storyboard?"
   },
   "callSheet": {
@@ -3512,7 +3512,7 @@
     "sections": "Sections",
     "schedule": "Schedule",
     "cast": "Cast",
-    "castHelp": "Each person's first scheduled block",
+    "castHelp": "Each person’s first scheduled block",
     "location": "Location",
     "departments": "Departments",
     "notes": "Notes",
@@ -3547,8 +3547,8 @@
     "fullPage": "Plans on a full page",
     "new": "New",
     "yourCall": "Your call",
-    "confirm": "Confirm I'll be there",
-    "decline": "I can't",
+    "confirm": "Confirm I’ll be there",
+    "decline": "I can’t",
     "presence": "Attendance",
     "presenceCount": "{{confirmed}} of {{total}} confirmed",
     "presenceLoading": "Loading attendance…",
@@ -3559,12 +3559,12 @@
     "noAccount": "No account",
     "otherAccount": "Other account",
     "answer": {
-      "confirmed": "You confirmed you'll be there.",
-      "declined": "You said you can't be there."
+      "confirmed": "You confirmed you’ll be there.",
+      "declined": "You said you can’t be there."
     },
     "status": {
       "confirmed": "Confirmed",
-      "declined": "Can't come",
+      "declined": "Can’t come",
       "waiting": "Waiting"
     },
     "ready": "Ready to shoot",
@@ -3604,7 +3604,7 @@
     "nobody": "nobody",
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
-    "empty": "The scenes of this day have no lists to bring. From a to-do card's menu pick Wardrobe, Props or Equipment and the scene.",
+    "empty": "The scenes of this day have no lists to bring. From a to-do card’s menu pick Wardrobe, Props or Equipment and the scene.",
     "emptyMine": "You bring nothing on this day.",
     "scene": {
       "label": "To bring for Scene {{number}}, {{ready}} of {{total}} ready",
@@ -3816,7 +3816,7 @@
       "storage": "Space taken by the instance’s files.",
       "access": "Who can come in, what members can do and how people sign in.",
       "backups": "Nightly copies of the database, to restore the server after a failure.",
-      "toolbar": "Choose which tools of More you see in the bottom bar. The others stay in More (⋯) and in the command palette.",
+      "toolbar": "Choose which tools from More you see in the bottom bar. The others stay in More (⋯) and in the command palette.",
       "tutorials": "Watch the guided tours again, choose whether to offer them and ask for help.",
       "server": "How the server is doing: resources, services, jobs, problems and alerts.",
       "serverSimple": "How the server is doing, in plain words: space, backup, speed and problems to look at.",
@@ -3874,7 +3874,7 @@
       "snap": "Snap to grid",
       "snapHelp": "Default when a board opens · G to change it on the fly",
       "doubleClick": "Double-click on empty canvas creates a note",
-      "doubleClickHelp": "Double tap too on phones and tablets",
+      "doubleClickHelp": "Double-tap on phones and tablets too",
       "undoButtons": "Undo and redo buttons on the board",
       "undoButtonsHelp": "Ctrl/⌘ Z works either way",
       "keepAround": "Keep the board around its content",
@@ -3905,7 +3905,7 @@
       "always": "Always",
       "alwaysNote": "Grey = always on in the Inbox.",
       "releaseNews": "Inkadra news",
-      "releaseNewsHelp": "Only when the instance sends it",
+      "releaseNewsHelp": "Only when the instance sends them",
       "releaseNewsAdminHelp": "Let people receive release news after an update. Requires SMTP and personal opt-in.",
       "what": "What to receive",
       "frequency": "When to send them",
@@ -4162,8 +4162,8 @@
     "toolbar": "Presentation controls",
     "speakerNotes": "Speaker notes",
     "closeNotes": "Collapse notes",
-    "fullscreen": "Fullscreen",
-    "exitFullscreen": "Exit fullscreen",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
     "nextSlide": "Next",
     "noSlides": "No frames or cards to present",
     "noNotes": "No notes for this slide",
@@ -4193,7 +4193,7 @@
     "down": "Move {{name}} down",
     "add": "Add option",
     "errorTitle": "Could not save or load",
-    "error": "Another administrator may have changed the catalogs. Reload to get the current configuration.",
+    "error": "Another administrator may have changed the catalogues. Reload to get the current configuration.",
     "reload": "Reload",
     "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable.",
     "archive": "Archive",
@@ -4219,7 +4219,7 @@
     "title": "Project appearance",
     "options": "Project options: {{name}}",
     "symbol": "Symbol",
-    "color": "Color",
+    "color": "Colour",
     "emoji": "Emoji",
     "invalid": "Use a single emoji.",
     "reset": "Reset to default",
@@ -4277,7 +4277,7 @@
     "exportForbidden": "Only owners and editors of the project can export it.",
     "startError": "The export could not start. Try again.",
     "importTitle": "Import project",
-    "importLead": "Creates a new project from an Inkadra archive. You will be its only member; comments keep their authors' names.",
+    "importLead": "Creates a new project from an Inkadra archive. You will be its only member; comments keep their authors’ names.",
     "drop": "Drop the archive here or choose a file",
     "dropHint": "A .zip exported from Inkadra",
     "change": "choose another",
@@ -4381,7 +4381,7 @@
   },
   "export": {
     "title": "Export",
-    "titleProject": "Export «{{name}}»",
+    "titleProject": "Export “{{name}}”",
     "close": "Close",
     "cancel": "Cancel",
     "submit": "Export",
@@ -4412,7 +4412,7 @@
     "audienceTeam": "The team",
     "audienceClient": "Clients",
     "audienceHintTeam": "Everything you can see on this board.",
-    "audienceHintClient": "Only what guests of a share link see: no hidden cards, tags, production status or director's notes.",
+    "audienceHintClient": "Only what guests of a share link see: no hidden cards, tags, production status or director’s notes.",
     "options": "Options",
     "titlePage": "Title page with project name and date",
     "logo": "Logo on the pages",
@@ -4461,7 +4461,7 @@
     "pageOf": "{{n}} of {{total}}",
     "logoUploading": "Uploading the logo…",
     "logoFailed": "The logo could not be saved. Try again.",
-    "logoReadOnly": "Set by the project's editors.",
+    "logoReadOnly": "Set by the project’s editors.",
     "logoNone": "No logo. Project editors can add one.",
     "sharedHint": "Your choices become the starting point for everyone on this project when you export.",
     "progressPictures": "Loading pictures… {{done}} of {{total}}",
@@ -4542,8 +4542,8 @@
     "progressFiles": "Downloading the files… {{done}} of {{total}}",
     "filesFailed_one": "Download failed: {{names}}. Try again.",
     "filesFailed_other": "Download failed: {{names}}. Try again.",
-    "filesPartial_one": "The ZIP is saved, but {{names}} is missing: the server did not give the file. Try again.",
-    "filesPartial_other": "The ZIP is saved, but {{names}} are missing: the server did not give the files. Try again.",
+    "filesPartial_one": "The ZIP is saved, but {{names}} is missing: the server did not return the file. Try again.",
+    "filesPartial_other": "The ZIP is saved, but {{names}} are missing: the server did not return the files. Try again.",
     "sheets": {
       "department": "Department",
       "new": "New",
@@ -4764,9 +4764,9 @@
     "tabDialog": "Capture from {{service}}",
     "tabTitle": "Capture from the tab",
     "tabBody": "{{service}} does not let Inkadra read the video. We can take a photo of this tab: the browser will ask your permission, once per capture.",
-    "tabPause": "Pause on the right moment",
-    "tabSubtitles": "Turn off the player's subtitles",
-    "tabQuality": "The quality is the screen's, not the original's",
+    "tabPause": "Pause at the right moment",
+    "tabSubtitles": "Turn off the player’s subtitles",
+    "tabQuality": "The quality is the screen’s, not the original’s",
     "tabContinue": "Continue",
     "cancel": "Cancel",
     "pasteOr": "Or paste a screenshot",
@@ -4854,7 +4854,7 @@
       "wants": "Wants",
       "fears": "Fears",
       "arc": "How they change",
-      "costume": "Costume and makeup",
+      "costume": "Costume and make-up",
       "relations": "Relations",
       "addRelation": "Add a relation",
       "missing": "Deleted character",
@@ -5123,7 +5123,7 @@
     "referenceIs": "Thank you! The reference is",
     "referenceHint": ": quote it when talking to whoever runs Inkadra.",
     "openedAs": "Opened as",
-    "knownError": "This error was already reported: we added yours to reference",
+    "knownError": "This error was already reported: we added yours to the reference",
     "sentInbox": "The administrators of this instance find it in their Inbox.",
     "copyReference": "Copy the reference",
     "openIssue": "Open on GitHub",
@@ -5212,8 +5212,8 @@
     "relayFileTooBig": "{{size}}: the relay accepts images and files up to 10 MB.",
     "relayNoDeviceVideo": "This server can’t remove GPS and other metadata from videos from the device, so they can’t leave: record from this dialog.",
     "destinationChanged": "An administrator changed where reports go. Read where it goes now, then try again: nothing was sent.",
-    "relayUncertainBanner_one": "The relay did not confirm {{count}} report: it may have arrived or not. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
-    "relayUncertainBanner_other": "The relay did not confirm {{count}} reports: they may have arrived or not. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
+    "relayUncertainBanner_one": "The relay did not confirm {{count}} report: it may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
+    "relayUncertainBanner_other": "The relay did not confirm {{count}} reports: they may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
     "relayUncertain_one": "{{count}} not confirmed by the relay",
     "relayUncertain_other": "{{count}} not confirmed by the relay",
     "relayUncertainBadge": "Not confirmed by the relay",
@@ -5233,7 +5233,7 @@
   "tutorial": {
     "welcome": {
       "eyebrow": "Welcome to Inkadra",
-      "title": "From idea to shot.",
+      "title": "From idea to frame.",
       "lead": "An infinite canvas for film and photo, on your own server.",
       "go": "Take the tour · 1 min",
       "skip": "I’ll explore on my own",
@@ -5549,7 +5549,7 @@
           },
           "1": {
             "title": "Storyboards and bars",
-            "text": "The Storyboard filter shows the frames of one only; the coloured bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A grey bar: the storyboard is not available, the label stays."
+            "text": "The Storyboard filter shows the frames of one storyboard only; the coloured bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A grey bar: the storyboard is not available, the label stays."
           },
           "2": {
             "title": "Move and stretch",
@@ -5843,7 +5843,7 @@
         "steps": {
           "0": {
             "title": "At a glance",
-            "text": "One sentence says whether the server is well: green, orange when something needs fixing, red when something stopped."
+            "text": "One sentence says whether the server is healthy: green, orange when something needs fixing, red when something stopped."
           },
           "1": {
             "title": "Simple or advanced",
@@ -6024,7 +6024,7 @@
           },
           "4": {
             "title": "Advanced",
-            "text": "For experts: run the card test again, change live sessions and the values of each resolution. «Reset» goes back to the recommended value."
+            "text": "For experts: run the card test again, change live sessions and the values of each resolution. “Reset” goes back to the recommended value."
           }
         }
       },
@@ -6055,7 +6055,7 @@
     },
     "loadError": "I can’t read the state of the server.",
     "when": {
-      "night": "last night at {{time}}",
+      "night": "tonight at {{time}}",
       "today": "today at {{time}}",
       "yesterday": "yesterday at {{time}}",
       "tomorrow": "tomorrow at {{time}}"
@@ -6679,7 +6679,7 @@
     "start": "Try the demo",
     "or": "or",
     "installServer": "Install on your server",
-    "accept": "By going on you accept the <rules>rules of the demo</rules>. No tracking cookies.",
+    "accept": "By continuing you accept the <rules>rules of the demo</rules>. No tracking cookies.",
     "endedTitle": "Your hour of demo is over",
     "endedText": "We deleted the demo and the files you uploaded. You can open a new one, or install Inkadra on your server: your projects stay yours.",
     "again": "New demo",
@@ -6701,7 +6701,7 @@
     "more": "More: start over, rules of the demo",
     "restart": "Start over",
     "restartTitle": "Start over?",
-    "restartText": "Your sandbox is deleted now, with its project and every file in it: nobody can bring it back. Then you can open a new one. Download the project first if you want to keep your work.",
+    "restartText": "Your demo is deleted now, with its project and every file in it: nobody can bring it back. Then you can open a new one. Download the project first if you want to keep your work.",
     "restartConfirm": "Delete and start over",
     "cancel": "Cancel",
     "rules": "Rules of the demo",
@@ -6751,7 +6751,7 @@
     "remove": "Remove from crew",
     "removeConfirm": "Remove {{name}} from the crew?",
     "cancel": "Cancel",
-    "pasteHint": "One person per line: name, role, phone. Separate columns with tabs, semicolons, · or two or more spaces. A CAPITALS line becomes the department.",
+    "pasteHint": "One person per line: name, role, phone. Separate columns with tabs, semicolons, · or two or more spaces. A line in CAPITALS becomes the department.",
     "pastedText": "Pasted text",
     "preview_one": "{{count}} new person",
     "preview_other": "{{count}} new people",
@@ -6767,7 +6767,7 @@
     "wholeProject": "for the whole project",
     "characterTag": "Character",
     "emailPlaceholder": "optional",
-    "pickupPlaceholder": "Same as the day's call",
+    "pickupPlaceholder": "Same as the day’s call",
     "notesPlaceholder": "Only the project team sees these",
     "characterLabel": "Character card",
     "optionalTag": "optional",
@@ -6791,9 +6791,9 @@
   },
   "dayCalls": {
     "title": "Calls",
-    "times": "The day's times, worked out from the schedule",
-    "hint": "Empty = the day's call. Only fill in people who arrive at another time or need a pick-up.",
-    "unavailable": "Calls use the project's crew, which only project members can see.",
+    "times": "The day’s times, worked out from the schedule",
+    "hint": "Empty = the day’s call. Only fill in people who arrive at another time or need a pick-up.",
+    "unavailable": "Calls use the project’s crew, which only project members can see.",
     "emptyTitle": "Nobody in the crew",
     "emptyBody": "Add people in Crew: here you choose who is called each day.",
     "openTroupe": "Open Crew",
@@ -6977,7 +6977,7 @@
     "advanced": {
       "title": "Advanced",
       "customised": "Customised",
-      "intro": "For people who know video encoding. Wrong values can give grainy or huge copies, or stuttering video: «Reset» brings each field back to the recommended value.",
+      "intro": "For people who know video encoding. Wrong values can give grainy or huge copies, or stuttering video: “Reset” brings each field back to the recommended value.",
       "benchmark": "Graphics card performance",
       "benchmarkRunning": "Performance test running",
       "benchmarkRunningHelp": "About 10 seconds. Copies being made slow down for a moment.",

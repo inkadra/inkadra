@@ -175,7 +175,7 @@ export const en: MailTexts = {
     } as Record<string, string>,
     action: 'Open Server',
     footer: (instance) =>
-      `Server alerts of ${instance} for administrators. Change them in Settings › Server.`,
+      `Server alerts from ${instance}, for administrators. Change them in Settings › Server.`,
   },
   update: {
     subject: (version, instance) => `Inkadra ${version} is available for ${instance}`,
@@ -195,7 +195,7 @@ export const en: MailTexts = {
   },
   calendar: {
     deadline: (task, board) => `Due: ${task} · ${board}`,
-    todo: (board) => `To-do · board "${board}" · all day`,
+    todo: (board) => `To-do · board “${board}” · all day`,
     call: (time, place, wrap) =>
       [`Call ${time}`, place, wrap && `wrap ${wrap}`].filter(Boolean).join(' · '),
   },
