@@ -6,7 +6,9 @@ import {
   type Crew,
   type CrewCharacter,
   type CrewMember,
+  type CrewMemberInput,
   castCalls,
+  castKeysOf,
   castNameKey,
   type DayCall,
   type DayCrewEntry,
@@ -74,6 +76,35 @@ export function withDayCall(
       ...(called === entry.usual ? {} : { absent: !called }),
     },
   ];
+}
+
+/** What a crew row saves: the row without the fields the server owns. */
+export const crewInput = ({
+  id: _id,
+  account: _account,
+  projectId: _project,
+  revision: _revision,
+  createdAt: _created,
+  updatedAt: _updated,
+  ...input
+}: CrewMember): CrewMemberInput => input;
+
+/**
+ * Who plays each cast name of a frame, by the call sheet's rule (`castKeysOf`): the first crew row
+ * whose cast names hold it, else the actor written on its character card on this board.
+ */
+export function castPerformers(
+  cast: readonly string[],
+  crew: readonly CrewMember[],
+  elements: ReadonlyMap<string, Element>,
+  characters: readonly CrewCharacter[] = [],
+): Array<{ name: string; member: CrewMember | undefined; performer: string }> {
+  const keys = castKeysOf(crew, elements, characters);
+  return cast.map((name) => {
+    const member = crew.find((m) => keys.get(m.id)?.has(castNameKey(name)));
+    const performer = member?.name ?? castCharacter(name, elements)?.actor?.trim() ?? '';
+    return { name, member, performer };
+  });
 }
 
 /** The people the call sheet prints as "on-set contact": called first, else any marked. */

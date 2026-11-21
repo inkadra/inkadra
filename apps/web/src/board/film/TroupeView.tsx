@@ -37,6 +37,7 @@ import { PeoplePicker } from '../../people/PeoplePicker.tsx';
 import { ContextMenu } from '../chrome.tsx';
 import type { BoardStore } from '../store.ts';
 import { parseCrewPaste } from './crew-paste.ts';
+import { crewInput } from './day-calls.ts';
 import { whileVisible } from './schedule.ts';
 import './film.css';
 import './troupe.css';
@@ -57,15 +58,6 @@ export const emptyCrewMember = (name: string, position: number): CrewMemberInput
   character: null,
   onSetContact: false,
 });
-const inputOf = ({
-  id: _id,
-  account: _account,
-  projectId: _project,
-  revision: _revision,
-  createdAt: _created,
-  updatedAt: _updated,
-  ...input
-}: CrewMember): CrewMemberInput => input;
 
 export function TroupeView({
   projectId,
@@ -284,6 +276,13 @@ export function TroupeView({
                           row={row}
                           selected={row.id === selected}
                           readOnly={readOnly}
+                          character={
+                            characters.find(
+                              (c) =>
+                                c.boardId === row.character?.boardId &&
+                                c.elementId === row.character?.elementId,
+                            )?.name
+                          }
                           onMerge={
                             !readOnly && duplicates(row).length ? () => setMerging(row) : undefined
                           }
@@ -369,12 +368,15 @@ function CrewRow({
   row,
   selected,
   readOnly,
+  character,
   onMerge,
   onOpen,
 }: {
   row: CrewMember;
   selected: boolean;
   readOnly: boolean;
+  /** Name of the linked character card, when it can be read. */
+  character?: string | undefined;
   /** Set when another row of the same person can be merged into this one. */
   onMerge?: (() => void) | undefined;
   onOpen: (remove?: boolean) => void;
@@ -398,7 +400,9 @@ function CrewRow({
           <span>{row.role}</span>
           {row.character && (
             <span className="film-chip troupe__chip troupe__chip--character">
-              {t('troupe.characterTag')}
+              {character?.trim()
+                ? t('troupe.plays', { name: character.trim() })
+                : t('troupe.characterTag')}
             </span>
           )}
           {row.onSetContact && (
@@ -474,7 +478,7 @@ function CrewPanel({
   const { t } = useTranslation();
   const user = useContext(SessionContext)?.user;
   const id = useId();
-  const [draft, setDraft] = useState(inputOf(row));
+  const [draft, setDraft] = useState(crewInput(row));
   // Saves run one after another, each with the revision the previous one returned, so a quick
   // second edit is neither lost nor turned into a conflict with itself.
   const revision = useRef(row.revision);
@@ -594,7 +598,7 @@ function CrewPanel({
           ))}
         </datalist>
         {field('role')}
-        <div className="troupe__field">
+        <div className="troupe__field" data-tour="troupe-character">
           <span id={`${id}-character`}>
             {t('troupe.characterLabel')} <small>· {t('troupe.optionalTag')}</small>
           </span>
@@ -757,7 +761,7 @@ function CrewPanel({
           <p>{t('troupe.conflict')}</p>
           <Button
             onClick={() => {
-              setDraft(inputOf(conflict));
+              setDraft(crewInput(conflict));
               revision.current = conflict.revision;
               onUpdate(conflict);
               setConflict(null);
@@ -793,7 +797,7 @@ function CrewPanel({
           {t(
             busy
               ? 'troupe.saving'
-              : error || conflict || JSON.stringify(draft) !== JSON.stringify(inputOf(row))
+              : error || conflict || JSON.stringify(draft) !== JSON.stringify(crewInput(row))
                 ? 'troupe.unsaved'
                 : 'troupe.saved',
           )}

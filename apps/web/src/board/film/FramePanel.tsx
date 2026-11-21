@@ -1,6 +1,16 @@
-import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
+import {
+  createElement,
+  deleteElements,
+  type FrameElement,
+  updateElement,
+} from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, type Element } from '@inkadra/doc-schema';
-import type { SearchResult } from '@inkadra/shared';
+import {
+  type CrewCharacter,
+  type CrewMember,
+  castNameKey,
+  type SearchResult,
+} from '@inkadra/shared';
 import { Button, Icon, IconButton, Input, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,13 +21,17 @@ import {
   setFrameStatus,
 } from '../../commands/board-actions.ts';
 import { api } from '../../lib/api.ts';
+import { useModules } from '../../lib/modules.ts';
 import { useAsset } from '../assets.ts';
+import { ContextMenu } from '../chrome.tsx';
 import { GuestModeContext } from '../context.ts';
 import { authorName, editableText } from '../review-model.ts';
 import { openComments, useReviews } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
 import { aspectLabel } from './aspect.ts';
+import { castCharacter } from './call-sheet.ts';
+import { castPerformers, crewInput, useCrew } from './day-calls.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { ShotField, StatusSelect, TextField } from './fields.tsx';
 import { moveImageToFrame } from './frame-image.ts';
@@ -271,6 +285,16 @@ export function FramePanel({
             set({ cast: cast.length > 0 ? cast : undefined });
           }}
         />
+        {!guest && (frame.cast ?? []).length > 0 && (
+          <CastPerformers
+            store={store}
+            projectId={projectId}
+            boardId={boardId}
+            cast={frame.cast ?? []}
+            userId={userId}
+            readOnly={readOnly}
+          />
+        )}
         {!readOnly && !guest && (
           <CastLinks
             store={store}
@@ -421,6 +445,163 @@ function BoardPicture({
       />
       <span>{name}</span>
     </button>
+  );
+}
+
+/**
+ * Who plays each name of the frame's cast, as the call sheet reads it (decision 0091): a crew row
+ * linked to the character card, or named like it. "Link" picks a person of the Troupe and links
+ * their row to the card of that name, made on this board when the project has none. Nothing when
+ * Production is off or the roster cannot be read (a grant on one board).
+ */
+export function CastPerformers({
+  store,
+  projectId,
+  boardId,
+  cast,
+  userId,
+  readOnly,
+}: {
+  store: BoardStore;
+  projectId: string;
+  boardId: string;
+  cast: readonly string[];
+  userId: string | null;
+  readOnly: boolean;
+}) {
+  const { t } = useTranslation();
+  const production = useModules().isOn('production');
+  const crew = useCrew(production ? projectId : undefined, boardId);
+  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const labelId = useId();
+  const anchor = useRef<HTMLButtonElement | null>(null);
+  const [picking, setPicking] = useState<{ name: string; right: number; top: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (!production || !crew.items) return null;
+  // A row plays one character: linked to a card, or in Cast with the character as its role.
+  const free = crew.items.filter(
+    (member) =>
+      !member.character && !(castNameKey(member.department) === 'cast' && member.role.trim()),
+  );
+  /** The card of a cast name: on this board, else on another board, else a new one here. */
+  const cardFor = async (name: string, member: CrewMember) => {
+    const here = castCharacter(name, store.getSnapshot().byId);
+    if (here) return { boardId, elementId: here.id };
+    const { items } = await api.get<{ items: CrewCharacter[] }>(
+      `/projects/${projectId}/crew/characters`,
+    );
+    const there = items.find((c) => castNameKey(c.name) === castNameKey(name));
+    if (there) return { boardId: there.boardId, elementId: there.elementId };
+    // Below everything on the board, so the new card lands on no other.
+    const bottom = [...store.getSnapshot().byId.values()]
+      .filter((el) => !el.parent)
+      .reduce((max, el) => Math.max(max, el.y + (el.h ?? 200)), 0);
+    store.undo.stopCapturing();
+    const card = createElement(
+      store.doc,
+      'character',
+      { x: 0, y: bottom + 40 },
+      { name, actor: member.name },
+      { userId, origin: LOCAL },
+    );
+    store.undo.stopCapturing();
+    return { boardId, elementId: card.id };
+  };
+  const link = async (name: string, member: CrewMember) => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      const character = await cardFor(name, member);
+      await api.put(`/projects/${projectId}/crew/${member.id}`, {
+        ...crewInput(member),
+        character,
+        revision: member.revision,
+      });
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+      crew.reload();
+    }
+  };
+  return (
+    <div className="film-field">
+      <span className="film-field__label" id={labelId}>
+        {t('film.frame.performers')}
+      </span>
+      <ul className="film-performers" aria-labelledby={labelId}>
+        {castPerformers(cast, crew.items, snap.byId, crew.characters).map(({ name, performer }) => (
+          <li key={name}>
+            <strong>{name}</strong>
+            {performer ? (
+              <span>{performer}</span>
+            ) : (
+              <>
+                <span className="film-performers__none">{t('film.frame.noPerformer')}</span>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="ink-btn ink-btn--ghost"
+                    aria-label={t('film.frame.linkPerformer', { name })}
+                    aria-haspopup="menu"
+                    aria-expanded={picking?.name === name}
+                    disabled={busy}
+                    onClick={(e) => {
+                      anchor.current = e.currentTarget;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setPicking(
+                        picking?.name === name
+                          ? null
+                          : {
+                              name,
+                              right: Math.max(8, window.innerWidth - rect.right),
+                              top: Math.min(rect.bottom + 4, window.innerHeight - 160),
+                            },
+                      );
+                    }}
+                  >
+                    {t('film.frame.link')}
+                  </button>
+                )}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      {failed && (
+        <p className="film-field__hint" role="alert">
+          {t('film.frame.performerFailed')}
+        </p>
+      )}
+      {picking && (
+        <ContextMenu
+          anchor={anchor}
+          style={{ position: 'fixed', right: picking.right, top: picking.top }}
+          label={t('film.frame.whoPlays', { name: picking.name })}
+          onClose={(reason) => {
+            setPicking(null);
+            if (reason === 'escape') anchor.current?.focus();
+          }}
+          items={
+            free.length
+              ? free.map((member) => ({
+                  label: member.role.trim()
+                    ? `${member.name} · ${member.role.trim()}`
+                    : member.name,
+                  action: () => void link(picking.name, member),
+                }))
+              : [
+                  {
+                    label: t('film.frame.noFreeCrew'),
+                    disabled: true,
+                    hint: t('film.frame.noFreeCrewHint'),
+                  },
+                ]
+          }
+        />
+      )}
+    </div>
   );
 }
 

@@ -2233,7 +2233,15 @@
       "retry": "Noch mal versuchen",
       "fromBoardVideo": "Aus einem Video im Board",
       "menu": "Menü von Frame {{label}}",
-      "open": "Öffnen"
+      "open": "Öffnen",
+      "performers": "Darsteller",
+      "noPerformer": "Kein Darsteller",
+      "link": "Verknüpfen",
+      "linkPerformer": "Verknüpfen, wer {{name}} spielt",
+      "whoPlays": "Wer spielt {{name}}?",
+      "noFreeCrew": "Niemand frei im Team",
+      "noFreeCrewHint": "Füg die Person dem Team auf dem Board Produktion hinzu: eine Zeile pro Figur.",
+      "performerFailed": "Verknüpfen fehlgeschlagen. Versuch es noch mal."
     },
     "shot": {
       "ews": "Supertotale",
@@ -5320,7 +5328,12 @@
       "restore": "Wiederherstellen",
       "role0": "Bearbeiten",
       "role1": "Kommentieren",
-      "role2": "Einladen"
+      "role2": "Einladen",
+      "department0": "Cast",
+      "department1": "Regie",
+      "department2": "Kamera",
+      "character": "Figur",
+      "plays": "Spielt Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5930,10 +5943,14 @@
             "text": "Öffne eine Zeile: Die Felder speichern sich selbst. Optional mit einem Konto oder einer Figurenkarte verknüpfen."
           },
           "2": {
+            "title": "Wer spielt wen",
+            "text": "Verknüpf die Person mit der Karte der Figur, die sie spielt. Noch keine Karten? Öffne eine Einstellung: Unter Figuren legt „Verknüpfen“ die Karte an. So ordnet die Dispo Figur und Darsteller zu."
+          },
+          "3": {
             "title": "Aus einer Liste einfügen",
             "text": "Öffne „Aus Liste einfügen“ in der Team-Leiste. Prüf die Vorschau, bevor du Leute hinzufügst. Kopfzeilen und Doppelte werden übersprungen."
           },
-          "3": {
+          "4": {
             "title": "Treffzeiten und Dispo",
             "text": "Im Drehplan, Reiter Treffzeiten, wählst du, wer an jedem Tag bestellt ist. Die Dispo druckt Team, Telefonnummern und Ansprechpartner am Set, nie für Gäste oder Kunden."
           }
@@ -6771,8 +6788,8 @@
     "notesPlaceholder": "Nur für das Projektteam sichtbar",
     "characterLabel": "Figurenkarte",
     "optionalTag": "optional",
-    "characterHint": "Keine. Der Name im Ablauf reicht für die Dispo; verknüpf nur eine Karte mit Kostüm und Referenzen.",
-    "characterNone": "Noch keine Figurenkarten im Projekt. Nicht nötig: Eine Rolle, die dem Namen im Ablauf entspricht, reicht für die Dispo.",
+    "characterHint": "Keine. Verknüpf die Karte der Figur, die die Person spielt: Die Dispo ordnet sie den Einstellungen zu.",
+    "characterNone": "Noch keine Figurenkarten. In einer Einstellung unter Figuren legt „Verknüpfen“ die Karte an und verbindet sie mit dieser Person.",
     "link": "Verknüpfen",
     "unlinkShort": "Trennen",
     "accountHint": "Verknüpf ein Konto, um den Call aufs Handy zu schicken und die Anwesenheit abzufragen.",
@@ -6787,7 +6804,8 @@
     "mergeTitle": "{{name}} zusammenführen",
     "mergeWith": "Zeile zum Zusammenführen",
     "mergeHint": "Die Zeile von {{name}} ({{kept}}) bleibt: ihre Angaben gelten, leere Felder werden aus der anderen Zeile ergänzt, die ihre Tagesrufe übergibt und entfernt wird.",
-    "mergeAction": "Zusammenführen"
+    "mergeAction": "Zusammenführen",
+    "plays": "Spielt {{name}}"
   },
   "dayCalls": {
     "title": "Treffzeiten",

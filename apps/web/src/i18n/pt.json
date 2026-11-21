@@ -2233,7 +2233,15 @@
       "retry": "Tentar novamente",
       "fromBoardVideo": "De um vídeo do quadro",
       "menu": "Menu do frame {{label}}",
-      "open": "Abrir"
+      "open": "Abrir",
+      "performers": "Intérpretes",
+      "noPerformer": "Sem intérprete",
+      "link": "Ligar",
+      "linkPerformer": "Ligar quem interpreta {{name}}",
+      "whoPlays": "Quem interpreta {{name}}?",
+      "noFreeCrew": "Ninguém livre na equipa",
+      "noFreeCrewHint": "Adicione o intérprete à equipa do quadro Produção: uma linha por personagem.",
+      "performerFailed": "Não foi possível ligar. Tente de novo."
     },
     "shot": {
       "ews": "Grande plano geral",
@@ -5320,7 +5328,12 @@
       "restore": "Restaurar",
       "role0": "Editar",
       "role1": "Comentar",
-      "role2": "Convidar"
+      "role2": "Convidar",
+      "department0": "Elenco",
+      "department1": "Realização",
+      "department2": "Imagem",
+      "character": "Personagem",
+      "plays": "Interpreta Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5930,10 +5943,14 @@
             "text": "Abra uma linha: os campos guardam-se sozinhos. Se quiser, ligue uma conta ou uma ficha de personagem."
           },
           "2": {
+            "title": "Quem interpreta quem",
+            "text": "Ligue a pessoa à ficha da personagem que interpreta. Sem fichas? Abra um plano: em Elenco, «Ligar» cria a ficha. A folha de serviço cruza assim personagem e intérprete."
+          },
+          "3": {
             "title": "Cole de uma lista",
             "text": "Abre «Colar de uma lista» na barra da Equipa. Reveja a pré-visualização antes de adicionar pessoas. Cabeçalhos e duplicados são ignorados."
           },
-          "3": {
+          "4": {
             "title": "Convocatórias e folha",
             "text": "No Plano de rodagem, separador Convocatórias, escolhes quem é convocado em cada dia. A folha de serviço imprime equipa, telefones e contacto no set, nunca para convidados nem clientes."
           }
@@ -6771,8 +6788,8 @@
     "notesPlaceholder": "Só a equipa do projeto as vê",
     "characterLabel": "Ficha de personagem",
     "optionalTag": "opcional",
-    "characterHint": "Nenhuma. O nome na programação basta para a convocatória; ligue uma ficha só se tiver figurino e referências.",
-    "characterNone": "Ainda não há fichas de personagem no projeto. Não é preciso: um papel igual ao nome na programação basta para a convocatória.",
+    "characterHint": "Nenhuma. Ligue a ficha da personagem que interpreta: a folha de serviço cruza-a com os planos.",
+    "characterNone": "Ainda não há fichas de personagem. Num plano, em Elenco, «Ligar» cria a ficha e liga-a a esta pessoa.",
     "link": "Ligar",
     "unlinkShort": "Desligar",
     "accountHint": "Ligue uma conta para enviar a convocatória para o telemóvel e pedir confirmação.",
@@ -6787,7 +6804,8 @@
     "mergeTitle": "Juntar {{name}}",
     "mergeWith": "Linha a juntar",
     "mergeHint": "Fica a linha de {{name}} ({{kept}}): os seus dados prevalecem, os campos vazios são preenchidos com a outra linha, que lhe passa as convocatórias e é removida.",
-    "mergeAction": "Juntar"
+    "mergeAction": "Juntar",
+    "plays": "Interpreta {{name}}"
   },
   "dayCalls": {
     "title": "Convocatórias",

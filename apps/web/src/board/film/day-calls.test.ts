@@ -4,7 +4,9 @@ import type { CrewMember, ShootingDayInput } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import {
   castCard,
+  castPerformers,
   castRows,
+  crewInput,
   dayCrew,
   dialNumber,
   onSetContacts,
@@ -373,5 +375,52 @@ describe('equal positions in the roster', () => {
           .filter((e) => e.called)
           .map((e) => e.member.name),
       ).toEqual(['Ada']);
+  });
+});
+
+describe('who plays each name of a frame’s cast (decision 0091)', () => {
+  const card = (n: string, name: string, actor = '') =>
+    [n, { id: n, type: 'character', name, actor } as unknown as Element] as const;
+  it('reads the crew row linked to the card, else one named or cast like it', () => {
+    const elements = new Map([card('char0001', 'Marta')]);
+    const ada = member(1, {
+      name: 'Ada Prova',
+      character: { boardId: id(1), elementId: 'char0001' },
+    });
+    const leo = member(2, { name: 'Leo', department: 'Cast', role: 'Bruno' });
+    expect(
+      castPerformers(['marta', 'Bruno', 'Leo', 'Carla'], [ada, leo], elements).map((p) => [
+        p.name,
+        p.performer,
+      ]),
+    ).toEqual([
+      ['marta', 'Ada Prova'],
+      ['Bruno', 'Leo'],
+      ['Leo', 'Leo'],
+      ['Carla', ''],
+    ]);
+  });
+  it('falls back to the actor on the card of this board when no row plays it', () => {
+    const elements = new Map([card('char0002', 'Carla', ' Bea R. ')]);
+    expect(castPerformers(['Carla'], [], elements)).toEqual([
+      { name: 'Carla', member: undefined, performer: 'Bea R.' },
+    ]);
+  });
+  it('saves a row without the fields the server owns', () => {
+    expect(Object.keys(crewInput(member(3))).sort()).toEqual(
+      [
+        'name',
+        'position',
+        'department',
+        'role',
+        'phone',
+        'email',
+        'pickup',
+        'notes',
+        'userId',
+        'character',
+        'onSetContact',
+      ].sort(),
+    );
   });
 });

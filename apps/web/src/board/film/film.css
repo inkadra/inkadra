@@ -2977,6 +2977,37 @@ button.moodboard__card:focus-visible {
   cursor: default;
 }
 
+/* Who plays each name of the cast: "Marta  Ada Prova", or no one yet with Link. */
+.film-performers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.film-performers li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  min-width: 0;
+}
+.film-performers strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.film-performers span {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink-text-secondary);
+  overflow-wrap: anywhere;
+}
+.film-performers .film-performers__none {
+  color: var(--ink-text-muted);
+}
+
 /* On the canvas the panel's holder is only as wide as the panel: keep it in flow on phones. */
 .canvas__panel > .film-panel {
   position: relative;

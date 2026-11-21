@@ -2233,7 +2233,15 @@
       "retry": "Reintentar",
       "fromBoardVideo": "De un vídeo del lienzo",
       "menu": "Menú del plano {{label}}",
-      "open": "Abrir"
+      "open": "Abrir",
+      "performers": "Intérpretes",
+      "noPerformer": "Sin intérprete",
+      "link": "Vincular",
+      "linkPerformer": "Vincular quién interpreta a {{name}}",
+      "whoPlays": "¿Quién interpreta a {{name}}?",
+      "noFreeCrew": "No hay nadie libre en el equipo",
+      "noFreeCrewHint": "Añade al intérprete al equipo del tablero Producción: una fila por personaje.",
+      "performerFailed": "No se pudo vincular. Inténtalo de nuevo."
     },
     "shot": {
       "ews": "Gran plano general",
@@ -5320,7 +5328,12 @@
       "restore": "Restaurar",
       "role0": "Editar",
       "role1": "Comentar",
-      "role2": "Invitar"
+      "role2": "Invitar",
+      "department0": "Reparto",
+      "department1": "Dirección",
+      "department2": "Fotografía",
+      "character": "Personaje",
+      "plays": "Interpreta a Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5930,10 +5943,14 @@
             "text": "Abre una fila: los campos se guardan solos. Si quieres, vincula una cuenta o una ficha de personaje."
           },
           "2": {
+            "title": "Quién interpreta a quién",
+            "text": "Vincula a la persona con la ficha del personaje que interpreta. ¿Sin fichas? Abre un plano: bajo Personajes, «Vincular» crea la ficha. La hoja de rodaje cruza así personaje e intérprete."
+          },
+          "3": {
             "title": "Pegar desde una lista",
             "text": "Abre «Pegar desde lista» en la barra de Equipo. Revisa la vista previa antes de añadir personas. Se omiten encabezados y duplicados."
           },
-          "3": {
+          "4": {
             "title": "Citaciones y hoja",
             "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La hoja de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
           }
@@ -6771,8 +6788,8 @@
     "notesPlaceholder": "Solo las ve el equipo del proyecto",
     "characterLabel": "Ficha de personaje",
     "optionalTag": "opcional",
-    "characterHint": "Ninguna. El nombre en el programa basta para la citación; vincula una ficha solo si tiene vestuario y referencias.",
-    "characterNone": "Aún no hay fichas de personaje en el proyecto. No hace falta: un rol igual al nombre del programa basta para la citación.",
+    "characterHint": "Ninguna. Vincula la ficha del personaje que interpreta: la hoja de rodaje lo cruza con los planos.",
+    "characterNone": "Aún no hay fichas de personaje. En un plano, bajo Personajes, «Vincular» crea la ficha y la une a esta persona.",
     "link": "Vincular",
     "unlinkShort": "Desvincular",
     "accountHint": "Vincula una cuenta para enviar la citación al móvil y pedir que confirme su asistencia.",
@@ -6787,7 +6804,8 @@
     "mergeTitle": "Combinar {{name}}",
     "mergeWith": "Fila que combinar",
     "mergeHint": "Se queda la fila de {{name}} ({{kept}}): sus datos mandan, los campos vacíos se rellenan con la otra fila, que le pasa sus citaciones y se elimina.",
-    "mergeAction": "Combinar"
+    "mergeAction": "Combinar",
+    "plays": "Interpreta a {{name}}"
   },
   "dayCalls": {
     "title": "Citaciones",

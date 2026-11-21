@@ -40,6 +40,8 @@ export type MediaId =
   | 'tags'
   | 'backup'
   | 'users'
+  | 'crew'
+  | 'cast'
   | 'home'
   | 'pan'
   | 'extension'
@@ -241,9 +243,11 @@ export const TOURS: Tour[] = [
     icon: 'people',
     offer: 'troupe',
     steps: [
-      { anchor: 'troupe', media: 'users', side: 'bottom' },
-      { anchor: 'troupe-person', media: 'team', side: 'left' },
-      { anchor: 'troupe-paste', media: 'rows', side: 'left' },
+      { anchor: 'troupe', media: 'crew', side: 'bottom' },
+      { anchor: 'troupe-person', media: 'sheet', side: 'left' },
+      // Who plays whom: the row's character card, also linked from a frame's Performers (0091).
+      { anchor: 'troupe-character', media: 'cast', side: 'left' },
+      { anchor: 'troupe-paste', media: 'crew', side: 'left' },
       // Where the roster is used: the day's calls and the call sheet (0092).
       { anchor: null, media: 'calendar' },
     ],
