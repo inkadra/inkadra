@@ -15,7 +15,8 @@ const name = (item: HTMLElement) =>
  * The WAI-ARIA menu: a `role="menu"` surface (`.ink-menu`) around the caller's items, which are
  * buttons with a `menuitem`, `menuitemradio` or `menuitemcheckbox` role. On mount the first
  * usable item takes the focus. Up and Down walk the items and wrap, Home and End go to the
- * ends, a letter goes to the next item that starts with it; in a row of items (a `role="group"`
+ * ends, a letter goes to the next item that starts with it (one no item starts with goes on
+ * to the caller); in a row of items (a `role="group"`
  * or a fieldset) Left and Right walk too. Items with `disabled` are skipped; `aria-disabled`
  * ones stay in the walk so their hint can be read. Escape closes and gives the focus back to
  * `anchor`, Tab closes and moves on from `anchor`, a press outside the menu and `anchor` closes
@@ -86,7 +87,10 @@ export function Menu({
       // The same letter again goes to the next item that starts with it.
       const prefix = [...text].every((c) => c === text[0]) ? (text[0] ?? text) : text;
       const order = [...items.slice(at + 1), ...items.slice(0, at + 1)];
-      order.find((item) => usable(item) && name(item).startsWith(prefix))?.focus();
+      const match = order.find((item) => usable(item) && name(item).startsWith(prefix));
+      // A key no item starts with is left to the caller (the schedule's 1–9 pick a type).
+      if (!match) return false;
+      match.focus();
     } else return false;
     return true;
   };

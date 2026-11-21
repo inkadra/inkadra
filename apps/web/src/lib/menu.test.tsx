@@ -2,12 +2,12 @@
 import { Menu } from '@inkadra/ui';
 import { act, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, type Mock, vi } from 'vitest';
 
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-let chosen: ReturnType<typeof vi.fn>;
-let below: ReturnType<typeof vi.fn>;
+let chosen: Mock<(label: string) => void>;
+let below: Mock<(event: Event) => void>;
 
 function Harness() {
   const [open, setOpen] = useState(false);
@@ -100,8 +100,11 @@ it('opens on its first item and walks the items with the arrows, Home and End', 
   expect(focused()).toBe('Delete');
   await key('d');
   expect(focused()).toBe('Duplicate');
-  // The keys the menu takes never reach the page underneath.
+  // The keys the menu takes never reach the page underneath; one it has no use for does.
   expect(below).not.toHaveBeenCalled();
+  await key('3');
+  expect(focused()).toBe('Duplicate');
+  expect(below).toHaveBeenCalledOnce();
 });
 
 it('runs an item with Enter', async () => {
