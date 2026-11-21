@@ -157,10 +157,10 @@ export const pt: MailTexts = {
       storage_request: 'Pedido de mais espaço',
     },
     disk: (free, total, weeks) =>
-      `Restam ${free} de ${total}.${weeks ? ` Ao ritmo atual chega para cerca de ${weeks}.` : ''} Libere espaço ou adicione um disco antes que os envios parem.`,
+      `Restam ${free} de ${total}.${weeks ? ` No ritmo atual, dura cerca de ${weeks}.` : ''} Libere espaço ou adicione um disco antes que os envios parem.`,
     weeks: (n) => plural(n, 'uma semana', 'semanas'),
     storage: (used, total, weeks) =>
-      `A instância usa ${used} de ${total}.${weeks ? ` Ao ritmo atual chega para cerca de ${weeks}.` : ''} Aumente o limite ou libere espaço antes que os envios parem.`,
+      `A instância usa ${used} de ${total}.${weeks ? ` No ritmo atual, dura cerca de ${weeks}.` : ''} Aumente o limite ou libere espaço antes que os envios parem.`,
     storageAction: 'Abrir Armazenamento',
     down: (service) =>
       `${service} não responde. O resto do Inkadra funciona, mas esta parte está parada até o serviço voltar a funcionar.`,

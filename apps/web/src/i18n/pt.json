@@ -106,7 +106,7 @@
     "board": "Quadros",
     "shotlist": "Decupagem",
     "schedule": "Cronograma",
-    "inbox": "Entrada",
+    "inbox": "Caixa de entrada",
     "search": "Buscar",
     "settings": "Configurações",
     "assigned": "Atribuídos a mim",
@@ -196,8 +196,8 @@
     },
     "allProjects": "Todos os projetos",
     "unsorted": {
-      "waiting_one": "{{count}} item por organizar",
-      "waiting_other": "{{count}} itens por organizar"
+      "waiting_one": "{{count}} item para organizar",
+      "waiting_other": "{{count}} itens para organizar"
     },
     "seeAll": "Ver todas"
   },
@@ -249,7 +249,7 @@
   },
   "diagnostics": {
     "title": "Diagnóstico da instância",
-    "subtitle": "Verifique proxy, endereço público, banco de dados e armazenamento.",
+    "subtitle": "Verifica proxy, endereço público, banco de dados e armazenamento.",
     "summary": {
       "ok": "Tudo certo: a instância está configurada corretamente.",
       "warning": "Funciona, mas algo precisa ser corrigido.",
@@ -565,7 +565,7 @@
       "preview": "Mostrar prévia",
       "compact": "Compacto",
       "views": "Visualizações de {{name}}",
-      "loading": "Carregando pré-visualização…",
+      "loading": "Carregando prévia…",
       "unavailable": "Prévia indisponível",
       "frames_one": "{{count}} plano",
       "frames_other": "{{count}} planos",
@@ -1623,8 +1623,8 @@
         "none": "Nada para vincular",
         "unlink": "Desvincular",
         "playedBy": "Interpretado por {{actor}}",
-        "openCharacter": "Abrir a personagem",
-        "linkCharacter": "Vincular a uma personagem",
+        "openCharacter": "Abrir o personagem",
+        "linkCharacter": "Vincular a um personagem",
         "searchCharacter": "Buscar personagens",
         "openFrame": "Abrir o plano",
         "linkFrame": "Vincular a um plano",
@@ -1781,7 +1781,7 @@
           "opening_one": "{{count}} vão",
           "opening_other": "{{count}} vãos"
         },
-        "labelPlaceholder": "p. ex. Parede da cozinha",
+        "labelPlaceholder": "ex.: Parede da cozinha",
         "kind": "Tipo de abertura",
         "fromCorners": "a {{before}} e {{after}} dos cantos",
         "openingWidth": "Largura da abertura",
@@ -1848,7 +1848,7 @@
       },
       "onAnotherSetup": "Em outro setup",
       "renameHint": "Clique duas vezes ou F2 para renomear",
-      "tagColourFollows": "A cor segue o card da personagem",
+      "tagColourFollows": "A cor segue o card do personagem",
       "onTrack": "{{name}} no trilho",
       "onTrackLength": "{{name}} em trilho de {{metres}} m",
       "seatsAround_one": "{{count}} lugar",
@@ -2750,7 +2750,7 @@
         "changes_one": "{{count}} alteração",
         "changes_other": "{{count}} alterações",
         "sent": "Revisão enviada à equipe",
-        "alreadySent": "Já enviada: nenhuma decisão nova desde então"
+        "alreadySent": "Já enviada: nenhuma decisão nova desde o último envio"
       }
     },
     "comments": {
@@ -3315,7 +3315,7 @@
     "noBlocks": "Nenhum bloco ainda. Adicione um ou solte um plano na diária.",
     "staleFlag": "Precisa de uma decisão",
     "staleBody": "Esta diária foi alterada em outro lugar enquanto você a editava. Suas alterações ficam aqui e não são salvas até você escolher qual versão manter.",
-    "staleReload": "Ver a versão dele",
+    "staleReload": "Ver a outra versão",
     "staleKeep": "Manter a minha",
     "staleBlocked": "{{day}} foi alterada em outro lugar: escolha qual versão manter antes de adicionar planos.",
     "addedTo": "{{shot}} adicionado a {{day}}.",
@@ -3593,7 +3593,7 @@
     "pickupAt": "pick-up {{pickup}}"
   },
   "needed": {
-    "locked": "Somente leitura aqui: o storyboard dela não está aberto para edição.",
+    "locked": "Somente leitura aqui: o storyboard da cena não está aberto para edição.",
     "title": "A levar",
     "progress": "{{ready}} de {{total}} prontos",
     "mine": "Só os meus",
@@ -3626,8 +3626,8 @@
       "changeType": "Mudar tipo",
       "deleteList": "Excluir lista…",
       "deleteTitle": "Excluir a lista “{{name}}”?",
-      "deleteBody_one": "{{type}} para a cena {{number}}, com o item dela. Some para todos neste storyboard; Desfazer a restaura.",
-      "deleteBody_other": "{{type}} para a cena {{number}}, com os {{count}} itens dela. Some para todos neste storyboard; Desfazer a restaura.",
+      "deleteBody_one": "{{type}} para a cena {{number}}, com seu item. Some para todos neste storyboard; Desfazer restaura a lista.",
+      "deleteBody_other": "{{type}} para a cena {{number}}, com seus {{count}} itens. Some para todos neste storyboard; Desfazer restaura a lista.",
       "deleteConfirm": "Excluir lista",
       "cancel": "Cancelar",
       "days": "Em A levar: {{days}}",
@@ -3802,7 +3802,7 @@
       "updates": "Atualizações",
       "modules": "Módulos",
       "appearance": "Aparência e idioma",
-      "board": "Board",
+      "board": "Quadro",
       "apps": "Apps conectados",
       "help": "Ajuda e tutoriais",
       "reports": "Relatos",
@@ -3818,7 +3818,7 @@
       "backups": "Cópias noturnas do banco de dados, para restaurar o servidor após uma falha.",
       "toolbar": "Escolha quais ferramentas de «Mais ferramentas» aparecem na barra inferior. As outras ficam em ⋯ e na paleta de comandos.",
       "tutorials": "Reveja os tours guiados, escolha se quer recebê-los e peça ajuda.",
-      "server": "Como está o servidor: recursos, serviços, trabalhos, problemas e alertas.",
+      "server": "Como está o servidor: recursos, serviços, tarefas, problemas e alertas.",
       "serverSimple": "Como está o servidor, em palavras simples: espaço, backup, velocidade e problemas para acompanhar.",
       "updates": "A versão em uso, as novidades e um aviso quando sai uma nova. O Inkadra não se atualiza sozinho: quem atualiza é você, no servidor.",
       "modules": "Escolha as partes do Inkadra que você usa. Um módulo desativado some dos seus menus, da barra, das notificações e dos tutoriais. Vale só para você e não apaga nada: o que existe continua visível e, se você reativar o módulo, encontra tudo de volta.",
@@ -4277,7 +4277,7 @@
     "exportForbidden": "Só proprietários e editores do projeto podem exportá-lo.",
     "startError": "Não foi possível iniciar a exportação. Tente novamente.",
     "importTitle": "Importar projeto",
-    "importLead": "Crie um novo projeto a partir de um pacote do Inkadra. Você será o único membro; os comentários mantêm os nomes dos autores.",
+    "importLead": "Cria um novo projeto a partir de um pacote do Inkadra. Você será o único membro; os comentários mantêm os nomes dos autores.",
     "drop": "Solte o pacote aqui ou escolha um arquivo",
     "dropHint": "Um .zip exportado do Inkadra",
     "change": "escolher outro",
@@ -5582,7 +5582,7 @@
           },
           "1": {
             "title": "A biblioteca",
-            "text": "Escolha uma categoria ou busque. Clique em um tipo e depois na planta, ou arraste-o até lá. Alt coloca-o livre. O material do projeto reúne as luzes e câmeras de todas as plantas."
+            "text": "Escolha uma categoria ou busque. Clique em um tipo e depois na planta, ou arraste-o até lá. Alt o coloca livre. O material do projeto reúne as luzes e câmeras de todas as plantas."
           },
           "2": {
             "title": "Propriedades, elementos, material",
@@ -5948,7 +5948,7 @@
           },
           "1": {
             "title": "Vinculados, nunca copiados",
-            "text": "Vincule um ator a uma personagem e uma câmera a um plano do storyboard: nomes, cores e lentes seguem as fichas. Sem seleção, vincule a planta à locação."
+            "text": "Vincule um ator a um personagem e uma câmera a um plano do storyboard: nomes, cores e lentes seguem as fichas. Sem seleção, vincule a planta à locação."
           },
           "2": {
             "title": "O sol, para exteriores",
@@ -5965,7 +5965,7 @@
         "steps": {
           "0": {
             "title": "Exportar",
-            "text": "PDF, PNG ou JPEG deste setup ou de todos, com legenda, material, potência e notas. No telefone fica no menu do setup."
+            "text": "PDF, PNG ou JPEG deste setup ou de todos, com legenda, material, potência e notas. No celular fica no menu do setup."
           },
           "1": {
             "title": "A folha",
@@ -6082,7 +6082,7 @@
         "collab": "Os quadros não se atualizam ao vivo; o resto funciona.",
         "worker": "Os vídeos novos ficam em espera; o resto funciona.",
         "database": "O Inkadra não consegue ler nem salvar nada.",
-        "queue": "Os trabalhos em segundo plano estão parados."
+        "queue": "As tarefas em segundo plano estão paradas."
       },
       "warn": "Funciona, mas há algo para corrigir",
       "checks": "Verificações {{ok}} de {{total}} ok",
@@ -6212,7 +6212,7 @@
       "retry": "Tentar de novo",
       "seen": "Marcar como visto",
       "actionError": "Não foi possível. Tente de novo daqui a pouco.",
-      "retryError": "Não dá para tentar de novo: o trabalho não existe mais.",
+      "retryError": "Não dá para tentar de novo: a tarefa não existe mais.",
       "file": "Arquivo {{file}}.",
       "fileOnBoard": "Arquivo {{file}} no quadro «{{board}}».",
       "kinds": {
@@ -6237,16 +6237,16 @@
           "text": "Quem a pediu pode tentar de novo a partir do projeto."
         },
         "job_failed": {
-          "title": "Um trabalho em segundo plano falhou",
+          "title": "Uma tarefa em segundo plano falhou",
           "text": "Normalmente o Inkadra volta a tentar sozinho na próxima vez."
         },
         "backup_failed": {
           "title": "O backup falhou",
-          "text": "Os dados estão seguros, mas convém verificar antes da próxima cópia."
+          "text": "Os dados estão seguros, mas convém verificar antes do próximo backup."
         },
         "disk_full": {
           "title": "Quase sem espaço",
-          "text": "Liberte espaço ou adicione um disco antes que os envios parem."
+          "text": "Libere espaço ou adicione um disco antes que os envios parem."
         },
         "service_down": {
           "title": "Um serviço deixou de responder",
@@ -6296,7 +6296,7 @@
       "signal": "Sinal",
       "toolOf": "Programa iniciado por {{role}}:",
       "runningFor": "há {{time}}",
-      "queue": "Fila de trabalhos",
+      "queue": "Fila de tarefas",
       "waiting": "Em espera",
       "active": "Em andamento",
       "failed": "Falhas 24 h",
@@ -6347,7 +6347,7 @@
       "severity": "Gravidade",
       "all": "Erros e avisos",
       "errorsOnly": "Só erros",
-      "retryAll": "Tentar de novo as que falharam",
+      "retryAll": "Tentar de novo os que falharam",
       "seenAll": "Marcar todos como vistos",
       "error": "Erro",
       "warning": "Aviso",
@@ -6404,7 +6404,7 @@
       "presetText": "{{editors}} editores, {{readers}} leitores, {{boards}} quadros · {{time}}",
       "sharedProcess": "Modo tudo em um: os editores de teste rodam dentro do servidor em uso e dividem o tempo dele, então as pessoas sentem a carga antes e os números ficam um pouco pessimistas. Grande precisa de uma função worker separada.",
       "needsWorker": "precisa de uma função worker separada",
-      "warningTitle": "Isto sobrecarrega esta própria instância",
+      "warningTitle": "Isto gera carga nesta própria instância",
       "warning": "Por {{time}}, o servidor trabalha a todo ritmo para editores de teste: quem usar quadros e vídeos nesse momento pode achá-los mais lentos. Ele cria uma conta de teste e um projeto com {{boards}} quadros, e os exclui no fim, mesmo após uma parada ou reinício.",
       "when": "Quando",
       "guard": "Ele para sozinho se as pessoas que usam a instância sentirem, se faltarem as medições do servidor ou se começar um backup, uma exportação ou uma importação.",
@@ -6853,9 +6853,9 @@
       "off": "Cópias de vídeo desativadas",
       "offText": "O servidor não prepara cópias: VIDEO_PROXIES está desativado ou o worker não tem ffmpeg.",
       "cpu": "Só processador",
-      "cpuText": "Nenhuma placa gráfica utilizável · uma cópia de cada vez · mais lento",
-      "gpuText_one": "A placa gráfica prepara as cópias · uma de cada vez",
-      "gpuText_other": "A placa gráfica prepara as cópias · {{count}} ao mesmo tempo",
+      "cpuText": "Nenhuma placa de vídeo utilizável · uma cópia de cada vez · mais lento",
+      "gpuText_one": "A placa de vídeo prepara as cópias · uma de cada vez",
+      "gpuText_other": "A placa de vídeo prepara as cópias · {{count}} ao mesmo tempo",
       "hardware": "Codificação por hardware",
       "cpuOnly": "Só CPU",
       "av1": "AV1 disponível"
@@ -6924,7 +6924,7 @@
       "outdated_other": "{{count}} vídeos têm cópias feitas com as configurações anteriores",
       "upToDate": "As cópias já estão feitas com estas configurações",
       "help": "As cópias atuais ficam até as novas estarem prontas.",
-      "noRoom": "Precisa de cerca de {{size}} a mais: libere espaço antes de regenerar.",
+      "noRoom": "É preciso cerca de {{size}} a mais: libere espaço antes de regenerar.",
       "regenerate": "Regenerar as cópias…",
       "progress": "{{done}} de {{total}} vídeos refeitos",
       "running_one": "um em andamento",
@@ -6960,7 +6960,7 @@
       "unavailable": "Indisponível",
       "off": "Desativada",
       "reasons": {
-        "no-gpu": "Requer a codificação por hardware da placa gráfica: neste servidor as cópias são feitas só pelo processador.",
+        "no-gpu": "Requer a codificação por hardware da placa de vídeo: neste servidor as cópias são feitas só pelo processador.",
         "too-slow": "GPU lenta demais para tempo real (medida na inicialização).",
         "failed": "A medição na inicialização falhou: detalhes no log do servidor.",
         "set-off": "Desativada pelo servidor (VIDEO_LIVE_MAX_SESSIONS=0)."
@@ -6969,7 +6969,7 @@
       "upTo_one": "Até {{count}} pessoa ao mesmo tempo. Acima disso, quem vê recebe as cópias prontas ou o original.",
       "upTo_other": "Até {{count}} pessoas ao mesmo tempo. Acima disso, quem vê recebe as cópias prontas ou o original.",
       "zero": "Sessões definidas como 0 nas configurações avançadas: o tempo real está desativado.",
-      "rungsHelp": "Para cada resolução: mantê-la em disco ou gerá-la só quando alguém a assiste.",
+      "rungsHelp": "Para cada resolução: mantê-la em disco ou gerá-la só quando alguém assistir.",
       "onDisk": "cerca de {{size}} MB/min em disco",
       "onlyLive": "só em tempo real",
       "never": "Nunca em tempo real; esperam pelas cópias prontas: ProRes, DNx, vídeo 4:2:2, entrelaçado, HDR e os verticais que a placa não aguenta em tempo real."
@@ -6989,7 +6989,7 @@
       "measuredNow_other": "Medido agora: {{count}} sessões em tempo real",
       "speedAt": "{{speed}}× tempo real em um 1080p · {{time}}",
       "neverMeasured": "Ainda sem medição",
-      "noGpu": "Sem teste: o tempo real requer a placa gráfica",
+      "noGpu": "Sem teste: o tempo real requer a placa de vídeo",
       "noGpuHelp": "As cópias são feitas pelo processador (libx264).",
       "sessions": "Sessões em tempo real",
       "sessionsLabel": "Pessoas que podem ver em tempo real ao mesmo tempo",
