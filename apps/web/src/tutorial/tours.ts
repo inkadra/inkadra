@@ -1,6 +1,7 @@
 import { offered } from '@inkadra/shared';
 import type { ContentKind, IconName, ToolKind } from '@inkadra/ui';
 import { isMac } from '../board/shortcuts.ts';
+import type { BoardView } from '../board/views.ts';
 
 /**
  * Every tutorial of Inkadra (#502, decision 0078), as data. A step points at the real interface
@@ -57,6 +58,15 @@ export interface TourStep {
   keys?: string[];
 }
 
+/**
+ * The screen a tour's steps point at, opened before step 1 when the tour is started from
+ * Settings: a board of the open project (the first project from elsewhere) that has `view`, or
+ * the board on screen (else the project's own) without one; `inbox` opens the Inbox. Settings
+ * pages use `href` instead. A board tour also needs `tutorial.tours.<id>.where`, the one line
+ * said when its screen is not there (decision 0135).
+ */
+export type TourStart = { view?: BoardView } | 'inbox';
+
 export type TourGroup = 'start' | 'canvas' | 'production' | 'collaboration' | 'tools' | 'admin';
 
 export interface Tour {
@@ -72,8 +82,9 @@ export interface Tour {
   demo?: boolean;
   /** The anchor whose first appearance offers the tour with a pill; null: Settings only. */
   offer: string | null;
-  /** Where a replay from Settings opens it; without one it plays on the page underneath. */
+  /** Where a replay from Settings opens it; without it or `start` it plays on the page underneath. */
   href?: string;
+  start?: TourStart;
   steps: TourStep[];
 }
 
@@ -119,6 +130,7 @@ export const TOURS: Tour[] = [
     group: 'start',
     icon: 'inbox',
     offer: 'inbox',
+    start: 'inbox',
     steps: [
       { anchor: 'inbox', media: 'bell', side: 'right' },
       { anchor: 'inbox-filters', media: 'tags', side: 'bottom' },
@@ -130,6 +142,7 @@ export const TOURS: Tour[] = [
     group: 'canvas',
     icon: 'board',
     offer: 'dock',
+    start: { view: 'canvas' },
     steps: [
       { anchor: 'dock', media: 'drag', side: 'top' },
       // More holds the other tools; Canvas only the boards to create (decision 0121).
@@ -147,6 +160,7 @@ export const TOURS: Tour[] = [
     icon: 'image',
     kind: 'moodboard',
     offer: 'moodboard',
+    start: { view: 'moodboard' },
     steps: [
       { anchor: 'moodboard', media: 'grid', side: 'bottom' },
       { anchor: 'moodboard-filter', media: 'tags', side: 'bottom' },
@@ -159,6 +173,7 @@ export const TOURS: Tour[] = [
     icon: 'film',
     tool: 'image',
     offer: 'video',
+    start: {},
     steps: [
       { anchor: 'video', media: 'play', side: 'right' },
       { anchor: null, media: 'play' },
@@ -172,6 +187,7 @@ export const TOURS: Tour[] = [
     icon: 'storyboard',
     kind: 'storyboard',
     offer: 'storyboard-scene',
+    start: { view: 'storyboard' },
     steps: [
       { anchor: 'storyboard-scene', media: 'scenes', side: 'bottom' },
       { anchor: 'storyboard-frame', media: 'meta', side: 'right' },
@@ -188,6 +204,7 @@ export const TOURS: Tour[] = [
     icon: 'pen',
     kind: 'storyboard',
     offer: 'draw-tools',
+    start: { view: 'storyboard' },
     steps: [
       { anchor: 'draw-tools', media: 'draw', side: 'right' },
       { anchor: 'draw-nav', media: 'scenes', side: 'bottom', keys: ['←', '→'] },
@@ -200,6 +217,7 @@ export const TOURS: Tour[] = [
     icon: 'shotlist',
     kind: 'shotlist',
     offer: 'shotlist',
+    start: { view: 'shotlist' },
     steps: [
       { anchor: 'shotlist', media: 'rows', side: 'bottom' },
       { anchor: 'shotlist-layouts', media: 'morph', side: 'bottom' },
@@ -212,6 +230,7 @@ export const TOURS: Tour[] = [
     icon: 'calendar',
     kind: 'schedule',
     offer: 'schedule',
+    start: { view: 'schedule' },
     steps: [
       // The Production board's calendar, for every storyboard of the project (decision 0123).
       { anchor: 'schedule-queue', media: 'drag', side: 'right' },
@@ -240,6 +259,7 @@ export const TOURS: Tour[] = [
     group: 'production',
     icon: 'people',
     offer: 'troupe',
+    start: { view: 'troupe' },
     steps: [
       { anchor: 'troupe', media: 'users', side: 'bottom' },
       { anchor: 'troupe-person', media: 'team', side: 'left' },
@@ -254,6 +274,7 @@ export const TOURS: Tour[] = [
     icon: 'planCamera',
     tool: 'plan',
     offer: 'plan-tools',
+    start: {},
     steps: [
       // The editor of decision 0104: tools, library, right panel, setups.
       { anchor: 'plan-tools', media: 'plan', side: 'top' },
@@ -274,6 +295,7 @@ export const TOURS: Tour[] = [
     icon: 'link',
     tool: 'plan',
     offer: 'plan-scene-chip',
+    start: {},
     steps: [
       { anchor: 'plan-scene-chip', media: 'scenes', side: 'bottom' },
       { anchor: 'plan-properties', media: 'plan', side: 'left' },
@@ -288,6 +310,7 @@ export const TOURS: Tour[] = [
     icon: 'download',
     tool: 'plan',
     offer: 'plan-export-button',
+    start: {},
     steps: [
       { anchor: 'plan-export-button', media: 'export', side: 'bottom' },
       { anchor: 'plan-export', media: 'export', side: 'left' },
@@ -299,6 +322,7 @@ export const TOURS: Tour[] = [
     group: 'production',
     icon: 'user',
     offer: 'story-panel',
+    start: {},
     steps: [
       { anchor: 'story-panel', media: 'sheet', side: 'left' },
       { anchor: null, media: 'scenes' },
@@ -312,6 +336,7 @@ export const TOURS: Tour[] = [
     kind: 'review',
     // The stage, not the list of frames: a phone shows no list.
     offer: 'review-stage',
+    start: { view: 'review' },
     steps: [
       { anchor: 'review-frames', media: 'rows', side: 'right' },
       { anchor: 'review-stage', media: 'pin', side: 'left' },
@@ -323,6 +348,7 @@ export const TOURS: Tour[] = [
     group: 'collaboration',
     icon: 'comment',
     offer: 'comments-panel',
+    start: {},
     steps: [
       { anchor: 'comments-panel', media: 'team', side: 'left' },
       { anchor: 'comments-on-board', media: 'pin', side: 'left' },
@@ -334,6 +360,7 @@ export const TOURS: Tour[] = [
     group: 'collaboration',
     icon: 'people',
     offer: 'share-tabs',
+    start: {},
     steps: [
       { anchor: 'share-tabs', media: 'users', side: 'bottom' },
       { anchor: 'share-invite', media: 'users', side: 'bottom' },
@@ -348,6 +375,7 @@ export const TOURS: Tour[] = [
     group: 'collaboration',
     icon: 'clock',
     offer: 'versions',
+    start: {},
     steps: [
       { anchor: 'versions-tabs', media: 'versions', side: 'bottom' },
       { anchor: 'versions-list', media: 'versions', side: 'top' },
@@ -362,6 +390,7 @@ export const TOURS: Tour[] = [
     group: 'collaboration',
     icon: 'play',
     offer: 'present',
+    start: { view: 'storyboard' },
     steps: [
       { anchor: 'present', media: 'slides', side: 'bottom' },
       { anchor: 'present-header', media: 'slides', side: 'bottom' },
@@ -373,6 +402,7 @@ export const TOURS: Tour[] = [
     group: 'tools',
     icon: 'download',
     offer: 'export',
+    start: {},
     steps: [
       { anchor: 'export-controls', media: 'export', side: 'right' },
       { anchor: 'export-preview', media: 'export', side: 'left' },

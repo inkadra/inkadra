@@ -37,8 +37,8 @@ type Shown = { step: TourStep; index: number };
 
 /**
  * The steps to play: those whose anchor is on screen, and the card-only ones. A tour with none
- * of its anchors here (a replay from Settings, far from the feature) plays every step as a card:
- * never a blank screen.
+ * of its anchors here (one without a screen to open, replayed far from the feature) plays every
+ * step as a card: never a blank screen.
  */
 export function playable(steps: TourStep[], present: (anchor: string) => boolean): Shown[] {
   const all = steps.map((step, index) => ({ step, index }));
@@ -48,6 +48,8 @@ export function playable(steps: TourStep[], present: (anchor: string) => boolean
 }
 
 const WAIT_MS = 2500;
+/** How long a tour started from Settings waits for its screen: a board or a page still loading. */
+const SCREEN_WAIT_MS = 10_000;
 const PAD = 6;
 const MARGIN = 16;
 const GAP = 18;
@@ -102,11 +104,16 @@ const OPPOSITE = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' } 
 export function TourPlayer({
   tour,
   settle,
+  screen,
+  onAbsent,
   onEnd,
 }: {
   tour: Pick<Tour, 'id' | 'steps'>;
   /** Anchors to wait for first, in turn, after the tour opened another page. */
   settle?: string[];
+  /** The anchor of the screen the tour opened: without it, `onAbsent` instead of the steps. */
+  screen?: string;
+  onAbsent?: () => void;
   onEnd: (finished: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -130,7 +137,20 @@ export function TourPlayer({
     const waits = [...(settle ?? [])];
     let started = Date.now();
     let timer: ReturnType<typeof setTimeout>;
+    let opened = !screen;
     const check = () => {
+      if (!opened && screen) {
+        if (findAnchor(screen, true)) {
+          opened = true;
+          started = Date.now();
+        } else if (Date.now() - started > SCREEN_WAIT_MS) {
+          onAbsent?.();
+          return;
+        } else {
+          timer = setTimeout(check, 150);
+          return;
+        }
+      }
       const late = Date.now() - started > WAIT_MS;
       const first = waits[0];
       if (first !== undefined) {

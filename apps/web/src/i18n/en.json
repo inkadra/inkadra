@@ -5277,6 +5277,17 @@
       "guestDismissed": "OK. The tour stays under the ? button at the top.",
       "guestDone": "That’s all. Enjoy the review!"
     },
+    "start": {
+      "noProject": "This tour starts on a board: open or create a project first.",
+      "newProject": "New project",
+      "create": "Create",
+      "unavailable": "{{name}}: this screen did not open. Try again in a moment.",
+      "missing": {
+        "storyboard": "This project has no storyboard yet: the tour starts there.",
+        "moodboard": "This project has no moodboard yet: the tour starts there.",
+        "production": "This project has no Production board yet: the tour starts there."
+      }
+    },
     "settings": {
       "welcomeTitle": "Welcome tour",
       "welcomeSub": "What Inkadra is and where things are · 7 steps · 1 min",
@@ -5441,7 +5452,8 @@
             "title": "Board size limits",
             "text": "If this board reaches its size limit, additions are refused and the confirmed board reloads. Delete content to make room; if it still does not fit, ask the administrator to raise the limit."
           }
-        }
+        },
+        "where": "The tour starts on the Canvas of a board you can edit."
       },
       "moodboard": {
         "name": "Moodboard",
@@ -5458,7 +5470,8 @@
             "title": "The palette",
             "text": "The colours of your references, ready to copy."
           }
-        }
+        },
+        "where": "Open a moodboard, or turn it on from “Views of this board” in the ⋯ menu, and try again."
       },
       "video": {
         "name": "Videos in cards",
@@ -5479,7 +5492,8 @@
             "title": "Video quality",
             "text": "On the card and in the viewer, Quality picks the resolution; Auto follows the connection."
           }
-        }
+        },
+        "where": "Put a video on this board and play the tour again from here."
       },
       "storyboard": {
         "name": "Storyboard",
@@ -5504,7 +5518,8 @@
             "title": "What a scene needs",
             "text": "Wardrobe, props and equipment for the scene, in lists by type. The days that shoot the scene gather them in To bring."
           }
-        }
+        },
+        "where": "The tour starts on a storyboard with at least one scene: add one and try again."
       },
       "draw": {
         "name": "Draw on a frame",
@@ -5521,7 +5536,8 @@
             "title": "Move around",
             "text": "Space and drag, the wheel or two fingers."
           }
-        }
+        },
+        "where": "Double-click a frame of the storyboard to draw on it, then play the tour again."
       },
       "shotlist": {
         "name": "Shot list",
@@ -5538,7 +5554,8 @@
             "title": "Export",
             "text": "CSV or PDF, for the crew."
           }
-        }
+        },
+        "where": "Turn on the Shot list from “Views of this board” in the storyboard’s ⋯ menu, and try again."
       },
       "schedule": {
         "name": "Shooting schedule",
@@ -5571,7 +5588,8 @@
             "title": "Call sheet",
             "text": "Times with sunrise and sunset, locations, crew with phone numbers, the schedule with notes and what to bring. Pick the sections and print for the crew. Sunrise and sunset follow the project time zone: change it in Projects, the card’s ⋯ menu, “Type and time zone”. “Automatic” uses the device’s zone."
           }
-        }
+        },
+        "where": "The tour starts on the Production board’s Schedule: open it and try again."
       },
       "setplan": {
         "name": "Set plan",
@@ -5604,7 +5622,8 @@
             "title": "Move around the plan",
             "text": "Space and drag, the wheel or two fingers move the plan; Ctrl and the wheel or a pinch zoom it. With nothing selected the arrows move it, 0 fits it, at 100 %, + and − zoom."
           }
-        }
+        },
+        "where": "Open a set plan (double-click its card) and play the tour again from there."
       },
       "characters": {
         "name": "Character sheets",
@@ -5621,7 +5640,8 @@
             "title": "Team only",
             "text": "Contacts and notes never reach guests."
           }
-        }
+        },
+        "where": "Open a character card on the board and play the tour again from there."
       },
       "review": {
         "name": "Client review",
@@ -5638,7 +5658,8 @@
             "title": "Approve or ask for changes",
             "text": "The decision reaches the team at once."
           }
-        }
+        },
+        "where": "Turn on Review from “Views of this board” in a board’s ⋯ menu, and try again."
       },
       "comments": {
         "name": "Comments",
@@ -5655,7 +5676,8 @@
             "title": "Who reads it",
             "text": "The team, or guests too: you choose every time."
           }
-        }
+        },
+        "where": "Open Comments at the top right of the board and play the tour again from there."
       },
       "sharing": {
         "name": "Sharing and roles",
@@ -5680,7 +5702,8 @@
             "title": "Guest links",
             "text": "For clients: choose what they can do and read the summary."
           }
-        }
+        },
+        "where": "Open Share at the top right of the board and play the tour again from there."
       },
       "versions": {
         "name": "Versions",
@@ -5705,7 +5728,8 @@
             "title": "From a downloaded file",
             "text": "Downloaded the changes? In the board menu, Restore changes from file… brings them back into the same board."
           }
-        }
+        },
+        "where": "Open the versions (the clock at the top right of the board) and play the tour again from there."
       },
       "present": {
         "name": "Presentation",
@@ -5722,7 +5746,8 @@
             "title": "Back and forth",
             "text": "With the arrows or a tap."
           }
-        }
+        },
+        "where": "Press Present in the storyboard and play the tour again from there."
       },
       "export": {
         "name": "Export and import",
@@ -5747,7 +5772,8 @@
             "title": "The whole project",
             "text": "Export it as a zip and import it on another server."
           }
-        }
+        },
+        "where": "Open Export… at the top right of the board and play the tour again from there."
       },
       "clipper": {
         "name": "Browser clipper",
@@ -5937,7 +5963,8 @@
             "title": "Calls and call sheet",
             "text": "In the Schedule, Calls tab, choose who is called each day. The call sheet prints the crew, phone numbers and on-set contact, never for guests or clients."
           }
-        }
+        },
+        "where": "The tour starts on the Production board’s Crew: open it and try again."
       },
       "setplanLinks": {
         "name": "Plan links",
@@ -5958,7 +5985,8 @@
             "title": "Setups in the shot list",
             "text": "The shot list and the schedule show the setup of each shot, and the shot list can group shots by setup."
           }
-        }
+        },
+        "where": "Open the plan of a storyboard scene and play the tour again from there."
       },
       "setplanOutputs": {
         "name": "Plan outputs",
@@ -5975,7 +6003,8 @@
             "title": "Who cannot edit",
             "text": "Guests and readers open the plan in a view with pan and zoom, the setups, the legend and the PDF."
           }
-        }
+        },
+        "where": "Open a set plan (double-click its card) and play the tour again from there."
       },
       "modules": {
         "name": "Modules",
