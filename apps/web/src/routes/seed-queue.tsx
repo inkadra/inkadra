@@ -23,10 +23,17 @@ const live = new Set<string>();
 const released = new Map<string, number>();
 
 /**
- * The collaboration server stores a board at most 10 s after its last edit (`maxDebounce` in
- * apps/server collab.ts): counts asked for this long after a board closed include its edits.
+ * How long a closed board's counts may differ from the server's before the server's win. The
+ * collaboration server stores a board within 10 s of its last edit (`maxDebounce` in apps/server
+ * collab.ts), but a store that fails is retried, up to a minute apart: only counts that match
+ * ours say the board was stored. Past this, someone else most likely changed it since.
+ * shortcut: a store still failing after this shows the server's older counts until it succeeds;
+ * upgrade to a notice when a board is stored if that matters.
  */
-export const STORED_WITHIN_MS = 15_000;
+export const RELEASED_HOLD_MS = 120_000;
+
+/** The board closed and its local counts still stand in for the server's. */
+export const holdsReleasedCounts = (boardId: string) => released.has(boardId);
 const listeners = new Set<() => void>();
 const emit = () => {
   for (const l of listeners) l();
@@ -107,8 +114,9 @@ export function mergeSeededCounts(
 
 /**
  * Drops local counts the server has caught up with: a seeded board once it has elements there,
- * a closed one once its counts there match, or the counts were asked for (`askedAt`) long
- * enough after it closed to include its edits, whatever others changed meanwhile.
+ * a closed one once its counts there match, or once they were asked for (`askedAt`) past
+ * `RELEASED_HOLD_MS` after it closed. Only boards in `server` are judged: counts of another
+ * project say nothing about them.
  */
 export function forgetSeededCounts(
   server: ReadonlyMap<string, BoardCount>,
@@ -118,7 +126,12 @@ export function forgetSeededCounts(
     const there = server.get(id);
     const closedAt = released.get(id);
     if (closedAt === undefined) return !!there?.elementCount;
-    return (there && sameCounts(there, counts)) || askedAt >= closedAt + STORED_WITHIN_MS;
+    if (!there) return false;
+    // Counts stored by an older server may lack the newer kinds: only those it has compare.
+    const matches = (Object.keys(counts) as (keyof SeededCounts)[]).every(
+      (key) => there[key] === undefined || there[key] === counts[key],
+    );
+    return matches || askedAt >= closedAt + RELEASED_HOLD_MS;
   };
   const stored = [...seeded].filter(([id, counts]) => !live.has(id) && caughtUp(id, counts));
   if (stored.length === 0) return;

@@ -4,13 +4,17 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { api } from '../lib/api.ts';
 import {
   forgetSeededCounts,
+  holdsReleasedCounts,
   mergeSeededCounts,
+  RELEASED_HOLD_MS,
   releaseLiveCounts,
-  STORED_WITHIN_MS,
   setLiveCounts,
   useSeededCounts,
 } from '../routes/seed-queue.tsx';
 import type { BoardConnection } from './connection.ts';
+
+/** When a closed board is counted again, after it closed. */
+const RECOUNT_AFTER_MS = [3000, 15_000, 45_000, 90_000, RELEASED_HOLD_MS];
 
 /**
  * Keeps the navigation's counts of the open board to what its synced doc holds, whichever view
@@ -35,10 +39,13 @@ export function useLiveBoardCounts(
     if (!boardId) return;
     return () => {
       releaseLiveCounts(boardId);
-      // Counted again once the server has likely stored the last edits, and once it must have:
-      // the local counts hold until then (forgetSeededCounts).
-      setTimeout(refreshBoardCounts, 3000);
-      setTimeout(refreshBoardCounts, STORED_WITHIN_MS);
+      // Counted again until the server's counts match the local ones, which hold until then
+      // (forgetSeededCounts): once it has likely stored the last edits, once it should have,
+      // then while a failed store is retried, and a last time when the local ones expire.
+      for (const ms of RECOUNT_AFTER_MS)
+        setTimeout(() => {
+          if (holdsReleasedCounts(boardId)) refreshBoardCounts();
+        }, ms);
     };
   }, [boardId]);
 }

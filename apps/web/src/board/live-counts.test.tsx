@@ -3,7 +3,7 @@ import type { Board, BoardCount } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { STORED_WITHIN_MS } from '../routes/seed-queue.tsx';
+import { RELEASED_HOLD_MS } from '../routes/seed-queue.tsx';
 import type { BoardConnection } from './connection.ts';
 import { useBoardCounts, useLiveBoardCounts } from './live-counts.ts';
 
@@ -61,9 +61,42 @@ it('counts a board again after it closes, keeping its own counts until the serve
     expect(shown.get('b')?.frameCount).toBe(2);
     // Stored: the server's counts, asked for without any change to the board list.
     counts.items = [{ boardId: 'b', elementCount: 2, frameCount: 2, framesToShoot: 2 }];
-    await act(async () => vi.advanceTimersByTimeAsync(STORED_WITHIN_MS));
+    await act(async () => vi.advanceTimersByTimeAsync(12_000));
     expect(get.mock.calls.length).toBe(asked + 2);
     expect(shown.get('b')?.frameCount).toBe(2);
+    // The server caught up: nothing more to count again.
+    await act(async () => vi.advanceTimersByTimeAsync(RELEASED_HOLD_MS));
+    expect(get.mock.calls.length).toBe(asked + 2);
+  } finally {
+    await act(async () => root.unmount());
+    vi.useRealTimers();
+  }
+});
+
+it('counts a closed board again while its store is retried, and gives up on its counts in the end', async () => {
+  vi.useFakeTimers();
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  // The server never stores the visit: it keeps its one frame.
+  counts.items = [{ boardId: 'b', elementCount: 1, frameCount: 1, framesToShoot: 1 }];
+  try {
+    await act(async () =>
+      root.render(
+        <>
+          <Navigation />
+          <Open />
+        </>,
+      ),
+    );
+    const asked = get.mock.calls.length;
+    await act(async () => root.render(<Navigation />));
+    await act(async () => vi.advanceTimersByTimeAsync(60_000));
+    // 3 s, 15 s and 45 s after closing; still ours.
+    expect(get.mock.calls.length).toBe(asked + 3);
+    expect(shown.get('b')?.frameCount).toBe(2);
+    await act(async () => vi.advanceTimersByTimeAsync(RELEASED_HOLD_MS));
+    expect(get.mock.calls.length).toBe(asked + 5);
+    expect(shown.get('b')?.frameCount).toBe(1);
   } finally {
     await act(async () => root.unmount());
     vi.useRealTimers();
