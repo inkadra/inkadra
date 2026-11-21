@@ -1,4 +1,4 @@
-import { Icon, KeyCap } from '@inkadra/ui';
+import { Button, Icon, KeyCap } from '@inkadra/ui';
 import {
   type CSSProperties,
   useCallback,
@@ -320,15 +320,10 @@ export function TourPlayer({
             >
               <Icon name="chevronLeft" size={16} />
             </button>
-            <button
-              ref={next}
-              type="button"
-              className="ink-btn ink-btn--primary tour__next"
-              onClick={() => go(1)}
-            >
+            <Button ref={next} variant="primary" className="tour__next" onClick={() => go(1)}>
               {t(last ? 'tutorial.coach.done' : 'tutorial.coach.next')}
               <Icon name={last ? 'check' : 'chevronRight'} size={13} />
-            </button>
+            </Button>
           </span>
         </div>
       </div>

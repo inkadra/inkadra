@@ -14,6 +14,7 @@ import {
   type DialogHandle,
   Icon,
   IconButton,
+  Input,
   Select,
   TabPanel,
   Tabs,
@@ -656,8 +657,8 @@ function LinkSection({
         </div>
         {/* Whole, to copy by hand where the clipboard is not allowed (plain http). */}
         {link?.url && (
-          <input
-            className="ink-input share__url"
+          <Input
+            className="share__url"
             readOnly
             data-feedback-secret
             value={link.url}

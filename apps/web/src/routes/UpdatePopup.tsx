@@ -1,4 +1,4 @@
-import { Icon } from '@inkadra/ui';
+import { Button, Icon } from '@inkadra/ui';
 import { useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
@@ -127,15 +127,14 @@ function Card() {
           {t('updates.skip')}
         </button>
         <span className="update-popup__go">
-          <a
-            className="ink-btn ink-btn--secondary"
+          <Button
             href={release.url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => seen()}
           >
             {t('updates.github')}
-          </a>
+          </Button>
           <button
             type="button"
             className="ink-btn ink-btn--primary"

@@ -194,9 +194,9 @@ export function VideoUnplayable({
       <div className={scrimClassName}>
         <p className={msgClassName}>{message}</p>
         {downloadUrl && (
-          <a className="ink-btn ink-btn--secondary" href={downloadUrl} download={filename ?? ''}>
+          <Button href={downloadUrl} download={filename ?? ''}>
             {downloadLabel}
-          </a>
+          </Button>
         )}
       </div>
     </div>
@@ -771,23 +771,19 @@ export function MediaViewer({
                   {fileBadge(ready) || <Icon name="file" size={18} />}
                 </span>
                 <p className="viewer__file-msg">{t('viewer.noView')}</p>
-                <a className="ink-btn ink-btn--primary" href={ready.url} download={ready.filename}>
+                <Button variant="primary" href={ready.url} download={ready.filename}>
                   <Icon name="download" size={16} />
                   {t('viewer.download')}
-                </a>
+                </Button>
               </div>
             ) : ready && isPdf(ready) ? (
               <div className="viewer__file viewer__file--pdf">
                 <PdfReader key={ready.url} url={ready.url} name={ready.filename} />
                 <div className="viewer__pdf-bar">
-                  <a
-                    className="ink-btn ink-btn--primary"
-                    href={ready.url}
-                    download={ready.filename}
-                  >
+                  <Button variant="primary" href={ready.url} download={ready.filename}>
                     <Icon name="download" size={16} />
                     {t('viewer.download')}
-                  </a>
+                  </Button>
                 </div>
               </div>
             ) : ready ? (
@@ -870,13 +866,9 @@ export function MediaViewer({
                     })}
               </p>
             ) : (
-              <a
-                className="ink-btn ink-btn--secondary"
-                href={`${ready.url}?download=1`}
-                download={ready.filename}
-              >
+              <Button href={`${ready.url}?download=1`} download={ready.filename}>
                 {t('office.download')}
-              </a>
+              </Button>
             )}
           </div>
         )}
@@ -1106,24 +1098,26 @@ export function MediaViewer({
         )}
 
         {element.type === 'link' ? (
-          <a
-            className="ink-btn ink-btn--ghost viewer__download"
+          <Button
+            variant="ghost"
+            className="viewer__download"
             href={element.url}
             target="_blank"
             rel="noopener noreferrer"
           >
             {t(isYoutube ? 'viewer.openOnYoutube' : 'moodboard.openSource')}
-          </a>
+          </Button>
         ) : (
           ready &&
           !office && (
-            <a
-              className="ink-btn ink-btn--ghost viewer__download"
+            <Button
+              variant="ghost"
+              className="viewer__download"
               href={ready.url}
               download={ready.filename}
             >
               {t('viewer.download')}
-            </a>
+            </Button>
           )
         )}
       </aside>

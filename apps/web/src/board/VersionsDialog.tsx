@@ -1,7 +1,16 @@
 import type { HocuspocusProvider } from '@hocuspocus/provider';
 import { readBoardNotice } from '@inkadra/doc-schema';
 import type { BoardVersion, RestoredBoardVersion } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Icon, IconButton, Segmented, TextField } from '@inkadra/ui';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  Icon,
+  IconButton,
+  Input,
+  Segmented,
+  TextField,
+} from '@inkadra/ui';
 import {
   type SyntheticEvent,
   useCallback,
@@ -373,9 +382,8 @@ export function VersionsDialog({
                                         });
                                       }}
                                     >
-                                      <input
+                                      <Input
                                         id={editId}
-                                        className="ink-input"
                                         aria-label={t('versions.name')}
                                         aria-describedby={`${editId}-hint`}
                                         value={draft}

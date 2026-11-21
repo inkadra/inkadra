@@ -10,7 +10,16 @@ import {
 } from '@inkadra/canvas-core';
 import { type Element, TODO_LISTS, type TodoList } from '@inkadra/doc-schema';
 import type { Person, ProjectMember } from '@inkadra/shared';
-import { Avatar, Button, Checkbox, Dialog, DialogActions, Icon, IconButton } from '@inkadra/ui';
+import {
+  Avatar,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  Icon,
+  IconButton,
+  Input,
+} from '@inkadra/ui';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -621,10 +630,10 @@ function InlineField({
   const done = useRef(false);
   const save = () => onSave(clip(text.trim(), 2000));
   return (
-    <input
+    <Input
       // biome-ignore lint/a11y/noAutofocus: the field opens on purpose, from a button
       autoFocus
-      className="ink-input to-bring__field"
+      className="to-bring__field"
       aria-label={label}
       placeholder={placeholder}
       value={text}

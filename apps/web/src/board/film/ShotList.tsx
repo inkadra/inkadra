@@ -15,6 +15,7 @@ import {
   EmptyState,
   Icon,
   IconButton,
+  Input,
   Select,
   Tabs,
   useTabPanelFade,
@@ -821,8 +822,8 @@ export function ShotList({
           ]}
         />
 
-        <input
-          className="ink-input shots__filter"
+        <Input
+          className="shots__filter"
           type="search"
           value={query}
           placeholder={t('film.list.filter')}

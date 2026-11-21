@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Author, ElementReviewEvent, ReviewStatus } from '@inkadra/shared';
-import { Button, ChoiceTile, Icon } from '@inkadra/ui';
+import { Button, ChoiceTile, Icon, TextArea } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -127,8 +127,7 @@ export function ReviewSection({
           </fieldset>
           <label className="review-field">
             {t('review.note')}
-            <textarea
-              className="ink-input"
+            <TextArea
               rows={2}
               maxLength={500}
               value={note}

@@ -1,4 +1,4 @@
-import { Icon, type IconName } from '@inkadra/ui';
+import { Icon, type IconName, Input } from '@inkadra/ui';
 import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { trackSave } from './settings-save.ts';
 
@@ -213,9 +213,9 @@ export function AutosaveText({
     });
   };
   return (
-    <input
+    <Input
       id={id}
-      className="ink-input settings-input"
+      className="settings-input"
       aria-label={id ? undefined : label}
       value={draft}
       maxLength={maxLength}

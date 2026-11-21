@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type Element, hiddenFromGuests, type VideoFrameSource } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
-import { Button, Icon, Select } from '@inkadra/ui';
+import { Button, Icon, Input, Select } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -362,10 +362,9 @@ export function FrameGrab({
           if (picked?.type.startsWith('image/')) takeScreenshot(picked);
         }}
       />
-      <button
+      <Button
         ref={button}
-        type="button"
-        className="ink-btn ink-btn--secondary viewer__stage-btn viewer__grab"
+        className="viewer__stage-btn viewer__grab"
         aria-label={t('frameGrab.grab')}
         aria-keyshortcuts={external ? undefined : 'G'}
         aria-expanded={open}
@@ -380,7 +379,7 @@ export function FrameGrab({
             G
           </span>
         )}
-      </button>
+      </Button>
       {shot && file && open && (
         <TabCaptureCrop
           file={file}
@@ -435,14 +434,9 @@ export function FrameGrab({
                   <b>{t('frameGrab.blockedTitle')}</b>
                   <p>{t('frameGrab.blocked')}</p>
                   {element.type === 'link' && (
-                    <a
-                      className="ink-btn ink-btn--secondary"
-                      href={element.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <Button href={element.url} target="_blank" rel="noopener noreferrer">
                       {t('frameGrab.openYoutube')}
-                    </a>
+                    </Button>
                   )}
                 </div>
               ) : tabIssue === 'denied' ? (
@@ -551,8 +545,7 @@ export function FrameGrab({
               {youtube && !file && (
                 <label>
                   {t('frameGrab.referenceTime')}
-                  <input
-                    className="ink-input"
+                  <Input
                     type="number"
                     min="0"
                     step="1"

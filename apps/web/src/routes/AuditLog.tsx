@@ -1,6 +1,6 @@
 import { AUDIT_GROUPS, type AuditEvent, type AuditEvents, type AuditGroup } from '@inkadra/shared';
 import { API_PREFIX } from '@inkadra/shared/constants';
-import { Button, Icon, Select } from '@inkadra/ui';
+import { Button, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -73,14 +73,13 @@ export function AuditLog() {
           </Row>
           <Row label={t('audit.export')} help={t('audit.exportHelp')}>
             {/* Every page of the filter, streamed by the server (#897): the browser saves it. */}
-            <a
-              className="ink-btn ink-btn--secondary"
+            <Button
+              icon="download"
               href={`${API_PREFIX}/instance/audit.csv${group ? `?group=${group}` : ''}`}
               download
             >
-              <Icon name="download" size={14} />
               {t('audit.exportCsv')}
-            </a>
+            </Button>
           </Row>
         </div>
       </Card>

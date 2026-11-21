@@ -12,6 +12,7 @@ import {
   DialogActions,
   Icon,
   IconButton,
+  Input,
   Radio,
   Select,
   type SelectOption,
@@ -176,8 +177,7 @@ export function Team() {
       <div className="team-tools">
         <label className="team-search">
           <Icon name="search" size={14} />
-          <input
-            className="ink-input"
+          <Input
             type="search"
             aria-label={t('admin.search')}
             placeholder={t('admin.search')}

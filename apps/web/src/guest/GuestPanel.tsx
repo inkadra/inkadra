@@ -1,6 +1,6 @@
 import { UNSORTED } from '@inkadra/doc-schema';
 import type { GuestBoardSnapshot, GuestElement, GuestSession } from '@inkadra/shared';
-import { Button, Select } from '@inkadra/ui';
+import { Button, Input, Select } from '@inkadra/ui';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
@@ -207,13 +207,9 @@ function CardSection({
             </Button>
           )}
           {rights.download && asset?.downloadUrl && (
-            <a
-              className="ink-btn ink-btn--secondary"
-              href={asset.downloadUrl}
-              download={asset.filename ?? ''}
-            >
+            <Button href={asset.downloadUrl} download={asset.filename ?? ''}>
               {t('guest.download')}
-            </a>
+            </Button>
           )}
         </div>
       </section>
@@ -283,9 +279,8 @@ function ReviewSection({ elementId }: { elementId: string }) {
           <label className="guest-sr" htmlFor={noteId}>
             {t('guest.review.note')}
           </label>
-          <input
+          <Input
             id={noteId}
-            className="ink-input"
             placeholder={t('guest.review.note')}
             maxLength={500}
             value={note}

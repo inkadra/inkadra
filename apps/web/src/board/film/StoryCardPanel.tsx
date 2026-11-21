@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { deleteElements, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton, Select } from '@inkadra/ui';
+import { Button, Icon, IconButton, Input, Select } from '@inkadra/ui';
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -974,8 +974,8 @@ function CharacterSheet({
               return (
                 <div className={rowClass} key={relation.characterId}>
                   {face}
-                  <input
-                    className="ink-input story-rel__label"
+                  <Input
+                    className="story-rel__label"
                     aria-label={t('story.character.relationWith', { name })}
                     placeholder={t('story.character.relationPlaceholder')}
                     defaultValue={relation.label}

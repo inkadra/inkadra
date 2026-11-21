@@ -117,9 +117,9 @@ export function DemoBar({ demo }: { demo: DemoInfo }) {
     </Button>
   );
   const install = (label: string) => (
-    <a className="ink-btn ink-btn--primary" href={INSTALL_URL} target="_blank" rel="noopener">
+    <Button variant="primary" href={INSTALL_URL} target="_blank" rel="noopener">
       {label}
-    </a>
+    </Button>
   );
   if (!sandbox) return null;
 

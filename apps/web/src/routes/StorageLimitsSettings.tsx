@@ -1,5 +1,5 @@
 import type { StorageLimits, StorageUsage, UpdateStorageLimits } from '@inkadra/shared';
-import { Icon, Segmented, Select } from '@inkadra/ui';
+import { Icon, Input, Segmented, Select } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -61,8 +61,7 @@ export function SizeInput({
   };
   return (
     <>
-      <input
-        className="ink-input"
+      <Input
         inputMode="decimal"
         aria-label={label}
         value={draft.amount}

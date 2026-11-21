@@ -2,6 +2,7 @@
 
 import type { Point } from '@inkadra/canvas-core';
 import type { MapSearchPlace, MapSearchResults } from '@inkadra/shared';
+import { Input } from '@inkadra/ui';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -83,8 +84,7 @@ export function MapDraft({
         else if (link || !geocoding) setStatus('error');
       }}
     >
-      <input
-        className="ink-input"
+      <Input
         role="combobox"
         aria-label={t('board.map.label')}
         aria-expanded={items.length > 0}

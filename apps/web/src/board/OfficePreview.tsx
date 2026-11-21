@@ -138,13 +138,9 @@ export function OfficeStage({
             .
           </p>
         )}
-        <a
-          className="ink-btn ink-btn--secondary"
-          href={`${asset.url}?download=1`}
-          download={asset.filename}
-        >
+        <Button href={`${asset.url}?download=1`} download={asset.filename}>
           {t('office.download')}
-        </a>
+        </Button>
       </div>
     );
   return (
@@ -291,13 +287,9 @@ export function OfficeInfo({
           </p>
         </>
       )}
-      <a
-        className="ink-btn ink-btn--secondary"
-        href={`${asset.url}?download=1`}
-        download={asset.filename}
-      >
+      <Button href={`${asset.url}?download=1`} download={asset.filename}>
         {t('office.download')}
-      </a>
+      </Button>
     </section>
   );
 }

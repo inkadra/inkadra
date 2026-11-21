@@ -3,10 +3,9 @@ import {
   type Crew,
   type CrewCharacter,
   type CrewMember,
-  type CrewMemberInput,
+  CrewMemberInput,
   canMergeCrew,
   castNameKey,
-  CrewMemberInput as Input,
 } from '@inkadra/shared';
 import {
   Avatar,
@@ -16,7 +15,9 @@ import {
   DialogActions,
   EmptyState,
   Icon,
+  Input,
   RadioGroup,
+  TextArea,
 } from '@inkadra/ui';
 import {
   Activity,
@@ -217,8 +218,7 @@ export function TroupeView({
           {t('troupe.departments', { count: departments.filter(Boolean).length })} ·{' '}
           {t('troupe.wholeProject')}
         </span>
-        <input
-          className="ink-input"
+        <Input
           type="search"
           aria-label={t('troupe.search')}
           placeholder={t('troupe.search')}
@@ -313,9 +313,8 @@ export function TroupeView({
           >
             <label>
               {t('troupe.name')}
-              <input
+              <Input
                 autoFocus
-                className="ink-input"
                 value={name}
                 maxLength={120}
                 required
@@ -497,7 +496,7 @@ function CrewPanel({
   const characterButton = useRef<HTMLButtonElement>(null);
   const save = (input: CrewMemberInput, rev?: number) => {
     setDraft(input);
-    if (!Input.safeParse(input).success) {
+    if (!CrewMemberInput.safeParse(input).success) {
       setError(t('troupe.invalid'));
       return queue.current;
     }
@@ -536,9 +535,8 @@ function CrewPanel({
     <label key={key} htmlFor={`${id}-${key}`}>
       {t(`troupe.${key}`)}
       {key === 'notes' ? (
-        <textarea
+        <TextArea
           id={`${id}-${key}`}
-          className="ink-input"
           value={draft[key]}
           placeholder={placeholders[key]}
           maxLength={10000}
@@ -548,9 +546,8 @@ function CrewPanel({
           }}
         />
       ) : (
-        <input
+        <Input
           id={`${id}-${key}`}
-          className="ink-input"
           type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
           list={key === 'department' ? `${id}-departments` : undefined}
           value={draft[key]}
@@ -940,12 +937,7 @@ function PasteDialog({
       <div className="troupe__paste" data-tour="troupe-paste">
         <label>
           {t('troupe.pastedText')}
-          <textarea
-            className="ink-input"
-            rows={16}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
+          <TextArea rows={16} value={text} onChange={(e) => setText(e.target.value)} />
         </label>
         <div className="troupe__preview">
           <p className="troupe__preview-head" aria-live="polite">

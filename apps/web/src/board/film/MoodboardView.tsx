@@ -11,7 +11,7 @@ import {
   updateElements,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, aspectValue, compareZ, type Element, MAX_TAGS } from '@inkadra/doc-schema';
-import { Button, Checkbox, EmptyState, Icon, IconButton, Segmented } from '@inkadra/ui';
+import { Button, Checkbox, EmptyState, Icon, IconButton, Input, Segmented } from '@inkadra/ui';
 import {
   type CSSProperties,
   type ReactNode,
@@ -300,8 +300,7 @@ function AddReferences({
         addLink();
       }}
     >
-      <input
-        className="ink-input"
+      <Input
         // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked for a link
         autoFocus
         value={url}
@@ -892,8 +891,7 @@ export function MoodboardView({
                 data-group={name ? normaliseTag(name) : undefined}
               >
                 {name && renaming === name ? (
-                  <input
-                    className="ink-input"
+                  <Input
                     // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
                     autoFocus
                     defaultValue={name}
@@ -1122,8 +1120,7 @@ function BulkInput({
         onSubmit(value);
       }}
     >
-      <input
-        className="ink-input"
+      <Input
         // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked for it
         autoFocus
         value={value}

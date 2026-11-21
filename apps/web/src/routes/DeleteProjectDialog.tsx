@@ -1,5 +1,5 @@
 import type { Project } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Icon, Tooltip } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, Input, Tooltip } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteProject } from './projects.ts';
@@ -93,8 +93,7 @@ export function DeleteProjectDialog({
             </span>
             <span id={`${id}-after`}>{t('projectDelete.confirmAfter')}</span>
           </span>
-          <input
-            className="ink-input"
+          <Input
             aria-labelledby={`${id}-before ${id}-name ${id}-after`}
             placeholder={t('projectDelete.placeholder')}
             value={typed}

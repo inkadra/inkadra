@@ -13,7 +13,16 @@ import {
   type VideoRungCustom,
   type VideoSettingsView,
 } from '@inkadra/shared';
-import { Button, Checkbox, ChoiceTile, Dialog, DialogActions, Icon, Switch } from '@inkadra/ui';
+import {
+  Button,
+  Checkbox,
+  ChoiceTile,
+  Dialog,
+  DialogActions,
+  Icon,
+  Input,
+  Switch,
+} from '@inkadra/ui';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { refetchVideosWithoutCopy } from '../board/assets.ts';
@@ -504,8 +513,7 @@ function RungValues({
     return (
       <td data-l={label}>
         <span className="video-rtable__field">
-          <input
-            className="ink-input"
+          <Input
             type="number"
             inputMode="numeric"
             step={1}
@@ -588,9 +596,9 @@ function SessionsField({
         })}
         htmlFor="video-sessions"
       >
-        <input
+        <Input
           id="video-sessions"
-          className="ink-input video-advanced__number"
+          className="video-advanced__number"
           type="number"
           inputMode="numeric"
           min={0}

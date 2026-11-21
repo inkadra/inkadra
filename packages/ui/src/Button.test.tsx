@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
+import type { ComponentProps } from 'react';
 import { expect, it } from 'vitest';
-import { Button } from './components.tsx';
+import { Button, Input, TextArea } from './components.tsx';
 
 it('disables a busy button and marks it aria-busy', () => {
   expect(Button({ busy: true, children: 'Go' }).props).toMatchObject({
@@ -12,4 +13,47 @@ it('disables a busy button and marks it aria-busy', () => {
     'aria-busy': undefined,
   });
   expect(Button({ disabled: true, busy: false, children: 'Go' }).props.disabled).toBe(true);
+});
+
+it('draws a link as a button, with the same look and no button-only attributes', () => {
+  const link = Button({
+    href: '/a.pdf',
+    download: 'a.pdf',
+    variant: 'primary',
+    size: 'lg',
+    icon: 'download',
+    children: 'Download',
+  });
+  expect(link.type).toBe('a');
+  expect(link.props).toMatchObject({
+    href: '/a.pdf',
+    download: 'a.pdf',
+    className: 'ink-btn ink-btn--primary ink-btn--lg',
+  });
+  expect(link.props).not.toHaveProperty('type');
+  expect(link.props).not.toHaveProperty('variant');
+  expect(Button({ children: 'Go' }).type).toBe('button');
+});
+
+it('gives text inputs the field look, keeping their own class and ref', () => {
+  const ref = { current: null };
+  const input = Input({ className: 'wide', ref, placeholder: 'Name' });
+  expect(input.type).toBe('input');
+  expect(input.props).toMatchObject({ className: 'ink-input wide', placeholder: 'Name', ref });
+  expect(TextArea({ rows: 3 }).props).toMatchObject({ className: 'ink-input', rows: 3 });
+});
+
+// Compile-time checks: typecheck fails if Button's props change shape for consumers.
+type ButtonClick = NonNullable<ComponentProps<typeof Button>['onClick']>;
+const click: ButtonClick = (event) => event.currentTarget.blur();
+const spreadLink = { href: '/next', disabled: true, busy: true, type: 'submit' };
+
+it('keeps the native button props for consumers, and a link never disabled, busy or typed', () => {
+  expect(typeof click).toBe('function');
+  // @ts-expect-error a link cannot be disabled, busy or given a button type
+  const link = Button(spreadLink);
+  expect(link.type).toBe('a');
+  expect(link.props.href).toBe('/next');
+  for (const name of ['disabled', 'busy', 'aria-busy', 'type'])
+    expect(link.props).not.toHaveProperty(name);
 });

@@ -2,7 +2,7 @@
 
 import type { Element } from '@inkadra/doc-schema';
 import { castNameKey, type ShootingDayInput } from '@inkadra/shared';
-import { Button, Checkbox, EmptyState, TimeField } from '@inkadra/ui';
+import { Button, Checkbox, EmptyState, Input, TimeField } from '@inkadra/ui';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { keyTimes } from './call-sheet.ts';
@@ -117,8 +117,7 @@ export function DayCallsPanel({
               disabled={readOnly || stale}
               onChange={(call) => change(person, { call: call || null }, `call:${member.id}`)}
             />
-            <input
-              className="ink-input"
+            <Input
               aria-label={t('dayCalls.pickupOf', { name: member.name })}
               maxLength={1000}
               value={person.ownPickup ?? ''}

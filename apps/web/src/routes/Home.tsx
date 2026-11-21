@@ -6,7 +6,7 @@ import {
   type RecentBoard,
   type UnsortedBoard,
 } from '@inkadra/shared';
-import { Avatar, CoverCard, Icon, kindStyle, ListRow, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, Button, CoverCard, Icon, kindStyle, ListRow, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -481,9 +481,9 @@ function TodayDay({
           </div>
         ))}
       </dl>
-      <a className="ink-btn ink-btn--secondary home__day-open" href={href} onClick={go(href)}>
+      <Button className="home__day-open" href={href} onClick={go(href)}>
         {t('home.today.openSchedule')}
-      </a>
+      </Button>
     </div>
   );
 }
