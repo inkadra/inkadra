@@ -225,15 +225,6 @@ export function PlanStart({
             </>,
             { disabled: !picker.can },
           )}
-          {tile(
-            'scan',
-            <>
-              {picture('scan')}
-              <b>{t('board.plan.start.scan')}</b>
-              <span className="plan-prop__label">{t('board.plan.start.scanText')}</span>
-            </>,
-            { disabled: true },
-          )}
         </div>
         <span className="plan-props__cap">{t('board.plan.start.ready')}</span>
         <div className="plan-start__rooms">
@@ -281,12 +272,20 @@ export function PlanStart({
             {t('board.plan.start.tooBig')}
           </p>
         )}
+        {/* The phone app to come: last and muted, after the ways to start that work now. */}
+        <p className="plan-start__soon">
+          {picture('scan')}
+          <span className="plan-start__text">
+            <b>{t('board.plan.start.scan')}</b>
+            <span>{t('board.plan.start.scanText')}</span>
+          </span>
+        </p>
       </fieldset>
       <div className="plan-start__actions">
         <Button variant="secondary" onClick={onClose}>
           {t('board.plan.start.empty')}
         </Button>
-        <Button variant="primary" disabled={busy || tooBig || choice === 'scan'} onClick={go}>
+        <Button variant="primary" disabled={busy || tooBig} onClick={go}>
           {primary}
         </Button>
       </div>
