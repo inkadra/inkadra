@@ -5277,6 +5277,7 @@
       "guestDone": "Eso es todo. ¡Buena revisión!"
     },
     "start": {
+      "boardsError": "Los tableros de este proyecto no se han cargado: inténtalo de nuevo en un momento.",
       "noProject": "Este recorrido empieza en un tablero: abre o crea antes un proyecto.",
       "newProject": "Nuevo proyecto",
       "create": "Crear",

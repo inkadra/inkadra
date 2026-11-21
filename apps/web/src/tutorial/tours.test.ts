@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { Board } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import it_ from '../i18n/it.json';
-import { kindFor, screenOf, startBoard } from './start.ts';
+import { kindFor, screenOf, screenOpen, startBoard } from './start.ts';
 import { playable } from './TourPlayer.tsx';
 import { GUEST, stepKeys, TOURS, toursFor, WELCOME } from './tours.ts';
 
@@ -82,7 +82,28 @@ describe('where the tours start', () => {
   it('wait for the first anchored step: the Shooting schedule waits for its calendar', () => {
     const schedule = TOURS.find((tour) => tour.id === 'schedule');
     expect(schedule?.start).toEqual({ view: 'schedule' });
-    expect(schedule && screenOf(schedule)).toBe('schedule-queue');
+    expect(schedule && screenOf(schedule)[0]).toBe('schedule-queue');
+  });
+
+  // A stand-in for the elements on screen: `busy` inside a section still loading (aria-busy).
+  const on = (shown: Record<string, 'ready' | 'busy'>) => (anchor: string) =>
+    shown[anchor]
+      ? ({ closest: () => (shown[anchor] === 'busy' ? {} : null) } as unknown as Element)
+      : null;
+
+  it('open the Client review on a phone, where the list of frames is hidden', () => {
+    const review = TOURS.find((tour) => tour.id === 'review');
+    expect(review && screenOpen(screenOf(review), on({ 'review-stage': 'ready' }))).toBe(true);
+  });
+
+  it('wait for a screen to load before fixing the steps: the Schedule waits for its days', () => {
+    const schedule = TOURS.find((tour) => tour.id === 'schedule');
+    const anchors = schedule ? screenOf(schedule) : [];
+    expect(screenOpen(anchors, on({ 'schedule-queue': 'busy' }))).toBe(false);
+    expect(screenOpen(anchors, on({ 'schedule-queue': 'ready', 'schedule-days': 'ready' }))).toBe(
+      true,
+    );
+    expect(screenOpen(anchors, on({}))).toBe(false);
   });
 
   const board = (id: string, kind: Board['kind'], parentBoardId: string | null, position: string) =>
@@ -112,6 +133,14 @@ describe('where the tours start', () => {
     expect(kindFor('moodboard')).toBe('moodboard');
     expect(kindFor('review')).toBeNull();
     expect(kindFor(undefined)).toBeNull();
+  });
+
+  it('never offer to make a board of a module that is off (decision 0121)', () => {
+    expect(kindFor('storyboard', ['storyboard'])).toBeNull();
+    expect(kindFor('schedule', ['production'])).toBeNull();
+    expect(kindFor('schedule', ['storyboard'])).toBe('production');
+    // Presenting is a storyboard's: off, its tour leaves the catalogue with the module.
+    expect(toursFor(false, false, ['storyboard']).map((tour) => tour.id)).not.toContain('present');
   });
 });
 

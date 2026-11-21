@@ -5277,6 +5277,7 @@
       "guestDone": "C’est tout. Bonne relecture !"
     },
     "start": {
+      "boardsError": "Les tableaux de ce projet ne se sont pas chargés : réessayez dans un instant.",
       "noProject": "Cette visite commence sur un tableau : ouvrez ou créez d’abord un projet.",
       "newProject": "Nouveau projet",
       "create": "Créer",

@@ -5277,6 +5277,7 @@
       "guestDone": "Tutto qui. Buona revisione!"
     },
     "start": {
+      "boardsError": "Le board di questo progetto non si sono caricate: riprova tra poco.",
       "noProject": "Questo giro parte da una board: apri o crea prima un progetto.",
       "newProject": "Nuovo progetto",
       "create": "Crea",

@@ -5277,6 +5277,7 @@
       "guestDone": "É tudo. Boa revisão!"
     },
     "start": {
+      "boardsError": "Os quadros deste projeto não carregaram: tente de novo daqui a pouco.",
       "noProject": "Este tour começa num quadro: abra ou crie primeiro um projeto.",
       "newProject": "Novo projeto",
       "create": "Criar",

@@ -5277,6 +5277,7 @@
       "guestDone": "Das war’s. Viel Erfolg bei der Abnahme!"
     },
     "start": {
+      "boardsError": "Die Boards dieses Projekts wurden nicht geladen: versuche es gleich noch einmal.",
       "noProject": "Diese Tour beginnt auf einem Board: öffne oder erstelle zuerst ein Projekt.",
       "newProject": "Neues Projekt",
       "create": "Erstellen",

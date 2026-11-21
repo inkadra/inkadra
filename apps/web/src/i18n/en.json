@@ -5277,6 +5277,7 @@
       "guestDone": "That’s all. Enjoy the review!"
     },
     "start": {
+      "boardsError": "This project’s boards did not load: try again in a moment.",
       "noProject": "This tour starts on a board: open or create a project first.",
       "newProject": "New project",
       "create": "Create",

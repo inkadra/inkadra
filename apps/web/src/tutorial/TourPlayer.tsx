@@ -12,6 +12,7 @@ import { isMac } from '../board/shortcuts.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { returnFocus } from './focus.ts';
 import { TourMedia } from './media.tsx';
+import { screenOpen } from './start.ts';
 import { stepKeys, type Tour, type TourStep } from './tours.ts';
 
 /**
@@ -111,8 +112,8 @@ export function TourPlayer({
   tour: Pick<Tour, 'id' | 'steps'>;
   /** Anchors to wait for first, in turn, after the tour opened another page. */
   settle?: string[];
-  /** The anchor of the screen the tour opened: without it, `onAbsent` instead of the steps. */
-  screen?: string;
+  /** The anchors of the screen the tour opened: without them, `onAbsent` instead of the steps. */
+  screen?: string[];
   onAbsent?: () => void;
   onEnd: (finished: boolean) => void;
 }) {
@@ -140,7 +141,7 @@ export function TourPlayer({
     let opened = !screen;
     const check = () => {
       if (!opened && screen) {
-        if (findAnchor(screen, true)) {
+        if (screenOpen(screen, (a) => findAnchor(a, true))) {
           opened = true;
           started = Date.now();
         } else if (Date.now() - started > SCREEN_WAIT_MS) {

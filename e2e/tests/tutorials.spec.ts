@@ -229,6 +229,30 @@ test('the Shooting schedule starts on the Production board, made when missing', 
   await context.close();
 });
 
+test('the Inbox stays open for its tour, and a list that did not load offers no Create', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    locale: 'it-IT',
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await signIn(page, member);
+  await expect(page.getByRole('heading', { name: /Nora$/ })).toBeVisible();
+  // Closing Settings is not leaving the page: the Inbox the tour opened stays for its steps.
+  await replay(page, 'Inbox e notifiche');
+  await walk(page, ['inbox', 'inbox-filters']);
+
+  // Without the project's boards nothing is known to be missing: one line, never Create.
+  await page.route('**/api/v1/projects/*/boards', (route) => route.fulfill({ status: 500 }));
+  await replay(page, 'Piano riprese');
+  const toast = page.locator('.tour-toast');
+  await expect(toast).toContainText('Le board di questo progetto non si sono caricate');
+  await expect(toast.getByRole('button', { name: 'Crea' })).toHaveCount(0);
+  await expect(page.locator('dialog.tour')).toHaveCount(0);
+  await context.close();
+});
+
 test('an administrator replays Backup on the backups page', async ({ browser }) => {
   const context = await browser.newContext({
     locale: 'it-IT',

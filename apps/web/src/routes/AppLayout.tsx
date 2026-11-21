@@ -279,11 +279,13 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [inboxInPage]);
   // Going to another page leaves the Inbox, however it happens (search, a new project, a link).
+  // The page under the settings window: opening or closing Settings is not another page, so a
+  // tour that closes Settings and opens the Inbox keeps it open.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the path is what triggers this.
   useEffect(() => {
     inboxOpener.current = null;
     setInboxOpen(false);
-  }, [url.pathname]);
+  }, [pathname]);
   const [unread, refreshUnread] = useUnreadCount();
   // One list behind the bell and the Inbox.
   const notifications = useNotificationFeed(refreshUnread);

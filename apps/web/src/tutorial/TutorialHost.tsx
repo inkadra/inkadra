@@ -59,11 +59,12 @@ export function TutorialHost({
   // The guided tour opened a project: its board loads before the steps are chosen.
   const [settle, setSettle] = useState<string[] | undefined>();
   // A tour started from Settings opened its screen: it plays once that is there.
-  const [screen, setScreen] = useState<string | undefined>();
+  const [screen, setScreen] = useState<string[] | undefined>();
   const [pill, setPill] = useState<Tour | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const loaded = preferencesLoaded();
   const seen = prefs.tutorialsSeen;
+  const modulesOff = prefs.modulesOff;
   const busy = welcome || finale || !!playing;
 
   const say = useCallback(
@@ -126,13 +127,18 @@ export function TutorialHost({
           .then((page) => new Map(page.items.map((c) => [c.boardId, c])))
           .catch(() => new Map<string, BoardCount>()),
       ]);
-      const rootBoardId = boards?.find((b) => b.parentBoardId === null)?.id;
+      // Without the list nothing is known to be missing: never offer to make a board that exists.
+      if (!boards) {
+        setToast({ id: Date.now(), text: t('tutorial.start.boardsError') });
+        return;
+      }
+      const rootBoardId = boards.find((b) => b.parentBoardId === null)?.id;
       const current = onProject ? (onBoard ?? rootBoardId) : undefined;
-      const board = boards && startBoard(boards, counts, view, current);
+      const board = startBoard(boards, counts, view, current);
       if (!board) {
         const project = projects?.find((p) => p.id === projectId);
-        const kind = kindFor(view);
-        const make = kind && !boards?.some((b) => b.kind === kind) ? kind : null;
+        const kind = kindFor(view, modulesOff);
+        const make = kind && !boards.some((b) => b.kind === kind) ? kind : null;
         const editor = project?.myRole === 'owner' || project?.myRole === 'editor';
         setToast({
           id: Date.now(),
@@ -167,6 +173,7 @@ export function TutorialHost({
       pathname,
       search,
       projects,
+      modulesOff,
       canCreateProjects,
       openNewProject,
       settingsOpen,

@@ -21,7 +21,10 @@ their controls: the content was right, the start was not.
   anchor and no start, except those of the shell (the demo bar).
 - **Settings → Tutorial opens that screen before step 1**: the board on screen when it has the
   view, else the first one of the project on screen (the first project from elsewhere) that has
-  it. The tour then waits up to 10 s for its first anchored step.
+  it. The tour then waits up to 10 s for one of its anchored steps (a phone hides some), and
+  for that screen to finish loading (`aria-busy`, like the Schedule before its days arrive), so
+  no step is left out for arriving late. A boards list that did not load says so, never Create;
+  Create is never offered for a module that is off.
 - **What is missing is said in one line, never played as cards**: a project without a storyboard,
   moodboard or Production board offers Create to its editors; a view that is off, a panel to
   open, or nothing on the screen yet gives the tour's own line (`tutorial.tours.<id>.where`); no

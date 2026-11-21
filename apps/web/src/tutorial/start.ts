@@ -1,4 +1,4 @@
-import type { Board, BoardCount, BoardKind } from '@inkadra/shared';
+import { type Board, type BoardCount, type BoardKind, offered } from '@inkadra/shared';
 import { treeOrder } from '../board/boards.ts';
 import { type BoardView, boardViews } from '../board/views.ts';
 import type { Tour } from './tours.ts';
@@ -22,16 +22,37 @@ export function startBoard(
 
 /**
  * The kind of board to offer to make when a project has none with the view; null when making
- * one would not give it (Review is turned on in a board, a canvas is every project's own).
+ * one would not give it (Review is turned on in a board, a canvas is every project's own), or
+ * when its module is off for this person (`off`, decision 0121).
  */
-export function kindFor(view: BoardView | undefined): Exclude<BoardKind, 'board'> | null {
-  if (view === 'storyboard' || view === 'shotlist') return 'storyboard';
-  if (view === 'schedule' || view === 'troupe') return 'production';
-  if (view === 'moodboard') return 'moodboard';
-  return null;
+export function kindFor(
+  view: BoardView | undefined,
+  off: readonly string[] = [],
+): Exclude<BoardKind, 'board'> | null {
+  const kind =
+    view === 'storyboard' || view === 'shotlist'
+      ? 'storyboard'
+      : view === 'schedule' || view === 'troupe'
+        ? 'production'
+        : view === 'moodboard'
+          ? 'moodboard'
+          : null;
+  return kind && offered(off, 'kinds', kind) ? kind : null;
 }
 
-/** The anchor that says a tour's screen is open: that of its first step that has one. */
-export function screenOf(tour: Pick<Tour, 'steps'>): string | undefined {
-  return tour.steps.find((step) => step.anchor)?.anchor ?? undefined;
+/**
+ * The anchors that say a tour's screen is open: those of its steps. Any one will do, since a
+ * phone hides some (Review shows no list of frames below 768px).
+ */
+export function screenOf(tour: Pick<Tour, 'steps'>): string[] {
+  return tour.steps.flatMap((step) => (step.anchor ? [step.anchor] : []));
+}
+
+/**
+ * Whether the screen is open: one of its anchors is there, and none is still loading (inside
+ * `aria-busy`, like the Schedule before its days arrive), so the steps are not fixed too early.
+ */
+export function screenOpen(anchors: string[], find: (anchor: string) => Element | null): boolean {
+  const found = anchors.map(find).filter((el) => el !== null);
+  return found.length > 0 && !found.some((el) => el.closest('[aria-busy="true"]'));
 }
