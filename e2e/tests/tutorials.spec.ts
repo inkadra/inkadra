@@ -141,7 +141,7 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   await page.getByRole('button', { name: 'Riproduci Storyboard' }).click();
   // Far from a storyboard the steps are cards, never a blank screen.
   const tour = page.locator('dialog.tour');
-  await expect(tour.getByRole('heading', { name: 'Scene e frame' })).toBeVisible();
+  await expect(tour.getByRole('heading', { name: 'Scene e inquadrature' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(tour).toHaveCount(0);
   await expect(page.locator('body')).not.toBeFocused();

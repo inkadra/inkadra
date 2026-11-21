@@ -13,7 +13,7 @@ export const SHOT_WORDS_PT: ShotWords = {
       ws: 'Plano geral',
       fs: 'Plano inteiro',
       ms: 'Plano médio',
-      mcu: 'Primeiro plano',
+      mcu: 'Plano médio curto',
       cu: 'Close-up',
       ecu: 'Superclose',
       insert: 'Plano detalhe',

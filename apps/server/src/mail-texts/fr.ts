@@ -36,7 +36,7 @@ export const fr: MailTexts = {
         title: 'Validation en deux étapes désactivée',
         body: 'Votre compte ne demande plus de code de vérification à la connexion.',
         after:
-          'Vous ne reconnaissez pas cette modification ? Changez votre mot de passe, réactivez la vérification et contactez immédiatement votre administrateur.',
+          'Vous ne reconnaissez pas cette modification ? Changez votre mot de passe, réactivez la validation en deux étapes et contactez immédiatement votre administrateur.',
       },
       token: {
         title: 'Nouveau jeton d’accès',
@@ -184,7 +184,7 @@ export const fr: MailTexts = {
     } as Record<string, string>,
     action: 'Ouvrir Serveur',
     footer: (instance) =>
-      `Alertes du serveur de ${instance} pour les administrateurs. Modifiables dans Réglages › Serveur.`,
+      `Alertes du serveur de ${instance} pour les administrateurs. Modifiables dans Paramètres › Serveur.`,
   },
   update: {
     subject: (version, instance) => `Inkadra ${version} est disponible pour ${instance}`,
@@ -193,8 +193,8 @@ export const fr: MailTexts = {
     preview: 'Préversion (release candidate)',
     intro: (instance, preview) =>
       preview
-        ? `Une préversion d’Inkadra est sortie : elle arrive plus tôt, mais peut avoir quelques problèmes. ${instance} ne se met pas à jour toute seule : c’est toi qui la mets à jour, sur le serveur.`
-        : `Une nouvelle version d’Inkadra est sortie. ${instance} ne se met pas à jour toute seule : c’est toi qui la mets à jour, sur le serveur.`,
+        ? `Une préversion d’Inkadra est sortie : elle arrive plus tôt, mais peut avoir quelques problèmes. ${instance} ne se met pas à jour toute seule : c’est à vous de la mettre à jour, sur le serveur.`
+        : `Une nouvelle version d’Inkadra est sortie. ${instance} ne se met pas à jour toute seule : c’est à vous de la mettre à jour, sur le serveur.`,
     version: 'Version',
     released: 'Publiée',
     action: 'Ouvrir Mises à jour',

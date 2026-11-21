@@ -224,8 +224,8 @@ for (const theme of ['dark', 'light'] as const)
       if (phone) await page.getByRole('button', { name: 'Chiudi', exact: true }).click();
 
       // The call sheet prints the same table, with empty boxes.
-      await page.getByRole('button', { name: 'Foglio di lavorazione', exact: true }).click();
-      const sheet = page.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
+      await page.getByRole('button', { name: 'Ordine del giorno', exact: true }).click();
+      const sheet = page.getByRole('article', { name: 'Anteprima ordine del giorno' });
       const table = sheet.locator('.sheet__section').filter({ hasText: 'Da portare' });
       await expect(table.locator('tbody tr')).toHaveCount(7);
       await expect(table.locator('tbody tr').filter({ hasText: 'Asciugamano ×2' })).toContainText(

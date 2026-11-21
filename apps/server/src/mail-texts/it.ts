@@ -68,19 +68,19 @@ export const it = {
   inviteSubject: (who: string, what: string) => `${who} ti ha invitato su ${what}`,
   inviteIntro: {
     project: 'Accedi o crea il tuo account per lavorare al progetto insieme al resto del team.',
-    board: 'Accedi o crea il tuo account per lavorare alla lavagna insieme al resto del team.',
+    board: 'Accedi o crea il tuo account per lavorare alla board insieme al resto del team.',
     instance: 'Accedi o crea il tuo account per iniziare.',
   },
   invitePreheader: (days: number) =>
     `Accedi o crea il tuo account per iniziare. Invito valido ${plural(days, 'un giorno', 'giorni')}.`,
-  inviteFacts: { project: 'Progetto', board: 'Lavagna', role: 'Ruolo', expires: 'Scade' },
+  inviteFacts: { project: 'Progetto', board: 'Board', role: 'Ruolo', expires: 'Scade' },
   roles: {
-    owner: 'Proprietario: gestisce il progetto, le persone e le lavagne',
-    editor: 'Editor: può creare e modificare le lavagne',
+    owner: 'Proprietario: gestisce il progetto, le persone e le board',
+    editor: 'Editor: può creare e modificare le board',
     commenter: 'Commentatore: può vedere e commentare',
     viewer: 'Lettore: può solo vedere',
   } as Record<string, string>,
-  inviteAction: "Apri l'invito",
+  inviteAction: 'Apri l’invito',
   inviteFooter: 'Non aspettavi questo invito? Puoi ignorare questa email.',
 
   magicSubject: (instance: string) => `Il tuo link di accesso a ${instance}`,
@@ -115,7 +115,7 @@ export const it = {
   verbs: {
     mention: 'ti ha menzionato',
     reply: 'ha risposto in una discussione',
-    comment: 'ha commentato una tua scheda',
+    comment: 'ha commentato una tua card',
     review: 'ha cambiato la revisione',
     task_assigned: 'ti ha assegnato un compito',
     invitation_accepted: 'ha accettato il tuo invito',
@@ -147,10 +147,10 @@ export const it = {
   digestSubject: (n: number, instance: string, summary: string) =>
     `${n} novità su ${instance}${summary ? `: ${summary}` : ''}`,
   replyAction: 'Rispondi al commento',
-  openBoard: 'Apri la lavagna',
+  openBoard: 'Apri la board',
   openProject: 'Apri il progetto',
   openInkadra: 'Apri Inkadra',
-  openInbox: 'Apri la posta in arrivo',
+  openInbox: 'Apri la Inbox',
   open: 'Apri',
   notificationFooter: {
     text: (instance: string) => `Ricevi queste email per le notifiche di ${instance}.`,
@@ -210,7 +210,7 @@ export const it = {
   },
   calendar: {
     deadline: (task: string, board: string) => `Scadenza: ${task} · ${board}`,
-    todo: (board: string) => `To-do · board "${board}" · tutto il giorno`,
+    todo: (board: string) => `To-do · board «${board}» · tutto il giorno`,
     call: (time: string, place: string, wrap: string | null) =>
       [`Conv. ${time}`, place, wrap && `fine prevista ${wrap}`].filter(Boolean).join(' · '),
   },
