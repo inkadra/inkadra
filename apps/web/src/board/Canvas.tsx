@@ -206,7 +206,15 @@ import {
 import { type Peer, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
-import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
+import {
+  canSpacePan,
+  commandFor,
+  FOCUSABLE,
+  focusBack,
+  insideDialog,
+  isMac,
+  isTyping,
+} from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
@@ -2453,6 +2461,8 @@ export function Canvas({
     }
   }
 
+  /** What the canvas menu was opened on, for the focus to go back to (Menu key, Shift+F10). */
+  const menuOrigin = useRef<HTMLElement | null>(null);
   function onContextMenu(e: ReactMouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
     if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
@@ -2462,6 +2472,7 @@ export function Canvas({
     e.preventDefault();
     // A long press of the fingers of a pinch.
     if (touchHeld.current) return;
+    menuOrigin.current = target.closest<HTMLElement>(FOCUSABLE);
     const id = canvasElementId(target);
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
@@ -2566,7 +2577,7 @@ export function Canvas({
   // Keyboard --------------------------------------------------------------------
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
-    if (insideDialog()) return;
+    if (insideDialog(e.target)) return;
     // A focused video keeps Space (play) and the arrows (seek, volume) for itself.
     if (e.target instanceof HTMLVideoElement && /^( |Arrow)/.test(e.key)) return;
     // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
@@ -2797,7 +2808,10 @@ export function Canvas({
   const clipHandler = useRef<(e: ClipboardEvent) => void>(() => {});
   clipHandler.current = (e: ClipboardEvent) => {
     // A plan being edited has the keyboard; copy and paste never act on its card.
-    if (insideDialog() || store.getSnapshot().byId.get(editingRef.current ?? '')?.type === 'plan')
+    if (
+      insideDialog(e.target) ||
+      store.getSnapshot().byId.get(editingRef.current ?? '')?.type === 'plan'
+    )
       return;
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
@@ -4415,8 +4429,13 @@ export function Canvas({
               key={menu.scenes ? 'scenes' : 'main'}
               x={menu.x}
               y={menu.y}
+              label={t('board.contextMenu')}
               items={menuItems}
-              onClose={() => setMenu(null)}
+              onClose={(reason) => {
+                setMenu(null);
+                // From the keyboard: back to the card or control it was opened on, or the board.
+                if (reason === 'escape') focusBack(menuOrigin.current, rootRef.current);
+              }}
             />
           ))}
 

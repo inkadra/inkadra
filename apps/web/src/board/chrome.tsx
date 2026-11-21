@@ -8,7 +8,6 @@ import {
   KeyCap,
   kindStyle,
   Menu,
-  type MenuCloseReason,
   swallowOutsidePress,
   type ToolKind,
   toolStyle,
@@ -1136,10 +1135,10 @@ export function ContextMenu({
   label?: string;
   items: MenuItem[];
   /**
-   * Why the menu closes, so a caller can return focus only when the keyboard was used (Escape
-   * already gives it back to `anchor`).
+   * Why the menu closes, so a caller can return focus only when the keyboard was used: Escape
+   * and Tab both say `escape` (Tab then moves on from where the focus went back).
    */
-  onClose: (reason: MenuCloseReason | 'item') => void;
+  onClose: (reason: 'escape' | 'outside' | 'item') => void;
   /** The button that toggles the menu: pressing it is left to the button. */
   anchor?: RefObject<HTMLElement | null>;
 }) {
@@ -1163,7 +1162,7 @@ export function ContextMenu({
       style={style ?? (x === undefined ? undefined : { left: x, top: y })}
       data-chrome
       anchor={anchor}
-      onClose={onClose}
+      onClose={(reason) => onClose(reason === 'tab' ? 'escape' : reason)}
     >
       {items.map((item, i) =>
         item.divider ? (

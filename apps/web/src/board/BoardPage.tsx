@@ -21,7 +21,6 @@ import {
   EmptyState,
   Icon,
   IconButton,
-  type MenuCloseReason,
   ProjectGlyph,
   Tabs,
   Toast,
@@ -684,7 +683,7 @@ function BoardScreen({
   }, [editable]);
   const headerMenuAnchor = useRef<HTMLDivElement>(null);
   // An outside click leaves focus where the person clicked; Escape and a chosen item return it.
-  const closeHeaderMenu = useCallback((reason: MenuCloseReason | 'item') => {
+  const closeHeaderMenu = useCallback((reason: 'escape' | 'outside' | 'item') => {
     setHeaderMenu(false);
     if (reason !== 'outside') document.getElementById('board-header-menu')?.focus();
   }, []);
@@ -910,6 +909,7 @@ function BoardScreen({
               />
               {headerMenu && (
                 <ContextMenu
+                  label={t('versions.boardMenu')}
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
                   items={[

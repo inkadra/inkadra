@@ -349,6 +349,7 @@
     },
     "toolbar": "Ajouter",
     "contextBar": "Actions sur la sélection",
+    "contextMenu": "Actions du tableau",
     "minimap": "Mini-carte : cliquez pour vous déplacer",
     "dropFiles": "Déposez pour importer",
     "undo": "Annuler",

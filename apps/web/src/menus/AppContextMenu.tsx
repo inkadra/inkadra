@@ -190,14 +190,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
             className="app-context-menu"
             label={t('context.actions')}
             onContextMenu={(event) => event.preventDefault()}
-            onKeyDown={(event) => {
-              // Tab stays on the element the menu was opened from, as Escape does.
-              if (event.key === 'Tab') {
-                event.preventDefault();
-                event.stopPropagation();
-                close(true);
-              }
-            }}
+            // Escape gives the focus back where the menu was opened; Tab goes on from there.
             onClose={(reason) => close(reason !== 'outside')}
           >
             {menu.entries.map((entry) => (

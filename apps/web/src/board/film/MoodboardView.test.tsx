@@ -49,7 +49,6 @@ vi.mock('../assets.ts', () => ({
 vi.mock('../connection.ts', () => ({ collabUrl: () => '' }));
 vi.mock('../chrome.tsx', () => ({
   UploadPanel: () => null,
-  Toast: ({ text }: { text: string }) => <output className="toast">{text}</output>,
   ContextMenu: ({ items }: { items: Array<{ label?: string; action?: () => void }> }) => (
     <div role="menu">
       {items

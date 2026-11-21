@@ -146,3 +146,83 @@ it('leaves a press on its own button to the button', async () => {
   await act(async () => trigger().click());
   expect(menu()).toBeNull();
 });
+
+const tabbable = () =>
+  [...(menu()?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not(:disabled)') ?? [])]
+    .filter((item) => item.tabIndex === 0)
+    .map((item) => item.textContent);
+
+it('keeps only the focused item in the Tab order, and Tab leaves in one press', async () => {
+  await open();
+  expect(tabbable()).toEqual(['Rename']);
+  await key('ArrowDown');
+  expect(tabbable()).toEqual(['Duplicate']);
+  await key('Tab');
+  expect(menu()).toBeNull();
+  // Back on the button: the Tab itself then goes on from there.
+  expect(document.activeElement).toBe(trigger());
+});
+
+it('retries a letter alone after a search that found nothing', async () => {
+  await open();
+  await key('x');
+  expect(focused()).toBe('Rename');
+  // Not "xd": the d alone.
+  await key('d');
+  expect(focused()).toBe('Duplicate');
+});
+
+function render(node: React.ReactNode) {
+  return act(async () => root.render(node));
+}
+const cell = (label: string) => (
+  <button key={label} type="button" role="menuitemradio" aria-checked={false} aria-label={label} />
+);
+
+it('walks a row of items with Left and Right without leaving it', async () => {
+  await render(
+    <Menu label="Colours" onClose={() => {}}>
+      <button type="button" role="menuitem">
+        Rename
+      </button>
+      {/* biome-ignore lint/a11y/useSemanticElements: as the project menu's swatch row. */}
+      <div role="group" aria-label="Colour">
+        {cell('Blue')}
+        {cell('Teal')}
+        {cell('Green')}
+      </div>
+      <fieldset>
+        {cell('S')}
+        {cell('M')}
+      </fieldset>
+    </Menu>,
+  );
+  const label = () => document.activeElement?.getAttribute('aria-label');
+  await key('ArrowDown');
+  expect(label()).toBe('Blue');
+  await key('ArrowLeft');
+  expect(label()).toBe('Green');
+  await key('ArrowRight');
+  expect(label()).toBe('Blue');
+  await key('ArrowDown');
+  await key('ArrowDown');
+  await key('ArrowDown');
+  expect(label()).toBe('S');
+  await key('ArrowLeft');
+  expect(label()).toBe('M');
+  await key('ArrowRight');
+  expect(label()).toBe('S');
+});
+
+it('puts the focus inside the menu when every item is unavailable', async () => {
+  await render(
+    <Menu label="Views" onClose={() => {}}>
+      <button type="button" role="menuitem" aria-disabled="true">
+        Board
+      </button>
+    </Menu>,
+  );
+  expect(focused()).toBe('Board');
+  await render(<Menu key="empty" label="Empty" onClose={() => {}} />);
+  expect(document.activeElement).toBe(menu());
+});

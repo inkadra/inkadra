@@ -149,6 +149,14 @@ async function tidyIntoMosaic(page: Page, shot?: string) {
     'aria-checked',
     'true',
   );
+  // Keys pressed in the menu stay there: Delete and Backspace never remove the selection.
+  const cards = page.locator('.card--free');
+  const count = await cards.count();
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
+  await page.keyboard.press('Delete');
+  await page.keyboard.press('Backspace');
+  await expect(menu).toBeVisible();
+  await expect(cards).toHaveCount(count);
   const mosaic = menu.getByRole('menuitem', { name: /Metti in ordine a mosaico/ });
   await mosaic.hover();
   if (shot) await page.screenshot({ path: shot });

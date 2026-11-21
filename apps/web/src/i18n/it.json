@@ -349,6 +349,7 @@
     },
     "toolbar": "Aggiungi",
     "contextBar": "Azioni sulla selezione",
+    "contextMenu": "Azioni della board",
     "minimap": "Minimappa: clicca per spostarti",
     "dropFiles": "Rilascia per caricare",
     "undo": "Annulla",

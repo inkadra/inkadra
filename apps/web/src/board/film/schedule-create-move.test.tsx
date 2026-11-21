@@ -109,7 +109,11 @@ it('draws a block on empty time, takes its type from a key and undoes it in one 
   const menu = document.querySelector('[role="menu"]');
   expect(menu?.textContent).toContain('schedule.newBlock');
   expect(menu?.querySelectorAll('[role="menuitem"]')).toHaveLength(5);
-  await key(window, { key: '3' });
+  // From the menu's focused item, as a person presses it: the menu leaves the digit to the
+  // schedule.
+  const focusedItem = document.activeElement;
+  expect(menu?.contains(focusedItem ?? null)).toBe(true);
+  await key(focusedItem ?? window, { key: '3' });
   expect(document.querySelector('[role="menu"]')).toBeNull();
   expect(host.querySelector('.schedule__placeholder.is-new')).toBeNull();
   const created = host.querySelectorAll<HTMLElement>('[data-block]')[1];
@@ -131,6 +135,12 @@ it('opens the same menu with N after a block, and Escape leaves everything as it
   const menu = document.querySelector<HTMLElement>('[role="menu"]');
   expect(menu?.textContent).toContain('schedule.newBlock');
   await key(menu ?? window, { key: 'Escape' });
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  expect(document.activeElement).toBe(first);
+  expect(blocksOf(host)).toEqual([A]);
+  // Tab closes it the same way, back on the block, and goes on from there.
+  await key(first, { key: 'n' });
+  await key(document.activeElement ?? window, { key: 'Tab' });
   expect(document.querySelector('[role="menu"]')).toBeNull();
   expect(document.activeElement).toBe(first);
   expect(blocksOf(host)).toEqual([A]);

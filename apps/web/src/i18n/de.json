@@ -349,6 +349,7 @@
     },
     "toolbar": "Hinzufügen",
     "contextBar": "Aktionen für die Auswahl",
+    "contextMenu": "Board-Aktionen",
     "minimap": "Minimap: zum Springen klicken",
     "dropFiles": "Zum Hochladen ablegen",
     "undo": "Rückgängig",

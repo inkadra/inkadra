@@ -19,7 +19,6 @@ import {
   Icon,
   IconButton,
   Input,
-  type MenuCloseReason,
   Toast,
 } from '@inkadra/ui';
 import {
@@ -309,7 +308,7 @@ function ToBringPanel({
     left: Math.max(8, r.right - 200),
     top: r.bottom + 4,
   });
-  const closeMenu = (reason: MenuCloseReason | 'item') => {
+  const closeMenu = (reason: 'escape' | 'outside' | 'item') => {
     setMenu(null);
     if (reason === 'escape') menuAnchor.current?.focus();
   };
