@@ -5736,7 +5736,7 @@
         "steps": {
           "0": {
             "title": "En plein écran",
-            "text": "Le storyboard, image après image."
+            "text": "Un storyboard ou un moodboard, image après image."
           },
           "1": {
             "title": "Où vous êtes",
@@ -5747,7 +5747,7 @@
             "text": "Avec les flèches ou d’un geste."
           }
         },
-        "where": "Appuyez sur Présenter dans le storyboard et relancez la visite de là."
+        "where": "Appuyez sur Présenter dans un storyboard ou un moodboard et relancez la visite de là."
       },
       "export": {
         "name": "Exporter et importer",

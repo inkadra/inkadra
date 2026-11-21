@@ -24,14 +24,18 @@ their controls: the content was right, the start was not.
   it. The tour then waits up to 10 s for one of its anchored steps (a phone hides some), and
   for that screen to finish loading (`aria-busy`, like the Schedule before its days arrive), so
   no step is left out for arriving late. A boards list that did not load says so, never Create;
-  Create is never offered for a module that is off.
+  Create is never offered for a module that is off. A view of several (Present plays a
+  storyboard or a moodboard) starts on whichever the project has, and Create offers only a kind
+  whose module is on. Starting another tour, or leaving the page, drops a start still waiting
+  for the boards; any tour but the Inbox's closes the Inbox over the page.
 - **What is missing is said in one line, never played as cards**: a project without a storyboard,
   moodboard or Production board offers Create to its editors; a view that is off, a panel to
   open, or nothing on the screen yet gives the tour's own line (`tutorial.tours.<id>.where`); no
   project offers New project. The line stays in the settings window, where the tour was asked
   for.
 - Tours of a module that is off are not in the catalogue (0121), so none of them needs a "Turn
-  on" of its own. The panels a tour describes (Comments, Share, Versions, Export, Present, Draw,
+  on" of its own. A tour shared by modules (Present: Storyboard and Moodboard) lists them in
+  `tours.ts` and stays while any is on; the registry keeps one owner per name. The panels a tour describes (Comments, Share, Versions, Export, Present, Draw,
   the set plan, a character card, a video card) are not opened by the tour: the person opens
   them, and the tour says how.
 

@@ -5736,7 +5736,7 @@
         "steps": {
           "0": {
             "title": "Full screen",
-            "text": "The storyboard, frame after frame."
+            "text": "A storyboard or a moodboard, one image after another."
           },
           "1": {
             "title": "Where you are",
@@ -5747,7 +5747,7 @@
             "text": "With the arrows or a tap."
           }
         },
-        "where": "Press Present in the storyboard and play the tour again from there."
+        "where": "Press Present in a storyboard or a moodboard and play the tour again from there."
       },
       "export": {
         "name": "Export and import",

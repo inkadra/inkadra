@@ -1,4 +1,4 @@
-import { offered } from '@inkadra/shared';
+import { type ModuleId, offered } from '@inkadra/shared';
 import type { ContentKind, IconName, ToolKind } from '@inkadra/ui';
 import { isMac } from '../board/shortcuts.ts';
 import type { BoardView } from '../board/views.ts';
@@ -60,12 +60,13 @@ export interface TourStep {
 
 /**
  * The screen a tour's steps point at, opened before step 1 when the tour is started from
- * Settings: a board of the open project (the first project from elsewhere) that has `view`, or
+ * Settings: a board of the open project (the first project from elsewhere) that has `view` (of
+ * several, any; the board on screen first, then the first in that order), or
  * the board on screen (else the project's own) without one; `inbox` opens the Inbox. Settings
  * pages use `href` instead. A board tour also needs `tutorial.tours.<id>.where`, the one line
  * said when its screen is not there (decision 0135).
  */
-export type TourStart = { view?: BoardView } | 'inbox';
+export type TourStart = { view?: BoardView | readonly BoardView[] } | 'inbox';
 
 export type TourGroup = 'start' | 'canvas' | 'production' | 'collaboration' | 'tools' | 'admin';
 
@@ -78,6 +79,11 @@ export interface Tour {
   tool?: ToolKind;
   /** Administrators only. */
   admin?: boolean;
+  /**
+   * A feature several modules share (the registry gives a tour one owner): the tour is there
+   * while any of them is on.
+   */
+  modules?: readonly ModuleId[];
   /** Only in the public demo (decision 0084). */
   demo?: boolean;
   /** The anchor whose first appearance offers the tour with a pill; null: Settings only. */
@@ -390,7 +396,9 @@ export const TOURS: Tour[] = [
     group: 'collaboration',
     icon: 'play',
     offer: 'present',
-    start: { view: 'storyboard' },
+    // Present plays a storyboard's frames and a moodboard's pictures.
+    modules: ['storyboard', 'moodboard'],
+    start: { view: ['storyboard', 'moodboard'] },
     steps: [
       { anchor: 'present', media: 'slides', side: 'bottom' },
       { anchor: 'present-header', media: 'slides', side: 'bottom' },
@@ -608,7 +616,11 @@ export const GROUPS: TourGroup[] = [
  */
 export function toursFor(admin: boolean, demo = false, off: readonly string[] = []): Tour[] {
   return TOURS.filter(
-    (tour) => (admin || !tour.admin) && (demo || !tour.demo) && offered(off, 'tours', tour.id),
+    (tour) =>
+      (admin || !tour.admin) &&
+      (demo || !tour.demo) &&
+      offered(off, 'tours', tour.id) &&
+      (!tour.modules || tour.modules.some((m) => !off.includes(m))),
   );
 }
 

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { Board } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import it_ from '../i18n/it.json';
-import { kindFor, screenOf, screenOpen, startBoard } from './start.ts';
+import { enabledViews, kindFor, screenOf, screenOpen, startBoard, startViews } from './start.ts';
 import { playable } from './TourPlayer.tsx';
 import { GUEST, stepKeys, TOURS, toursFor, WELCOME } from './tours.ts';
 
@@ -139,8 +139,23 @@ describe('where the tours start', () => {
     expect(kindFor('storyboard', ['storyboard'])).toBeNull();
     expect(kindFor('schedule', ['production'])).toBeNull();
     expect(kindFor('schedule', ['storyboard'])).toBe('production');
-    // Presenting is a storyboard's: off, its tour leaves the catalogue with the module.
-    expect(toursFor(false, false, ['storyboard']).map((tour) => tour.id)).not.toContain('present');
+  });
+
+  it('keep Presentation while a storyboard or a moodboard can present', () => {
+    const ids = (off: string[]) => toursFor(false, false, off).map((tour) => tour.id);
+    expect(ids(['storyboard'])).toContain('present');
+    expect(ids(['moodboard'])).toContain('present');
+    expect(ids(['storyboard', 'moodboard'])).not.toContain('present');
+    const present = TOURS.find((tour) => tour.id === 'present');
+    const view = typeof present?.start === 'object' ? present.start.view : undefined;
+    // With only a moodboard, the tour starts on it.
+    const mood = [boards[0] as Board, board('mood', 'moodboard', 'root', 'a3')];
+    expect(startBoard(mood, none, view, 'root')?.id).toBe('mood');
+    // Storyboard off: the moodboard comes first, and only a moodboard is offered to make.
+    const views = enabledViews(startViews(view), ['storyboard']);
+    expect(views).toEqual(['moodboard']);
+    expect(startBoard(boards, none, views, 'root')).toBeUndefined();
+    expect(enabledViews(startViews(view), [])).toEqual(['storyboard', 'moodboard']);
   });
 });
 

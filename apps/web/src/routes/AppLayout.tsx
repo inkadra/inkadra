@@ -20,6 +20,7 @@ import {
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -278,6 +279,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [inboxInPage]);
+  const closeInbox = useCallback(() => {
+    inboxOpener.current = null;
+    setInboxOpen(false);
+  }, []);
   // Going to another page leaves the Inbox, however it happens (search, a new project, a link).
   // The page under the settings window: opening or closing Settings is not another page, so a
   // tour that closes Settings and opens the Inbox keeps it open.
@@ -1049,6 +1054,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           firstProject={projects?.[0]?.id}
           settingsOpen={overlay.open}
           closeSettings={closeSettings}
+          closeInbox={closeInbox}
         />
       </ProjectsContext.Provider>
     </InstanceSetupContext.Provider>

@@ -11,13 +11,29 @@ import type { Tour } from './tours.ts';
 export function startBoard(
   boards: readonly Board[],
   counts: ReadonlyMap<string, BoardCount>,
-  view: BoardView | undefined,
+  view: BoardView | readonly BoardView[] | undefined,
   currentId: string | undefined,
 ): Board | undefined {
-  const has = (b: Board) => !view || boardViews(b, counts.get(b.id)).includes(view);
+  const views = startViews(view);
+  const has = (b: Board) =>
+    views.length === 0 || boardViews(b, counts.get(b.id)).some((v) => views.includes(v));
   const current = boards.find((b) => b.id === currentId);
   if (current && has(current)) return current;
   return treeOrder(boards).find(has);
+}
+
+/** A tour's start views as a list: empty for any board. */
+export function startViews(view: BoardView | readonly BoardView[] | undefined): BoardView[] {
+  return view === undefined ? [] : typeof view === 'string' ? [view] : [...view];
+}
+
+/**
+ * The views a tour can start on for this person: those of a module that is off are left out,
+ * unless that leaves none (the tour would not be listed then).
+ */
+export function enabledViews(views: readonly BoardView[], off: readonly string[]): BoardView[] {
+  const on = views.filter((v) => kindFor(v) === null || kindFor(v, off) !== null);
+  return on.length ? on : [...views];
 }
 
 /**

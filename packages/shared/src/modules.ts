@@ -40,8 +40,7 @@ export const MODULES: Record<ModuleId, ModuleParts> = {
     views: ['shotlist'],
     tools: ['frame', 'scene', 'storyboard'],
     menus: ['sendToStoryboard', 'screenplayImport'],
-    // Present plays a storyboard's frames.
-    tours: ['storyboard', 'draw', 'shotlist', 'present'],
+    tours: ['storyboard', 'draw', 'shotlist'],
     notifications: [],
     exports: [],
     calendar: [],

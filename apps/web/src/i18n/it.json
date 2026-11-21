@@ -5736,7 +5736,7 @@
         "steps": {
           "0": {
             "title": "A tutto schermo",
-            "text": "Lo storyboard, frame dopo frame."
+            "text": "Uno storyboard o una moodboard, un’immagine dopo l’altra."
           },
           "1": {
             "title": "Dove sei",
@@ -5747,7 +5747,7 @@
             "text": "Con le frecce o un tocco."
           }
         },
-        "where": "Premi Presenta nello storyboard e riprova il giro da lì."
+        "where": "Premi Presenta in uno storyboard o in una moodboard e riprova il giro da lì."
       },
       "export": {
         "name": "Esporta e importa",

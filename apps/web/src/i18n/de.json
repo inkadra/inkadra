@@ -5736,7 +5736,7 @@
         "steps": {
           "0": {
             "title": "Im Vollbild",
-            "text": "Das Storyboard, Frame für Frame."
+            "text": "Ein Storyboard oder ein Moodboard, Bild für Bild."
           },
           "1": {
             "title": "Wo du bist",
@@ -5747,7 +5747,7 @@
             "text": "Mit den Pfeilen oder einem Tipp."
           }
         },
-        "where": "Drücke Präsentieren im Storyboard und starte die Tour dort erneut."
+        "where": "Drücke Präsentieren in einem Storyboard oder Moodboard und starte die Tour dort erneut."
       },
       "export": {
         "name": "Export und Import",

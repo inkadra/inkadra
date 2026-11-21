@@ -1,16 +1,16 @@
 import type { BoardCount } from '@inkadra/shared';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { boardPath, loadBoards } from '../board/boards.ts';
-import { defaultView, viewHref } from '../board/views.ts';
+import { boardViews, defaultView, viewHref } from '../board/views.ts';
 import { api } from '../lib/api.ts';
 import { preferencesLoaded, usePreferences } from '../lib/preferences.ts';
 import { SessionContext } from '../lib/session-context.ts';
 import { addBoard } from '../routes/add-storyboard.ts';
 import { useProjects } from '../routes/projects-context.ts';
 import { type ToastMessage, TourPill, TourToast } from './Pill.tsx';
-import { kindFor, screenOf, startBoard } from './start.ts';
+import { enabledViews, kindFor, screenOf, startBoard, startViews } from './start.ts';
 import { autoOffers, markSeen, requestTour, useRequestedTour } from './state.ts';
 import { findAnchor, TourPlayer } from './TourPlayer.tsx';
 import { findTour, type Tour, toursFor, WELCOME } from './tours.ts';
@@ -34,6 +34,7 @@ export function TutorialHost({
   firstProject,
   settingsOpen,
   closeSettings,
+  closeInbox,
 }: {
   admin: boolean;
   /** False until the instance is set up, for its administrator: the welcome waits. */
@@ -46,6 +47,8 @@ export function TutorialHost({
   firstProject: string | undefined;
   settingsOpen: boolean;
   closeSettings: () => void;
+  /** Closes the Inbox over the page, for a tour of something else. */
+  closeInbox: () => void;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -66,6 +69,11 @@ export function TutorialHost({
   const seen = prefs.tutorialsSeen;
   const modulesOff = prefs.modulesOff;
   const busy = welcome || finale || !!playing;
+  // Each start from Settings supersedes the one before; so does leaving the page it started on.
+  // A start still waiting for the boards then does nothing when they arrive.
+  const startCount = useRef(0);
+  const pageNow = useRef(pathname);
+  pageNow.current = pathname;
 
   const say = useCallback(
     (text: string, open?: boolean, ok?: boolean) =>
@@ -80,6 +88,7 @@ export function TutorialHost({
   const closeToast = useCallback(() => setToast(null), []);
 
   const startWelcomeTour = useCallback(() => {
+    startCount.current++;
     // The tour shows a board: from a page without one, open the first project.
     const opens = !pathname.startsWith('/p/') && !!firstProject;
     if (opens) navigate(`/p/${firstProject}`);
@@ -103,7 +112,10 @@ export function TutorialHost({
    */
   const openBoardFor = useCallback(
     async (tour: Playable) => {
-      const view = typeof tour.start === 'object' ? tour.start.view : undefined;
+      const all = startViews(typeof tour.start === 'object' ? tour.start.view : undefined);
+      const views = enabledViews(all, modulesOff);
+      const started = startCount.current;
+      const from = pathname;
       const [, onProject, onBoard] = pathname.match(/^\/p\/([^/]+)(?:\/b\/([^/]+))?/) ?? [];
       const projectId = onProject ?? projects?.[0]?.id;
       if (!projectId) {
@@ -127,6 +139,7 @@ export function TutorialHost({
           .then((page) => new Map(page.items.map((c) => [c.boardId, c])))
           .catch(() => new Map<string, BoardCount>()),
       ]);
+      if (started !== startCount.current || from !== pageNow.current) return;
       // Without the list nothing is known to be missing: never offer to make a board that exists.
       if (!boards) {
         setToast({ id: Date.now(), text: t('tutorial.start.boardsError') });
@@ -134,11 +147,17 @@ export function TutorialHost({
       }
       const rootBoardId = boards.find((b) => b.parentBoardId === null)?.id;
       const current = onProject ? (onBoard ?? rootBoardId) : undefined;
-      const board = startBoard(boards, counts, view, current);
+      // A board of a module that is off still shows what it holds: second choice.
+      const board =
+        startBoard(boards, counts, views, current) ?? startBoard(boards, counts, all, current);
       if (!board) {
         const project = projects?.find((p) => p.id === projectId);
-        const kind = kindFor(view, modulesOff);
-        const make = kind && !boards.some((b) => b.kind === kind) ? kind : null;
+        // Only a kind whose module is on is offered (decision 0121).
+        const make =
+          views
+            .map((v) => kindFor(v, modulesOff))
+            .find((kind) => kind && !boards.some((b) => b.kind === kind)) ?? null;
+        const view = views.find((v) => kindFor(v) === make);
         const editor = project?.myRole === 'owner' || project?.myRole === 'editor';
         setToast({
           id: Date.now(),
@@ -158,6 +177,8 @@ export function TutorialHost({
         });
         return;
       }
+      const on = boardViews(board, counts.get(board.id));
+      const view = views.find((v) => on.includes(v)) ?? all.find((v) => on.includes(v));
       const to = view
         ? viewHref(projectId, board, view, rootBoardId)
         : boardPath(projectId, board.id, rootBoardId);
@@ -197,7 +218,10 @@ export function TutorialHost({
     requestTour(null);
     const tour = findTour(requested);
     if (!tour) return;
+    startCount.current++;
     setPill(null);
+    // The Inbox covers the page: a tour of anything else plays without it.
+    if (tour.start !== 'inbox') closeInbox();
     if (tour.id === WELCOME.id) {
       startWelcomeTour();
       return;
@@ -229,6 +253,7 @@ export function TutorialHost({
     playOn,
     openBoardFor,
     openInbox,
+    closeInbox,
   ]);
 
   // The pill: the first unseen tour whose place is on screen; it leaves with that place.
@@ -312,6 +337,7 @@ export function TutorialHost({
           text={t('tutorial.pill.question', { name: name(pill.id) })}
           action={t('tutorial.pill.go')}
           onGo={() => {
+            startCount.current++;
             setPill(null);
             setSettle(undefined);
             setScreen(undefined);
