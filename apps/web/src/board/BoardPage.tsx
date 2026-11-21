@@ -93,6 +93,7 @@ import {
   RestoreError,
 } from './local-boards.ts';
 import { RestoredToast } from './RestoredToast.tsx';
+import { useRoleRecheck } from './role-recheck.ts';
 import { isMac } from './shortcuts.ts';
 import { LOCAL, REPAIR } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
@@ -715,16 +716,18 @@ function BoardScreen({
 
   // Read again when the server changes our access, so the role shown and checked is current.
   const accessVersion = conn?.accessChangedAt;
+  const roleCheck = useRoleRecheck(conn, detail ? canEdit(detail.myRole) : null);
   useEffect(() => {
     let alive = true;
     void accessVersion;
+    void roleCheck;
     fetchBoard(boardId)
       .then((d) => alive && setDetail(d))
       .catch(() => alive && setDetail(null));
     return () => {
       alive = false;
     };
-  }, [boardId, accessVersion]);
+  }, [boardId, accessVersion, roleCheck]);
 
   // The card of a sub-board opens the view it shows (decision 0121); the board page falls back
   // to the board's first view when that one is off.
