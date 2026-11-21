@@ -186,7 +186,11 @@
       "name": "Nombre del tablero",
       "namePlaceholder": "Localizaciones",
       "create": "Crear tablero",
-      "error": "No se pudo crear el tablero. Inténtalo de nuevo."
+      "error": "No se pudo crear el tablero. Inténtalo de nuevo.",
+      "kind": "Tipo",
+      "turnOn": "Encender {{name}}",
+      "present": "El proyecto ya tiene su Producción: hay una por proyecto.",
+      "open": "Abrir {{name}}"
     },
     "preview": {
       "unavailable": "Vista previa no disponible",
@@ -5440,6 +5444,10 @@
           "5": {
             "title": "Límites de tamaño del tablero",
             "text": "Si este tablero alcanza su límite de tamaño, las adiciones se rechazan y el tablero confirmado se recarga. Elimina contenido para liberar espacio; si aun así no cabe, pide a tu administrador que aumente el límite."
+          },
+          "6": {
+            "title": "Por dónde empezar",
+            "text": "En un tablero vacío: importa un guion o añade Producción, un storyboard y un moodboard. Un módulo apagado queda en gris, con Encender. Nuevo tablero también pide el tipo."
           }
         }
       },

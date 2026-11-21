@@ -4071,7 +4071,14 @@ export function Canvas({
           conn.status === 'synced' &&
           !readOnly &&
           !guest &&
-          !preview && <EmptyBoardStart onScreenplay={() => setImportingScript(true)} />}
+          !preview && (
+            <EmptyBoardStart
+              onScreenplay={() => setImportingScript(true)}
+              onCanvas={(kind) => void insertCanvas(kind)}
+              onProduction={production ? () => onOpenBoard(production.id) : undefined}
+              onModuleOn={turnOnModule}
+            />
+          )}
 
         {!overlay.offset &&
           !overlay.marquee &&

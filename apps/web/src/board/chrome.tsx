@@ -1,6 +1,6 @@
 import type { Alignment, Point, Rect, TidyGap, Viewport } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { type ModuleId, moduleOf } from '@inkadra/shared';
+import type { ModuleId } from '@inkadra/shared';
 import {
   type ContentKind,
   Icon,
@@ -35,6 +35,7 @@ import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { setModule, useModules } from '../lib/modules.ts';
 import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { pickVariant, useAsset } from './assets.ts';
+import { boardKindChoices, type NewBoardKind } from './board-kinds.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
@@ -99,10 +100,6 @@ const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 
 /** The phone bar of the mockup (#110): note, photo and to-do beside Select and More. */
 const PHONE_BAR = ['note', 'image', 'todo'] as const;
-
-/** The kinds of board the Canvas menu creates, with the module each belongs to (0121). */
-const NEW_BOARDS = ['board', 'moodboard', 'storyboard', 'production'] as const;
-type NewBoardKind = (typeof NEW_BOARDS)[number];
 
 /**
  * Marks a sideways-scrolling row with `data-more-start` and `data-more-end` while there is more
@@ -499,11 +496,8 @@ function CanvasMenuButton({
   const label = t(phone ? 'board.canvasMenu.more' : 'board.canvasMenu.label');
   const open = () => setAt(placeAbove(button.current));
   const storyboardOn = offers('menus', 'screenplayImport');
-  const kinds = NEW_BOARDS.map((kind) => {
-    const owner = moduleOf('kinds', kind);
-    const off = !offers('kinds', kind);
-    // One Production board per project: with one, the card opens it (decision 0123).
-    const present = kind === 'production' && !off && !!onProduction;
+  // One Production board per project: with one, the card opens it (decision 0123).
+  const kinds = boardKindChoices(offers, !!onProduction).map(({ kind, owner, off, present }) => {
     const name = t(kind === 'board' ? 'board.types.board' : `film.views.${kind}`);
     return {
       label: off

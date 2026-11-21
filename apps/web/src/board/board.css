@@ -2159,6 +2159,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
 }
 .canvas__start-options {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .canvas__start-option {
@@ -2204,6 +2205,21 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
   font-weight: 400;
   color: var(--ink-text-muted);
 }
+/* A module that is off: dimmed like the Canvas menu's card, a button that turns it on (0121). */
+.canvas__start-option.is-off {
+  border-style: dashed;
+  background: none;
+}
+.canvas__start-option.is-off > :not(.canvas__start-tag) {
+  opacity: 0.55;
+}
+.canvas__start-tag {
+  padding: 2px 8px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font-size: 11px;
+}
 .canvas__start-hint {
   margin: 6px 0 0;
   font-size: 11px;
@@ -2217,7 +2233,7 @@ body:is(:has(.colorpicker), :has(.unsorted__panel)) .card-reactions {
     scale: none;
   }
 }
-/* Phones: three finger-sized choices in a row, the browse link a full touch target. */
+/* Phones: finger-sized choices, two in a row. */
 @media (pointer: coarse) {
   .canvas__start-option {
     min-height: 44px;

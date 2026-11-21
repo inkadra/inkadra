@@ -186,7 +186,11 @@
       "name": "Nome della board",
       "namePlaceholder": "Sopralluoghi",
       "create": "Crea board",
-      "error": "Non riesco a creare la board. Riprova."
+      "error": "Non riesco a creare la board. Riprova.",
+      "kind": "Tipo",
+      "turnOn": "Accendi {{name}}",
+      "present": "Il progetto ha già la sua Produzione: una sola per progetto.",
+      "open": "Apri {{name}}"
     },
     "preview": {
       "unavailable": "Anteprima non disponibile",
@@ -5440,6 +5444,10 @@
           "5": {
             "title": "Limiti della board",
             "text": "Se la board raggiunge il limite di dimensione, le aggiunte vengono rifiutate e si ricarica la board confermata. Elimina contenuti per liberare spazio; se non basta, chiedi all’amministratore di alzare il limite."
+          },
+          "6": {
+            "title": "Da dove partiamo",
+            "text": "Su una board vuota: importa un copione o aggiungi Produzione, storyboard e moodboard. Un modulo spento resta grigio, con Accendi. Anche Nuova board chiede il tipo."
           }
         }
       },

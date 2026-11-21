@@ -219,6 +219,49 @@
   flex-direction: column;
   gap: 14px;
 }
+/* New board's kinds: two per row, so four fit a phone too. */
+.home-new__kinds {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.home-new__kinds > legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+.home-new__kind-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.home-new__kind {
+  padding: 10px 12px;
+}
+.home-new__kind-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.home-new__kind-name > svg {
+  color: var(--kind-fg);
+}
+.home-new__kind-desc {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.home-new__turn-on {
+  justify-self: start;
+}
+.home-new__present {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-text-secondary);
+}
 
 /* Phones keep everything, in one column; the native app takes over there later. */
 @media (width < 768px) {
