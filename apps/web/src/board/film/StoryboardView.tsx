@@ -10,7 +10,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, setBoardAspect } from '@inkadra/doc-schema';
-import { Button, EmptyState, Icon, IconButton, Segmented, Select } from '@inkadra/ui';
+import { Button, EmptyState, Icon, IconButton, Segmented, Select, Toast } from '@inkadra/ui';
 import { type DragEvent, memo, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
@@ -26,7 +26,6 @@ import { PresentationView } from '../PresentationView.tsx';
 import { addScenePlan, plansOfScene, ScenePlanButton, useTakeParam } from '../plan/scenes.tsx';
 import { openComments } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
-import { Toast } from '../Toast.tsx';
 import { startUpload } from '../uploads.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';

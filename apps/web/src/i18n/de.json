@@ -271,7 +271,7 @@
       },
       "public_url_https": {
         "title": "PUBLIC_URL nutzt HTTPS",
-        "fix": "Außerhalb von localhost eine https://-Adresse verwenden: Anmelde-Cookies sind nur über HTTPS sicher."
+        "fix": "Verwende außerhalb von localhost eine https://-Adresse: Anmelde-Cookies sind nur über HTTPS sicher."
       },
       "public_url_matches_request": {
         "title": "Der Server sieht die öffentliche Adresse",
@@ -349,6 +349,7 @@
     },
     "toolbar": "Hinzufügen",
     "contextBar": "Aktionen für die Auswahl",
+    "contextMenu": "Board-Aktionen",
     "minimap": "Minimap: zum Springen klicken",
     "dropFiles": "Zum Hochladen ablegen",
     "undo": "Rückgängig",
@@ -446,9 +447,9 @@
       "pictureFailed": "Das Bild konnte nicht hochgeladen werden. Versuche es erneut.",
       "slash": {
         "label": "Einfügen",
-        "frame": "Einstellung",
+        "frame": "Frame",
         "frameHint": "Eine Zeile der Shotlist verknüpfen",
-        "noFrames": "Keine Einstellungen auf diesem Board",
+        "noFrames": "Keine Frames in diesem Board",
         "todo": "To-do",
         "todoHint": "Liste mit Kästchen",
         "image": "Bild",
@@ -656,7 +657,7 @@
       "refreshPreviewFailed": "Vorschau konnte nicht aktualisiert werden. Versuch es später noch mal.",
       "refreshPreview": "Vorschau aktualisieren",
       "setCover": "Als Cover verwenden",
-      "removeCover": "Als Cover entfernen",
+      "removeCover": "Cover entfernen",
       "coverSet": "Board-Cover aktualisiert",
       "coverRemoved": "Cover entfernt: Das erste Bild wird verwendet",
       "coverFailed": "Cover konnte nicht geändert werden",
@@ -720,7 +721,7 @@
       "cancelled": "Abgebrochen",
       "retry": "Wiederholen",
       "offline": "Warte auf Netzwerk",
-      "reconnecting": "Neu verbinden…",
+      "reconnecting": "Verbindung wird neu aufgebaut…",
       "transfer": "{{speed}} MB/s · noch {{seconds}} s"
     },
     "palette": {
@@ -1495,7 +1496,7 @@
         "saved_one": "{{count}} eingerichtet",
         "saved_other": "{{count}} eingerichtet",
         "searchAll": "Alle {{total}} Symbole durchsuchen",
-        "searchHint": "Die Suche prüft Namen, andere gebräuchliche Namen und Kategorien. Eingabe setzt das erste Ergebnis in die Mitte der Ansicht.",
+        "searchHint": "Die Suche prüft Namen, andere gebräuchliche Namen und Kategorien. Enter setzt das erste Ergebnis in die Mitte der Ansicht.",
         "searchLabel": "Bibliothek durchsuchen",
         "short": "Bibliothek",
         "tapHint": "Tippen setzt es in die Mitte, oder auf den Plan ziehen.",
@@ -1549,7 +1550,7 @@
       "selectionMenu": "Aktionen der Auswahl",
       "setupName": "Name des Setups",
       "setups": "Setups",
-      "shotCard": "Einstellung aus dem Storyboard",
+      "shotCard": "Frame aus dem Storyboard",
       "stand": "Stativ",
       "support": "Unterbau",
       "tabs2": {
@@ -1564,7 +1565,7 @@
       "viewLength": "Sichtlänge",
       "zoom": "Zoom",
       "zoomFit": "Plan einpassen",
-      "zoomFitAt": "{{percent}}% · Plan einpassen",
+      "zoomFitAt": "{{percent}} % · Plan einpassen",
       "stands": {
         "cstand": "C-Stand",
         "combo": "Combo-Stativ",
@@ -1606,7 +1607,7 @@
         "key": "Führung",
         "fill": "Aufhellung",
         "back": "Gegenlicht",
-        "practical": "Praktikabel"
+        "practical": "Practical"
       },
       "snapIcons": "Symbole einrasten",
       "gripGroup": "Grip und Crew",
@@ -1625,14 +1626,14 @@
         "openCharacter": "Figur öffnen",
         "linkCharacter": "Mit einer Figur verknüpfen",
         "searchCharacter": "Figuren suchen",
-        "openFrame": "Einstellung öffnen",
-        "linkFrame": "Mit einer Einstellung verknüpfen",
-        "searchFrame": "Einstellungen suchen",
-        "followFrame": "{{mm}} mm der Einstellung verwenden",
-        "location": "Drehort",
-        "openLocation": "Drehort öffnen",
-        "linkLocation": "Mit einem Drehort verknüpfen",
-        "searchLocation": "Drehorte suchen",
+        "openFrame": "Frame öffnen",
+        "linkFrame": "Mit einem Frame verknüpfen",
+        "searchFrame": "Frames suchen",
+        "followFrame": "{{mm}} mm des Frames verwenden",
+        "location": "Location",
+        "openLocation": "Location öffnen",
+        "linkLocation": "Mit einer Location verknüpfen",
+        "searchLocation": "Locations suchen",
         "lightNotes": "Licht",
         "sun": "Sonne, für Außenaufnahmen",
         "timeOfDay": "Tageszeit",
@@ -1651,7 +1652,7 @@
         "today": "Heute",
         "shootDay": "Drehtag {{n}}",
         "otherDate": "Anderes Datum…",
-        "dayGone": "Der Drehtag wurde aus dem Drehplan entfernt: der Plan behält sein letztes Datum.",
+        "dayGone": "Der Drehtag wurde aus dem Drehplan entfernt: Der Plan behält sein letztes Datum.",
         "from": {
           "north": "Von Norden",
           "northEast": "Von Nordosten",
@@ -1669,7 +1670,7 @@
           "high": "hoch"
         },
         "sunFromPlace": "Berechnet aus dem Kartenlink von {{place}}: {{degrees}}° über dem Horizont. Die Sonnensymbole drehen sich mit der Uhrzeit.",
-        "sunByClock": "Nur aus der Uhrzeit: morgens im Osten, abends im Westen. Füge dem Drehort einen Kartenlink hinzu, um die Sonnenhöhe zu erhalten. Die Sonnensymbole drehen sich mit der Uhrzeit; Norden stellst du von Hand ein.",
+        "sunByClock": "Nur aus der Uhrzeit: morgens im Osten, abends im Westen. Füge der Location einen Kartenlink hinzu, um die Sonnenhöhe zu erhalten. Die Sonnensymbole drehen sich mit der Uhrzeit; Norden stellst du von Hand ein.",
         "scene": "Szene {{number}}",
         "settings": {
           "int": "INT",
@@ -1716,7 +1717,7 @@
         "run": "{{format}} exportieren"
       },
       "sheet": {
-        "shots": "Einstellungen",
+        "shots": "Frames",
         "scale": "Maßstab",
         "room": "Raum",
         "more_one": "+{{count}} weiteres",
@@ -1724,7 +1725,7 @@
         "cameras": "Kameras",
         "lights": "Lichter",
         "grip": "Grip",
-        "cast": "Besetzung",
+        "cast": "Cast",
         "notes": "Notizen",
         "foot": "Erstellt mit Inkadra · Seite {{n}} von {{total}}",
         "day": "Tag {{n}}",
@@ -1741,7 +1742,7 @@
       "view": {
         "only": "Nur ansehen",
         "legend": "Legende",
-        "hint": "Ziehen zum Verschieben, kneifen oder Strg + Mausrad zum Zoomen",
+        "hint": "Ziehen zum Verschieben, Zwei-Finger-Geste oder Strg + Mausrad zum Zoomen",
         "note": "Wer das Board öffnen kann, sieht diesen Plan, die Legende, das Material und den Strom.",
         "guestNote": "Du siehst den Plan so, wie er mit dir geteilt ist: Setups, Legende, Material und Strom."
       },
@@ -1763,8 +1764,8 @@
         },
         "closeClick": "Hier klicken, um den Raum zu schließen",
         "closeTap": "Hier tippen, um den Raum zu schließen",
-        "locked": "Die Ebene Set ist gesperrt: entsperre sie unter Elemente, um Wände zu zeichnen.",
-        "hidden": "Die Ebene Set ist ausgeblendet: blende sie unter Elemente ein, um Wände zu zeichnen.",
+        "locked": "Die Ebene Set ist gesperrt: Entsperre sie unter Elemente, um Wände zu zeichnen.",
+        "hidden": "Die Ebene Set ist ausgeblendet: Blende sie unter Elemente ein, um Wände zu zeichnen.",
         "done": "Wände fertig",
         "summaryWalls_one": "{{count}} Wand",
         "summaryWalls_other": "{{count}} Wände",
@@ -1785,7 +1786,7 @@
         "fromCorners": "{{before}} und {{after}} von den Ecken",
         "openingWidth": "Breite der Öffnung",
         "flip": "Seite wechseln",
-        "swing": "Vom anderen Ende öffnen",
+        "swing": "Von der anderen Seite öffnen",
         "doorHint": "Entlang der Wand ziehen, um sie zu verschieben.",
         "wall": "Wand",
         "wallSummary_one": "{{count}} Seite · {{length}}",
@@ -1818,7 +1819,7 @@
         "scene": "Szene {{number}}",
         "later": "Du kannst später alles ändern.",
         "how": "Wie beginnen",
-        "reuse": "Set dieses Drehorts wiederverwenden",
+        "reuse": "Set dieser Location wiederverwenden",
         "reuseText": "{{what}} aus „{{name}}“. Lichter, Kameras und Darsteller beginnen leer.",
         "reuseFrom": "Set wiederverwenden von",
         "furniture": "Möbel",
@@ -2062,12 +2063,12 @@
       "auto": "Auto",
       "autoAt": "Auto · {{quality}}",
       "now": "jetzt {{quality}}",
-      "preparing": "wird vorbereitet · {{percent}}%",
+      "preparing": "wird vorbereitet · {{percent}} %",
       "original": "Original",
-      "live": "on the fly",
+      "live": "live",
       "liveCopy": "Kopie bei {{percent}} %",
-      "liveNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um; ist die Kopie fertig, wird zu ihr gewechselt.",
-      "liveOnlyNote": "«Live»-Qualitäten wandelt die Grafikkarte beim Ansehen um, ohne eine Kopie zu speichern."
+      "liveNote": "„Live“-Qualitäten wandelt die Grafikkarte beim Ansehen um; ist die Kopie fertig, wird zu ihr gewechselt.",
+      "liveOnlyNote": "„Live“-Qualitäten wandelt die Grafikkarte beim Ansehen um, ohne eine Kopie zu speichern."
     },
     "player": {
       "play": "Abspielen",
@@ -2127,7 +2128,7 @@
     },
     "aspect": {
       "label": "Seitenverhältnis",
-      "board": "Board ({{ratio}})"
+      "board": "Format des Storyboards ({{ratio}})"
     },
     "total_one": "{{count}} Frame",
     "total_other": "{{count}} Frames",
@@ -2339,7 +2340,7 @@
       "scene": "Szene",
       "noMatch": "Kein Frame passt zum Filter",
       "table": "Tabelle",
-      "layouts": "Layout der Shotliste",
+      "layouts": "Layout der Shotlist",
       "kanban": "Kanban",
       "addInStatus": "In {{status}} hinzufügen",
       "cardAria": "Frame {{label}}",
@@ -2363,7 +2364,7 @@
       "groupLocation": "Location",
       "groupStatus": "Status",
       "groupNone": "Keine Gruppierung",
-      "sortManual": "Storyboard",
+      "sortManual": "Storyboard-Reihenfolge",
       "sortLabel": "Shot-Nummer",
       "collapseGroup": "Gruppe einklappen",
       "expandGroup": "Gruppe ausklappen",
@@ -2379,7 +2380,7 @@
       "moreCards": "weitere",
       "approvedHelper": "Freigegebene Shots hierher ziehen",
       "approvedHint": "Füllt sich auch durch Kundenfreigaben",
-      "approvedLocked": "In der Prüfung freigegeben: Prüfung über „{{status}}“ ändern, Produktionsstatus in der Tabelle",
+      "approvedLocked": "Im Review freigegeben: Ändere das Review über „{{status}}“ und den Produktionsstatus in der Tabelle",
       "selectRow": "Shot {{label}} auswählen",
       "groupSetup": "Setup",
       "noSetup": "Ohne Setup",
@@ -2738,7 +2739,7 @@
       },
       "phone": {
         "title": "Review",
-        "empty": "Auf diesem Board gibt es keine Einstellungen zu prüfen.",
+        "empty": "In diesem Board gibt es keine Frames zu prüfen.",
         "board": "Board ansehen",
         "versions": "Angezeigte Version",
         "versionsFailed": "Frühere Versionen sind gerade nicht verfügbar.",
@@ -2983,7 +2984,7 @@
       "review_submitted": "hat das Review gesendet",
       "server_alert_disk_full": "Speicher fast voll: noch {{free}} von {{total}}",
       "server_alert_service_down": "{{service}} antwortet nicht",
-      "server_alert_backup_failed": "Die Sicherung ist fehlgeschlagen",
+      "server_alert_backup_failed": "Das Backup ist fehlgeschlagen",
       "server_alert_repeated_errors": "Derselbe Fehler trat in der letzten Stunde {{times}}-mal auf",
       "server_alert_unknown": "Mit dem Server stimmt etwas nicht",
       "update_available": "Eine neue Version von Inkadra ist verfügbar",
@@ -3328,7 +3329,7 @@
     "addBlockShort": "Block",
     "after": "nach {{block}}",
     "afterCall": "nach dem Call",
-    "allCast": "Alle Darsteller",
+    "allCast": "Ganzer Cast",
     "allScenes": "Alle Szenen",
     "allDetails": "Alle Details",
     "announce": "{{block}}, {{start}}–{{end}}, {{day}} (Tag {{n}})",
@@ -3345,7 +3346,7 @@
     "discard": "Änderungen verwerfen",
     "duplicate": "Duplizieren",
     "duplicated": "Block dupliziert.",
-    "filterCast": "Nach Darstellern filtern",
+    "filterCast": "Nach Cast filtern",
     "filterScene": "Nach Szene filtern",
     "fixed": "Feste Uhrzeit",
     "fixedHint": "Bleibt an Ort und Stelle, wenn sich die Blöcke davor ändern.",
@@ -3375,7 +3376,7 @@
     "retry": "Erneut versuchen",
     "retryNow": "Jetzt erneut versuchen",
     "sceneShort": "Sz. {{number}}",
-    "search": "Szene, Aktion, Darsteller suchen",
+    "search": "Szene, Aktion, Cast suchen",
     "shootDay": "Drehtag",
     "shotsShort_one": "{{count}} Shot",
     "shotsShort_other": "{{count}} Shots",
@@ -3387,8 +3388,8 @@
     "saveFailed_other": "Speichern fehlgeschlagen: {{count}} Tage warten aufs Speichern. Es wird automatisch erneut versucht; schließe den Tab nicht.",
     "offline_one": "Du bist offline: {{count}} Tag wartet aufs Speichern. Schließe den Tab nicht.",
     "offline_other": "Du bist offline: {{count}} Tage warten aufs Speichern. Schließe den Tab nicht.",
-    "sunHint": "Füge dem Drehort einen Kartenlink (Google, Apple oder OpenStreetMap) hinzu, um Sonnenaufgang und -untergang zu sehen.",
-    "sunNote": "Wird auf diesem Gerät aus dem Kartenlink des Drehorts berechnet; es wird nichts an externe Dienste gesendet.",
+    "sunHint": "Füge der Location einen Kartenlink (Google, Apple oder OpenStreetMap) hinzu, um Sonnenaufgang und -untergang zu sehen.",
+    "sunNote": "Wird auf diesem Gerät aus dem Kartenlink der Location berechnet; es wird nichts an externe Dienste gesendet.",
     "sunPolar": "Die Sonne geht an diesem Tag an diesem Ort nicht auf oder nicht unter.",
     "sunrise": "Sonnenaufgang {{time}}",
     "sunset": "Sonnenuntergang {{time}}",
@@ -3414,7 +3415,7 @@
     "moreAbove_other": "{{count}} Blöcke",
     "calendarLabel": "Drehkalender",
     "sceneFilterLabel": "Szene",
-    "castFilterLabel": "Darsteller",
+    "castFilterLabel": "Cast",
     "newBlockMenu": "Art des neuen Blocks",
     "newBlock": "Neuer Block · {{time}}",
     "created": "Neuer Block: {{type}}, {{start}}–{{end}}.",
@@ -3498,8 +3499,8 @@
     "addTag": "Tag hinzufügen",
     "note": "Notiz",
     "sendToStoryboard": "Ans Storyboard senden",
-    "sent_one": "{{count}} Einstellung zum Storyboard hinzugefügt",
-    "sent_other": "{{count}} Einstellungen zum Storyboard hinzugefügt",
+    "sent_one": "{{count}} Frame zum Storyboard hinzugefügt",
+    "sent_other": "{{count}} Frames zum Storyboard hinzugefügt",
     "sendFailed": "Sie konnten nicht zum Storyboard hinzugefügt werden. Prüfe Verbindung und Berechtigungen und versuche es erneut.",
     "lockedSkipped_one": "{{count}} Referenz ist gesperrt und wurde nicht geändert.",
     "lockedSkipped_other": "{{count}} Referenzen sind gesperrt und wurden nicht geändert.",
@@ -3538,13 +3539,13 @@
     "scenes": "Szenen des Tages",
     "bringer": "Wer bringt es mit",
     "frames": "Frames der Szene",
-    "plans": "Setplan",
+    "plans": "Setpläne",
     "kit": "Materialliste",
     "kitHelp": "Zählt die Symbole nach Typ und Beschriftung.",
     "moves": "Nummerierte Bewegungen",
     "fullPage": "Pläne ganzseitig",
     "new": "Neu",
-    "yourCall": "Dein Drehbeginn",
+    "yourCall": "Dein Call",
     "confirm": "Anwesenheit bestätigen",
     "decline": "Kann nicht",
     "presence": "Anwesenheit",
@@ -3567,14 +3568,14 @@
     },
     "ready": "Drehbereit",
     "pause": "Pause",
-    "cameraWrap": "Camera wrap",
+    "cameraWrap": "Drehschluss Kamera",
     "crewWrap": "Drehschluss Team",
-    "times": "Key times",
-    "place": "Place",
+    "times": "Eckzeiten",
+    "place": "Ort",
     "locationNumber": "Loc. {{n}}",
-    "serve": "Needed: {{items}}",
-    "inScene": "On set",
-    "contact": "Contact",
+    "serve": "Benötigt: {{items}}",
+    "inScene": "Am Set",
+    "contact": "Kontakt",
     "troupe": "Team und Kontakte",
     "onSetContact": "Ansprechpartner am Set",
     "onSetContactShort": "Ansprechpartner am Set",
@@ -3630,7 +3631,7 @@
       "cancel": "Abbrechen",
       "days": "Unter Mitbringen am {{days}}",
       "day": "Tag {{n}} ({{date}})",
-      "readOnly": "Du kannst diese Listen ansehen. Ändern können sie Eigentümer und Bearbeiter.",
+      "readOnly": "Du kannst diese Listen ansehen. Ändern können sie Inhaber und Bearbeiter.",
       "itemDeleted": "Eintrag gelöscht",
       "listDeleted": "Liste gelöscht"
     }
@@ -3679,7 +3680,7 @@
     "openNamed": "{{name}} öffnen",
     "open": "Öffnen",
     "pin": "Oben anpinnen",
-    "unpin": "Lösen",
+    "unpin": "Nicht mehr anpinnen",
     "archive": "Archivieren",
     "unarchive": "Wiederherstellen",
     "boards_one": "{{count}} Board",
@@ -3817,7 +3818,7 @@
       "toolbar": "Wähle, welche Werkzeuge aus „Weitere“ du in der unteren Leiste siehst. Die anderen bleiben in ⋯ und in der Befehlspalette.",
       "tutorials": "Sieh dir die geführten Touren erneut an, wähle, ob sie angeboten werden, und bitte um Hilfe.",
       "server": "Wie es dem Server geht: Ressourcen, Dienste, Aufträge, Probleme und Warnungen.",
-      "serverSimple": "Wie es dem Server geht, in klaren Worten: Speicherplatz, Sicherung, Tempo und Probleme zum Ansehen.",
+      "serverSimple": "Wie es dem Server geht, in klaren Worten: Speicherplatz, Backup, Tempo und Probleme zum Ansehen.",
       "updates": "Die laufende Version, die Neuerungen und ein Hinweis, wenn eine neue erscheint. Inkadra aktualisiert sich nicht selbst: Das Update machst du, auf dem Server.",
       "modules": "Wähle die Teile von Inkadra, die du nutzt. Ein ausgeschaltetes Modul verschwindet aus deinen Menüs, der Leiste, den Benachrichtigungen und den Tutorials. Es gilt nur für dich und löscht nichts: Was existiert, bleibt sichtbar, und wenn du es wieder einschaltest, ist alles wieder da.",
       "board": "Wie sich deine Boards verhalten und welche Werkzeuge du in der unteren Leiste hast. Gilt nur für dich, auf jedem Gerät.",
@@ -3962,7 +3963,7 @@
       "results": "Suchergebnisse",
       "move": "auswählen",
       "open": "öffnen",
-      "enter": "Eingabe",
+      "enter": "Enter",
       "usage": "Nutzung pro Person: {{name}}",
       "more_one": "und 1 weiterer: tippe mehr, um ihn zu finden",
       "more_other": "und {{count}} weitere: tippe mehr, um sie zu finden"
@@ -4000,7 +4001,7 @@
       "members": "Rechte der Mitglieder",
       "security": "Sicherheit",
       "readOnly": "Nur lesen · auf dem Server eingerichtet",
-      "createHelp": "Sonst erstellen und importieren nur Administratoren Projekte. Für eine Person änderst du es unter Mitglieder."
+      "createHelp": "Sonst erstellen und importieren nur Admins Projekte. Für eine Person änderst du es unter Mitglieder."
     },
     "reports": {
       "copyHere": "Eine Kopie bleibt immer unten unter „Eingegangene Meldungen“.",
@@ -4013,7 +4014,7 @@
         },
         "content": {
           "title": "Was gesendet wird",
-          "body": "Ausgewählter Text, Screenshots, Videos, Dateien und Logs. Wir fügen weder Name noch E-Mail oder URL der Instanz hinzu."
+          "body": "Ausgewählter Text, Screenshots, Videos, Dateien und Logs. Wir fügen weder Name noch E-Mail noch URL der Instanz hinzu."
         },
         "metadata": {
           "title": "Metadaten",
@@ -4026,10 +4027,10 @@
       }
     },
     "backups": {
-      "ok": "Letzte Sicherung erfolgreich",
-      "failed": "Letzte Sicherung fehlgeschlagen",
-      "none": "Noch keine Sicherung",
-      "running": "Sicherung läuft",
+      "ok": "Letztes Backup erfolgreich",
+      "failed": "Letztes Backup fehlgeschlagen",
+      "none": "Noch kein Backup",
+      "running": "Backup läuft",
       "schedule": "Zeitplan"
     },
     "updates": {
@@ -4063,7 +4064,7 @@
     "storageEmpty": "Noch keine hochgeladenen Dateien.",
     "password": "E-Mail und Passwort",
     "magicLink": "Anmeldelink per E-Mail",
-    "providersHelp": "Nur lesbare Konfiguration. Anbieter und SMTP änderst du in der Server-Konfiguration.",
+    "providersHelp": "Schreibgeschützte Konfiguration. Anbieter und SMTP änderst du in der Server-Konfiguration.",
     "forbidden": "Dieser Bereich ist Admins der Instanz vorbehalten.",
     "teamHelp": "Globale Admins verwalten die Instanz. Mitglieder behalten ihre eigenen Rechte an Projekten und Boards.",
     "search": "Nach Name oder E-Mail suchen",
@@ -4309,13 +4310,13 @@
       "interrupted": "Der Server hat während der Arbeit angehalten. Versuch es noch mal.",
       "cancelled": "Abgebrochen.",
       "internal": "Etwas ist schiefgelaufen. Versuch es noch mal.",
-      "storage_full": "Die Dateien des Archivs passen nicht in den restlichen Speicher. Gib Speicher frei oder frag eine Administratorin oder einen Administrator."
+      "storage_full": "Die Dateien des Archivs passen nicht in den restlichen Speicher. Gib Speicher frei oder frag deinen Admin."
     },
     "importArchive": "Archiv importieren…"
   },
   "backups": {
     "title": "Backups",
-    "cardLead": "Jede Sicherung enthält die ganze Datenbank und wird nach dem Schreiben erneut gelesen. Dateien bleiben, wo sie sind, außer du nimmst sie mit auf: Sichere auch das Datenvolume oder den Bucket. Gelöschte Dateien bleiben, solange eine aufbewahrte Sicherung sie braucht.",
+    "cardLead": "Jedes Backup enthält die ganze Datenbank und wird nach dem Schreiben erneut gelesen. Dateien bleiben, wo sie sind, außer du nimmst sie mit auf: Sichere auch das Datenvolume oder den Bucket. Gelöschte Dateien bleiben, solange ein aufbewahrtes Backup sie braucht.",
     "now": "Jetzt sichern",
     "running": "Backup läuft…",
     "busy": "Es läuft bereits ein Backup.",
@@ -4335,8 +4336,8 @@
     "keepCount_one": "das letzte Backup",
     "keepCount_other": "die letzten {{count}} Backups",
     "media": "Dateien einschließen",
-    "mediaHelp": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jede Sicherung: derzeit etwa {{size}} mehr. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
-    "mediaHelpPlain": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jede Sicherung. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
+    "mediaHelp": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jedes Backup: derzeit etwa {{size}} mehr. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
+    "mediaHelpPlain": "Hochgeladene Dateien und ihre Vorschaubilder kommen ebenfalls in jedes Backup. Abspielbare Kopien von Videos werden nach einer Wiederherstellung neu erstellt.",
     "mediaKept_one": "Mit nur dem letzten Backup sind das insgesamt etwa {{total}}; die behaltenen Backups belegen jetzt {{used}}.",
     "mediaKept_other": "Jedes behaltene Backup hat seine eigene Kopie: etwa {{total}} für die letzten {{count}}, die behaltenen Backups belegen jetzt {{used}}.",
     "history": "Verlauf",
@@ -4354,15 +4355,15 @@
       "failed": "Fehlgeschlagen",
       "removed": "Entfernt"
     },
-    "where": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie vom Server aus DATA_DIR/backups. Wiederherstellung auf einer leeren Datenbank mit",
-    "whereBucket": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie aus DATA_DIR/backups oder aus backups/ im Bucket. Wiederherstellung auf einer leeren Datenbank mit",
-    "whereLocal": "Sicherungen lassen sich nicht im Browser herunterladen: Kopiere sie auf dem Server aus {{directory}}. Wiederherstellen in eine leere Datenbank mit",
-    "whereIn": "Sicherungen lassen sich nicht im Browser herunterladen: Kopiere sie auf dem Server aus {{directory}} oder aus {{bucket}}. Wiederherstellen in eine leere Datenbank mit",
+    "where": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie auf dem Server aus DATA_DIR/backups. Wiederherstellen in eine leere Datenbank mit",
+    "whereBucket": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie aus DATA_DIR/backups oder aus backups/ im Bucket. Wiederherstellen in eine leere Datenbank mit",
+    "whereLocal": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie auf dem Server aus {{directory}}. Wiederherstellen in eine leere Datenbank mit",
+    "whereIn": "Backups lassen sich nicht im Browser herunterladen: Kopiere sie auf dem Server aus {{directory}} oder aus {{bucket}}. Wiederherstellen in eine leere Datenbank mit",
     "failure": {
       "interrupted": "Der Server hat währenddessen angehalten. Starte das Backup erneut.",
       "stalled": "Es kam nicht mehr voran und wurde abgebrochen. Prüfe das Server-Log zu diesem Backup.",
-      "no_space": "Im Sicherungsordner ist nicht genug Platz frei.",
-      "permission": "Der Server kann nicht in seinen Sicherungsordner schreiben (BACKUP_DIR).",
+      "no_space": "Im Backup-Ordner ist nicht genug Platz frei.",
+      "permission": "Der Server kann nicht in seinen Backup-Ordner schreiben (BACKUP_DIR).",
       "internal": "Etwas ist schiefgelaufen. Das Server-Log sagt was, mit der ID dieses Backups.",
       "inconsistent": "Einige Boards oder Kommentare verweisen in einer Schleife aufeinander und lassen sich nicht geordnet speichern. Das Server-Log nennt die Tabelle.",
       "corrupt": "Das Archiv ließ sich nicht so zurücklesen, wie es geschrieben wurde, und wurde nicht behalten. Prüfe das Datenvolume."
@@ -4563,10 +4564,10 @@
         },
         "camera": {
           "name": "Kamera",
-          "hint": "Einstellungen, Objektive, Setplan"
+          "hint": "Frames, Objektive, Setplan"
         },
         "lighting": {
-          "name": "Licht und Bühne",
+          "name": "Licht und Grip",
           "hint": "Setplan, Tageszeit, Lichtnotizen"
         },
         "costume": {
@@ -4575,7 +4576,7 @@
         },
         "production": {
           "name": "Produktion",
-          "hint": "Location, Besetzung, Dinge"
+          "hint": "Location, Cast, Dinge"
         }
       },
       "day": "Tag {{n}}",
@@ -4587,8 +4588,8 @@
       "none": "Keine Szenen zu drucken.",
       "call": "Call",
       "location": "Location",
-      "time": "Zeit",
-      "cast": "Besetzung",
+      "time": "Tageszeit",
+      "cast": "Cast",
       "frames": "Frames",
       "characters": "Figuren",
       "inScene": "Figuren in dieser Szene",
@@ -4597,7 +4598,7 @@
       "frameNotes": "Notizen zu den Frames",
       "light": "Licht",
       "shootingDay": "Drehtag",
-      "needed": "Benötigt",
+      "needed": "Mitbringen",
       "notes": "Notizen",
       "frame": "Frame",
       "count_one": "{{count}} Szenenblatt",
@@ -4705,7 +4706,7 @@
       "was": "war {{value}}",
       "locationWas": "Ort war „{{location}}“",
       "titleWas": "Titel war „{{title}}“",
-      "synopsis": "Inhalt neu geschrieben",
+      "synopsis": "Synopsis neu geschrieben",
       "sameAs": "Gleiche Szene wie",
       "asNew": "Eine neue Szene",
       "nothing": "Für diese Fassung gibt es hier nichts.",
@@ -4718,9 +4719,9 @@
       "frames": "Frames für neue Szenen",
       "framesAction": "Pro Handlung",
       "details": "Szenendaten aktualisieren",
-      "detailsHint": "Nummer, Überschrift, Ort, Tageszeit und Inhalt geänderter Szenen.",
+      "detailsHint": "Nummer, Überschrift, Ort, Tageszeit und Synopsis geänderter Szenen.",
       "omit": "Entfallene Szenen markieren",
-      "omitHint": "Sie bleiben mit ihren Frames, abgeblendet, und verlassen Shotlist und Drehplan.",
+      "omitHint": "Sie bleiben mit ihren Frames, ausgegraut, und verlassen Shotlist und Drehplan.",
       "version": "Vorher eine Version speichern",
       "versionHint": "„{{name}}“, um in einem Schritt zurückzugehen.",
       "versionName": "Vor {{draft}}",
@@ -4741,7 +4742,7 @@
   },
   "frameGrab": {
     "grab": "Standbild erfassen",
-    "thumbnail": "Thumbnail verwenden",
+    "thumbnail": "Vorschaubild verwenden",
     "destination": "Ziel des Standbilds",
     "captured": "Standbild bei {{timecode}} · Originalauflösung",
     "frame": "Storyboard-Frame",
@@ -4769,7 +4770,7 @@
     "cancel": "Abbrechen",
     "pasteOr": "Oder Screenshot einfügen",
     "paste": "Screenshot einfügen",
-    "thumbnailVideo": "Video-Thumbnail verwenden",
+    "thumbnailVideo": "Vorschaubild des Videos verwenden",
     "tabCaptured": "Erfasstes Standbild",
     "tabQualityChip": "{{width}} × {{height}} px · Bildschirmqualität",
     "cropHint": "Wenn noch ein Teil des Players oder das Logo zu sehen ist, verkleinere den Rahmen: Es wird zugeschnitten.",
@@ -4784,7 +4785,7 @@
     "noFrame": "Der Browser hat das Standbild nicht gesendet. Versuch es noch mal oder füge einen Screenshot ein. Es wurde nichts gespeichert.",
     "noTabTitle": "Der Tab lässt sich hier nicht erfassen",
     "noTabPhone": "Handy-Browser erlauben das nicht.",
-    "noTabDesktop": "Dieser Browser erlaubt das nicht. Füge einen Screenshot ein oder nutze das Thumbnail.",
+    "noTabDesktop": "Dieser Browser erlaubt das nicht. Füge einen Screenshot ein oder nutze das Vorschaubild.",
     "blockedTitle": "Dieses Video lässt sich hier nicht abspielen",
     "blocked": "Der Inhaber blockiert das Einbetten oder das Video ist privat. Du kannst es auf YouTube öffnen.",
     "openYoutube": "Auf YouTube öffnen",
@@ -5121,7 +5122,7 @@
     "referenceIs": "Danke! Die Referenz lautet",
     "referenceHint": ": Nenne sie, wenn du mit der Person sprichst, die Inkadra betreibt.",
     "openedAs": "Eröffnet als",
-    "knownError": "Dieser Fehler wurde schon gemeldet: Wir haben deine Meldung ergänzt unter Referenz",
+    "knownError": "Dieser Fehler wurde schon gemeldet: Wir haben deine Meldung zur Referenz hinzugefügt",
     "sentInbox": "Die Admins dieser Instanz finden sie in ihrer Inbox.",
     "copyReference": "Referenz kopieren",
     "openIssue": "Auf GitHub öffnen",
@@ -5204,7 +5205,7 @@
     "deleteConfirm": "Löschen",
     "deleteFailed": "Die Meldung konnte nicht gelöscht werden. Versuch es gleich noch mal.",
     "shotPrivacy": "Beim automatischen Screenshot lassen wir Seitenleiste, Konto, Aufgaben sowie Projekt- und Personennamen in der Aktivität weg. Der Rest der Seite wird unverändert gesendet: Deck ihn bei Bedarf von Hand ab.",
-    "privacyRelay": "Diese Meldung geht über das Relay auf Cloudflare, das die IP-Adresse dieses Servers sieht, an die Inkadra-Entwickler in das private GitHub-Repository inkadra/inkadra-feedback. Ausgewählter Text, Screenshots, Videos, Dateien und Logs verlassen diesen Server und werden vom Inkadra-Team gelesen. Wir fügen weder Name noch E-Mail oder URL der Instanz hinzu. Aus Fotos und Videos vom Gerät entfernen wir GPS und andere Metadaten; PDFs werden vollständig mit ihren Metadaten gesendet. Prüfe die Vorschau. Anhänge auf GitHub bleiben, bis das Team sie entfernt; die lokale Aufbewahrung löscht sie nicht.",
+    "privacyRelay": "Diese Meldung geht über das Relay auf Cloudflare, das die IP-Adresse dieses Servers sieht, an die Inkadra-Entwickler in das private GitHub-Repository inkadra/inkadra-feedback. Ausgewählter Text, Screenshots, Videos, Dateien und Logs verlassen diesen Server und werden vom Inkadra-Team gelesen. Wir fügen weder Name noch E-Mail noch URL der Instanz hinzu. Aus Fotos und Videos vom Gerät entfernen wir GPS und andere Metadaten; PDFs werden vollständig mit ihren Metadaten gesendet. Prüfe die Vorschau. Anhänge auf GitHub bleiben, bis das Team sie entfernt; die lokale Aufbewahrung löscht sie nicht.",
     "relayNote": "Das geht an die Inkadra-Entwickler: Ausgewählter Text, Screenshots und Logs verlassen diesen Server. Alle Details in der Vorschau.",
     "relayLimits": "Relay: 10 MB pro Bild oder Datei, 25 MB pro Video, 32 MB insgesamt.",
     "relayFileTooBig": "{{size}}: Das Relay nimmt Bilder und Dateien bis 10 MB an.",
@@ -5231,7 +5232,7 @@
   "tutorial": {
     "welcome": {
       "eyebrow": "Willkommen bei Inkadra",
-      "title": "Von der Idee zur Einstellung.",
+      "title": "Von der Idee zum Bild.",
       "lead": "Eine unendliche Leinwand für Film und Foto, auf deinem Server.",
       "go": "Tour starten · 1 Min.",
       "skip": "Ich schaue mich selbst um",
@@ -5354,7 +5355,7 @@
           },
           "4": {
             "title": "Jedes Board, seine Ansichten",
-            "text": "Ein Storyboard hat auch Shotlist und Review: schalte sie im Menü ⋯ ein."
+            "text": "Ein Storyboard hat auch Shotlist und Review: Schalte sie im Menü ⋯ ein."
           },
           "5": {
             "title": "Im Team arbeiten",
@@ -5396,7 +5397,7 @@
         }
       },
       "inbox": {
-        "name": "Posteingang und Benachrichtigungen",
+        "name": "Inbox und Benachrichtigungen",
         "steps": {
           "0": {
             "title": "Alles an einem Ort",
@@ -5525,7 +5526,7 @@
         "name": "Shotlist",
         "steps": {
           "0": {
-            "title": "Deine Einstellungen",
+            "title": "Deine Frames",
             "text": "Die Frames des Storyboards, als Tabelle."
           },
           "1": {
@@ -5534,7 +5535,7 @@
           },
           "2": {
             "title": "Exportieren",
-            "text": "CSV oder PDF, für die Crew."
+            "text": "CSV oder PDF, für das Team."
           }
         }
       },
@@ -5543,15 +5544,15 @@
         "steps": {
           "0": {
             "title": "Der Drehkalender",
-            "text": "Auf dem Board Produktion ein Kalender für das ganze Projekt: Die Warteschlange sammelt die Shots und Szenen aller Storyboards. Tag oder Woche, wie in einem Kalender: Die Blöcke reihen sich von selbst aneinander. Zieh eine Einstellung auf die richtige Uhrzeit oder klick sie an, um sie ans Ende zu setzen. Mit Setplänen ordnet „Gruppieren nach: Setup“ die Einstellungen jeder Szene und jedes Drehtags ihrem Setup zu. Der Pfeil neben dem Monat klappt Monat und Warteschlange ein; „Kompakt“ und „Bequem“ ändern die Höhe der Stunden."
+            "text": "Auf dem Board Produktion ein Kalender für das ganze Projekt: Die Warteschlange sammelt die Shots und Szenen aller Storyboards. Tag oder Woche, wie in einem Kalender: Die Blöcke reihen sich von selbst aneinander. Zieh einen Shot auf die richtige Uhrzeit oder klick ihn an, um ihn ans Ende zu setzen. Mit Setplänen ordnet „Gruppieren nach: Setup“ die Shots jeder Szene und jedes Drehtags ihrem Setup zu. Der Pfeil neben dem Monat klappt Monat und Warteschlange ein; „Kompakt“ und „Bequem“ ändern die Höhe der Stunden."
           },
           "1": {
             "title": "Storyboards und Balken",
-            "text": "Der Filter Storyboard zeigt die Einstellungen eines einzigen; der farbige Balken links an jedem Block zeigt, aus welchem Storyboard er stammt. „Ganze Szene planen“ setzt eine Szene in einen Block, auch bevor sie gezeichnet ist. Ein grauer Balken: Storyboard nicht verfügbar, die Beschriftung bleibt."
+            "text": "Der Filter Storyboard zeigt die Shots eines einzigen; der farbige Balken links an jedem Block zeigt, aus welchem Storyboard er stammt. „Ganze Szene planen“ setzt eine Szene in einen Block, auch bevor sie gezeichnet ist. Ein grauer Balken: Storyboard nicht verfügbar, die Beschriftung bleibt."
           },
           "2": {
             "title": "Verschieben und dehnen",
-            "text": "Zieh zum Umsortieren, mit Alt für eine feste Uhrzeit, an der Unterkante für die Dauer. Auf einem freien Datum legst du einen Drehtag an; Strg+Z macht die ganze Geste rückgängig. Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Die Ansicht Day hat auch „Block“ in der Leiste. Mit der Tastatur fügt N einen Block nach dem gewählten ein, oder am Ende des Tages."
+            "text": "Zieh zum Umsortieren, mit Alt für eine feste Uhrzeit, an der Unterkante für die Dauer. Auf einem freien Datum legst du einen Drehtag an; Strg+Z macht die ganze Geste rückgängig. Zieh über freie Zeit, um einen Block in 5-Minuten-Schritten zu zeichnen, und wähle dann die Art (Tasten 1–5). Die Ansicht Tag hat auch „Block“ in der Leiste. Mit der Tastatur fügt N einen Block nach dem gewählten ein, oder am Ende des Tages."
           },
           "3": {
             "title": "Einen ganzen Tag verschieben",
@@ -5567,7 +5568,7 @@
           },
           "6": {
             "title": "Tagesdispo",
-            "text": "Zeiten mit Sonnenauf- und -untergang, Drehorte, Team mit Telefonnummern, Ablauf mit Notizen und Mitzubringendem. Wähle die Abschnitte und drucke für das Team. Sonnenauf- und -untergang folgen der Zeitzone des Projekts: Ändere sie unter Projekte, ⋯-Menü der Karte, „Typ und Zeitzone“. „Automatisch“ nutzt die Zeitzone des Geräts."
+            "text": "Zeiten mit Sonnenauf- und -untergang, Locations, Team mit Telefonnummern, Ablauf mit Notizen und Mitzubringendem. Wähle die Abschnitte und drucke für das Team. Sonnenauf- und -untergang folgen der Zeitzone des Projekts: Ändere sie unter Projekte, ⋯-Menü der Karte, „Typ und Zeitzone“. „Automatisch“ nutzt die Zeitzone des Geräts."
           }
         }
       },
@@ -5600,20 +5601,20 @@
           },
           "6": {
             "title": "Im Plan bewegen",
-            "text": "Leertaste und Ziehen, das Mausrad oder zwei Finger verschieben den Plan; Strg und Mausrad oder Kneifen zoomen. Ohne Auswahl verschieben ihn die Pfeiltasten, 0 passt ihn ein, auf 100 %, + und − zoomen."
+            "text": "Leertaste und Ziehen, das Mausrad oder zwei Finger verschieben den Plan; Strg und Mausrad oder Fingerspreizen zoomen. Ohne Auswahl verschieben ihn die Pfeiltasten, 0 passt ihn ein, + und − zoomen."
           }
         }
       },
       "characters": {
-        "name": "Figurenbögen",
+        "name": "Figurenkarten",
         "steps": {
           "0": {
-            "title": "Der Bogen",
+            "title": "Die Karte",
             "text": "Identität, Aussehen, Geschichte: Abschnitte zum Auf- und Zuklappen."
           },
           "1": {
             "title": "Ihre Szenen",
-            "text": "Sie kommen aus den Frames, deren Besetzung die Figur nennt."
+            "text": "Sie kommen aus den Frames, in deren Cast die Figur steht."
           },
           "2": {
             "title": "Nur fürs Team",
@@ -5622,10 +5623,10 @@
         }
       },
       "review": {
-        "name": "Kundenabnahme",
+        "name": "Kundenfreigabe",
         "steps": {
           "0": {
-            "title": "Die Einstellungen",
+            "title": "Die Frames",
             "text": "Der Kunde sieht sie einzeln, der Reihe nach."
           },
           "1": {
@@ -5773,7 +5774,7 @@
           },
           "1": {
             "title": "Die untere Leiste",
-            "text": "Start, Projekte, Neu, Posteingang und Profil."
+            "text": "Start, Projekte, Neu, Inbox und Profil."
           },
           "2": {
             "title": "Am Set",
@@ -5786,7 +5787,7 @@
         "steps": {
           "0": {
             "title": "Die Listen der Instanz",
-            "text": "Projekttypen, Tags, Einstellungsgrößen, Winkel und Bewegungen."
+            "text": "Projekttypen, Tags, Einstellungsgrößen, Perspektiven und Bewegungen."
           },
           "1": {
             "title": "Umbenennen",
@@ -5815,7 +5816,7 @@
           },
           "3": {
             "title": "Auch Dateien",
-            "text": "Nimm hochgeladene Dateien in die Sicherungen auf, nicht nur die Datenbank."
+            "text": "Nimm hochgeladene Dateien in die Backups auf, nicht nur die Datenbank."
           }
         }
       },
@@ -5849,7 +5850,7 @@
           },
           "2": {
             "title": "Wie es läuft",
-            "text": "Speicherplatz, Sicherung und Tempo in klaren Worten; unter Erweitert die Verläufe, alle paar Sekunden aktualisiert. The CPU chart includes GPU use when hardware video encoding and readings are available."
+            "text": "Speicherplatz, Backup und Tempo in klaren Worten; unter Erweitert die Verläufe, alle paar Sekunden aktualisiert. Die CPU-Karte schließt die GPU ein, wenn der Server sie für Videos nutzt und messen kann."
           },
           "3": {
             "title": "Probleme",
@@ -5946,15 +5947,15 @@
           },
           "1": {
             "title": "Verknüpft, nie kopiert",
-            "text": "Verknüpfe einen Darsteller mit einer Figur und eine Kamera mit einer Einstellung des Storyboards: Namen, Farben und Objektive folgen den Karten. Ohne Auswahl verknüpfst du den Plan mit seinem Drehort."
+            "text": "Verknüpfe einen Darsteller mit einer Figur und eine Kamera mit einem Frame des Storyboards: Namen, Farben und Objektive folgen den Karten. Ohne Auswahl verknüpfst du den Plan mit seiner Location."
           },
           "2": {
             "title": "Die Sonne, für Außenaufnahmen",
-            "text": "Stelle die Uhrzeit und das Datum oder einen Drehtag ein: die Sonnensymbole drehen sich mit. Norden stellst du von Hand ein."
+            "text": "Stelle die Uhrzeit und das Datum oder einen Drehtag ein: Die Sonnensymbole drehen sich mit. Norden stellst du von Hand ein."
           },
           "3": {
-            "title": "Setups in der Shotliste",
-            "text": "Shotliste und Drehplan zeigen das Setup jeder Einstellung, und die Shotliste kann nach Setup gruppieren."
+            "title": "Setups in der Shotlist",
+            "text": "Shotlist und Drehplan zeigen das Setup jedes Shots, und die Shotlist kann nach Setup gruppieren."
           }
         }
       },
@@ -5971,7 +5972,7 @@
           },
           "2": {
             "title": "Wer nicht bearbeiten kann",
-            "text": "Gäste und Leser öffnen den Plan in einer Ansicht mit Verschieben und Zoom, den Setups, der Legende und dem PDF."
+            "text": "Gäste und Betrachter öffnen den Plan in einer Ansicht mit Verschieben und Zoom, den Setups, der Legende und dem PDF."
           }
         }
       },
@@ -5993,11 +5994,11 @@
         "steps": {
           "0": {
             "title": "Jede Einstellung finden",
-            "text": "Tippe ein Wort: du findest jede einzelne Einstellung und als Admin auch Personen, Einladungen, Klassifizierungen, Meldungen und belegten Speicher."
+            "text": "Tippe ein Wort: Du findest jede einzelne Einstellung und als Admin auch Personen, Einladungen, Klassifizierungen, Meldungen und belegten Speicher."
           },
           "1": {
             "title": "Direkt zur Zeile",
-            "text": "Mit ↑↓ wählen, mit Enter öffnen: die Seite scrollt zur Zeile und hebt sie hervor. Esc löscht den Text."
+            "text": "Mit ↑↓ wählen, mit Enter öffnen: Die Seite scrollt zur Zeile und hebt sie hervor. Esc löscht den Text."
           }
         }
       },
@@ -6005,7 +6006,7 @@
         "name": "Videokopien",
         "steps": {
           "0": {
-            "title": "Was kodiert",
+            "title": "Wer kodiert",
             "text": "Die Grafikkarte oder der Prozessor: Der Server erkennt es beim Start."
           },
           "1": {
@@ -6017,12 +6018,12 @@
             "text": "Erstelle sie neu, wann du willst: Die alten Kopien bleiben, bis die neuen fertig sind."
           },
           "3": {
-            "title": "On the fly",
+            "title": "Live",
             "text": "Nur mit GPU: Nicht gespeicherte Auflösungen entstehen beim Zuschauen, so viele Sitzungen wie die Karte schafft."
           },
           "4": {
             "title": "Erweitert",
-            "text": "Für Fachleute: Kartentest wiederholen, Live-Sitzungen und die Werte jeder Auflösung ändern. «Zurücksetzen» kehrt zum empfohlenen Wert zurück."
+            "text": "Für Fachleute: Kartentest wiederholen, Live-Sitzungen und die Werte jeder Auflösung ändern. „Zurücksetzen“ kehrt zum empfohlenen Wert zurück."
           }
         }
       },
@@ -6062,10 +6063,10 @@
       "ok": "Alles funktioniert",
       "bad": "Etwas stimmt nicht",
       "backup": {
-        "ready": "letzte Sicherung {{when}}, erfolgreich",
-        "failed": "letzte Sicherung {{when}}, fehlgeschlagen",
-        "running": "Sicherung läuft",
-        "none": "noch keine Sicherung"
+        "ready": "letztes Backup {{when}}, erfolgreich",
+        "failed": "letztes Backup {{when}}, fehlgeschlagen",
+        "running": "Backup läuft",
+        "none": "noch kein Backup"
       },
       "problems_one": "1 Problem zum Ansehen",
       "problems_other": "{{count}} Probleme zum Ansehen",
@@ -6086,7 +6087,7 @@
       "checks": "Prüfungen {{ok}} von {{total}} ok",
       "reasons": {
         "space": "Der Speicherplatz geht zu Ende: {{free}} übrig. Gib Platz frei oder füge eine Festplatte hinzu, bevor Uploads stoppen.",
-        "backup": "Die Sicherung von {{when}} ist fehlgeschlagen. Deine Daten sind sicher, prüfe aber vor der nächsten Sicherung.",
+        "backup": "Das Backup von {{when}} ist fehlgeschlagen. Deine Daten sind sicher, prüfe aber vor dem nächsten Backup.",
         "check": "Eine Prüfung der Konfiguration ist nicht bestanden: {{check}}."
       }
     },
@@ -6120,13 +6121,13 @@
         "hint": "Wie lange Inkadra zum Antworten braucht. Unter 0,5 s ist schnell"
       },
       "backup": {
-        "name": "Sicherung",
+        "name": "Backup",
         "ready": "Erfolgreich",
         "failed": "Fehlgeschlagen",
         "running": "Läuft",
         "none": "Noch nie",
         "off": "Aus",
-        "next": "nächste {{when}}"
+        "next": "nächstes {{when}}"
       }
     },
     "services": {
@@ -6176,8 +6177,8 @@
       "now": "jetzt",
       "videos_one": "1 Video umgewandelt",
       "videos_other": "{{count}} Videos umgewandelt",
-      "backup": "Sicherung",
-      "backupFailed": "Sicherung fehlgeschlagen",
+      "backup": "Backup",
+      "backupFailed": "Backup fehlgeschlagen",
       "label": "{{metric}}, {{range}}",
       "empty": "Noch keine Daten: Die ersten kommen in wenigen Sekunden."
     },
@@ -6239,8 +6240,8 @@
           "text": "Meist versucht Inkadra es beim nächsten Mal von selbst erneut."
         },
         "backup_failed": {
-          "title": "Die Sicherung ist fehlgeschlagen",
-          "text": "Deine Daten sind sicher, prüfe aber vor der nächsten Sicherung."
+          "title": "Das Backup ist fehlgeschlagen",
+          "text": "Deine Daten sind sicher, prüfe aber vor dem nächsten Backup."
         },
         "disk_full": {
           "title": "Speicher fast voll",
@@ -6279,7 +6280,7 @@
     "alerts": {
       "title": "Warnungen",
       "enabled": "Warne mich, wenn etwas nicht stimmt",
-      "enabledHelp": "Speicher fast voll, ein Dienst antwortet nicht, eine fehlgeschlagene Sicherung, Fehler, die sich wiederholen. Die Warnung geht an alle Administratoren.",
+      "enabledHelp": "Speicher fast voll, ein Dienst antwortet nicht, ein fehlgeschlagenes Backup, Fehler, die sich wiederholen. Die Warnung geht an alle Admins.",
       "how": "Wie",
       "howHelp": "E-Mails gibt es nur bei ernsten Problemen und höchstens einmal pro Stunde.",
       "noEmail": "Für Warnungen per E-Mail muss der Server E-Mails senden können (SMTP).",
@@ -6392,7 +6393,7 @@
       "lead": "Setzt diese Instanz der Last vieler gleichzeitig bearbeitender Personen aus, misst, wie sie standhält, und behält den Bericht.",
       "loadError": "Die Lasttests konnten nicht geladen werden.",
       "unavailable": "Lasttests brauchen einen Worker",
-      "unavailableHelp": "Sie laufen als Hintergrundaufgabe: starte die Instanz mit Valkey (REDIS_URL) und einem Worker.",
+      "unavailableHelp": "Sie laufen als Hintergrundaufgabe: Starte die Instanz mit Valkey (REDIS_URL) und einem Worker.",
       "preset": "Größe",
       "presets": {
         "small": "Klein",
@@ -6423,10 +6424,10 @@
         "api_slow": "gestoppt: die App wurde für andere langsam",
         "api_errors": "gestoppt: andere bekamen Fehler",
         "edits_slow": "gestoppt: Änderungen wurden langsam",
-        "backup_running": "Ein Backup läuft: versuche es danach erneut.",
-        "transfer_running": "Ein Export oder Import läuft: versuche es danach erneut.",
+        "backup_running": "Ein Backup läuft: Versuche es danach erneut.",
+        "transfer_running": "Ein Export oder Import läuft: Versuche es danach erneut.",
         "loadtest_running": "Ein Lasttest ist schon geplant oder läuft.",
-        "under_load": "Die Instanz ist schon ausgelastet: versuche es später.",
+        "under_load": "Die Instanz ist schon ausgelastet: Versuche es später.",
         "no_worker": "Lasttests brauchen einen Worker (REDIS_URL).",
         "no_metrics": "Die Messwerte des Servers fehlen: Der Schutz konnte nicht sehen, ob Personen etwas merken.",
         "shared_process": "Groß braucht eine eigene Worker-Rolle: Im All-in-one-Modus würde der Test den Server bremsen, den er misst.",
@@ -6523,7 +6524,7 @@
     "offHelp": "Schalte den Hinweis unten ein, um zu erfahren, wenn eine neue Version erscheint.",
     "alerts": "Hinweise",
     "notify": "Bei neuer Version benachrichtigen",
-    "notifyHelp": "Inkadra fragt alle 6 Stunden bei GitHub nach und zeigt Administratoren einen Hinweis, mit einer E-Mail, wenn ihre Benachrichtigungs-E-Mails an sind. Es sendet keine Daten deines Servers.",
+    "notifyHelp": "Inkadra fragt alle 6 Stunden bei GitHub nach und zeigt Admins einen Hinweis, mit einer E-Mail, wenn ihre Benachrichtigungs-E-Mails an sind. Es sendet keine Daten deines Servers.",
     "channel": "Welche Versionen",
     "channelHelp": "Vorabversionen kommen früher, können aber Probleme haben. Das ändert nur, worüber du benachrichtigt wirst.",
     "channels": {
@@ -6569,8 +6570,8 @@
     "used": "belegt",
     "ofLimit": "von {{limit}}",
     "detail": "Originale {{originals}} · Kopien und Vorschauen {{derived}}. Es zählt, was du hochgeladen hast, in allen Projekten.",
-    "instanceFull": "Der Server hat keinen Platz mehr: niemand kann weitere Dateien hochladen. Sag einer Administratorin oder einem Administrator Bescheid.",
-    "fullHelp": "Du kannst keine weiteren Dateien hochladen. Gib Speicher frei oder frag eine Administratorin oder einen Administrator.",
+    "instanceFull": "Der Server hat keinen Platz mehr: niemand kann weitere Dateien hochladen. Sag einem Admin Bescheid.",
+    "fullHelp": "Du kannst keine weiteren Dateien hochladen. Gib Speicher frei oder frag einen Admin.",
     "largest": "Größte Dateien ansehen",
     "largestTitle": "Deine größten Dateien",
     "noFiles": "Keine Dateien hochgeladen.",
@@ -6611,12 +6612,12 @@
     "uses": "Belegt {{size}}.",
     "asEveryone": "Wie alle ({{size}})",
     "ownLimit": "Eigenes Limit",
-    "ceiling": "Der Serverbetreiber hat {{size}} pro Person festgelegt: du kannst es nur senken.",
+    "ceiling": "Der Serverbetreiber hat {{size}} pro Person festgelegt: Du kannst es nur senken.",
     "lowerHelp": "Unter dem, was schon belegt ist, wird nichts gelöscht: nur das Hochladen stoppt.",
     "save": "Speichern",
     "nearToast": "Du hast {{percent}} % deines Speichers belegt: noch {{size}}.",
     "see": "Ansehen",
-    "instanceToast": "Der Server hat keinen Platz mehr. Sag einer Administratorin oder einem Administrator Bescheid.",
+    "instanceToast": "Der Server hat keinen Platz mehr. Sag einem Admin Bescheid.",
     "fileToast": "„{{name}}“ wurde nicht hochgeladen: Die Datei ist größer als dein restlicher Speicher.",
     "details": "Details",
     "blockedTitle": "Nicht genug Speicher",
@@ -6624,18 +6625,18 @@
     "instanceLeft": "Dem Server bleiben {{size}}.",
     "uploadedOf_one": "{{done}} von {{total}} Dateien wurden hochgeladen; diese passt nicht:",
     "uploadedOf_other": "{{done}} von {{total}} Dateien wurden hochgeladen; diese {{count}} passen nicht:",
-    "blockedHelp": "Gib Speicher frei oder bitte eine Administratorin oder einen Administrator, dein Limit zu erhöhen. Notizen, Kommentare und Änderungen funktionieren weiter.",
-    "instanceHelp": "Sag einer Administratorin oder einem Administrator Bescheid. Notizen, Kommentare und Änderungen funktionieren weiter.",
+    "blockedHelp": "Gib Speicher frei oder bitte einen Admin, dein Limit zu erhöhen. Notizen, Kommentare und Änderungen funktionieren weiter.",
+    "instanceHelp": "Sag einem Admin Bescheid. Notizen, Kommentare und Änderungen funktionieren weiter.",
     "ask": "Mehr Speicher anfragen",
-    "asked": "Die Administratoren wurden benachrichtigt.",
-    "alreadyAsked": "Die Administratoren wurden heute schon benachrichtigt.",
+    "asked": "Die Admins wurden benachrichtigt.",
+    "alreadyAsked": "Die Admins wurden heute schon benachrichtigt.",
     "close": "Schließen"
   },
   "storageLimits": {
     "usedTitle": "Belegter Speicher",
     "ofLimit": "von {{limit}} Limit",
     "disk": "Festplatte {{size}}",
-    "usedDetail": "Originale {{originals}} · Kopien und Vorschauen {{derived}}. Das Limit kann den freien Platz auf der Festplatte nicht überschreiten: Wird sie voll, meldet es Serverstatus.",
+    "usedDetail": "Originale {{originals}} · Kopien und Vorschauen {{derived}}. Das Limit kann den freien Platz auf der Festplatte nicht überschreiten: Wird sie voll, melden wir es im Serverstatus.",
     "lastsMonths_one": "Reicht etwa 1 Monat",
     "lastsMonths_other": "Reicht etwa {{count}} Monate",
     "lastsWeeks_one": "Reicht etwa 1 Woche",
@@ -6653,7 +6654,7 @@
     "largestFile": "Größte Datei",
     "fromServer": "Vom Server:",
     "warn": "Warnen bei",
-    "warnHelp": "Personen sehen eine Warnung, Administratoren bekommen sie in die Inbox.",
+    "warnHelp": "Personen sehen eine Warnung, Admins bekommen sie in die Inbox.",
     "openMembers": "In Mitglieder öffnen"
   },
   "demo": {
@@ -6721,7 +6722,7 @@
     "error": "Das Team konnte nicht geladen oder gespeichert werden.",
     "retry": "Noch mal versuchen",
     "empty": "Noch niemand im Team.",
-    "emptyHint": "Mit „Aus Liste einfügen“ importierst du Personen aus einer alten Tagesdisposition.",
+    "emptyHint": "Mit „Aus Liste einfügen“ importierst du Personen aus einer alten Tagesdispo.",
     "noResults": "Keine Personen gefunden.",
     "noDepartment": "Ohne Abteilung",
     "name": "Name",
@@ -6734,11 +6735,11 @@
     "close": "Schließen",
     "person": "Person",
     "invalid": "Prüf Name, E-Mail und Feldlängen.",
-    "actor": "Darsteller:in",
+    "actor": "Darsteller",
     "contact": "Kontakt",
     "account": "Inkadra-Konto",
     "unlink": "Konto trennen",
-    "onSetContact": "Ansprechperson am Set",
+    "onSetContact": "Ansprechpartner am Set",
     "onSetHint": "Steht oben auf der Tagesdispo",
     "conflict": "Jemand anderes hat das geändert. Wähle, welche Version bleibt.",
     "reload": "Neu laden",
@@ -6784,7 +6785,7 @@
     "merge": "Zusammenführen mit…",
     "mergeTitle": "{{name}} zusammenführen",
     "mergeWith": "Zeile zum Zusammenführen",
-    "mergeHint": "Die Zeile von {{name}} ({{kept}}) bleibt: ihre Angaben gelten, leere Felder werden aus der anderen Zeile ergänzt, die ihre Tagesrufe übergibt und entfernt wird.",
+    "mergeHint": "Die Zeile von {{name}} ({{kept}}) bleibt: ihre Angaben gelten, leere Felder werden aus der anderen Zeile ergänzt, die ihre Treffzeiten übergibt und entfernt wird.",
     "mergeAction": "Zusammenführen"
   },
   "dayCalls": {
@@ -6817,7 +6818,7 @@
     "desc": {
       "board": "Notizen, Bilder, Links, Dateien, To-dos, Spalten und Kommentare.",
       "storyboard": "Storyboard-Boards, Shotlist, das Werkzeug Frame, Drehbuchimport in Szenen.",
-      "production": "Drehplan, Crew, Dispos, Szenenblätter und das Mitbringen jeder Szene.",
+      "production": "Drehplan, Team, Dispos, Szenenblätter und das Mitbringen jeder Szene.",
       "moodboard": "Moodboard-Boards und die Moodboard-Ansicht eines Boards: Gruppen, Notizen, Paletten.",
       "review": "Links für Kunden ohne Konto, Freigaben und Änderungswünsche.",
       "plan": "Pläne mit Licht, Kameras, Darstellern und Wänden, verknüpft mit Szenen und Frames."
@@ -6831,14 +6832,14 @@
     },
     "always": "Immer an",
     "turnOn": "Einschalten",
-    "turnedOn": "{{name}} ist an: du findest es in Canvas und in der Leiste.",
+    "turnedOn": "{{name}} ist an: Du findest es in Canvas und in der Leiste.",
     "failed": "Das Modul wurde nicht geändert. Versuche es noch einmal.",
     "off": "Modul aus.",
     "kindOff": "{{name}}: Modul aus, einschalten",
     "notice": {
       "storyboard": "{{scenes}} auf dem Board. Mit Storyboard werden daraus Frames."
     },
-    "offLine": "Modul {{name}} aus: du kannst dieses Board lesen."
+    "offLine": "Modul {{name}} aus: Du kannst dieses Board lesen."
   },
   "production": {
     "storyboardLink_one": "Drehtage: {{count}} · Produktion öffnen",
@@ -6975,7 +6976,7 @@
     "advanced": {
       "title": "Erweitert",
       "customised": "Angepasst",
-      "intro": "Für alle, die sich mit Videokodierung auskennen. Falsche Werte können körnige oder riesige Kopien oder ruckelnde Videos ergeben: «Zurücksetzen» stellt jedes Feld auf den empfohlenen Wert.",
+      "intro": "Für alle, die sich mit Videokodierung auskennen. Falsche Werte können körnige oder riesige Kopien oder ruckelnde Videos ergeben: „Zurücksetzen“ stellt jedes Feld auf den empfohlenen Wert.",
       "benchmark": "Leistung der Grafikkarte",
       "benchmarkRunning": "Leistungstest läuft",
       "benchmarkRunningHelp": "Etwa 10 Sekunden. Kopien in Arbeit werden kurz langsamer.",

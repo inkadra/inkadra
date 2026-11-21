@@ -21,7 +21,7 @@ const account = {
 };
 const HEXES = ['#7A5C3E', '#3E6A7A', '#5C7A3E', '#C8742E'];
 /** The toast on screen, not the copy of the last one fading out. */
-const TOAST = '.toast:not(.ink-motion-exit)';
+const TOAST = '.ink-toast:not(.ink-motion-exit)';
 
 /** A warm-to-teal picture with bands of colour, so its palette has six clear entries. */
 function bandsPng(width: number, height: number): Buffer {

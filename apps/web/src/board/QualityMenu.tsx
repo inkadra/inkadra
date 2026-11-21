@@ -1,5 +1,5 @@
 import type { Asset, VideoRung } from '@inkadra/shared';
-import { Icon } from '@inkadra/ui';
+import { Icon, Menu } from '@inkadra/ui';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { rungLabel, shortSide } from './video-player.ts';
@@ -29,14 +29,9 @@ export function QualityMenu({
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  // The current choice takes the focus, after the menu's first item did.
   useEffect(() => {
-    if (!open) return;
-    menu.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
-    const away = (e: PointerEvent) => {
-      if (!menu.current?.contains(e.target as Node) && e.target !== button.current) setOpen(false);
-    };
-    document.addEventListener('pointerdown', away);
-    return () => document.removeEventListener('pointerdown', away);
+    if (open) menu.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
   }, [open]);
   const rungs = [...(asset.playback?.renditions ?? [])]
     .filter((r) => r.status !== 'failed')
@@ -101,36 +96,12 @@ export function QualityMenu({
       </button>
       {open && (
         <div className="viewer-quality__pop">
-          <div
+          <Menu
             ref={menu}
-            className="ink-menu menu viewer-quality__menu"
-            role="menu"
-            aria-label={t('viewer.quality.title')}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                setOpen(false);
-                button.current?.focus();
-              }
-              if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
-                e.preventDefault();
-                e.stopPropagation();
-                const all = [
-                  ...(menu.current?.querySelectorAll<HTMLButtonElement>(
-                    '[role="menuitemradio"]:not(:disabled)',
-                  ) ?? []),
-                ];
-                const i = all.indexOf(document.activeElement as HTMLButtonElement);
-                const next =
-                  e.key === 'Home'
-                    ? 0
-                    : e.key === 'End'
-                      ? all.length - 1
-                      : (i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length;
-                all[next]?.focus();
-              }
-            }}
+            className="menu viewer-quality__menu"
+            label={t('viewer.quality.title')}
+            anchor={button}
+            onClose={() => setOpen(false)}
           >
             <div className="viewer-quality__title" aria-hidden="true">
               {t('viewer.quality.title')}
@@ -163,7 +134,7 @@ export function QualityMenu({
                 {item('original', t('viewer.quality.original'), originalNote)}
               </>
             )}
-          </div>
+          </Menu>
           {rungs.some((r) => r.live && r.status !== 'ready') && (
             // Outside the menu (only items belong there): what the "al volo" levels are, and that
             // playback moves to the copy only when one is being made.

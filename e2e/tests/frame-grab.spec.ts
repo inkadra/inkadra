@@ -404,7 +404,7 @@ for (const provider of ['youtube', 'vimeo']) {
       expect(image).toBeTruthy();
       expect(image).not.toHaveProperty('caption');
       expect(image).not.toHaveProperty('source');
-      await expect(page.locator('.toast:not([inert])')).toContainText(
+      await expect(page.locator('.ink-toast:not([inert])')).toContainText(
         'Fotogramma aggiunto alla lavagna',
       );
 
@@ -456,7 +456,7 @@ for (const provider of ['youtube', 'vimeo']) {
       await expect(page.locator('.viewer__grab-quality')).toContainText('720 × 450 px');
       await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      await expect(page.locator('.toast:not([inert])')).toContainText(
+      await expect(page.locator('.ink-toast:not([inert])')).toContainText(
         'Fotogramma aggiunto alla lavagna',
       );
       expect(await page.evaluate(() => (window as unknown as { stopped: number }).stopped)).toBe(1);

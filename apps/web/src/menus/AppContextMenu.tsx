@@ -1,4 +1,4 @@
-import { swallowOutsidePress } from '@inkadra/ui';
+import { Menu } from '@inkadra/ui';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -156,23 +156,15 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
     const { top, maxHeight } = placeMenu(menu.y, menu.y, node.offsetHeight, menuFloor());
     node.style.top = `${top}px`;
     if (maxHeight) node.style.maxHeight = `${maxHeight}px`;
-    node.querySelector('button')?.focus();
   }, [menu]);
   useEffect(() => {
     if (!menu) return;
-    const away = (event: PointerEvent) => {
-      if (ref.current?.contains(event.target as Node)) return;
-      swallowOutsidePress(event);
-      setMenu(null);
-    };
     const dismiss = () => setMenu(null);
-    document.addEventListener('pointerdown', away, true);
     window.addEventListener('resize', dismiss);
     window.addEventListener('blur', dismiss);
     document.addEventListener('scroll', dismiss, true);
     document.addEventListener('close', dismiss, true);
     return () => {
-      document.removeEventListener('pointerdown', away, true);
       window.removeEventListener('resize', dismiss);
       window.removeEventListener('blur', dismiss);
       document.removeEventListener('scroll', dismiss, true);
@@ -191,35 +183,15 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
         )}
       {menu &&
         createPortal(
-          <div
+          <Menu
+            // Each right click opens a new menu: the focus goes in again.
+            key={`${menu.x},${menu.y}`}
             ref={ref}
-            className="ink-menu app-context-menu"
-            role="menu"
-            aria-label={t('context.actions')}
+            className="app-context-menu"
+            label={t('context.actions')}
             onContextMenu={(event) => event.preventDefault()}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape' || event.key === 'Tab') {
-                event.preventDefault();
-                event.stopPropagation();
-                close(true);
-              }
-              const buttons = [...(ref.current?.querySelectorAll('button') ?? [])];
-              const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-              const next =
-                event.key === 'Home'
-                  ? 0
-                  : event.key === 'End'
-                    ? buttons.length - 1
-                    : event.key === 'ArrowDown'
-                      ? (index + 1) % buttons.length
-                      : event.key === 'ArrowUp'
-                        ? (index - 1 + buttons.length) % buttons.length
-                        : null;
-              if (next !== null) {
-                event.preventDefault();
-                buttons[next]?.focus();
-              }
-            }}
+            // Escape gives the focus back where the menu was opened; Tab goes on from there.
+            onClose={(reason) => close(reason !== 'outside')}
           >
             {menu.entries.map((entry) => (
               <button
@@ -238,7 +210,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
               </button>
             ))}
             {menu.editing && <p>{t('context.editHint')}</p>}
-          </div>,
+          </Menu>,
           menu.container,
         )}
     </>

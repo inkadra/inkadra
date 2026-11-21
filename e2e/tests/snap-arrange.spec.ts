@@ -149,6 +149,14 @@ async function tidyIntoMosaic(page: Page, shot?: string) {
     'aria-checked',
     'true',
   );
+  // Keys pressed in the menu stay there: Delete and Backspace never remove the selection.
+  const cards = page.locator('.card--free');
+  const count = await cards.count();
+  await expect(menu.getByRole('menuitem').first()).toBeFocused();
+  await page.keyboard.press('Delete');
+  await page.keyboard.press('Backspace');
+  await expect(menu).toBeVisible();
+  await expect(cards).toHaveCount(count);
   const mosaic = menu.getByRole('menuitem', { name: /Metti in ordine a mosaico/ });
   await mosaic.hover();
   if (shot) await page.screenshot({ path: shot });
@@ -309,3 +317,29 @@ for (const theme of ['dark', 'light'] as const) {
     }
   });
 }
+
+test('the board menu gives the focus back to what opened it, each time', async ({
+  page,
+  baseURL,
+}) => {
+  const { ids } = await open(page, baseURL as string, messy);
+  const card = page.locator(`.card--free[data-el="${ids[0]}"]`);
+  // From the keyboard on a card: the menu key opens it there, Escape comes back to the card.
+  await card.focus();
+  await page.keyboard.press('Shift+F10');
+  const menu = page.getByRole('menu', { name: 'Azioni della board' });
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  expect(await card.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  // Then from the selection bar's More: back to that button, not to the earlier card.
+  await page.keyboard.press('ControlOrMeta+a');
+  const more = page
+    .getByRole('toolbar', { name: 'Azioni sulla selezione' })
+    .getByRole('button', { name: 'Altre azioni', exact: true });
+  await more.click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(more).toBeFocused();
+});

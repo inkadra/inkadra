@@ -129,7 +129,7 @@ for (const width of [1280, 390]) {
         menu.getByRole('menuitem', { name: 'Storyboard: modulo spento, accendi' }),
       ).toBeVisible();
       await expect(
-        menu.getByRole('menuitem', { name: 'Importa un copione…: modulo spento, accendi' }),
+        menu.getByRole('menuitem', { name: 'Importa una sceneggiatura…: modulo spento, accendi' }),
       ).toBeVisible();
       if (phone) await expect(menu.getByRole('menuitem', { name: 'Inquadratura' })).toHaveCount(0);
       await shoot(page, 'canvas-menu');
@@ -159,7 +159,9 @@ for (const width of [1280, 390]) {
         await expect(dialog).toHaveCount(0);
       };
       await drop();
-      const notice = page.locator('.toast', { hasText: 'Con Storyboard diventano inquadrature.' });
+      const notice = page.locator('.ink-toast', {
+        hasText: 'Con Storyboard diventano inquadrature.',
+      });
       await expect(notice).toBeVisible();
       // The scenes just landed on the board as cards: the notice can take them back.
       await expect(notice.getByRole('button', { name: 'Annulla' })).toBeVisible();

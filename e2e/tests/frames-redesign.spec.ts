@@ -190,7 +190,9 @@ for (const theme of ['dark', 'light'] as const)
         if (out) await page.screenshot({ path: `${out}/1280-dark-drop.png` });
         await page.mouse.up();
         await expect(page.locator(`[data-el="${image.id}"]`)).toHaveCount(0);
-        await expect(page.locator('.toast:not([inert])')).toContainText('Immagine inserita in 1');
+        await expect(page.locator('.ink-toast:not([inert])')).toContainText(
+          'Immagine inserita in 1',
+        );
         await page.keyboard.press('Control+z');
         await expect(page.locator(`[data-el="${image.id}"]`)).toBeVisible();
         await expect(page.locator(`[data-el="${frame.id}"] .frame-pic__ink path`)).toHaveCount(1);

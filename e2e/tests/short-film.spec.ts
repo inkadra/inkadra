@@ -412,8 +412,8 @@ test('a short film is prepared from the moodboard to the shot list', async ({
       await chooseSelect(panel.getByLabel('Campo', { exact: true }), d.shot);
       await chooseSelect(panel.getByLabel('Angolazione', { exact: true }), d.angle);
       await chooseSelect(panel.getByLabel('Movimento', { exact: true }), d.movement);
-      await panel.getByLabel('Obiettivo', { exact: true }).fill(d.lens);
-      await panel.getByLabel('Obiettivo', { exact: true }).press('Enter');
+      await panel.getByLabel('Ottica', { exact: true }).fill(d.lens);
+      await panel.getByLabel('Ottica', { exact: true }).press('Enter');
       if (d.cast) {
         await panel.getByLabel('Personaggi', { exact: true }).fill(d.cast);
         await panel.getByLabel('Personaggi', { exact: true }).press('Enter');
@@ -483,7 +483,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await expect(rows).toHaveCount(30);
     await expect(page.locator('.shots__scene')).toHaveCount(3);
     // What was set in the storyboard is in the table: 1B is the old 1A.
-    await expect(rowOf('1B').getByLabel('Obiettivo', { exact: true })).toHaveValue(details[0].lens);
+    await expect(rowOf('1B').getByLabel('Ottica', { exact: true })).toHaveValue(details[0].lens);
     await expect(rowOf('1B').getByLabel('Campo', { exact: true })).toHaveAttribute(
       'data-value',
       details[0].shot,
@@ -527,7 +527,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     const csvPath = info.outputPath('shotlist.csv');
     await download.saveAs(csvPath);
     const csv = parseCsv(await readFile(csvPath, 'utf8'));
-    expect(csv[0]).toContain('Obiettivo');
+    expect(csv[0]).toContain('Ottica');
     expect(csv).toHaveLength(31);
     const status = (csv[0] as string[]).indexOf('Stato');
     expect(csv.slice(1).filter((r) => r[status] === 'Da girare')).toHaveLength(7);
@@ -593,12 +593,12 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await expect(queue).toHaveCount(16);
     await gap(page, 'schedule');
 
-    await schedule.getByRole('button', { name: 'Foglio di lavorazione' }).click();
-    const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+    await schedule.getByRole('button', { name: 'Ordine del giorno' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Ordine del giorno' });
     await sheet.getByRole('combobox', { name: 'Data', exact: true }).click();
     await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(2);
     await page.keyboard.press('Escape');
-    const preview = sheet.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
+    const preview = sheet.getByRole('article', { name: 'Anteprima ordine del giorno' });
     // It opens on the day last edited; the other day is one choice away.
     await expect(preview).toContainText('VAGONE ULTIMO TRENO');
     await gap(page, 'call-sheet');

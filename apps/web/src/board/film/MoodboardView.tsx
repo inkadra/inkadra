@@ -11,7 +11,16 @@ import {
   updateElements,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, aspectValue, compareZ, type Element, MAX_TAGS } from '@inkadra/doc-schema';
-import { Button, Checkbox, EmptyState, Icon, IconButton, Input, Segmented } from '@inkadra/ui';
+import {
+  Button,
+  Checkbox,
+  EmptyState,
+  Icon,
+  IconButton,
+  Input,
+  Segmented,
+  Toast,
+} from '@inkadra/ui';
 import {
   type CSSProperties,
   type ReactNode,
@@ -39,7 +48,6 @@ import { fillLinkPreview, webUrl } from '../links.ts';
 import { PresentationView } from '../PresentationView.tsx';
 import { isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
-import { Toast } from '../Toast.tsx';
 import { normaliseTag } from '../tags.tsx';
 import { startUpload } from '../uploads.ts';
 import { MediaViewer } from '../viewer.tsx';

@@ -30,7 +30,7 @@ import { setUnsaved } from '../../pwa/busy.ts';
 import { CHARACTER_COLOURS } from '../plan/PlanDrawing.tsx';
 import { plansOfScene } from '../plan/scenes.tsx';
 import { dayBySetup, shotSetups } from '../plan/setups.ts';
-import { isMac, isTyping } from '../shortcuts.ts';
+import { insideDialog, isMac, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import type { SheetScene } from './CallSheetModal.tsx';
@@ -631,7 +631,8 @@ export function ScheduleView({
     const onKey = (event: KeyboardEvent) => {
       const mod = isMac() ? event.metaKey : event.ctrlKey;
       if (!mod || event.altKey || isTyping(event.target)) return;
-      if (document.querySelector('dialog[open]')) return;
+      // A dialog, or a menu the key was pressed in (New block), keeps ⌘Z from the schedule.
+      if (document.querySelector('dialog[open]') || insideDialog(event.target)) return;
       const key = event.key.toLowerCase();
       if (key !== 'z' && key !== 'y') return;
       event.preventDefault();

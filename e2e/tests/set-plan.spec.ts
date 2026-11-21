@@ -598,8 +598,8 @@ for (const theme of ['dark', 'light'] as const) {
 
       // The call sheet: the scene with its frames, the plan and the kit list.
       await page.goto(`/p/${project.id}/b/${productionId}`);
-      await page.getByRole('button', { name: 'Foglio di lavorazione', exact: true }).click();
-      const sheet = page.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
+      await page.getByRole('button', { name: 'Ordine del giorno', exact: true }).click();
+      const sheet = page.getByRole('article', { name: 'Anteprima ordine del giorno' });
       const scenes = sheet.locator('.sheet__section').filter({ hasText: 'Piante del set' });
       await expect(scenes.locator('.plan__svg')).toBeVisible();
       await expect(scenes.locator('.sheet__kit')).toContainText('Fresnel 1,2K');
@@ -608,7 +608,7 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(scenes.locator('.sheet__power')).toContainText('1,2 kW · 5,2 A');
       await scenes.scrollIntoViewIfNeeded();
       await page
-        .getByRole('dialog', { name: 'Foglio di lavorazione' })
+        .getByRole('dialog', { name: 'Ordine del giorno' })
         .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
       await page.screenshot({ path: join(out, `desktop-${theme}-callsheet.png`) });
       await page.keyboard.press('Escape');

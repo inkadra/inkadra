@@ -109,7 +109,7 @@
     "inbox": "Bandeja",
     "search": "Buscar",
     "settings": "Ajustes",
-    "assigned": "Asignado a mí",
+    "assigned": "Asignados a mí",
     "unsorted": "Sin ordenar",
     "projects": "Proyectos",
     "pinned": "Fijados",
@@ -239,7 +239,7 @@
     "body": "La página dejó de funcionar. Los cambios ya sincronizados están a salvo; recarga para volver a conectarte.",
     "retry": "Reintentar",
     "unreachableTitle": "No se puede conectar con el servidor",
-    "unreachableBody": "Inkadra lo volverá a intentar sola. Comprueba la conexión o espera un momento si el servidor se está reiniciando.",
+    "unreachableBody": "Inkadra lo reintentará automáticamente. Comprueba la conexión o espera un momento si el servidor se está reiniciando.",
     "updateTitle": "Inkadra se ha actualizado",
     "updateBody": "Recarga la página para abrir la nueva versión.",
     "copy": "Copiar detalles",
@@ -349,6 +349,7 @@
     },
     "toolbar": "Añadir",
     "contextBar": "Acciones de la selección",
+    "contextMenu": "Acciones del tablero",
     "minimap": "Minimapa: haz clic para ir allí",
     "dropFiles": "Suelta para subir",
     "undo": "Deshacer",
@@ -703,7 +704,7 @@
       "palette": "Ajustar a la cuadrícula: activar o desactivar"
     },
     "unsorted": {
-      "empty": "Nada que clasificar. Aquí llega lo que guardas desde el navegador o el teléfono.",
+      "empty": "Nada que ordenar. Aquí llega lo que guardas desde el navegador o el teléfono.",
       "clipper": "Instala el clipper para Chrome ↗",
       "close": "Cerrar Sin ordenar",
       "hint": "Arrástralos al lienzo para ordenarlos.",
@@ -1429,17 +1430,17 @@
       "reach": "Longitud del cono",
       "drawing": "Dibujo de la planta",
       "squares": "cuadros",
-      "sidePanel": "Panel del plano",
+      "sidePanel": "Panel de la planta",
       "addCircuit": "Añadir un circuito",
       "addModifier": "Añadir un modificador",
       "addPosition": "Añadir una posición",
-      "addToCallSheet": "Añadir a la hoja de rodaje",
+      "addToCallSheet": "Añadir a la orden de rodaje",
       "alignLabel": "Alinear",
       "all": "Todo",
       "allSetups_one": "Todos los setups: {{count}} elemento",
       "allSetups_other": "Todos los setups: {{count}} elementos",
       "back": "Volver al tablero",
-      "backToPlan": "Volver al plano",
+      "backToPlan": "Volver a la planta",
       "forward": "Traer adelante",
       "backward": "Enviar atrás",
       "breaker": "Magnetotérmico",
@@ -1479,11 +1480,11 @@
       "kitForSetup": "Material de este setup",
       "kitPillLabel": "Material: {{items}} elementos, {{power}}",
       "layer": "Capa",
-      "lensFollows": "El objetivo sigue al plano. Si lo cambias aquí, el plano guarda su propio valor.",
+      "lensFollows": "El objetivo sigue al plano. Si lo cambias aquí, la planta conserva su propio valor.",
       "lensInFrame": "{{mm}} mm en el plano",
       "lib": {
         "alsoCalled": "También llamado: {{names}}",
-        "kitHint": "Una luz o cámara configurada una vez aparece aquí con su marca, potencia, modificadores y soporte, para cada plano del proyecto.",
+        "kitHint": "Una luz o cámara configurada una vez aparece aquí con su marca, potencia, modificadores y pie, para cada planta del proyecto.",
         "kitResults_one": "{{count}} en el material del proyecto",
         "kitResults_other": "{{count}} en el material del proyecto",
         "mine": "Favoritos y recientes",
@@ -1498,7 +1499,7 @@
         "searchHint": "La búsqueda mira nombres, otros nombres usados y categorías. Intro coloca el primer resultado en el centro de la vista.",
         "searchLabel": "Buscar en la biblioteca",
         "short": "Biblioteca",
-        "tapHint": "Toca para colocarlo en el centro, o arrástralo al plano.",
+        "tapHint": "Toca para colocarlo en el centro, o arrástralo a la planta.",
         "types_one": "{{count}} tipo",
         "types_other": "{{count}} tipos",
         "kitScope": {
@@ -1525,9 +1526,9 @@
       "noStand": "Ninguno",
       "noSupport": "Ninguno",
       "note": "Nota",
-      "nothingSelected": "Selecciona algo en el plano, o en Elementos, para ver sus propiedades.",
+      "nothingSelected": "Selecciona algo en la planta, o en Elementos, para ver sus propiedades.",
       "onBase": "En {{name}}",
-      "onCallSheet": "El material se imprime en la hoja de rodaje de la escena {{scenes}}.",
+      "onCallSheet": "El material se imprime en la orden de rodaje de la escena {{scenes}}.",
       "onLight": "En esta luz",
       "open": "Abrir",
       "otherGel": "Otra gelatina",
@@ -1550,7 +1551,7 @@
       "setupName": "Nombre del setup",
       "setups": "Setups",
       "shotCard": "Plano del storyboard",
-      "stand": "Soporte",
+      "stand": "Pie",
       "support": "Soporte",
       "tabs2": {
         "properties": "Propiedades",
@@ -1563,11 +1564,11 @@
       "tilt": "Inclinación",
       "viewLength": "Longitud de la vista",
       "zoom": "Zoom",
-      "zoomFit": "Ajustar el plano",
-      "zoomFitAt": "{{percent}}% · Ajustar el plano",
+      "zoomFit": "Ajustar la planta",
+      "zoomFitAt": "{{percent}} % · Ajustar la planta",
       "stands": {
         "cstand": "C-stand",
-        "combo": "Soporte combo",
+        "combo": "Pie combo",
         "boomarm": "Brazo",
         "rigged": "Colgado arriba",
         "floor": "En el suelo"
@@ -1582,7 +1583,7 @@
       },
       "kitGroups": {
         "lights": "Luces",
-        "grip": "Modificadores, maquinaria y soportes",
+        "grip": "Modificadores, maquinaria y pies",
         "camera": "Cámara y movimiento"
       },
       "mix": {
@@ -1641,17 +1642,17 @@
         "northWay": {
           "up": "Arriba,",
           "upRight": "Arriba a la derecha,",
-          "right": "Derecha,",
+          "right": "A la derecha,",
           "downRight": "Abajo a la derecha,",
           "down": "Abajo,",
           "downLeft": "Abajo a la izquierda,",
-          "left": "Izquierda,",
+          "left": "A la izquierda,",
           "upLeft": "Arriba a la izquierda,"
         },
         "today": "Hoy",
         "shootDay": "Día {{n}} de rodaje",
         "otherDate": "Otra fecha…",
-        "dayGone": "El día de rodaje se quitó del plan de rodaje: el plano conserva su última fecha.",
+        "dayGone": "El día de rodaje se quitó del plan de rodaje: la planta conserva su última fecha.",
         "from": {
           "north": "Desde el norte",
           "northEast": "Desde el noreste",
@@ -1686,11 +1687,11 @@
         "fromCharacters": "{{name}}, de las fichas de personaje"
       },
       "exportSheet": {
-        "title": "Exportar el plano de set",
+        "title": "Exportar la planta del set",
         "preview": "Vista previa de la primera página",
         "failed": "No se pudo dibujar la vista previa.",
-        "pages_one": "Página {{n}} de {{count}} · A4 horizontal. La leyenda, el material y la potencia junto al plano.",
-        "pages_other": "Página {{n}} de {{count}} · A4 horizontal. La leyenda, el material y la potencia junto al plano.",
+        "pages_one": "Página {{n}} de {{count}} · A4 horizontal. Leyenda, material y potencia junto a la planta.",
+        "pages_other": "Página {{n}} de {{count}} · A4 horizontal. Leyenda, material y potencia junto a la planta.",
         "format": "Formato",
         "setups": "Setups",
         "thisSetup": "Este setup",
@@ -1699,7 +1700,7 @@
         "allSetups_one": "Los {{count}} setups",
         "allSetups_other": "Los {{count}} setups",
         "area": "Área",
-        "whole": "Todo el plano",
+        "whole": "Toda la planta",
         "view": "Lo que veo ahora",
         "includeTitle": "Incluir",
         "include": {
@@ -1742,8 +1743,8 @@
         "only": "Solo lectura",
         "legend": "Leyenda",
         "hint": "Arrastra para mover, pellizca o Ctrl + rueda para el zoom",
-        "note": "Quien puede abrir el tablero ve este plano, la leyenda, el material y la potencia.",
-        "guestNote": "Ves el plano tal como se comparte contigo: los setups, la leyenda, el material y la potencia."
+        "note": "Quien puede abrir el tablero ve esta planta, la leyenda, el material y la potencia.",
+        "guestNote": "Ves la planta tal como se comparte contigo: los setups, la leyenda, el material y la potencia."
       },
       "walls": {
         "options": "Opciones de la herramienta de paredes",
@@ -1785,7 +1786,7 @@
         "fromCorners": "a {{before}} y {{after}} de las esquinas",
         "openingWidth": "Anchura de la abertura",
         "flip": "Cambiar de lado",
-        "swing": "Abrir desde el otro extremo",
+        "swing": "Abrir por el otro lado",
         "doorHint": "Arrástrala a lo largo de su pared para moverla.",
         "wall": "Pared",
         "wallSummary_one": "{{count}} lado · {{length}}",
@@ -1805,7 +1806,7 @@
         "place": "Mover y escalar",
         "replace": "Sustituir",
         "remove": "Quitar",
-        "empty": "Un plano o una foto de la localización, bajo el dibujo, para calcar.",
+        "empty": "Una planta o una foto de la localización, bajo el dibujo, para calcar.",
         "choose": "Elegir una imagen",
         "placing": "Arrastra la imagen para moverla, una esquina para escalarla",
         "edit": "Ajustes de la imagen de fondo",
@@ -1813,8 +1814,8 @@
         "hideIt": "Ocultar el fondo"
       },
       "start": {
-        "title": "Empieza el plano",
-        "titleOf": "Empieza el plano de {{name}}",
+        "title": "Empieza la planta",
+        "titleOf": "Empieza la planta de {{name}}",
         "scene": "Escena {{number}}",
         "later": "Puedes cambiarlo todo después.",
         "how": "Cómo empezar",
@@ -1827,7 +1828,7 @@
         "drawText": "Haz clic esquina por esquina, escribe las longitudes.",
         "drawGo": "Dibujar las paredes",
         "trace": "Calcar una imagen",
-        "traceText": "Un plano o una foto de la localización, bajo el dibujo.",
+        "traceText": "Una planta o una foto de la localización, bajo el dibujo.",
         "traceGo": "Elegir una imagen",
         "scan": "Escanear la habitación",
         "scanText": "Con la app del móvil, cuando esté lista.",
@@ -1841,8 +1842,8 @@
         },
         "by": "por",
         "roomGo": "Crear la habitación",
-        "tooBig": "Demasiado grande para este plano a su escala.",
-        "empty": "Empezar vacío",
+        "tooBig": "Demasiado grande para esta planta a su escala.",
+        "empty": "Empezar vacía",
         "again": "Formas de empezar…"
       },
       "onAnotherSetup": "En otro setup",
@@ -2062,7 +2063,7 @@
       "auto": "Auto",
       "autoAt": "Auto · {{quality}}",
       "now": "ahora {{quality}}",
-      "preparing": "preparando · {{percent}}%",
+      "preparing": "preparando · {{percent}} %",
       "original": "Original",
       "live": "al vuelo",
       "liveCopy": "copia al {{percent}} %",
@@ -2127,7 +2128,7 @@
     },
     "aspect": {
       "label": "Formato",
-      "board": "Tablero ({{ratio}})"
+      "board": "Formato del storyboard ({{ratio}})"
     },
     "total_one": "{{count}} plano",
     "total_other": "{{count}} planos",
@@ -2173,7 +2174,7 @@
       "notInScript": "No está en el guion",
       "restore": "Restaurar escena",
       "restoreHint": "Vuelve a la lista de planos y al plan de rodaje",
-      "deleteAll": "Eliminar escena y fotogramas",
+      "deleteAll": "Eliminar escena y planos",
       "deleteAllHint": "Antes se guarda una versión",
       "deleteVersion": "Antes de eliminar la escena {{number}}",
       "deleteFailed": "No se pudo guardar la versión, así que la escena no se eliminó.",
@@ -2218,7 +2219,7 @@
       "castLinked": "{{name}} está en el reparto",
       "castFilter": "Buscar un personaje",
       "castNone": "Ningún personaje con ese nombre.",
-      "moveImage": "Mover a un plano…",
+      "moveImage": "Colocar en un plano…",
       "inserted": "Imagen colocada en {{label}}",
       "insertedKept": "Imagen colocada en {{label}}. La tarjeta sigue en el lienzo: tiene dibujo, recorte, giro o pie de imagen.",
       "dropReplace": "Suelta para sustituir la imagen",
@@ -2363,7 +2364,7 @@
       "groupLocation": "Localización",
       "groupStatus": "Estado",
       "groupNone": "Sin agrupar",
-      "sortManual": "Storyboard",
+      "sortManual": "Orden del storyboard",
       "sortLabel": "Número de plano",
       "collapseGroup": "Contraer grupo",
       "expandGroup": "Expandir grupo",
@@ -2379,11 +2380,11 @@
       "moreCards": "más",
       "approvedHelper": "Arrastra aquí los planos aprobados",
       "approvedHint": "También se llena con las aprobaciones del cliente",
-      "approvedLocked": "Aprobada en revisión: cambia la revisión desde «{{status}}» y el estado de producción desde la Tabla",
+      "approvedLocked": "Aprobado en revisión: cambia la revisión desde «{{status}}» y el estado de producción desde la Tabla",
       "selectRow": "Seleccionar plano {{label}}",
       "groupSetup": "Setup",
       "noSetup": "Sin setup",
-      "inSetup": "En el setup del plano de set {{setup}}"
+      "inSetup": "En el setup de la planta {{setup}}"
     },
     "playback": {
       "size": "Tamaño de las miniaturas",
@@ -2458,7 +2459,7 @@
       "address": "Escribe un correo o elige a alguien de la lista.",
       "generic": "Algo salió mal. Inténtalo de nuevo."
     },
-    "tabs": "Uso compartido",
+    "tabs": "Compartir",
     "tab": {
       "people": "Personas",
       "guests": "Enlaces de invitado"
@@ -2749,7 +2750,7 @@
         "changes_one": "{{count}} cambio",
         "changes_other": "{{count}} cambios",
         "sent": "Revisión enviada al equipo",
-        "alreadySent": "Ya enviada: ninguna decisión nueva desde entonces"
+        "alreadySent": "Ya enviada: ninguna decisión nueva desde el último envío"
       }
     },
     "comments": {
@@ -3002,7 +3003,7 @@
       "all": "Todo",
       "mentions": "Menciones",
       "approvals": "Aprobaciones",
-      "assigned": "Asignado a mí",
+      "assigned": "Asignados a mí",
       "tasks": "Tareas"
     },
     "reviewStatus": "Revisión",
@@ -3228,7 +3229,7 @@
   },
   "shells": {
     "close": "Cerrar",
-    "noteBreadcrumb": "Ubicación de la nota",
+    "noteBreadcrumb": "Ruta de navegación de la nota",
     "noteExpand": "Página completa",
     "noteWords_one": "{{count}} palabra",
     "noteWords_other": "{{count}} palabras",
@@ -3383,13 +3384,13 @@
     "statusSaved": "Guardado a las {{time}}",
     "statusSaving": "Guardando…",
     "statusUnsaved": "Sin guardar",
-    "saveFailed_one": "No se pudo guardar: {{count}} jornada espera a ser guardada. Se reintenta sola; no cierres la pestaña.",
+    "saveFailed_one": "No se pudo guardar: {{count}} jornada espera a ser guardada. Se reintenta solo; no cierres la pestaña.",
     "saveFailed_other": "No se pudo guardar: {{count}} jornadas esperan a ser guardadas. Se reintenta solo; no cierres la pestaña.",
     "offline_one": "Estás sin conexión: {{count}} jornada espera a ser guardada. No cierres la pestaña.",
     "offline_other": "Estás sin conexión: {{count}} jornadas esperan a ser guardadas. No cierres la pestaña.",
-    "sunHint": "Añade a la ubicación un enlace de mapa (Google, Apple u OpenStreetMap) para ver el amanecer y el atardecer.",
-    "sunNote": "Calculado en este dispositivo a partir del enlace de mapa de la ubicación; no se envía nada a servicios externos.",
-    "sunPolar": "El sol no sale o no se pone este día en esa ubicación.",
+    "sunHint": "Añade a la localización un enlace de mapa (Google, Apple u OpenStreetMap) para ver el amanecer y el atardecer.",
+    "sunNote": "Calculados en este dispositivo a partir del enlace de mapa de la localización; no se envía nada a servicios externos.",
+    "sunPolar": "El sol no sale o no se pone este día en esa localización.",
     "sunrise": "Amanecer {{time}}",
     "sunset": "Atardecer {{time}}",
     "tabBlock": "Bloque",
@@ -3430,7 +3431,7 @@
     "dayMoved": "Día movido de {{from}} a {{to}}.",
     "daysSwapped": "{{from}} y {{to}} intercambiados.",
     "blockNotes": "Nota destacada",
-    "blockNotesPlaceholder": "Se imprime en la hoja, p. ej. LUCES Y ESCAPARATES ENCENDIDOS",
+    "blockNotesPlaceholder": "Se imprime en la orden de rodaje, p. ej. LUCES Y ESCAPARATES ENCENDIDOS",
     "unavailable": "Storyboard no disponible",
     "missingScene": "Escena eliminada",
     "noStoryboardShots": "Aún no hay storyboards con escenas o planos. Las escenas y los planos de los storyboards del proyecto aparecen aquí.",
@@ -3569,12 +3570,12 @@
     "pause": "Pausa",
     "cameraWrap": "Camera wrap",
     "crewWrap": "Fin del equipo",
-    "times": "Key times",
-    "place": "Place",
+    "times": "Horarios clave",
+    "place": "Lugar",
     "locationNumber": "Loc. {{n}}",
-    "serve": "Needed: {{items}}",
-    "inScene": "On set",
-    "contact": "Contact",
+    "serve": "Hace falta: {{items}}",
+    "inScene": "En escena",
+    "contact": "Contacto",
     "troupe": "Equipo y contactos",
     "onSetContact": "Contacto en el set",
     "onSetContactShort": "contacto en el set",
@@ -3591,7 +3592,7 @@
     "pickupAt": "recogida {{pickup}}"
   },
   "needed": {
-    "locked": "Aquí solo lectura: su storyboard no está abierto para editar.",
+    "locked": "Aquí es de solo lectura: su storyboard no está abierto para editar.",
     "title": "Para llevar",
     "progress": "{{ready}} de {{total}} listos",
     "mine": "Solo los míos",
@@ -3689,7 +3690,7 @@
     "details": "Tipo y zona horaria",
     "timeZone": "Zona horaria",
     "timeZoneAuto": "Automática (zona del dispositivo: {{zone}})",
-    "timeZoneHint": "El amanecer y el atardecer de la hoja de citación usan esta zona horaria.",
+    "timeZoneHint": "El amanecer y el atardecer de la orden de rodaje usan esta zona horaria.",
     "storageShort": "{{bytes}} de archivos originales en la instancia."
   },
   "projectDelete": {
@@ -3800,7 +3801,7 @@
       "updates": "Actualizaciones",
       "modules": "Módulos",
       "appearance": "Apariencia e idioma",
-      "board": "Board",
+      "board": "Tablero",
       "apps": "Apps conectadas",
       "help": "Ayuda y tutoriales",
       "reports": "Informes",
@@ -3820,12 +3821,12 @@
       "serverSimple": "Cómo está el servidor, en palabras sencillas: espacio, copia de seguridad, velocidad y problemas por revisar.",
       "updates": "La versión en uso, las novedades y un aviso cuando sale una nueva. Inkadra no se actualiza solo: la actualización la haces tú, en el servidor.",
       "modules": "Elige las partes de Inkadra que usas. Un módulo apagado desaparece de tus menús, de la barra, de las notificaciones y de los tutoriales. Vale solo para ti y no borra nada: lo que existe sigue visible, y si lo vuelves a encender lo encuentras todo.",
-      "board": "Cómo se comportan tus boards y qué herramientas tienes en la barra inferior. Solo para ti, en todos tus dispositivos.",
+      "board": "Cómo se comportan tus tableros y qué herramientas tienes en la barra inferior. Solo para ti, en todos tus dispositivos.",
       "apps": "Lo que se conecta a tu cuenta desde fuera: calendario, extensión del navegador, tokens.",
       "instance": "El nombre de la instancia y lo que falta para terminar la configuración.",
       "reports": "Adónde van los informes que se envían desde «Informar de un problema», y los recibidos.",
       "video": "Inkadra prepara copias más ligeras de los vídeos en varias resoluciones: quien mira recibe la adecuada para su conexión. Los originales nunca se tocan.",
-      "audit": "Quién cambió roles, miembros, uso compartido, ajustes y tokens, qué se eliminó o se copió y qué inicios de sesión fallaron."
+      "audit": "Quién cambió roles, miembros, accesos compartidos, ajustes y tokens, qué se eliminó o se respaldó y qué inicios de sesión fallaron."
     },
     "autosave": {
       "idle": "Guardado automático",
@@ -4094,7 +4095,7 @@
     "pending": "Invitaciones a la instancia pendientes",
     "noInvitations": "Sin invitaciones a la instancia pendientes.",
     "linkInvite": "Enlace de invitación",
-    "linkHelp": "¿No tienes el email? Crea un enlace: sirve una sola vez, para una persona.",
+    "linkHelp": "¿No tienes el correo? Crea un enlace: sirve una sola vez, para una persona.",
     "createLink": "Crear un enlace de invitación",
     "linkCreated": "Este enlace sirve una sola vez, para una persona, y caduca el {{when}}. Compártelo en privado: quien lo abra primero puede crear una cuenta.",
     "linkPending": "Sirve una vez · caduca el {{when}}",
@@ -4208,7 +4209,7 @@
     "deleteLabel": "Eliminar {{name}}",
     "delete": "Eliminar",
     "deleteTitle": "¿Eliminar «{{name}}»?",
-    "deleteBody": "Nunca se ha usado: ningún proyecto, tarjeta o fotograma lo pierde. Desaparece de la lista al guardar.",
+    "deleteBody": "Nunca se ha usado: ningún proyecto, tarjeta o plano lo pierde. Desaparece de la lista al guardar.",
     "inUseTitle": "Un valor se usó mientras tanto",
     "inUse": "Alguien acaba de usar un valor que estás eliminando, así que no se guardó nada. Recarga: podrás archivarlo."
   },
@@ -4351,7 +4352,7 @@
     "status": {
       "running": "En curso",
       "ready": "Completada",
-      "failed": "Con errores",
+      "failed": "Fallida",
       "removed": "Eliminada"
     },
     "where": "Las copias no se descargan desde el navegador: cópialas de DATA_DIR/backups en el servidor. Restaura en una base de datos vacía con",
@@ -4508,7 +4509,7 @@
     "imagesZip_other": "{{count}} imágenes · un archivo ZIP",
     "focus": "Punto de interés",
     "focusHelp": "Arrastra el punto o usa las flechas (Mayús para pasos más largos).",
-    "focusValue": "{{x}}% desde la izquierda, {{y}}% desde arriba",
+    "focusValue": "{{x}} % desde la izquierda, {{y}} % desde arriba",
     "submitImages_one": "Exportar imagen",
     "submitImages_other": "Exportar {{count}} imágenes",
     "progressImages": "Dibujando las imágenes… {{done}} de {{total}}",
@@ -4597,7 +4598,7 @@
       "frameNotes": "Notas de los planos",
       "light": "Luz",
       "shootingDay": "Día de rodaje",
-      "needed": "Necesario",
+      "needed": "Para llevar",
       "notes": "Notas",
       "frame": "Plano",
       "count_one": "{{count}} hoja por escena",
@@ -4612,7 +4613,7 @@
       "space-grotesk": "grotesk",
       "ibm-plex-mono": "mono"
     },
-    "whatCallsheets": "Hojas de citación"
+    "whatCallsheets": "Órdenes de rodaje"
   },
   "screenplay": {
     "open": "Importar guion…",
@@ -4676,8 +4677,8 @@
     "buildFromFile": "Crear storyboard desde este guion…",
     "noTextDetail": "Parece un escaneo: Inkadra no lee texto en imágenes. Exporta de nuevo el PDF desde tu programa de escritura o usa un archivo Fountain o Final Draft.",
     "revision": {
-      "hint": "Empareja la nueva versión con las escenas de “{{title}}”. Fotogramas, dibujos y datos de rodaje quedan como están.",
-      "hintShort": "Fotogramas, dibujos y datos de rodaje quedan como están.",
+      "hint": "Empareja la nueva versión con las escenas de “{{title}}”. Planos, dibujos y datos de rodaje quedan como están.",
+      "hintShort": "Planos, dibujos y datos de rodaje quedan como están.",
       "show": "Mostrar",
       "list": "Escenas de esta versión",
       "filters": {
@@ -4711,16 +4712,16 @@
       "nothing": "Nada que mostrar en esta versión.",
       "unchanged_one": "{{count}} escena sin cambios, {{frames}}",
       "unchanged_other": "{{count}} escenas sin cambios, {{frames}}",
-      "framesKept_one": "{{count}} fotograma conservado",
-      "framesKept_other": "{{count}} fotogramas conservados",
-      "newFrames_one": "{{count}} fotograma nuevo",
-      "newFrames_other": "{{count}} fotogramas nuevos",
-      "frames": "Fotogramas para escenas nuevas",
+      "framesKept_one": "{{count}} plano conservado",
+      "framesKept_other": "{{count}} planos conservados",
+      "newFrames_one": "{{count}} plano nuevo",
+      "newFrames_other": "{{count}} planos nuevos",
+      "frames": "Planos para escenas nuevas",
       "framesAction": "Por acción",
       "details": "Actualizar datos de las escenas",
       "detailsHint": "Número, encabezado, lugar, momento y sinopsis de las escenas cambiadas.",
       "omit": "Marcar escenas omitidas",
-      "omitHint": "Se quedan con sus fotogramas, atenuadas, y salen de la lista de planos y del plan de rodaje.",
+      "omitHint": "Se quedan con sus planos, atenuadas, y salen de la lista de planos y del plan de rodaje.",
       "version": "Guardar antes una versión",
       "versionHint": "“{{name}}”, para volver atrás en un paso.",
       "versionName": "Antes de {{draft}}",
@@ -4775,7 +4776,7 @@
     "cropHint": "Si queda parte del reproductor o el logotipo, ajusta el recuadro: se recorta.",
     "noText": "No se añade texto a la tarjeta. El origen se puede leer en Info.",
     "tabAgain": "Capturar de nuevo",
-    "deniedTitle": "Uso compartido cancelado",
+    "deniedTitle": "Compartir pantalla cancelado",
     "denied": "El navegador no dio permiso. No se guardó nada.",
     "retry": "Reintentar",
     "blackTitle": "El fotograma está en negro",
@@ -5425,7 +5426,7 @@
           },
           "2": {
             "title": "Nuevos tableros",
-            "text": "Canvas crea tableros, moodboards, storyboards y el único tablero Producción del proyecto (Plan de rodaje y Equipo), e importa un guion."
+            "text": "Lienzo crea tableros, moodboards, storyboards y el único tablero Producción del proyecto (Plan de rodaje y Equipo), e importa un guion."
           },
           "3": {
             "title": "Selecciona una tarjeta",
@@ -5483,20 +5484,20 @@
         "name": "Storyboard",
         "steps": {
           "0": {
-            "title": "Escenas y fotogramas",
-            "text": "Cada escena reúne sus fotogramas, en orden."
+            "title": "Escenas y planos",
+            "text": "Cada escena reúne sus planos, en orden."
           },
           "1": {
-            "title": "Cada fotograma tiene sus datos",
+            "title": "Cada plano tiene sus datos",
             "text": "Plano, objetivo, movimiento: pasan a la lista de planos."
           },
           "2": {
-            "title": "Dibuja en el fotograma",
-            "text": "Doble clic en un fotograma para bocetar a pantalla completa."
+            "title": "Dibuja en el plano",
+            "text": "Doble clic en un plano para bocetar a pantalla completa."
           },
           "3": {
             "title": "Una nueva versión del guion",
-            "text": "Impórtala otra vez y elige Actualizar desde revisión: las escenas se actualizan, los fotogramas quedan como están."
+            "text": "Impórtala otra vez y elige Actualizar desde revisión: las escenas se actualizan, los planos quedan como están."
           },
           "4": {
             "title": "Lo que necesita una escena",
@@ -5505,15 +5506,15 @@
         }
       },
       "draw": {
-        "name": "Dibujar en el fotograma",
+        "name": "Dibujar en el plano",
         "steps": {
           "0": {
             "title": "Plumas y formas",
             "text": "Pluma, goma, formas y texto, con color y grosor."
           },
           "1": {
-            "title": "Fotograma a fotograma",
-            "text": "Las flechas pasan a los otros fotogramas."
+            "title": "Plano a plano",
+            "text": "Las flechas pasan a los otros planos."
           },
           "2": {
             "title": "Muévete",
@@ -5526,7 +5527,7 @@
         "steps": {
           "0": {
             "title": "Tus planos",
-            "text": "Los fotogramas del storyboard, en una tabla."
+            "text": "Los mismos planos del storyboard, en una tabla."
           },
           "1": {
             "title": "Tabla o Kanban",
@@ -5551,7 +5552,7 @@
           },
           "2": {
             "title": "Mueve y alarga",
-            "text": "Arrastra para reordenar, con Alt para fijar la hora, desde el borde inferior para la duración. Suelta en una fecha libre para crear una jornada de rodaje; Ctrl+Z deshace todo el gesto. Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). La vista Day también tiene «Block» en la barra. Con el teclado, N añade un bloque tras el seleccionado, o al final del día."
+            "text": "Arrastra para reordenar, con Alt para fijar la hora, desde el borde inferior para la duración. Suelta en una fecha libre para crear una jornada de rodaje; Ctrl+Z deshace todo el gesto. Arrastra sobre tiempo libre para dibujar un bloque en pasos de 5 minutos y elige su tipo (teclas 1–5). La vista Día también tiene «Bloque» en la barra. Con el teclado, N añade un bloque tras el seleccionado, o al final del día."
           },
           "3": {
             "title": "Mueve un día entero",
@@ -5572,7 +5573,7 @@
         }
       },
       "setplan": {
-        "name": "Plano del set",
+        "name": "Planta del set",
         "steps": {
           "0": {
             "title": "Dibuja el set",
@@ -5580,11 +5581,11 @@
           },
           "1": {
             "title": "La biblioteca",
-            "text": "Elige una categoría o busca. Haz clic en un tipo y luego en el plano, o arrástralo allí. Alt lo suelta libre. El material del proyecto reúne las luces y cámaras de todos los planos."
+            "text": "Elige una categoría o busca. Haz clic en un tipo y luego en la planta, o arrástralo allí. Alt lo suelta libre. El material del proyecto reúne las luces y cámaras de todas las plantas."
           },
           "2": {
             "title": "Propiedades, elementos, material",
-            "text": "Lo que seleccionas se ajusta en el panel derecho, y Bloquear lo deja donde está; Elementos lista el plano por grupos, Material cuenta el material y la potencia por circuito, con los circuitos del primer setup para todos."
+            "text": "Lo que seleccionas se ajusta en el panel derecho, y Bloquear lo deja donde está; Elementos lista la planta por grupos, Material cuenta el material y la potencia por circuito, con los circuitos del primer setup para todos."
           },
           "3": {
             "title": "Setups",
@@ -5596,11 +5597,11 @@
           },
           "5": {
             "title": "Fondo",
-            "text": "Un plano o una foto bajo el dibujo para calcar: muévela, escálala, elige opacidad y grises."
+            "text": "Una planta o una foto bajo el dibujo para calcar: muévela, escálala, elige opacidad y grises."
           },
           "6": {
-            "title": "Moverse por el plano",
-            "text": "Espacio y arrastrar, la rueda o dos dedos mueven el plano; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas lo mueven, 0 lo ajusta, al 100 %, + y − cambian el zoom."
+            "title": "Moverse por la planta",
+            "text": "Espacio y arrastrar, la rueda o dos dedos mueven la planta; Ctrl y la rueda o un pellizco hacen zoom. Sin selección, las flechas la mueven, 0 la ajusta, + y − cambian el zoom."
           }
         }
       },
@@ -5613,7 +5614,7 @@
           },
           "1": {
             "title": "Sus escenas",
-            "text": "Salen de los fotogramas que lo nombran en el reparto."
+            "text": "Salen de los planos que lo nombran en el reparto."
           },
           "2": {
             "title": "Solo para el equipo",
@@ -5629,7 +5630,7 @@
             "text": "El cliente los ve uno a uno, en orden."
           },
           "1": {
-            "title": "El fotograma",
+            "title": "El plano",
             "text": "En grande, con la acción y los comentarios."
           },
           "2": {
@@ -5685,7 +5686,7 @@
         "steps": {
           "0": {
             "title": "Guardados",
-            "text": "Inkadra guarda sola; tú puedes poner nombre a un punto."
+            "text": "Inkadra guarda automáticamente; tú puedes poner nombre a un punto."
           },
           "1": {
             "title": "Vuelve atrás",
@@ -5710,11 +5711,11 @@
         "steps": {
           "0": {
             "title": "A pantalla completa",
-            "text": "El storyboard, fotograma a fotograma."
+            "text": "El storyboard, plano a plano."
           },
           "1": {
             "title": "Dónde estás",
-            "text": "Título, número de fotograma y salida."
+            "text": "Título, número de plano y salida."
           },
           "2": {
             "title": "Adelante y atrás",
@@ -5790,7 +5791,7 @@
           },
           "1": {
             "title": "Renombra",
-            "text": "El nuevo nombre cambia en cada fotograma que lo usa."
+            "text": "El nuevo nombre cambia en cada plano que lo usa."
           },
           "2": {
             "title": "Archivar o eliminar",
@@ -5849,7 +5850,7 @@
           },
           "2": {
             "title": "Cómo está",
-            "text": "Espacio, copia de seguridad y velocidad en palabras sencillas; en Avanzada las curvas, actualizadas cada pocos segundos. The CPU chart includes GPU use when hardware video encoding and readings are available."
+            "text": "Espacio, copia de seguridad y velocidad en palabras sencillas; en Avanzada las curvas, actualizadas cada pocos segundos. El gráfico de CPU incluye la GPU cuando el servidor la usa para los vídeos y puede medirla."
           },
           "3": {
             "title": "Los problemas",
@@ -5932,13 +5933,13 @@
             "text": "Abre «Pegar desde lista» en la barra de Equipo. Revisa la vista previa antes de añadir personas. Se omiten encabezados y duplicados."
           },
           "3": {
-            "title": "Citaciones y hoja",
-            "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La hoja de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
+            "title": "Citaciones y orden de rodaje",
+            "text": "En el Plan de rodaje, pestaña Citaciones, eliges a quién se cita cada día. La orden de rodaje imprime equipo, teléfonos y contacto en el set, nunca para invitados ni clientes."
           }
         }
       },
       "setplanLinks": {
-        "name": "Vínculos del plano",
+        "name": "Vínculos de la planta",
         "steps": {
           "0": {
             "title": "Escenas del storyboard",
@@ -5946,7 +5947,7 @@
           },
           "1": {
             "title": "Vinculados, nunca copiados",
-            "text": "Vincula un actor a un personaje y una cámara a un plano del storyboard: nombres, colores y ópticas siguen las fichas. Sin selección, vincula el plano de set a su localización."
+            "text": "Vincula un actor a un personaje y una cámara a un plano del storyboard: nombres, colores y ópticas siguen las fichas. Sin selección, vincula la planta a su localización."
           },
           "2": {
             "title": "El sol, para exteriores",
@@ -5959,7 +5960,7 @@
         }
       },
       "setplanOutputs": {
-        "name": "Salidas del plano",
+        "name": "Salidas de la planta",
         "steps": {
           "0": {
             "title": "Exportar",
@@ -5967,11 +5968,11 @@
           },
           "1": {
             "title": "La hoja",
-            "text": "Una página A4 por setup. Añadir a la hoja de rodaje vincula el plano a sus escenas."
+            "text": "Una página A4 por setup. Añadir a la orden de rodaje vincula la planta a sus escenas."
           },
           "2": {
             "title": "Quien no puede editar",
-            "text": "Invitados y lectores abren el plano en una vista con desplazamiento y zoom, los setups, la leyenda y el PDF."
+            "text": "Invitados y lectores abren la planta en una vista con desplazamiento y zoom, los setups, la leyenda y el PDF."
           }
         }
       },
@@ -5980,7 +5981,7 @@
         "steps": {
           "0": {
             "title": "Solo lo que usas",
-            "text": "Apaga Storyboard, Producción, Moodboard, Revisión del cliente o Plano del set: salen de tus menús y de la barra."
+            "text": "Apaga Storyboard, Producción, Moodboard, Revisión del cliente o Planta del set: salen de tus menús y de la barra."
           },
           "1": {
             "title": "No se pierde nada",
@@ -6031,14 +6032,14 @@
         "steps": {
           "0": {
             "title": "Quién hizo qué",
-            "text": "Cambios en personas, uso compartido y ajustes, con quién y cuándo."
+            "text": "Cambios en personas, accesos compartidos y ajustes, con quién y cuándo."
           },
           "1": {
             "title": "Acota",
             "text": "Muestra solo personas, compartir, accesos o datos, y expórtalos en CSV."
           },
           "2": {
-            "title": "Un año",
+            "title": "Se conserva un año",
             "text": "Los eventos más antiguos se quitan solos."
           }
         }
@@ -6053,7 +6054,7 @@
     },
     "loadError": "No puedo leer el estado del servidor.",
     "when": {
-      "night": "esta noche a las {{time}}",
+      "night": "esta madrugada a las {{time}}",
       "today": "hoy a las {{time}}",
       "yesterday": "ayer a las {{time}}",
       "tomorrow": "mañana a las {{time}}"
@@ -6329,7 +6330,7 @@
       "storage": "Espacio",
       "cpuMeta": "media {{avg}} · máximo {{peak}}",
       "gpu": "GPU",
-      "gpuMeta": "pico GPU {{peak}} · solo el contenedor",
+      "gpuMeta": "máximo GPU {{peak}} · solo el contenedor",
       "memoryMeta": "máximo {{peak}}",
       "latency": "Tiempos de respuesta",
       "latencyMeta": "p95 · errores {{errors}}",
@@ -6474,7 +6475,7 @@
         "p95p99": "p95 {{p95}}, p99 {{p99}}",
         "p95": "p95 {{value}}",
         "storesValue": "p95 {{p95}} · el más lento {{max}}",
-        "memoryValue": "{{before}} antes → pico {{peak}}",
+        "memoryValue": "{{before}} antes → máximo {{peak}}",
         "perBoardValue_one": "{{value}} en {{count}} tablero",
         "perBoardValue_other": "{{value}} en {{count}} tableros",
         "setup": "{{editors}} editores, {{readers}} lectores, {{boards}} tableros, {{time}}",
@@ -6528,7 +6529,7 @@
     "channelHelp": "Las versiones preliminares llegan antes pero pueden tener algún problema. Solo cambia lo que se te avisa.",
     "channels": {
       "stable": "Solo estables (recomendado)",
-      "preview": "También las preliminares (release candidates)"
+      "preview": "También las preliminares"
     },
     "earlier": "Versiones anteriores",
     "allOnGitHub": "Todas en GitHub ↗",
@@ -6577,7 +6578,7 @@
     "file": "Archivo",
     "hidden_one": "1 archivo en un proyecto que no puedes abrir: {{size}}.",
     "hidden_other": "{{count}} archivos en proyectos que no puedes abrir: {{size}}.",
-    "filesHelp": "También cuentan los archivos quitados de las boards: siguen en el proyecto, porque una versión puede recuperarlos. El espacio vuelve al eliminar el proyecto.",
+    "filesHelp": "También cuentan los archivos quitados de los tableros: siguen en el proyecto, porque una versión puede recuperarlos. El espacio vuelve al eliminar el proyecto.",
     "filesSub_one": "El archivo que más espacio ocupa entre los que has subido.",
     "filesSub_other": "Los {{count}} archivos que más espacio ocupan entre los que has subido.",
     "filesSubTheirs_one": "El archivo que más espacio ocupa entre los que ha subido.",
@@ -6653,7 +6654,7 @@
     "largestFile": "Archivo más grande",
     "fromServer": "Desde el servidor:",
     "warn": "Avisar al",
-    "warnHelp": "Las personas ven un aviso; los administradores lo reciben en su Inbox.",
+    "warnHelp": "Las personas ven un aviso; los administradores lo reciben en su bandeja.",
     "openMembers": "Abrir en Miembros"
   },
   "demo": {
@@ -6721,7 +6722,7 @@
     "error": "No se pudo cargar ni guardar el equipo.",
     "retry": "Reintentar",
     "empty": "Aún no hay nadie en el equipo.",
-    "emptyHint": "Usa «Pegar desde lista» para importar personas de una hoja de rodaje anterior.",
+    "emptyHint": "Usa «Pegar desde lista» para importar personas de una orden de rodaje anterior.",
     "noResults": "No se encontraron personas.",
     "noDepartment": "Sin departamento",
     "name": "Nombre",
@@ -6769,8 +6770,8 @@
     "notesPlaceholder": "Solo las ve el equipo del proyecto",
     "characterLabel": "Ficha de personaje",
     "optionalTag": "opcional",
-    "characterHint": "Ninguna. El nombre en el programa basta para la citación; vincula una ficha solo si tiene vestuario y referencias.",
-    "characterNone": "Aún no hay fichas de personaje en el proyecto. No hace falta: un rol igual al nombre del programa basta para la citación.",
+    "characterHint": "Ninguna. El nombre en el plan basta para la citación; vincula una ficha solo si tiene vestuario y referencias.",
+    "characterNone": "Aún no hay fichas de personaje en el proyecto. No hace falta: un rol igual al nombre del plan basta para la citación.",
     "link": "Vincular",
     "unlinkShort": "Desvincular",
     "accountHint": "Vincula una cuenta para enviar la citación al móvil y pedir que confirme su asistencia.",
@@ -6812,22 +6813,22 @@
       "production": "Producción",
       "moodboard": "Moodboard",
       "review": "Revisión del cliente",
-      "plan": "Plano del set"
+      "plan": "Planta del set"
     },
     "desc": {
       "board": "Notas, imágenes, enlaces, archivos, tareas, columnas y comentarios.",
       "storyboard": "Tableros storyboard, lista de planos, la herramienta Plano, importación del guion en escenas.",
-      "production": "Plan de rodaje, equipo, órdenes de trabajo, hojas por escena y Para llevar de cada escena.",
+      "production": "Plan de rodaje, equipo, órdenes de rodaje, hojas por escena y Para llevar de cada escena.",
       "moodboard": "Tableros moodboard y la vista Moodboard de un tablero: grupos, notas, paletas.",
       "review": "Enlaces para clientes sin cuenta, aprobaciones y solicitudes de cambio.",
-      "plan": "Planos con luces, cámaras, actores y paredes, vinculados a escenas y planos."
+      "plan": "Plantas con luces, cámaras, actores y paredes, vinculadas a escenas y planos."
     },
     "keep": {
       "storyboard": "Los planos que existen se quedan donde están.",
       "production": "Las jornadas y las personas siguen guardadas.",
       "moodboard": "Imágenes, enlaces y colores siguen en los tableros.",
       "review": "Los enlaces ya enviados siguen funcionando.",
-      "plan": "Los planos ya dibujados siguen visibles."
+      "plan": "Las plantas ya dibujadas siguen visibles."
     },
     "always": "Siempre encendido",
     "turnOn": "Encender",
@@ -6880,7 +6881,7 @@
       "1080": "1080p",
       "2160": "2160p (4K)",
       "480Help": "Para conexiones lentas y datos del móvil.",
-      "720Help": "HD: la calidad de las tarjetas en el board.",
+      "720Help": "HD: la calidad de las tarjetas en el tablero.",
       "1080Help": "Full HD, a pantalla completa.",
       "2160Help": "Solo para originales en 4K. Ocupa mucho.",
       "note": "Un vídeo nunca se amplía: un original en 720p recibe solo 480p y 720p."
@@ -7022,7 +7023,7 @@
     "title": "Registro de actividad",
     "filter": "Mostrar",
     "events": "Eventos",
-    "none": "Aún no hay nada registrado.",
+    "none": "Aún no hay eventos registrados.",
     "loadError": "No se pudo cargar el registro de actividad.",
     "more": "Mostrar anteriores",
     "export": "Exportar",
@@ -7046,8 +7047,8 @@
       "project_deleted": "Proyecto eliminado",
       "project_member_set": "Miembro del proyecto añadido o modificado",
       "project_member_removed": "Miembro del proyecto quitado",
-      "board_grant_set": "Acceso a la pizarra concedido",
-      "board_grant_removed": "Acceso a la pizarra quitado",
+      "board_grant_set": "Acceso al tablero concedido",
+      "board_grant_removed": "Acceso al tablero quitado",
       "invitation_created": "Invitación creada",
       "invitation_revoked": "Invitación revocada",
       "share_link_created": "Enlace compartido creado",

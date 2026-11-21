@@ -354,7 +354,7 @@ test('Settings → Video shows the encoder, the presets, the estimates and live 
     // Values changed in Avanzate: Personalizzata under the presets, personalizzato in the table.
     look = customised;
     await page.reload();
-    await expect(page.getByText('Torna ai valori della preset')).toBeVisible();
+    await expect(page.getByText('Torna ai valori del preset')).toBeVisible();
     await shoot(page, `video-settings-custom-${name}`);
     await page.locator('[data-tour="video-advanced"] summary').click();
     await expect(page.getByText('personalizzato').first()).toBeVisible();

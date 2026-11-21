@@ -131,7 +131,7 @@ test('storage limits: own space, refused uploads, limits and members', async ({
       mimeType: 'video/quicktime',
       buffer: Buffer.alloc(500 * KB, 3),
     });
-    const toast = page.locator('.toast', { hasText: 'Sopralluogo_porto.mov' });
+    const toast = page.locator('.ink-toast', { hasText: 'Sopralluogo_porto.mov' });
     await expect(toast).toBeVisible();
     await shoot(page, 'upload-toast', { phone: false });
     await toast.getByRole('button', { name: 'Dettagli' }).click();
@@ -161,7 +161,7 @@ test('storage limits: own space, refused uploads, limits and members', async ({
       mimeType: 'text/plain',
       buffer: Buffer.alloc(5 * KB, 66),
     });
-    const near = page.locator('.toast', { hasText: 'Spazio usato:' });
+    const near = page.locator('.ink-toast', { hasText: 'Spazio usato:' });
     await expect(near).toBeVisible();
     await shoot(page, 'upload-near', { phone: false });
 

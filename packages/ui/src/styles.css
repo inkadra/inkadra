@@ -2960,3 +2960,127 @@ select {
     scale: none;
   }
 }
+
+/* Toasts: a short line centred at the bottom of the board or of a page (its positioned
+   container), with a few actions and a bar for the time it has left. */
+.ink-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* Without actions the text sits alone, padded evenly. */
+.ink-toast:not(:has(button)) {
+  padding-right: 12px;
+}
+.ink-toast__ok {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink-status-ok) 15%, transparent);
+  color: var(--ink-status-ok);
+}
+.ink-toast__warning {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--ink-status-warn);
+}
+.ink-toast__warning--danger {
+  color: var(--ink-status-danger);
+}
+.ink-toast__text {
+  margin-right: 6px;
+}
+.ink-toast__action {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ink-toast__action:hover {
+  background: var(--ink-accent-soft-bg);
+}
+.ink-toast__divider {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  background: var(--ink-border-default);
+}
+.ink-toast__close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+}
+.ink-toast__close:hover {
+  color: var(--ink-text-primary);
+}
+/* Time left before the toast leaves: it stops with the count, on hover or focus. */
+.ink-toast__bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-text-muted);
+  transform-origin: left;
+  animation: ink-toast-left linear forwards;
+}
+.ink-toast__bar[data-held] {
+  animation-play-state: paused;
+}
+@keyframes ink-toast-left {
+  to {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-toast__bar {
+    display: none;
+  }
+}
+@media (width < 768px) {
+  .ink-toast {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    white-space: normal;
+  }
+  .ink-toast__text {
+    flex: 1;
+  }
+  .ink-toast__divider,
+  .ink-toast__close {
+    display: none;
+  }
+}

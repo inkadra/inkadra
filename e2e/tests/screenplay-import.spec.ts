@@ -168,7 +168,7 @@ test('the import dialog opened from the Canvas toolbar is modal and the board st
 
   const open = async () => {
     await page.locator('.toolbar__btn--canvas').click();
-    await page.getByRole('menuitem', { name: 'Importa un copione…' }).click();
+    await page.getByRole('menuitem', { name: 'Importa una sceneggiatura…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
     await expect(dialog).toBeVisible();
     return dialog;
@@ -214,7 +214,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.addInitScript((value) => localStorage.setItem('inkadra.theme', value), theme);
     await openBoard(page, seeded.canvasId);
     await page.locator('.toolbar__btn--canvas').click();
-    await page.getByRole('menuitem', { name: 'Importa un copione…' }).click();
+    await page.getByRole('menuitem', { name: 'Importa una sceneggiatura…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
     await dialog.getByLabel('Scegli un file').setInputFiles({
       name: 'una-festa-di-prova.pdf',
@@ -351,14 +351,17 @@ for (const theme of ['dark', 'light'] as const) {
           timeout: 1500,
         });
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-imported`);
-      await page.locator('.toast').getByRole('button', { name: 'Annulla', exact: true }).click();
+      await page
+        .locator('.ink-toast')
+        .getByRole('button', { name: 'Annulla', exact: true })
+        .click();
       await expect(page.locator('.card--board')).toHaveCount(before);
       await expect(page.getByRole('link', { name: /^Sceneggiatura/ })).toHaveCount(0);
       if (!phone) await expect(shots).toHaveCount(0);
       await expect(page.locator('.card--file').last()).toBeVisible();
       // Use the existing entry point to verify all PDF errors in the actual worker.
       await page.locator('.toolbar__btn--canvas').click();
-      await page.getByRole('menuitem', { name: 'Importa un copione…' }).click();
+      await page.getByRole('menuitem', { name: 'Importa una sceneggiatura…' }).click();
       for (const [buffer, error] of [
         [scriptPdf(false), 'Questo PDF non ha un livello di testo'],
         [scriptPdf(true, 301), 'Il PDF supera il limite di 300 pagine.'],

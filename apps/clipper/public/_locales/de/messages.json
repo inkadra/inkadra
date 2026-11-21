@@ -100,7 +100,7 @@
     "message": "Kein Board gewählt"
   },
   "boards_none": {
-    "message": "Keine Boards, in denen du Karten hinzufügen kannst."
+    "message": "Keine Boards, zu denen du Karten hinzufügen kannst."
   },
   "boards_none_found": {
     "message": "Keine Boards gefunden."
@@ -184,7 +184,7 @@
     "message": "Die Datei ist zu groß für diesen Server."
   },
   "error_storage_full": {
-    "message": "Für diese Datei ist auf Inkadra kein Platz mehr. Gib Speicher frei oder frag eine Administratorin oder einen Administrator."
+    "message": "Für diese Datei ist auf Inkadra kein Platz mehr. Gib Speicher frei oder frag einen Admin."
   },
   "error_offline": {
     "message": "Der Server antwortet nicht: Prüfe deine Verbindung."
