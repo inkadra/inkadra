@@ -494,7 +494,7 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   await choose('Verticale');
   await check('Solo inquadrature approvate', false);
   await check('Escludi le card nascoste agli ospiti', false);
-  await check(/Foglio di lavorazione/, true);
+  await check(/Ordine del giorno/, true);
   await expect(dialog.getByText('3 pagine')).toBeVisible();
   await shootDialog(page, '2-book');
   const [bookDownload] = await Promise.all([
@@ -510,7 +510,7 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   expect(bookPdf.pages[1]).toContain('Hidden frame action');
   expect(bookPdf.pages[1]).toContain('Bozza');
   // The call sheet of the shooting day closes the book.
-  expect(bookPdf.pages[2]).toContain('Foglio di lavorazione');
+  expect(bookPdf.pages[2]).toContain('Ordine del giorno');
   expect(bookPdf.pages[2]).toContain('Station');
   // The day's own Location is printed too, as the address the crew needs (decision 0095).
   expect(bookPdf.pages[2]).toContain('Station platform 4');
@@ -526,7 +526,7 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   await choose('Orizzontale');
   await choose('4');
   await check('Includi i commenti', true);
-  await check(/Foglio di lavorazione/, false);
+  await check(/Ordine del giorno/, false);
   await expect(dialog.getByText('4 pagine')).toBeVisible();
   await shootDialog(page, '3-team');
   const [teamDownload] = await Promise.all([
@@ -550,7 +550,7 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   await expect(dialog.getByRole('radio', { name: 'Il team' })).toBeChecked();
   await expect(dialog.getByRole('checkbox', { name: 'Includi i commenti' })).toBeChecked();
-  await expect(dialog.getByRole('checkbox', { name: /Foglio di lavorazione/ })).not.toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: /Ordine del giorno/ })).not.toBeChecked();
   await dialog.getByRole('button', { name: 'Annulla' }).click();
 
   const stored = await (

@@ -223,9 +223,9 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
   const inspector = schedule.getByRole('complementary', { name: 'Dettagli del giorno di riprese' });
   await expect(inspector.getByLabel('Data', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
-  const openSheet = schedule.getByRole('button', { name: 'Foglio di lavorazione' });
+  const openSheet = schedule.getByRole('button', { name: 'Ordine del giorno' });
   await openSheet.click();
-  const dialog = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+  const dialog = page.getByRole('dialog', { name: 'Ordine del giorno' });
   const close = dialog.getByRole('button', { name: 'Chiudi', exact: true });
   const daySelect = dialog.getByRole('combobox', { name: 'Data', exact: true });
   const print = dialog.getByRole('button', { name: 'Stampa / esporta' });
@@ -237,7 +237,7 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await expect(dialog).toBeVisible();
   await expect(print).toBeEnabled();
   await expect(
-    dialog.getByRole('article', { name: 'Anteprima foglio di lavorazione' }),
+    dialog.getByRole('article', { name: 'Anteprima ordine del giorno' }),
   ).toContainText('Revisione 1');
   await expect(dialog).not.toContainText('Demo · non salvato');
   // Focus lands inside the dialog, on its first control, never on the page behind it.

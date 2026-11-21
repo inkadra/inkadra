@@ -98,7 +98,7 @@ test('plans frames of two storyboards and a scene without frames on the Producti
 
   // Its Export makes the call sheets, each frame read from its own storyboard.
   await page.getByRole('button', { name: 'Menu della board', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Fogli di convocazione', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Ordini del giorno', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.locator('.export__paper')).toHaveAttribute('data-status', 'ready');
   await expect(dialog.locator('.export__preview figcaption')).toHaveText(/\d+ pagin/);
@@ -122,7 +122,7 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   await expect(page.getByRole('tab', { name: 'Piano riprese', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Menu della board', exact: true }).click();
   await page
-    .getByRole('menuitem', { name: 'Giornate di ripresa: 1 · Apri Produzione', exact: true })
+    .getByRole('menuitem', { name: 'Giornate di riprese: 1 · Apri Produzione', exact: true })
     .click();
   await expect(page).toHaveURL(new RegExp(`/b/${production.id}`));
 

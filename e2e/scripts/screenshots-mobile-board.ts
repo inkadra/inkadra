@@ -151,7 +151,7 @@ const shots: Shot[] = [
     '16-call-sheet',
     async (page, seed) => {
       await board(page, seed, seed.schedule.id, 'schedule');
-      await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
+      await page.getByRole('button', { name: 'Ordine del giorno' }).first().click();
     },
   ],
   [

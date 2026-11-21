@@ -261,8 +261,8 @@ test('starts from a ready room, draws and closes a room with a typed length, pla
   await page.keyboard.press('Control+z');
   await expect.poll(async () => (await read(ids.drawn)).openings?.[0]?.at).toBeCloseTo(placed, 0);
   // Its width typed in the properties.
-  await panel.getByRole('textbox', { name: "Larghezza dell'apertura" }).fill('1,2');
-  await panel.getByRole('textbox', { name: "Larghezza dell'apertura" }).press('Enter');
+  await panel.getByRole('textbox', { name: 'Larghezza dell’apertura' }).fill('1,2');
+  await panel.getByRole('textbox', { name: 'Larghezza dell’apertura' }).press('Enter');
   await expect.poll(async () => (await read(ids.drawn)).openings?.[0]?.width).toBeCloseTo(105.6, 0);
 });
 
