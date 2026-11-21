@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+import type { ComponentProps } from 'react';
 import { expect, it } from 'vitest';
 import { Button, Input, TextArea } from './components.tsx';
 
@@ -40,4 +41,19 @@ it('gives text inputs the field look, keeping their own class and ref', () => {
   expect(input.type).toBe('input');
   expect(input.props).toMatchObject({ className: 'ink-input wide', placeholder: 'Name', ref });
   expect(TextArea({ rows: 3 }).props).toMatchObject({ className: 'ink-input', rows: 3 });
+});
+
+// Compile-time checks: typecheck fails if Button's props change shape for consumers.
+type ButtonClick = NonNullable<ComponentProps<typeof Button>['onClick']>;
+const click: ButtonClick = (event) => event.currentTarget.blur();
+const spreadLink = { href: '/next', disabled: true, busy: true, type: 'submit' };
+
+it('keeps the native button props for consumers, and a link never disabled, busy or typed', () => {
+  expect(typeof click).toBe('function');
+  // @ts-expect-error a link cannot be disabled, busy or given a button type
+  const link = Button(spreadLink);
+  expect(link.type).toBe('a');
+  expect(link.props.href).toBe('/next');
+  for (const name of ['disabled', 'busy', 'aria-busy', 'type'])
+    expect(link.props).not.toHaveProperty(name);
 });

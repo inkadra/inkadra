@@ -4,6 +4,7 @@ import {
   type ButtonHTMLAttributes,
   type HTMLAttributes,
   type InputHTMLAttributes,
+  type JSX,
   type ReactNode,
   type Ref,
   type TextareaHTMLAttributes,
@@ -68,12 +69,22 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
     href?: undefined;
     ref?: Ref<HTMLButtonElement>;
   };
-/** A link drawn as a button: a download, a page elsewhere. */
-type LinkButtonProps = AnchorHTMLAttributes<HTMLAnchorElement> &
-  ButtonLook & { href: string; ref?: Ref<HTMLAnchorElement> };
+/** A link drawn as a button: a download, a page elsewhere. A link has no disabled or busy state. */
+type LinkButtonProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'type'> &
+  ButtonLook & {
+    href: string;
+    ref?: Ref<HTMLAnchorElement>;
+    disabled?: never;
+    busy?: never;
+    type?: never;
+  };
 
 /** A button; with `href` it is a link (`download`, `target`) that looks the same. */
-export function Button(props: ButtonProps | LinkButtonProps) {
+export function Button(props: LinkButtonProps): JSX.Element;
+// The button's signature comes last: `ComponentProps<typeof Button>` reads the last one, and
+// consumers deriving the props keep the native button's (#954 review).
+export function Button(props: ButtonProps): JSX.Element;
+export function Button(props: ButtonProps | LinkButtonProps): JSX.Element {
   const { variant = 'secondary', size = 'md', block, icon, className, children } = props;
   const look = cx(
     'ink-btn',
@@ -89,7 +100,18 @@ export function Button(props: ButtonProps | LinkButtonProps) {
     </>
   );
   if (props.href !== undefined) {
-    const { variant: _v, size: _s, block: _b, icon: _i, className: _c, ...link } = props;
+    // Dropped even when a spread slips them past the types: they would not stop a link.
+    const {
+      variant: _v,
+      size: _s,
+      block: _b,
+      icon: _i,
+      className: _c,
+      disabled: _d,
+      busy: _bu,
+      type: _t,
+      ...link
+    } = props as LinkButtonProps;
     return (
       <a {...link} className={look}>
         {content}
