@@ -36,8 +36,9 @@ export function swallowOutsidePress(event: Event) {
 /**
  * Shows the popover `layer` of a field (the date calendar, the time list, the Select's list) and
  * keeps it `gap` pixels under `box`, or above it when there is no room below; it grows away from
- * the field. With room on neither side (a low window, a high zoom) it starts at the top of the
- * window, over the field, and the panel scrolls within the window's height. The layer's CSS
+ * the field. It prefers a side that also leaves 8px to the window's edge, then one that only
+ * fits in the window. With room on neither side (a low window, a high zoom) it starts at the top
+ * of the window, over the field, and the panel scrolls within the window's height. The layer's CSS
  * places it with `--ink-layer-left`, `--ink-layer-top` and `--ink-layer-bottom`, and may size it
  * from the field's width, `--ink-layer-anchor-width`. A press outside both calls `onOutside`; on
  * a phone the layer is the scrim around the sheet, and its own click closes it. Returns the
@@ -50,8 +51,15 @@ export function anchorLayer(layer: HTMLElement, box: HTMLElement, onOutside: () 
     layer.style.setProperty('--ink-layer-anchor-width', `${rect.width}px`);
     const width = layer.offsetWidth;
     const height = layer.offsetHeight;
-    const fitsBelow = rect.bottom + gap + height <= window.innerHeight - 8;
-    const below = fitsBelow || rect.top - gap - height < 8;
+    const fits = (side: 'below' | 'above', margin: number) =>
+      side === 'below'
+        ? rect.bottom + gap + height <= window.innerHeight - margin
+        : rect.top - gap - height >= margin;
+    const side = (['below', 'above', 'below', 'above'] as const).find((s, i) =>
+      fits(s, i < 2 ? 8 : 0),
+    );
+    const fitsBelow = side === 'below';
+    const below = side !== 'above';
     layer.dataset.side = below ? 'below' : 'above';
     layer.style.setProperty(
       '--ink-layer-left',

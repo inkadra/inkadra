@@ -91,6 +91,13 @@ export function Select({
     collect(children);
   }
   const id = useId();
+  // A key per option that follows its value when the list changes; a repeated value counts on.
+  const seen = new Map<string, number>();
+  const keys = items.map((item) => {
+    const n = seen.get(item.value) ?? 0;
+    seen.set(item.value, n + 1);
+    return `${n}:${item.value}`;
+  });
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -182,14 +189,16 @@ export function Select({
         }}
         onKeyDown={(event) => {
           props.onKeyDown?.(event);
-          if (event.defaultPrevented) return;
+          if (event.defaultPrevented || event.nativeEvent.isComposing) return;
           if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
             event.preventDefault();
             show();
           } else if (typed(event)) {
-            event.preventDefault();
             const match = typeahead(event.key, selected);
-            const item = match === undefined ? undefined : items[match];
+            if (match === undefined) return;
+            // Only a key that chose something is the Select's: others reach the page's shortcuts.
+            event.preventDefault();
+            const item = items[match];
             if (item && item.value !== String(value)) onChange(item.value);
           }
         }}
@@ -240,6 +249,8 @@ export function Select({
               className="ink-select__list"
               onKeyDown={(event) => {
                 event.stopPropagation();
+                // Keys that compose a character (an input method) choose nothing.
+                if (event.nativeEvent.isComposing) return;
                 if (event.key === 'Escape') {
                   event.preventDefault();
                   close(true);
@@ -278,8 +289,7 @@ export function Select({
             >
               {items.length === 0 && <div className="ink-select__empty">{emptyText}</div>}
               {items.map((item, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: two options may share a value; the list is rebuilt on each render.
-                <div key={index}>
+                <div key={keys[index]}>
                   {item.group && item.group !== items[index - 1]?.group && (
                     <div className="ink-select__group">{item.group}</div>
                   )}
