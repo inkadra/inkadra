@@ -331,7 +331,10 @@ async function main() {
   if (command === 'worker' || command === 'all') {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
     const workers = await startWorkers(config.REDIS_URL, log, {
-      notices: { notify: (boardId, notice) => workerNotices?.notify(boardId, notice) },
+      notices: {
+        notify: (boardId, notice) => workerNotices?.notify(boardId, notice),
+        recheckAccess: () => workerNotices?.recheckAccess(),
+      },
       ...media,
       proxyConcurrency:
         config.VIDEO_PROXY_CONCURRENCY ?? (encoder && encoder.backend !== 'software' ? 2 : 1),

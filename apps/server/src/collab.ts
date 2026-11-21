@@ -543,6 +543,19 @@ export function createCollabServer(deps: {
     });
     return rechecking;
   }
+  /**
+   * A pass that starts after this call, for a role just changed: one already running may have
+   * read the role before the change. Calls during the wait share the same next pass.
+   */
+  let next: Promise<void> | undefined;
+  function recheckNow(server: Server<Context>) {
+    if (!rechecking) return recheck(server);
+    next ??= rechecking.then(() => {
+      next = undefined;
+      return recheck(server);
+    });
+    return next;
+  }
 
   async function recheckAll(server: Server<Context>) {
     const now = new Date();
@@ -1101,7 +1114,7 @@ export function createCollabServer(deps: {
     sizes.total([...server.hocuspocus.documents.values()].filter((d) => whoIsOn(d)));
 
   return Object.assign(server, {
-    recheck: () => recheck(server),
+    recheck: () => recheckNow(server),
     presence,
     boardBytes,
     hasRoom,

@@ -112,6 +112,28 @@ it('keeps a cached viewer and a cached newer-schema document read-only offline',
   expect(connection?.readOnly).toBe(true);
 });
 
+it('reports a role that changed while disconnected as an access change', async () => {
+  const socket = await open('promoted-viewer');
+  await act(async () => socket.onAuthenticated({ scope: 'readonly' }));
+  // The first answer is not a change, even when the role differs from the opening guess.
+  expect(connection?.readOnly).toBe(true);
+  expect(connection?.accessChangedAt).toBeNull();
+  // Promoted while offline: the reconnection, not an `access` message, brings the new role.
+  await act(async () => {
+    socket.onDisconnect();
+    socket.onAuthenticated({ scope: 'read-write' });
+  });
+  expect(connection?.readOnly).toBe(false);
+  const changed = connection?.accessChangedAt;
+  expect(changed).not.toBeNull();
+  // The same role again is no change.
+  await act(async () => {
+    socket.onDisconnect();
+    socket.onAuthenticated({ scope: 'read-write' });
+  });
+  expect(connection?.accessChangedAt).toBe(changed);
+});
+
 it("does not reuse another signed-in person's cached document or role", async () => {
   const socket = await open('private-board');
   await act(async () => {

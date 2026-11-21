@@ -34,6 +34,7 @@ import {
 import { mergeInvitedRole, readExpiry, widensEnd } from '../access-expiry.ts';
 import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
+import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { board, boardGrant, invitation, project, projectMember, user } from '../db/schema.ts';
@@ -65,6 +66,7 @@ interface Deps {
   db: Database;
   auth: Auth;
   mailer: Mailer;
+  notices?: BoardNotifier;
 }
 
 const BoardParams = z.object({ boardId: Id });
@@ -192,6 +194,7 @@ async function rootBoardId(db: Database, projectId: string): Promise<string> {
 
 export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, mailer } = deps;
+  const notices = deps.notices ?? noNotices;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const seal = sealer(config.AUTH_SECRET, 'invitation', config.AUTH_SECRET_PREVIOUS);
   const previewLimiter = new RateLimiter(30, 60_000, 'sharing-routes:previewLimiter');
@@ -359,7 +362,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
     const { board: found } = await checkGrant(db, actor, boardId, userId, role);
-    return db.transaction(async (tx) => {
+    const saved = await db.transaction(async (tx) => {
       await lockGrant(tx, actor.id, userId, found.projectId);
       const [still] = await tx.select({ id: user.id }).from(user).where(eq(user.id, userId));
       if (!still) throw new HttpError('not_found', 'User not found.');
@@ -406,6 +409,9 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       // The answer is read before the commit: their deletion may come right after it.
       return entryFor(tx as unknown as Database, boardId, userId);
     });
+    // Their open board follows the new role now, not at the next periodic check.
+    notices.recheckAccess();
+    return saved;
   });
 
   app.delete(v1('/boards/:boardId/grants/:userId'), async (req, reply) => {
@@ -430,6 +436,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         details: { userId, role: removed[0]?.role ?? null },
       });
     });
+    notices.recheckAccess();
     return reply.status(204).send();
   });
 

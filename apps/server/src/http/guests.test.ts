@@ -83,7 +83,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const deps = testDeps(db, log);
-  const notices = { notify: vi.fn() };
+  const notices = { notify: vi.fn(), recheckAccess: vi.fn() };
   let app: Awaited<ReturnType<typeof createApp>>;
   let base = '';
 

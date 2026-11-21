@@ -146,7 +146,7 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
       { boardId: lacks, elementId: 'c', projectId, type: 'file', assetId: other },
     ]);
     const sent: Array<[string, BoardNotice]> = [];
-    await noticeAssetBoards(db, { notify: (b, n) => sent.push([b, n]) }, id);
+    await noticeAssetBoards(db, { notify: (b, n) => sent.push([b, n]), recheckAccess() {} }, id);
     expect(sent).toEqual([[shows, { type: 'asset', assetId: id }]]);
   });
 });

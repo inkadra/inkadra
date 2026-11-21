@@ -12,9 +12,15 @@ import { asset, boardElementIndex } from './db/schema.ts';
  */
 export interface BoardNotifier {
   notify(boardId: string, notice: BoardNotice): void;
+  /**
+   * Checks the open connections against the roles now, after a membership changed, instead of
+   * at the next periodic check (ACCESS_RECHECK_MS): a promoted viewer can edit at once, a removed
+   * member is closed at once.
+   */
+  recheckAccess(): void;
 }
 
-export const noNotices: BoardNotifier = { notify() {} };
+export const noNotices: BoardNotifier = { notify() {}, recheckAccess() {} };
 
 /** Through a collaboration server in the same process (`all`, `collab`). */
 export function directBoardNotifier(collab: CollabServer): BoardNotifier {
@@ -23,6 +29,9 @@ export function directBoardNotifier(collab: CollabServer): BoardNotifier {
       collab.hocuspocus.documents
         .get(boardDocName(boardId))
         ?.broadcastStateless(JSON.stringify(notice));
+    },
+    recheckAccess() {
+      void collab.recheck();
     },
   };
 }

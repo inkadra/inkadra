@@ -708,7 +708,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         log,
         ...deps,
         versions: { ...versions, save: unknown, restore: unknown },
-        notices: { notify: notified },
+        notices: { notify: notified, recheckAccess() {} },
       });
       try {
         for (const path of [
