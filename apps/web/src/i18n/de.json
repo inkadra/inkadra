@@ -2242,8 +2242,9 @@
       "noFreeCrew": "Niemand frei im Team",
       "noFreeCrewHint": "Füg die Person dem Team auf dem Board Produktion hinzu: eine Zeile pro Figur.",
       "performerFailed": "Verknüpfen fehlgeschlagen. Versuch es noch mal.",
-      "performerTaken": "{{name}} wird schon von {{performer}} gespielt.",
-      "performerChanged": "Die Person wurde inzwischen im Team geändert. Versuch es noch mal."
+      "performerTaken": "{{name}} hat schon eine Besetzung ({{performer}}).",
+      "performerChanged": "Die Person wurde inzwischen im Team geändert. Versuch es noch mal.",
+      "playingRole": "Nicht in der Liste, weil ihre Funktion als Figur gilt: {{names}}"
     },
     "shot": {
       "ews": "Supertotale",

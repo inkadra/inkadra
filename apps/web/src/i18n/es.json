@@ -2242,8 +2242,9 @@
       "noFreeCrew": "No hay nadie libre en el equipo",
       "noFreeCrewHint": "Añade al intérprete al equipo del tablero Producción: una fila por personaje.",
       "performerFailed": "No se pudo vincular. Inténtalo de nuevo.",
-      "performerTaken": "{{name}} ya lo interpreta {{performer}}.",
-      "performerChanged": "Mientras tanto alguien cambió a esta persona en el equipo. Inténtalo de nuevo."
+      "performerTaken": "{{name}}: ya tiene intérprete ({{performer}}).",
+      "performerChanged": "Mientras tanto alguien cambió a esta persona en el equipo. Inténtalo de nuevo.",
+      "playingRole": "Fuera de la lista porque su cargo cuenta como personaje: {{names}}"
     },
     "shot": {
       "ews": "Gran plano general",

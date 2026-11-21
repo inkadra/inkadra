@@ -9,6 +9,7 @@ import {
   type CrewCharacter,
   type CrewMember,
   castNameKey,
+  isCast,
   type SearchResult,
 } from '@inkadra/shared';
 import { Button, Icon, IconButton, Input, Select } from '@inkadra/ui';
@@ -486,19 +487,26 @@ export function CastPerformers({
   const [picking, setPicking] = useState<{ name: string; x: number; y: number } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState('');
-  // After a link the focus goes to the name's row: its "Link" again when it failed.
-  const settle = useRef<string | null>(null);
+  // After a link the focus goes to the name's row, once the roster read again has drawn it: its
+  // "Link" again when it failed, else the row. Moved earlier, it would sit on the "Link" that the
+  // new roster takes away and fall to the page.
+  const settle = useRef<{ name: string; roster: unknown } | null>(null);
+  const roster = useRef<unknown>(null);
+  roster.current = crew.items;
   useEffect(() => {
-    const name = settle.current;
+    const pending = settle.current;
+    if (!pending || crew.items === pending.roster) return;
     const row = [...(list.current?.querySelectorAll<HTMLElement>('li') ?? [])].find(
-      (li) => li.dataset.cast === name,
+      (li) => li.dataset.cast === pending.name,
     );
-    if (!row) return;
     settle.current = null;
-    (row.querySelector<HTMLElement>('button') ?? row).focus();
+    (row?.querySelector<HTMLElement>('button') ?? row)?.focus();
   });
   if (!production || !crew.items) return null;
   const free = freePerformers(crew.items, snap.byId, crew.characters);
+  // Cast rows whose role is read as the character they play (decision 0091): not offered, so the
+  // menu says why.
+  const playing = crew.items.filter((m) => !m.character && isCast(m) && !free.includes(m));
   /**
    * The card of a cast name: on this board, else the first of the project (the server lists
    * storyboards first, in a fixed order). This board is read again after the request, so a card
@@ -572,7 +580,7 @@ export function CastPerformers({
             : t('film.frame.performerFailed'),
       );
     } finally {
-      settle.current = name;
+      settle.current = { name, roster: roster.current };
       setBusy(null);
       crew.reload();
     }
@@ -618,13 +626,13 @@ export function CastPerformers({
         ))}
       </ul>
       {problem && (
-        <p className="film-field__hint" role="alert">
+        <p className="ink-field__error" role="alert">
           {problem}
         </p>
       )}
       {picking && (
         <ContextMenu
-          className="menu--canvas"
+          className="menu--canvas menu--performers"
           anchor={anchor}
           x={picking.x}
           y={picking.y}
@@ -633,22 +641,36 @@ export function CastPerformers({
             setPicking(null);
             if (reason !== 'outside') anchor.current?.focus();
           }}
-          items={
-            free.length
-              ? free.map((member) => ({
-                  label: member.role.trim()
+          items={[
+            ...(free.length
+              ? free.map((member) => {
+                  const label = member.role.trim()
                     ? `${member.name} · ${member.role.trim()}`
-                    : member.name,
-                  action: () => void link(picking.name, member),
-                }))
+                    : member.name;
+                  // One line: a long name or role ends in "…", read whole on hover and by name.
+                  return {
+                    label,
+                    content: <span title={label}>{label}</span>,
+                    action: () => void link(picking.name, member),
+                  };
+                })
               : [
                   {
                     label: t('film.frame.noFreeCrew'),
                     disabled: true,
                     hint: t('film.frame.noFreeCrewHint'),
                   },
+                ]),
+            ...(playing.length
+              ? [
+                  {
+                    note: t('film.frame.playingRole', {
+                      names: playing.map((m) => m.name).join(', '),
+                    }),
+                  },
                 ]
-          }
+              : []),
+          ]}
         />
       )}
     </div>

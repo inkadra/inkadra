@@ -171,3 +171,55 @@ it('keeps a long list inside a phone screen and gives the focus back to "Link"',
   );
   expect(document.activeElement).toBe(linkButton());
 });
+
+it('puts the focus on the row once the new roster drew it, not on the "Link" it took away', async () => {
+  let linked = false;
+  vi.spyOn(api, 'put').mockImplementation(async () => {
+    linked = true;
+    return {};
+  });
+  const { host, pick, cards } = await mount();
+  vi.mocked(api.get).mockImplementation(async (path: string) => {
+    const card = cards()[0];
+    const items =
+      linked && card
+        ? [{ ...ada, character: { boardId: 'board', elementId: card.id } }, leo]
+        : [ada, leo];
+    return path.endsWith('/crew') ? { items, nextCursor: null } : { items: [] };
+  });
+  await pick('Ada Prova');
+  await act(async () => {
+    await vi.waitFor(() => expect(host.textContent).toContain('Ada Prova'));
+  });
+  expect(document.activeElement).toBe(host.querySelector('li[data-cast="Marta"]'));
+});
+
+it('says why Cast rows that play their role are not offered', async () => {
+  const { linkButton } = await mount();
+  await act(async () => linkButton()?.click());
+  expect(document.querySelector('.menu__note')?.textContent).toBe('film.frame.playingRole');
+});
+
+it('keeps the list above the phone’s tab bar', async () => {
+  const style = document.createElement('style');
+  style.textContent = '.menu--canvas { position: fixed; }';
+  const nav = document.createElement('nav');
+  nav.className = 'mobile-bottom-nav';
+  vi.spyOn(nav, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 780, 390, 64));
+  document.head.append(style);
+  document.body.append(nav);
+  dispose.push(() => {
+    style.remove();
+    nav.remove();
+  });
+  vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(844);
+  const crew = Array.from({ length: 40 }, (_, n) => ({
+    ...ada,
+    id: crypto.randomUUID(),
+    name: `Person ${n}`,
+    position: n,
+  }));
+  const { linkButton } = await mount({ crew });
+  await act(async () => linkButton()?.click());
+  expect(document.querySelector<HTMLElement>('[role="menu"]')?.style.maxHeight).toBe('764px');
+});

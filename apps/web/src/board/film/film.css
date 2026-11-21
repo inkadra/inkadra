@@ -3007,6 +3007,22 @@ button.moodboard__card:focus-visible {
 .film-performers .film-performers__none {
   color: var(--ink-text-muted);
 }
+/* Phones: every row as tall as the 44 px "Link", linked or not. */
+@media (width < 768px) {
+  .film-performers li {
+    min-height: 44px;
+  }
+}
+/* Who plays a name: one line per person, a long name or role ends in "…" (its title has it all). */
+.menu--performers {
+  max-width: min(320px, calc(100vw - 16px));
+}
+.menu--performers .menu__item > span:not([class]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 
 /* On the canvas the panel's holder is only as wide as the panel: keep it in flow on phones. */
 .canvas__panel > .film-panel {

@@ -2242,8 +2242,9 @@
       "noFreeCrew": "No free person in the crew",
       "noFreeCrewHint": "Add the performer to the crew on the Production board: one row per character.",
       "performerFailed": "Couldn’t link. Try again.",
-      "performerTaken": "{{name}} is already played by {{performer}}.",
-      "performerChanged": "This person was changed in the crew meanwhile. Try again."
+      "performerTaken": "{{name}} already has a performer ({{performer}}).",
+      "performerChanged": "This person was changed in the crew meanwhile. Try again.",
+      "playingRole": "Not listed, their role counts as a character: {{names}}"
     },
     "shot": {
       "ews": "Extreme wide",

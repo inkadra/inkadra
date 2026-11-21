@@ -246,7 +246,8 @@ export const TOURS: Tour[] = [
       { anchor: 'troupe', media: 'crew', side: 'bottom' },
       { anchor: 'troupe-person', media: 'sheet', side: 'left' },
       // Who plays whom: the row's character card, also linked from a frame's Performers (0091).
-      { anchor: 'troupe-character', media: 'cast', side: 'left' },
+      // A card of its own: the card field shows only with a row open.
+      { anchor: null, media: 'cast' },
       { anchor: 'troupe-paste', media: 'crew', side: 'left' },
       // Where the roster is used: the day's calls and the call sheet (0092).
       { anchor: null, media: 'calendar' },

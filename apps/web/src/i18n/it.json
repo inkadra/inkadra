@@ -2242,8 +2242,9 @@
       "noFreeCrew": "Nessuna persona libera in Troupe",
       "noFreeCrewHint": "Aggiungi l’interprete nella Troupe della board Produzione: una riga per personaggio.",
       "performerFailed": "Collegamento non riuscito. Riprova.",
-      "performerTaken": "{{name}} è già interpretato da {{performer}}.",
-      "performerChanged": "Nel frattempo questa persona è stata modificata nella Troupe. Riprova."
+      "performerTaken": "{{name}}: c’è già un interprete ({{performer}}).",
+      "performerChanged": "Nel frattempo questa persona è stata modificata nella Troupe. Riprova.",
+      "playingRole": "Fuori elenco perché il ruolo vale come personaggio: {{names}}"
     },
     "shot": {
       "ews": "Campo lunghissimo",

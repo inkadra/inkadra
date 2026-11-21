@@ -436,10 +436,11 @@ function Scene({ id }: { id: MediaId }): ReactNode {
           style={{ top: 14 + i * 36, ...delay(i * 0.2) }}
         >
           <span className="tm-avatar">{['AP', 'LR', 'GB'][i]}</span>
-          <i className="tm-line" />
+          {/* The department before the line: the card's Skip sits over the right of the top row. */}
           <span className="tm-chip" style={kindStyle('troupe')}>
             {t(`tutorial.media.department${i}`)}
           </span>
+          <i className="tm-line" />
         </div>
       ));
     case 'cast':

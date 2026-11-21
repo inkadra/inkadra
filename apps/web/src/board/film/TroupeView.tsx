@@ -6,6 +6,7 @@ import {
   CrewMemberInput,
   canMergeCrew,
   castNameKey,
+  castPerformer,
 } from '@inkadra/shared';
 import {
   Avatar,
@@ -600,7 +601,7 @@ function CrewPanel({
           ))}
         </datalist>
         {field('role')}
-        <div className="troupe__field" data-tour="troupe-character">
+        <div className="troupe__field">
           <span id={`${id}-character`}>
             {t('troupe.characterLabel')} <small>· {t('troupe.optionalTag')}</small>
           </span>
@@ -610,8 +611,10 @@ function CrewPanel({
                 <>
                   <strong>{linked.name}</strong>
                   <small>
-                    {t('troupe.actor')}: {linked.actor || '—'} · {t('troupe.contact')}:{' '}
-                    {linked.contact || '—'}
+                    {t('troupe.actor')}:{' '}
+                    {castPerformer(linked.name, { ...row, ...draft }, undefined, [linked])
+                      .performer || '—'}{' '}
+                    · {t('troupe.contact')}: {linked.contact || '—'}
                   </small>
                 </>
               ) : (

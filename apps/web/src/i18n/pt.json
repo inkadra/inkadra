@@ -2242,8 +2242,9 @@
       "noFreeCrew": "Ninguém livre na equipe",
       "noFreeCrewHint": "Adicione o intérprete à equipe do quadro Produção: uma linha por personagem.",
       "performerFailed": "Não foi possível vincular. Tente novamente.",
-      "performerTaken": "{{name}} já é interpretado por {{performer}}.",
-      "performerChanged": "Enquanto isso, esta pessoa foi alterada na equipe. Tente novamente."
+      "performerTaken": "{{name}}: já tem intérprete ({{performer}}).",
+      "performerChanged": "Enquanto isso, esta pessoa foi alterada na equipe. Tente novamente.",
+      "playingRole": "Fora da lista porque a função conta como personagem: {{names}}"
     },
     "shot": {
       "ews": "Grande plano geral",

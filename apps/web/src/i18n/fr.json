@@ -2242,8 +2242,9 @@
       "noFreeCrew": "Personne de libre dans l’équipe",
       "noFreeCrewHint": "Ajoutez l’interprète à l’équipe du tableau Production : une ligne par personnage.",
       "performerFailed": "Liaison impossible. Réessayez.",
-      "performerTaken": "{{name}} est déjà joué par {{performer}}.",
-      "performerChanged": "Cette personne a été modifiée dans l’équipe entre-temps. Réessayez."
+      "performerTaken": "{{name}} : a déjà un interprète ({{performer}}).",
+      "performerChanged": "Cette personne a été modifiée dans l’équipe entre-temps. Réessayez.",
+      "playingRole": "Hors liste, car leur poste compte comme personnage : {{names}}"
     },
     "shot": {
       "ews": "Plan général",
