@@ -100,7 +100,7 @@
     "message": "Nessuna board scelta"
   },
   "boards_none": {
-    "message": "Nessuna board in cui puoi aggiungere carte."
+    "message": "Nessuna board in cui puoi aggiungere card."
   },
   "boards_none_found": {
     "message": "Nessuna board trovata."
@@ -175,7 +175,7 @@
     "message": "L’accesso è stato revocato o è scaduto: riconnetti il clipper."
   },
   "error_forbidden": {
-    "message": "Non hai il permesso di aggiungere carte a questa board."
+    "message": "Non hai il permesso di aggiungere card a questa board."
   },
   "error_not_found": {
     "message": "La board non esiste più o non è più condivisa con te."
