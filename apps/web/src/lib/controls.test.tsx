@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import {
+  Avatar,
   Checkbox,
   ChoiceTile,
   DateField,
@@ -7,6 +8,7 @@ import {
   RadioGroup,
   Segmented,
   Switch,
+  TextField,
   TooltipProvider,
 } from '@inkadra/ui';
 import { act, useState } from 'react';
@@ -460,7 +462,7 @@ it('keeps the desktop panel within a viewport with no space on either side', asy
     await act(async () => host.querySelector('input')?.click());
     expect(
       (host.querySelector('.ink-date__layer') as HTMLElement).style.getPropertyValue(
-        '--ink-date-top',
+        '--ink-layer-top',
       ),
     ).toBe('8px');
   } finally {
@@ -468,4 +470,43 @@ it('keeps the desktop panel within a viewport with no space on either side', asy
     height.mockRestore();
     viewport.mockRestore();
   }
+});
+
+it('names an avatar after the person once, and hides it where the name is written beside it', async () => {
+  vi.useFakeTimers();
+  await act(async () =>
+    root.render(
+      <TooltipProvider>
+        <Avatar name="Carla Rossi" image="/carla.png" />
+        <Avatar name="Carla Rossi" decorative />
+      </TooltipProvider>,
+    ),
+  );
+  const [named, decorative] = host.querySelectorAll<HTMLElement>('.ink-avatar');
+  expect(named?.getAttribute('role')).toBe('img');
+  expect(named?.getAttribute('aria-label')).toBe('Carla Rossi');
+  expect(named?.querySelector('img')?.getAttribute('alt')).toBe('');
+  expect(decorative?.getAttribute('aria-hidden')).toBe('true');
+  expect(decorative?.hasAttribute('role')).toBe(false);
+  named?.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+  await act(async () => vi.advanceTimersByTime(400));
+  expect(document.getElementById('ink-tooltip-layer')?.textContent).toBe('Carla Rossi');
+  // The tooltip repeats the name: it is not announced again as a description.
+  expect(named?.hasAttribute('aria-describedby')).toBe(false);
+});
+
+it('keeps the label and the error on a text field given its own id and description', async () => {
+  await act(async () =>
+    root.render(
+      <>
+        <span id="hint">Hint</span>
+        <TextField label="Email" id="email" aria-describedby="hint" error="Wrong" />
+      </>,
+    ),
+  );
+  const input = host.querySelector('input') as HTMLInputElement;
+  expect(input.id).toBe('email');
+  expect(host.querySelector('label')?.htmlFor).toBe('email');
+  expect(input.getAttribute('aria-describedby')).toBe('hint email-error');
+  expect(document.getElementById('email-error')?.textContent).toBe('Wrong');
 });

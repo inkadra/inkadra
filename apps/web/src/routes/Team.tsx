@@ -252,7 +252,7 @@ export function Team() {
                       }
                     >
                       <td className="team-col--who">
-                        <Avatar name={m.name} image={m.image} size={32} />
+                        <Avatar decorative name={m.name} image={m.image} size={32} />
                         <span className="settings-row__text">
                           <span className="settings-row__label">
                             <span className="team-member__name" title={m.name}>

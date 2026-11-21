@@ -105,3 +105,61 @@ it('titles the sheet with the field label and closes on a backdrop tap, back on 
   expect(document.activeElement).toBe(host.querySelector('button'));
   expect(new FormData(host.querySelector('form')!).get('choice')).toBe('a');
 });
+
+it('chooses by typing while closed, like a native select, without opening', async () => {
+  await key('c');
+  expect(host.querySelector('button')?.getAttribute('aria-expanded')).toBe('false');
+  expect(new FormData(host.querySelector('form')!).get('choice')).toBe('c');
+  // A disabled option is never chosen by typing.
+  await key('b');
+  expect(new FormData(host.querySelector('form')!).get('choice')).toBe('c');
+});
+
+it('names the list once, lists options sharing a value, and stays still while its list scrolls', async () => {
+  const rect = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue({ top: 100, bottom: 130, left: 20, width: 120 } as DOMRect);
+  try {
+    await act(async () =>
+      root.render(
+        <Select
+          aria-label="Twins"
+          value="x"
+          onChange={() => {}}
+          options={[
+            { value: 'x', label: 'One' },
+            { value: 'x', label: 'Two' },
+          ]}
+        />,
+      ),
+    );
+    await act(async () => host.querySelector('button')?.click());
+    const list = host.querySelector('[role="listbox"]') as HTMLElement;
+    expect(list.hasAttribute('aria-label')).toBe(false);
+    expect(list.getAttribute('aria-labelledby')).toBe(host.querySelector('button')?.id);
+    expect([...list.querySelectorAll('[role="option"]')].map((o) => o.textContent)).toEqual([
+      'One',
+      'Two',
+    ]);
+    const layer = host.querySelector('.ink-select__layer') as HTMLElement;
+    expect(layer.style.getPropertyValue('--ink-layer-top')).toBe('138px');
+    rect.mockReturnValue({ top: 300, bottom: 330, left: 20, width: 120 } as DOMRect);
+    list.dispatchEvent(new Event('scroll'));
+    expect(layer.style.getPropertyValue('--ink-layer-top')).toBe('138px');
+    document.dispatchEvent(new Event('scroll'));
+    expect(layer.style.getPropertyValue('--ink-layer-top')).toBe('338px');
+  } finally {
+    rect.mockRestore();
+  }
+});
+
+it('opens nothing with no options and no empty text', async () => {
+  await act(async () => root.render(<Select aria-label="None" value="" onChange={() => {}} />));
+  await act(async () => host.querySelector('button')?.click());
+  expect(host.querySelector('.ink-select__layer')).toBeNull();
+  await act(async () =>
+    root.render(<Select aria-label="None" value="" onChange={() => {}} emptyText="Nothing yet" />),
+  );
+  await act(async () => host.querySelector('button')?.click());
+  expect(host.querySelector('.ink-select__empty')?.textContent).toBe('Nothing yet');
+});

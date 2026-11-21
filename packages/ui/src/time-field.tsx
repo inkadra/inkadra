@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { cx } from './cx.ts';
 import { Icon } from './icons.tsx';
 import { anchorLayer } from './layer.ts';
 import {
@@ -21,7 +22,6 @@ import {
   typeDigit,
 } from './time.ts';
 
-const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /**

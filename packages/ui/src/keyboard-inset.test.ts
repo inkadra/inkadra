@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keyboardInset } from './components.tsx';
+import { keyboardInset } from './dialog.tsx';
 
 describe('keyboardInset', () => {
   it('adds the safe area Android Chrome drops under the keyboard', () => {

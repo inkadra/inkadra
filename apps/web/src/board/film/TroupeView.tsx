@@ -392,7 +392,7 @@ function CrewRow({
         onClick={() => onOpen()}
       >
         <strong>
-          <Avatar name={row.name} image={row.account?.image} size={22} />
+          <Avatar decorative name={row.name} image={row.account?.image} size={22} />
           <span>{row.name}</span>
         </strong>
         <span className="troupe__role">
@@ -685,6 +685,7 @@ function CrewPanel({
           {draft.userId ? (
             <div className="troupe__linkcard">
               <Avatar
+                decorative
                 name={row.account?.name ?? accountQuery}
                 image={row.account?.image}
                 size={22}

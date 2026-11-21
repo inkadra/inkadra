@@ -241,7 +241,12 @@ function PhoneNote({
             <span className="note-phone__typing" aria-live="polite">
               {writers[0] && (
                 <>
-                  <Avatar name={writers[0].user.name} image={writers[0].user.image} size={24} />
+                  <Avatar
+                    decorative
+                    name={writers[0].user.name}
+                    image={writers[0].user.image}
+                    size={24}
+                  />
                   {writers.length === 1
                     ? t('board.note.typingOne', { name: writers[0].user.name })
                     : t('board.note.typingMany', {

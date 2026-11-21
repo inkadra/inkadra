@@ -1090,7 +1090,7 @@ export function MediaViewer({
                   const name = authorName(th.author) ?? t('comments.deletedAuthor');
                   return (
                     <div key={th.id} className="viewer__comment-card">
-                      <Avatar name={name} size={20} />
+                      <Avatar decorative name={name} size={20} />
                       <div className="viewer__comment-content">
                         <strong className="viewer__comment-author">{name}</strong>
                         <p className="viewer__comment-text">{editableText(th)}</p>
