@@ -302,10 +302,15 @@
   flex-wrap: wrap;
   gap: 6px;
 }
-/* Beside the Type label, on its line. */
+/* A floated legend is the first row of the flex box, so Manage types can sit on its line. */
+.project-setup__choices > legend {
+  float: left;
+  flex-basis: 100%;
+  margin-bottom: 1px;
+}
 .project-setup__manage {
   position: absolute;
-  top: -2px;
+  top: 0;
   right: 0;
   font-size: 11.5px;
   color: var(--ink-accent-soft-fg);
@@ -313,6 +318,13 @@
 }
 .project-setup__manage:hover {
   text-decoration: underline;
+}
+/* A finger gets a taller target without moving the line. */
+@media (pointer: coarse) {
+  .project-setup__manage {
+    top: -12px;
+    padding: 12px 0 12px 12px;
+  }
 }
 .project-setup__manage:focus-visible {
   border-radius: var(--ink-radius-xs);
