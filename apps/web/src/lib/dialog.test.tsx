@@ -168,6 +168,15 @@ it('lets an outside press on empty space close a menu without reaching what is b
   control.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
   expect(menuClosed).toHaveBeenCalledTimes(2);
   expect(seen).toHaveBeenCalledTimes(2);
+  // So does the first drag of a slider, such as the video player's timeline.
+  const timeline = document.createElement('div');
+  timeline.setAttribute('role', 'slider');
+  timeline.addEventListener('pointerdown', seen);
+  document.body.append(timeline);
+  disposals.push(() => timeline.remove());
+  timeline.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+  expect(menuClosed).toHaveBeenCalledTimes(3);
+  expect(seen).toHaveBeenCalledTimes(3);
 });
 
 it('asks before closing a dirty dialog from the backdrop, and Keep editing stays', async () => {
