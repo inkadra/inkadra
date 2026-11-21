@@ -88,7 +88,7 @@ it('drops images between two frames as one new frame each, and not for a read-on
     expect(started.map((u) => u.file.name)).toEqual(['a.png', 'b.jpg']);
     expect(host.querySelectorAll('.story__tile.is-drop')).toHaveLength(0);
     // Not an image: said in a toast, no upload.
-    expect(host.querySelector('.toast')?.textContent).toBe('film.drop.notImage');
+    expect(host.querySelector('.ink-toast')?.textContent).toBe('film.drop.notImage');
     started[0]?.onAsset('asset-a');
     started[1]?.onAsset('asset-b');
     expect(frames().map((f) => f.assetId)).toEqual([undefined, 'asset-a', 'asset-b', undefined]);
@@ -208,7 +208,7 @@ it('keeps an omitted scene in place, hides it on request, restores or deletes it
       button('film.scene.deleteAll')?.click();
       await new Promise((r) => setTimeout(r, 0));
     });
-    expect(host.querySelector('.toast')?.textContent).toBe('film.scene.deleteFailed');
+    expect(host.querySelector('.ink-toast')?.textContent).toBe('film.scene.deleteFailed');
     expect(listElements(doc)).toHaveLength(5);
     post.mockResolvedValueOnce({});
     await act(async () => button('film.scene.menu')?.click());

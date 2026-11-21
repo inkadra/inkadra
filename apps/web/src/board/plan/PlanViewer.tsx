@@ -9,7 +9,7 @@ import {
   variantView,
 } from '@inkadra/canvas-core';
 import type { PlanIcon } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton, Tabs } from '@inkadra/ui';
+import { Button, Icon, IconButton, Tabs, Toast } from '@inkadra/ui';
 import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -25,7 +25,6 @@ import { ExportCache } from '../export/cache.ts';
 import type { ExportEnv } from '../export/engine.ts';
 import { sheetInclude } from '../export/plan-sheet.ts';
 import type { BoardStore } from '../store.ts';
-import { Toast } from '../Toast.tsx';
 import { foldIcons } from './elements.ts';
 import { kitList, powerLines } from './kit.ts';
 import { planTitle } from './PlanCard.tsx';

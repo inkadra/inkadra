@@ -1,8 +1,7 @@
 import type { CalendarFeed } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Icon, Input } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, Input, Toast } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Toast } from '../board/Toast.tsx';
 import { api, RequestError } from '../lib/api.ts';
 import { useModules } from '../lib/modules.ts';
 import { Card, Row, useIsPhone } from '../routes/settings-ui.tsx';

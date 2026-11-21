@@ -132,7 +132,10 @@ export function commandFor(e: KeyInput, mac = isMac()): Command | null {
   return null;
 }
 
-/** True when the key belongs to an open dialog. */
+/**
+ * True when the key belongs to an open dialog, or to a menu it was pressed in: the menu walks
+ * its items, and a key it has no use for (Delete, ⌘Z) never acts on the board behind it.
+ */
 export function insideDialog(target?: EventTarget | null): boolean {
   if (typeof document === 'undefined') return false;
   return (
@@ -140,7 +143,8 @@ export function insideDialog(target?: EventTarget | null): boolean {
     Boolean(document.querySelector('dialog:modal')) ||
     // The Inbox covers the page: it stays mounted, but no key reaches a board nobody can see.
     Boolean(document.querySelector('.view-stage[inert]')) ||
-    (target instanceof HTMLElement && Boolean(target.closest('dialog[open], [role="dialog"]')))
+    (target instanceof Element &&
+      Boolean(target.closest('dialog[open], [role="dialog"], [role="menu"]')))
   );
 }
 
@@ -159,4 +163,17 @@ export function isTyping(target: EventTarget | null): boolean {
 /** Space belongs to focused controls; only the canvas background starts panning. */
 export function canSpacePan(target: EventTarget | null): boolean {
   return !isTyping(target) && !(target instanceof Element && target.closest('button'));
+}
+
+/** Elements that take the focus: a menu opened on one gives the focus back to it. */
+export const FOCUSABLE =
+  'button, a[href], input, textarea, select, [tabindex], [contenteditable="true"]';
+
+/**
+ * Gives the focus back to `origin`, where a menu was opened, when it is still in the page and
+ * inside `surface`; otherwise to `surface` (the board), so the keyboard never lands on the page.
+ */
+export function focusBack(origin: HTMLElement | null, surface: HTMLElement | null) {
+  const target = origin?.isConnected && surface?.contains(origin) ? origin : surface;
+  target?.focus({ preventScroll: true });
 }

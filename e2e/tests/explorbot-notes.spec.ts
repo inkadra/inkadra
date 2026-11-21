@@ -8,7 +8,7 @@ import * as Y from 'yjs';
 import { pushBoardDoc, signIn } from './perf/seed.ts';
 
 const account = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
-const TOAST = '.toast:not(.ink-motion-exit)';
+const TOAST = '.ink-toast:not(.ink-motion-exit)';
 
 let existingId: string;
 

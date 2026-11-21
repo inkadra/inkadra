@@ -349,6 +349,7 @@
     },
     "toolbar": "Añadir",
     "contextBar": "Acciones de la selección",
+    "contextMenu": "Acciones del tablero",
     "minimap": "Minimapa: haz clic para ir allí",
     "dropFiles": "Suelta para subir",
     "undo": "Deshacer",

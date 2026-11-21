@@ -49,7 +49,6 @@ vi.mock('../assets.ts', () => ({
 vi.mock('../connection.ts', () => ({ collabUrl: () => '' }));
 vi.mock('../chrome.tsx', () => ({
   UploadPanel: () => null,
-  Toast: ({ text }: { text: string }) => <output className="toast">{text}</output>,
   ContextMenu: ({ items }: { items: Array<{ label?: string; action?: () => void }> }) => (
     <div role="menu">
       {items
@@ -437,7 +436,7 @@ it('sends pictures to the storyboard as frames, keeps the references and skips c
     parent: null,
   });
   expect(store.getSnapshot().byId.has(picture.id)).toBe(true);
-  expect(host.querySelector('.toast')?.textContent).toBe('moodboard.sent');
+  expect(host.querySelector('.ink-toast')?.textContent).toBe('moodboard.sent');
 });
 
 it('asks which storyboard when the project has several, and sends there (decision 0121)', async () => {
