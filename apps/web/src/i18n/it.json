@@ -329,7 +329,7 @@
       "hint": "Crea una board",
       "more": "Altro",
       "newBoard": "Nuova board",
-      "screenplay": "Importa un copione…",
+      "screenplay": "Importa una sceneggiatura…",
       "desc": {
         "board": "Spazio libero per note, immagini e file.",
         "moodboard": "Riferimenti in gruppi, con palette.",
@@ -593,7 +593,7 @@
         "canvas": "Lavagna vuota.",
         "moodboard": "Ancora nessun riferimento.",
         "storyboard": "Ancora nessuna inquadratura.",
-        "shotlist": "Lo shot list si riempie con le inquadrature dello storyboard.",
+        "shotlist": "La shot list si riempie con le inquadrature dello storyboard.",
         "review": "Ancora niente da rivedere.",
         "schedule": "Ancora nessuna giornata di riprese.",
         "troupe": "Ancora nessuno in troupe.",
@@ -621,7 +621,7 @@
     "colors": {
       "none": "Nessun colore",
       "blue": "Blu",
-      "orange": "Arancio",
+      "orange": "Arancione",
       "purple": "Viola",
       "green": "Verde"
     },
@@ -901,7 +901,7 @@
         "array": "Batteria di par",
         "cyc": "Luce da limbo",
         "balloon": "Pallone luminoso",
-        "coop": "Box dall'alto",
+        "coop": "Box dall’alto",
         "wendy": "Wendy",
         "sun": "Sole",
         "moon": "Luna",
@@ -944,7 +944,7 @@
         "boomarm": "Giraffa luce",
         "polecat": "Asta telescopica",
         "rig": "Americana",
-        "goalpost": "Porta da calcio",
+        "goalpost": "Goal post",
         "clamp": "Morsetto",
         "sandbag": "Sacco di sabbia",
         "applebox": "Apple box",
@@ -1082,15 +1082,15 @@
         "tube": "tubo led, neon, astera",
         "kino": "kino, kinoflo, banco",
         "lantern": "china, chinese lantern, pallone, sfera",
-        "space": "pallone, luce dall'alto",
+        "space": "pallone, luce dall’alto",
         "softlight": "luce morbida, morbida",
         "ring": "anello, ringlight",
         "bulb": "lampadina nuda, lampada",
         "skypan": "sky pan, luce diffusa grande",
         "array": "maxi brute, dino, batteria",
         "cyc": "limbo, ciclorama, fondale",
-        "balloon": "pallone, airstar, luce dall'alto",
-        "coop": "chicken coop, box, griglia dall'alto",
+        "balloon": "pallone, airstar, luce dall’alto",
+        "coop": "chicken coop, box, griglia dall’alto",
         "wendy": "wendy, luce grande",
         "sun": "luce naturale, sole, giorno",
         "moon": "notte, chiaro di luna",
@@ -1106,7 +1106,7 @@
         "softbox": "bank, luce morbida, diffusore",
         "octa": "octa, ottagonale",
         "para": "parabola, ombrello",
-        "grid": "griglia, nido d'ape",
+        "grid": "griglia, nido d’ape",
         "barn": "alette, bandiere",
         "snoot": "cono, tubo",
         "gel": "filtro, cto, ctb, colore",
@@ -1245,7 +1245,7 @@
       "groups": {
         "hard": "Luci dure",
         "soft": "Morbide e LED",
-        "large": "Grandi e dall'alto",
+        "large": "Grandi e dall’alto",
         "natural": "Naturali e di scena",
         "modifiers": "Sulla luce",
         "cut": "Tagliare e sagomare",
@@ -1480,7 +1480,7 @@
       "kitForSetup": "Materiale di questo setup",
       "kitPillLabel": "Materiale: {{items}} elementi, {{power}}",
       "layer": "Livello",
-      "lensFollows": "L’obiettivo segue l’inquadratura. Se lo cambi qui, la pianta tiene il suo valore.",
+      "lensFollows": "L’ottica segue l’inquadratura. Se la cambi qui, la pianta tiene il suo valore.",
       "lensInFrame": "{{mm}} mm nell’inquadratura",
       "lib": {
         "alsoCalled": "Detto anche: {{names}}",
@@ -1652,7 +1652,7 @@
         "today": "Oggi",
         "shootDay": "Giorno {{n}} delle riprese",
         "otherDate": "Un’altra data…",
-        "dayGone": "Il giorno di ripresa è stato tolto dal piano di lavorazione: la pianta tiene la sua ultima data.",
+        "dayGone": "Il giorno di riprese è stato tolto dal piano riprese: la pianta tiene la sua ultima data.",
         "from": {
           "north": "Da nord",
           "northEast": "Da nord-est",
@@ -1784,9 +1784,9 @@
         "labelPlaceholder": "es. Muro della cucina",
         "kind": "Tipo di apertura",
         "fromCorners": "a {{before}} e {{after}} dagli angoli",
-        "openingWidth": "Larghezza dell'apertura",
+        "openingWidth": "Larghezza dell’apertura",
         "flip": "Gira lato",
-        "swing": "Apri dall'altro lato",
+        "swing": "Apri dall’altro lato",
         "doorHint": "Trascinala lungo il muro per spostarla.",
         "wall": "Muro",
         "wallSummary_one": "{{count}} lato · {{length}}",
@@ -1796,8 +1796,8 @@
       "background": {
         "button": "Sfondo",
         "title": "Immagine di sfondo",
-        "uploading": "Caricamento dell'immagine…",
-        "failed": "Non è stato possibile caricare l'immagine. Riprova.",
+        "uploading": "Caricamento dell’immagine…",
+        "failed": "Non è stato possibile caricare l’immagine. Riprova.",
         "picture": "Immagine",
         "opacity": "Opacità",
         "grey": "In grigi",
@@ -1807,9 +1807,9 @@
         "replace": "Sostituisci",
         "remove": "Rimuovi",
         "empty": "Una pianta o una foto del sopralluogo, sotto il disegno, da ricalcare.",
-        "choose": "Scegli un'immagine",
-        "placing": "Trascina l'immagine per spostarla, un angolo per scalarla",
-        "edit": "Impostazioni dell'immagine di sfondo",
+        "choose": "Scegli un’immagine",
+        "placing": "Trascina l’immagine per spostarla, un angolo per scalarla",
+        "edit": "Impostazioni dell’immagine di sfondo",
         "showIt": "Mostra lo sfondo",
         "hideIt": "Nascondi lo sfondo"
       },
@@ -1827,11 +1827,11 @@
         "draw": "Disegna i muri",
         "drawText": "Clicca angolo per angolo, scrivi le lunghezze.",
         "drawGo": "Disegna i muri",
-        "trace": "Ricalca un'immagine",
+        "trace": "Ricalca un’immagine",
         "traceText": "Una pianta o una foto del sopralluogo, sotto il disegno.",
-        "traceGo": "Scegli un'immagine",
+        "traceGo": "Scegli un’immagine",
         "scan": "Scansiona la stanza",
-        "scanText": "Con l'app per il telefono, quando sarà pronta.",
+        "scanText": "Con l’app per il telefono, quando sarà pronta.",
         "ready": "Oppure una stanza pronta",
         "rooms": {
           "rect": "Rettangolo",
@@ -1928,7 +1928,7 @@
       "appearance": "Aspetto",
       "rows": "Righe",
       "columns": "Colonne",
-      "cardColor": "Colore scheda",
+      "cardColor": "Colore card",
       "addRow": "Aggiungi riga",
       "addColumn": "Aggiungi colonna",
       "lists": "Liste",
@@ -2028,7 +2028,7 @@
     "size": "Dimensioni",
     "fields": {
       "camera": "Fotocamera",
-      "lens": "Obiettivo",
+      "lens": "Ottica",
       "focal": "Focale",
       "aperture": "Diaframma",
       "shutter": "Tempo",
@@ -2104,8 +2104,8 @@
       "element": "Elemento"
     },
     "inProject": "in {{project}}",
-    "tagCardCount_one": "{{count}} scheda",
-    "tagCardCount_other": "{{count}} schede",
+    "tagCardCount_one": "{{count}} card",
+    "tagCardCount_other": "{{count}} card",
     "tagSuggestions": "Tag suggeriti",
     "noTags": "Nessun tag corrispondente",
     "actions": "Azioni"
@@ -2171,9 +2171,9 @@
       "hideOmitted": "Nascondi le scene omesse",
       "menu": "Menu della scena {{number}}",
       "omittedHeading": "Scena {{number}}, omessa",
-      "notInScript": "Non nel copione",
+      "notInScript": "Non nella sceneggiatura",
       "restore": "Ripristina la scena",
-      "restoreHint": "Torna nella shot list e nel piano di ripresa",
+      "restoreHint": "Torna nella shot list e nel piano riprese",
       "deleteAll": "Elimina scena e inquadrature",
       "deleteAllHint": "Prima si salva una versione",
       "deleteVersion": "Prima di eliminare la scena {{number}}",
@@ -2192,7 +2192,7 @@
       "location": "Luogo",
       "cast": "Personaggi",
       "castHint": "Separati da virgole",
-      "lens": "Obiettivo",
+      "lens": "Ottica",
       "shot": "Campo",
       "angle": "Angolazione",
       "movement": "Movimento",
@@ -2221,7 +2221,7 @@
       "castNone": "Nessun personaggio con questo nome.",
       "moveImage": "Metti in un’inquadratura…",
       "inserted": "Immagine inserita in {{label}}",
-      "insertedKept": "Immagine inserita in {{label}}. La scheda resta sulla lavagna: ha disegno, ritaglio, rotazione o didascalia.",
+      "insertedKept": "Immagine inserita in {{label}}. La card resta sulla lavagna: ha disegno, ritaglio, rotazione o didascalia.",
       "dropReplace": "Rilascia per sostituire l’immagine",
       "dropDrawingStays": "Il disegno resta",
       "dropBecomes": "Rilascia: diventa l’inquadratura {{label}}",
@@ -2971,8 +2971,8 @@
       "reviewStatus": "ha cambiato la revisione in «{{status}}»",
       "invitation_accepted": "ha accettato il tuo invito",
       "unknown": "ha fatto qualcosa",
-      "export_ready": "L'esportazione del progetto è pronta da scaricare",
-      "import_ready": "L'importazione del progetto è terminata",
+      "export_ready": "L’esportazione del progetto è pronta da scaricare",
+      "import_ready": "L’importazione del progetto è terminata",
       "access_expiring": "L’accesso di {{name}} scade il {{date}}",
       "access_expiringOwn": "Il tuo accesso scade il {{date}}",
       "access_expired": "L’accesso di {{name}} è scaduto",
@@ -3009,7 +3009,7 @@
     "reviewStatus": "Revisione",
     "filter": "Filtro inbox",
     "openInbox": "Apri inbox",
-    "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altro per cercare tra le notifiche precedenti.",
+    "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altre per cercare tra le notifiche precedenti.",
     "openInBoard": "Apri nella board",
     "markResolved": "Segna come risolto",
     "markReopen": "Riapri",
@@ -3017,7 +3017,7 @@
     "statusResolved": "Risolto",
     "internalNote": "Nota interna",
     "visibleToClient": "Anche ospiti",
-    "otherComments": "Altri commenti su questo frame",
+    "otherComments": "Altri commenti su questa inquadratura",
     "detailEmptyTitle": "Scegli una notifica",
     "detailEmptyHint": "La apri qui, con il contesto e le risposte.",
     "replyPlaceholder": "Rispondi, @ per menzionare…",
@@ -3146,7 +3146,7 @@
       "body": "Elimina l’account e i progetti in cui non c’è nessun altro. Non si può annullare.",
       "open": "Elimina account…",
       "confirmTitle": "Eliminare l’account?",
-      "confirmBody": "I progetti in cui sei da solo vengono eliminati con tutti i file. Nei progetti condivisi resta il lavoro, senza di te. I file eliminati restano nei backup del server finché escono dalla conservazione dei backup (7 backup notturni di default, al massimo 91 giorni).",
+      "confirmBody": "I progetti in cui sei da solo vengono eliminati con tutti i file. Nei progetti condivisi resta il lavoro, senza di te. I file eliminati restano nei backup del server finché non escono dalla conservazione dei backup (7 backup notturni di default, al massimo 91 giorni).",
       "fresh": "Per sicurezza, l’accesso deve essere avvenuto negli ultimi 15 minuti: se serve, esci e rientra.",
       "blocked": "Sei l’unico proprietario di questi progetti condivisi: nomina un altro proprietario prima.",
       "confirm": "Elimina definitivamente"
@@ -3235,7 +3235,7 @@
     "noteWords_other": "{{count}} parole",
     "editOnCanvas": "Modifica sulla board",
     "demo": "Demo · non salvato",
-    "callSheet": "Foglio di lavorazione",
+    "callSheet": "Ordine del giorno",
     "scheduleUnavailable": "La pianificazione non è ancora collegata a un servizio di salvataggio. Le prove di trascinamento sono locali e si perdono chiudendo la vista. Nessuna data è stata pianificata.",
     "noShots": "Nessuna inquadratura in questa board.",
     "draftSlot": "Prova di pianificazione locale",
@@ -3323,7 +3323,7 @@
     "castPlaceholder": "Aggiungi un nome",
     "departmentsPlaceholder": "Reparto: nota",
     "removeToken": "Rimuovi {{name}}",
-    "pickDay": "Giorni di ripresa",
+    "pickDay": "Giorni di riprese",
     "now": "Ora {{time}}",
     "addDayShort": "Giorno di riprese",
     "addBlockShort": "Blocco",
@@ -3466,7 +3466,7 @@
     "addImage": "Carica immagini",
     "addLink": "Incolla un link",
     "addColor": "Aggiungi un colore",
-    "noPreview": "Nessuna anteprima trovata per quel link. È sulla board e compare qui quando ha un'immagine.",
+    "noPreview": "Nessuna anteprima trovata per quel link. È sulla board e compare qui quando ha un’immagine.",
     "filter": "Filtra i riferimenti",
     "all": "Tutti",
     "empty": "Aggiungi immagini, anteprime link o colori alla board per creare il moodboard.",
@@ -3517,8 +3517,8 @@
     "departments": "Reparti",
     "notes": "Note",
     "emptyHelp": "Niente per questo giorno",
-    "unsaved": "Il piano ha modifiche non salvate: il foglio usa l'ultima versione salvata.",
-    "preview": "Anteprima foglio di lavorazione",
+    "unsaved": "Il piano ha modifiche non salvate: il foglio usa l’ultima versione salvata.",
+    "preview": "Anteprima ordine del giorno",
     "dayOf": "Giorno {{n}} di {{total}}",
     "date": "Data",
     "call": "Convocazione",
@@ -3539,7 +3539,7 @@
     "type": "Tipo",
     "scenes": "Scene del giorno",
     "bringer": "Chi porta",
-    "frames": "Fotogrammi della scena",
+    "frames": "Inquadrature della scena",
     "plans": "Piante del set",
     "kit": "Elenco del materiale",
     "kitHelp": "Conta le icone per tipo ed etichetta.",
@@ -3691,7 +3691,7 @@
     "details": "Tipo e fuso orario",
     "timeZone": "Fuso orario",
     "timeZoneAuto": "Automatico (fuso del dispositivo: {{zone}})",
-    "timeZoneHint": "Alba e tramonto del foglio di convocazione usano questo fuso.",
+    "timeZoneHint": "Alba e tramonto dell’ordine del giorno usano questo fuso.",
     "storageShort": "{{bytes}} di file originali nell’istanza."
   },
   "projectDelete": {
@@ -3855,7 +3855,7 @@
       "dateTime": "Data e ora",
       "canvas": "Canvas",
       "dateFormat": "Formato data",
-      "dateFormatHelp": "Piano riprese, foglio di lavorazione, PDF, commenti e attività",
+      "dateFormatHelp": "Piano riprese, ordine del giorno, PDF, commenti e attività",
       "browser": "Dal browser",
       "followsLanguage": "Segue la lingua · {{example}}",
       "dateFormats": {
@@ -4148,7 +4148,7 @@
     "empty": "Nessun elemento recuperabile nei salvataggi disponibili.",
     "error": "Impossibile completare il recupero. L’elenco potrebbe essere parziale: riprova.",
     "restored": "Elemento ripristinato. Puoi annullare questa operazione.",
-    "boardLinkOnly": "Il ripristino di una scheda board recupera solo il collegamento, non una sotto-board eliminata.",
+    "boardLinkOnly": "Il ripristino di una card board recupera solo il link, non una sotto-board eliminata.",
     "restoreElement": "Ripristina {{type}} {{id}}"
   },
   "present": {
@@ -4165,7 +4165,7 @@
     "fullscreen": "Schermo intero",
     "exitFullscreen": "Esci da schermo intero",
     "nextSlide": "Prossima",
-    "noSlides": "Nessuna inquadratura o scheda da presentare",
+    "noSlides": "Nessuna inquadratura o card da presentare",
     "noNotes": "Nessuna nota per questa slide",
     "audio": "Audio: {{value}}",
     "slideLabel": "Slide {{n}} · {{label}}"
@@ -4210,7 +4210,7 @@
     "deleteLabel": "Elimina {{name}}",
     "delete": "Elimina",
     "deleteTitle": "Eliminare «{{name}}»?",
-    "deleteBody": "Non è mai stato usato: nessun progetto, card o frame lo perde. Sparisce dalla lista quando salvi.",
+    "deleteBody": "Non è mai stato usato: nessun progetto, card o inquadratura lo perde. Sparisce dalla lista quando salvi.",
     "inUseTitle": "Un valore è stato usato nel frattempo",
     "inUse": "Qualcuno ha appena usato un valore che stai eliminando, quindi non è stato salvato nulla. Ricarica: potrai archiviarlo."
   },
@@ -4249,7 +4249,7 @@
       "red": "Rosso",
       "pink": "Rosa"
     },
-    "pasteEmoji": "Incolla o scrivi un'emoji",
+    "pasteEmoji": "Incolla o scrivi un’emoji",
     "sidebarPreview": "Così appare nella barra laterale",
     "close": "Chiudi",
     "boardTitle": "Icona e colore della board",
@@ -4261,11 +4261,11 @@
     "exportTitle": "Esporta «{{name}}»",
     "exportLead": "Uno zip con tutte le board, i file e i commenti, da conservare o da importare su un altro server Inkadra.",
     "included": "Incluso",
-    "includedList": "Board e sotto-board, file originali, commenti, revisioni, giorni di ripresa, versioni con nome",
+    "includedList": "Board e sotto-board, file originali, commenti, revisioni, giorni di riprese, versioni con nome",
     "excluded": "Escluso",
     "excludedList": "Membri, link di condivisione e ospiti, board nel cestino, versioni automatiche",
-    "preparing": "Preparazione dell'archivio",
-    "exportReady": "L'archivio è pronto",
+    "preparing": "Preparazione dell’archivio",
+    "exportReady": "L’archivio è pronto",
     "availableUntil": "disponibile fino a {{time}}",
     "notifyNote": "Puoi chiudere questa finestra: una notifica ti avvisa quando ha finito.",
     "export": "Esporta",
@@ -4275,10 +4275,10 @@
     "hide": "Nascondi",
     "close": "Chiudi",
     "exportForbidden": "Solo proprietari ed editor del progetto possono esportarlo.",
-    "startError": "Non è stato possibile avviare l'esportazione. Riprova.",
+    "startError": "Non è stato possibile avviare l’esportazione. Riprova.",
     "importTitle": "Importa progetto",
-    "importLead": "Crea un nuovo progetto da un archivio Inkadra. Ne sarai l'unico membro; i commenti mantengono i nomi degli autori.",
-    "drop": "Trascina qui l'archivio o scegli un file",
+    "importLead": "Crea un nuovo progetto da un archivio Inkadra. Ne sarai l’unico membro; i commenti mantengono i nomi degli autori.",
+    "drop": "Trascina qui l’archivio o scegli un file",
     "dropHint": "Uno .zip esportato da Inkadra",
     "change": "scegline un altro",
     "notZip": "Scegli un archivio .zip esportato da Inkadra.",
@@ -4292,21 +4292,21 @@
     "comments_one": "{{count}} commento",
     "comments_other": "{{count}} commenti",
     "summary": "$t(transfer.boards, {\"count\": {{boards}} }) · $t(transfer.files, {\"count\": {{files}} }) · $t(transfer.comments, {\"count\": {{comments}} })",
-    "remappedPeople_one": "1 autore dell'altro server è mostrato per nome; il suo lavoro ora è tuo.",
-    "remappedPeople_other": "{{count}} autori dell'altro server sono mostrati per nome; il loro lavoro ora è tuo.",
+    "remappedPeople_one": "1 autore dell’altro server è mostrato per nome; il suo lavoro ora è tuo.",
+    "remappedPeople_other": "{{count}} autori dell’altro server sono mostrati per nome; il loro lavoro ora è tuo.",
     "skippedFiles_one": "1 file mancava o era danneggiato: la sua card è vuota.",
     "skippedFiles_other": "{{count}} file mancavano o erano danneggiati: le loro card sono vuote.",
     "openProject": "Apri progetto",
     "chooseAnother": "Scegli un altro file",
     "import": "Importa",
-    "uploadError": "Non è stato possibile inviare l'archivio. Controlla la connessione e riprova.",
-    "busy": "Un'altra tua importazione è ancora in corso. Attendi che finisca.",
+    "uploadError": "Non è stato possibile inviare l’archivio. Controlla la connessione e riprova.",
+    "busy": "Un’altra tua importazione è ancora in corso. Attendi che finisca.",
     "failure": {
-      "too_large": "L'archivio è più grande di quanto questo server accetti.",
+      "too_large": "L’archivio è più grande di quanto questo server accetti.",
       "invalid_archive": "Questo file non è un archivio Inkadra valido.",
-      "unsupported_version": "L'archivio viene da un Inkadra più recente. Aggiorna prima questo server.",
+      "unsupported_version": "L’archivio viene da un Inkadra più recente. Aggiorna prima questo server.",
       "too_new": "Le board vengono da un Inkadra più recente. Aggiorna prima questo server.",
-      "storage": "Non è stato possibile salvare i file. Chiedi all'amministratore di controllare lo spazio libero.",
+      "storage": "Non è stato possibile salvare i file. Chiedi all’amministratore di controllare lo spazio libero.",
       "gone": "Non puoi più modificare questo progetto, oppure è stato eliminato.",
       "interrupted": "Il server si è fermato durante il lavoro. Riprova.",
       "cancelled": "Annullato.",
@@ -4317,10 +4317,10 @@
   },
   "backups": {
     "title": "Backup",
-    "cardLead": "Ogni backup contiene l'intero database e viene riletto dopo la scrittura. I file restano dove sono, a meno che tu non li includa: fai il backup anche del volume dati o del bucket. I file eliminati restano finché un backup conservato ne ha bisogno.",
+    "cardLead": "Ogni backup contiene l’intero database e viene riletto dopo la scrittura. I file restano dove sono, a meno che tu non li includa: fai il backup anche del volume dati o del bucket. I file eliminati restano finché un backup conservato ne ha bisogno.",
     "now": "Esegui backup ora",
     "running": "Backup in corso…",
-    "busy": "C'è già un backup in corso.",
+    "busy": "C’è già un backup in corso.",
     "startError": "Non è stato possibile avviare il backup. Riprova.",
     "loadError": "Non è stato possibile caricare i backup.",
     "last": "Ultimo backup",
@@ -4334,12 +4334,12 @@
     "timeZone": "Fuso orario del server: {{zone}}",
     "keep": "Conserva",
     "keepHelp": "I backup più vecchi vengono rimossi dopo che uno nuovo è riuscito.",
-    "keepCount_one": "l'ultimo backup",
+    "keepCount_one": "l’ultimo backup",
     "keepCount_other": "gli ultimi {{count}} backup",
     "media": "Includi i file",
     "mediaHelp": "Anche i file caricati e le loro miniature entrano in ogni backup: ora circa {{size}} in più. Le copie riproducibili dei video si rifanno dopo un ripristino.",
     "mediaHelpPlain": "Anche i file caricati e le loro miniature entrano in ogni backup. Le copie riproducibili dei video si rifanno dopo un ripristino.",
-    "mediaKept_one": "Tenendo solo l'ultimo backup, sono circa {{total}} in tutto; i backup tenuti occupano ora {{used}}.",
+    "mediaKept_one": "Tenendo solo l’ultimo backup, sono circa {{total}} in tutto; i backup tenuti occupano ora {{used}}.",
     "mediaKept_other": "Ogni backup tenuto ha la sua copia: circa {{total}} per gli ultimi {{count}}, mentre ora i backup tenuti occupano {{used}}.",
     "history": "Cronologia",
     "inBucket": "copiato nel bucket",
@@ -4363,11 +4363,11 @@
     "failure": {
       "interrupted": "Il server si è fermato mentre era in corso. Avvialo di nuovo.",
       "stalled": "Ha smesso di avanzare ed è stato annullato. Controlla il log del server per questo backup.",
-      "no_space": "Non c'è abbastanza spazio libero nella cartella dei backup.",
+      "no_space": "Non c’è abbastanza spazio libero nella cartella dei backup.",
       "permission": "Il server non può scrivere nella cartella dei backup (BACKUP_DIR).",
-      "internal": "Qualcosa è andato storto. Il log del server dice cosa, con l'id di questo backup.",
+      "internal": "Qualcosa è andato storto. Il log del server dice cosa, con l’id di questo backup.",
       "inconsistent": "Alcune board o commenti si indicano a vicenda in un ciclo e non si possono salvare in ordine. Il log del server indica la tabella.",
-      "corrupt": "L'archivio riletto non corrisponde a quanto scritto, quindi non è stato conservato. Controlla il volume dei dati."
+      "corrupt": "L’archivio riletto non corrisponde a quanto scritto, quindi non è stato conservato. Controlla il volume dei dati."
     },
     "notInBucket": "Conservato solo sul server: la copia nel bucket non è riuscita.",
     "verified": "verificato",
@@ -4452,7 +4452,7 @@
       "size": "Campo",
       "angle": "Angolazione",
       "movement": "Movimento",
-      "lens": "Obiettivo",
+      "lens": "Ottica",
       "action": "Azione e dialogo",
       "location": "Luogo",
       "cast": "Personaggi",
@@ -4472,9 +4472,9 @@
     "submitPages_one": "Esporta {{count}} pagina",
     "submitPages_other": "Esporta {{count}} pagine",
     "approvedOnly": "Solo inquadrature approvate",
-    "callSheet": "Foglio di lavorazione di ogni giorno di riprese",
+    "callSheet": "Ordine del giorno per ogni giornata di riprese",
     "teamOnlyHint": "Solo nei PDF per il team.",
-    "callSheetTitle": "Foglio di lavorazione",
+    "callSheetTitle": "Ordine del giorno",
     "formatJpeg": "JPEG",
     "jpegHint": "File più leggero, senza trasparenza.",
     "pngHint": "Qualità piena, file più pesante.",
@@ -4527,7 +4527,7 @@
     "size": "Dimensione",
     "sizePreview": "Anteprima",
     "sizeFile": "File originale",
-    "sizePreviewHint": "Un'immagine ridotta, senza metadati.",
+    "sizePreviewHint": "Un’immagine ridotta, senza metadati.",
     "sizeFileHint": "Il file così come è stato caricato, con i suoi metadati: anche la posizione GPS, se c’è.",
     "sizeFilesHint": "I file così come sono caricati, in un unico ZIP, con i loro metadati: anche la posizione GPS, se c’è.",
     "sizeNoFile_one": "{{count}} card senza file resta fuori.",
@@ -4565,7 +4565,7 @@
         },
         "camera": {
           "name": "Camera",
-          "hint": "Inquadrature, obiettivi, pianta"
+          "hint": "Inquadrature, ottiche, pianta"
         },
         "lighting": {
           "name": "Luci e macchinisti",
@@ -4598,7 +4598,7 @@
       "continuity": "Continuità",
       "frameNotes": "Note delle inquadrature",
       "light": "Luce",
-      "shootingDay": "Giorno di ripresa",
+      "shootingDay": "Giorno di riprese",
       "needed": "Da portare",
       "notes": "Note",
       "frame": "Inq.",
@@ -4614,7 +4614,7 @@
       "space-grotesk": "grotesk",
       "ibm-plex-mono": "mono"
     },
-    "whatCallsheets": "Fogli di convocazione"
+    "whatCallsheets": "Ordini del giorno"
   },
   "screenplay": {
     "open": "Importa sceneggiatura…",
@@ -4698,9 +4698,9 @@
       },
       "notIn": "Non in {{draft}}",
       "markedOmitted": "tenuta e segnata come omessa",
-      "keptAsIs": "tenuta così com'è",
+      "keptAsIs": "tenuta così com’è",
       "after": "Dopo la {{number}}",
-      "atStart": "All'inizio",
+      "atStart": "All’inizio",
       "bothChanged": "Cambiati sia intestazione sia numero",
       "restored": "di nuovo in questa stesura",
       "wasScene": "era la scena {{number}}",
@@ -4722,7 +4722,7 @@
       "details": "Aggiorna i dati delle scene",
       "detailsHint": "Numero, intestazione, luogo, momento e sinossi delle scene modificate.",
       "omit": "Segna le scene omesse",
-      "omitHint": "Restano con le loro inquadrature, attenuate, ed escono da shot list e piano di ripresa.",
+      "omitHint": "Restano con le loro inquadrature, attenuate, ed escono da shot list e piano riprese.",
       "version": "Salva prima una versione",
       "versionHint": "“{{name}}”, per tornare indietro in un passo.",
       "versionName": "Prima di {{draft}}",
@@ -4775,7 +4775,7 @@
     "tabCaptured": "Fotogramma catturato",
     "tabQualityChip": "{{width}} × {{height}} px · qualità dello schermo",
     "cropHint": "Se resta un pezzo del player o il logo, stringi il riquadro: viene ritagliato.",
-    "noText": "Nessun testo viene aggiunto alla scheda. L’origine si legge in Info.",
+    "noText": "Nessun testo viene aggiunto alla card. L’origine si legge in Info.",
     "tabAgain": "Cattura di nuovo",
     "deniedTitle": "Condivisione annullata",
     "denied": "Il browser non ha dato il permesso. Non è stato salvato nulla.",
@@ -4819,7 +4819,7 @@
     "defaultHintYes": "Come l’istanza: ora sì",
     "defaultHintNo": "Come l’istanza: ora no",
     "yesHint": "Sempre, anche se l’istanza cambia",
-    "noHint": "Solo i progetti a cui ha un invito"
+    "noHint": "Solo i progetti a cui è invitato"
   },
   "story": {
     "close": "Chiudi la scheda",
@@ -5130,7 +5130,7 @@
     "privacy": "Va nel repository privato di chi gestisce Inkadra, mai in uno pubblico. Lo usiamo solo per capire e correggere il problema; gli allegati si cancellano dopo {{days}} giorni.",
     "privacyInbox": "Va solo agli amministratori di questa istanza. La usano solo per capire e correggere il problema; gli allegati si cancellano dopo {{days}} giorni.",
     "privacyGuest": "Il codice del tuo link viene tolto dall’indirizzo. La segnalazione arriva a chi ti ha condiviso questa board.",
-    "linkPrivacy": "Chi ha il collegamento a un allegato può aprirlo finché non scade.",
+    "linkPrivacy": "Chi ha il link a un allegato può aprirlo finché non scade.",
     "offline": "Sei offline.",
     "offlineHint": "Quando torna la rete potrai inviare. Non chiudere la scheda se hai allegato un video.",
     "backOnline": "Sei di nuovo online: puoi inviare.",
@@ -5164,7 +5164,7 @@
     "allowGuests": "Gli ospiti possono segnalare",
     "allowGuestsHelp": "Solo testo e screenshot, con limiti più stretti.",
     "retention": "Conservazione degli allegati",
-    "retentionHelp": "Poi i collegamenti nell’issue smettono di funzionare.",
+    "retentionHelp": "Poi i link nell’issue smettono di funzionare.",
     "retentionDays": {
       "30": "30 giorni",
       "90": "90 giorni",
@@ -5427,7 +5427,7 @@
           },
           "2": {
             "title": "Nuove board",
-            "text": "Canvas crea board, moodboard, storyboard e la Produzione del progetto (una sola: con Piano riprese e Troupe), e importa un copione."
+            "text": "Canvas crea board, moodboard, storyboard e la Produzione del progetto (una sola: con Piano riprese e Troupe), e importa una sceneggiatura."
           },
           "3": {
             "title": "Seleziona una card",
@@ -5477,7 +5477,7 @@
           },
           "3": {
             "title": "Qualità del video",
-            "text": "Nella card e nel viewer, «Qualità» sceglie la risoluzione; con Auto segue la connessione."
+            "text": "Nella card e nel visualizzatore, «Qualità» sceglie la risoluzione; con Auto segue la connessione."
           }
         }
       },
@@ -5485,20 +5485,20 @@
         "name": "Storyboard",
         "steps": {
           "0": {
-            "title": "Scene e frame",
-            "text": "Ogni scena raccoglie i suoi frame, in ordine."
+            "title": "Scene e inquadrature",
+            "text": "Ogni scena raccoglie le sue inquadrature, in ordine."
           },
           "1": {
-            "title": "Ogni frame ha i suoi dati",
-            "text": "Campo, obiettivo, movimento: finiscono nella shot list."
+            "title": "Ogni inquadratura ha i suoi dati",
+            "text": "Campo, ottica, movimento: finiscono nella shot list."
           },
           "2": {
-            "title": "Disegna sul frame",
-            "text": "Doppio clic sul frame: schizzi a tutto schermo."
+            "title": "Disegna sull’inquadratura",
+            "text": "Doppio clic sull’inquadratura: schizzi a tutto schermo."
           },
           "3": {
-            "title": "Una nuova stesura del copione",
-            "text": "Importala di nuovo e scegli Aggiorna da revisione: le scene si aggiornano, i frame restano come sono."
+            "title": "Una nuova stesura della sceneggiatura",
+            "text": "Importala di nuovo e scegli Aggiorna da revisione: le scene si aggiornano, le inquadrature restano come sono."
           },
           "4": {
             "title": "Da portare della scena",
@@ -5507,15 +5507,15 @@
         }
       },
       "draw": {
-        "name": "Disegna sul frame",
+        "name": "Disegna sull’inquadratura",
         "steps": {
           "0": {
             "title": "Penne e forme",
             "text": "Penna, gomma, forme e testo, con colore e spessore."
           },
           "1": {
-            "title": "Frame dopo frame",
-            "text": "Le frecce passano agli altri frame."
+            "title": "Inquadratura dopo inquadratura",
+            "text": "Le frecce passano alle altre inquadrature."
           },
           "2": {
             "title": "Muoviti",
@@ -5528,7 +5528,7 @@
         "steps": {
           "0": {
             "title": "Le inquadrature",
-            "text": "Gli stessi frame dello storyboard, in tabella."
+            "text": "Le stesse inquadrature dello storyboard, in tabella."
           },
           "1": {
             "title": "Tabella o Kanban",
@@ -5553,7 +5553,7 @@
           },
           "2": {
             "title": "Sposta e allunga",
-            "text": "Trascina per riordinare, Alt per fissare l’orario, il bordo inferiore per la durata. Su un giorno libero crei il giorno di riprese; Ctrl+Z annulla tutto il gesto. Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Da tastiera: Nella vista Giorno c’è anche «Blocco» nella barra. Da tastiera: N aggiunge un blocco dopo quello selezionato, o in fondo al giorno."
+            "text": "Trascina per riordinare, Alt per fissare l’orario, il bordo inferiore per la durata. Su un giorno libero crei il giorno di riprese; Ctrl+Z annulla tutto il gesto. Trascina sul vuoto per disegnare un blocco a scatti di 5 minuti, poi scegline il tipo (tasti 1–5). Nella vista Giorno c’è anche «Blocco» nella barra. Da tastiera, N aggiunge un blocco dopo quello selezionato, o in fondo al giorno."
           },
           "3": {
             "title": "Sposta un giorno intero",
@@ -5568,7 +5568,7 @@
             "text": "Nella scheda Convocazioni del giorno scegli chi è convocato e scrivi solo le eccezioni: un altro orario o un pick-up."
           },
           "6": {
-            "title": "Foglio di lavorazione",
+            "title": "Ordine del giorno",
             "text": "Orari con alba e tramonto, location, troupe con telefoni, programma con note e Da portare. Scegli le sezioni e stampa per la troupe. Alba e tramonto seguono il fuso del progetto: si cambia in Progetti, menu ⋯ della card, «Tipo e fuso orario». «Automatico» usa il fuso del dispositivo."
           }
         }
@@ -5602,7 +5602,7 @@
           },
           "6": {
             "title": "Muoversi nella pianta",
-            "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, al 100 %, + e − cambiano lo zoom."
+            "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, + e − cambiano lo zoom."
           }
         }
       },
@@ -5615,7 +5615,7 @@
           },
           "1": {
             "title": "Le sue scene",
-            "text": "Arrivano dai frame che lo nominano nel cast."
+            "text": "Arrivano dalle inquadrature che lo nominano nel cast."
           },
           "2": {
             "title": "Solo per il team",
@@ -5631,7 +5631,7 @@
             "text": "Il cliente le vede una a una, in ordine."
           },
           "1": {
-            "title": "Il frame",
+            "title": "L’inquadratura",
             "text": "Grande, con l’azione e i commenti."
           },
           "2": {
@@ -5712,11 +5712,11 @@
         "steps": {
           "0": {
             "title": "A tutto schermo",
-            "text": "Lo storyboard, frame dopo frame."
+            "text": "Lo storyboard, inquadratura dopo inquadratura."
           },
           "1": {
             "title": "Dove sei",
-            "text": "Titolo, numero del frame e uscita."
+            "text": "Titolo, numero dell’inquadratura e uscita."
           },
           "2": {
             "title": "Avanti e indietro",
@@ -5792,7 +5792,7 @@
           },
           "1": {
             "title": "Rinomina",
-            "text": "Il nuovo nome cambia su ogni frame che lo usa."
+            "text": "Il nuovo nome cambia su ogni inquadratura che lo usa."
           },
           "2": {
             "title": "Archivia o elimina",
@@ -5935,7 +5935,7 @@
           },
           "3": {
             "title": "Convocazioni e foglio",
-            "text": "Nel Piano riprese, scheda Convocazioni, scegli chi è convocato ogni giorno. Il foglio di lavorazione stampa troupe, telefoni e contatto sul set, mai per ospiti e clienti."
+            "text": "Nel Piano riprese, scheda Convocazioni, scegli chi è convocato ogni giorno. L’ordine del giorno stampa troupe, telefoni e contatto sul set, mai per ospiti e clienti."
           }
         }
       },
@@ -5956,7 +5956,7 @@
           },
           "3": {
             "title": "I setup nella shot list",
-            "text": "La shot list e il piano di lavorazione mostrano il setup di ogni inquadratura, e la shot list può raggrupparle per setup."
+            "text": "La shot list e il piano riprese mostrano il setup di ogni inquadratura, e la shot list può raggrupparle per setup."
           }
         }
       },
@@ -5969,7 +5969,7 @@
           },
           "1": {
             "title": "Il foglio",
-            "text": "Una pagina A4 per setup. Aggiungi al foglio di convocazione collega la pianta alle sue scene."
+            "text": "Una pagina A4 per setup. Aggiungi all’ordine del giorno collega la pianta alle sue scene."
           },
           "2": {
             "title": "Chi non può modificare",
@@ -6723,7 +6723,7 @@
     "error": "Impossibile salvare o caricare la troupe.",
     "retry": "Riprova",
     "empty": "Nessuno in troupe.",
-    "emptyHint": "Usa «Incolla da foglio» per importare persone da un vecchio foglio di lavorazione.",
+    "emptyHint": "Usa «Incolla da foglio» per importare persone da un vecchio ordine del giorno.",
     "noResults": "Nessuna persona trovata.",
     "noDepartment": "Senza reparto",
     "name": "Nome",
@@ -6741,7 +6741,7 @@
     "account": "Account Inkadra",
     "unlink": "Scollega account",
     "onSetContact": "Contatto sul set",
-    "onSetHint": "Stampato in testa al foglio di lavorazione",
+    "onSetHint": "Stampato in testa all’ordine del giorno",
     "conflict": "Modificato da un’altra persona. Scegli quale versione mantenere.",
     "reload": "Ricarica",
     "keepMine": "Mantieni la mia",
@@ -6792,7 +6792,7 @@
   "dayCalls": {
     "title": "Convocazioni",
     "times": "Orari del giorno, calcolati dalla scaletta",
-    "hint": "Vuoto = convocazione del giorno. Scrivi solo chi arriva a un'altra ora o con un pick-up.",
+    "hint": "Vuoto = convocazione del giorno. Scrivi solo chi arriva a un’altra ora o con un pick-up.",
     "unavailable": "Le convocazioni usano la troupe del progetto, visibile solo ai membri del progetto.",
     "emptyTitle": "Nessuno in troupe",
     "emptyBody": "Aggiungi le persone nella Troupe: qui scegli chi è convocato ogni giorno.",
@@ -6818,7 +6818,7 @@
     },
     "desc": {
       "board": "Note, immagini, link, file, to-do, colonne e commenti.",
-      "storyboard": "Board Storyboard, Shot list, strumento Inquadratura, importazione del copione in scene.",
+      "storyboard": "Board Storyboard, Shot list, strumento Inquadratura, importazione della sceneggiatura in scene.",
       "production": "Piano riprese, Troupe, ordini del giorno, fogli per scena e Da portare delle scene.",
       "moodboard": "Board Moodboard e la vista Moodboard delle board: gruppi, note, palette.",
       "review": "Link per i clienti senza account, approvazioni e richieste di modifica.",
@@ -6843,8 +6843,8 @@
     "offLine": "Modulo {{name}} spento: puoi leggere questa board."
   },
   "production": {
-    "storyboardLink_one": "Giornate di ripresa: {{count}} · Apri Produzione",
-    "storyboardLink_other": "Giornate di ripresa: {{count}} · Apri Produzione",
+    "storyboardLink_one": "Giornate di riprese: {{count}} · Apri Produzione",
+    "storyboardLink_other": "Giornate di riprese: {{count}} · Apri Produzione",
     "storyboardMissing": "Piano riprese e Troupe ora sono in Produzione · Aggiungila",
     "storyboardWaiting": "Piano riprese e Troupe ora sono in Produzione · Chiedi a chi può modificare il progetto di aggiungerla"
   },
@@ -6872,7 +6872,7 @@
       "recommended": "Consigliata"
     },
     "mbPerMinute": "MB al minuto",
-    "gbPerHour": "circa {{size}} GB all'ora",
+    "gbPerHour": "circa {{size}} GB all’ora",
     "mbPerMinuteAbout": "circa {{size}} MB/min",
     "about": "circa",
     "rungs": {
@@ -6889,7 +6889,7 @@
     },
     "totals": {
       "minute": "Un minuto di video",
-      "hour": "Un'ora di video",
+      "hour": "Un’ora di video",
       "library_one": "Il tuo video ({{duration}})",
       "library_other": "I tuoi {{count}} video ({{duration}})",
       "duration": "{{hours}} h {{minutes}} min",
@@ -6912,7 +6912,7 @@
     },
     "encoding": {
       "title": "Codifica",
-      "detected": "Rilevata all'avvio",
+      "detected": "Rilevata all’avvio",
       "encoder": "Encoder",
       "format": "Formato",
       "h264": "H.264: si riproduce su ogni browser e telefono.",
@@ -6966,8 +6966,8 @@
         "set-off": "Spenta dal server (VIDEO_LIVE_MAX_SESSIONS=0)."
       },
       "on": "Attiva",
-      "upTo_one": "Fino a {{count}} persona insieme. Oltre, chi guarda riceve le copie pronte o l'originale.",
-      "upTo_other": "Fino a {{count}} persone insieme. Oltre, chi guarda riceve le copie pronte o l'originale.",
+      "upTo_one": "Fino a {{count}} persona insieme. Oltre, chi guarda riceve le copie pronte o l’originale.",
+      "upTo_other": "Fino a {{count}} persone insieme. Oltre, chi guarda riceve le copie pronte o l’originale.",
       "zero": "Sessioni impostate a 0 nelle impostazioni avanzate: al volo è spento.",
       "rungsHelp": "Per ogni risoluzione: tenerla su disco, o farla solo quando qualcuno la guarda.",
       "onDisk": "circa {{size}} MB/min su disco",
@@ -6983,8 +6983,8 @@
       "benchmarkRunningHelp": "Circa 10 secondi. Le copie in preparazione rallentano per un momento.",
       "benchmarkBusy": "Test in corso…",
       "rerun": "Rifai il test di prestazioni",
-      "measuredAtStart_one": "Misurato all'avvio: {{count}} sessione al volo",
-      "measuredAtStart_other": "Misurato all'avvio: {{count}} sessioni al volo",
+      "measuredAtStart_one": "Misurato all’avvio: {{count}} sessione al volo",
+      "measuredAtStart_other": "Misurato all’avvio: {{count}} sessioni al volo",
       "measuredNow_one": "Misurato adesso: {{count}} sessione al volo",
       "measuredNow_other": "Misurato adesso: {{count}} sessioni al volo",
       "speedAt": "{{speed}}× il tempo reale su un 1080p · {{time}}",
@@ -7017,7 +7017,7 @@
       "custom": "personalizzato",
       "customPreset": "Personalizzata",
       "customNote": "Alcuni valori sono cambiati nelle impostazioni avanzate.",
-      "resetAll": "Torna ai valori della preset"
+      "resetAll": "Torna ai valori del preset"
     }
   },
   "audit": {

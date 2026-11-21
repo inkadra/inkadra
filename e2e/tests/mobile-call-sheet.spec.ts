@@ -153,8 +153,8 @@ async function session(browser: Browser, baseURL: string, email: string, passwor
 
 async function openSheet(page: Page) {
   await page.goto(`/p/${seed.projectId}/b/${seed.boardId}?view=schedule`);
-  await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
-  const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+  await page.getByRole('button', { name: 'Ordine del giorno' }).first().click();
+  const sheet = page.getByRole('dialog', { name: 'Ordine del giorno' });
   await expect(sheet.locator('.sheet__phone-head')).toBeVisible();
   return sheet;
 }
@@ -226,8 +226,8 @@ test('the linked person sees their call, confirms and changes their mind', async
     await route.continue();
   });
   await page.goto(`/p/${seed.projectId}/b/${seed.boardId}?view=schedule`);
-  await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
-  const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+  await page.getByRole('button', { name: 'Ordine del giorno' }).first().click();
+  const sheet = page.getByRole('dialog', { name: 'Ordine del giorno' });
   await expect(sheet.getByRole('status').getByText('Caricamento delle presenze')).toBeVisible();
   await shots(page, 'actor-loading', [390]);
   const confirm = sheet.getByRole('button', { name: 'Confermo la presenza' });
@@ -254,7 +254,7 @@ test('the linked person sees their call, confirms and changes their mind', async
   // A viewer sees no organiser panel, and the answer survives a reload.
   await expect(sheet.locator('.call-sheet__presence')).toHaveCount(0);
   await page.reload();
-  await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
+  await page.getByRole('button', { name: 'Ordine del giorno' }).first().click();
   await expect(sheet.getByRole('status')).toHaveText('Hai detto che non puoi esserci.');
   // The other day has no call for them: no buttons, and the empty location leaves no map link.
   await chooseSelect(sheet.getByRole('combobox', { name: 'Data', exact: true }), { index: 1 });
@@ -293,7 +293,7 @@ test('the organiser sees the answer, and a failed load says so', async ({ browse
   await expect(sheet.locator('.call-sheet__presence')).toContainText('confermati 0 di 1');
   await page.route('**/schedule/attendance', (route) => route.abort());
   await page.reload();
-  await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
+  await page.getByRole('button', { name: 'Ordine del giorno' }).first().click();
   const alert = sheet.getByRole('alert');
   await expect(alert).toContainText('Non è stato possibile caricare le presenze.');
   await alert.scrollIntoViewIfNeeded();
@@ -331,11 +331,11 @@ test('on a computer an organiser gets the panel, outside the sheet and the print
     await route.continue();
   });
   await page.goto(`/p/${seed.projectId}/b/${seed.boardId}?view=schedule`);
-  const open = page.getByRole('button', { name: 'Foglio di lavorazione' }).first();
+  const open = page.getByRole('button', { name: 'Ordine del giorno' }).first();
   await expect(open).toBeVisible();
   expect(asked, 'nothing is asked before the sheet is open').toBe(0);
   await open.click();
-  const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+  const sheet = page.getByRole('dialog', { name: 'Ordine del giorno' });
   await expect(sheet.getByRole('status').getByText('Caricamento delle presenze')).toBeVisible();
   await shots(page, 'desktop-organiser-loading', [1280]);
   const panel = sheet.locator('.call-sheet__controls .call-sheet__presence');
@@ -399,10 +399,10 @@ test('on a computer an organiser gets the panel, outside the sheet and the print
   // Attendance that cannot be loaded says so, and the sheet still works.
   await page.route('**/schedule/attendance', (route) => route.abort());
   await page.reload();
-  await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
+  await page.getByRole('button', { name: 'Ordine del giorno' }).first().click();
   const failure = sheet.getByRole('alert');
   await expect(failure).toContainText('Non è stato possibile caricare le presenze.');
-  await expect(article).toContainText('Foglio di lavorazione');
+  await expect(article).toContainText('Ordine del giorno');
   await shots(page, 'desktop-organiser-load-error', [1280]);
   await page.unroute('**/schedule/attendance');
   await failure.getByRole('button', { name: 'Riprova' }).click();
@@ -421,8 +421,8 @@ test('on a computer someone who does not organise sees and asks nothing new', as
     if (request.url().includes('/schedule/attendance')) asked = true;
   });
   await page.goto(`/p/${seed.projectId}/b/${seed.boardId}?view=schedule`);
-  await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
-  const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+  await page.getByRole('button', { name: 'Ordine del giorno' }).first().click();
+  const sheet = page.getByRole('dialog', { name: 'Ordine del giorno' });
   await expect(sheet.locator('.sheet__table--schedule')).toBeVisible();
   await expect(sheet.locator('.call-sheet__presence')).toHaveCount(0);
   await expect(sheet.getByRole('button', { name: 'Confermo la presenza' })).toHaveCount(0);

@@ -85,7 +85,7 @@ test('a call set in the Convocazioni tab is printed on the call sheet', async ({
 
   await page.reload();
   await schedule.getByRole('radio', { name: 'Giorno', exact: true }).check();
-  await schedule.getByRole('button', { name: 'Foglio di lavorazione', exact: true }).click();
+  await schedule.getByRole('button', { name: 'Ordine del giorno', exact: true }).click();
   const sheet = page.getByRole('dialog');
   const troupe = sheet.locator('.sheet__table--troupe');
   await expect(troupe).toBeVisible();
