@@ -5,7 +5,7 @@ import { truncate } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { eq, inArray, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
@@ -284,19 +284,31 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
   });
 
-  it('rasterises an SVG without reading the other originals next to it', async () => {
+  it('rasterises an SVG without reading the other originals, by any reference', async () => {
     const red = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#f00' } })
       .png()
       .toBuffer();
     const sibling = await upload(red, 'image/png', 'other-project.png');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64"><image href="${sibling}" xlink:href="${sibling}" width="64" height="64"/></svg>`;
-    const id = await upload(Buffer.from(svg), 'image/svg+xml', 'drawing.svg');
-    expect(await processAsset(deps, id)).toMatchObject({ variants: 1 });
-    const { variants } = await load(id);
-    const thumb = await readAll(await storage.read(variants[0]?.storageKey ?? ''));
-    const { data } = await sharp(thumb).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    // Transparent: the picture next to it in files/originals was not drawn.
-    expect(Math.max(...data.filter((_, i) => i % 4 === 3))).toBe(0);
+    const path = join(root, 'files', originalKey(sibling));
+    const drawing = (href: string) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64"><image href="${href}" xlink:href="${href}" width="64" height="64"/></svg>`;
+    const opaque = async (image: Buffer) => {
+      const { data } = await sharp(image).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      return Math.max(...data.filter((_, i) => i % 4 === 3));
+    };
+    for (const href of [sibling, path, pathToFileURL(path).href]) {
+      // Control: opened by its path in the same folder, librsvg does draw the neighbour.
+      const beside = join(root, 'files', 'originals', `control-${randomUUID()}.svg`);
+      writeFileSync(beside, drawing(href));
+      expect(await opaque(await sharp(beside).png().toBuffer())).toBe(255);
+
+      const id = await upload(Buffer.from(drawing(href)), 'image/svg+xml', 'drawing.svg');
+      expect(await processAsset(deps, id)).toMatchObject({ variants: 1 });
+      const { variants } = await load(id);
+      const thumb = await readAll(await storage.read(variants[0]?.storageKey ?? ''));
+      // Transparent: the picture next to it in files/originals was not drawn.
+      expect(await opaque(thumb)).toBe(0);
+    }
   });
 
   it('keeps an SVG past the size cap ready, without thumbnails, old ones included', async () => {
