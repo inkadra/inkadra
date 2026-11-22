@@ -351,6 +351,8 @@ export function placePlanIcon(
     going.set(owner, (going.get(owner) ?? 0) + 1);
   }
   for (const [owner, n] of going) {
+    // Every destination is a plan here now (a PlanEdit can outlive a setup deleted since).
+    if (roots(doc).elements.get(owner)?.get('type') !== 'plan') return null;
     const list = roots(doc).elements.get(owner)?.get('icons');
     const stored = list instanceof Y.Array ? list.length : Array.isArray(list) ? list.length : 0;
     if (stored + n > MAX_PLAN_ICONS) return null;
@@ -365,9 +367,11 @@ export function placePlanIcon(
     const add = (k: PlanIconKind, fields?: Partial<PlanIcon>): PlanIcon | null => {
       const { layer, icon } = freshPlanIcon(edit, k, p, fields ? mainStyle : opts);
       const target = planLayerOwner(edit, layer);
-      const newId = addPlanIcon(doc, target, { ...icon, ...fields }, origin);
+      // The layer chose the plan above and is on `icon` when not its kind's: never cleared here.
+      const { layer: _layer, ...rest } = fields ?? {};
+      const newId = addPlanIcon(doc, target, { ...icon, ...rest }, origin);
       if (!newId) return null;
-      const added = { ...icon, ...fields, id: newId } as PlanIcon;
+      const added = { ...icon, ...rest, id: newId } as PlanIcon;
       placed.icons.push(added);
       placed.owners.set(newId, target);
       return added;

@@ -2,7 +2,7 @@
 import { createBoardDoc, MAX_PLAN_ICONS } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import type * as Y from 'yjs';
-import { createElement, listElements } from './board.ts';
+import { createElement, deleteElements, listElements } from './board.ts';
 import { addPlanIcon, addVariant, type PlanElement } from './plan.ts';
 import { placePlanIcon, planEdit } from './plan-editing.ts';
 
@@ -56,5 +56,44 @@ describe('placing an icon: the plan it goes to, and its room', () => {
     );
     expect(planOf(s.doc, s.base).icons?.find((i) => i.id === lamp)?.layer).toBe('set');
     expect(planOf(s.doc, s.sera).icons?.map((i) => i.id) ?? []).not.toContain(lamp);
+  });
+});
+
+describe('placing an icon with a PlanEdit older than the board', () => {
+  it('writes nothing when a plan an icon of the kit goes to is gone', () => {
+    const s = setup();
+    const stale = s.edit();
+    deleteElements(s.doc, [s.sera]);
+    const before = planOf(s.doc, s.base).icons?.length ?? 0;
+    // The light goes to the base's Set, its softbox to the setup deleted since.
+    const id = placePlanIcon(
+      s.doc,
+      stale,
+      'fresnel',
+      { x: 0.5, y: 0.5 },
+      {
+        ...white,
+        fields: { layer: 'set' },
+        modifiers: ['softbox'],
+      },
+    );
+    expect(id).toBeNull();
+    expect(planOf(s.doc, s.base).icons?.length ?? 0).toBe(before);
+  });
+
+  it('keeps the layer that chose the plan when the fields give none', () => {
+    const s = setup();
+    const lamp = placePlanIcon(
+      s.doc,
+      s.edit(),
+      'fresnel',
+      { x: 0.3, y: 0.3 },
+      {
+        ...white,
+        layer: 'set',
+        fields: { layer: undefined },
+      },
+    );
+    expect(planOf(s.doc, s.base).icons?.find((i) => i.id === lamp)?.layer).toBe('set');
   });
 });
