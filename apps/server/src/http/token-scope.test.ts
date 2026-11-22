@@ -1,7 +1,17 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { ApiError, Id, ProjectRole, SearchResult, z } from '@inkadra/shared';
+import {
+  ApiError,
+  Board,
+  FractionalIndex,
+  Id,
+  Project,
+  ProjectRole,
+  SearchResult,
+  Timestamp,
+  z,
+} from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -11,6 +21,7 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   board,
   boardElementIndex,
+  boardGrant,
   crewMember,
   personalToken,
   project,
@@ -42,6 +53,36 @@ const SearchHitV030 = z.object({
   myRole: ProjectRole.optional(),
 });
 
+/** `Project` and `Board` as v0.3.0 knew them, copied from that tag. */
+const ProjectV030 = z.object({
+  id: Id,
+  name: z.string().min(1).max(120),
+  icon: z.object({
+    shape: z.enum(['diamond', 'circle', 'triangle', 'square']),
+    color: z.enum(['blue', 'orange', 'purple', 'green', 'neutral']),
+  }),
+  rootBoardId: Id,
+  position: FractionalIndex,
+  archivedAt: Timestamp.nullable(),
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+  myRole: ProjectRole,
+});
+const BoardV030 = z.object({
+  id: Id,
+  projectId: Id,
+  parentBoardId: Id.nullable(),
+  kind: z.enum(['board', 'storyboard']),
+  title: z.string().min(1).max(200),
+  position: FractionalIndex,
+  coverAssetId: Id.nullable(),
+  docSchemaVersion: z.int().min(1),
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+  myRole: ProjectRole,
+});
+const page = <T extends z.ZodType>(item: T) => z.object({ items: z.array(item) });
+
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
 
 const url = process.env.DATABASE_URL;
@@ -64,6 +105,12 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
   const viewed = randomUUID();
   const viewedBoard = randomUUID();
   const production = randomUUID();
+  const archived = randomUUID();
+  const granted = randomUUID();
+  const grantedRoot = randomUUID();
+  const grantedEdit = randomUUID();
+  const grantedView = randomUUID();
+  const grantedBelow = randomUUID();
   let me = '';
   let cookie = '';
   let app: Awaited<ReturnType<typeof createApp>>;
@@ -132,17 +179,46 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
       { id: mine, name: 'Mine', position: 'a0' },
       { id: theirs, name: 'Theirs', position: 'a1' },
       { id: viewed, name: 'Viewed', position: 'a2' },
+      { id: archived, name: 'Archived', position: 'a3', archivedAt: new Date() },
+      { id: granted, name: 'Granted', position: 'a4' },
     ]);
     await db.insert(projectMember).values([
       { projectId: mine, userId: me, role: 'owner' },
       { projectId: theirs, userId: other, role: 'owner' },
       { projectId: viewed, userId: other, role: 'owner' },
       { projectId: viewed, userId: me, role: 'viewer' },
+      { projectId: archived, userId: me, role: 'owner' },
+      { projectId: granted, userId: other, role: 'owner' },
     ]);
     await db.insert(board).values([
       { id: myBoard, projectId: mine, title: 'Refs', position: 'a0' },
       { id: theirBoard, projectId: theirs, title: 'Private', position: 'a0' },
       { id: viewedBoard, projectId: viewed, title: 'Read only', position: 'a0' },
+      { id: archived, projectId: archived, title: 'Old', position: 'a0' },
+      { id: grantedRoot, projectId: granted, title: 'Granted root', position: 'a0' },
+      {
+        id: grantedEdit,
+        projectId: granted,
+        parentBoardId: grantedRoot,
+        title: 'Shared to edit',
+        position: 'a0',
+        coverAssetId: null,
+      },
+      {
+        id: grantedView,
+        projectId: granted,
+        parentBoardId: grantedRoot,
+        title: 'Shared to read',
+        position: 'a1',
+      },
+      // Editable below a read-only board: the picker reaches it through the tree.
+      {
+        id: grantedBelow,
+        projectId: granted,
+        parentBoardId: grantedView,
+        title: 'Editable below',
+        position: 'a0',
+      },
       {
         id: production,
         projectId: mine,
@@ -151,6 +227,11 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
         title: 'Shoot',
         position: 'a1',
       },
+    ]);
+    await db.insert(boardGrant).values([
+      { boardId: grantedEdit, userId: me, role: 'editor' },
+      { boardId: grantedView, userId: me, role: 'viewer' },
+      { boardId: grantedBelow, userId: me, role: 'editor' },
     ]);
     // Content that matches "zebra" on an editable board, and on a read-only one.
     await db.insert(boardElementIndex).values([
@@ -284,6 +365,50 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
       expect.objectContaining({ elementId: 'card-editable-0001', tags: ['zebra-tag'] }),
     );
     expect(hits.some((h) => h.elementType === 'crew' && h.title === 'Zebra Crewperson')).toBe(true);
+  });
+
+  it('lists for a Clipper token only what its picker offers, with the fields it reads', async () => {
+    const { token } = await clipperSignIn();
+    const get = async (path: string) => {
+      const res = await call(token, 'GET', path);
+      expect(res.statusCode, path).toBe(200);
+      return res.json();
+    };
+    const projects = await get('/projects?limit=200');
+    page(ProjectV030).parse(projects);
+    page(Project).parse(projects);
+    // Active projects where a card can go: not the read-only one, not the archived one.
+    expect(projects.items.map((p: { id: string }) => p.id)).toEqual([mine]);
+    for (const key of ['type', 'timeZone', 'shootingStart', 'shootingEnd', 'pinned', 'group'])
+      expect(projects.items[0]).not.toHaveProperty(key);
+    expect((await get('/projects?limit=200&archived=true')).items).toEqual([]);
+
+    const shared = await get('/shared-boards');
+    expect(page(BoardV030).parse(shared).items).toHaveLength(1);
+    page(Board).parse(shared);
+    expect(shared.items.map((b: { id: string }) => b.id)).toEqual([grantedEdit]);
+    // A project's boards keep the tree, read-only boards included, without covers or views.
+    const boards = await get(`/projects/${granted}/boards`);
+    page(BoardV030).parse(boards);
+    page(Board).parse(boards);
+    expect(boards.items.map((b: { id: string }) => b.id).sort()).toEqual(
+      [grantedEdit, grantedView, grantedBelow].sort(),
+    );
+    for (const b of boards.items) {
+      expect(b.coverAssetId).toBeNull();
+      for (const key of ['icon', 'views', 'editedAt']) expect(b).not.toHaveProperty(key);
+    }
+
+    // A full token gets today's lists.
+    const full = (await issueToken(db, me, { name: 'Phone', client: 'mobile' })).token;
+    const all = await call(full, 'GET', '/projects?limit=200');
+    expect(
+      all
+        .json()
+        .items.map((p: { id: string }) => p.id)
+        .sort(),
+    ).toEqual([mine, viewed].sort());
+    expect((await call(full, 'GET', '/shared-boards')).json().items).toHaveLength(2);
   });
 
   it('refuses a Clipper token everywhere else with the usual 403', async () => {

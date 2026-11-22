@@ -1,4 +1,11 @@
-import { API_PREFIX, type AppClient, type SearchHit } from '@inkadra/shared';
+import {
+  API_PREFIX,
+  type AppClient,
+  atLeast,
+  type Board,
+  type Project,
+  type SearchHit,
+} from '@inkadra/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { personalToken } from './db/schema.ts';
 
@@ -42,6 +49,26 @@ function clipSearchHits(items: unknown[]): SearchHit[] {
 }
 
 /**
+ * The Clipper's projects (decision 0137): those it offers, active ones where the person may add
+ * cards, without the optional fields of later versions (dates, time zone, pins, groups).
+ */
+function clipProjects(items: unknown[]): Project[] {
+  return (items as Project[])
+    .filter((p) => !p.archivedAt && atLeast(p.myRole, 'editor'))
+    .map(({ type, timeZone, shootingStart, shootingEnd, pinned, group, ...kept }) => kept);
+}
+
+/** Boards as the picker reads them: the tree and roles, no cover, icon, views or edit time. */
+function clipBoard({ icon, views, editedAt, ...kept }: Board): Board {
+  return { ...kept, coverAssetId: null };
+}
+/** Every board of a project: a read-only board can lead to an editable one below it. */
+const clipProjectBoards = (items: unknown[]) => (items as Board[]).map(clipBoard);
+/** Shared boards the picker offers: those where the person may add cards. */
+const clipSharedBoards = (items: unknown[]) =>
+  (items as Board[]).filter((b) => atLeast(b.myRole, 'editor')).map(clipBoard);
+
+/**
  * What a token of each limited scope may call, as `METHOD route` (decision 0137). A route
  * missing here is refused, so a route added later stays closed to limited tokens. `clip` is what
  * the released Clipper versions call with their token; per-project and per-board access still
@@ -51,9 +78,9 @@ const SCOPE_ROUTES: Record<Exclude<TokenScope, 'full'>, Record<string, ScopedRou
   clip: {
     [`GET ${API_PREFIX}/me/clip-boards`]: {},
     [`DELETE ${API_PREFIX}/me/clip-boards/:boardId`]: {},
-    [`GET ${API_PREFIX}/projects`]: {},
-    [`GET ${API_PREFIX}/projects/:projectId/boards`]: {},
-    [`GET ${API_PREFIX}/shared-boards`]: {},
+    [`GET ${API_PREFIX}/projects`]: { narrow: clipProjects },
+    [`GET ${API_PREFIX}/projects/:projectId/boards`]: { narrow: clipProjectBoards },
+    [`GET ${API_PREFIX}/shared-boards`]: { narrow: clipSharedBoards },
     [`GET ${API_PREFIX}/boards/:boardId/columns`]: {},
     // The route itself searches only boards a clip may go to, by words only.
     [`GET ${API_PREFIX}/search`]: { narrow: clipSearchHits },

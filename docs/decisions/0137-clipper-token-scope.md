@@ -51,6 +51,31 @@ never set it. No redirect address or user agent is stored on the token.
   | `DELETE /api/v1/me/tokens/{tokenId}`      | Disconnect: only the token's own id                   |
 
   Roles and grants still decide what each of these returns or allows, as before.
+- **What a `clip` token reads.** Answers are narrowed to what the picker reads, keeping every
+  field the schemas of the oldest (0.3.0) and newest released Clipper require; the other fields
+  are left out or empty only where those schemas allow it. Sessions and `full` tokens get the
+  same answers as before.
+  - `GET /search` takes the words only (`projectId`, `tag` and `type` are ignored) and looks only
+    in the boards a clip may go to: editor or owner, the rule of `POST /clip`. Each hit is one
+    board: board id and title, project id and name, the person's role, `kind: "board"`; no
+    snippet, tags, element, asset or crew data, no board kind; project hits are left out. A hit
+    still tells that one of those boards holds the words searched.
+  - `GET /projects` lists active projects where the person is editor or owner (`archived=true`
+    gives an empty list), without type, time zone, shooting dates, pin and group.
+  - `GET /shared-boards` lists the shared boards where the person is editor or owner.
+  - `GET /projects/{projectId}/boards` keeps every board the person can read in that project,
+    read-only ones included, because an editable board can sit below a read-only one; covers,
+    icons, views and edit times are left out.
+  - `GET /me/clip-boards` and `GET /boards/{boardId}/columns` answer as before.
+
+  What stays readable is accepted: the names, order, roles and structure of the account's active
+  editable projects and of the boards it can read in them, column names, and recent clip boards.
+- **Files through `/clip`.** The multipart form takes one file of any type, within the storage
+  limits: an image card when its bytes are an image the server recognises, a file card
+  otherwise. It is not limited to images: released Clippers send the bytes of any picture on a
+  page, including formats the server does not recognise as images (SVG, HEIC, BMP and others),
+  which become file cards today. So a `clip` token can add a file of any type to a board the
+  person can edit.
 - **Everything else is refused, by default.** `requireActor` compares the matched route
   (method and registered path) with the scope's list, so a route added later is closed to a
   `clip` token until it is listed. Uploads (`/api/v1/uploads`), the version endpoint, token proof
@@ -69,7 +94,7 @@ never set it. No redirect address or user agent is stored on the token.
   cards, until it is revoked in Settings → Connected apps; it can no longer change or delete
   anything else.
 - A new Clipper feature that needs another route has to list it here and in `SCOPE_ROUTES`
-  (`apps/server/src/tokens.ts`) in the same pull request; older servers would refuse it with
+  (`apps/server/src/token-scope.ts`) in the same pull request; older servers would refuse it with
   `403`, so the extension must treat that like any other refusal on an older server.
 - Self-built clippers (`CLIPPER_EXTENSION_IDS`) are limited the same way.
 
