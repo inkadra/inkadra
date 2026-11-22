@@ -60,7 +60,7 @@ export async function inviterCanGrant(
  * The role part of inviterCanGrant, whatever the state of the account: a deactivation only
  * suspends an invitation, so revoking it for good looks at the role alone.
  */
-async function inviterHoldsRole(
+export async function inviterHoldsRole(
   db: Pick<Database, 'select' | 'execute'>,
   row: InvitationRow,
 ): Promise<boolean> {
@@ -72,7 +72,11 @@ async function inviterHoldsRole(
   }
   if (row.projectId)
     return atLeast(await projectRole(db, { id: row.invitedBy }, row.projectId), role);
-  return false;
+  const [admin] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.id, row.invitedBy), eq(user.role, 'admin')));
+  return admin !== undefined;
 }
 
 /** invitationStatus, with an invitation its inviter can no longer give read as revoked. */

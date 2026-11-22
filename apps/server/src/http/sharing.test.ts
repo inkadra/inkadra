@@ -783,6 +783,14 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       role: 'viewer',
     });
     expect(mail.status).toBe(201);
+    const again = { kind: 'email', email: 'voice@example.com', projectId: p, role: 'viewer' };
+    const revokedAt = async (id: string) =>
+      (
+        await db
+          .select({ at: invitationTable.revokedAt })
+          .from(invitationTable)
+          .where(eq(invitationTable.id, id))
+      )[0]?.at ?? null;
     const listed = async () =>
       (await call('owner', 'GET', `/api/v1/invitations?projectId=${p}`)).body.items as Array<{
         id: string;
@@ -799,23 +807,28 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
         `/api/v1/invitations/${mail.body.invitation.id}/resend`,
       );
       expect(resend.status).toBe(409);
+      // Suspended, not orphaned: it still blocks a new one and stays as it was.
+      expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(409);
+      expect(await revokedAt(mail.body.invitation.id)).toBeNull();
     } finally {
       await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
     }
     expect((await listed()).find((i) => i.id === link.body.invitation.id)?.url).toBeTruthy();
-    // The same address can be invited again once nobody can give the pending invitation.
-    const again = { kind: 'email', email: 'voice@example.com', projectId: p, role: 'viewer' };
     expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(409);
+    // The same address can be invited again once nobody can give the pending invitation: its
+    // inviter lost the role (a membership that ended, say), or their account was deleted.
+    await db.execute(
+      sql`delete from project_member where project_id = ${p} and user_id = ${as.guest.id}`,
+    );
+    const replacement = await call('owner', 'POST', '/api/v1/invitations', again);
+    expect(replacement.status).toBe(201);
+    expect(await revokedAt(mail.body.invitation.id)).not.toBeNull();
     await db
       .update(invitationTable)
       .set({ invitedBy: null })
-      .where(eq(invitationTable.id, mail.body.invitation.id));
+      .where(eq(invitationTable.id, replacement.body.invitation.id));
     expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(201);
-    const [old] = await db
-      .select({ revokedAt: invitationTable.revokedAt })
-      .from(invitationTable)
-      .where(eq(invitationTable.id, mail.body.invitation.id));
-    expect(old?.revokedAt).not.toBeNull();
+    expect(await revokedAt(replacement.body.invitation.id)).not.toBeNull();
     await call('owner', 'DELETE', `/api/v1/projects/${p}`);
   });
 

@@ -49,6 +49,7 @@ import {
   invitationTarget,
   invitedRole,
   inviterCanGrant,
+  inviterHoldsRole,
   revokeOutgrownInvitations,
 } from '../invitations.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
@@ -770,18 +771,29 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
               eq(invitation.uses, 0),
             ),
           );
-        // One whose inviter can no longer give it (gone, deactivated, demoted) is replaced.
-        const stale: string[] = [];
+        // One nobody can give any more (its inviter's account deleted, or their role lost) is
+        // replaced. A deactivated inviter only suspends it (decision 0025): it still blocks.
         for (const row of pending) {
-          if (await inviterCanGrant(tx, row))
+          if (await inviterHoldsRole(tx, row))
             throw new HttpError('conflict', 'An invitation for this email is already pending.');
-          stale.push(row.id);
-        }
-        if (stale.length > 0)
-          await tx
+          // Only if it is still as read: unused, not revoked, the same inviter.
+          const [replaced] = await tx
             .update(invitation)
             .set({ revokedAt: new Date() })
-            .where(inArray(invitation.id, stale));
+            .where(
+              and(
+                eq(invitation.id, row.id),
+                eq(invitation.uses, 0),
+                isNull(invitation.revokedAt),
+                row.invitedBy
+                  ? eq(invitation.invitedBy, row.invitedBy)
+                  : isNull(invitation.invitedBy),
+              ),
+            )
+            .returning({ id: invitation.id });
+          if (!replaced)
+            throw new HttpError('conflict', 'An invitation for this email is already pending.');
+        }
       }
       const rows = await tx
         .insert(invitation)
