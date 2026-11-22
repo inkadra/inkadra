@@ -52,7 +52,7 @@ import {
   revokeOutgrownInvitations,
 } from '../invitations.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
-import { lockActiveAccount } from '../locks.ts';
+import { lockAccount, lockActiveAccount } from '../locks.ts';
 import { type Mailer, maskAddress } from '../mailer.ts';
 import { inviteMail } from '../mails.ts';
 import { nextOwnPosition } from '../project-order.ts';
@@ -283,12 +283,41 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     } finally {
       clearTimeout(timer);
     }
-    const [sent] = await db
-      .update(invitation)
-      .set({ ...rotate, lastSentAt: new Date() })
-      .where(eq(invitation.id, row.id))
-      .returning();
-    return sent ?? row;
+    if (!rotate) {
+      const [sent] = await db
+        .update(invitation)
+        .set({ lastSentAt: new Date() })
+        .where(eq(invitation.id, row.id))
+        .returning();
+      return sent ?? row;
+    }
+    // The new token replaces the old one only if, meanwhile, the invitation was not used,
+    // revoked or sent again, and its inviter can still give the access (under their account
+    // lock, decision 0134); otherwise the earlier link stays.
+    const rotated = await db.transaction(async (tx) => {
+      if (!row.invitedBy) return null;
+      await lockAccount(tx, row.invitedBy);
+      if (!(await inviterCanGrant(tx, row))) return null;
+      const [sent] = await tx
+        .update(invitation)
+        .set({ ...rotate, lastSentAt: new Date() })
+        .where(
+          and(
+            eq(invitation.id, row.id),
+            eq(invitation.tokenHash, row.tokenHash),
+            eq(invitation.uses, 0),
+            isNull(invitation.revokedAt),
+          ),
+        )
+        .returning();
+      return sent ?? null;
+    });
+    if (!rotated)
+      throw new HttpError(
+        'conflict',
+        'This invitation changed while it was being sent: the earlier link stays as it was.',
+      );
+    return rotated;
   }
 
   function setInvitationCookie(reply: FastifyReply, token: string | null) {
@@ -815,6 +844,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       invitationStatus(row) === 'used'
     )
       throw new HttpError('conflict', 'Only unused email invitations can be sent again.');
+    if (row.accessExpiresAt && row.accessExpiresAt <= new Date())
+      throw new HttpError('conflict', 'The access this invitation offers has already ended.');
     // An expired token is renewed, but only while its inviter can still give the access.
     if (!(await inviterCanGrant(db, row)))
       throw new HttpError(
@@ -840,6 +871,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         expiresAt,
       });
     } catch (err) {
+      if (err instanceof HttpError) throw err;
       req.log.warn({ err }, 'invitation email not sent');
       throw new HttpError(
         'unavailable',

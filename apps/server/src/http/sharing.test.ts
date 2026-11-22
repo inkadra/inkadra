@@ -880,6 +880,30 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     }
   });
 
+  it('sends no invitation again once the access it offers has ended', async () => {
+    const sent = await call('owner', 'POST', '/api/v1/invitations', {
+      kind: 'email',
+      email: 'ended@example.com',
+      projectId,
+      role: 'viewer',
+    });
+    expect(sent.status).toBe(201);
+    const id = sent.body.invitation.id as string;
+    const past = new Date(Date.now() - 3_600_000);
+    await db
+      .update(invitationTable)
+      .set({ accessExpiresAt: past, lastSentAt: past })
+      .where(eq(invitationTable.id, id));
+    const [before] = await db.select().from(invitationTable).where(eq(invitationTable.id, id));
+    const mails = mailer.sent.length;
+    const resend = await call('owner', 'POST', `/api/v1/invitations/${id}/resend`);
+    expect(resend.status).toBe(409);
+    expect(mailer.sent.length).toBe(mails);
+    const [after] = await db.select().from(invitationTable).where(eq(invitationTable.id, id));
+    expect(after?.tokenHash).toBe(before?.tokenHash);
+    await call('owner', 'DELETE', `/api/v1/invitations/${id}`);
+  });
+
   it('counts no sign-up on an invitation that expired while it waited for the inviter', async () => {
     const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
     const { cookie } = await claim(link.body.invitation.url);
