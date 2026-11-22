@@ -845,8 +845,12 @@ jobs:
 
   publish:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})
-    # Not for pull requests, the merge queue or the nightly run.
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Not for pull requests, the merge queue or the nightly run. A manual run publishes only from
+    # main or a version tag (the Release workflow starts one on its tag): from any other branch
+    # it would push a sha-<commit> image with a valid attestation for code that never merged.
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: all
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
