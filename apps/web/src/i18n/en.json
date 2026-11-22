@@ -186,7 +186,11 @@
       "name": "Board name",
       "namePlaceholder": "Location scouting",
       "create": "Create board",
-      "error": "The board could not be created. Try again."
+      "error": "The board could not be created. Try again.",
+      "kind": "Type",
+      "turnOn": "Turn on {{name}}",
+      "present": "The project already has its Production: there is one per project.",
+      "open": "Open {{name}}"
     },
     "preview": {
       "unavailable": "Preview unavailable",
@@ -5451,6 +5455,10 @@
           "5": {
             "title": "Board size limits",
             "text": "If this board reaches its size limit, additions are refused and the confirmed board reloads. Delete content to make room; if it still does not fit, ask the administrator to raise the limit."
+          },
+          "6": {
+            "title": "Where to start",
+            "text": "On an empty board: import a screenplay or add Production, a storyboard and a moodboard. A module that is off stays gray, with Turn on."
           }
         },
         "where": "The tour starts on the Canvas of a board you can edit."

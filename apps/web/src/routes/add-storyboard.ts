@@ -8,13 +8,15 @@ type AddedKind = Exclude<BoardKind, 'board'>;
 
 /**
  * Makes a new storyboard or moodboard under the project root and returns its address. A project
- * may hold several (decision 0121): the second is "Storyboard 2", and so on. It holds one
- * Production board (decision 0123): with one, its address; one in the trash comes back.
+ * may hold several (decision 0121): without a `title`, the second is "Storyboard 2", and so on.
+ * It holds one Production board (decision 0123): with one, its address; one in the trash comes
+ * back.
  */
 export async function addBoard(
   project: Pick<Project, 'id' | 'rootBoardId'>,
   kind: AddedKind,
   t: (key: string) => string,
+  title?: string,
 ): Promise<string> {
   const boards = await loadBoards(project.id);
   if (!boards) throw new Error('boards unavailable');
@@ -26,7 +28,7 @@ export async function addBoard(
     const board = await createBoard(
       project.id,
       project.rootBoardId,
-      n > 1 ? `${name} ${n}` : name,
+      title || (n > 1 ? `${name} ${n}` : name),
       kind,
     );
     return boardPath(project.id, board.id, project.rootBoardId);

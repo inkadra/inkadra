@@ -186,7 +186,11 @@
       "name": "Nom du tableau",
       "namePlaceholder": "Repérages",
       "create": "Créer le tableau",
-      "error": "Impossible de créer le tableau. Réessayez."
+      "error": "Impossible de créer le tableau. Réessayez.",
+      "kind": "Type",
+      "turnOn": "Activer {{name}}",
+      "present": "Le projet a déjà sa Production : il y en a une par projet.",
+      "open": "Ouvrir {{name}}"
     },
     "preview": {
       "unavailable": "Aperçu indisponible",
@@ -5451,6 +5455,10 @@
           "5": {
             "title": "Limites de taille du tableau",
             "text": "Si ce tableau atteint sa limite de taille, les ajouts sont refusés et le tableau confirmé est rechargé. Supprimez du contenu pour libérer de la place ; si cela ne suffit pas, demandez à l’administrateur de relever la limite."
+          },
+          "6": {
+            "title": "Par où commencer",
+            "text": "Sur un tableau vide : importez un scénario ou ajoutez la Production, un storyboard et un moodboard. Un module désactivé reste grisé, avec Activer."
           }
         },
         "where": "La visite commence sur le Canevas d’un tableau que vous pouvez modifier."

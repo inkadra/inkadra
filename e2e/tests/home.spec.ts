@@ -97,8 +97,10 @@ test('home shows today’s shooting day and creates empty projects and boards', 
   await page.getByRole('combobox').fill('Nuova board');
   await page.getByRole('option', { name: /^Nuova board/ }).click();
   const board = page.getByRole('dialog', { name: 'Nuova board' });
-  await chooseSelect(board.getByLabel('Progetto'), { label: projectName });
-  await expect(board.getByRole('radio')).toHaveCount(0);
+  await chooseSelect(board.getByLabel('Progetto', { exact: true }), { label: projectName });
+  // No templates: only the kinds, a plain board picked (decision 0121).
+  await expect(board.getByRole('radio')).toHaveCount(4);
+  await expect(board.getByRole('radio', { name: /^Board/ })).toBeChecked();
   await board.getByLabel('Nome della board').fill('Empty board');
   await board.getByRole('button', { name: 'Crea board' }).click();
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}/b/[0-9a-f-]{36}$`));

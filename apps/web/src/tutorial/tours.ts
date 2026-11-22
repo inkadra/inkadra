@@ -158,6 +158,8 @@ export const TOURS: Tour[] = [
       // The views of a board are turned on from its ⋯ menu (decision 0121).
       { anchor: 'board-menu', media: 'morph', side: 'bottom' },
       { anchor: null, media: 'types' },
+      // An empty board's starting points, by the modules that are on (decision 0121).
+      { anchor: 'canvas-start', media: 'types', side: 'top' },
     ],
   },
   {

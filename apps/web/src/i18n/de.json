@@ -186,7 +186,11 @@
       "name": "Name des Boards",
       "namePlaceholder": "Motivsuche",
       "create": "Board erstellen",
-      "error": "Das Board konnte nicht erstellt werden. Versuch es noch mal."
+      "error": "Das Board konnte nicht erstellt werden. Versuch es noch mal.",
+      "kind": "Typ",
+      "turnOn": "{{name}} einschalten",
+      "present": "Das Projekt hat schon seine Produktion: Es gibt eine pro Projekt.",
+      "open": "{{name}} öffnen"
     },
     "preview": {
       "unavailable": "Vorschau nicht verfügbar",
@@ -5451,6 +5455,10 @@
           "5": {
             "title": "Größenbegrenzung des Boards",
             "text": "Erreicht dieses Board seine Größenbegrenzung, werden Ergänzungen abgelehnt und das bestätigte Board wird neu geladen. Lösche Inhalte, um Platz zu schaffen; reicht das nicht, bitte deinen Admin, die Grenze anzuheben."
+          },
+          "6": {
+            "title": "Wo anfangen",
+            "text": "Auf einem leeren Board: Drehbuch importieren oder Produktion, Storyboard und Moodboard hinzufügen. Ein ausgeschaltetes Modul bleibt grau, mit Einschalten."
           }
         },
         "where": "Die Tour beginnt auf dem Canvas eines Boards, das du bearbeiten kannst."

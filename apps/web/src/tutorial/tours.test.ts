@@ -171,6 +171,21 @@ describe('the tours of modules (decision 0121)', () => {
   });
 });
 
+describe('the board tour', () => {
+  it('describes only the empty board’s tiles on the step that points at them', async () => {
+    const step = TOURS.find((tour) => tour.id === 'board')?.steps.findIndex(
+      (s) => s.anchor === 'canvas-start',
+    );
+    expect(step).toBeGreaterThanOrEqual(0);
+    for (const lang of ['de', 'en', 'es', 'fr', 'it', 'pt']) {
+      const catalogue = (await import(`../i18n/${lang}.json`)).default;
+      const text: string = catalogue.tutorial.tours.board.steps[String(step)].text;
+      // New board is a dialog elsewhere: the spotlight on the tiles cannot show it.
+      expect(text, lang).not.toContain(catalogue.home.newBoard.title);
+    }
+  });
+});
+
 describe('the schedule tour', () => {
   it('shows drawing a block and moving a whole day by its heading (0089, phases 2 and 3)', () => {
     const schedule = TOURS.find((tour) => tour.id === 'schedule');

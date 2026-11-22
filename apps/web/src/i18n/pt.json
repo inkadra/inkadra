@@ -186,7 +186,11 @@
       "name": "Nome do quadro",
       "namePlaceholder": "Pesquisa de locações",
       "create": "Criar quadro",
-      "error": "Não foi possível criar o quadro. Tente novamente."
+      "error": "Não foi possível criar o quadro. Tente novamente.",
+      "kind": "Tipo",
+      "turnOn": "Ativar {{name}}",
+      "present": "O projeto já tem sua Produção: há uma por projeto.",
+      "open": "Abrir {{name}}"
     },
     "preview": {
       "unavailable": "Prévia indisponível",
@@ -5451,6 +5455,10 @@
           "5": {
             "title": "Limites de tamanho do quadro",
             "text": "Se este quadro atingir o limite de tamanho, as adições são recusadas e o quadro confirmado é recarregado. Exclua conteúdo para liberar espaço; se ainda não couber, peça ao administrador para aumentar o limite."
+          },
+          "6": {
+            "title": "Por onde começar",
+            "text": "Em um quadro vazio: importe um roteiro ou adicione Produção, um storyboard e um moodboard. Um módulo desativado fica cinza, com Ativar."
           }
         },
         "where": "O tour começa no Canvas de um quadro que você pode editar."
