@@ -30,7 +30,9 @@ read [Direct LAN and Tailscale access](configuration.md#direct-lan-and-tailscale
 
 **Inkadra does not start: "Invalid configuration".** The log lists the settings that are
 missing or wrong. `PUBLIC_URL` must be a full address without a path, `AUTH_SECRET` at least 32
-characters.
+random characters: an example value, or one with fewer than 8 different characters, is refused.
+Replace it as in [Rotating the authentication secret](configuration.md#rotating-the-authentication-secret),
+which keeps two-factor secrets and sealed tokens readable.
 
 **"cannot write to /data" or "permission denied" on `/data`.** A host folder in `INKADRA_DATA`
 must belong to uid 1000. The `compose.yaml` of the current release fixes that at startup; with

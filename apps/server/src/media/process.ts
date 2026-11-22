@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
@@ -31,7 +31,7 @@ import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { readPhotoshop } from './photoshop.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
-import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
+import { ensureFreeSpace, privateInput, readPrefix, withJobDir } from './scratch.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   extractPoster,
@@ -111,6 +111,21 @@ export const ANIMATED_CAPS: AnimatedCaps = {
   maxFramePixels: 16_777_216,
   maxBytes: 6 * 1024 * 1024,
 };
+
+/**
+ * Largest SVG rasterised. librsvg is given the bytes, never the path: given a path it resolves
+ * relative references (`<image href>`, `xi:include`) next to it, the folder of every original.
+ */
+export const SVG_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Pixels of a picture decoded for its thumbnails: sharp's own default, stated, and the budget of
+ * a HEIC decode too. Past it a HEIC stays ready without thumbnails.
+ */
+export const MAX_INPUT_PIXELS = 0x3fff * 0x3fff;
+
+/** shortcut: a HEIC is decoded whole in memory, so larger ones keep no thumbnails; stream if needed. */
+export const HEIC_MAX_BYTES = 256 * 1024 * 1024;
 
 const SIZES = ThumbnailSize.options.map(Number).sort((a, b) => a - b);
 
@@ -293,19 +308,32 @@ async function processRow(
       let frameHeight = 0;
       let delays: number[] | undefined;
       if (mime === 'image/heic') {
-        if (!deps.heic) {
-          await db
-            .update(asset)
-            .set({ sha256: digest, mime, kind: 'image', status: 'ready', animated: false })
-            .where(eq(asset.id, assetId));
+        if (!deps.heic || !(await heicFits(copy.path))) {
+          await save(db, assetId, [], {
+            sha256: digest,
+            mime,
+            kind: 'image',
+            status: 'ready',
+            animated: false,
+          });
           return { variants: 0 };
         }
         const image = await decodeHeic(await readFile(copy.path));
         input = sharp(image.data, {
           raw: { width: image.width, height: image.height, channels: 4 },
+          limitInputPixels: MAX_INPUT_PIXELS,
         });
       } else {
-        input = sharp(copy.path, { failOn: 'error', animated: false });
+        if (svg && (await stat(copy.path)).size > SVG_MAX_BYTES) {
+          await save(db, assetId, [], { sha256: digest, status: 'ready', animated: false });
+          return { variants: 0 };
+        }
+        const source = svg ? await readPrefix(copy.path, SVG_MAX_BYTES) : copy.path;
+        input = sharp(source, {
+          failOn: 'error',
+          animated: false,
+          limitInputPixels: MAX_INPUT_PIXELS,
+        });
         const meta = await input.metadata();
         mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
         frames = meta.pages ?? 1;
@@ -344,6 +372,15 @@ async function processRow(
       await copy.done();
     }
   });
+}
+
+/** True when a HEIC is small enough to read whole and declares a size within the budget. */
+async function heicFits(path: string) {
+  if ((await stat(path)).size > HEIC_MAX_BYTES) return false;
+  const meta = await sharp(path)
+    .metadata()
+    .catch(() => null);
+  return !!meta?.width && !!meta.height && meta.width * meta.height <= MAX_INPUT_PIXELS;
 }
 
 /** A path to the original inside the job folder `dir`, after checking a download fits. */

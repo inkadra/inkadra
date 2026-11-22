@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { truncate } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { eq, inArray, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
@@ -18,7 +19,14 @@ import { writeZip } from '../transfers/zip.ts';
 import { chooseVideoEncoder, forgetVideoEncoder, readVideoEncoder } from './encoder-setting.ts';
 import { photoshopFixture } from './fixtures/photoshop.ts';
 import { SOFTWARE_ENCODER } from './hwaccel.ts';
-import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
+import {
+  ANIMATED_CAPS,
+  fitsAnimatedCaps,
+  HEIC_MAX_BYTES,
+  processAsset,
+  SVG_MAX_BYTES,
+  variantWidths,
+} from './process.ts';
 import { runProxy } from './proxy.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
@@ -276,6 +284,47 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
   });
 
+  it('rasterises an SVG without reading the other originals, by any reference', async () => {
+    const red = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#f00' } })
+      .png()
+      .toBuffer();
+    const sibling = await upload(red, 'image/png', 'other-project.png');
+    const path = join(root, 'files', originalKey(sibling));
+    const drawing = (href: string) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64"><image href="${href}" xlink:href="${href}" width="64" height="64"/></svg>`;
+    const opaque = async (image: Buffer) => {
+      const { data } = await sharp(image).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      return Math.max(...data.filter((_, i) => i % 4 === 3));
+    };
+    for (const href of [sibling, path, pathToFileURL(path).href]) {
+      // Control: opened by its path in the same folder, librsvg does draw the neighbour.
+      const beside = join(root, 'files', 'originals', `control-${randomUUID()}.svg`);
+      writeFileSync(beside, drawing(href));
+      expect(await opaque(await sharp(beside).png().toBuffer())).toBe(255);
+
+      const id = await upload(Buffer.from(drawing(href)), 'image/svg+xml', 'drawing.svg');
+      expect(await processAsset(deps, id)).toMatchObject({ variants: 1 });
+      const { variants } = await load(id);
+      const thumb = await readAll(await storage.read(variants[0]?.storageKey ?? ''));
+      // Transparent: the picture next to it in files/originals was not drawn.
+      expect(await opaque(thumb)).toBe(0);
+    }
+  });
+
+  it('keeps an SVG past the size cap ready, without thumbnails, old ones included', async () => {
+    const small =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>';
+    const id = await upload(Buffer.from(small), 'image/svg+xml', 'huge.svg');
+    expect(await processAsset(deps, id)).toMatchObject({ variants: 1 });
+    // The same asset processed again once its file is past the cap.
+    const body = `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><!--${'x'.repeat(SVG_MAX_BYTES)}--></svg>`;
+    await storage.write(originalKey(id), Buffer.from(body), 'image/svg+xml');
+    expect(await processAsset(deps, id)).toMatchObject({ variants: 0 });
+    const { row, variants } = await load(id);
+    expect(row?.status).toBe('ready');
+    expect(variants).toEqual([]);
+  });
+
   it('ignores disguised SVG previews and broken design files without failing the upload', async () => {
     const path = join(root, 'disguised.zip');
     const zip = writeZip(path);
@@ -477,6 +526,26 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     const { row, variants } = await load(id);
     expect(row?.status).toBe('ready');
     expect(variants).toHaveLength(0);
+  });
+
+  it('keeps a HEIC past the pixel or size budget ready, without decoding it', async () => {
+    // The same picture, declaring 20000×20000 pixels in its header.
+    const body = Buffer.from(fixture('gradient.heic'));
+    const ispe = body.indexOf('ispe');
+    body.writeUInt32BE(20_000, ispe + 8);
+    body.writeUInt32BE(20_000, ispe + 12);
+    const huge = await upload(body, 'image/heic', 'IMG_4323.HEIC');
+    expect(await processAsset(deps, huge)).toMatchObject({ variants: 0 });
+    expect((await load(huge)).row).toMatchObject({ status: 'ready', mime: 'image/heic' });
+
+    // Processed once with thumbnails, then again once the file is past the cap: none are left.
+    const long = await upload(fixture('gradient.heic'), 'image/heic', 'IMG_4324.HEIC');
+    expect(await processAsset(deps, long)).toMatchObject({ variants: 1 });
+    await truncate(join(root, 'files', originalKey(long)), HEIC_MAX_BYTES + 1);
+    expect(await processAsset(deps, long)).toMatchObject({ variants: 0 });
+    const { row, variants } = await load(long);
+    expect(row?.status).toBe('ready');
+    expect(variants).toEqual([]);
   });
 
   describe('camera RAW', async () => {

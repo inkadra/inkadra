@@ -16,7 +16,7 @@ the settings in another file, set `INKADRA_ENV_FILE` (see [Compose only](#compos
 | `NODE_ENV`             | `production`                     | `development`, `production` or `test`                                                                |
 | `PUBLIC_URL`           | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path             |
 | `AUTH_SECRET_PREVIOUS` | unset                            | Optional previous encryption secret (at least 32 characters); see rotation below                     |
-| `AUTH_SECRET`          | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out                |
+| `AUTH_SECRET`          | required                         | 32+ random characters (`openssl rand -hex 32`), never an example. Changing it signs everyone out     |
 | `DATABASE_URL`         | set by compose, not from `.env`  | Postgres connection string                                                                           |
 | `REDIS_URL`            | set by compose, not from `.env`  | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`     |
 | `INSTANCE_NAME`        | `Inkadra`                        | Name shown in the app                                                                                |
@@ -627,8 +627,11 @@ attachments live on `feedback-assets` and are not removed by the local retention
 ## Rotating the authentication secret
 
 Set `AUTH_SECRET_PREVIOUS` to the old `AUTH_SECRET`, replace `AUTH_SECRET` with a new random
-value of at least 32 characters, and restart every Inkadra role with the same pair of values.
-Keep both values private. Session cookies and known-device cookies still use only the current
+value of at least 32 characters (`openssl rand -hex 32`), and restart every Inkadra role with the
+same pair of values. This is also the way out when a production server refuses its `AUTH_SECRET`
+as too easy to guess (an example value from the documentation or tests, one containing
+`change-me`, or one with fewer than 8 different characters): `AUTH_SECRET_PREVIOUS` may hold that
+old value. Keep both values private. Session cookies and known-device cookies still use only the current
 secret: this signs everyone out. Calendar feeds must be regenerated.
 
 New sealed values use the current secret. The previous secret only keeps existing invitation
