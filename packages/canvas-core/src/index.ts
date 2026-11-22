@@ -15,6 +15,7 @@ export * from './plan-attach.ts';
 export * from './plan-draw.ts';
 export * from './plan-editing.ts';
 export * from './plan-elements.ts';
+export * from './plan-fields.ts';
 export * from './plan-icons.ts';
 export * from './plan-kit.ts';
 export * from './plan-kit-list.ts';
