@@ -21,7 +21,7 @@
  *   also by /48, so nobody can use up the rest;
  * - a daily cap across all installations, in reports (DAILY_LIMIT) and in bytes (DAILY_BYTES);
  * - optionally, Cloudflare's rate limiter per client IP on /challenge and /report;
- * - the ticket and proof of work are checked before any of the body is read;
+ * - the ticket, its proof of work and whether it was used are checked before any of the body is read;
  * - at most 8 files of a closed list of types: videos up to 25 MiB, the rest 10 MiB, 32 MiB per
  *   report in all, named here from their type, never by the client.
  * Used tickets, counters and the daily total live in one Durable Object (`Meter`), so checking and
@@ -185,6 +185,9 @@ async function report(request, env) {
     if (now < payload.nbf) throw new HttpError(403, 'early', { 'retry-after': String(payload.nbf - now) });
     if (now > payload.exp) throw new HttpError(403, 'expired');
     if (!(await powOk(payload.seed, powNonce, payload.bits))) throw new HttpError(403, 'pow');
+    // A cheap read before the body and GitHub, so a replayed ticket costs neither; `claim` below
+    // still decides atomically. The server fetches a new ticket for every send, retries included.
+    if (await meter(env).used(ticket.split('.')[1])) throw new HttpError(409, 'duplicate');
 
     const form = await boundedFormData(request);
     let meta;
@@ -559,6 +562,11 @@ export class Meter extends DurableObject {
     let ready = now;
     for (const row of this.#rows(keys, now)) ready = Math.max(ready, row.last + waitAfter(row.count));
     return { ready, total: this.#total(now), networkFullFor: this.#networkFullFor(keys, now, networkLimit) };
+  }
+
+  /** Whether a ticket was already used; read-only, `claim` makes the decision. */
+  used(ticketId) {
+    return this.sql.exec('SELECT 1 FROM used WHERE id = ? AND exp >= ?', ticketId, nowSeconds()).toArray().length > 0;
   }
 
   /** What is known of an issue being opened for this report: when it started, and its number. */
