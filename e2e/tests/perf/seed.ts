@@ -233,14 +233,7 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
   const counts: Record<string, number> = {};
   let strokes = 0;
   // Same board every run: a seeded generator (mulberry32) for the drawings.
-  let state = 1;
-  const random = () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
-  };
+  const random = seeded(1);
   const int = (min: number, max: number) => min + Math.floor(random() * (max - min + 1));
   const opts = { userId: null };
   const cols = 40;
@@ -356,47 +349,66 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
       super(address, protocols, { headers: { cookie, origin: base } });
     }
   }
-  const peers = await Promise.all(
-    Array.from({ length: count }, async (_, i) => {
-      const websocketProvider = new HocuspocusProviderWebsocket({
-        url: `${base.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
-        WebSocketPolyfill: CookieSocket,
-      });
-      const provider = new HocuspocusProvider({
-        websocketProvider,
-        name: boardDocName(boardId),
-        document: new Y.Doc(),
-      });
-      provider.attach();
-      await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('Peer sync timed out')), 20_000);
-        provider.on('synced', () => {
-          clearTimeout(timer);
-          resolve();
+  // Every resource is registered as soon as it exists, so a peer that fails to sync takes the
+  // whole group down with it: no interval, socket or document is left behind.
+  const cleanups: Array<() => void> = [];
+  const stop = () => {
+    for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+  };
+  let moves = 0;
+  try {
+    await Promise.all(
+      Array.from({ length: count }, async (_, i) => {
+        const document = new Y.Doc();
+        cleanups.push(() => document.destroy());
+        const websocketProvider = new HocuspocusProviderWebsocket({
+          url: `${base.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
+          WebSocketPolyfill: CookieSocket,
         });
-      });
-      const at = { x: 1500 + i * 3000, y: 1500 };
-      let moves = 0;
-      const timer = setInterval(() => {
-        at.x = Math.max(0, Math.min(11_000, at.x + (Math.random() - 0.5) * 120));
-        at.y = Math.max(0, Math.min(7_000, at.y + (Math.random() - 0.5) * 90));
-        provider.awareness?.setLocalState({ cursor: { ...at }, selection: [], editing: null });
-        moves += 1;
-      }, 50);
-      return {
-        moves: () => moves,
-        stop() {
-          clearInterval(timer);
-          provider.destroy();
-          websocketProvider.destroy();
-        },
-      };
-    }),
-  );
-  return {
-    moves: () => peers.reduce((n, p) => n + p.moves(), 0),
-    stop: () => {
-      for (const p of peers) p.stop();
-    },
+        cleanups.push(() => websocketProvider.destroy());
+        const provider = new HocuspocusProvider({
+          websocketProvider,
+          name: boardDocName(boardId),
+          document,
+        });
+        cleanups.push(() => provider.destroy());
+        provider.attach();
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            timeout = setTimeout(() => reject(new Error('Peer sync timed out')), 20_000);
+            provider.on('synced', () => resolve());
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+        // Same path every run: a seeded walk over the seeded area.
+        const random = seeded(i + 1);
+        const at = { x: 1500 + i * 3000, y: 1500 };
+        const timer = setInterval(() => {
+          at.x = Math.max(0, Math.min(11_000, at.x + (random() - 0.5) * 120));
+          at.y = Math.max(0, Math.min(7_000, at.y + (random() - 0.5) * 90));
+          provider.awareness?.setLocalState({ cursor: { ...at }, selection: [], editing: null });
+          moves += 1;
+        }, 50);
+        cleanups.push(() => clearInterval(timer));
+      }),
+    );
+  } catch (err) {
+    stop();
+    throw err;
+  }
+  return { moves: () => moves, stop };
+}
+
+/** mulberry32: the same seed, the same numbers. */
+function seeded(seed: number) {
+  let state = seed >>> 0 || 1;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
   };
 }
