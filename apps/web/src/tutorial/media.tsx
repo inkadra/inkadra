@@ -428,6 +428,36 @@ function Scene({ id }: { id: MediaId }): ReactNode {
           </span>
         </div>
       ));
+    case 'crew':
+      return [0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="tm-inbox tm-loop-in"
+          style={{ top: 14 + i * 36, ...delay(i * 0.2) }}
+        >
+          <span className="tm-avatar">{['AP', 'LR', 'GB'][i]}</span>
+          {/* The department before the line: the card's Skip sits over the right of the top row. */}
+          <span className="tm-chip" style={kindStyle('troupe')}>
+            {t(`tutorial.media.department${i}`)}
+          </span>
+          <i className="tm-line" />
+        </div>
+      ));
+    case 'cast':
+      return [0, 1].map((i) => (
+        <div
+          key={i}
+          className={`tm-inbox${i ? ' tm-loop-pop' : ''}`}
+          style={{ top: 30 + i * 44, ...delay(0.4) }}
+        >
+          <span className="tm-avatar">{['M', 'AP'][i]}</span>
+          <b>{['Marta', 'Ada Prova'][i]}</b>
+          <i className="tm-line" />
+          <span className="tm-chip" style={i ? kindStyle('production') : tool('character')}>
+            {t(i ? 'tutorial.media.plays' : 'tutorial.media.character')}
+          </span>
+        </div>
+      ));
     case 'home':
       return PICS.slice(0, 3).map((p, i) => (
         <div

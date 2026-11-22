@@ -2237,7 +2237,18 @@
       "retry": "Tentar novamente",
       "fromBoardVideo": "De um vídeo do quadro",
       "menu": "Menu do frame {{label}}",
-      "open": "Abrir"
+      "open": "Abrir",
+      "performers": "Intérpretes",
+      "noPerformer": "Sem intérprete",
+      "link": "Vincular",
+      "linkPerformer": "Vincular quem interpreta {{name}}",
+      "whoPlays": "Quem interpreta {{name}}?",
+      "noFreeCrew": "Ninguém livre na equipe",
+      "noFreeCrewHint": "Adicione o intérprete à equipe do quadro Produção: uma linha por personagem.",
+      "performerFailed": "Não foi possível vincular. Tente novamente.",
+      "performerTaken": "{{name}}: já tem intérprete ({{performer}}).",
+      "performerChanged": "Enquanto isso, esta pessoa foi alterada na equipe. Tente novamente.",
+      "playingRole": "Fora da lista porque a função conta como personagem: {{names}}"
     },
     "shot": {
       "ews": "Grande plano geral",
@@ -5336,7 +5347,12 @@
       "restore": "Restaurar",
       "role0": "Editar",
       "role1": "Comentar",
-      "role2": "Convidar"
+      "role2": "Convidar",
+      "department0": "Elenco",
+      "department1": "Realização",
+      "department2": "Imagem",
+      "character": "Personagem",
+      "plays": "Interpreta Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5965,10 +5981,14 @@
             "text": "Abra uma linha: os campos são salvos automaticamente. Se quiser, vincule uma conta ou uma ficha de personagem."
           },
           "2": {
+            "title": "Quem interpreta quem",
+            "text": "Vincule a pessoa à ficha da personagem que ela interpreta. Sem fichas? Abra um frame: em Elenco, “Vincular” cria a ficha. Assim a ordem do dia cruza personagem e intérprete."
+          },
+          "3": {
             "title": "Cole de uma lista",
             "text": "Abra «Colar de uma lista» na barra da Equipe. Revise a prévia antes de adicionar as pessoas. Cabeçalhos e duplicados são ignorados."
           },
-          "3": {
+          "4": {
             "title": "Chamadas e ordem do dia",
             "text": "No Cronograma, aba Chamadas, escolha quem é chamado a cada dia. A ordem do dia imprime equipe, telefones e contato no set, nunca para convidados nem clientes."
           }
@@ -6804,13 +6824,14 @@
     "characterUnavailable": "Ficha indisponível · Desvincule-a ou escolha outra ficha",
     "wholeProject": "para todo o projeto",
     "characterTag": "Personagem",
+    "characterTaken": "Esta personagem já é interpretada por {{name}}.",
     "emailPlaceholder": "opcional",
     "pickupPlaceholder": "Igual à chamada do dia",
     "notesPlaceholder": "Só a equipe do projeto as vê",
     "characterLabel": "Ficha de personagem",
     "optionalTag": "opcional",
-    "characterHint": "Nenhuma. O nome na programação basta para a chamada; vincule uma ficha só se houver figurino e referências.",
-    "characterNone": "Ainda não há fichas de personagem no projeto. Não é preciso: um papel igual ao nome na programação basta para a chamada.",
+    "characterHint": "Nenhuma. Vincule a ficha da personagem que a pessoa interpreta: a ordem do dia a cruza com os frames.",
+    "characterNone": "Ainda não há fichas de personagem. Em um frame, em Elenco, “Vincular” cria a ficha e a vincula a esta pessoa.",
     "link": "Vincular",
     "unlinkShort": "Desvincular",
     "accountHint": "Vincule uma conta para enviar a chamada ao celular e pedir confirmação da presença.",
@@ -6825,7 +6846,8 @@
     "mergeTitle": "Juntar {{name}}",
     "mergeWith": "Linha a juntar",
     "mergeHint": "Fica a linha de {{name}} ({{kept}}): os dados dela prevalecem, os campos vazios são preenchidos com os da outra linha, que repassa as chamadas e é removida.",
-    "mergeAction": "Juntar"
+    "mergeAction": "Juntar",
+    "plays": "Interpreta {{name}}"
   },
   "dayCalls": {
     "title": "Chamadas",

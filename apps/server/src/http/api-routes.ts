@@ -7,6 +7,7 @@ import {
   BOARD_WRITERS_CAPABILITY,
   CLASSIFICATION_DELETE_CAPABILITY,
   COLLAB_PATH,
+  CREW_ONE_ROW_PER_CHARACTER_CAPABILITY,
   type Health,
   IDEMPOTENT_IMPORT_CAPABILITY,
   type Instance,
@@ -184,6 +185,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         BACKUP_TARGETS_CAPABILITY,
         // Project.position is the caller's own order (decision 0134).
         PER_MEMBER_PROJECT_ORDER_CAPABILITY,
+        // A character card is linked to one crew row; a second is 409 `character_taken` (0091).
+        CREW_ONE_ROW_PER_CHARACTER_CAPABILITY,
         // Settings → Server runs the load test (#908): only where a worker can run it.
         ...(deps.jobs.runLoadTest ? [LOAD_TEST_CAPABILITY] : []),
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).

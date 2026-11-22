@@ -2237,7 +2237,18 @@
       "retry": "Riprova",
       "fromBoardVideo": "Da un video della lavagna",
       "menu": "Menu dell’inquadratura {{label}}",
-      "open": "Apri"
+      "open": "Apri",
+      "performers": "Interpreti",
+      "noPerformer": "Nessun interprete",
+      "link": "Collega",
+      "linkPerformer": "Collega chi interpreta {{name}}",
+      "whoPlays": "Chi interpreta {{name}}?",
+      "noFreeCrew": "Nessuna persona libera in Troupe",
+      "noFreeCrewHint": "Aggiungi l’interprete nella Troupe della board Produzione: una riga per personaggio.",
+      "performerFailed": "Collegamento non riuscito. Riprova.",
+      "performerTaken": "{{name}}: c’è già un interprete ({{performer}}).",
+      "performerChanged": "Nel frattempo questa persona è stata modificata nella Troupe. Riprova.",
+      "playingRole": "Fuori elenco perché il ruolo vale come personaggio: {{names}}"
     },
     "shot": {
       "ews": "Campo lunghissimo",
@@ -5336,7 +5347,12 @@
       "restore": "Ripristina",
       "role0": "Modifica",
       "role1": "Commenta",
-      "role2": "Invita"
+      "role2": "Invita",
+      "department0": "Cast",
+      "department1": "Regia",
+      "department2": "Fotografia",
+      "character": "Personaggio",
+      "plays": "Interpreta Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5965,10 +5981,14 @@
             "text": "Apri una riga: ogni campo si salva automaticamente. Collega un account o una scheda personaggio facoltativa."
           },
           "2": {
+            "title": "Chi interpreta chi",
+            "text": "Collega la persona alla scheda del personaggio che interpreta. Senza schede, apri un’inquadratura: sotto Personaggi, «Collega» crea la scheda. L’ordine del giorno abbina così personaggio e interprete."
+          },
+          "3": {
             "title": "Incolla da foglio",
             "text": "Apri «Incolla da foglio» nella barra della Troupe. Controlla l’anteprima prima di aggiungere le persone. Intestazioni e duplicati vengono saltati."
           },
-          "3": {
+          "4": {
             "title": "Convocazioni e foglio",
             "text": "Nel Piano riprese, scheda Convocazioni, scegli chi è convocato ogni giorno. L’ordine del giorno stampa troupe, telefoni e contatto sul set, mai per ospiti e clienti."
           }
@@ -6804,13 +6824,14 @@
     "characterUnavailable": "Scheda non disponibile · Scollega o scegli un’altra scheda",
     "wholeProject": "per tutto il progetto",
     "characterTag": "Personaggio",
+    "characterTaken": "Questo personaggio è già interpretato da {{name}}.",
     "emailPlaceholder": "facoltativa",
     "pickupPlaceholder": "Come la convocazione del giorno",
     "notesPlaceholder": "Visibili solo al team del progetto",
     "characterLabel": "Scheda personaggio",
     "optionalTag": "facoltativa",
-    "characterHint": "Nessuna. Il nome nella scaletta basta per la convocazione; collega una scheda solo se ha costume e riferimenti.",
-    "characterNone": "Ancora nessuna scheda personaggio nel progetto. Non serve: un ruolo uguale al nome nella scaletta basta per la convocazione.",
+    "characterHint": "Nessuna. Collega la scheda del personaggio che interpreta: l’ordine del giorno lo abbina alle inquadrature.",
+    "characterNone": "Ancora nessuna scheda personaggio. In un’inquadratura, sotto Personaggi, «Collega» crea la scheda e la lega a questa persona.",
     "link": "Collega",
     "unlinkShort": "Scollega",
     "accountHint": "Collega un account per mandare la convocazione sul telefono e chiedere la conferma della presenza.",
@@ -6825,7 +6846,8 @@
     "mergeTitle": "Unisci {{name}}",
     "mergeWith": "Riga da unire",
     "mergeHint": "Resta la riga di {{name}} ({{kept}}): i suoi dati vincono, i campi vuoti si riempiono dall’altra, che passa le sue convocazioni e viene eliminata.",
-    "mergeAction": "Unisci"
+    "mergeAction": "Unisci",
+    "plays": "Interpreta {{name}}"
   },
   "dayCalls": {
     "title": "Convocazioni",

@@ -3,19 +3,22 @@
 import type { Element } from '@inkadra/doc-schema';
 import {
   type CastLink,
+  CHARACTER_TAKEN,
   type Crew,
   type CrewCharacter,
   type CrewMember,
+  type CrewMemberInput,
   castCalls,
+  castKeysOf,
   castNameKey,
+  castPerformer,
   type DayCall,
   type DayCrewEntry,
-  linkedCharacter,
   type ShootingDayInput,
 } from '@inkadra/shared';
 import { useEffect, useState } from 'react';
 import { api, RequestError } from '../../lib/api.ts';
-import { castCharacter, type DayLocation } from './call-sheet.ts';
+import type { DayLocation } from './call-sheet.ts';
 import { whileVisible } from './schedule.ts';
 import { locationCoords, sunTimes } from './sun.ts';
 
@@ -23,28 +26,13 @@ export {
   byDepartment,
   type CallSheetCard,
   castKeysOf,
+  castPerformer,
   characterName,
   type DayCrewEntry,
   dayCrew,
   dialNumber,
   linkedCharacter,
 } from '@inkadra/shared';
-
-/**
- * The character card of a cast name on the sheet, for its actor and contact: a card of this board
- * with that name, else the card with that name its crew row is linked to, on any board.
- */
-export function castCard(
-  name: string,
-  entry: DayCrewEntry | undefined,
-  elements: ReadonlyMap<string, Element>,
-  characters: readonly CrewCharacter[] = [],
-) {
-  const here = castCharacter(name, elements);
-  if (here) return { name: here.name, actor: here.actor ?? '', contact: here.contact ?? '' };
-  const linked = entry ? linkedCharacter(entry.member, elements, characters) : undefined;
-  return linked && castNameKey(linked.name) === castNameKey(name) ? linked : undefined;
-}
 
 /**
  * The day's calls after one change. Only exceptions are stored: an entry that says what the
@@ -74,6 +62,56 @@ export function withDayCall(
       ...(called === entry.usual ? {} : { absent: !called }),
     },
   ];
+}
+
+/** The crew row that already plays a character card, when a link was refused for it (0091). */
+export function characterTakenBy(error: unknown): CrewMember | undefined {
+  if (!(error instanceof RequestError) || error.status !== 409) return undefined;
+  const details = error.details as { reason?: string; member?: CrewMember } | undefined;
+  return details?.reason === CHARACTER_TAKEN ? details.member : undefined;
+}
+
+/** What a crew row saves: the row without the fields the server owns. */
+export const crewInput = ({
+  id: _id,
+  account: _account,
+  projectId: _project,
+  revision: _revision,
+  createdAt: _created,
+  updatedAt: _updated,
+  ...input
+}: CrewMember): CrewMemberInput => input;
+
+/**
+ * Who plays each cast name of a frame, by the call sheet's rules: the first crew row whose cast
+ * names hold it (`castKeysOf`, as `castRows`), and its performer by `castPerformer`.
+ */
+export function castPerformers(
+  cast: readonly string[],
+  crew: readonly CrewMember[],
+  elements: ReadonlyMap<string, Element>,
+  characters: readonly CrewCharacter[] = [],
+): Array<{ name: string; member: CrewMember | undefined; performer: string }> {
+  const keys = castKeysOf(crew, elements, characters);
+  return cast.map((name) => {
+    const member = crew.find((m) => keys.get(m.id)?.has(castNameKey(name)));
+    return { name, member, performer: castPerformer(name, member, elements, characters).performer };
+  });
+}
+
+/**
+ * The rows that can still be linked to a character: by the same rule (`castKeysOf`), a row that
+ * plays nothing but its own name, with no card linked.
+ */
+export function freePerformers(
+  crew: readonly CrewMember[],
+  elements: ReadonlyMap<string, Element>,
+  characters: readonly CrewCharacter[] = [],
+) {
+  const keys = castKeysOf(crew, elements, characters);
+  return crew.filter(
+    (m) => !m.character && [...(keys.get(m.id) ?? [])].every((key) => key === castNameKey(m.name)),
+  );
 }
 
 /** The people the call sheet prints as "on-set contact": called first, else any marked. */

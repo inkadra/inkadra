@@ -439,7 +439,15 @@ registry.registerPath({
     params: idParam('projectId'),
     body: json(CrewMemberInput),
   },
-  responses: { 201: { description: 'Created', ...json(CrewMember) }, ...errors },
+  responses: {
+    201: { description: 'Created', ...json(CrewMember) },
+    409: {
+      description:
+        'details.reason `character_taken`: the character card is already linked to the crew member in details.member.',
+      ...json(ApiError),
+    },
+    ...errors,
+  },
 });
 registry.registerPath({
   security: secured,
@@ -460,7 +468,8 @@ registry.registerPath({
   responses: {
     200: { description: 'Updated', ...json(CrewMember) },
     409: {
-      description: 'Stale revision; details.current contains the latest member.',
+      description:
+        'Stale revision; details.current contains the latest member. Or, with details.reason `character_taken`, the character card is already linked to the crew member in details.member.',
       ...json(ApiError),
     },
     ...errors,

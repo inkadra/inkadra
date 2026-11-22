@@ -1,6 +1,17 @@
-import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
+import {
+  createElement,
+  deleteElements,
+  type FrameElement,
+  updateElement,
+} from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, type Element } from '@inkadra/doc-schema';
-import type { SearchResult } from '@inkadra/shared';
+import {
+  type CrewCharacter,
+  type CrewMember,
+  castNameKey,
+  isCast,
+  type SearchResult,
+} from '@inkadra/shared';
 import { Button, Icon, IconButton, Input, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,14 +21,24 @@ import {
   framePanelActions,
   setFrameStatus,
 } from '../../commands/board-actions.ts';
-import { api } from '../../lib/api.ts';
+import { api, RequestError } from '../../lib/api.ts';
+import { useModules } from '../../lib/modules.ts';
 import { useAsset } from '../assets.ts';
-import { GuestModeContext } from '../context.ts';
+import { ContextMenu } from '../chrome.tsx';
+import { CrewEditorContext, GuestModeContext } from '../context.ts';
 import { authorName, editableText } from '../review-model.ts';
 import { openComments, useReviews } from '../review-store.ts';
-import { type BoardStore, LOCAL } from '../store.ts';
+import { type BoardStore, LOCAL, REPAIR } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
 import { aspectLabel } from './aspect.ts';
+import { castCharacter } from './call-sheet.ts';
+import {
+  castPerformers,
+  characterTakenBy,
+  crewInput,
+  freePerformers,
+  useCrew,
+} from './day-calls.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { ShotField, StatusSelect, TextField } from './fields.tsx';
 import { moveImageToFrame } from './frame-image.ts';
@@ -271,6 +292,16 @@ export function FramePanel({
             set({ cast: cast.length > 0 ? cast : undefined });
           }}
         />
+        {!guest && (frame.cast ?? []).length > 0 && (
+          <CastPerformers
+            store={store}
+            projectId={projectId}
+            boardId={boardId}
+            cast={frame.cast ?? []}
+            userId={userId}
+            readOnly={readOnly}
+          />
+        )}
         {!readOnly && !guest && (
           <CastLinks
             store={store}
@@ -421,6 +452,228 @@ function BoardPicture({
       />
       <span>{name}</span>
     </button>
+  );
+}
+
+/**
+ * Who plays each name of the frame's cast, by the call sheet's rules (decision 0091). "Link" picks
+ * a free person of the Troupe and links their row to the card of that name, made on this board
+ * when the project has none; it shows only to project editors, who can write the crew. Nothing
+ * when Production is off or the roster cannot be read (a grant on one board).
+ */
+export function CastPerformers({
+  store,
+  projectId,
+  boardId,
+  cast,
+  userId,
+  readOnly,
+}: {
+  store: BoardStore;
+  projectId: string;
+  boardId: string;
+  cast: readonly string[];
+  userId: string | null;
+  readOnly: boolean;
+}) {
+  const { t } = useTranslation();
+  const production = useModules().isOn('production');
+  const canLink = useContext(CrewEditorContext) && !readOnly;
+  const crew = useCrew(production ? projectId : undefined, boardId);
+  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const labelId = useId();
+  const list = useRef<HTMLUListElement>(null);
+  const anchor = useRef<HTMLButtonElement | null>(null);
+  const [picking, setPicking] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [problem, setProblem] = useState('');
+  // After a link the focus goes to the name's row, once the roster read again has drawn it: its
+  // "Link" again when it failed, else the row. Moved earlier, it would sit on the "Link" that the
+  // new roster takes away and fall to the page.
+  const settle = useRef<{ name: string; roster: unknown } | null>(null);
+  const roster = useRef<unknown>(null);
+  roster.current = crew.items;
+  useEffect(() => {
+    const pending = settle.current;
+    if (!pending || crew.items === pending.roster) return;
+    const row = [...(list.current?.querySelectorAll<HTMLElement>('li') ?? [])].find(
+      (li) => li.dataset.cast === pending.name,
+    );
+    settle.current = null;
+    (row?.querySelector<HTMLElement>('button') ?? row)?.focus();
+  });
+  if (!production || !crew.items) return null;
+  const free = freePerformers(crew.items, snap.byId, crew.characters);
+  // Cast rows whose role is read as the character they play (decision 0091): not offered, so the
+  // menu says why.
+  const playing = crew.items.filter((m) => !m.character && isCast(m) && !free.includes(m));
+  /**
+   * The card of a cast name: on this board, else the first of the project (the server lists
+   * storyboards first, in a fixed order). This board is read again after the request, so a card
+   * a colleague made meanwhile is used rather than a second one made.
+   */
+  const cardOf = async (name: string) => {
+    const here = () => castCharacter(name, store.getSnapshot().byId);
+    const local = here();
+    if (local) return { boardId, elementId: local.id };
+    const { items } = await api.get<{ items: CrewCharacter[] }>(
+      `/projects/${projectId}/crew/characters`,
+    );
+    const there = items.find((c) => castNameKey(c.name) === castNameKey(name));
+    if (there) return { boardId: there.boardId, elementId: there.elementId };
+    const arrived = here();
+    return arrived ? { boardId, elementId: arrived.id } : null;
+  };
+  /**
+   * A new card for the name, below everything on this board. Only the name: who plays it is the
+   * crew link, so a link that fails leaves no performer behind. No step of the person's undo
+   * (REPAIR): undoing it would leave the link pointing at nothing.
+   * shortcut: two editors making the first card of one name in the same moment get two cards;
+   * the server's one-row-per-card rule does not see names. Upgrade: create cards on the server.
+   */
+  const newCard = (name: string) => {
+    const bottom = [...store.getSnapshot().byId.values()]
+      .filter((el) => !el.parent)
+      .reduce((max, el) => Math.max(max, el.y + (el.h ?? 200)), 0);
+    return createElement(
+      store.doc,
+      'character',
+      { x: 0, y: bottom + 40 },
+      { name },
+      { userId, origin: REPAIR },
+    ).id;
+  };
+  const link = async (name: string, member: CrewMember) => {
+    setBusy(name);
+    setProblem('');
+    let made: string | null = null;
+    try {
+      let character = await cardOf(name);
+      if (!character) {
+        made = newCard(name);
+        character = { boardId, elementId: made };
+      }
+      // A card made here reaches the server with the next sync: until then the link is 400
+      // "Character not found", so it is tried again for a few seconds.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await api.put(`/projects/${projectId}/crew/${member.id}`, {
+            ...crewInput(member),
+            character,
+            revision: member.revision,
+          });
+          break;
+        } catch (e) {
+          if (!made || attempt >= 5 || !(e instanceof RequestError && e.status === 400)) throw e;
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+    } catch (e) {
+      // The card made for this link goes again; a card that was there stays as it was.
+      if (made) deleteElements(store.doc, [made], REPAIR);
+      const taken = characterTakenBy(e);
+      setProblem(
+        taken
+          ? t('film.frame.performerTaken', { name, performer: taken.name })
+          : e instanceof RequestError && e.status === 409
+            ? t('film.frame.performerChanged')
+            : t('film.frame.performerFailed'),
+      );
+    } finally {
+      settle.current = { name, roster: roster.current };
+      setBusy(null);
+      crew.reload();
+    }
+  };
+  return (
+    <div className="film-field">
+      <span className="film-field__label" id={labelId}>
+        {t('film.frame.performers')}
+      </span>
+      <ul ref={list} className="film-performers" aria-labelledby={labelId}>
+        {castPerformers(cast, crew.items, snap.byId, crew.characters).map(({ name, performer }) => (
+          <li key={name} data-cast={name} tabIndex={-1}>
+            <strong>{name}</strong>
+            {performer ? (
+              <span>{performer}</span>
+            ) : (
+              <>
+                <span className="film-performers__none">{t('film.frame.noPerformer')}</span>
+                {canLink && (
+                  <button
+                    type="button"
+                    className="ink-btn ink-btn--ghost"
+                    aria-label={t('film.frame.linkPerformer', { name })}
+                    aria-haspopup="menu"
+                    aria-expanded={picking?.name === name}
+                    // Not `disabled`: the focus stays on it while the link is saved.
+                    aria-disabled={busy !== null || undefined}
+                    onClick={(e) => {
+                      if (busy !== null) return;
+                      anchor.current = e.currentTarget;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setPicking(
+                        picking?.name === name ? null : { name, x: rect.left, y: rect.bottom + 4 },
+                      );
+                    }}
+                  >
+                    {t('film.frame.link')}
+                  </button>
+                )}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      {problem && (
+        <p className="ink-field__error" role="alert">
+          {problem}
+        </p>
+      )}
+      {picking && (
+        <ContextMenu
+          className="menu--canvas menu--performers"
+          anchor={anchor}
+          x={picking.x}
+          y={picking.y}
+          label={t('film.frame.whoPlays', { name: picking.name })}
+          onClose={(reason) => {
+            setPicking(null);
+            if (reason !== 'outside') anchor.current?.focus();
+          }}
+          items={[
+            ...(free.length
+              ? free.map((member) => {
+                  const label = member.role.trim()
+                    ? `${member.name} · ${member.role.trim()}`
+                    : member.name;
+                  // One line: a long name or role ends in "…", read whole on hover and by name.
+                  return {
+                    label,
+                    content: <span title={label}>{label}</span>,
+                    action: () => void link(picking.name, member),
+                  };
+                })
+              : [
+                  {
+                    label: t('film.frame.noFreeCrew'),
+                    disabled: true,
+                    hint: t('film.frame.noFreeCrewHint'),
+                  },
+                ]),
+            ...(playing.length
+              ? [
+                  {
+                    note: t('film.frame.playingRole', {
+                      names: playing.map((m) => m.name).join(', '),
+                    }),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      )}
+    </div>
   );
 }
 

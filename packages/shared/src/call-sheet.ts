@@ -110,6 +110,33 @@ export function characterName(
 }
 
 /**
+ * The character card and the performer of a cast name, one rule for every place that shows who
+ * plays it: the shot panel, the call sheet and its PDF (decision 0091). `member` is the crew row
+ * that plays the name (`castKeysOf`). The card is the one that row is linked to, when it has that
+ * name, else the first card of this board with that name. The performer is the actor written on
+ * that card (the board is where actor and contact live, decision 0091), else the row's name.
+ */
+export function castPerformer(
+  name: string,
+  member: CrewMember | undefined,
+  elements: ReadonlyMap<string, CallSheetCard> = new Map(),
+  characters: readonly CrewCharacter[] = [],
+): { card: { name: string; actor: string; contact: string } | undefined; performer: string } {
+  const key = castNameKey(name);
+  const linked = member ? linkedCharacter(member, elements, characters) : undefined;
+  const here = [...elements.values()].find(
+    (el) => el.type === 'character' && castNameKey(el.name ?? '') === key,
+  );
+  const card =
+    linked && castNameKey(linked.name) === key
+      ? linked
+      : here
+        ? { name: here.name ?? '', actor: here.actor ?? '', contact: here.contact ?? '' }
+        : undefined;
+  return { card, performer: card?.actor.trim() || member?.name.trim() || '' };
+}
+
+/**
  * The cast names of each crew row (decisions 0092, 0095): its own name and its linked card's
  * always; the role of a row in Cast only when no row has that name or card, and then for the
  * first such row by roster position. The server reads the same rule (`crewCastKeys`).

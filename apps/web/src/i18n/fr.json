@@ -2237,7 +2237,18 @@
       "retry": "Réessayer",
       "fromBoardVideo": "Depuis une vidéo du tableau",
       "menu": "Menu du plan {{label}}",
-      "open": "Ouvrir"
+      "open": "Ouvrir",
+      "performers": "Interprètes",
+      "noPerformer": "Aucun interprète",
+      "link": "Lier",
+      "linkPerformer": "Lier qui joue {{name}}",
+      "whoPlays": "Qui joue {{name}} ?",
+      "noFreeCrew": "Personne de libre dans l’équipe",
+      "noFreeCrewHint": "Ajoutez l’interprète à l’équipe du tableau Production : une ligne par personnage.",
+      "performerFailed": "Liaison impossible. Réessayez.",
+      "performerTaken": "{{name}} : a déjà un interprète ({{performer}}).",
+      "performerChanged": "Cette personne a été modifiée dans l’équipe entre-temps. Réessayez.",
+      "playingRole": "Hors liste, car leur poste compte comme personnage : {{names}}"
     },
     "shot": {
       "ews": "Plan général",
@@ -5336,7 +5347,12 @@
       "restore": "Restaurer",
       "role0": "Modifier",
       "role1": "Commenter",
-      "role2": "Inviter"
+      "role2": "Inviter",
+      "department0": "Comédiens",
+      "department1": "Réalisation",
+      "department2": "Image",
+      "character": "Personnage",
+      "plays": "Joue Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5965,10 +5981,14 @@
             "text": "Ouvrez une ligne : les champs s’enregistrent seuls. Liez si besoin un compte ou une fiche personnage."
           },
           "2": {
+            "title": "Qui joue qui",
+            "text": "Liez la personne à la fiche du personnage qu’elle joue. Pas de fiche ? Ouvrez un plan : sous Personnages, « Lier » crée la fiche. La feuille de service rapproche ainsi personnage et interprète."
+          },
+          "3": {
             "title": "Coller depuis une liste",
             "text": "Ouvrez « Coller depuis une liste » dans la barre Équipe. Vérifiez l’aperçu avant d’ajouter des personnes. Les en-têtes et les doublons sont ignorés."
           },
-          "3": {
+          "4": {
             "title": "Convocations et feuille de service",
             "text": "Dans le Plan de tournage, onglet Convocations, choisissez qui est convoqué chaque jour. La feuille de service imprime l’équipe, les téléphones et le contact sur le plateau, jamais pour les invités ni les clients."
           }
@@ -6804,13 +6824,14 @@
     "characterUnavailable": "Fiche indisponible · Déliez-la ou choisissez-en une autre",
     "wholeProject": "pour tout le projet",
     "characterTag": "Personnage",
+    "characterTaken": "Ce personnage est déjà joué par {{name}}.",
     "emailPlaceholder": "facultatif",
     "pickupPlaceholder": "Comme la convocation du jour",
     "notesPlaceholder": "Visibles seulement par l’équipe du projet",
     "characterLabel": "Fiche personnage",
     "optionalTag": "facultative",
-    "characterHint": "Aucune. Le nom dans le déroulé suffit pour la convocation ; liez une fiche seulement si elle a costume et références.",
-    "characterNone": "Pas encore de fiche personnage dans le projet. Pas besoin : un rôle identique au nom dans le déroulé suffit pour la convocation.",
+    "characterHint": "Aucune. Liez la fiche du personnage joué : la feuille de service le rapproche des plans.",
+    "characterNone": "Pas encore de fiche personnage. Dans un plan, sous Personnages, « Lier » crée la fiche et l’attache à cette personne.",
     "link": "Lier",
     "unlinkShort": "Délier",
     "accountHint": "Liez un compte pour envoyer la convocation sur son téléphone et demander une confirmation.",
@@ -6825,7 +6846,8 @@
     "mergeTitle": "Fusionner {{name}}",
     "mergeWith": "Ligne à fusionner",
     "mergeHint": "La ligne de {{name}} ({{kept}}) reste : ses informations priment, les champs vides sont complétés par l’autre ligne, qui lui transmet ses convocations et est supprimée.",
-    "mergeAction": "Fusionner"
+    "mergeAction": "Fusionner",
+    "plays": "Joue {{name}}"
   },
   "dayCalls": {
     "title": "Convocations",

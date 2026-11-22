@@ -51,6 +51,12 @@ export const LARGE_BOARD = 60;
  */
 export const GuestModeContext = createContext(false);
 
+/**
+ * The person can write the project's crew (a project editor), not only edit this board: the crew
+ * API needs it (decision 0091), so controls that link crew rows show only then.
+ */
+export const CrewEditorContext = createContext(false);
+
 export function useBoard(): BoardContextValue {
   const ctx = useContext(BoardContext);
   if (!ctx) throw new Error('useBoard outside BoardContext');

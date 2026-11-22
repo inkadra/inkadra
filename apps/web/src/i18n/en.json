@@ -2237,7 +2237,18 @@
       "retry": "Try again",
       "fromBoardVideo": "From a video on the board",
       "menu": "Menu of frame {{label}}",
-      "open": "Open"
+      "open": "Open",
+      "performers": "Performers",
+      "noPerformer": "No performer",
+      "link": "Link",
+      "linkPerformer": "Link who plays {{name}}",
+      "whoPlays": "Who plays {{name}}?",
+      "noFreeCrew": "No free person in the crew",
+      "noFreeCrewHint": "Add the performer to the crew on the Production board: one row per character.",
+      "performerFailed": "Couldn’t link. Try again.",
+      "performerTaken": "{{name}} already has a performer ({{performer}}).",
+      "performerChanged": "This person was changed in the crew meanwhile. Try again.",
+      "playingRole": "Not listed, their role counts as a character: {{names}}"
     },
     "shot": {
       "ews": "Extreme wide",
@@ -5336,7 +5347,12 @@
       "restore": "Restore",
       "role0": "Edit",
       "role1": "Comment",
-      "role2": "Invite"
+      "role2": "Invite",
+      "department0": "Cast",
+      "department1": "Direction",
+      "department2": "Camera",
+      "character": "Character",
+      "plays": "Plays Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5965,10 +5981,14 @@
             "text": "Open a row: fields save automatically. Optionally link an account or character card."
           },
           "2": {
+            "title": "Who plays whom",
+            "text": "Link the person to the card of the character they play. No cards yet? Open a frame: under Cast, “Link” makes the card. The call sheet then matches character and performer."
+          },
+          "3": {
             "title": "Paste from a sheet",
             "text": "Open “Paste from sheet” in the Crew toolbar. Review the preview before adding people. Headers and duplicates are skipped."
           },
-          "3": {
+          "4": {
             "title": "Calls and call sheet",
             "text": "In the Schedule, Calls tab, choose who is called each day. The call sheet prints the crew, phone numbers and on-set contact, never for guests or clients."
           }
@@ -6804,13 +6824,14 @@
     "characterUnavailable": "Card unavailable · Unlink or choose another card",
     "wholeProject": "for the whole project",
     "characterTag": "Character",
+    "characterTaken": "This character is already played by {{name}}.",
     "emailPlaceholder": "optional",
     "pickupPlaceholder": "Same as the day’s call",
     "notesPlaceholder": "Only the project team sees these",
     "characterLabel": "Character card",
     "optionalTag": "optional",
-    "characterHint": "None. The name in the schedule is enough for the call; link a card only if it has costume and references.",
-    "characterNone": "No character cards in the project yet. You don’t need one: a role that matches the name in the schedule is enough for the call.",
+    "characterHint": "None. Link the card of the character they play: the call sheet matches it with the frames.",
+    "characterNone": "No character cards yet. In a frame, under Cast, “Link” makes the card and ties it to this person.",
     "link": "Link",
     "unlinkShort": "Unlink",
     "accountHint": "Link an account to send the call to their phone and ask for confirmation.",
@@ -6825,7 +6846,8 @@
     "mergeTitle": "Merge {{name}}",
     "mergeWith": "Row to merge",
     "mergeHint": "The row of {{name}} ({{kept}}) stays: its details win, empty fields are filled from the other row, which hands over its day calls and is removed.",
-    "mergeAction": "Merge"
+    "mergeAction": "Merge",
+    "plays": "Plays {{name}}"
   },
   "dayCalls": {
     "title": "Calls",
