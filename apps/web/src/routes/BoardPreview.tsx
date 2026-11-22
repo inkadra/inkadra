@@ -43,9 +43,13 @@ export function BoardPreview({ boardId, project }: { boardId: string; project?: 
     ? t('home.preview.unavailable')
     : !preview
       ? t('comments.loading')
-      : preview.elementCount > 0
-        ? t('home.preview.cards', { count: preview.elementCount })
-        : t('home.preview.empty');
+      : // A Production board's days live in their own table, not in its document (decision
+        // 0123): only a Production board with days carries `nextDay`.
+        preview.nextDay && preview.dayCount
+        ? t('board.board.days', { count: preview.dayCount })
+        : preview.elementCount > 0
+          ? t('home.preview.cards', { count: preview.elementCount })
+          : t('home.preview.empty');
   const tint = project?.icon.color ?? 'neutral';
   return (
     <span

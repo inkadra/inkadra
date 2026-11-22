@@ -63,6 +63,20 @@ it('distinguishes an empty board from a failed preview', async () => {
   expect(host.textContent).not.toContain('home.preview.empty');
 });
 
+it('counts the shooting days of a Production board, whose document has no cards', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    assetIds: [],
+    excerpts: [],
+    elementCount: 0,
+    drawing: [],
+    dayCount: 1,
+    nextDay: { number: 1, date: '2026-12-01', callTime: '08:00', location: '', blocks: [] },
+  });
+  await act(async () => root.render(<BoardPreview boardId="production" />));
+  expect(host.textContent).toContain('board.board.days');
+  expect(host.textContent).not.toContain('home.preview.empty');
+});
+
 it('preserves customized project emoji in the persisted-preview fallback', async () => {
   vi.mocked(api.get).mockResolvedValue({
     assetIds: [],
