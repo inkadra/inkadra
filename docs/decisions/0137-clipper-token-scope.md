@@ -38,17 +38,17 @@ never set it. No redirect address or user agent is stored on the token.
 - **What `clip` allows** (the routes every released Clipper, 0.3.0 to today, calls with its
   token; `GET /instance` and the code exchange need no token):
 
-  | Route                                     | Used for                                     |
-  | ----------------------------------------- | -------------------------------------------- |
+  | Route                                     | Used for                                              |
+  | ----------------------------------------- | ----------------------------------------------------- |
   | `GET /api/v1/me/clip-boards`              | recent boards ([0036](0036-personal-clip-history.md)) |
-  | `DELETE /api/v1/me/clip-boards/{boardId}` | forgetting a recent board                    |
-  | `GET /api/v1/projects`                    | the board picker                             |
-  | `GET /api/v1/projects/{projectId}/boards` | the board picker                             |
-  | `GET /api/v1/shared-boards`               | boards shared with the person                |
-  | `GET /api/v1/boards/{boardId}/columns`    | choosing a column                            |
-  | `GET /api/v1/search`                      | finding a board                              |
-  | `POST /api/v1/clip`                       | adding the card (JSON or multipart)          |
-  | `DELETE /api/v1/me/tokens/{tokenId}`      | Disconnect: only the token's own id          |
+  | `DELETE /api/v1/me/clip-boards/{boardId}` | forgetting a recent board                             |
+  | `GET /api/v1/projects`                    | the board picker                                      |
+  | `GET /api/v1/projects/{projectId}/boards` | the board picker                                      |
+  | `GET /api/v1/shared-boards`               | boards shared with the person                         |
+  | `GET /api/v1/boards/{boardId}/columns`    | choosing a column                                     |
+  | `GET /api/v1/search`                      | finding a board                                       |
+  | `POST /api/v1/clip`                       | adding the card (JSON or multipart)                   |
+  | `DELETE /api/v1/me/tokens/{tokenId}`      | Disconnect: only the token's own id                   |
 
   Roles and grants still decide what each of these returns or allows, as before.
 - **Everything else is refused, by default.** `requireActor` compares the matched route
