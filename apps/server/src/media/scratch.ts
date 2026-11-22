@@ -54,8 +54,14 @@ export async function readPrefix(path: string, max: number) {
   const file = await open(path, 'r');
   try {
     const buf = Buffer.alloc(Math.min((await file.stat()).size, max));
-    const { bytesRead } = await file.read(buf, 0, buf.length, 0);
-    return buf.subarray(0, bytesRead);
+    // A read may return less than asked before the end (network mounts, FUSE).
+    let filled = 0;
+    while (filled < buf.length) {
+      const { bytesRead } = await file.read(buf, filled, buf.length - filled, filled);
+      if (!bytesRead) break;
+      filled += bytesRead;
+    }
+    return buf.subarray(0, filled);
   } finally {
     await file.close();
   }

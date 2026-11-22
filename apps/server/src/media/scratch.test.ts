@@ -16,6 +16,7 @@ import {
   ensureFreeSpace,
   NotEnoughSpace,
   privateInput,
+  readPrefix,
   STALE_JOB_MS,
   sweepJobDirs,
   withJobDir,
@@ -43,6 +44,14 @@ describe('job folders', () => {
     await utimes(join(tmp, 'clip-old'), old, old);
     expect(await sweepJobDirs(tmp)).toBe(1);
     expect((await readdir(tmp)).sort()).toEqual(['clip-old', 'job-new']);
+  });
+
+  it('reads at most the first bytes of a file', async () => {
+    const tmp = await mkdtemp(join(tmpdir(), 'inkadra-scratch-'));
+    const file = join(tmp, 'f');
+    await writeFile(file, 'abcdefgh');
+    expect((await readPrefix(file, 3)).toString()).toBe('abc');
+    expect((await readPrefix(file, 100)).toString()).toBe('abcdefgh');
   });
 
   it('refuses a job that would not fit on the volume', async () => {

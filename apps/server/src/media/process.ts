@@ -321,14 +321,14 @@ async function processRow(
           limitInputPixels: MAX_INPUT_PIXELS,
         });
       } else {
-        const source = svg ? await readPrefix(copy.path, SVG_MAX_BYTES + 1) : copy.path;
-        if (svg && source.length > SVG_MAX_BYTES) {
+        if (svg && (await stat(copy.path)).size > SVG_MAX_BYTES) {
           await db
             .update(asset)
             .set({ sha256: digest, status: 'ready', animated: false })
             .where(eq(asset.id, assetId));
           return { variants: 0 };
         }
+        const source = svg ? await readPrefix(copy.path, SVG_MAX_BYTES) : copy.path;
         input = sharp(source, {
           failOn: 'error',
           animated: false,
