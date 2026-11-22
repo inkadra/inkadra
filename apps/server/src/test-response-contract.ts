@@ -84,12 +84,25 @@ export function contractMismatch(
     // decision 0003, which is all a client can rely on.
     (status === 500 ? { description: 'Internal error', content: internal } : undefined);
   if (!response) return `${where}: the contract does not describe this status`;
-  if (body === null || !/^application\/([a-z.+-]+\+)?json/.test(contentType)) return null;
-  // A status described without content (413, 429…) leaves the body to the error shape.
-  if (!('content' in response) || !response.content) return null;
-  const media = response.content['application/json'];
+  // What the status declares decides the check. Nothing declared (204, 304, 413…): any body.
+  const declared = 'content' in response ? (response.content ?? {}) : {};
+  const types = Object.keys(declared);
+  if (types.length === 0) return null;
+  const media = declared['application/json'];
+  const answered = contentType.split(';')[0]?.trim() || 'no body';
+  if (!/^application\/([a-z.+-]+\+)?json$/.test(answered)) {
+    // Files and playlists: only JSON bodies are read, other media types are left to the route.
+    if (!media) return null;
+    const fits = types.some(
+      (t) => t === answered || (t.endsWith('/*') && answered.startsWith(t.slice(0, -1))),
+    );
+    if (fits) return null;
+    return `${where}: the contract declares a JSON body, the answer has ${answered}`;
+  }
   if (!media || !('schema' in media))
-    return `${where}: answers JSON, the contract describes ${Object.keys(response.content).join(', ')}`;
+    return `${where}: answers JSON, the contract describes ${types.join(', ')}`;
+  // shortcut: a JSON stream is not read here; no route streams JSON today.
+  if (body === null) return null;
   if (!(media.schema instanceof z.ZodType)) return null;
   const schema: z.ZodType = media.schema;
   let value: unknown;

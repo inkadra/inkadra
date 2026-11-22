@@ -47,4 +47,37 @@ describe('the response contract gate', () => {
       'at error:',
     );
   });
+
+  it('needs the JSON body a status declares: no other media type, no empty answer', async () => {
+    const app = Fastify();
+    app.get('/api/v1/instance/version', async (req, reply) =>
+      req.headers['x-case'] === 'text' ? reply.type('text/plain').send('ok') : reply.send(),
+    );
+    await app.inject({
+      method: 'GET',
+      url: '/api/v1/instance/version',
+      headers: { 'x-case': 'text' },
+    });
+    await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.close();
+    expect(takeMismatches()).toEqual([
+      'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has text/plain',
+      'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has no body',
+    ]);
+    expect(contractMismatch('GET', '/api/v1/me', 500, 'text/html', '<h1>Error</h1>')).toBe(
+      'GET /api/v1/me → 500: the contract declares a JSON body, the answer has text/html',
+    );
+    expect(contractMismatch('GET', '/api/v1/me', 500, '', null)).toContain('has no body');
+  });
+
+  it('leaves files to their route and still reads the JSON errors of a file route', () => {
+    const file = '/api/v1/assets/:assetId/file';
+    expect(contractMismatch('GET', file, 200, 'image/png', null)).toBeNull();
+    expect(contractMismatch('GET', file, 206, 'image/png', null)).toBeNull();
+    const missing = JSON.stringify({ error: { code: 'not_found', message: 'Not found.' } });
+    expect(contractMismatch('GET', file, 404, 'application/json', missing)).toBeNull();
+    expect(contractMismatch('GET', file, 404, 'text/html', 'Not found')).toContain(
+      'declares a JSON body',
+    );
+  });
 });
