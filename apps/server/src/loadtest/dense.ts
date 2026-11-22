@@ -53,6 +53,8 @@ const EDIT_MS = 1000;
 const STROKE_SHARE = 0.2;
 /** How long the burst leaves the board alone: a store on the last close, then the unload. */
 const UNLOAD_WAIT_MS = 15_000;
+/** How long the replicas and a fresh client may take to agree after the burst. */
+const CONVERGE_MS = 30_000;
 /** How long the stored board may take to have every offline edit, and a reopen to sync. */
 const PERSIST_MS = 120_000;
 const REOPEN_MS = 60_000;
@@ -556,21 +558,24 @@ export async function runDense(opts: DenseOptions) {
       let detail: string | null = syncMs === null ? 'not every client synced again' : null;
       let fresh: ReturnType<typeof open> | null = null;
       if (syncMs !== null) {
-        // Everyone's offline edits reach everyone else, and a fresh client agrees.
+        // Everyone's offline edits reach everyone else, and a fresh client agrees, all within
+        // CONVERGE_MS: the fresh client gets only the time left, and a late result fails.
         const started = performance.now();
-        fresh = await openBoard(rootBoard).catch((err) => {
+        const deadline = started + CONVERGE_MS;
+        fresh = await openBoard(rootBoard, CONVERGE_MS).catch((err) => {
           detail = String(err);
           return null;
         });
-        const deadline = started + 30_000;
         while (fresh && !stop.signal.aborted) {
           const target = fresh.doc;
           const lagging = boards.filter((b) => !sameDocument(b.doc, target)).length;
           const missing = boards.reduce((n, b) => n + missingMarks(b.doc), 0);
-          converged = lagging === 0 && missing === 0;
+          const late = performance.now() > deadline;
+          converged = lagging === 0 && missing === 0 && !late;
           if (converged) convergeMs = performance.now() - started;
-          if (converged || performance.now() > deadline) {
-            if (!converged) detail = `${lagging} clients differ, ${missing} offline edits missing`;
+          if (converged || late) {
+            if (!converged)
+              detail = `after ${CONVERGE_MS / 1000} s ${lagging} clients differ, ${missing} offline edits missing`;
             break;
           }
           await pause(250);
