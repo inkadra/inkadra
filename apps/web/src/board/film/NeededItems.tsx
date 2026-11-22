@@ -6,17 +6,27 @@ import { Avatar, Checkbox, Icon, Segmented } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { type CSSProperties, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTodoLists } from '../../lib/classifications.ts';
 import { PeoplePicker } from '../../people/PeoplePicker.tsx';
 import type { NeededRow } from './needed.ts';
 import { sceneName } from './storyboard-data.ts';
 import './needed.css';
 
+/** The colours of the kinds an administrator added, after the three of the defaults. */
+const TONES = 5;
+/** A default keeps its colour; an added kind takes one from its id, the same everywhere. */
+export function kindTone(list: TodoList): string {
+  if ((TODO_LISTS as readonly string[]).includes(list)) return list;
+  let hash = 0;
+  for (const c of list) hash = (hash * 31 + c.charCodeAt(0)) | 0;
+  return `tone${Math.abs(hash) % TONES}`;
+}
+
 /** The coloured label of a kind of list, on the to-do card, the menu and the day. */
 export function NeededKind({ list }: { list: TodoList }) {
-  const { t } = useTranslation();
-  return (
-    <span className={`needed-kind needed-kind--${list}`}>{t(`board.todo.lists.${list}`)}</span>
-  );
+  const name = useTodoLists().label(list);
+  if (!name) return null;
+  return <span className={`needed-kind needed-kind--${kindTone(list)}`}>{name}</span>;
 }
 
 /** "Sc. 3 · La salita". */
@@ -129,7 +139,7 @@ export function NeededItems({
         />
       )}
       {mine && !shown.length && <p className="schedule__hint">{t('needed.emptyMine')}</p>}
-      {TODO_LISTS.map((list) => {
+      {[...new Set(shown.map((row) => row.list))].map((list) => {
         const items = shown.filter((row) => row.list === list);
         if (!items.length) return null;
         return (

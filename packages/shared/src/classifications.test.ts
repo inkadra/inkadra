@@ -5,6 +5,9 @@ import {
   isRenamedDefault,
   shotOptionLabel,
   shotText,
+  TRANSLATED_CATALOG_KEYS,
+  todoListLabel,
+  todoListOrder,
 } from './classifications.ts';
 import { SHOT_WORDS_EN, type ShotWords, type Words } from './shot-words.ts';
 import { SHOT_WORDS_IT } from './shot-words-it.ts';
@@ -73,7 +76,7 @@ describe.each([
 });
 
 it('names every default value of every catalog with a word English has', () => {
-  for (const key of ['shotSizes', 'shotAngles', 'shotMovements'] as const)
+  for (const key of TRANSLATED_CATALOG_KEYS)
     for (const option of DEFAULT_CLASSIFICATIONS[key])
       expect(shotOptionLabel(key, option, english)).toBe(option.label);
 });
@@ -82,4 +85,33 @@ it('names a value added to a catalog by its label', () => {
   expect(
     shotOptionLabel('shotAngles', { id: added, label: 'Rasoterra', archived: false }, english),
   ).toBe('Rasoterra');
+});
+
+describe('kinds of to-do lists (decision 0136)', () => {
+  const lists = {
+    todoLists: [
+      { id: 'equipment', label: 'Equipment', archived: false },
+      { id: added, label: 'Trucco', archived: false },
+      { id: 'wardrobe', label: 'Abiti', archived: true },
+    ],
+  };
+
+  it('names a default in the reader’s language until renamed, any other kind by its label', () => {
+    expect(todoListLabel(lists, 'equipment', italian)).toBe('Attrezzatura');
+    expect(todoListLabel(lists, added, italian)).toBe('Trucco');
+    expect(todoListLabel(lists, 'wardrobe', italian)).toBe('Abiti');
+    // Removed from this catalog, or not loaded yet: its default word, never an id.
+    expect(todoListLabel(lists, 'props', english)).toBe('Props');
+    expect(todoListLabel(lists, '11111111-2222-4333-8444-555555555555', english)).toBe('');
+  });
+
+  it('orders kinds as the catalog does, unknown ones last', () => {
+    const order = todoListOrder(lists);
+    expect(['props', 'wardrobe', added, 'equipment'].sort((a, b) => order(a) - order(b))).toEqual([
+      'equipment',
+      added,
+      'wardrobe',
+      'props',
+    ]);
+  });
 });

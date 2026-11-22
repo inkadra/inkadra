@@ -1,5 +1,9 @@
 // @vitest-environment happy-dom
-import { type ClassificationCatalogs, DEFAULT_SHOT_CATALOGS } from '@inkadra/shared';
+import {
+  type ClassificationCatalogs,
+  DEFAULT_SHOT_CATALOGS,
+  TRANSLATED_DEFAULTS,
+} from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -24,7 +28,7 @@ const catalogs: ClassificationCatalogs = {
     { id: 'b', label: 'Commercial', archived: false },
   ],
   tags: [],
-  ...structuredClone(DEFAULT_SHOT_CATALOGS),
+  ...structuredClone(TRANSLATED_DEFAULTS),
 };
 
 let host: HTMLDivElement;
@@ -63,10 +67,10 @@ const type = (input: HTMLInputElement, value: string) => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
-it('shows five closed catalogs in two groups, each with a summary', async () => {
+it('shows six closed catalogs in three groups, each with a summary', async () => {
   const root = await mount();
-  expect(host.querySelectorAll('.catalogs__group')).toHaveLength(2);
-  expect(host.querySelectorAll('.catalogs__card')).toHaveLength(5);
+  expect(host.querySelectorAll('.catalogs__group')).toHaveLength(3);
+  expect(host.querySelectorAll('.catalogs__card')).toHaveLength(6);
   expect(host.querySelectorAll('.catalogs__name')).toHaveLength(0);
   // Movement has ten values: six names and the rest as a number.
   expect(host.querySelectorAll('.catalogs__card')[4]?.textContent).toContain('+4');

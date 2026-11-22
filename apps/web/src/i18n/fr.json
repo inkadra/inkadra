@@ -3618,7 +3618,7 @@
     "nobody": "personne",
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
-    "empty": "Les scènes de cette journée n’ont pas de liste à apporter. Depuis le menu d’une carte À faire, choisissez Costumes, Accessoires ou Matériel et la scène.",
+    "empty": "Les scènes de cette journée n’ont pas de liste à apporter. Depuis le menu d’une carte À faire, choisissez un type de liste et la scène.",
     "emptyMine": "Vous n’apportez rien pour cette journée.",
     "scene": {
       "label": "À apporter pour la scène {{number}}, {{ready}} sur {{total}} prêts",
@@ -4193,13 +4193,16 @@
     "shotSizes": "Valeur de plan",
     "shotAngles": "Angle",
     "shotMovements": "Mouvement",
+    "todoLists": "Types de liste",
     "groups": {
       "projects": "Projets",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "production": "Production"
     },
     "renamed": "Renommé",
     "restoreDefaults": "Réactiver les valeurs par défaut",
     "emptyShots": "Aucune valeur pour l’instant. Le panneau du plan ne propose que « Autre… ».",
+    "emptyTodoLists": "Aucun type pour l’instant. Les listes de tâches restent normales.",
     "duplicate": "Une valeur porte déjà ce nom.",
     "required": "Le nom est obligatoire.",
     "name": "Nom",
@@ -5839,7 +5842,7 @@
         "steps": {
           "0": {
             "title": "Les listes de l’instance",
-            "text": "Types de projet, tags, valeurs de plan, angles et mouvements."
+            "text": "Types de projet, tags, valeurs de plan, angles, mouvements et types de liste."
           },
           "1": {
             "title": "Renommer",

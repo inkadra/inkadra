@@ -6,6 +6,8 @@ import {
   DEFAULT_CLASSIFICATIONS,
   type ShotCatalogKey,
   type ShotCatalogs,
+  todoListLabel,
+  todoListOrder,
 } from '@inkadra/shared';
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -122,6 +124,23 @@ export function useClassifications() {
           ? t(`onboarding.types.${value}`)
           : (option?.label ?? value);
       },
+    }),
+    [catalogs, t],
+  );
+}
+
+/**
+ * The kinds of to-do lists (decision 0136): the active ones to choose from, in the catalog's
+ * order, plus the name and the place of any kind a card holds, archived too.
+ */
+export function useTodoLists() {
+  const { t } = useTranslation();
+  const catalogs = useShotCatalogs();
+  return useMemo(
+    () => ({
+      active: catalogs.todoLists.filter((o) => !o.archived).map((o) => o.id),
+      label: (list: string) => todoListLabel(catalogs, list, t),
+      order: todoListOrder(catalogs),
     }),
     [catalogs, t],
   );

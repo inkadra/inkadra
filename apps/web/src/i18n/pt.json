@@ -3618,7 +3618,7 @@
     "nobody": "ninguém",
     "scenes": "Cena {{scenes}}",
     "sceneNumber": "Cena {{number}}",
-    "empty": "As cenas desta diária não têm listas do que levar. No menu de um card de tarefas, escolha Figurino, Objetos de cena ou Equipamento e a cena.",
+    "empty": "As cenas desta diária não têm listas do que levar. No menu de um card de tarefas, escolha um tipo de lista e a cena.",
     "emptyMine": "Você não leva nada nesta diária.",
     "scene": {
       "label": "A levar para a cena {{number}}, {{ready}} de {{total}} prontos",
@@ -4193,13 +4193,16 @@
     "shotSizes": "Tipo de plano",
     "shotAngles": "Ângulo",
     "shotMovements": "Movimento",
+    "todoLists": "Tipos de lista",
     "groups": {
       "projects": "Projetos",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "production": "Produção"
     },
     "renamed": "Renomeado",
     "restoreDefaults": "Reativar os valores padrão",
     "emptyShots": "Nenhum valor ainda. O painel do frame oferece só “Outro…”.",
+    "emptyTodoLists": "Nenhum tipo ainda. As listas de tarefas ficam só comuns.",
     "duplicate": "Já existe um valor com este nome.",
     "required": "O nome é obrigatório.",
     "name": "Nome",
@@ -5839,7 +5842,7 @@
         "steps": {
           "0": {
             "title": "As listas da instância",
-            "text": "Tipos de projeto, tags, tipos de plano, ângulos e movimentos."
+            "text": "Tipos de projeto, tags, tipos de plano, ângulos, movimentos e tipos de lista."
           },
           "1": {
             "title": "Renomeie",

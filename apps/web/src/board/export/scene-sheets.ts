@@ -4,8 +4,9 @@
  * board already holds. The data is gathered first (pure, tested), then laid out on light paper.
  */
 import { type SceneGroup, sceneDay, variantView } from '@inkadra/canvas-core';
-import { type Element, PLAN_ASPECT, TODO_LISTS } from '@inkadra/doc-schema';
-import { clockMinutes, type ShootingDay } from '@inkadra/shared';
+import { type Element, PLAN_ASPECT } from '@inkadra/doc-schema';
+import { clockMinutes, type ShootingDay, todoListOrder } from '@inkadra/shared';
+import { getClassifications } from '../../lib/classifications.ts';
 import { sceneIdsOf } from '../film/needed.ts';
 import { clockLabel } from '../film/schedule.ts';
 import { type CardContext, framedPlanOps, framePicture, picture } from './board-render.ts';
@@ -157,6 +158,7 @@ export function sceneSheets(input: SheetInput): SceneSheet[] {
       locations.find((l) => l.scenes?.includes(scene.number)) ??
       (scene.location ? locations.find((l) => key(l.name) === key(scene.location ?? '')) : null);
 
+    const kindOrder = todoListOrder(getClassifications());
     const needed = new Map<string, { text: string; count: number; list: number }>();
     for (const el of elements) {
       if (el.type !== 'todo' || !el.list || el.sceneId !== scene.id) continue;
@@ -166,7 +168,7 @@ export function sceneSheets(input: SheetInput): SceneSheet[] {
         const row = needed.get(`${el.list}\u0000${key(value)}`) ?? {
           text: value,
           count: 0,
-          list: TODO_LISTS.indexOf(el.list),
+          list: kindOrder(el.list),
         };
         row.count += 1;
         needed.set(`${el.list}\u0000${key(value)}`, row);

@@ -40,4 +40,13 @@ export const SHOT_WORDS_PT: ShotWords = {
       zoom: 'Zoom',
     },
   },
+  board: {
+    todo: {
+      lists: {
+        wardrobe: 'Figurino',
+        props: 'Objetos de cena',
+        equipment: 'Equipamento',
+      },
+    },
+  },
 };

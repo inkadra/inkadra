@@ -3,8 +3,8 @@ import {
   ClassificationCatalogs,
   type ClassificationOption,
   DEFAULT_CLASSIFICATIONS,
-  SHOT_CATALOG_KEYS,
-  type ShotCatalogKey,
+  TRANSLATED_CATALOG_KEYS,
+  type TranslatedCatalogKey,
 } from '@inkadra/shared';
 import { count, eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from './db/client.ts';
@@ -13,8 +13,8 @@ import { HttpError } from './http/errors.ts';
 import { lockCatalog } from './locks.ts';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
-type CatalogKey = 'projectTypes' | 'tags' | ShotCatalogKey;
-const CATALOG_KEYS: readonly CatalogKey[] = ['projectTypes', 'tags', ...SHOT_CATALOG_KEYS];
+type CatalogKey = 'projectTypes' | 'tags' | TranslatedCatalogKey;
+const CATALOG_KEYS: readonly CatalogKey[] = ['projectTypes', 'tags', ...TRANSLATED_CATALOG_KEYS];
 const textArray = (values: string[]) =>
   sql`array[${sql.join(
     values.map((v) => sql`${v}`),
@@ -75,9 +75,9 @@ export async function lockUses(tx: Tx | Database, mode: 'shared' | 'exclusive') 
 
 /**
  * Uses by catalog and id: projects of a type, elements with a tag (its id or original text),
- * frames whose shot fields hold a storyboard value. From the project table and the search index
- * (decision 0012), never from documents. Storyboard defaults are not counted: their codes are
- * also words people type.
+ * frames whose shot fields hold a storyboard value, to-do lists of a kind (decision 0136). From
+ * the project table and the search index (decision 0012), never from documents. Storyboard
+ * defaults are not counted: their codes are also words people type.
  */
 export async function countUses(
   db: Pick<Database, 'select' | 'execute'>,
@@ -106,15 +106,17 @@ export async function countUses(
     for (const r of rows) uses.set(`tags:${r.id}`, r.n);
     for (const o of tags) uses.set(`tags:${o.id}`, uses.get(`tags:${o.id.toLowerCase()}`) ?? 0);
   }
-  for (const key of SHOT_CATALOG_KEYS) {
+  for (const key of TRANSLATED_CATALOG_KEYS) {
     const ids = catalogs[key].map((o) => o.id).filter((id) => CATALOG_UUID.test(id));
     if (!ids.length) continue;
-    // A frame's text holds its shot fields as stored; a UUID is never typed by chance.
+    // A frame's text holds its shot fields as stored, a to-do's the UUID of its kind; a UUID is
+    // never typed by chance.
+    const type = key === 'todoLists' ? 'todo' : 'frame';
     const rows = await db.execute<{ id: string; n: number }>(sql`
       select o.id, count(i.element_id)::int as n
       from unnest(${textArray(ids)}) as o(id)
       left join board_element_index i
-        on i.type = 'frame' and i.text like '%' || o.id || '%'
+        on i.type = ${type} and i.text like '%' || o.id || '%'
       group by o.id`);
     for (const r of rows) uses.set(`${key}:${r.id}`, r.n);
   }
@@ -242,7 +244,7 @@ export function validateCatalogUpdate(
 ) {
   if (current.revision !== next.revision)
     throw new HttpError('conflict', 'Configuration changed. Reload and try again.');
-  for (const key of ['projectTypes', 'tags', ...SHOT_CATALOG_KEYS] as const) {
+  for (const key of CATALOG_KEYS) {
     const ids = new Set<string>();
     const labels = new Set<string>();
     for (const option of next[key]) {

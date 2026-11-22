@@ -3618,7 +3618,7 @@
     "nobody": "nobody",
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
-    "empty": "The scenes of this day have no lists to bring. From a to-do card’s menu pick Wardrobe, Props or Equipment and the scene.",
+    "empty": "The scenes of this day have no lists to bring. From a to-do card’s menu pick a kind of list and the scene.",
     "emptyMine": "You bring nothing on this day.",
     "scene": {
       "label": "To bring for Scene {{number}}, {{ready}} of {{total}} ready",
@@ -4193,13 +4193,16 @@
     "shotSizes": "Shot size",
     "shotAngles": "Angle",
     "shotMovements": "Movement",
+    "todoLists": "Kinds of to-do lists",
     "groups": {
       "projects": "Projects",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "production": "Production"
     },
     "renamed": "Renamed",
     "restoreDefaults": "Reactivate default values",
     "emptyShots": "No values yet. The frame panel only offers “Other…”.",
+    "emptyTodoLists": "No kinds yet. To-do lists can only stay ordinary.",
     "duplicate": "A value with this name already exists.",
     "required": "The name is required.",
     "name": "Name",
@@ -5839,7 +5842,7 @@
         "steps": {
           "0": {
             "title": "The instance’s lists",
-            "text": "Project types, tags, shot sizes, angles and movements."
+            "text": "Project types, tags, shot sizes, angles, movements and kinds of to-do lists."
           },
           "1": {
             "title": "Rename",

@@ -40,7 +40,10 @@ it.each(languages)(
     expect(
       Object.keys(web.film.shot).length +
         Object.keys(web.film.angle).length +
-        Object.keys(web.film.movement).length,
+        Object.keys(web.film.movement).length +
+        // `none` is the web's word for an ordinary list, never a kind of the catalog.
+        Object.keys(web.board.todo.lists).length -
+        1,
     ).toBe(leaves(words).length);
   },
 );

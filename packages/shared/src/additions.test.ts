@@ -15,6 +15,7 @@ import {
   OutcomeUnknown,
   PickSummary,
   SearchHit,
+  TRANSLATED_DEFAULTS,
 } from './index.ts';
 import { buildOpenApiDocument } from './openapi.ts';
 
@@ -107,7 +108,11 @@ describe('contract additions of API 0.5.0', () => {
     };
     both(GuestSession, session, { sharedBy: 'Giulia' });
     both(GuestSession, session, { sharedBy: null });
-    both(GuestSession, session, { shotCatalogs: DEFAULT_SHOT_CATALOGS });
+    both(GuestSession, session, { shotCatalogs: TRANSLATED_DEFAULTS });
+    // A server before decision 0136 sends no kinds of lists: the client reads the defaults.
+    expect(
+      GuestSession.parse({ ...session, shotCatalogs: DEFAULT_SHOT_CATALOGS }).shotCatalogs,
+    ).toEqual(TRANSLATED_DEFAULTS);
   });
 
   it('reads pick summaries with and without thumbnails', () => {

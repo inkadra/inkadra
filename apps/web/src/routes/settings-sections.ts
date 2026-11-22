@@ -1,4 +1,4 @@
-import { MODULE_IDS, SHOT_CATALOG_KEYS } from '@inkadra/shared';
+import { MODULE_IDS, TRANSLATED_CATALOG_KEYS } from '@inkadra/shared';
 import type { IconName } from '@inkadra/ui';
 
 export type SettingsGroup = 'personal' | 'workspace' | 'server';
@@ -130,7 +130,7 @@ export const SETTINGS: SettingEntry[] = [
   s('access.adminTwoFactor', 'admin.requireAdminTwoFactor', [], ['2FA']),
   s('access.methods', 'settings.methods.title', [], ['Google', 'OIDC', 'SSO']),
   s('access.email', 'settingsUi.access.email', [], ['SMTP']),
-  ...['projectTypes', 'tags', ...SHOT_CATALOG_KEYS].map((key) =>
+  ...['projectTypes', 'tags', ...TRANSLATED_CATALOG_KEYS].map((key) =>
     s(`classifications.${key}`, `catalogs.${key}`),
   ),
   s('reports.settings', 'feedback.settingsTitle'),

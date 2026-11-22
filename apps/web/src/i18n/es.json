@@ -3618,7 +3618,7 @@
     "nobody": "nadie",
     "scenes": "Esc. {{scenes}}",
     "sceneNumber": "Esc. {{number}}",
-    "empty": "Las escenas de esta jornada no tienen listas de cosas que llevar. En el menú de una tarjeta de tareas elige Vestuario, Atrezo o Equipamiento y la escena.",
+    "empty": "Las escenas de esta jornada no tienen listas de cosas que llevar. En el menú de una tarjeta de tareas elige un tipo de lista y la escena.",
     "emptyMine": "En esta jornada no llevas nada.",
     "scene": {
       "label": "Para llevar de la escena {{number}}, {{ready}} de {{total}} listos",
@@ -4193,13 +4193,16 @@
     "shotSizes": "Tamaño de plano",
     "shotAngles": "Angulación",
     "shotMovements": "Movimiento",
+    "todoLists": "Tipos de lista",
     "groups": {
       "projects": "Proyectos",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "production": "Producción"
     },
     "renamed": "Nombre cambiado",
     "restoreDefaults": "Reactivar los valores predeterminados",
     "emptyShots": "Aún no hay valores. En el panel del plano solo queda «Otro…».",
+    "emptyTodoLists": "Aún no hay tipos. Las listas de tareas solo pueden ser normales.",
     "duplicate": "Ya existe un valor con este nombre.",
     "required": "El nombre es obligatorio.",
     "name": "Nombre",
@@ -5839,7 +5842,7 @@
         "steps": {
           "0": {
             "title": "Las listas de la instancia",
-            "text": "Tipos de proyecto, etiquetas, planos, ángulos y movimientos."
+            "text": "Tipos de proyecto, etiquetas, planos, ángulos, movimientos y tipos de lista."
           },
           "1": {
             "title": "Renombra",

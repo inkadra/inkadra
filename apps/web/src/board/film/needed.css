@@ -21,6 +21,27 @@
   color: var(--ink-tag-teal);
   background: var(--ink-tag-teal-bg);
 }
+/* Kinds added in Settings → Classifications (decision 0136), by `kindTone`. */
+.needed-kind--tone0 {
+  color: var(--ink-tag-blue);
+  background: var(--ink-tag-blue-bg);
+}
+.needed-kind--tone1 {
+  color: var(--ink-tag-green);
+  background: var(--ink-tag-green-bg);
+}
+.needed-kind--tone2 {
+  color: var(--ink-tag-orange);
+  background: var(--ink-tag-orange-bg);
+}
+.needed-kind--tone3 {
+  color: var(--ink-tag-purple);
+  background: var(--ink-tag-purple-bg);
+}
+.needed-kind--tone4 {
+  color: var(--ink-tag-red);
+  background: var(--ink-tag-red-bg);
+}
 
 /* "Da portare" widens the day panel to the mockup's 470 px, less on narrower screens; the day
    columns beside it scroll sideways as they already do. Phones show the panel in a sheet. */

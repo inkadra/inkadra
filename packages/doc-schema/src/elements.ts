@@ -139,16 +139,23 @@ export const TodoItem = z.object({
   assigneeId: z.uuid().optional(),
   dueDate: z.iso.date().optional(),
 });
-/** What a to-do list gathers for the shoot: wardrobe, props or equipment (decision 0058). */
+/** The id of a value added to an instance catalog; the id of a default value is a readable code. */
+export const CATALOG_UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
+/**
+ * What a to-do list gathers for the shoot (decision 0058): one of the default kinds, wardrobe,
+ * props or equipment, or from version 28 a kind an administrator added to the instance's
+ * `todoLists` catalog, by its UUID (decision 0136).
+ */
 export const TODO_LISTS = ['wardrobe', 'props', 'equipment'] as const;
-export const TodoList = z.enum(TODO_LISTS);
+export const TodoList = z.union([z.enum(TODO_LISTS), z.string().regex(CATALOG_UUID)]);
 export type TodoList = z.infer<typeof TodoList>;
 export const TodoElement = Base.extend({
   type: z.literal('todo'),
   title: z.string().max(200).optional(),
   items: z.array(TodoItem),
   list: TodoList.optional().describe(
-    'Kind of things the list gathers for the shoot. Omitted = an ordinary to-do (since version 13).',
+    'Kind of things the list gathers for the shoot: a default kind, or from version 28 the UUID ' +
+      'of a kind of the instance catalog. Omitted = an ordinary to-do (since version 13).',
   ),
   sceneId: ElementId.optional().describe(
     'Scene of the same board the items are needed for; shooting days that shoot it list them ' +

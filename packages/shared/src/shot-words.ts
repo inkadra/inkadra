@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /**
- * The names of a frame's shot size, angle and movement that every client writes the same
- * (decision 0116): the default values of `DEFAULT_SHOT_CATALOGS`, by id, as `shotOptionLabel`
- * asks for them. English, the source; the keys are those of the web catalogues (`film.shot.*`,
- * `film.angle.*`, `film.movement.*`), so a client loads this object as its English catalogue. The
- * other languages have the same keys, one file each (`@inkadra/shared/shot-words/it`, `es`, `de`,
- * `fr`, `pt`), so a client imports only those it ships. The web's catalogues must say the same (a
- * web test compares them).
+ * The names that every client writes the same (decision 0116): the default values of a frame's
+ * shot size, angle and movement and the default kinds of to-do lists (decision 0136), by id, as
+ * `shotOptionLabel` asks for them. English, the source; the keys are those of the web catalogues
+ * (`film.shot.*`, `film.angle.*`, `film.movement.*`, `board.todo.lists.*`), so a client loads this
+ * object as its English catalogue. The other languages have the same keys, one file each
+ * (`@inkadra/shared/shot-words/it`, `es`, `de`, `fr`, `pt`), so a client imports only those it
+ * ships. The web's catalogues must say the same (a web test compares them).
  */
 
 /**
@@ -48,6 +48,15 @@ export const SHOT_WORDS_EN = {
       steadicam: 'Steadicam',
       drone: 'Drone',
       zoom: 'Zoom',
+    },
+  },
+  board: {
+    todo: {
+      lists: {
+        wardrobe: 'Wardrobe',
+        props: 'Props',
+        equipment: 'Equipment',
+      },
     },
   },
 };

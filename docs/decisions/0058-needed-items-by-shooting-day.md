@@ -1,5 +1,7 @@
 # 0058 — Needed items rolled up by shooting day
 
+Amended by [0136](0136-todo-list-kinds-catalog.md): the kinds of list are an instance catalog.
+
 ## Context
 
 Scenes need costumes, props and equipment, and on set they have to be gathered by shooting day

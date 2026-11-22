@@ -19,6 +19,7 @@ import {
   ArchiveReviews,
   ArchiveShootingDay,
   ArchiveVersion,
+  CATALOG_UUID,
   checkArchiveStructure,
   EXPORT_LOGO_MAX_BYTES,
   EXPORT_LOGO_TYPES,
@@ -214,11 +215,11 @@ export async function importProject(
       }),
       { current: [], history: [] },
     );
-    // Only `shots` is read: the rest of this file has never been checked on import.
+    // Only `shots` and `todoLists` are read: the rest has never been checked on import.
     const archiveShots = await optionalJson(
       zip,
       'classifications.json',
-      ArchiveClassifications.pick({ shots: true }),
+      ArchiveClassifications.pick({ shots: true, todoLists: true }),
       {},
     );
     const exportSettings = await optionalJson(
@@ -347,11 +348,23 @@ export async function importProject(
     const shotText = new Map(
       (archiveShots.shots ?? []).filter((o) => !here.has(o.id)).map((o) => [o.id, o.label]),
     );
+    // A kind of to-do list of another instance becomes the kind of the same name here, else
+    // the list's title (decision 0136): no card holds a kind this instance does not know.
+    const kindsHere = new Set(catalogs.todoLists.map((o) => o.id));
+    const kindByName = new Map(catalogs.todoLists.map((o) => [o.label.toLowerCase(), o.id]));
+    const kindNames = new Map((archiveShots.todoLists ?? []).map((o) => [o.id, o.label]));
+    const todoList = (list: string) => {
+      if (kindsHere.has(list) || !CATALOG_UUID.test(list)) return { list };
+      const title = kindNames.get(list);
+      const same = title && kindByName.get(title.toLowerCase());
+      return same ? { list: same } : { title };
+    };
     const maps = {
       boards: boardIds,
       assets: new Map([...stored].map(([from, file]) => [from, file.id])),
       person,
       shotText,
+      todoList,
     };
     /** A document of the archive, checked, migrated and pointing at this project's ids. */
     const document = async (name: string, boardId: string) => {
@@ -371,7 +384,7 @@ export async function importProject(
       try {
         for (const e of entriesFor(doc)) {
           for (const t of e.tags) tags.add(t);
-          if (e.type === 'frame') text.push(e.text);
+          if (e.type === 'frame' || e.type === 'todo') text.push(e.text);
         }
       } finally {
         doc.destroy();
