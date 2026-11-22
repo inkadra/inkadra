@@ -82,7 +82,9 @@ never set it. No redirect address or user agent is stored on the token.
     in that project, read-only ones included, because an editable board can sit below a
     read-only one; covers, icons, views and edit times are left out. A project with no
     destination is not readable at all through a `clip` token: `404 not_found`, the answer to a
-    project that does not exist.
+    project that does not exist. That 404 comes after the tree is read, later than for an
+    unknown id, which is accepted: only a member or grantee of the project reaches that path,
+    and its existence is no secret to them.
   - `GET /me/clip-boards` and `GET /boards/{boardId}/columns` answer as before.
 
   What stays readable is accepted: the names, order, roles and structure of the account's active
