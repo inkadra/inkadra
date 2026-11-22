@@ -1350,6 +1350,45 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect((await get('owner', `/api/v1/projects/${projectId}/tags`)).body.items).toEqual([]);
   });
 
+  it('keeps the backfill lock through a run longer than the idle timeout, and frees it at stop', async () => {
+    // Connections idle for a second are closed, the lock's own included if it were idle.
+    const short = createDatabase(config.DATABASE_URL, 2);
+    (short.sql.options as { idle_timeout: number }).idle_timeout = 1;
+    const held = async () => {
+      const [row] = await client<{ n: number }[]>`select count(*)::int as n from pg_locks
+        where locktype = 'advisory' and objid = 10895 and granted`;
+      return row?.n ?? 0;
+    };
+    // A stale board whose row another transaction keeps locked: the run waits on it.
+    const [stale] = await db.execute<{ id: string }>(sql`select d.board_id as id
+      from board_doc d join board b on b.id = d.board_id limit 1`);
+    await db.update(boardDoc).set({ indexedAt: null }).where(eq(boardDoc.boardId, stale!.id));
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let locked = () => {};
+    const rowLocked = new Promise<void>((resolve) => (locked = resolve));
+    const holder = client.begin(async (tx) => {
+      await tx`select 1 from board where id = ${stale!.id} for update`;
+      locked();
+      await gate;
+    });
+    await rowLocked;
+    const log = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
+    const backfill = startIndexBackfill(short.db, log as unknown as pino.Logger);
+    try {
+      await vi.waitFor(async () => expect(await held()).toBe(1));
+      await new Promise((resolve) => setTimeout(resolve, 2_500));
+      expect(await held()).toBe(1);
+    } finally {
+      release();
+      await holder;
+      await backfill.stop();
+    }
+    expect(await held()).toBe(0);
+    expect(log.error).not.toHaveBeenCalled();
+    await short.sql.end();
+  });
+
   it('frees the backfill lock after a run, even one that failed', async () => {
     // The backfill's queries fail; the lock was taken on a connection of its own.
     const failing = Object.create(db) as Database;
@@ -1366,7 +1405,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
         'board search index backfill failed',
       ),
     );
-    backfill.stop();
+    await backfill.stop();
     // Another session takes the lock once that connection is closed.
     const other = createDatabase(config.DATABASE_URL, 1);
     try {

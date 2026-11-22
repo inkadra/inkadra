@@ -8,6 +8,7 @@ import { docCounts, openTasks, unsortedInDoc } from '../board-preview.ts';
 import { reviveUsed } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, boardElementIndex, project } from '../db/schema.ts';
+import { settledWithin } from '../shutdown.ts';
 
 /** One row of board_element_index, before the board and project ids are added. */
 export interface IndexEntry {
@@ -483,6 +484,9 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
   return { indexed, failed, last: stale.at(-1)?.boardId };
 }
 
+/** How long a stop waits for the current backfill batch, within the shutdown deadline. */
+const BACKFILL_STOP_MS = 5_000;
+
 /** Session lock key: one search-index backfill at a time across processes (#815). */
 const BACKFILL_LOCK = 10895;
 
@@ -492,22 +496,23 @@ const BACKFILL_LOCK = 10895;
  */
 export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 * 1000) {
   let stopped = false;
-  let running = false;
+  let running: Promise<void> | undefined;
   const run = async () => {
     // Several collab or all-in-one processes share the database: one backfill at a time
     // (#815). The lock lives in the session of a connection of its own, with the pool's
-    // settings, closed after the run: closing it frees the lock whatever happened, and the
-    // backfill's queries never wait for a connection the lock holds.
-    if (running) return;
-    running = true;
+    // settings, reserved for the whole run (an idle connection would be closed after the
+    // pool's idle timeout, and the lock with it) and closed after it: closing it frees the lock
+    // whatever happened, and the backfill's queries never wait for a connection the lock holds.
     const session = postgres({
       ...db.$client.options,
       max: 1,
       shared: { retries: 0 },
       parameters: {},
     } as unknown as postgres.Options<Record<string, postgres.PostgresType>>);
+    let reserved: Awaited<ReturnType<typeof session.reserve>> | undefined;
     try {
-      const [lock] = await session<
+      reserved = await session.reserve();
+      const [lock] = await reserved<
         { ok: boolean }[]
       >`select pg_try_advisory_lock(${BACKFILL_LOCK}) as ok`;
       if (!lock?.ok) return;
@@ -525,19 +530,26 @@ export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 
     } catch (err) {
       log.error({ err }, 'board search index backfill failed');
     } finally {
+      reserved?.release();
       await session.end({ timeout: 5 }).catch((err: unknown) => {
         log.warn({ err }, 'board search index backfill lock connection not closed cleanly');
       });
-      running = false;
     }
   };
-  void run();
-  const timer = setInterval(() => void run(), everyMs);
+  const start = () => {
+    running ??= run().finally(() => {
+      running = undefined;
+    });
+  };
+  start();
+  const timer = setInterval(start, everyMs);
   timer.unref();
   return {
-    stop() {
+    /** Stops the runs, and waits a few seconds for the current one to close its connection. */
+    async stop() {
       stopped = true;
       clearInterval(timer);
+      if (running) await settledWithin(running, BACKFILL_STOP_MS);
     },
   };
 }
