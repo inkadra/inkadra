@@ -706,6 +706,142 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     b.close();
   });
 
+  it('keeps a connection to eight presence ids for as long as it is open', async () => {
+    const a = connect(as('editor'));
+    const c = connect(as('viewer'));
+    await Promise.all([a.synced, c.synced]);
+    const live = () => collab.hocuspocus.documents.get(boardDocName(boardId))!.awareness;
+    const cursorOf = (id: number) =>
+      (live().getStates().get(id) as { cursor?: { x: number } })?.cursor?.x;
+    const seenByPeer = (id: number) =>
+      (c.provider.awareness?.getStates().get(id) as { cursor?: { x: number } })?.cursor?.x;
+    /** Sends one frame of presence states (null removes one) under the given ids and clocks. */
+    const send = (
+      conn: typeof a,
+      changes: Array<[id: number, clock: number, x: number | null]>,
+    ) => {
+      const aw = conn.provider.awareness!;
+      for (const [id, clock, x] of changes) {
+        if (x === null) aw.states.delete(id);
+        else aw.states.set(id, { cursor: { x, y: 0 }, selection: [], editing: null });
+        aw.meta.set(id, { clock, lastUpdated: Date.now() });
+      }
+      const ids = changes.map(([id]) => id);
+      aw.emit('update', [{ added: [], updated: ids, removed: [] }, 'local']);
+    };
+    const settle = () => new Promise((r) => setTimeout(r, 300));
+    // The cap: eight ids, the rest of the frame dropped.
+    send(
+      a,
+      [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009].map((id) => [id, 1, id]),
+    );
+    await expect.poll(() => cursorOf(1008), { timeout: 5000 }).toBe(1008);
+    await settle();
+    expect(cursorOf(1009)).toBeUndefined();
+    // A frame mixing an owned id with new ones: the owned one passes, the new ones do not.
+    send(a, [
+      [1001, 2, 11],
+      [1010, 1, 1010],
+    ]);
+    await expect.poll(() => cursorOf(1001), { timeout: 5000 }).toBe(11);
+    await settle();
+    expect(cursorOf(1010)).toBeUndefined();
+    // Removed and published again: still its own, and shown.
+    send(a, [[1002, 2, null]]);
+    await expect.poll(() => cursorOf(1002), { timeout: 5000 }).toBeUndefined();
+    // Another connection can't take it while its owner is connected.
+    send(c, [[1002, 9, 99]]);
+    await settle();
+    expect(cursorOf(1002)).toBeUndefined();
+    send(a, [[1002, 3, 22]]);
+    await expect.poll(() => cursorOf(1002), { timeout: 5000 }).toBe(22);
+    await expect.poll(() => seenByPeer(1001), { timeout: 5000 }).toBe(11);
+    // The connection drops without a word: its presence goes for everyone, its ids are free.
+    a.websocketProvider.shouldConnect = false;
+    (a.websocketProvider.webSocket as unknown as WebSocket).terminate();
+    await expect.poll(() => cursorOf(1001), { timeout: 5000 }).toBeUndefined();
+    await expect.poll(() => seenByPeer(1001), { timeout: 5000 }).toBeUndefined();
+    send(c, [[1001, 10, 70]]);
+    await expect.poll(() => cursorOf(1001), { timeout: 5000 }).toBe(70);
+    a.close();
+    c.close();
+  });
+
+  it('shows every provider of a board on a socket opened first without a session', async () => {
+    // Hocuspocus hands the frames of the session-aware providers to the session-less connection
+    // until their own exists: up to three ids on one connection, all of them shown.
+    const a = connect(as('editor'));
+    await a.synced;
+    const peer = connect(as('viewer'));
+    await peer.synced;
+    const presence = (x: number) => ({ cursor: { x, y: 0 }, selection: [], editing: null });
+    const sessions = [1, 2].map(() => {
+      const doc = new Y.Doc();
+      const provider = new HocuspocusProvider({
+        websocketProvider: a.websocketProvider,
+        name: boardDocName(boardId),
+        document: doc,
+        sessionAwareness: true,
+      });
+      provider.attach();
+      return { doc, provider };
+    });
+    a.provider.awareness?.setLocalState(presence(1));
+    for (const [i, s] of sessions.entries()) s.provider.awareness?.setLocalState(presence(2 + i));
+    const ids = [a.doc.clientID, ...sessions.map((s) => s.doc.clientID)];
+    const cursorOf = (id: number) =>
+      (peer.provider.awareness?.getStates().get(id) as { cursor?: { x: number } })?.cursor?.x;
+    await expect.poll(() => ids.map(cursorOf), { timeout: 5000 }).toEqual([1, 2, 3]);
+    for (const s of sessions) {
+      s.provider.destroy();
+      s.doc.destroy();
+    }
+    a.close();
+    peer.close();
+  });
+
+  it('counts presence ids per document session, several on one socket', async () => {
+    // A socket of its own: Hocuspocus hands the messages of a session to a connection of the
+    // same board without one, so the board is opened only in sessions on it.
+    const socket = connect(as('editor'));
+    await socket.synced;
+    socket.provider.destroy();
+    const peer = connect(as('viewer'));
+    await peer.synced;
+    const presence = (x: number) => ({ cursor: { x, y: 0 }, selection: [], editing: null });
+    const sessions = [1, 2, 3].map(() => {
+      const doc = new Y.Doc();
+      const provider = new HocuspocusProvider({
+        websocketProvider: socket.websocketProvider,
+        name: boardDocName(boardId),
+        document: doc,
+        sessionAwareness: true,
+      });
+      provider.attach();
+      return { doc, provider };
+    });
+    for (const [i, s] of sessions.entries()) s.provider.awareness?.setLocalState(presence(1 + i));
+    const ids = sessions.map((s) => s.doc.clientID);
+    const cursorOf = (id: number) =>
+      (peer.provider.awareness?.getStates().get(id) as { cursor?: { x: number } })?.cursor?.x;
+    // Three sessions of one board on one socket: each publishes its own id.
+    await expect.poll(() => ids.map(cursorOf), { timeout: 5000 }).toEqual([1, 2, 3]);
+    // Closing one session leaves the others, which still update their presence.
+    sessions[0]!.provider.destroy();
+    await expect.poll(() => cursorOf(ids[0]!), { timeout: 5000 }).toBeUndefined();
+    sessions[1]!.provider.awareness?.setLocalState(presence(20));
+    sessions[2]!.provider.awareness?.setLocalState(presence(30));
+    await expect
+      .poll(() => [cursorOf(ids[1]!), cursorOf(ids[2]!)], { timeout: 5000 })
+      .toEqual([20, 30]);
+    for (const s of sessions) {
+      s.provider.destroy();
+      s.doc.destroy();
+    }
+    socket.close();
+    peer.close();
+  });
+
   it('keeps a lone client connected while nobody else writes', async () => {
     const alone = connect(as('editor'));
     await alone.synced;

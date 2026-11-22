@@ -111,6 +111,16 @@ function newItems(document: Y.Doc, update: Uint8Array): Array<[client: number, c
 }
 const addsItems = (document: Y.Doc, update: Uint8Array) => newItems(document, update).length > 0;
 
+/**
+ * Presence client ids one connection may hold on a document for as long as it is open, so that
+ * an authenticated connection cannot claim an unbounded number of them; the states of more are
+ * dropped. A provider publishes one id, but several providers of one document can share a
+ * connection: Hocuspocus hands the frames of a session-aware provider to the socket's session-less
+ * connection to the same document until the session's own connection exists. 8 leaves room for
+ * that, far above what a client opens.
+ */
+const PRESENCE_IDS_PER_CONNECTION = 8;
+
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
 
@@ -511,8 +521,19 @@ export function createCollabServer(deps: {
       );
     }
   };
-  /** Yjs client ids each socket has published presence for, per document. */
-  const owners = new Map<string, string>();
+  /**
+   * The connection (one per document session: several can share a socket) that published
+   * presence under each Yjs client id of a document.
+   */
+  const owners = new Map<string, Connection<Context>>();
+  /**
+   * The same per connection: its cap, and what its close frees without reading every entry. An id
+   * stays claimed until the connection closes, removed or not, as main keeps it. No other
+   * connection can publish it meanwhile, and Hocuspocus removes a closing connection's presence
+   * (its own registry of the ids that first appeared on it) before it runs the close callbacks:
+   * so one connection's close never removes another's presence.
+   */
+  const claims = new WeakMap<Connection<Context>, Set<number>>();
   // Seed lazily from the authoritative transaction, including after a process restart.
   const lastAutoAt = new Map<string, number>();
   const ownerKey = (documentName: string, clientId: number) => `${documentName}#${clientId}`;
@@ -821,18 +842,45 @@ export function createCollabServer(deps: {
      * Presence comes from clients, so the server writes who they are: nobody can appear as
      * someone else, change another client's presence or remove it.
      */
-    async beforeHandleAwareness({ states, removedClients, connection, documentName }) {
+    async beforeHandleAwareness({ states, removedClients, connection, documentName, document }) {
       if (!connection) return;
       const ctx = connection.context;
       for (const [clientId, state] of states) {
         const key = ownerKey(documentName, clientId);
         const owner = owners.get(key);
         const local = LocalPresence.safeParse(state);
-        if ((owner && owner !== connection.socketId) || !ctx?.user || !local.success) {
+        // A message still queued when its connection closed publishes nothing.
+        if (
+          (owner && owner !== connection) ||
+          !ctx?.user ||
+          !local.success ||
+          !document.hasConnection(connection)
+        ) {
           states.delete(clientId);
           continue;
         }
-        owners.set(key, connection.socketId);
+        if (!owner) {
+          let claimed = claims.get(connection);
+          if (!claimed) {
+            const mine = new Set<number>();
+            claimed = mine;
+            claims.set(connection, mine);
+            // Like onDisconnect: once what the connection still had queued is handled.
+            connection.onClose(() => {
+              void connection.waitForPendingMessages().then(() => {
+                for (const id of mine)
+                  if (owners.get(ownerKey(documentName, id)) === connection)
+                    owners.delete(ownerKey(documentName, id));
+              });
+            });
+          }
+          if (claimed.size >= PRESENCE_IDS_PER_CONNECTION) {
+            states.delete(clientId);
+            continue;
+          }
+          claimed.add(clientId);
+          owners.set(key, connection);
+        }
         const stamped: PresenceState = {
           ...local.data,
           // Only someone who can write may appear to be typing.
@@ -845,14 +893,9 @@ export function createCollabServer(deps: {
         states.set(clientId, stamped);
       }
       for (const clientId of removedClients) {
-        if (owners.get(ownerKey(documentName, clientId)) !== connection.socketId)
+        if (owners.get(ownerKey(documentName, clientId)) !== connection)
           removedClients.delete(clientId);
       }
-    },
-
-    async onDisconnect({ socketId, documentName }) {
-      for (const [key, owner] of owners)
-        if (owner === socketId && key.startsWith(`${documentName}#`)) owners.delete(key);
     },
 
     async beforeUnloadDocument({ document }) {
