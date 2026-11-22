@@ -32,6 +32,7 @@ import {
   shareGuest,
   shareLink,
   sharePick,
+  user,
 } from '../db/schema.ts';
 import { memoryMailer, noMailer } from '../mailer.ts';
 import * as notifications from '../notifications.ts';
@@ -1733,6 +1734,16 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       .where(and(eq(projectMember.projectId, P), eq(projectMember.userId, as.editor2.id)));
     expect((await call({ cookie: o.cookie }, 'GET', g(link, '/session'))).status).toBe(200);
 
+    // A deactivated creator counts as gone (decision 0025); reactivated, the link works again.
+    await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.editor2.id));
+    expect((await call({ cookie: o.cookie }, 'GET', g(link, '/session'))).status).toBe(403);
+    const asleep = await call('owner', 'GET', `/api/v1/boards/${B.A}/share-links`);
+    expect(asleep.body.items.find((l: { id: string }) => l.id === link.id)).toMatchObject({
+      status: 'suspended',
+    });
+    await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.editor2.id));
+    expect((await call({ cookie: o.cookie }, 'GET', g(link, '/session'))).status).toBe(200);
+
     // A revoked link stops its guests at once.
     await call('owner', 'DELETE', `/api/v1/share-links/${link.id}`);
     const revoked = await call({ cookie: o.cookie }, 'GET', g(link, `/boards/${B.A}`));
@@ -1813,7 +1824,8 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       expect(warm.assets).toBe(first.assets);
       expect(warm.boards).toBe(first.boards);
       expect(get).not.toHaveBeenCalled();
-      expect(select).toHaveBeenCalledTimes(4); // Three access queries plus batched doc stamps.
+      // Four access queries (the creator's account among them) plus batched doc stamps.
+      expect(select).toHaveBeenCalledTimes(5);
       expect(warm.assets.shown.has(X.x6)).toBe(true);
       await saveDoc(B.A1, [
         { ...el, id: E.sub, type: 'image', assetId: X.x6, parent: null, guestHidden: true },
