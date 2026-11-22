@@ -32,6 +32,13 @@ export type CrewMember = z.infer<typeof CrewMember>;
 export const UpdateCrewMember = CrewMemberInput.extend({
   revision: z.number().int().min(1),
 }).openapi('UpdateCrewMember');
+/**
+ * A character card is played by one crew row (decision 0091): linking it to a second row is a 409
+ * with this `details.reason` and the row that plays it as `details.member`. Servers that enforce
+ * it advertise `CREW_ONE_ROW_PER_CHARACTER_CAPABILITY` in `/instance/version`.
+ */
+export const CHARACTER_TAKEN = 'character_taken';
+export const CREW_ONE_ROW_PER_CHARACTER_CAPABILITY = 'crew-one-row-per-character';
 /** Merges the row `from` into the row of the path, which is kept; both revisions are checked. */
 export const MergeCrewMember = z
   .object({

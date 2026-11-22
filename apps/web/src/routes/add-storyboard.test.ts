@@ -29,6 +29,13 @@ it('adds a second storyboard next to the first, with a number', async () => {
   expect(createBoard).toHaveBeenCalledWith('p1', 'root', 'film.views.storyboard 2', 'storyboard');
 });
 
+it('takes the name New board gives it', async () => {
+  vi.mocked(loadBoards).mockResolvedValue([board('s', 'storyboard')]);
+  vi.mocked(createBoard).mockResolvedValue(board('s2', 'storyboard'));
+  await addBoard(project, 'storyboard', t, 'Act two');
+  expect(createBoard).toHaveBeenCalledWith('p1', 'root', 'Act two', 'storyboard');
+});
+
 it('makes a moodboard too', async () => {
   vi.mocked(loadBoards).mockResolvedValue([board('s', 'storyboard')]);
   vi.mocked(createBoard).mockResolvedValue(board('m', 'moodboard'));

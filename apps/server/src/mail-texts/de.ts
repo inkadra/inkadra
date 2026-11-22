@@ -14,7 +14,7 @@ export const de: MailTexts = {
   releaseTitle: 'Neu in Inkadra',
   releaseIntro: (instance, version, listed) =>
     listed
-      ? `${instance} wurde aktualisiert. Das kannst du ab heute tun.`
+      ? `${instance} wurde aktualisiert. Hier siehst du, was du ab heute tun kannst.`
       : `${instance} wurde auf Inkadra ${version} aktualisiert. Die Versionshinweise erklären, was neu ist.`,
   releaseAction: 'Versionshinweise lesen',
   releaseFooter: {
@@ -154,7 +154,7 @@ export const de: MailTexts = {
     titles: {
       disk_full: 'Speicher fast voll',
       service_down: 'Ein Dienst antwortet nicht',
-      backup_failed: 'Sicherung fehlgeschlagen',
+      backup_failed: 'Backup fehlgeschlagen',
       repeated_errors: 'Ein Fehler wiederholt sich',
       storage_limit: 'Der Speicher der Instanz ist fast voll',
       storage_request: 'Mehr Speicher angefragt',
@@ -168,7 +168,7 @@ export const de: MailTexts = {
     down: (service) =>
       `${service} antwortet nicht. Der Rest von Inkadra funktioniert, aber dieser Teil steht, bis der Dienst wieder startet.`,
     backup:
-      'Die Sicherung von heute Nacht ist fehlgeschlagen. Deine Daten sind sicher, prüfe sie aber vor der nächsten.',
+      'Das Backup von heute Nacht ist fehlgeschlagen. Deine Daten sind sicher, prüfe aber vor dem nächsten Backup.',
     errors: (n) => `Derselbe Fehler ist in der letzten Stunde ${n}-mal aufgetreten.`,
     services: {
       web: 'Die Website und die Anmeldung',
@@ -180,7 +180,7 @@ export const de: MailTexts = {
     } as Record<string, string>,
     action: 'Server öffnen',
     footer: (instance) =>
-      `Serverwarnungen von ${instance} für Administratoren. Änderbar unter Einstellungen › Server.`,
+      `Serverwarnungen von ${instance} für Admins. Änderbar unter Einstellungen › Server.`,
   },
   update: {
     subject: (version, instance) => `Inkadra ${version} ist für ${instance} verfügbar`,

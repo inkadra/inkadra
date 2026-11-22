@@ -32,7 +32,7 @@ import {
 } from './call-sheet.ts';
 import {
   byDepartment,
-  castCard,
+  castPerformer,
   castRows,
   dayCrew,
   onSetContacts,
@@ -238,7 +238,10 @@ export function CallSheetModal({
   const sunCell = sun && (sun.sunrise !== null || sun.sunset !== null);
   const sunClock = (time: number | null) => (time === null ? '—' : clockLabel(time));
   // Film days name a character per row; a spot names the people themselves.
-  const cards = calls.map((call) => castCard(call.name, call.entry, elements, characters));
+  const performers = calls.map((call) =>
+    castPerformer(call.name, call.entry?.member, elements, characters),
+  );
+  const cards = performers.map((p) => p.card);
   // A crew row matched by its role (decision 0092) also makes the row a character.
   const named =
     cards.some(Boolean) ||
@@ -707,11 +710,10 @@ export function CallSheetModal({
                       <tbody>
                         {calls.map(({ name, start, entry }, i) => {
                           const card = cards[i];
+                          // A person who plays themselves (a spot) has no actor column of their own.
+                          const performer = performers[i]?.performer ?? '';
                           const actor =
-                            card?.actor ||
-                            (entry && castNameKey(entry.member.name) !== castNameKey(name)
-                              ? entry.member.name
-                              : '');
+                            castNameKey(performer) === castNameKey(name) ? '' : performer;
                           const pickup = entry?.pickup.trim() ?? '';
                           return (
                             <tr key={name}>

@@ -304,7 +304,11 @@ for (const theme of ['dark', 'light'] as const) {
       await open(page, baseURL!, [], theme);
       const start = page.getByRole('region', { name: 'Da dove partiamo?' });
       await expect(start).toBeVisible();
-      for (const name of [/^Importa sceneggiatura/]) {
+      for (const name of [
+        /^Importa sceneggiatura/,
+        /^Aggiungi Produzione/,
+        /^Aggiungi storyboard/,
+      ]) {
         await expect(start.getByRole('button', { name })).toBeVisible();
       }
       await expect(start.getByText(phone ? /nota dalla barra/ : /doppio clic/)).toBeVisible();

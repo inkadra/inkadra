@@ -98,7 +98,7 @@ test('plans frames of two storyboards and a scene without frames on the Producti
 
   // Its Export makes the call sheets, each frame read from its own storyboard.
   await page.getByRole('button', { name: 'Menu della board', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Fogli di convocazione', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Ordini del giorno', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.locator('.export__paper')).toHaveAttribute('data-status', 'ready');
   await expect(dialog.locator('.export__preview figcaption')).toHaveText(/\d+ pagin/);
@@ -122,7 +122,7 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   await expect(page.getByRole('tab', { name: 'Piano riprese', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Menu della board', exact: true }).click();
   await page
-    .getByRole('menuitem', { name: 'Giornate di ripresa: 1 · Apri Produzione', exact: true })
+    .getByRole('menuitem', { name: 'Giornate di riprese: 1 · Apri Produzione', exact: true })
     .click();
   await expect(page).toHaveURL(new RegExp(`/b/${production.id}`));
 
@@ -138,7 +138,7 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   // Its frames left the queue: Film's are all planned, so nothing waits and the month and
   // queue open folded to their rail (option 2); the rail opens them.
   const rail = schedule.locator('.schedule__rail');
-  await rail.getByRole('button', { name: 'Da pianificare: 0', exact: true }).click();
+  await rail.getByRole('button', { name: 'Da pianificare: 0 inquadrature', exact: true }).click();
   await expect(rail).toHaveCount(0);
   await expect(queue.locator('.schedule__source-title')).toHaveCount(0);
   await expect(queue).toContainText('Tutte le inquadrature sono in un giorno di riprese');

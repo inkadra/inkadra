@@ -167,7 +167,9 @@ test('draws a block on empty time and moves or swaps whole days', async ({ page 
   // period's title opens the month as a popover (option 2).
   const rail = schedule.locator('.schedule__rail');
   await expect(rail).toBeVisible();
-  await expect(rail.getByRole('button', { name: 'Da pianificare: 0', exact: true })).toBeVisible();
+  await expect(
+    rail.getByRole('button', { name: 'Da pianificare: 0 inquadrature', exact: true }),
+  ).toBeVisible();
   await expect(schedule.locator('.schedule__month')).toHaveCount(0);
   const title = schedule.getByRole('button', { name: /· Mese$/ });
   await title.click();

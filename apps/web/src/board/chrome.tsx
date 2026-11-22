@@ -1,6 +1,6 @@
 import type { Alignment, Point, Rect, TidyGap, Viewport } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { type ModuleId, moduleOf } from '@inkadra/shared';
+import type { ModuleId } from '@inkadra/shared';
 import {
   type ContentKind,
   Icon,
@@ -34,7 +34,9 @@ import { addActions, type PaletteAction, rankActions } from '../commands/actions
 import { CLIPPER_STORE_URL } from '../lib/clipper.ts';
 import { setModule, useModules } from '../lib/modules.ts';
 import { updatePreferences, usePreferences } from '../lib/preferences.ts';
+import { menuFloor } from '../menus/place-menu.ts';
 import { pickVariant, useAsset } from './assets.ts';
+import { boardKindChoices, type NewBoardKind } from './board-kinds.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
@@ -99,10 +101,6 @@ const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 
 /** The phone bar of the mockup (#110): note, photo and to-do beside Select and More. */
 const PHONE_BAR = ['note', 'image', 'todo'] as const;
-
-/** The kinds of board the Canvas menu creates, with the module each belongs to (0121). */
-const NEW_BOARDS = ['board', 'moodboard', 'storyboard', 'production'] as const;
-type NewBoardKind = (typeof NEW_BOARDS)[number];
 
 /**
  * Marks a sideways-scrolling row with `data-more-start` and `data-more-end` while there is more
@@ -499,11 +497,8 @@ function CanvasMenuButton({
   const label = t(phone ? 'board.canvasMenu.more' : 'board.canvasMenu.label');
   const open = () => setAt(placeAbove(button.current));
   const storyboardOn = offers('menus', 'screenplayImport');
-  const kinds = NEW_BOARDS.map((kind) => {
-    const owner = moduleOf('kinds', kind);
-    const off = !offers('kinds', kind);
-    // One Production board per project: with one, the card opens it (decision 0123).
-    const present = kind === 'production' && !off && !!onProduction;
+  // One Production board per project: with one, the card opens it (decision 0123).
+  const kinds = boardKindChoices(offers, !!onProduction).map(({ kind, owner, off, present }) => {
     const name = t(kind === 'board' ? 'board.types.board' : `film.views.${kind}`);
     return {
       label: off
@@ -1148,13 +1143,20 @@ export function ContextMenu({
   const hintId = useId();
   // Opened at a point near an edge (a long press on a phone), the menu moves back inside its
   // container instead of running off the screen; a menu taller than the room scrolls.
+  // A fixed menu (`menu--canvas`) has no offset parent: the window above the phone's tab bar is
+  // its container, and it is measured from the left edge, where its width is not squeezed by
+  // the room left of `x` (it would grow past the window edge once moved back).
   useLayoutEffect(() => {
     const el = ref.current;
-    const room = el?.offsetParent as HTMLElement | null;
-    if (!el || !room || x === undefined || y === undefined || style) return;
-    el.style.maxHeight = `${room.clientHeight - 16}px`;
-    el.style.left = `${Math.max(8, Math.min(x, room.clientWidth - el.offsetWidth - 8))}px`;
-    el.style.top = `${Math.max(8, Math.min(y, room.clientHeight - el.offsetHeight - 8))}px`;
+    if (!el || x === undefined || y === undefined || style) return;
+    const room = el.offsetParent as HTMLElement | null;
+    if (!room && getComputedStyle(el).position !== 'fixed') return;
+    if (!room) el.style.left = '0px';
+    const width = room ? room.clientWidth : window.innerWidth;
+    const height = room ? room.clientHeight : menuFloor();
+    el.style.maxHeight = `${height - 16}px`;
+    el.style.left = `${Math.max(8, Math.min(x, width - el.offsetWidth - 8))}px`;
+    el.style.top = `${Math.max(8, Math.min(y, height - el.offsetHeight - 8))}px`;
   }, [x, y, style]);
   return (
     <Menu

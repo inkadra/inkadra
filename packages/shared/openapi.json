@@ -14750,6 +14750,16 @@
               }
             }
           },
+          "409": {
+            "description": "details.reason `character_taken`: the character card is already linked to the crew member in details.member.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -14959,7 +14969,7 @@
             }
           },
           "409": {
-            "description": "Stale revision; details.current contains the latest member.",
+            "description": "Stale revision; details.current contains the latest member. Or, with details.reason `character_taken`, the character card is already linked to the crew member in details.member.",
             "content": {
               "application/json": {
                 "schema": {

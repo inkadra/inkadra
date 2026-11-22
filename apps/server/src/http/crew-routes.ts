@@ -1,6 +1,7 @@
 import {
   API_PREFIX,
   BulkCreateCrew,
+  CHARACTER_TAKEN,
   type CrewCharacter,
   CrewMemberInput,
   canMergeCrew,
@@ -10,7 +11,7 @@ import {
   UpdateCrewMember,
   z,
 } from '@inkadra/shared';
-import { and, asc, eq, inArray, isNull, type SQL, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, ne, type SQL, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { boardRoles, requireBoardRole, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -23,6 +24,7 @@ import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { idempotentCreation } from './idempotency.ts';
 
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 const Params = z.object({ projectId: Id });
 const MemberParams = Params.extend({ memberId: Id });
 const Revision = z.object({ revision: z.number().int().min(1) }).strict();
@@ -34,6 +36,9 @@ const inputOf = ({
   updatedAt: _updated,
   ...input
 }: typeof crewMember.$inferSelect) => input;
+/** The lock every write of a project's crew links takes: bulk pastes, cast links, card links. */
+const lockCrew = (tx: Transaction, projectId: string) =>
+  tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${projectId}, 0))`);
 const present = (row: typeof crewMember.$inferSelect) => ({
   ...row,
   createdAt: row.createdAt.toISOString(),
@@ -120,21 +125,60 @@ export function registerCrewRoutes(
         throw new HttpError('bad_request', 'Character not found.');
     }
   };
+  /**
+   * One row per character card (decision 0091): a card another row of the project plays answers
+   * 409 with that row. Called under `lockCrew`, so two editors linking one card at once cannot
+   * both pass. Rows that already share a card (old cast links merged) keep it until changed.
+   */
+  const checkCharacterFree = async (
+    tx: Transaction,
+    projectId: string,
+    character: z.infer<typeof CrewMemberInput>['character'],
+    except?: string,
+  ) => {
+    if (!character) return;
+    const [other] = await tx
+      .select({ id: crewMember.id })
+      .from(crewMember)
+      .where(
+        and(
+          eq(crewMember.projectId, projectId),
+          sql`${crewMember.character} = ${JSON.stringify(character)}::jsonb`,
+          except ? ne(crewMember.id, except) : undefined,
+        ),
+      )
+      .orderBy(asc(crewMember.position), asc(crewMember.id))
+      .limit(1);
+    if (!other) return;
+    const [member] = await readCrew(eq(crewMember.id, other.id));
+    throw new HttpError('conflict', 'This character is already played by another crew member.', {
+      reason: CHARACTER_TAKEN,
+      member,
+    });
+  };
   app.get(`${base}/characters`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { projectId } = Params.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'viewer');
+    // A fixed order, storyboards first, so a client picking the card of a name picks the same one.
     const boards = await db
       .select({ id: board.id })
       .from(board)
-      .where(and(eq(board.projectId, projectId), isNull(board.deletedAt)));
+      .where(and(eq(board.projectId, projectId), isNull(board.deletedAt)))
+      .orderBy(desc(sql`${board.kind} = 'storyboard'`), asc(board.createdAt), asc(board.id));
     const roles = await boardRoles(
       db,
       actor,
       boards.map((row) => row.id),
     );
     const items: CrewCharacter[] = [];
-    for (const row of boards) if (roles.has(row.id)) items.push(...(await characters(row.id)));
+    for (const row of boards)
+      if (roles.has(row.id))
+        items.push(
+          ...(await characters(row.id)).sort((a, b) =>
+            a.elementId < b.elementId ? -1 : a.elementId > b.elementId ? 1 : 0,
+          ),
+        );
     return { items };
   });
   app.get(base, async (req) => {
@@ -163,6 +207,7 @@ export function registerCrewRoutes(
       async (tx) => {
         const error = await invalid;
         if (error) throw error;
+        await checkCharacterFree(tx, projectId, input.character);
         const [row] = await tx
           .insert(crewMember)
           .values({ ...input, projectId })
@@ -171,6 +216,8 @@ export function registerCrewRoutes(
         if (demo) await checkDemoCrew(tx, projectId);
         return row;
       },
+      // The crew lock first, as every lock before the account's (decision 0134).
+      input.character ? (tx) => lockCrew(tx, projectId).then(() => {}) : undefined,
     );
     // A retry is answered with the crew member as it is now: 404 once it is gone or merged.
     if ('replayed' in result) {
@@ -190,7 +237,16 @@ export function registerCrewRoutes(
     for (const input of items) await validateLinks(actor, projectId, input);
     // Serialize bulk pastes per project, including duplicate detection within the same paste.
     const rows = await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${projectId}, 0))`);
+      await lockCrew(tx, projectId);
+      const cards = new Set<string>();
+      for (const { character } of items) {
+        if (!character) continue;
+        const key = JSON.stringify([character.boardId, character.elementId]);
+        if (cards.has(key))
+          throw new HttpError('bad_request', 'Two rows of the paste link the same character.');
+        cards.add(key);
+        await checkCharacterFree(tx, projectId, character);
+      }
       const existing = await tx
         .select({ name: crewMember.name })
         .from(crewMember)
@@ -221,17 +277,26 @@ export function registerCrewRoutes(
       .where(and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)));
     if (!stored) throw new HttpError('not_found', 'Crew member not found.');
     await validateLinks(actor, projectId, input, stored);
-    const [row] = await db
-      .update(crewMember)
-      .set({ ...input, revision: revision + 1, updatedAt: sql`now()` })
-      .where(
-        and(
-          eq(crewMember.projectId, projectId),
-          eq(crewMember.id, memberId),
-          eq(crewMember.revision, revision),
-        ),
-      )
-      .returning();
+    const relinked =
+      stored.character?.boardId !== input.character?.boardId ||
+      stored.character?.elementId !== input.character?.elementId;
+    const [row] = await db.transaction(async (tx) => {
+      if (relinked && input.character) {
+        await lockCrew(tx, projectId);
+        await checkCharacterFree(tx, projectId, input.character, memberId);
+      }
+      return tx
+        .update(crewMember)
+        .set({ ...input, revision: revision + 1, updatedAt: sql`now()` })
+        .where(
+          and(
+            eq(crewMember.projectId, projectId),
+            eq(crewMember.id, memberId),
+            eq(crewMember.revision, revision),
+          ),
+        )
+        .returning();
+    });
     if (row) return (await readRows([row]))[0];
     const [current] = await readCrew(
       and(eq(crewMember.projectId, projectId), eq(crewMember.id, memberId)),

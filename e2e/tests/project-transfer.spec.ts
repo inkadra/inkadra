@@ -173,7 +173,7 @@ test('a project exports from its menu to a zip with a manifest', async ({ page }
   const dialog = page.getByRole('dialog', { name: `Esporta «${NAME}»` });
   await expect(dialog.getByText('Board e sotto-board, file originali, commenti')).toBeVisible();
   await dialog.getByRole('button', { name: 'Esporta', exact: true }).click();
-  await expect(dialog.getByRole('status').getByText("L'archivio è pronto")).toBeVisible({
+  await expect(dialog.getByRole('status').getByText('L’archivio è pronto')).toBeVisible({
     timeout: 60_000,
   });
 
@@ -334,7 +334,7 @@ test.describe('an archive that is not an Inkadra export', () => {
     await expect(dialog.getByRole('button', { name: 'Scegli un altro file' })).toBeVisible();
     await expect(dialog.getByRole('link', { name: 'Apri progetto' })).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Scegli un altro file' }).click();
-    await expect(dialog.getByText("Trascina qui l'archivio o scegli un file")).toBeVisible();
+    await expect(dialog.getByText('Trascina qui l’archivio o scegli un file')).toBeVisible();
     await dialog.getByRole('button', { name: 'Chiudi' }).click();
     // Nothing was created.
     const after = await json<{ items: unknown[] }>(page, '/projects');

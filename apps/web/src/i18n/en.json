@@ -186,7 +186,11 @@
       "name": "Board name",
       "namePlaceholder": "Location scouting",
       "create": "Create board",
-      "error": "The board could not be created. Try again."
+      "error": "The board could not be created. Try again.",
+      "kind": "Type",
+      "turnOn": "Turn on {{name}}",
+      "present": "The project already has its Production: there is one per project.",
+      "open": "Open {{name}}"
     },
     "preview": {
       "unavailable": "Preview unavailable",
@@ -378,8 +382,8 @@
         "file_other": "{{count}} files",
         "link_one": "{{count}} link",
         "link_other": "{{count}} links",
-        "color_one": "{{count}} colour",
-        "color_other": "{{count}} colours",
+        "color_one": "{{count}} color",
+        "color_other": "{{count}} colors",
         "note_one": "{{count}} note",
         "note_other": "{{count}} notes",
         "column_one": "{{count}} column",
@@ -408,7 +412,7 @@
       "link": "Link",
       "file": "File",
       "todo": "To-do",
-      "color": "Colour",
+      "color": "Color",
       "column": "Column",
       "board": "Board",
       "scene": "Scene",
@@ -521,7 +525,7 @@
       "save": "Save",
       "cancel": "Cancel",
       "close": "Close",
-      "denied": "No microphone: check the browser's permissions.",
+      "denied": "No microphone: check the browser’s permissions.",
       "file": "voice-note"
     },
     "todo": {
@@ -542,7 +546,7 @@
       "noScenes": "No scenes on this board"
     },
     "color": {
-      "label": "Colour name",
+      "label": "Color name",
       "labelPlaceholder": "Name",
       "hex": "Hex",
       "red": "Red",
@@ -550,8 +554,8 @@
       "blue": "Blue",
       "copy": "Copy {{hex}} (RGB {{rgb}})",
       "copied": "Copied {{hex}}",
-      "edit": "Edit colour",
-      "picker": "Colour picker",
+      "edit": "Edit color",
+      "picker": "Color picker",
       "square": "Saturation and brightness",
       "squareValue": "Saturation {{s}}%, brightness {{v}}%",
       "hue": "Hue",
@@ -619,7 +623,7 @@
       "list": "Bulleted list"
     },
     "colors": {
-      "none": "No colour",
+      "none": "No color",
       "blue": "Blue",
       "orange": "Orange",
       "purple": "Purple",
@@ -627,7 +631,7 @@
     },
     "align": {
       "left": "Align left",
-      "center": "Centre",
+      "center": "Center",
       "right": "Align right",
       "top": "Align top",
       "middle": "Align middle",
@@ -681,7 +685,7 @@
       "details": "Frame details",
       "draw": "Draw",
       "rename": "Rename",
-      "boardIcon": "Icon and colour…",
+      "boardIcon": "Icon and color…",
       "moveCardsOn": "Move with the cards under it",
       "moveCardsOff": "Move the heading alone",
       "hideGrid": "Hide the dot grid",
@@ -718,7 +722,7 @@
       "cancel": "Cancel",
       "done": "Done",
       "failed": "Failed",
-      "cancelled": "Cancelled",
+      "cancelled": "Canceled",
       "retry": "Retry",
       "offline": "Waiting for network",
       "reconnecting": "Reconnecting…",
@@ -749,7 +753,7 @@
     },
     "denied": {
       "title": "You cannot open this board",
-      "body": "Ask the project's managers for access.",
+      "body": "Ask the project’s managers for access.",
       "copy": "Copy board link",
       "copied": "Link copied",
       "hint": "Send the copied link to whoever manages the project: they can give you access."
@@ -983,8 +987,8 @@
         "speaker": "Speaker",
         "prompter": "Prompter",
         "crew": "Crew",
-        "dirchair": "Director chair",
-        "hmu": "Hair, make-up",
+        "dirchair": "Director’s chair",
+        "hmu": "Hair and make-up",
         "rack": "Costume rack",
         "crafty": "Catering",
         "tent": "Tent",
@@ -1109,7 +1113,7 @@
         "grid": "egg crate, honeycomb",
         "barn": "barndoors, doors",
         "snoot": "snoot, tube",
-        "gel": "filter, cto, ctb, colour",
+        "gel": "filter, cto, ctb, color",
         "scrim": "scrim, single, double",
         "gobo": "gobo, pattern, template",
         "flag": "flag, solid",
@@ -1292,11 +1296,11 @@
       "searchHint": "Also searches categories and synonyms. Enter places the first icon in the middle.",
       "noMatch": "No icon found",
       "recent": "Recent",
-      "starred": "Favourites",
-      "favourite": "Favourite: {{name}}",
+      "starred": "Favorites",
+      "favourite": "Favorite: {{name}}",
       "sheetHalf": "Shrink the library",
       "sheetFull": "Full-screen library",
-      "color": "Colour",
+      "color": "Color",
       "edit": "Edit",
       "linkScene": "Link to a scene",
       "linkSceneMenu": "Link to a scene…",
@@ -1334,7 +1338,7 @@
       "items_other": "{{count}} items",
       "align": {
         "left": "Align left",
-        "centre": "Align centre",
+        "centre": "Align center",
         "top": "Align top",
         "distribute": "Distribute"
       },
@@ -1342,7 +1346,7 @@
       "ungroup": "Ungroup",
       "scale": "Scale",
       "scaleGrid": "1 square = {{grid}} m",
-      "noScale": "None, no metres",
+      "noScale": "None, no meters",
       "setScale": "Set the scale",
       "scaleHint": "Draw a line along something whose length you know",
       "rulers": "Rulers",
@@ -1351,7 +1355,7 @@
       "clearScale": "Remove the scale",
       "cancel": "Cancel",
       "lineIs": "The line you drew is",
-      "metres": "metres",
+      "metres": "meters",
       "grid": "Grid",
       "apply": "Set",
       "showLayer": "Show {{layer}}",
@@ -1385,8 +1389,8 @@
       "variantField": "Variant name",
       "inPresentation": "In the presentation",
       "layersHintNone": "No active layer: each icon goes to its family’s layer, strokes and shapes to Set. What you hide here is yours alone; what you hide in a variant is for everyone.",
-      "colorOf": "Colour: {{name}}",
-      "nextColor": "Colour of the next strokes",
+      "colorOf": "Color: {{name}}",
+      "nextColor": "Color of the next strokes",
       "undo": "Undo",
       "redo": "Redo",
       "more": "More actions",
@@ -1416,7 +1420,7 @@
       "marqueeHold_one": "Press and hold, then drag · {{count}} item",
       "marqueeHold_other": "Press and hold, then drag · {{count}} items",
       "emptyHint": "Draw the walls with the Walls tool, then add cameras and lights from the library on the left.",
-      "measureMetres": "Measure in metres",
+      "measureMetres": "Measure in meters",
       "measureHint": "The drawing stays as it is: only the number shown changes.",
       "measureWrong": "Enter a number greater than 0.",
       "writeMeasure": "Enter the measure",
@@ -1468,14 +1472,14 @@
       "export": "Export",
       "facing": "Facing",
       "filterLayer": "Filter by layer",
-      "filterTag": "Filter by tag colour",
+      "filterTag": "Filter by tag color",
       "fixture": "Fixture",
       "gel": "Gel",
       "height": "Height",
       "hideGhost": "Hide {{name}}",
       "showGhost": "Show {{name}} as a ghost",
-      "kelvin": "Colour temperature",
-      "kelvinPresets": "Colour temperature presets",
+      "kelvin": "Color temperature",
+      "kelvinPresets": "Color temperature presets",
       "kitEmpty": "No kit on this setup yet: lights, grip and camera add to it.",
       "kitForSetup": "Kit for this setup",
       "kitPillLabel": "Kit: {{items}} items, {{power}}",
@@ -1487,7 +1491,7 @@
         "kitHint": "A light or camera you set up once shows here with its make, power, modifiers and stand, for every plan of the project.",
         "kitResults_one": "{{count}} in the project kit",
         "kitResults_other": "{{count}} in the project kit",
-        "mine": "Favourites and recent",
+        "mine": "Favorites and recent",
         "noFavourites": "Star an icon to keep it here.",
         "noRecent": "The icons you place show here.",
         "projectKit": "Project kit",
@@ -1503,8 +1507,8 @@
         "types_one": "{{count}} type",
         "types_other": "{{count}} types",
         "kitScope": {
-          "loading": "Loading the kit of the other boards: this board's only for now.",
-          "local": "Offline or out of reach: this board's kit only."
+          "loading": "Loading the kit of the other boards: this board’s only for now.",
+          "local": "Offline or out of reach: this board’s kit only."
         }
       },
       "lock": "Lock",
@@ -1519,7 +1523,7 @@
       "moreProps": "All properties",
       "movement": "Movement",
       "nameField": "Name",
-      "nameFollows": "Name and colour follow the card",
+      "nameFollows": "Name and color follow the card",
       "newSetup": "Add a setup",
       "noCircuit": "On no circuit",
       "noGel": "No gel",
@@ -1559,7 +1563,7 @@
         "kit": "Kit"
       },
       "tag": "Tag",
-      "tagColour": "Tag colour: {{name}}",
+      "tagColour": "Tag color: {{name}}",
       "textSize": "Text size",
       "tilt": "Tilt",
       "viewLength": "View length",
@@ -1611,7 +1615,7 @@
       },
       "snapIcons": "Snap icons together",
       "gripGroup": "Grip and crew",
-      "lockItemHint": "Lock this item: it can't be moved, edited or deleted",
+      "lockItemHint": "Lock this item: it can’t be moved, edited or deleted",
       "unlockItemHint": "Unlock this item",
       "itemLocked": "Locked: unlock it to move, edit or delete it.",
       "lockedItem": "Locked",
@@ -1666,7 +1670,7 @@
         "height": {
           "down": "below the horizon",
           "low": "low",
-          "mid": "half way up",
+          "mid": "halfway up",
           "high": "high"
         },
         "sunFromPlace": "Worked out for the map link of {{place}}: {{degrees}}° above the horizon. The sun icons turn as the time changes.",
@@ -1752,8 +1756,8 @@
         "angles": "Angles",
         "free": "Free",
         "typeHint": "Type a length, then Enter",
-        "typedLength": "Length of the next side, in metres",
-        "typedWidth": "Width of the next opening, in metres",
+        "typedLength": "Length of the next side, in meters",
+        "typedWidth": "Width of the next opening, in meters",
         "openings": "Openings",
         "kinds": {
           "door": "Door",
@@ -1786,7 +1790,7 @@
         "fromCorners": "{{before}} and {{after}} from the corners",
         "openingWidth": "Width of the opening",
         "flip": "Flip side",
-        "swing": "Swing from the other end",
+        "swing": "Swing from the other side",
         "doorHint": "Drag it along its wall to move it.",
         "wall": "Wall",
         "wallSummary_one": "{{count}} side · {{length}}",
@@ -1800,8 +1804,8 @@
         "failed": "The picture could not be uploaded. Try again.",
         "picture": "Picture",
         "opacity": "Opacity",
-        "grey": "In greys",
-        "greyShort": "grey",
+        "grey": "In grays",
+        "greyShort": "gray",
         "show": "Shown",
         "place": "Move and scale",
         "replace": "Replace",
@@ -1848,7 +1852,7 @@
       },
       "onAnotherSetup": "On another setup",
       "renameHint": "Double-click or F2 to rename",
-      "tagColourFollows": "The colour follows the character card",
+      "tagColourFollows": "The color follows the character card",
       "onTrack": "{{name}} on track",
       "onTrackLength": "{{name}} on {{metres}} m track",
       "seatsAround_one": "{{count}} seat",
@@ -1860,8 +1864,8 @@
         "chair_other": "{{count}} chairs",
         "armchair_one": "{{count}} armchair",
         "armchair_other": "{{count}} armchairs",
-        "dirchair_one": "{{count}} director's chair",
-        "dirchair_other": "{{count}} director's chairs",
+        "dirchair_one": "{{count}} director’s chair",
+        "dirchair_other": "{{count}} director’s chairs",
         "sofa_one": "{{count}} sofa",
         "sofa_other": "{{count}} sofas",
         "bench_one": "{{count}} bench",
@@ -1973,7 +1977,7 @@
     "sheet": {
       "edit": "Edit",
       "comment": "Comment",
-      "color": "Colour",
+      "color": "Color",
       "connect": "Connect",
       "connectHint": "Drag from the card to another one to connect them",
       "moveTo": "Move to…",
@@ -2003,7 +2007,7 @@
     "title": "Tags",
     "add": "Add a tag",
     "placeholder": "Pick a tag and press Enter",
-    "notInCatalog": "“{{tag}}” is not in the catalogue. Only administrators add tags, in Settings → Classifications.",
+    "notInCatalog": "“{{tag}}” is not in the catalog. Only administrators add tags, in Settings → Classifications.",
     "pressEnterToCreate": "Press Enter to create the tag “{{tag}}”.",
     "createFailed": "The tag could not be created. Try again.",
     "remove": "Remove the tag {{tag}}",
@@ -2023,7 +2027,7 @@
     "palette": "Palette",
     "copied": "{{hex}} copied",
     "copyHex": "Copy {{hex}}",
-    "addColors": "Add the colours to the board",
+    "addColors": "Add the colors to the board",
     "download": "Download the original",
     "size": "Size",
     "fields": {
@@ -2038,7 +2042,7 @@
     "unplayable": "Format not playable in the browser",
     "openOnYoutube": "Open on YouTube",
     "copyAll": "Copy all",
-    "copiedAll": "All colours copied",
+    "copiedAll": "All colors copied",
     "hints": {
       "nav": "to browse"
     },
@@ -2067,8 +2071,8 @@
       "original": "Original",
       "live": "live",
       "liveCopy": "copy at {{percent}}%",
-      "liveNote": "«Live» qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it.",
-      "liveOnlyNote": "«Live» qualities are converted by the graphics card as you watch, without storing a copy."
+      "liveNote": "“Live” qualities are converted by the graphics card as you watch; when the copy is ready, playback switches to it.",
+      "liveOnlyNote": "“Live” qualities are converted by the graphics card as you watch, without storing a copy."
     },
     "player": {
       "play": "Play",
@@ -2233,7 +2237,18 @@
       "retry": "Try again",
       "fromBoardVideo": "From a video on the board",
       "menu": "Menu of frame {{label}}",
-      "open": "Open"
+      "open": "Open",
+      "performers": "Performers",
+      "noPerformer": "No performer",
+      "link": "Link",
+      "linkPerformer": "Link who plays {{name}}",
+      "whoPlays": "Who plays {{name}}?",
+      "noFreeCrew": "No free person in the crew",
+      "noFreeCrewHint": "Add the performer to the crew on the Production board: one row per character.",
+      "performerFailed": "Couldn’t link. Try again.",
+      "performerTaken": "{{name}} already has a performer ({{performer}}).",
+      "performerChanged": "This person was changed in the crew meanwhile. Try again.",
+      "playingRole": "Not listed, their role counts as a character: {{names}}"
     },
     "shot": {
       "ews": "Extreme wide",
@@ -2280,7 +2295,7 @@
       "brush": "Brush",
       "marker": "Marker",
       "eraser": "Eraser",
-      "color": "Colour {{color}}",
+      "color": "Color {{color}}",
       "width": "Width",
       "undo": "Undo",
       "redo": "Redo",
@@ -2319,9 +2334,9 @@
       "strip": "Frames of the scene",
       "escape": "Esc to exit",
       "tools": "Tools",
-      "palette": "Colour",
+      "palette": "Color",
       "more": "More actions",
-      "colorCurrent": "Colour: {{color}}",
+      "colorCurrent": "Color: {{color}}",
       "colorNames": {
         "black": "black",
         "white": "white",
@@ -2526,7 +2541,7 @@
       "guest_approve": "Can approve"
     },
     "facts": {
-      "password": "password",
+      "password": "with a password",
       "download": "downloads allowed",
       "proofing": "photo proofing",
       "subBoards": "with sub-boards",
@@ -2803,7 +2818,7 @@
     "status": {
       "expired": "This invitation has expired. Ask the person who sent it for a new one.",
       "used": "This invitation has been used already.",
-      "revoked": "This invitation was cancelled."
+      "revoked": "This invitation was canceled."
     }
   },
   "authorize": {
@@ -2848,7 +2863,7 @@
     "pinAdd": "Comment on a point of the card",
     "pinRemove": "Remove the point",
     "pinAttached": "On a point of the card",
-    "pinPlace": "Choose the point to comment on (Enter: centre, Esc: cancel)",
+    "pinPlace": "Choose the point to comment on (Enter: center, Esc: cancel)",
     "pinOpen": "Open the comment at point {{number}}",
     "pinNumber": "Point {{number}}",
     "pinsOnCanvas": "Points only show in the Canvas view, which opens to choose one.",
@@ -2991,7 +3006,7 @@
       "server_alert_storage_limit": "Instance space: {{percent}}% used ({{used}} of {{limit}})",
       "server_alert_storage_request": "asks for more space"
     },
-    "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
+    "emailHint": "Mentions, replies and reviews by email too, when the server can send them.",
     "emailLabel": "Send email",
     "frequency": {
       "immediate": "Right away (notifications close together arrive in one email)",
@@ -3146,7 +3161,7 @@
       "body": "Deletes the account and the projects nobody else is in. This cannot be undone.",
       "open": "Delete account…",
       "confirmTitle": "Delete the account?",
-      "confirmBody": "Projects where you are alone are deleted with all their files. In shared projects the work stays, without you. Deleted files remain in the server's backups until they age out of the backup retention (7 nightly backups by default, at most 91 days).",
+      "confirmBody": "Projects where you are alone are deleted with all their files. In shared projects the work stays, without you. Deleted files remain in the server’s backups until they age out of the backup retention (7 nightly backups by default, at most 91 days).",
       "fresh": "For safety, you must have signed in during the last 15 minutes: sign out and back in if needed.",
       "blocked": "You are the only owner of these shared projects: make someone else owner first.",
       "confirm": "Delete for good"
@@ -3158,7 +3173,7 @@
   "pwa": {
     "updateAvailable": "New version available",
     "update": "Update",
-    "updateWhenSaved": "Updates once your changes are saved and uploads finish or are cancelled",
+    "updateWhenSaved": "Updates once your changes are saved and uploads finish or are canceled",
     "later": "Later",
     "offline": {
       "title": "You are offline",
@@ -3216,7 +3231,7 @@
       "forbidden": "Only editors and owners can manage versions.",
       "notFound": "This version is no longer available. Reload the list.",
       "limit": "A board keeps at most 100 named versions: delete one before saving another.",
-      "tooNew": "This version was saved by a newer Inkadra: reload the page.",
+      "tooNew": "This version was saved by a newer version of Inkadra: reload the page.",
       "unconfirmed": "The server did not confirm the action. Reload the list and check the board before trying again.",
       "generic": "Could not complete the action. Check your connection and try again."
     }
@@ -3434,7 +3449,7 @@
     "blockNotesPlaceholder": "Printed on the call sheet, e.g. LIGHTS AND WINDOWS ON",
     "unavailable": "Storyboard not available",
     "missingScene": "Missing scene",
-    "noStoryboardShots": "No storyboard with scenes or frames yet. The scenes and frames of the project’s storyboards come here.",
+    "noStoryboardShots": "No storyboard with scenes or frames yet. Scenes and frames from the project’s storyboards appear here.",
     "filterStoryboard": "Filter by storyboard",
     "storyboardFilterLabel": "Storyboard",
     "wholeScene": "Plan the whole scene",
@@ -3452,8 +3467,7 @@
     "hideSide": "Hide month and queue",
     "showSide": "Show month and queue",
     "month": "Month",
-    "queueCount_one": "To schedule: {{count}}",
-    "queueCount_other": "To schedule: {{count}}",
+    "queueCount": "To schedule: {{what}}",
     "densityLabel": "Density",
     "densityCompact": "Compact",
     "densityComfy": "Comfortable"
@@ -3482,7 +3496,7 @@
     "title": "References",
     "images": "Images",
     "links": "Links",
-    "colors": "Colours",
+    "colors": "Colors",
     "palette": "Palette",
     "copy": "Copy",
     "paletteCopied": "Palette copied",
@@ -3502,9 +3516,9 @@
     "sendToStoryboard": "Send to storyboard",
     "sent_one": "{{count}} frame added to the storyboard",
     "sent_other": "{{count}} frames added to the storyboard",
-    "sendFailed": "They couldn't be added to the storyboard. Check your connection and permissions, then try again.",
-    "lockedSkipped_one": "{{count}} reference is locked and didn't change.",
-    "lockedSkipped_other": "{{count}} references are locked and didn't change.",
+    "sendFailed": "They couldn’t be added to the storyboard. Check your connection and permissions, then try again.",
+    "lockedSkipped_one": "{{count}} reference is locked and didn’t change.",
+    "lockedSkipped_other": "{{count}} references are locked and didn’t change.",
     "whichStoryboard": "Which storyboard?"
   },
   "callSheet": {
@@ -3512,7 +3526,7 @@
     "sections": "Sections",
     "schedule": "Schedule",
     "cast": "Cast",
-    "castHelp": "Each person's first scheduled block",
+    "castHelp": "Each person’s first scheduled block",
     "location": "Location",
     "departments": "Departments",
     "notes": "Notes",
@@ -3547,8 +3561,8 @@
     "fullPage": "Plans on a full page",
     "new": "New",
     "yourCall": "Your call",
-    "confirm": "Confirm I'll be there",
-    "decline": "I can't",
+    "confirm": "Confirm I’ll be there",
+    "decline": "I can’t",
     "presence": "Attendance",
     "presenceCount": "{{confirmed}} of {{total}} confirmed",
     "presenceLoading": "Loading attendance…",
@@ -3559,12 +3573,12 @@
     "noAccount": "No account",
     "otherAccount": "Other account",
     "answer": {
-      "confirmed": "You confirmed you'll be there.",
-      "declined": "You said you can't be there."
+      "confirmed": "You confirmed you’ll be there.",
+      "declined": "You said you can’t be there."
     },
     "status": {
       "confirmed": "Confirmed",
-      "declined": "Can't come",
+      "declined": "Can’t come",
       "waiting": "Waiting"
     },
     "ready": "Ready to shoot",
@@ -3604,7 +3618,7 @@
     "nobody": "nobody",
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
-    "empty": "The scenes of this day have no lists to bring. From a to-do card's menu pick Wardrobe, Props or Equipment and the scene.",
+    "empty": "The scenes of this day have no lists to bring. From a to-do card’s menu pick Wardrobe, Props or Equipment and the scene.",
     "emptyMine": "You bring nothing on this day.",
     "scene": {
       "label": "To bring for Scene {{number}}, {{ready}} of {{total}} ready",
@@ -3712,7 +3726,7 @@
     "new": "New group",
     "rename": "Rename",
     "name": "Group name",
-    "color": "Colour",
+    "color": "Color",
     "personal": "Only for you. Dissolving a group leaves its projects alone.",
     "create": "Create",
     "group": "Group",
@@ -3779,13 +3793,14 @@
       "clipper": "From the browser, save with <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Settings, instance setup incomplete",
-    "details": "Details",
-    "detailsHint": "type, dates, team",
+    "details": "More details",
+    "detailsHint": "icon and color",
     "clearDate": "Clear {{label}}",
     "people": "People or email",
     "peoplePlaceholder": "Add people or an email…",
     "createAndInvite_one": "Create and invite ({{count}})",
-    "createAndInvite_other": "Create and invite ({{count}})"
+    "createAndInvite_other": "Create and invite ({{count}})",
+    "manageTypes": "Manage types"
   },
   "settingsUi": {
     "profile": "Profile",
@@ -3816,7 +3831,7 @@
       "storage": "Space taken by the instance’s files.",
       "access": "Who can come in, what members can do and how people sign in.",
       "backups": "Nightly copies of the database, to restore the server after a failure.",
-      "toolbar": "Choose which tools of More you see in the bottom bar. The others stay in More (⋯) and in the command palette.",
+      "toolbar": "Choose which tools from More you see in the bottom bar. The others stay in More (⋯) and in the command palette.",
       "tutorials": "Watch the guided tours again, choose whether to offer them and ask for help.",
       "server": "How the server is doing: resources, services, jobs, problems and alerts.",
       "serverSimple": "How the server is doing, in plain words: space, backup, speed and problems to look at.",
@@ -3874,7 +3889,7 @@
       "snap": "Snap to grid",
       "snapHelp": "Default when a board opens · G to change it on the fly",
       "doubleClick": "Double-click on empty canvas creates a note",
-      "doubleClickHelp": "Double tap too on phones and tablets",
+      "doubleClickHelp": "Double-tap on phones and tablets too",
       "undoButtons": "Undo and redo buttons on the board",
       "undoButtonsHelp": "Ctrl/⌘ Z works either way",
       "keepAround": "Keep the board around its content",
@@ -3903,9 +3918,9 @@
       },
       "reviewHelp": "Approved or changes requested",
       "always": "Always",
-      "alwaysNote": "Grey = always on in the Inbox.",
+      "alwaysNote": "Gray = always on in the Inbox.",
       "releaseNews": "Inkadra news",
-      "releaseNewsHelp": "Only when the instance sends it",
+      "releaseNewsHelp": "Only when the instance sends them",
       "releaseNewsAdminHelp": "Let people receive release news after an update. Requires SMTP and personal opt-in.",
       "what": "What to receive",
       "frequency": "When to send them",
@@ -4162,8 +4177,8 @@
     "toolbar": "Presentation controls",
     "speakerNotes": "Speaker notes",
     "closeNotes": "Collapse notes",
-    "fullscreen": "Fullscreen",
-    "exitFullscreen": "Exit fullscreen",
+    "fullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen",
     "nextSlide": "Next",
     "noSlides": "No frames or cards to present",
     "noNotes": "No notes for this slide",
@@ -4252,7 +4267,7 @@
     "pasteEmoji": "Paste or type an emoji",
     "sidebarPreview": "How it looks in the sidebar",
     "close": "Close",
-    "boardTitle": "Board icon and colour",
+    "boardTitle": "Board icon and color",
     "boardPreview": "How it looks on board cards"
   },
   "transfer": {
@@ -4277,7 +4292,7 @@
     "exportForbidden": "Only owners and editors of the project can export it.",
     "startError": "The export could not start. Try again.",
     "importTitle": "Import project",
-    "importLead": "Creates a new project from an Inkadra archive. You will be its only member; comments keep their authors' names.",
+    "importLead": "Creates a new project from an Inkadra archive. You will be its only member; comments keep their authors’ names.",
     "drop": "Drop the archive here or choose a file",
     "dropHint": "A .zip exported from Inkadra",
     "change": "choose another",
@@ -4309,7 +4324,7 @@
       "storage": "The files could not be stored. Ask the administrator to check the free space.",
       "gone": "You can no longer edit this project, or it was deleted.",
       "interrupted": "The server stopped while working on it. Try again.",
-      "cancelled": "Cancelled.",
+      "cancelled": "Canceled.",
       "internal": "Something went wrong. Try again.",
       "storage_full": "The files of the archive do not fit in the space left. Free some space or ask an administrator."
     },
@@ -4362,7 +4377,7 @@
     "whereIn": "Backups are not downloadable from the browser: copy them from {{directory}} on the server or from {{bucket}}. Restore on an empty database with",
     "failure": {
       "interrupted": "The server stopped while it ran. Start it again.",
-      "stalled": "It stopped making progress and was cancelled. Check the server log for this backup.",
+      "stalled": "It stopped making progress and was canceled. Check the server log for this backup.",
       "no_space": "Not enough free space in the backup folder.",
       "permission": "The server cannot write to its backup folder (BACKUP_DIR).",
       "internal": "Something went wrong. The server log says what, with the id of this backup.",
@@ -4381,7 +4396,7 @@
   },
   "export": {
     "title": "Export",
-    "titleProject": "Export «{{name}}»",
+    "titleProject": "Export “{{name}}”",
     "close": "Close",
     "cancel": "Cancel",
     "submit": "Export",
@@ -4412,7 +4427,7 @@
     "audienceTeam": "The team",
     "audienceClient": "Clients",
     "audienceHintTeam": "Everything you can see on this board.",
-    "audienceHintClient": "Only what guests of a share link see: no hidden cards, tags, production status or director's notes.",
+    "audienceHintClient": "Only what guests of a share link see: no hidden cards, tags, production status or director’s notes.",
     "options": "Options",
     "titlePage": "Title page with project name and date",
     "logo": "Logo on the pages",
@@ -4461,7 +4476,7 @@
     "pageOf": "{{n}} of {{total}}",
     "logoUploading": "Uploading the logo…",
     "logoFailed": "The logo could not be saved. Try again.",
-    "logoReadOnly": "Set by the project's editors.",
+    "logoReadOnly": "Set by the project’s editors.",
     "logoNone": "No logo. Project editors can add one.",
     "sharedHint": "Your choices become the starting point for everyone on this project when you export.",
     "progressPictures": "Loading pictures… {{done}} of {{total}}",
@@ -4494,7 +4509,7 @@
     "fit": "Framing",
     "fitIn": "Fit",
     "fill": "Fill",
-    "fitHint": "All of the content, with bands in the colour you choose.",
+    "fitHint": "All of the content, with bands in the color you choose.",
     "fillHint": "Fills the format and crops the edges: drag the point in the preview.",
     "many": "Images",
     "manyOne": "Just one",
@@ -4519,10 +4534,10 @@
     "emptyTeam": "There is nothing to export. Change the content or the selection.",
     "notReady_one": "{{count}} picture is not ready yet (still uploading): it will export as an empty box.",
     "notReady_other": "{{count}} pictures are not ready yet (still uploading): they will export as empty boxes.",
-    "band": "Band colour",
+    "band": "Band color",
     "bandBlack": "Black",
     "bandWhite": "White",
-    "bandCustom": "Colour…",
+    "bandCustom": "Color…",
     "bandRemembered": "Remembered for this project.",
     "size": "Size",
     "sizePreview": "Preview",
@@ -4542,8 +4557,8 @@
     "progressFiles": "Downloading the files… {{done}} of {{total}}",
     "filesFailed_one": "Download failed: {{names}}. Try again.",
     "filesFailed_other": "Download failed: {{names}}. Try again.",
-    "filesPartial_one": "The ZIP is saved, but {{names}} is missing: the server did not give the file. Try again.",
-    "filesPartial_other": "The ZIP is saved, but {{names}} are missing: the server did not give the files. Try again.",
+    "filesPartial_one": "The ZIP is saved, but {{names}} is missing: the server did not return the file. Try again.",
+    "filesPartial_other": "The ZIP is saved, but {{names}} are missing: the server did not return the files. Try again.",
     "sheets": {
       "department": "Department",
       "new": "New",
@@ -4764,9 +4779,9 @@
     "tabDialog": "Capture from {{service}}",
     "tabTitle": "Capture from the tab",
     "tabBody": "{{service}} does not let Inkadra read the video. We can take a photo of this tab: the browser will ask your permission, once per capture.",
-    "tabPause": "Pause on the right moment",
-    "tabSubtitles": "Turn off the player's subtitles",
-    "tabQuality": "The quality is the screen's, not the original's",
+    "tabPause": "Pause at the right moment",
+    "tabSubtitles": "Turn off the player’s subtitles",
+    "tabQuality": "The quality is the screen’s, not the original’s",
     "tabContinue": "Continue",
     "cancel": "Cancel",
     "pasteOr": "Or paste a screenshot",
@@ -4777,7 +4792,7 @@
     "cropHint": "If part of the player or the logo remains, tighten the box: it gets cropped.",
     "noText": "No text is added to the card. The origin can be read in Info.",
     "tabAgain": "Capture again",
-    "deniedTitle": "Sharing cancelled",
+    "deniedTitle": "Sharing canceled",
     "denied": "The browser did not give permission. Nothing was saved.",
     "retry": "Try again",
     "blackTitle": "The frame is black",
@@ -4854,7 +4869,7 @@
       "wants": "Wants",
       "fears": "Fears",
       "arc": "How they change",
-      "costume": "Costume and makeup",
+      "costume": "Costume and make-up",
       "relations": "Relations",
       "addRelation": "Add a relation",
       "missing": "Deleted character",
@@ -5123,7 +5138,7 @@
     "referenceIs": "Thank you! The reference is",
     "referenceHint": ": quote it when talking to whoever runs Inkadra.",
     "openedAs": "Opened as",
-    "knownError": "This error was already reported: we added yours to reference",
+    "knownError": "This error was already reported: we added yours to the reference",
     "sentInbox": "The administrators of this instance find it in their Inbox.",
     "copyReference": "Copy the reference",
     "openIssue": "Open on GitHub",
@@ -5185,7 +5200,7 @@
     },
     "editScreenshot": "Edit the screenshot",
     "tools": "Tools",
-    "editorHelp": "Drag to cover an area. With the keyboard: Enter adds an area in the centre, arrows move it, Shift + arrows resize it, Delete removes it.",
+    "editorHelp": "Drag to cover an area. With the keyboard: Enter adds an area in the center, arrows move it, Shift + arrows resize it, Delete removes it.",
     "editorHelpPhone": "Drag with your finger to cover an area.",
     "editorMerged": "Blurred areas are merged into the image on your device: the original never leaves.",
     "undo": "Undo the last one",
@@ -5212,8 +5227,8 @@
     "relayFileTooBig": "{{size}}: the relay accepts images and files up to 10 MB.",
     "relayNoDeviceVideo": "This server can’t remove GPS and other metadata from videos from the device, so they can’t leave: record from this dialog.",
     "destinationChanged": "An administrator changed where reports go. Read where it goes now, then try again: nothing was sent.",
-    "relayUncertainBanner_one": "The relay did not confirm {{count}} report: it may have arrived or not. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
-    "relayUncertainBanner_other": "The relay did not confirm {{count}} reports: they may have arrived or not. The repository is private and can’t be checked from here, but trying again is safe: the relay recognises a report that already arrived.",
+    "relayUncertainBanner_one": "The relay did not confirm {{count}} report: it may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognizes a report that already arrived.",
+    "relayUncertainBanner_other": "The relay did not confirm {{count}} reports: they may or may not have arrived. The repository is private and can’t be checked from here, but trying again is safe: the relay recognizes a report that already arrived.",
     "relayUncertain_one": "{{count}} not confirmed by the relay",
     "relayUncertain_other": "{{count}} not confirmed by the relay",
     "relayUncertainBadge": "Not confirmed by the relay",
@@ -5233,7 +5248,7 @@
   "tutorial": {
     "welcome": {
       "eyebrow": "Welcome to Inkadra",
-      "title": "From idea to shot.",
+      "title": "From idea to frame.",
       "lead": "An infinite canvas for film and photo, on your own server.",
       "go": "Take the tour · 1 min",
       "skip": "I’ll explore on my own",
@@ -5276,6 +5291,18 @@
       "done": "{{name}}: tour complete.",
       "guestDismissed": "OK. The tour stays under the ? button at the top.",
       "guestDone": "That’s all. Enjoy the review!"
+    },
+    "start": {
+      "boardsError": "This project’s boards did not load: try again in a moment.",
+      "noProject": "This tour starts on a board: open or create a project first.",
+      "newProject": "New project",
+      "create": "Create",
+      "unavailable": "{{name}}: this screen did not open. Try again in a moment.",
+      "missing": {
+        "storyboard": "This project has no storyboard yet: the tour starts there.",
+        "moodboard": "This project has no moodboard yet: the tour starts there.",
+        "production": "This project has no Production board yet: the tour starts there."
+      }
     },
     "settings": {
       "welcomeTitle": "Welcome tour",
@@ -5320,7 +5347,12 @@
       "restore": "Restore",
       "role0": "Edit",
       "role1": "Comment",
-      "role2": "Invite"
+      "role2": "Invite",
+      "department0": "Cast",
+      "department1": "Direction",
+      "department2": "Camera",
+      "character": "Character",
+      "plays": "Plays Marta"
     },
     "tours": {
       "appsTokens": {
@@ -5340,7 +5372,7 @@
         "steps": {
           "0": {
             "title": "Your projects",
-            "text": "Each project keeps its boards together. The colour tells the kind."
+            "text": "Each project keeps its boards together. The color tells the kind."
           },
           "1": {
             "title": "Search everything",
@@ -5393,7 +5425,7 @@
           },
           "2": {
             "title": "New project",
-            "text": "Boards live inside a project: start one here."
+            "text": "Boards live inside a project: create one here, with its type, shooting dates and team."
           }
         }
       },
@@ -5440,15 +5472,20 @@
           "5": {
             "title": "Board size limits",
             "text": "If this board reaches its size limit, additions are refused and the confirmed board reloads. Delete content to make room; if it still does not fit, ask the administrator to raise the limit."
+          },
+          "6": {
+            "title": "Where to start",
+            "text": "On an empty board: import a screenplay or add Production, a storyboard and a moodboard. A module that is off stays gray, with Turn on."
           }
-        }
+        },
+        "where": "The tour starts on the Canvas of a board you can edit."
       },
       "moodboard": {
         "name": "Moodboard",
         "steps": {
           "0": {
             "title": "References in a grid",
-            "text": "The board’s images, links and colours, together."
+            "text": "The board’s images, links and colors, together."
           },
           "1": {
             "title": "Filter",
@@ -5456,9 +5493,10 @@
           },
           "2": {
             "title": "The palette",
-            "text": "The colours of your references, ready to copy."
+            "text": "The colors of your references, ready to copy."
           }
-        }
+        },
+        "where": "Open a moodboard, or turn it on from “Views of this board” in the ⋯ menu, and try again."
       },
       "video": {
         "name": "Videos in cards",
@@ -5479,7 +5517,8 @@
             "title": "Video quality",
             "text": "On the card and in the viewer, Quality picks the resolution; Auto follows the connection."
           }
-        }
+        },
+        "where": "Put a video on this board and play the tour again from here."
       },
       "storyboard": {
         "name": "Storyboard",
@@ -5504,14 +5543,15 @@
             "title": "What a scene needs",
             "text": "Wardrobe, props and equipment for the scene, in lists by type. The days that shoot the scene gather them in To bring."
           }
-        }
+        },
+        "where": "The tour starts on a storyboard with at least one scene: add one and try again."
       },
       "draw": {
         "name": "Draw on a frame",
         "steps": {
           "0": {
             "title": "Pens and shapes",
-            "text": "Pen, eraser, shapes and text, with colour and size."
+            "text": "Pen, eraser, shapes and text, with color and size."
           },
           "1": {
             "title": "Frame after frame",
@@ -5521,7 +5561,8 @@
             "title": "Move around",
             "text": "Space and drag, the wheel or two fingers."
           }
-        }
+        },
+        "where": "Double-click a frame of the storyboard to draw on it, then play the tour again."
       },
       "shotlist": {
         "name": "Shot list",
@@ -5538,7 +5579,8 @@
             "title": "Export",
             "text": "CSV or PDF, for the crew."
           }
-        }
+        },
+        "where": "Turn on the Shot list from “Views of this board” in the storyboard’s ⋯ menu, and try again."
       },
       "schedule": {
         "name": "Shooting schedule",
@@ -5549,7 +5591,7 @@
           },
           "1": {
             "title": "Storyboards and bars",
-            "text": "The Storyboard filter shows the frames of one only; the coloured bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A grey bar: the storyboard is not available, the label stays."
+            "text": "The Storyboard filter shows the frames of one storyboard only; the colored bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A gray bar: the storyboard is not available, the label stays."
           },
           "2": {
             "title": "Move and stretch",
@@ -5571,7 +5613,8 @@
             "title": "Call sheet",
             "text": "Times with sunrise and sunset, locations, crew with phone numbers, the schedule with notes and what to bring. Pick the sections and print for the crew. Sunrise and sunset follow the project time zone: change it in Projects, the card’s ⋯ menu, “Type and time zone”. “Automatic” uses the device’s zone."
           }
-        }
+        },
+        "where": "The tour starts on the Production board’s Schedule: open it and try again."
       },
       "setplan": {
         "name": "Set plan",
@@ -5598,13 +5641,14 @@
           },
           "5": {
             "title": "Background",
-            "text": "A floor plan or a photo under the drawing to trace over: move it, scale it, set its opacity and greys."
+            "text": "A floor plan or a photo under the drawing to trace over: move it, scale it, set its opacity and grays."
           },
           "6": {
             "title": "Move around the plan",
-            "text": "Space and drag, the wheel or two fingers move the plan; Ctrl and the wheel or a pinch zoom it. With nothing selected the arrows move it, 0 fits it, at 100 %, + and − zoom."
+            "text": "Space and drag, the wheel or two fingers move the plan; Ctrl and the wheel or a pinch zoom it. With nothing selected the arrows move it, 0 fits it, + and − zoom."
           }
-        }
+        },
+        "where": "Open a set plan (double-click its card) and play the tour again from there."
       },
       "characters": {
         "name": "Character sheets",
@@ -5621,7 +5665,8 @@
             "title": "Team only",
             "text": "Contacts and notes never reach guests."
           }
-        }
+        },
+        "where": "Open a character card on the board and play the tour again from there."
       },
       "review": {
         "name": "Client review",
@@ -5638,7 +5683,8 @@
             "title": "Approve or ask for changes",
             "text": "The decision reaches the team at once."
           }
-        }
+        },
+        "where": "Turn on Review from “Views of this board” in a board’s ⋯ menu, and try again."
       },
       "comments": {
         "name": "Comments",
@@ -5655,7 +5701,8 @@
             "title": "Who reads it",
             "text": "The team, or guests too: you choose every time."
           }
-        }
+        },
+        "where": "Open Comments at the top right of the board and play the tour again from there."
       },
       "sharing": {
         "name": "Sharing and roles",
@@ -5680,7 +5727,8 @@
             "title": "Guest links",
             "text": "For clients: choose what they can do and read the summary."
           }
-        }
+        },
+        "where": "Open Share at the top right of the board and play the tour again from there."
       },
       "versions": {
         "name": "Versions",
@@ -5705,14 +5753,15 @@
             "title": "From a downloaded file",
             "text": "Downloaded the changes? In the board menu, Restore changes from file… brings them back into the same board."
           }
-        }
+        },
+        "where": "Open the versions (the clock at the top right of the board) and play the tour again from there."
       },
       "present": {
         "name": "Presentation",
         "steps": {
           "0": {
             "title": "Full screen",
-            "text": "The storyboard, frame after frame."
+            "text": "A storyboard or a moodboard, one image after another."
           },
           "1": {
             "title": "Where you are",
@@ -5722,7 +5771,8 @@
             "title": "Back and forth",
             "text": "With the arrows or a tap."
           }
-        }
+        },
+        "where": "Press Present in a storyboard or a moodboard and play the tour again from there."
       },
       "export": {
         "name": "Export and import",
@@ -5747,7 +5797,8 @@
             "title": "The whole project",
             "text": "Export it as a zip and import it on another server."
           }
-        }
+        },
+        "where": "Open Export… at the top right of the board and play the tour again from there."
       },
       "clipper": {
         "name": "Browser clipper",
@@ -5843,7 +5894,7 @@
         "steps": {
           "0": {
             "title": "At a glance",
-            "text": "One sentence says whether the server is well: green, orange when something needs fixing, red when something stopped."
+            "text": "One sentence says whether the server is healthy: green, orange when something needs fixing, red when something stopped."
           },
           "1": {
             "title": "Simple or advanced",
@@ -5930,14 +5981,19 @@
             "text": "Open a row: fields save automatically. Optionally link an account or character card."
           },
           "2": {
+            "title": "Who plays whom",
+            "text": "Link the person to the card of the character they play. No cards yet? Open a frame: under Cast, “Link” makes the card. The call sheet then matches character and performer."
+          },
+          "3": {
             "title": "Paste from a sheet",
             "text": "Open “Paste from sheet” in the Crew toolbar. Review the preview before adding people. Headers and duplicates are skipped."
           },
-          "3": {
+          "4": {
             "title": "Calls and call sheet",
             "text": "In the Schedule, Calls tab, choose who is called each day. The call sheet prints the crew, phone numbers and on-set contact, never for guests or clients."
           }
-        }
+        },
+        "where": "The tour starts on the Production board’s Crew: open it and try again."
       },
       "setplanLinks": {
         "name": "Plan links",
@@ -5948,7 +6004,7 @@
           },
           "1": {
             "title": "Linked, never copied",
-            "text": "Link an actor to a character and a camera to a storyboard frame: names, colours and lenses follow the cards. With nothing selected, link the plan to its location."
+            "text": "Link an actor to a character and a camera to a storyboard frame: names, colors and lenses follow the cards. With nothing selected, link the plan to its location."
           },
           "2": {
             "title": "The sun, for exteriors",
@@ -5958,7 +6014,8 @@
             "title": "Setups in the shot list",
             "text": "The shot list and the schedule show the setup of each shot, and the shot list can group shots by setup."
           }
-        }
+        },
+        "where": "Open the plan of a storyboard scene and play the tour again from there."
       },
       "setplanOutputs": {
         "name": "Plan outputs",
@@ -5975,7 +6032,8 @@
             "title": "Who cannot edit",
             "text": "Guests and readers open the plan in a view with pan and zoom, the setups, the legend and the PDF."
           }
-        }
+        },
+        "where": "Open a set plan (double-click its card) and play the tour again from there."
       },
       "modules": {
         "name": "Modules",
@@ -6024,7 +6082,7 @@
           },
           "4": {
             "title": "Advanced",
-            "text": "For experts: run the card test again, change live sessions and the values of each resolution. «Reset» goes back to the recommended value."
+            "text": "For experts: run the card test again, change live sessions and the values of each resolution. “Reset” goes back to the recommended value."
           }
         }
       },
@@ -6465,7 +6523,7 @@
         "failed": "Failed",
         "aborted": "Stopped by guard",
         "stopped": "Stopped",
-        "cancelled": "Cancelled",
+        "cancelled": "Canceled",
         "refused": "Not started",
         "interrupted": "Interrupted"
       },
@@ -6679,7 +6737,7 @@
     "start": "Try the demo",
     "or": "or",
     "installServer": "Install on your server",
-    "accept": "By going on you accept the <rules>rules of the demo</rules>. No tracking cookies.",
+    "accept": "By continuing you accept the <rules>rules of the demo</rules>. No tracking cookies.",
     "endedTitle": "Your hour of demo is over",
     "endedText": "We deleted the demo and the files you uploaded. You can open a new one, or install Inkadra on your server: your projects stay yours.",
     "again": "New demo",
@@ -6701,7 +6759,7 @@
     "more": "More: start over, rules of the demo",
     "restart": "Start over",
     "restartTitle": "Start over?",
-    "restartText": "Your sandbox is deleted now, with its project and every file in it: nobody can bring it back. Then you can open a new one. Download the project first if you want to keep your work.",
+    "restartText": "Your demo is deleted now, with its project and every file in it: nobody can bring it back. Then you can open a new one. Download the project first if you want to keep your work.",
     "restartConfirm": "Delete and start over",
     "cancel": "Cancel",
     "rules": "Rules of the demo",
@@ -6751,7 +6809,7 @@
     "remove": "Remove from crew",
     "removeConfirm": "Remove {{name}} from the crew?",
     "cancel": "Cancel",
-    "pasteHint": "One person per line: name, role, phone. Separate columns with tabs, semicolons, · or two or more spaces. A CAPITALS line becomes the department.",
+    "pasteHint": "One person per line: name, role, phone. Separate columns with tabs, semicolons, · or two or more spaces. A line in CAPITALS becomes the department.",
     "pastedText": "Pasted text",
     "preview_one": "{{count}} new person",
     "preview_other": "{{count}} new people",
@@ -6766,13 +6824,14 @@
     "characterUnavailable": "Card unavailable · Unlink or choose another card",
     "wholeProject": "for the whole project",
     "characterTag": "Character",
+    "characterTaken": "This character is already played by {{name}}.",
     "emailPlaceholder": "optional",
-    "pickupPlaceholder": "Same as the day's call",
+    "pickupPlaceholder": "Same as the day’s call",
     "notesPlaceholder": "Only the project team sees these",
     "characterLabel": "Character card",
     "optionalTag": "optional",
-    "characterHint": "None. The name in the schedule is enough for the call; link a card only if it has costume and references.",
-    "characterNone": "No character cards in the project yet. You don’t need one: a role that matches the name in the schedule is enough for the call.",
+    "characterHint": "None. Link the card of the character they play: the call sheet matches it with the frames.",
+    "characterNone": "No character cards yet. In a frame, under Cast, “Link” makes the card and ties it to this person.",
     "link": "Link",
     "unlinkShort": "Unlink",
     "accountHint": "Link an account to send the call to their phone and ask for confirmation.",
@@ -6787,13 +6846,14 @@
     "mergeTitle": "Merge {{name}}",
     "mergeWith": "Row to merge",
     "mergeHint": "The row of {{name}} ({{kept}}) stays: its details win, empty fields are filled from the other row, which hands over its day calls and is removed.",
-    "mergeAction": "Merge"
+    "mergeAction": "Merge",
+    "plays": "Plays {{name}}"
   },
   "dayCalls": {
     "title": "Calls",
-    "times": "The day's times, worked out from the schedule",
-    "hint": "Empty = the day's call. Only fill in people who arrive at another time or need a pick-up.",
-    "unavailable": "Calls use the project's crew, which only project members can see.",
+    "times": "The day’s times, worked out from the schedule",
+    "hint": "Empty = the day’s call. Only fill in people who arrive at another time or need a pick-up.",
+    "unavailable": "Calls use the project’s crew, which only project members can see.",
     "emptyTitle": "Nobody in the crew",
     "emptyBody": "Add people in Crew: here you choose who is called each day.",
     "openTroupe": "Open Crew",
@@ -6827,7 +6887,7 @@
     "keep": {
       "storyboard": "Frames that exist stay where they are.",
       "production": "Shooting days and people stay saved.",
-      "moodboard": "Images, links and colours stay on the boards.",
+      "moodboard": "Images, links and colors stay on the boards.",
       "review": "Links already sent keep working.",
       "plan": "Plans already drawn stay visible."
     },
@@ -6868,7 +6928,7 @@
       "high": "High",
       "lightHelp": "Takes little space. Fine for references and work-in-progress cuts.",
       "balancedHelp": "A clean picture even with grain and movement.",
-      "highHelp": "For reviewing footage and colour grading.",
+      "highHelp": "For reviewing footage and color grading.",
       "recommended": "Recommended"
     },
     "mbPerMinute": "MB a minute",
@@ -6976,8 +7036,8 @@
     },
     "advanced": {
       "title": "Advanced",
-      "customised": "Customised",
-      "intro": "For people who know video encoding. Wrong values can give grainy or huge copies, or stuttering video: «Reset» brings each field back to the recommended value.",
+      "customised": "Customized",
+      "intro": "For people who know video encoding. Wrong values can give grainy or huge copies, or stuttering video: “Reset” brings each field back to the recommended value.",
       "benchmark": "Graphics card performance",
       "benchmarkRunning": "Performance test running",
       "benchmarkRunningHelp": "About 10 seconds. Copies being made slow down for a moment.",

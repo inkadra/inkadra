@@ -23,7 +23,7 @@ import {
 } from '../film/call-sheet.ts';
 import {
   byDepartment,
-  castCard,
+  castPerformer,
   castRows,
   dayCrew,
   onSetContacts,
@@ -236,7 +236,10 @@ export function callSheetSections(
     schedule.tones?.push('surface-2');
   }
   const calls = castRows(day, entries);
-  const cards = calls.map((c) => castCard(c.name, c.entry, elements, more.characters));
+  const performers = calls.map((c) =>
+    castPerformer(c.name, c.entry?.member, elements, more.characters),
+  );
+  const cards = performers.map((p) => p.card);
   const dayCall = clockMinutes(day.callTime);
   const cast: CallSheetSection = {
     title: t('callSheet.cast'),
@@ -258,9 +261,8 @@ export function callSheetSections(
       ],
       ...calls.map(({ name, start, entry }, i) => {
         const card = cards[i];
-        const actor =
-          card?.actor ||
-          (entry && castNameKey(entry.member.name) !== castNameKey(name) ? entry.member.name : '');
+        const performer = performers[i]?.performer ?? '';
+        const actor = castNameKey(performer) === castNameKey(name) ? '' : performer;
         return [
           name,
           actor,

@@ -23,11 +23,13 @@ import {
 } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { PeoplePicker } from '../people/PeoplePicker.tsx';
 import { AppearancePicker, AppearanceTile, useAppearance } from './ProjectAppearance.tsx';
+import { anchorHref, SETTINGS_PAGES } from './settings-sections.ts';
 import './projects.css';
 
 /**
@@ -73,20 +75,38 @@ export function NewProjectDialog({
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const dialog = useRef<DialogHandle>(null);
+  const navigate = useNavigate();
+  // Where a link asked to go: only for the close request the link itself makes, so another way
+  // of closing (Cancel, Escape, Keep editing then Cancel) never follows a stale link.
+  const leaveTo = useRef<string | null>(null);
+  const leaving = useRef<string | null>(null);
   return (
     <Dialog
       ref={dialog}
       open={open}
       dirty={dirty}
       title={t('project.dialogTitle')}
-      onClose={onClose}
+      onClose={() => {
+        const to = leaving.current;
+        leaving.current = null;
+        onClose();
+        if (to) navigate(to);
+      }}
       onCancel={(e) => {
+        leaving.current = leaveTo.current;
+        leaveTo.current = null;
         if (busy) e.preventDefault();
       }}
     >
       {open && (
         <ProjectSetupForm
           onClose={() => dialog.current?.requestClose()}
+          onLeave={(to) => {
+            // Asks "Discard changes?" first when the form is filled, like Cancel.
+            leaveTo.current = to;
+            dialog.current?.requestClose();
+            leaveTo.current = null;
+          }}
           onCreated={onCreated}
           onImport={onImport}
           onBusyChange={setBusy}
@@ -97,14 +117,26 @@ export function NewProjectDialog({
   );
 }
 
+/** Settings → Classifications, opened on the project types. */
+const MANAGE_TYPES = anchorHref(
+  SETTINGS_PAGES.find((p) => p.id === 'classifications') as (typeof SETTINGS_PAGES)[number],
+  'classifications.projectTypes',
+);
+
 export function ProjectSetupForm({
   onClose,
+  onLeave,
   onCreated,
   onImport,
   onBusyChange,
   onDirtyChange,
 }: {
   onClose: () => void;
+  /**
+   * Leaves the form for a link (Manage types): the owner confirms discarding a filled form,
+   * then closes and goes there. Without it the link simply navigates.
+   */
+  onLeave?: (to: string) => void;
   onCreated: (p: Project) => void;
   /** Shows a quiet Import archive… link in the footer. */
   onImport?: () => void;
@@ -114,7 +146,7 @@ export function ProjectSetupForm({
 }) {
   const { catalogs, typeLabel } = useClassifications();
   const { t } = useTranslation();
-  const { instance } = useSession();
+  const { instance, user } = useSession();
   const detailsId = useId();
   const [name, setName] = useState('');
   const [proposed] = useState(proposedProjectIcon);
@@ -122,7 +154,7 @@ export function ProjectSetupForm({
   const [type, setType] = useState<ProjectType | ''>('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [details, setDetails] = useState(false);
+  const [more, setMore] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ProjectRole>('editor');
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -245,131 +277,152 @@ export function ProjectSetupForm({
             required
           />
         </div>
-        <AppearancePicker
-          state={appearance}
-          idPrefix={`${detailsId}appearance`}
-          label={t('appearance.label')}
-        />
+        <fieldset className="project-setup__choices">
+          <legend>{t('onboarding.type')}</legend>
+          {/* The types are the instance's, kept by administrators (Settings → Classifications). */}
+          {user?.role === 'admin' && (
+            <Link
+              to={MANAGE_TYPES}
+              className="project-setup__manage"
+              // A link has no disabled state: while saving it is inert and out of the tab order.
+              aria-disabled={locked || undefined}
+              tabIndex={locked ? -1 : undefined}
+              onClick={(e) => {
+                if (locked) {
+                  e.preventDefault();
+                  return;
+                }
+                // Ctrl/Cmd/Shift/middle click opens Settings elsewhere: the form stays.
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                if (!onLeave) return;
+                e.preventDefault();
+                onLeave(MANAGE_TYPES);
+              }}
+            >
+              {t('onboarding.manageTypes')}
+            </Link>
+          )}
+          {catalogs.projectTypes
+            .filter((o) => !o.archived)
+            .map(({ id: v }) => (
+              <ChoiceTile
+                key={v}
+                name="projectType"
+                value={v}
+                checked={type === v}
+                onChange={() => setType(v)}
+              >
+                {typeLabel(v)}
+              </ChoiceTile>
+            ))}
+        </fieldset>
+        <div className="project-setup__dates">
+          <DateField
+            label={t('onboarding.start')}
+            clearLabel={t('onboarding.clearDate', { label: t('onboarding.start') })}
+            value={start}
+            onChange={setStart}
+          />
+          <DateField
+            label={t('onboarding.end')}
+            clearLabel={t('onboarding.clearDate', { label: t('onboarding.end') })}
+            value={end}
+            min={start || undefined}
+            rangeStart={start || undefined}
+            onChange={setEnd}
+          />
+        </div>
+        <fieldset className="project-setup__invites">
+          <legend>{t('onboarding.invite')}</legend>
+          <div className="project-setup__invite-entry">
+            <PeoplePicker
+              className="project-setup__people"
+              inputClassName="ink-input"
+              aria-label={t('onboarding.people')}
+              placeholder={t('onboarding.peoplePlaceholder')}
+              aria-invalid={inviteError || undefined}
+              value={email}
+              onChange={(value) => {
+                setEmail(value);
+                setInviteError(false);
+              }}
+              onPick={pick}
+              exclude={(p) => invites.some((i) => i.email === p.email?.toLowerCase())}
+              onKeyDown={(e) => {
+                // Enter adds the typed address instead of creating the project.
+                if (e.key === 'Enter' && !e.defaultPrevented && email.trim()) {
+                  e.preventDefault();
+                  addInvite();
+                }
+              }}
+            />
+            <Select
+              className="ink-input project-setup__role"
+              aria-label={t('onboarding.role')}
+              value={role}
+              onChange={(e) => setRole(e as ProjectRole)}
+            >
+              {['editor', 'commenter', 'viewer', 'owner'].map((v) => (
+                <option key={v} value={v}>
+                  {t(`roles.${v}`)}
+                </option>
+              ))}
+            </Select>
+            <Button onClick={addInvite} disabled={!email.trim()}>
+              {t('onboarding.add')}
+            </Button>
+          </div>
+          {inviteError && (
+            <p className="project-setup__invite-error" role="alert">
+              {t('onboarding.invalidEmail')}
+            </p>
+          )}
+          {invites.length > 0 && (
+            <ul className="project-setup__people-list">
+              {invites.map((invite) => (
+                <li key={invite.email}>
+                  <Avatar
+                    decorative
+                    name={invite.name || invite.email}
+                    image={invite.image}
+                    size={20}
+                  />
+                  <span className="project-setup__person">
+                    {invite.name || invite.email} · {t(`roles.${invite.role}`)}
+                  </span>
+                  <button
+                    type="button"
+                    className="project-setup__remove"
+                    aria-label={t('onboarding.removeNamed', { email: invite.email })}
+                    onClick={() => setInvites((list) => list.filter((i) => i !== invite))}
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!instance?.auth.email && <p className="project-setup__hint">{t('onboarding.noSmtp')}</p>}
+        </fieldset>
         <div className="project-setup__details">
           <button
             type="button"
             className="project-setup__disclosure"
-            aria-expanded={details}
+            aria-expanded={more}
             aria-controls={detailsId}
-            onClick={() => setDetails((open) => !open)}
+            onClick={() => setMore((open) => !open)}
           >
             <Icon name="chevronRight" size={16} />
             {t('onboarding.details')}
             <small>· {t('onboarding.detailsHint')}</small>
           </button>
-          {details && (
+          {more && (
             <div id={detailsId} className="project-setup__details-body">
-              <fieldset className="project-setup__choices">
-                <legend>{t('onboarding.type')}</legend>
-                {catalogs.projectTypes
-                  .filter((o) => !o.archived)
-                  .map(({ id: v }) => (
-                    <ChoiceTile
-                      key={v}
-                      name="projectType"
-                      value={v}
-                      checked={type === v}
-                      onChange={() => setType(v)}
-                    >
-                      {typeLabel(v)}
-                    </ChoiceTile>
-                  ))}
-              </fieldset>
-              <div className="project-setup__dates">
-                <DateField
-                  label={t('onboarding.start')}
-                  clearLabel={t('onboarding.clearDate', { label: t('onboarding.start') })}
-                  value={start}
-                  onChange={setStart}
-                />
-                <DateField
-                  label={t('onboarding.end')}
-                  clearLabel={t('onboarding.clearDate', { label: t('onboarding.end') })}
-                  value={end}
-                  min={start || undefined}
-                  rangeStart={start || undefined}
-                  onChange={setEnd}
-                />
-              </div>
-              <fieldset className="project-setup__invites">
-                <legend>{t('onboarding.invite')}</legend>
-                <div className="project-setup__invite-entry">
-                  <PeoplePicker
-                    className="project-setup__people"
-                    inputClassName="ink-input"
-                    aria-label={t('onboarding.people')}
-                    placeholder={t('onboarding.peoplePlaceholder')}
-                    aria-invalid={inviteError || undefined}
-                    value={email}
-                    onChange={(value) => {
-                      setEmail(value);
-                      setInviteError(false);
-                    }}
-                    onPick={pick}
-                    exclude={(p) => invites.some((i) => i.email === p.email?.toLowerCase())}
-                    onKeyDown={(e) => {
-                      // Enter adds the typed address instead of creating the project.
-                      if (e.key === 'Enter' && !e.defaultPrevented && email.trim()) {
-                        e.preventDefault();
-                        addInvite();
-                      }
-                    }}
-                  />
-                  <Select
-                    className="ink-input project-setup__role"
-                    aria-label={t('onboarding.role')}
-                    value={role}
-                    onChange={(e) => setRole(e as ProjectRole)}
-                  >
-                    {['editor', 'commenter', 'viewer', 'owner'].map((v) => (
-                      <option key={v} value={v}>
-                        {t(`roles.${v}`)}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button onClick={addInvite} disabled={!email.trim()}>
-                    {t('onboarding.add')}
-                  </Button>
-                </div>
-                {inviteError && (
-                  <p className="project-setup__invite-error" role="alert">
-                    {t('onboarding.invalidEmail')}
-                  </p>
-                )}
-                {invites.length > 0 && (
-                  <ul className="project-setup__people-list">
-                    {invites.map((invite) => (
-                      <li key={invite.email}>
-                        <Avatar
-                          decorative
-                          name={invite.name || invite.email}
-                          image={invite.image}
-                          size={20}
-                        />
-                        <span className="project-setup__person">
-                          {invite.name || invite.email} · {t(`roles.${invite.role}`)}
-                        </span>
-                        <button
-                          type="button"
-                          className="project-setup__remove"
-                          aria-label={t('onboarding.removeNamed', { email: invite.email })}
-                          onClick={() => setInvites((list) => list.filter((i) => i !== invite))}
-                        >
-                          <Icon name="close" size={12} />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {!instance?.auth.email && (
-                  <p className="project-setup__hint">{t('onboarding.noSmtp')}</p>
-                )}
-              </fieldset>
+              <AppearancePicker
+                state={appearance}
+                idPrefix={`${detailsId}appearance`}
+                label={t('appearance.label')}
+              />
             </div>
           )}
         </div>

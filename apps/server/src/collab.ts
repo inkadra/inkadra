@@ -3,7 +3,7 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promise
 import type { Server as HttpServer, IncomingMessage } from 'node:http';
 import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
-import { type Connection, type Document, Server } from '@hocuspocus/server';
+import { type Connection, type Document, OutgoingMessage, Server } from '@hocuspocus/server';
 import {
   boardDocName,
   CURRENT_SCHEMA_VERSION,
@@ -113,6 +113,14 @@ const addsItems = (document: Y.Doc, update: Uint8Array) => newItems(document, up
 
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
+
+/**
+ * How often every open connection hears from the server. The Hocuspocus provider closes a
+ * socket that receives nothing for 30 s (`messageReconnectTimeout`), and a person alone on a
+ * board gets nothing otherwise: WebSocket pings do not count and their own awareness is not
+ * echoed. Half of that timeout, so one lost tick is not enough to drop.
+ */
+export const KEEPALIVE_MS = 15_000;
 
 /**
  * Passes that never overlap. `join` starts a pass or joins the one under way, so a tick that
@@ -419,6 +427,7 @@ export function createCollabServer(deps: {
   publicUrl: string;
   trustProxy?: boolean | string;
   recheckMs?: number;
+  keepaliveMs?: number;
   /** Clock for automatic versions; tests move it forward. */
   now?: () => Date;
   /** Board caps; the demo additionally freezes all edits. */
@@ -636,6 +645,20 @@ export function createCollabServer(deps: {
     return pending;
   };
   let timer: NodeJS.Timeout | undefined;
+  let keepalive: NodeJS.Timeout | undefined;
+  /**
+   * An awareness update that changes no client: every Hocuspocus client, of any age, applies it
+   * without an event, and it still counts as a message received.
+   */
+  function keepAlive() {
+    for (const document of server.hocuspocus.documents.values())
+      for (const connection of document.getConnections())
+        connection.send(
+          new OutgoingMessage(connection.messageAddress)
+            .createAwarenessUpdateMessage(document.awareness, [])
+            .toUint8Array(),
+        );
+  }
 
   type StorePayload = Parameters<Server['hocuspocus']['storeDocumentHooks']>[1];
   /**
@@ -716,10 +739,13 @@ export function createCollabServer(deps: {
     async onConfigure() {
       timer = setInterval(() => void rechecks.join(), deps.recheckMs ?? ACCESS_RECHECK_MS);
       timer.unref();
+      keepalive = setInterval(keepAlive, deps.keepaliveMs ?? KEEPALIVE_MS);
+      keepalive.unref();
     },
 
     async onDestroy() {
       if (timer) clearInterval(timer);
+      if (keepalive) clearInterval(keepalive);
     },
 
     async onUpgrade({ request, socket }) {
@@ -1061,6 +1087,9 @@ export function createCollabServer(deps: {
   /** One last store for each board still not stored, then spill what fails, then close. */
   server.destroy = async () => {
     closing = true;
+    // Hocuspocus runs onDestroy only once every board unloaded: a hung store never gets there.
+    clearInterval(timer);
+    clearInterval(keepalive);
     for (const [document, { timer, payload }] of unsaved) {
       clearTimeout(timer);
       if (hocuspocus.documents.get(payload.documentName) === document)

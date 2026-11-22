@@ -163,8 +163,8 @@ test('set plan links: character, frame, scene chip and the setup of a shot', asy
     await page.mouse.click(1300, 860);
     await expect(card(planId).locator('.plan__svg text', { hasText: 'Leonardo' })).toBeVisible();
     await card(frameId).dblclick();
-    await page.locator('.film-panel').getByLabel('Obiettivo', { exact: true }).fill('50mm');
-    await page.locator('.film-panel').getByLabel('Obiettivo', { exact: true }).press('Enter');
+    await page.locator('.film-panel').getByLabel('Ottica', { exact: true }).fill('50mm');
+    await page.locator('.film-panel').getByLabel('Ottica', { exact: true }).press('Enter');
     await page.mouse.click(1300, 860);
     await card(planId).dblclick();
     await pick(/^A cam/);
