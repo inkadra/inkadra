@@ -63,6 +63,8 @@ function padded(font: Uint8Array): Uint8Array {
  * as JPEG or PNG. The caller supplies the fonts' bytes, the pictures and, for a picture drawn in
  * greys, `grey`, which gives the same picture in greys (`greyPixels` is how; decision 0110);
  * without it such a picture is drawn as given.
+ * Each font's bytes are prepared once per array and kept for later exports: do not change a
+ * font's array after passing it here (pass a new array for new bytes).
  */
 export async function renderPdf(
   pages: readonly Page[],

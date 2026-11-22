@@ -33,7 +33,10 @@ function checksum(bytes: Uint8Array): number {
  * (`gvar` and `hdmx` go by glyph id, instructions carry their own length), so variable and
  * hinted fonts keep working.
  * shortcut: TrueType files only; a WOFF is passed as given (the heading fonts' WOFFs have no odd
- * glyph today). Decode WOFF here too if one with odd glyphs is ever embedded.
+ * glyph today), and so is a signed font (`DSIG`), whose signature a rewrite would break. Decode
+ * WOFF here too if one with odd glyphs is ever embedded.
+ * The input is never written to: a Node Buffer's `slice` shares its memory, so copies are made
+ * with `new Uint8Array(…)`.
  */
 export function evenGlyphs(font: Uint8Array): Uint8Array {
   try {
@@ -51,17 +54,24 @@ function pad(font: Uint8Array): Uint8Array | undefined {
   if (version !== 0x00010000 && version !== 0x74727565 /* 'true' */) return undefined;
   const count = view.getUint16(4);
   if (12 + count * 16 > font.length) return undefined;
+  const directory = 12 + count * 16;
   const tables = new Map<string, Uint8Array>();
   const order: string[] = [];
+  const ranges: [number, number][] = [];
   for (let i = 0; i < count; i++) {
     const record = 12 + i * 16;
     const offset = view.getUint32(record + 8);
     const length = view.getUint32(record + 12);
     const name = tag(view, record);
-    if (offset + length > font.length || tables.has(name)) return undefined;
+    if (offset < directory || offset + length > font.length || tables.has(name)) return undefined;
     order.push(name);
     tables.set(name, font.subarray(offset, offset + length));
+    if (length > 0) ranges.push([offset, offset + length]);
   }
+  // Tables that share bytes would come apart once one of them is rewritten.
+  ranges.sort((a, b) => a[0] - b[0]);
+  if (ranges.some(([start], i) => i > 0 && start < (ranges[i - 1]?.[1] ?? 0))) return undefined;
+  if (tables.has('DSIG')) return undefined;
   const [head, loca, glyf, maxp] = ['head', 'loca', 'glyf', 'maxp'].map((t) => tables.get(t));
   if (!head || !loca || !glyf || !maxp || head.length < 54 || maxp.length < 6) return undefined;
   const local = (bytes: Uint8Array) => new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
@@ -69,7 +79,7 @@ function pad(font: Uint8Array): Uint8Array | undefined {
   const format = local(head).getInt16(50);
   if (format !== 0 && format !== 1) return undefined;
   const long = format === 1;
-  if (loca.length < (glyphs + 1) * (long ? 4 : 2)) return undefined;
+  if (loca.length !== (glyphs + 1) * (long ? 4 : 2)) return undefined;
   const offsets = Array.from({ length: glyphs + 1 }, (_, i) =>
     long ? local(loca).getUint32(i * 4) : local(loca).getUint16(i * 2) * 2,
   );
@@ -88,7 +98,7 @@ function pad(font: Uint8Array): Uint8Array | undefined {
     at += (lengths[i] ?? 0) + ((lengths[i] ?? 0) % 2);
   }
   local(evenLoca).setUint32(glyphs * 4, at);
-  const evenHead = head.slice();
+  const evenHead = new Uint8Array(head);
   local(evenHead).setUint32(8, 0); // checksumAdjustment, set again below
   local(evenHead).setInt16(50, 1); // indexToLocFormat: long
   tables.set('head', evenHead);
@@ -96,7 +106,6 @@ function pad(font: Uint8Array): Uint8Array | undefined {
   tables.set('glyf', evenGlyf);
 
   // The same table directory, each table at a 4-byte boundary with its new checksum.
-  const directory = 12 + count * 16;
   const size = order.reduce((sum, t) => sum + (((tables.get(t)?.length ?? 0) + 3) & ~3), directory);
   const out = new Uint8Array(size);
   const write = new DataView(out.buffer);
