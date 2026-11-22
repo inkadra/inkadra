@@ -56,7 +56,11 @@ describe('the response contract gate', () => {
   it('needs the JSON body a status declares: no other media type, no empty answer', async () => {
     const app = Fastify();
     app.get('/api/v1/instance/version', async (req, reply) =>
-      req.headers['x-case'] === 'text' ? reply.type('text/plain').send('ok') : reply.send(),
+      req.headers['x-case'] === 'text'
+        ? reply.type('text/plain').send('ok')
+        : req.headers['x-case'] === 'json'
+          ? reply.type('application/json').send()
+          : reply.send(),
     );
     await app.inject({
       method: 'GET',
@@ -64,10 +68,16 @@ describe('the response contract gate', () => {
       headers: { 'x-case': 'text' },
     });
     await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.inject({
+      method: 'GET',
+      url: '/api/v1/instance/version',
+      headers: { 'x-case': 'json' },
+    });
     await app.close();
     expect(takeMismatches()).toEqual([
       'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has text/plain',
       'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has no body',
+      'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has none',
     ]);
     expect(contractMismatch('GET', '/api/v1/me', 500, 'text/html', '<h1>Error</h1>')).toBe(
       'GET /api/v1/me → 500: the contract declares a JSON body, the answer has text/html',

@@ -92,6 +92,7 @@ export function contractMismatch(
   route: string,
   status: number,
   contentType: string,
+  /** '' when the answer has no body, null for a stream (not read). */
   body: string | null,
   path = route,
 ): string | null {
@@ -136,11 +137,12 @@ export function contractMismatch(
 function checkJson(where: string, schema: z.ZodType, contentType: string, body: string | null) {
   if (!/^application\/([a-z.+-]+\+)?json/.test(contentType))
     return `${where}: the contract declares a JSON body, the answer has ${contentType || 'no body'}`;
-  // shortcut: a JSON stream is not read here; no route streams JSON today.
+  // shortcut: a JSON stream (null) is not read here; no route streams JSON today.
   if (body === null) return null;
+  if (body === '') return `${where}: the contract declares a JSON body, the answer has none`;
   let value: unknown;
   try {
-    value = body === '' ? undefined : JSON.parse(body);
+    value = JSON.parse(body);
   } catch {
     return `${where}: the body is not JSON`;
   }
@@ -188,12 +190,15 @@ export function checkResponses(app: FastifyInstance, check = contractMismatch) {
     // The hook only observes: whatever happens here, the answer leaves as it was.
     let problem: string | null;
     try {
+      // No payload at all is an empty body; only a stream is left unread (null).
       const body =
-        typeof payload === 'string'
-          ? payload
-          : Buffer.isBuffer(payload)
-            ? payload.toString('utf8')
-            : null;
+        payload === undefined || payload === null
+          ? ''
+          : typeof payload === 'string'
+            ? payload
+            : Buffer.isBuffer(payload)
+              ? payload.toString('utf8')
+              : null;
       problem = check(
         req.method,
         route,
