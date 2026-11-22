@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import {
+  AckClock,
   DENSE,
   type DenseResult,
   evaluateDense,
@@ -44,6 +45,30 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   eventLoop: { steadyMs: 120, burstMs: 300 },
   eventLoopShared: true,
   ...over,
+});
+
+describe('AckClock', () => {
+  it('lets an update already waiting take the first acknowledgement, not a timed edit', () => {
+    // The note's creation is still waiting when timing starts.
+    const clock = new AckClock(1);
+    expect(clock.change(2, 100, true)).toEqual([]); // a timed edit is sent at 100
+    expect(clock.change(1, 105, false)).toEqual([]); // the creation is acknowledged
+    expect(clock.change(0, 130, false)).toEqual([30]); // then the edit
+    expect(clock.unconfirmed()).toBe(0);
+  });
+
+  it('keeps timed edits lost with a closed connection as unconfirmed', () => {
+    const clock = new AckClock(0);
+    clock.change(1, 100, true);
+    clock.change(2, 200, true);
+    clock.change(1, 250, false); // the first one only
+    clock.close();
+    expect(clock.unconfirmed()).toBe(1);
+    // The new connection's sync counts from zero and does not credit the lost edit.
+    expect(clock.change(1, 300, false)).toEqual([]);
+    expect(clock.change(0, 320, false)).toEqual([]);
+    expect(clock.unconfirmed()).toBe(1);
+  });
 });
 
 describe('seeded', () => {

@@ -279,27 +279,14 @@ export async function runDense(opts: DenseOptions) {
       createdBy: null,
       createdAt: Date.now(),
     });
-    // Each edit timed to its own acknowledgement: the provider counts the updates it sent that
-    // the server has not acknowledged yet, and the server acknowledges one connection's updates
-    // in the order they came. `timed` marks the edits of the run, not the note's creation.
-    const waiting: Array<{ at: number; timed: boolean }> = [];
+    // Each edit timed to its own acknowledgement (AckClock), from the updates already waiting.
+    const clock = new AckClock(board.provider.unsyncedChanges);
     let timing = false;
-    let last = board.provider.unsyncedChanges;
     board.provider.on('unsyncedChanges', ({ number }: { number: number }) => {
-      const now = performance.now();
-      for (let i = last; i < number; i++) waiting.push({ at: now, timed: timing });
-      for (let i = number; i < last; i++) {
-        const sent = waiting.shift();
-        if (sent?.timed) editMs.push(now - sent.at);
-      }
-      last = number;
+      for (const ms of clock.change(number, performance.now(), timing)) editMs.push(ms);
     });
-    // A closed connection forgets what it waited for; the sync after it counts again from one.
-    board.provider.on('close', () => {
-      waiting.length = 0;
-      last = 0;
-    });
-    me.pending = () => waiting.filter((w) => w.timed).length;
+    board.provider.on('close', () => clock.close());
+    me.pending = () => clock.unconfirmed();
     // Its own stream of the run's seed: the same seed gives each editor the same moves.
     const random = seeded(opts.seed + index * 7919);
     const cursor = { x: random() * 4000, y: random() * 3000 };
@@ -562,6 +549,52 @@ export async function runDense(opts: DenseOptions) {
     eventLoopShared: loopShared,
   };
   return { result, projectId, stopped: opts.signal.aborted };
+}
+
+/**
+ * Pairs each update a connection sends with its acknowledgement. The provider counts the updates
+ * the server has not acknowledged yet, and the server acknowledges one connection's updates in
+ * the order they came (Hocuspocus handles its messages one at a time), so the counter going up
+ * queues send times and going down takes them off in order. `timed` marks the run's edits.
+ */
+export class AckClock {
+  private waiting: Array<{ at: number; timed: boolean }> = [];
+  private last: number;
+  /** Timed edits whose connection closed before they were acknowledged. */
+  private lost = 0;
+
+  /** `pending`: updates already waiting when timing starts; they are not the run's. */
+  constructor(pending: number) {
+    this.last = pending;
+    for (let i = 0; i < pending; i++) this.waiting.push({ at: 0, timed: false });
+  }
+
+  /** The provider's new count; returns the round trips of the timed edits it acknowledged. */
+  change(count: number, now: number, timed: boolean): number[] {
+    const out: number[] = [];
+    for (let i = this.last; i < count; i++) this.waiting.push({ at: now, timed });
+    for (let i = count; i < this.last; i++) {
+      const sent = this.waiting.shift();
+      if (sent?.timed) out.push(now - sent.at);
+    }
+    this.last = count;
+    return out;
+  }
+
+  /**
+   * The connection closed: what it waited for is never acknowledged as such, and the sync after
+   * it counts again from zero. Timed edits among them stay unconfirmed.
+   */
+  close() {
+    this.lost += this.waiting.filter((w) => w.timed).length;
+    this.waiting = [];
+    this.last = 0;
+  }
+
+  /** Timed edits not acknowledged: waiting now, or lost with a closed connection. */
+  unconfirmed() {
+    return this.lost + this.waiting.filter((w) => w.timed).length;
+  }
 }
 
 /** mulberry32: small, fast and good enough to pick moves; the same seed, the same moves. */
