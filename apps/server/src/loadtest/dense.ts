@@ -109,11 +109,13 @@ export interface DenseOptions extends ClientTarget {
 const newId = () => `lt_${randomBytes(8).toString('hex')}`;
 const LOOP_METRIC = 'inkadra_web_event_loop_delay_p99_seconds';
 
-/** Same document: the same clocks for every client id. */
-export function sameState(a: Map<number, number>, b: Map<number, number>) {
-  if (a.size !== b.size) return false;
-  for (const [client, clock] of a) if (b.get(client) !== clock) return false;
-  return true;
+/**
+ * Same document: the same state vector and the same delete set. Equal vectors alone miss a
+ * deletion that reached one replica only (deletions add no clock). The delete set of a snapshot
+ * is built from maximal runs of deleted items, so items split differently compare equal.
+ */
+export function sameDocument(a: Y.Doc, b: Y.Doc) {
+  return Y.equalSnapshots(Y.snapshot(a), Y.snapshot(b));
 }
 
 export async function runDense(opts: DenseOptions) {
@@ -368,15 +370,16 @@ export async function runDense(opts: DenseOptions) {
           detail = String(err);
           return null;
         });
-        const target = fresh ? Y.decodeStateVector(Y.encodeStateVector(fresh.doc)) : null;
         const deadline = performance.now() + 30_000;
-        while (fresh && target && !stop.signal.aborted) {
-          const lagging = boards.filter(
-            (b) => !sameState(Y.decodeStateVector(Y.encodeStateVector(b.doc)), target),
-          ).length;
-          const missing = editors.filter(
-            (e) => roots(fresh.doc).elements.get(e.note)?.get('x') !== e.value,
-          ).length;
+        while (fresh && !stop.signal.aborted) {
+          const lagging = boards.filter((b) => !sameDocument(b.doc, fresh.doc)).length;
+          // Every offline edit on every replica, the fresh one included.
+          const missing = boards.reduce(
+            (n, b) =>
+              n +
+              editors.filter((e) => roots(b.doc).elements.get(e.note)?.get('x') !== e.value).length,
+            0,
+          );
           converged = lagging === 0 && missing === 0;
           if (converged || performance.now() > deadline) {
             if (!converged) detail = `${lagging} clients differ, ${missing} offline edits missing`;

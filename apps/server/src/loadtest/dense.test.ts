@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DENSE, type DenseResult, evaluateDense, formatDense, sameState } from './dense.ts';
+import * as Y from 'yjs';
+import { DENSE, type DenseResult, evaluateDense, formatDense, sameDocument } from './dense.ts';
 
 const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   preset: 'dense',
@@ -25,23 +26,33 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   ...over,
 });
 
-describe('sameState', () => {
-  it('compares the clock of every client id', () => {
-    const a = new Map([
-      [1, 5],
-      [2, 9],
-    ]);
-    expect(sameState(a, new Map([...a].reverse()))).toBe(true);
-    expect(sameState(a, new Map([[1, 5]]))).toBe(false);
-    expect(
-      sameState(
-        a,
-        new Map([
-          [1, 5],
-          [2, 8],
-        ]),
-      ),
-    ).toBe(false);
+describe('sameDocument', () => {
+  const pair = () => {
+    const a = new Y.Doc();
+    a.getArray<number>('list').insert(0, [1, 2, 3]);
+    const b = new Y.Doc();
+    Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
+    return [a, b] as const;
+  };
+
+  it('holds for replicas with the same items and deletions', () => {
+    const [a, b] = pair();
+    a.getArray('list').delete(1, 1);
+    Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
+    expect(sameDocument(a, b)).toBe(true);
+  });
+
+  it('tells a deletion that reached one replica only, with equal state vectors', () => {
+    const [a, b] = pair();
+    a.getArray('list').delete(1, 1);
+    expect(Y.encodeStateVector(a)).toEqual(Y.encodeStateVector(b));
+    expect(sameDocument(a, b)).toBe(false);
+  });
+
+  it('tells a missing insertion', () => {
+    const [a, b] = pair();
+    a.getArray<number>('list').push([4]);
+    expect(sameDocument(a, b)).toBe(false);
   });
 });
 
