@@ -3655,6 +3655,11 @@ registry.registerPath({
   },
 });
 
+/** The registered operations with their Zod schemas: server tests check every answer against them. */
+export function apiOperations() {
+  return registry.definitions.flatMap((d) => (d.type === 'route' ? [d.route] : []));
+}
+
 export function buildOpenApiDocument() {
   return new OpenApiGeneratorV31(registry.definitions).generateDocument({
     openapi: '3.1.0',
