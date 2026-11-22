@@ -490,20 +490,41 @@ export async function rolesOnProjectBoards(
   userId: string,
   projectId: string,
 ): Promise<{ boards: Array<typeof board.$inferSelect>; roles: Map<string, Effective> }> {
-  const [boards, grants, pRole, active] = await Promise.all([
+  // A deactivated person has no role here, like one who is gone: both role queries leave out
+  // their rows.
+  const [boards, grants, [member]] = await Promise.all([
     db.select().from(board).where(eq(board.projectId, projectId)),
     db
       .select({ boardId: boardGrant.boardId, role: boardGrant.role })
       .from(boardGrant)
       .innerJoin(board, eq(board.id, boardGrant.boardId))
-      .where(and(eq(boardGrant.userId, userId), eq(board.projectId, projectId), activeGrant())),
-    projectRole(db, { id: userId }, projectId),
-    activeAccount(db, userId),
+      .innerJoin(user, eq(user.id, boardGrant.userId))
+      .where(
+        and(
+          eq(boardGrant.userId, userId),
+          eq(board.projectId, projectId),
+          activeGrant(),
+          isNull(user.deactivatedAt),
+        ),
+      ),
+    db
+      .select({ role: projectMember.role })
+      .from(projectMember)
+      .innerJoin(user, eq(user.id, projectMember.userId))
+      .where(
+        and(
+          eq(projectMember.projectId, projectId),
+          eq(projectMember.userId, userId),
+          activeMember(),
+          isNull(user.deactivatedAt),
+        ),
+      ),
   ]);
-  // A deactivated person has no role here, like one who is gone.
-  const roles = active
-    ? effectiveRoles(boards, new Map(grants.map((g) => [g.boardId, g.role])), pRole)
-    : effectiveRoles(boards, new Map(), null);
+  const roles = effectiveRoles(
+    boards,
+    new Map(grants.map((g) => [g.boardId, g.role])),
+    member?.role ?? null,
+  );
   // Keep ancestors in the role calculation even when trashed: boardAccess uses their grants
   // too. Only the returned boards can be opened by guests.
   return {

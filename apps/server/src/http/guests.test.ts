@@ -1824,8 +1824,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       expect(warm.assets).toBe(first.assets);
       expect(warm.boards).toBe(first.boards);
       expect(get).not.toHaveBeenCalled();
-      // Four access queries (the creator's account among them) plus batched doc stamps.
-      expect(select).toHaveBeenCalledTimes(5);
+      expect(select).toHaveBeenCalledTimes(4); // Three access queries plus batched doc stamps.
       expect(warm.assets.shown.has(X.x6)).toBe(true);
       await saveDoc(B.A1, [
         { ...el, id: E.sub, type: 'image', assetId: X.x6, parent: null, guestHidden: true },
