@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   ApiError,
   Board,
+  Cursor,
   FractionalIndex,
   Id,
   Project,
@@ -82,7 +83,9 @@ const BoardV030 = z.object({
   updatedAt: Timestamp,
   myRole: ProjectRole,
 });
-const page = <T extends z.ZodType>(item: T) => z.object({ items: z.array(item) });
+/** v0.3.0's `page()`, strict: an answer to a clip token has these two keys and no other. */
+const page = <T extends z.ZodType>(item: T) =>
+  z.strictObject({ items: z.array(item), nextCursor: Cursor.nullable() });
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
 
@@ -323,7 +326,7 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     const res = await search('q=zebra&limit=20');
     const items = SearchResult.parse(res.json()).items;
     // The schema of the oldest and of the newest released Clipper both read it.
-    expect(z.object({ items: z.array(SearchHitV030) }).parse(res.json()).items).toHaveLength(
+    expect(z.strictObject({ items: z.array(SearchHitV030) }).parse(res.json()).items).toHaveLength(
       items.length,
     );
     expect(items.map((h) => h.boardId).sort()).toEqual([myBoard, production].sort());

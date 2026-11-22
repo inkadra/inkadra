@@ -54,8 +54,10 @@ never set it. No redirect address or user agent is stored on the token.
   Roles and grants still decide what each of these returns or allows, as before.
 - **What a `clip` token reads.** Answers are narrowed to what the picker reads, keeping every
   field the schemas of the oldest (0.3.0) and newest released Clipper require; the other fields
-  are left out or empty only where those schemas allow it. Sessions and `full` tokens get the
-  same answers as before.
+  are left out or empty only where those schemas allow it. Each narrowed answer is built field
+  by field, the envelope too (`items`, and `nextCursor` where `page()` requires it): a field added
+  later to these answers or their items stays out of a `clip` token's answer until it is listed
+  in `token-scope.ts`. Sessions and `full` tokens get the same answers as before.
   - `GET /search` takes the words only (`projectId`, `tag` and `type` are ignored; without words
     it answers `400 bad_request`, as a search without parameters does) and looks only
     in the boards a clip may go to: editor or owner, the rule of `POST /clip`. Each hit is one

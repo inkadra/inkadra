@@ -15,8 +15,11 @@ export type TokenScope = (typeof personalToken.$inferSelect)['scope'];
 interface ScopedRoute {
   /** When present, must also pass. */
   allow?: (req: FastifyRequest, tokenId: string) => boolean;
-  /** Narrows a successful answer to what the scope's client reads. */
-  narrow?: (items: unknown[]) => unknown[];
+  /**
+   * A successful `{ items }` answer as the scope's client reads it, field by field: a field
+   * added later to the answer or its items stays out until it is listed here.
+   */
+  narrow?: (body: { items: unknown[]; nextCursor?: unknown }) => unknown;
 }
 
 /**
@@ -49,20 +52,46 @@ function clipSearchHits(items: unknown[]): SearchHit[] {
   return out;
 }
 
+/** A page as the released Clippers read it: the items, and the cursor `page()` requires. */
+const clipPage = <T>(items: T[], nextCursor: unknown) => ({
+  items,
+  nextCursor: typeof nextCursor === 'string' ? nextCursor : null,
+});
+
 /**
  * The Clipper's projects (decision 0137): those it offers, active ones where the person may add
- * cards, without the optional fields of later versions (dates, time zone, pins, groups).
+ * cards, with the fields `Project` required from 0.3.0 on (the query already leaves out the
+ * others: see the route).
  */
-function clipProjects(items: unknown[]): Project[] {
-  return (items as Project[])
+const clipProjects = (items: unknown[]): Project[] =>
+  (items as Project[])
     .filter((p) => !p.archivedAt && atLeast(p.myRole, 'editor'))
-    .map(({ type, timeZone, shootingStart, shootingEnd, pinned, group, ...kept }) => kept);
-}
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      icon: { shape: p.icon.shape, color: p.icon.color },
+      rootBoardId: p.rootBoardId,
+      position: p.position,
+      archivedAt: p.archivedAt,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      myRole: p.myRole,
+    }));
 
 /** Boards as the picker reads them: the tree and roles, no cover, icon, views or edit time. */
-function clipBoard({ icon, views, editedAt, ...kept }: Board): Board {
-  return { ...kept, coverAssetId: null };
-}
+const clipBoard = (b: Board): Board => ({
+  id: b.id,
+  projectId: b.projectId,
+  parentBoardId: b.parentBoardId,
+  kind: b.kind,
+  title: b.title,
+  position: b.position,
+  coverAssetId: null,
+  docSchemaVersion: b.docSchemaVersion,
+  createdAt: b.createdAt,
+  updatedAt: b.updatedAt,
+  myRole: b.myRole,
+});
 /**
  * Every board of a project: a read-only board can lead to an editable one below it. A project
  * with nowhere to clip is not shown at all: the answer to a project that does not exist.
@@ -87,12 +116,18 @@ const SCOPE_ROUTES: Record<Exclude<TokenScope, 'full'>, Record<string, ScopedRou
   clip: {
     [`GET ${API_PREFIX}/me/clip-boards`]: {},
     [`DELETE ${API_PREFIX}/me/clip-boards/:boardId`]: {},
-    [`GET ${API_PREFIX}/projects`]: { narrow: clipProjects },
-    [`GET ${API_PREFIX}/projects/:projectId/boards`]: { narrow: clipProjectBoards },
-    [`GET ${API_PREFIX}/shared-boards`]: { narrow: clipSharedBoards },
+    [`GET ${API_PREFIX}/projects`]: {
+      narrow: (body) => clipPage(clipProjects(body.items), body.nextCursor),
+    },
+    [`GET ${API_PREFIX}/projects/:projectId/boards`]: {
+      narrow: (body) => clipPage(clipProjectBoards(body.items), body.nextCursor),
+    },
+    [`GET ${API_PREFIX}/shared-boards`]: {
+      narrow: (body) => clipPage(clipSharedBoards(body.items), body.nextCursor),
+    },
     [`GET ${API_PREFIX}/boards/:boardId/columns`]: {},
     // The route itself searches only boards a clip may go to, by words only.
-    [`GET ${API_PREFIX}/search`]: { narrow: clipSearchHits },
+    [`GET ${API_PREFIX}/search`]: { narrow: (body) => ({ items: clipSearchHits(body.items) }) },
     [`POST ${API_PREFIX}/clip`]: {},
     // Signing out of the Clipper revokes its own token, never another one.
     [`DELETE ${API_PREFIX}/me/tokens/:tokenId`]: {
@@ -126,9 +161,9 @@ export function registerScopeNarrowing(app: FastifyInstance) {
     const scope = tokenScope(req);
     if (scope === 'full' || reply.statusCode >= 300) return payload;
     const narrow = SCOPE_ROUTES[scope][routeKey(req)]?.narrow;
-    const body = payload as { items?: unknown };
+    const body = payload as { items?: unknown; nextCursor?: unknown };
     if (!narrow || !Array.isArray(body?.items)) return payload;
-    return { ...body, items: narrow(body.items) };
+    return narrow({ items: body.items, nextCursor: body.nextCursor });
   });
 }
 
