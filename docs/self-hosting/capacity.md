@@ -282,9 +282,9 @@ What the numbers say, and no more:
   of this board (validating every card and encoding the whole document) measured about 130 ms on
   the dev machine; what else takes that process's time is not pinned down.
 - **Burst.** With 18 reconnections at once, 15 of them each bringing a new card, it takes 7 to
-  9.4 s on CI (9.4 to 10.9 s on the dev machine) until all 18 are synced again, and the worst
+  9.4 s on CI (9.4 to 11.9 s on the dev machine) until all 18 are synced again, and the worst
   sampled p99 of the event loop delay of the `all` process over a window of about 5 s is up to
-  3.2 s (3.9 s on the dev machine): a percentile over a window, not the proven length of one
+  3.2 s (3.9 to 4.5 s on the dev machine): a percentile over a window, not the proven length of one
   block. On the dev machine, with a temporary log in
   the server: the board was read back from the database before the reconnect; 11 of the 18
   clients were synced within 0.75 s and the others one after another up to 9.6 s; with only moves
