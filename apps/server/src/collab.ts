@@ -526,7 +526,8 @@ export function createCollabServer(deps: {
     // Native apps and the clipper send their token; browsers send the session cookie.
     if (isToken(token)) {
       const actor = await actorFromToken(db, token);
-      return actor && !(await adminEnrollmentRequired(db, actor))
+      // A limited token (the Clipper's, decision 0137) never opens a board.
+      return actor && actor.scope === 'full' && !(await adminEnrollmentRequired(db, actor))
         ? { actor, sessionId: null }
         : null;
     }

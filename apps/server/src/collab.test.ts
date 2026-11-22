@@ -37,6 +37,7 @@ import { createApp } from './http/app.ts';
 import * as drawings from './image-drawing.ts';
 import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
 import { testDeps } from './test-deps.ts';
+import { issueToken } from './tokens.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
@@ -611,6 +612,24 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     });
     expect(await closed).toBe('Unauthorized');
     c.close();
+  });
+
+  it("refuses the Clipper's limited token and keeps app tokens (decision 0137)", async () => {
+    const owner = people.owner?.id ?? '';
+    const failed = (c: ReturnType<typeof connect>) =>
+      new Promise<boolean>((resolve) => {
+        c.provider.on('authenticationFailed', () => resolve(true));
+        c.provider.on('synced', () => resolve(false));
+        setTimeout(() => resolve(false), 4000);
+      });
+    const clip = await issueToken(db, owner, { name: 'Clipper', client: 'clipper' });
+    const clipper = connect({ token: clip.token });
+    expect(await failed(clipper)).toBe(true);
+    clipper.close();
+    const phone = await issueToken(db, owner, { name: 'Phone', client: 'mobile' });
+    const mobile = connect({ token: phone.token });
+    expect(await failed(mobile)).toBe(false);
+    mobile.close();
   });
 
   it('closes the connection when the person signs out', async () => {

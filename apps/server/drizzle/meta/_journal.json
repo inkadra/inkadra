@@ -400,6 +400,13 @@
       "when": 1795094042322,
       "tag": "0056_project_member_position",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1795356452815,
+      "tag": "0057_token_scope",
+      "breakpoints": true
     }
   ]
 }

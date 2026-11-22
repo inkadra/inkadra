@@ -1,11 +1,54 @@
-import type { AppClient, InvalidTokenReason, PersonalToken } from '@inkadra/shared';
+import {
+  API_PREFIX,
+  type AppClient,
+  type InvalidTokenReason,
+  type PersonalToken,
+} from '@inkadra/shared';
 import { and, eq, gt, isNull, lt, or, type SQL } from 'drizzle-orm';
+import type { FastifyRequest } from 'fastify';
 import type { Actor } from './access.ts';
 import type { Database } from './db/client.ts';
 import { personalToken, revokedToken, user } from './db/schema.ts';
 import { newSecret, sha256 } from './secrets.ts';
 
 type RevokedToken = typeof revokedToken.$inferSelect;
+export type TokenScope = (typeof personalToken.$inferSelect)['scope'];
+
+/**
+ * What a token of each limited scope may call, as `METHOD route` (decision 0137). A route
+ * missing here is refused, so a route added later stays closed to limited tokens. `clip` is what
+ * every released Clipper calls with its token; per-project and per-board access still applies.
+ * A check, when present, must also pass.
+ */
+const SCOPE_ROUTES: Record<
+  Exclude<TokenScope, 'full'>,
+  Record<string, ((req: FastifyRequest, tokenId: string) => boolean) | true>
+> = {
+  clip: {
+    [`GET ${API_PREFIX}/me/clip-boards`]: true,
+    [`DELETE ${API_PREFIX}/me/clip-boards/:boardId`]: true,
+    [`GET ${API_PREFIX}/projects`]: true,
+    [`GET ${API_PREFIX}/projects/:projectId/boards`]: true,
+    [`GET ${API_PREFIX}/shared-boards`]: true,
+    [`GET ${API_PREFIX}/boards/:boardId/columns`]: true,
+    [`GET ${API_PREFIX}/search`]: true,
+    [`POST ${API_PREFIX}/clip`]: true,
+    // Signing out of the Clipper revokes its own token, never another one.
+    [`DELETE ${API_PREFIX}/me/tokens/:tokenId`]: (req, tokenId) =>
+      (req.params as { tokenId?: unknown }).tokenId === tokenId,
+  },
+};
+
+/** Whether a token with this scope may make this request; `full` may make any. */
+export function scopeAllows(scope: TokenScope, tokenId: string, req: FastifyRequest): boolean {
+  if (scope === 'full') return true;
+  const check = SCOPE_ROUTES[scope][`${req.method} ${req.routeOptions.url ?? ''}`];
+  return check === true || (check?.(req, tokenId) ?? false);
+}
+
+/** Tokens issued to the Clipper only clip (decision 0137); every other token keeps full access. */
+export const scopeFor = (client: AppClient | undefined): TokenScope =>
+  client === 'clipper' ? 'clip' : 'full';
 
 export const TOKEN_PREFIX = 'ink_';
 
@@ -37,6 +80,7 @@ export async function issueToken(
       userId,
       name: input.name,
       client: input.client ?? null,
+      scope: scopeFor(input.client),
       tokenHash: sha256(token),
       prefix: token.slice(0, TOKEN_PREFIX.length + 6),
       expiresAt: input.expiresAt ?? null,
@@ -50,7 +94,7 @@ export async function issueToken(
 export async function actorFromToken(
   db: Database,
   token: string,
-): Promise<(Actor & { twoFactorEnabled: boolean | null }) | null> {
+): Promise<(Actor & { twoFactorEnabled: boolean | null; scope: TokenScope }) | null> {
   if (!isToken(token)) return null;
   const now = new Date();
   const [row] = await db
@@ -59,6 +103,7 @@ export async function actorFromToken(
       userId: user.id,
       role: user.role,
       twoFactorEnabled: user.twoFactorEnabled,
+      scope: personalToken.scope,
     })
     .from(personalToken)
     .innerJoin(user, eq(user.id, personalToken.userId))
@@ -88,6 +133,7 @@ export async function actorFromToken(
     role: row.role === 'admin' ? 'admin' : 'member',
     tokenId: row.id,
     twoFactorEnabled: row.twoFactorEnabled,
+    scope: row.scope,
   };
 }
 
