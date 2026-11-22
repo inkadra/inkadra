@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Starts Inkadra behind one of the reverse proxy examples in deploy/proxy and checks what a
 # proxy must get right: HTTPS redirect, forwarded headers, secure cookies, WebSocket upgrade
-# on /collab, request bodies larger than the proxy defaults and resumable uploads.
+# on /collab, request bodies larger than the proxy defaults and resumable uploads, and that a
+# client cannot pass itself off with X-Forwarded-* headers of its own.
 #
 #   scripts/test-proxy.sh <caddy|traefik|nginx> [all|split]
 #
-# Needs Docker with Compose, curl and openssl, and ports 80 and 443 free. The image is
+# Needs Docker with Compose, curl, jq and openssl, and ports 80 and 443 free. The image is
 # ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-edge}; CI sets it to the image it built.
 set -euo pipefail
 
@@ -125,6 +126,37 @@ if compose logs --no-color inkadra | grep 'ip-check' | grep -q "\"remoteAddress\
 else
   fail "client address forwarded: expected $gateway in $(compose logs --no-color inkadra | grep ip-check | tail -1)"
 fi
+
+# A client's own X-Forwarded-* headers change nothing: the proxy replaces them (Caddy, Traefik)
+# or appends its peer (Nginx's X-Forwarded-For), and Inkadra takes the rightmost hop it does not
+# trust. Not the address, nor the scheme or host it believes, nor which origins it accepts
+# (the collaboration server checks Origin with the same function, after the upgrade).
+forged=(-H 'X-Forwarded-For: 203.0.113.9' -H 'X-Forwarded-Proto: http' -H 'X-Forwarded-Host: evil.example')
+seen=$(c -b "$work/cookies" "${forged[@]}" "$url/api/v1/diagnostics" | jq -c '.request // .' || true)
+if jq -e --arg gw "$gateway" '.clientIp == $gw and .protocol == "https" and .host == "localhost"' <<<"$seen" >/dev/null; then
+  pass "forged X-Forwarded-* ignored: address, scheme and host"
+else
+  fail "forged X-Forwarded-* changed what Inkadra sees (expected $gateway, https, localhost; got $seen)"
+fi
+c -o /dev/null "${forged[@]}" "$url/api/v1/instance?forged-check"
+sleep 1
+logged=$(compose logs --no-color inkadra | grep 'forged-check' | tail -1)
+if grep -q "\"remoteAddress\":\"$gateway\"" <<<"$logged" && ! grep -q '203\.0\.113\.9' <<<"$logged"; then
+  pass "forged X-Forwarded-For not logged as the client"
+else
+  fail "forged X-Forwarded-For: expected $gateway in $logged"
+fi
+headers=$(c -D - -o /dev/null "${forged[@]}" -H "Origin: $url" -H 'Content-Type: application/json' \
+  --data '{"email":"proxy@example.com","password":"correct-horse-battery"}' "$url/api/auth/sign-in/email")
+if grep -qi '^set-cookie: __Host-inkadra\.session_token=.*; Path=/; HttpOnly; Secure; SameSite=Lax' <<<"$headers"; then
+  pass "forged X-Forwarded-Proto: session cookie still __Host- and Secure"
+else
+  fail "forged X-Forwarded-Proto changed the session cookie (headers: $(tr '\r\n' '  ' <<<"$headers"))"
+fi
+code=$(c -o /dev/null -w '%{http_code}' -b "$work/cookies" "${forged[@]}" -H 'Origin: https://evil.example' \
+  -H 'Content-Type: application/json' --data '{"name":"Forged"}' "$url/api/v1/projects")
+[[ $code == 403 ]] && pass "forged X-Forwarded-Host: write from its origin refused" ||
+  fail "forged X-Forwarded-Host: write from https://evil.example got $code, expected 403"
 
 upgrade=$(ws -b "$work/cookies")
 [[ $(head -n1 <<<"$upgrade") == *" 101"* ]] && pass "WebSocket upgrade on /collab" ||
