@@ -4,6 +4,9 @@
 // The schemas apply as declared: a plain z.object lets fields it does not list through, as
 // clients parsing it do, and a .strict() one refuses them. Enums stay closed: a server sends only
 // values of its own contract; the open enums of decision 0013 are about clients reading newer servers.
+// What it cannot see: answers written on the raw socket after `reply.hijack()` skip onSend, so
+// the tus protocol (POST, PATCH, DELETE and OPTIONS on /uploads, and HEAD, which is never
+// checked) is out of its reach; its tests assert those answers with contractMismatch directly.
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { apiOperations } from '@inkadra/shared/openapi';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';

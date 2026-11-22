@@ -27,6 +27,7 @@ import {
 import { purgeUploads } from '../queues.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
+import { contractMismatch } from '../test-response-contract.ts';
 import { createApp } from './app.ts';
 
 const url = process.env.DATABASE_URL;
@@ -711,6 +712,16 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       expect(JSON.parse(gone.rawPayload.toString())).toMatchObject({
         error: { details: { reason: 'client_asset_deleted' } },
       });
+      // tus answers on the raw socket, where the contract gate cannot see it.
+      expect(
+        contractMismatch(
+          'POST',
+          '/api/v1/uploads',
+          gone.statusCode,
+          String(gone.headers['content-type']),
+          gone.rawPayload.toString(),
+        ),
+      ).toBeNull();
       expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
       expect(processed).toBe(0);
     } finally {

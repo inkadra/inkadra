@@ -2182,6 +2182,16 @@ registry.registerPath({
   responses: {
     201: { description: 'Upload created; Location header points to it' },
     ...errors,
+    409: {
+      description:
+        'The clientAssetId names an upload that was deleted (ApiError, details.reason ' +
+        '`client_asset_deleted`: send it with a new clientAssetId), or one used for another ' +
+        'file (plain text).',
+      content: {
+        'application/json': { schema: ApiError },
+        'text/plain': { schema: z.string() },
+      },
+    },
     413: {
       description:
         'Larger than UPLOAD_MAX_SIZE (plain text), or no space left for it: the body is then ' +

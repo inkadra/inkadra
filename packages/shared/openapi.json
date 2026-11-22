@@ -26295,6 +26295,21 @@
               }
             }
           },
+          "409": {
+            "description": "The clientAssetId names an upload that was deleted (ApiError, details.reason `client_asset_deleted`: send it with a new clientAssetId), or one used for another file (plain text).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "413": {
             "description": "Larger than UPLOAD_MAX_SIZE (plain text), or no space left for it: the body is then StorageFull as JSON. The space is checked again when the last byte arrives.",
             "content": {
