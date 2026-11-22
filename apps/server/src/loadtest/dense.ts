@@ -188,15 +188,16 @@ export async function runDense(opts: DenseOptions) {
   };
   let phase: 'steadyMs' | 'burstMs' = 'steadyMs';
   let loopShared = false;
-  async function scrape(keep: boolean) {
+  /** `keep`: the reading counts (memory, saves); `loop`: its event loop delay counts too. */
+  async function scrape(keep: boolean, loop = keep) {
     try {
       const samples = await opts.metrics();
       if (!samples) return null;
       const reading = readServer(samples);
-      if (keep) {
-        readings.push(reading);
-        const loop = samples.find((s) => s.name === LOOP_METRIC);
-        if (loop) loopMax[phase] = Math.max(loopMax[phase] ?? 0, loop.value * 1000);
+      if (keep) readings.push(reading);
+      if (loop) {
+        const delay = samples.find((s) => s.name === LOOP_METRIC);
+        if (delay) loopMax[phase] = Math.max(loopMax[phase] ?? 0, delay.value * 1000);
         loopShared ||= reading.shared;
       }
       return reading;
@@ -216,6 +217,8 @@ export async function runDense(opts: DenseOptions) {
   let opens = 0;
   let reconnects = 0;
   let measuring = false;
+  /** While the persistence check runs: its saves count, its event loop does not. */
+  let storesOnly = false;
   let projectId: string | undefined;
   const sockets: HocuspocusProviderWebsocket[] = [];
   const boards: Array<ReturnType<typeof open>> = [];
@@ -229,6 +232,7 @@ export async function runDense(opts: DenseOptions) {
     while (!stop.signal.aborted) {
       await pause(5000);
       if (measuring) await scrape(true);
+      else if (storesOnly) await scrape(true, false);
     }
   })();
 
@@ -584,7 +588,12 @@ export async function runDense(opts: DenseOptions) {
       await scrape(true);
       // Leaving on purpose from here: not reconnects.
       measuring = false;
+      storesOnly = true;
       const persistence = fresh && converged ? await persisted(fresh.doc) : null;
+      // The heartbeat after the last store reports it (saves between two heartbeats, every 5 s).
+      await pause(6000);
+      await scrape(true, false);
+      storesOnly = false;
       burst = { clients, syncMs, convergeMs, converged, detail, persistence };
     }
   } catch (err) {
