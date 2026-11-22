@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkResponses,
   contractMismatch,
+  EXCEPTIONS,
   setCurrentTest,
   takeMismatches,
 } from './test-response-contract.ts';
@@ -114,13 +115,27 @@ describe('the response contract gate', () => {
     expect(at(member, `${asset}/poster.jpg`, 200, 'image/jpeg', null)).toContain(
       'no such operation',
     );
-    // The live 503 keeps its own shape (EXCEPTIONS); elsewhere that shape is drift.
+    // The live 503 has its legacy body in the contract (LiveSegmentNotReady), and only that.
     const odd = JSON.stringify({ code: 'unavailable', message: 'Not ready yet.' });
-    expect(at(member, `${asset}/live/480/init.mp4`, 503, 'application/json', odd)).toBeNull();
+    const init = `${asset}/live/480/init.mp4`;
+    expect(EXCEPTIONS).toEqual([]);
+    expect(at(member, init, 503, 'application/json', odd)).toBeNull();
     expect(at(guest, `${shared}/live/480/seg-3.m4s`, 503, 'application/json', odd)).toBeNull();
+    expect(at(member, init, 503, 'text/html', '<h1>Busy</h1>')).toContain('declares a JSON body');
+    expect(at(member, init, 503, 'application/json', '')).toContain('has none');
+    expect(at(member, init, 503, 'application/json', '{code')).toContain('is not JSON');
+    const other = JSON.stringify({ code: 'internal', message: 'No.' });
+    expect(at(member, init, 503, 'application/json', other)).toContain('does not match');
     expect(at(member, `${asset}/master.m3u8`, 503, 'application/json', odd)).toContain(
       'does not match',
     );
+    // Parameters the server refuses match no operation.
+    expect(at(member, `${asset}/live/999/init.mp4`, 200, 'video/mp4', null)).toContain(
+      'no such operation',
+    );
+    expect(
+      at(member, `${asset}/live/480/seg-1234567.m4s`, 200, 'video/iso.segment', null),
+    ).toContain('no such operation');
   });
 
   it('only observes: a check that throws is reported and the answer leaves untouched', async () => {

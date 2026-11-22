@@ -3308,6 +3308,13 @@ registry.registerPath({
   },
 });
 // Rungs encoded while watched (decision 0128), for members and for the guests of a link.
+const LiveSegmentNotReady = z
+  .object({ code: z.literal('unavailable'), message: z.string() })
+  .openapi('LiveSegmentNotReady', {
+    description:
+      'Legacy body of the 503 of a live HLS file not ready in time: `{ code, message }` ' +
+      'without the `error` wrapper of ApiError. Players read the status and `Retry-After`.',
+  });
 for (const prefix of ['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetId}']) {
   const forGuests = prefix.startsWith('/guest/');
   const shared = {
@@ -3324,8 +3331,16 @@ for (const prefix of ['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetI
   const failures = forGuests ? guestErrors : errors;
   const notReady =
     'Past the viewing limits or not encoded in time: 503 with `Retry-After`, the player ' +
-    'retries, then keeps to the stored rungs. That 503 has the body `{ code, message }`, ' +
-    'not ApiError.';
+    'retries, then keeps to the stored rungs.';
+  const segmentFailures = {
+    ...failures,
+    503: {
+      description:
+        'Not ready yet (LiveSegmentNotReady, a legacy body that is not ApiError), or the ' +
+        'database is unavailable (ApiError); retry after `Retry-After` seconds',
+      ...json(z.union([LiveSegmentNotReady, ApiError])),
+    },
+  };
   registry.registerPath({
     ...shared,
     method: 'get',
@@ -3347,7 +3362,7 @@ for (const prefix of ['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetI
     description: notReady,
     responses: {
       200: { description: 'MP4 header', content: { 'video/mp4': { schema: z.string() } } },
-      ...failures,
+      ...segmentFailures,
     },
   });
   registry.registerPath({
@@ -3364,7 +3379,7 @@ for (const prefix of ['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetI
         description: 'Media segment',
         content: { 'video/iso.segment': { schema: z.string() } },
       },
-      ...failures,
+      ...segmentFailures,
     },
   });
 }

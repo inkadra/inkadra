@@ -24,16 +24,26 @@ const shape = (path: string) =>
 
 type Operation = ReturnType<typeof apiOperations>[number];
 let operations: Map<string, Operation> | undefined;
-/** By route pattern; a wildcard route (`hls/*`) by the path that was asked instead. */
+/**
+ * By route pattern; a wildcard route (`hls/*`) by the path that was asked instead, and only when
+ * the path's parameters pass the operation's own schema (`live/999/init.mp4` is no rung).
+ */
 function operation(method: string, route: string, path: string) {
   operations ??= new Map(
     apiOperations().map((op) => [`${op.method.toUpperCase()} ${shape(op.path)}`, op]),
   );
   if (!route.includes('*')) return operations.get(`${method} ${shape(route)}`);
-  for (const [key, op] of operations) {
-    const [m, template = ''] = key.split(' ');
-    const pattern = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('\\{\\}', '[^/]+');
-    if (m === method && new RegExp(`^${pattern}$`).test(path)) return op;
+  for (const op of operations.values()) {
+    if (op.method.toUpperCase() !== method) continue;
+    const names = [...op.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1] as string);
+    const pattern = op.path
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\\{[^}\\]+\\\}/g, '([^/]+)');
+    const found = new RegExp(`^${pattern}$`).exec(path);
+    if (!found) continue;
+    const values = Object.fromEntries(names.map((name, i) => [name, found[i + 1]]));
+    if (op.request?.params?.safeParse(values).success === false) continue;
+    return op;
   }
 }
 
@@ -49,23 +59,12 @@ interface Exception {
 /**
  * Answers the gate lets through although the contract does not describe them: drift that
  * cannot be fixed on either side without breaking installed clients, each with its reason and
- * a decision left to the maintainers.
+ * a decision left to the maintainers. Empty: the one legacy body found (the live HLS 503) is
+ * declared in the contract as what it is, LiveSegmentNotReady.
  * Not needed here: Better Auth (`/api/auth`), calendar feeds, guest pages and the web app live
  * outside /api/v1 and are never checked.
  */
-export const EXCEPTIONS: readonly Exception[] = [
-  // Live HLS files past the viewing limits or not encoded in time answer 503 with
-  // `{ code, message }` instead of ApiError (hls.ts). Players only read the status and
-  // Retry-After, so the body may never have mattered; changing it is left to the maintainers.
-  ...['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetId}'].flatMap((prefix) =>
-    ['init.mp4', 'seg-{segment}.m4s'].map((file) => ({
-      method: 'GET',
-      path: `${API_PREFIX}${prefix}/hls/live/{name}/${file}`,
-      status: 503,
-      reason: 'live HLS 503 without the ApiError shape',
-    })),
-  ),
-];
+export const EXCEPTIONS: readonly Exception[] = [];
 
 /** The error shape of decision 0003. */
 const apiError = z.object({
