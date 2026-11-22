@@ -305,7 +305,7 @@ These change `compose.yaml` itself. They reach the container too, which ignores 
 | `INKADRA_ENV_FILE`        | `.env`                    | File whose lines reach the container; set it when you use `--env-file`         |
 | `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |
 | `INKADRA_COLLAB_PORT`     | `3001`                    | Host port of `collab`, in split mode                                           |
-| `INKADRA_BIND`            | `127.0.0.1`               | Host address the ports listen on. `0.0.0.0` if the proxy is on another machine |
+| `INKADRA_BIND`            | `127.0.0.1`               | Host address of the ports. `0.0.0.0`: [also set `TRUST_PROXY`][lan]            |
 | `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume. See [Storage][data-disks]       |
 | `POSTGRES_PASSWORD`       | required                  | Password of the bundled Postgres                                               |
 | `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database (or the name of another volume)                   |
@@ -320,6 +320,7 @@ These change `compose.yaml` itself. They reach the container too, which ignores 
 | `NGINX_CERTS`             | `./certs`                 | Folder with `fullchain.pem` and `privkey.pem`, for the bundled Nginx           |
 
 [data-disks]: storage.md#data-on-different-disks
+[lan]: #direct-lan-and-tailscale-access
 
 ### Resource limits
 
@@ -521,6 +522,15 @@ HSTS too: see [Reverse proxy](reverse-proxy.md#security-headers).
   that was about to go out, and failures are logged without credentials.
 
 ## Direct LAN and Tailscale access
+
+> [!WARNING]
+> **With `INKADRA_BIND=0.0.0.0`, set `TRUST_PROXY` too.** Its default trusts loopback and every
+> private network (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), so any device of
+> your LAN that reaches the port directly counts as a proxy: its own `X-Forwarded-For` header is
+> believed, so it can pick the client address Inkadra logs and limits sign-in attempts by, and
+> its `X-Forwarded-Host` and `X-Forwarded-Proto` headers are believed too. Set `TRUST_PROXY` to
+> your proxy's own address, or to `false` when nothing sits in front of Inkadra (see
+> [TRUST_PROXY](#trust_proxy)).
 
 `PUBLIC_URL` is the canonical external address for email, invitations, share links and
 OAuth callbacks. You can also use any directly reachable LAN or Tailscale HTTP address
