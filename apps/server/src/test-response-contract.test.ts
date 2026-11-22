@@ -1,6 +1,11 @@
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
-import { contractMismatch, takeMismatches } from './test-response-contract.ts';
+import {
+  checkResponses,
+  contractMismatch,
+  setCurrentTest,
+  takeMismatches,
+} from './test-response-contract.ts';
 
 describe('the response contract gate', () => {
   it('reports an answer whose body breaks the schema of its route and status', async () => {
@@ -106,5 +111,55 @@ describe('the response contract gate', () => {
     expect(at(member, `${asset}/master.m3u8`, 503, 'application/json', odd)).toContain(
       'does not match',
     );
+  });
+
+  it('only observes: a check that throws is reported and the answer leaves untouched', async () => {
+    const app = Fastify();
+    checkResponses(app, () => {
+      throw new Error('a refinement threw');
+    });
+    app.get('/api/v1/instance/version', async () => ({ version: '1.0.0' }));
+    const res = await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.close();
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ version: '1.0.0' });
+    expect(takeMismatches()).toEqual([
+      'GET /api/v1/instance/version → 200: the check threw: Error: a refinement threw',
+    ]);
+  });
+
+  it('names the test that sent an answer arriving after it ended', async ({ task }) => {
+    const app = Fastify();
+    let reached!: () => void;
+    let release!: () => void;
+    const atHandler = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    app.get('/api/v1/instance/version', async () => {
+      reached();
+      await held;
+      return { version: 7 };
+    });
+    const answer = async (before: string | null, after: string | null) => {
+      setCurrentTest(before);
+      const pending = app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+      await atHandler;
+      setCurrentTest(after);
+      release();
+      await pending;
+    };
+    try {
+      await answer('an earlier test', task.name);
+      await answer(null, null);
+    } finally {
+      setCurrentTest(task.name);
+      await app.close();
+    }
+    const [late, outside] = takeMismatches();
+    expect(late).toContain(`(sent by "an earlier test", answered during "${task.name}"`);
+    expect(outside).toContain('(outside a running test');
   });
 });

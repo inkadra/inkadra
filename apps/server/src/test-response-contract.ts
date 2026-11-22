@@ -7,6 +7,9 @@
 // What it cannot see: answers written on the raw socket after `reply.hijack()` skip onSend, so
 // the tus protocol (POST, PATCH, DELETE and OPTIONS on /uploads, and HEAD, which is never
 // checked) is out of its reach; its tests assert those answers with contractMismatch directly.
+// Mismatches fail the test that is running when they are found (test-setup.ts): every request
+// must be awaited within its test and cases must stay serial (no it.concurrent). An answer that
+// arrives outside its own test still fails, and its message says which test sent it.
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { apiOperations } from '@inkadra/shared/openapi';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -166,27 +169,49 @@ export function uncheckedResponses(app: FastifyInstance) {
   unchecked.add(app);
 }
 
-export function checkResponses(app: FastifyInstance) {
+/** The test running now, set by test-setup.ts around each test. */
+let current: string | null = null;
+export function setCurrentTest(name: string | null) {
+  current = name;
+}
+
+export function checkResponses(app: FastifyInstance, check = contractMismatch) {
+  const startedIn = new WeakMap<object, string | null>();
+  app.addHook('onRequest', async (req) => {
+    startedIn.set(req, current);
+  });
   app.addHook('onSend', async (req: FastifyRequest, reply: FastifyReply, payload: unknown) => {
     const route = req.routeOptions.url;
     // Unknown paths answer the generic 404 of the not-found handler; HEAD carries no body.
     if (!route?.startsWith(API_PREFIX) || req.method === 'HEAD' || unchecked.has(app))
       return payload;
-    const body =
-      typeof payload === 'string'
-        ? payload
-        : Buffer.isBuffer(payload)
-          ? payload.toString('utf8')
-          : null;
-    const problem = contractMismatch(
-      req.method,
-      route,
-      reply.statusCode,
-      String(reply.getHeader('content-type') ?? ''),
-      body,
-      req.url.split('?')[0],
-    );
-    if (problem) mismatches.push(problem);
+    // The hook only observes: whatever happens here, the answer leaves as it was.
+    let problem: string | null;
+    try {
+      const body =
+        typeof payload === 'string'
+          ? payload
+          : Buffer.isBuffer(payload)
+            ? payload.toString('utf8')
+            : null;
+      problem = check(
+        req.method,
+        route,
+        reply.statusCode,
+        String(reply.getHeader('content-type') ?? ''),
+        body,
+        req.url.split('?')[0],
+      );
+    } catch (error) {
+      problem = `${req.method} ${route} → ${reply.statusCode}: the check threw: ${String(error)}`;
+    }
+    if (!problem) return payload;
+    const started = startedIn.get(req) ?? null;
+    if (started === null && current === null)
+      problem = `${problem}\n  (outside a running test: in beforeAll or afterAll, or not awaited)`;
+    else if (started !== current)
+      problem = `${problem}\n  (sent by "${started ?? 'no test'}", answered ${current === null ? 'after it ended' : `during "${current}"`}: await every request)`;
+    mismatches.push(problem);
     return payload;
   });
 }
