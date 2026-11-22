@@ -763,6 +763,71 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     }
   });
 
+  it('checks the role of the inviter again when the invitation is written', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Casting' });
+    const p = made.body.id as string;
+    expect(
+      (
+        await call('owner', 'PUT', `/api/v1/projects/${p}/members/${as.guest.id}`, {
+          role: 'editor',
+        })
+      ).status,
+    ).toBe(200);
+    // A demotion that holds the inviter's account while the request passes its first check.
+    async function demotedDuring(body: object) {
+      let release = () => {};
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let held = () => {};
+      const holding = new Promise<void>((resolve) => {
+        held = resolve;
+      });
+      const demotion = db.transaction(async (tx) => {
+        await lockAccount(tx, as.guest.id);
+        await tx.execute(
+          sql`update project_member set role = 'viewer'
+            where project_id = ${p} and user_id = ${as.guest.id}`,
+        );
+        held();
+        await released;
+      });
+      await holding;
+      const res = call('guest', 'POST', '/api/v1/invitations', { projectId: p, ...body });
+      await vi.waitFor(
+        async () => {
+          const [waiting] = await db.execute<{ n: number }>(
+            sql`select count(*)::int as n from pg_stat_activity
+              where datname = current_database() and wait_event_type = 'Lock'`,
+          );
+          expect(waiting?.n).toBeGreaterThan(0);
+        },
+        { timeout: 10_000 },
+      );
+      release();
+      await demotion;
+      const done = await res;
+      await db.execute(
+        sql`update project_member set role = 'editor'
+          where project_id = ${p} and user_id = ${as.guest.id}`,
+      );
+      return done;
+    }
+    // Someone with an account would be added straight away.
+    const added = await demotedDuring({ kind: 'email', email: as.outsider.email, role: 'viewer' });
+    expect(added.status).toBe(403);
+    const members = await call('owner', 'GET', `/api/v1/projects/${p}/members`);
+    expect(members.body.items.map((m: { user: { id: string } }) => m.user.id)).not.toContain(
+      as.outsider.id,
+    );
+    const link = await demotedDuring({ kind: 'link', role: 'editor' });
+    expect(link.status).toBe(403);
+    expect(await db.select().from(invitationTable).where(eq(invitationTable.projectId, p))).toEqual(
+      [],
+    );
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
   it('caps invitation links at editor; owners are named from the people page', async () => {
     const own = await call('owner', 'POST', '/api/v1/projects', { name: 'Eredità' });
     const legacyProject = own.body.id;

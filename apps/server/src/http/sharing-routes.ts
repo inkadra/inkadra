@@ -233,9 +233,10 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   async function managerRole(
     actor: Actor,
     target: { projectId: string | null; boardId: string | null },
+    q: Pick<Database, 'select' | 'execute'> = db,
   ): Promise<ProjectRole | null> {
-    if (target.boardId) return (await requireBoardRole(db, actor, target.boardId, 'editor')).role;
-    if (target.projectId) return requireProjectRole(db, actor, target.projectId, 'editor');
+    if (target.boardId) return (await requireBoardRole(q, actor, target.boardId, 'editor')).role;
+    if (target.projectId) return requireProjectRole(q, actor, target.projectId, 'editor');
     if (actor.role !== 'admin')
       throw new HttpError('forbidden', 'Only administrators invite people to the instance.');
     return null;
@@ -568,10 +569,20 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         boardId = null;
       }
     }
-    const mine = await managerRole(actor, { projectId, boardId });
     const role = projectId ? (input.role ?? null) : null;
-    if (role && mine && higher(role, mine))
-      throw new HttpError('forbidden', 'You cannot give a role higher than yours.');
+    /**
+     * The actor's role over the target, within the cap on the role given. Run before the
+     * transactions (fail fast) and again inside them, after the actor's account lock: a
+     * demotion committed meanwhile is then seen, and one that comes later revokes the row
+     * (decision 0134).
+     */
+    const checkManager = async (q: Pick<Database, 'select' | 'execute'>, as: Actor) => {
+      const held = await managerRole(as, { projectId, boardId }, q);
+      if (role && held && higher(role, held))
+        throw new HttpError('forbidden', 'You cannot give a role higher than yours.');
+      return held;
+    };
+    await checkManager(db, actor);
     const accessExpiresAt = (role && readExpiry(input.accessExpiresAt, role)) || null;
 
     const [recent] = await db
@@ -601,7 +612,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         // One transaction, both people first, then the project row, before any other row: a
         // deletion of either, or of the project, comes first or waits (decision 0134).
         const entry = await db.transaction(async (tx) => {
-          await lockActiveAccount(tx, actor.id, existing.id);
+          const self = await lockActiveAccount(tx, actor.id, existing.id);
           const [still] = await tx
             .select({ id: user.id })
             .from(user)
@@ -613,6 +624,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
             .where(eq(project.id, projectId))
             .for('key share');
           if (!live) throw new HttpError('not_found', 'Project not found.');
+          const mine = await checkManager(tx, { ...actor, role: self.role });
           // The answer is read before the commit: their deletion may come right after it.
           const entry = () => entryFor(tx as unknown as Database, target, existing.id);
           const current = await boardAccess(tx, existing, target);
@@ -694,11 +706,25 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         : input.expiresInDays;
     const token = newSecret('', 24);
     const [created] = await db.transaction(async (tx) => {
+      // The actor's account first, so a removal or demotion of theirs either comes first and is
+      // seen below, or comes after and revokes this row with their others (decision 0134).
+      const self = await lockActiveAccount(tx, actor.id);
       if (email) {
         // Serialize the check and insert across requests and server processes without a schema change.
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtextextended(${JSON.stringify([email, projectId, boardId])}, 0))`,
         );
+      }
+      if (projectId) {
+        const [live] = await tx
+          .select({ id: project.id })
+          .from(project)
+          .where(eq(project.id, projectId))
+          .for('key share');
+        if (!live) throw new HttpError('not_found', 'Project not found.');
+      }
+      await checkManager(tx, { ...actor, role: self.role });
+      if (email) {
         const [pending] = await tx
           .select({ id: invitation.id })
           .from(invitation)
