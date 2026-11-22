@@ -9,6 +9,7 @@ import { type CreateFeedback, redactFeedback } from '@inkadra/shared';
 import sharp from 'sharp';
 import { decodeHeic } from './media/heic.ts';
 import { limitedCommand, mediaTools } from './media/tools.ts';
+import { safeInput } from './media/video.ts';
 
 const exec = promisify(execFile);
 /** All that may leave on this route, in step with the Worker's list. */
@@ -80,8 +81,7 @@ export async function relayVideo(path: string, mime: string) {
     '-hide_banner',
     '-loglevel',
     'error',
-    '-protocol_whitelist',
-    'file',
+    ...safeInput(mime),
     '-i',
     path,
     '-map',

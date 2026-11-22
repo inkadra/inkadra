@@ -198,6 +198,17 @@ export async function createApp(deps: AppDeps) {
       reply.header('referrer-policy', 'no-referrer');
       reply.header('x-robots-tag', 'noindex, nofollow');
     } else reply.header('referrer-policy', 'strict-origin-when-cross-origin');
+    // API answers are about the person asking: never kept by a shared cache or on disk, unless
+    // the route chose its own policy. One with an ETag stays revalidated rather than stored.
+    if (
+      req.url.startsWith(API_PREFIX) &&
+      !reply.hasHeader('cache-control') &&
+      String(reply.getHeader('content-type') ?? '').startsWith('application/json')
+    )
+      reply.header(
+        'cache-control',
+        reply.hasHeader('etag') ? 'private, no-cache' : 'private, no-store',
+      );
   });
 
   const monitor = deps.monitor ?? { store: memoryStore() };

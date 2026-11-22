@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { hostname, tmpdir } from 'node:os';
@@ -243,6 +243,10 @@ it('takes the location off a video, or says it can not', async () => {
     expect(clean?.length).toBeGreaterThan(0);
     expect(clean?.includes('+45.0712')).toBe(false);
     expect(await relayVideo(file, 'video/x-msvideo')).toBeNull();
+    // A playlist sent as a video opens nothing else: only the video demuxers are allowed.
+    const list = join(dir, 'list.mp4');
+    await writeFile(list, 'ffconcat version 1.0\nfile a.mov\n');
+    await expect(relayVideo(list, 'video/mp4')).rejects.toThrow();
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

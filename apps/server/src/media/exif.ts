@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises';
 import exifr from 'exifr';
+import { readPrefix } from './scratch.ts';
 
 /**
  * Camera and exposure fields kept from EXIF. Everything else is dropped, location above all:
@@ -29,6 +29,13 @@ const KEEP = [
 
 const MAX_STRING = 200;
 
+/**
+ * Bytes of a file handed to exifr: EXIF sits in the first blocks of a JPEG, HEIC or TIFF, and an
+ * original can be gigabytes. shortcut: EXIF placed past this point is not read; raise it if a
+ * camera puts it later.
+ */
+export const EXIF_MAX_BYTES = 4 * 1024 * 1024;
+
 export function pickExif(raw: Record<string, unknown> | undefined | null) {
   if (!raw) return null;
   const out: Record<string, string | number> = {};
@@ -45,7 +52,7 @@ export function pickExif(raw: Record<string, unknown> | undefined | null) {
 
 export async function readExif(file: string | Buffer) {
   try {
-    const buf = typeof file === 'string' ? await readFile(file) : file;
+    const buf = typeof file === 'string' ? await readPrefix(file, EXIF_MAX_BYTES) : file;
     const raw = await exifr.parse(buf, {
       pick: [...KEEP],
       gps: false,
