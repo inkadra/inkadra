@@ -164,6 +164,8 @@ export async function runDense(opts: DenseOptions) {
   let projectId: string | undefined;
   const sockets: HocuspocusProviderWebsocket[] = [];
   const boards: Array<ReturnType<typeof open>> = [];
+  /** Connections outside `sockets` and `boards` (the seeder), closed at the end whatever happens. */
+  const others: Array<() => void> = [];
   let boardInfo: DenseResult['board'] = { elements: 0, frames: 0, strokes: 0, bytes: 0 };
   let burst: DenseResult['burst'] = null;
   let baseline: ServerReading | null = null;
@@ -292,7 +294,9 @@ export async function runDense(opts: DenseOptions) {
       `Seeding it (${Math.round(reference.update.length / 1024)} KiB, ${reference.summary.elements.total} cards) in "${name}"…`,
     );
     const seederSocket = connect();
+    others.push(() => seederSocket.destroy());
     const seeder = open(seederSocket, rootBoard, 120_000);
+    others.push(seeder.close);
     await seeder.synced;
     Y.applyUpdate(seeder.doc, reference.update);
     // The reference board names its own board id; this one is the board's (later, so it wins).
@@ -314,6 +318,7 @@ export async function runDense(opts: DenseOptions) {
     };
     seeder.close();
     seederSocket.destroy();
+    others.length = 0;
 
     if (!stop.signal.aborted) {
       log(
@@ -389,6 +394,7 @@ export async function runDense(opts: DenseOptions) {
     measuring = false;
     for (const board of boards) board.close();
     for (const socket of sockets) socket.destroy();
+    for (const close of others) close();
     // The last saves happen as the connections close (see runLoad).
     if (projectId) await sleep(3000);
     opts.signal.removeEventListener('abort', onStop);

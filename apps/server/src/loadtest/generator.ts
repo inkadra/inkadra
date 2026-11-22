@@ -99,6 +99,8 @@ export function collabClients(
   ) {
     const res = await fetch(new URL(path, opts.baseUrl), {
       method,
+      // A hung server must not hold the run, its stop or its cleanup.
+      signal: AbortSignal.timeout(60_000),
       headers: {
         origin,
         ...authHeaders,

@@ -66,9 +66,12 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => stop.abort());
 
 let cookie = '';
+/** No request waits forever: a hung server must not hold the run or its cleanup. */
+const REQUEST_MS = 60_000;
 async function api(method: string, path: string, body?: unknown) {
   const res = await fetch(new URL(path, origin), {
     method,
+    signal: AbortSignal.timeout(REQUEST_MS),
     // No content type without a body: the server refuses an empty JSON body (DELETE).
     headers: {
       origin,
@@ -101,6 +104,7 @@ async function metrics() {
   if (!metricsToken) return null;
   const res = await fetch(new URL('/metrics', origin), {
     headers: { authorization: `Bearer ${metricsToken}` },
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`/metrics: ${res.status}`);
   return parseMetrics(await res.text());
