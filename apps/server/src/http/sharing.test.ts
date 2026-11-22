@@ -880,6 +880,61 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     }
   });
 
+  it('counts no sign-up on an invitation that expired while it waited for the inviter', async () => {
+    const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
+    const { cookie } = await claim(link.body.invitation.url);
+    const expiresAt = new Date(Date.now() + 3_000);
+    await db
+      .update(invitationTable)
+      .set({ expiresAt })
+      .where(eq(invitationTable.id, link.body.invitation.id));
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    const hold = db.transaction(async (tx) => {
+      await lockAccount(tx, as.owner.id);
+      held();
+      await released;
+    });
+    await holding;
+    const signUp = call(
+      { cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'waiter@example.com', password: PASSWORD, name: 'Waiter' },
+      '198.18.12.1',
+    );
+    await vi.waitFor(
+      async () => {
+        const [waiting] = await db.execute<{ n: number }>(
+          sql`select count(*)::int as n from pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock'`,
+        );
+        expect(waiting?.n).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
+    // Released only once the invitation has expired.
+    await new Promise((resolve) => setTimeout(resolve, expiresAt.getTime() - Date.now() + 200));
+    release();
+    await hold;
+    try {
+      expect((await signUp).status).toBe(403);
+      const [row] = await db
+        .select({ uses: invitationTable.uses })
+        .from(invitationTable)
+        .where(eq(invitationTable.id, link.body.invitation.id));
+      expect(row?.uses).toBe(0);
+    } finally {
+      await db.delete(user).where(eq(user.email, 'waiter@example.com'));
+    }
+  });
+
   it('checks the role of the inviter again when the invitation is written', async () => {
     const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Casting' });
     const p = made.body.id as string;

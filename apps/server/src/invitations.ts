@@ -189,8 +189,12 @@ export async function reserveInvitationUse(
           eq(invitation.id, invitationId),
           eq(invitation.invitedBy, about.invitedBy),
           isNull(invitation.revokedAt),
-          gt(invitation.expiresAt, sql`now()`),
-          or(isNull(invitation.accessExpiresAt), gt(invitation.accessExpiresAt, sql`now()`)),
+          // The time now, not when the transaction began: the lock may have been a long wait.
+          gt(invitation.expiresAt, sql`clock_timestamp()`),
+          or(
+            isNull(invitation.accessExpiresAt),
+            gt(invitation.accessExpiresAt, sql`clock_timestamp()`),
+          ),
           or(isNull(invitation.maxUses), lt(invitation.uses, invitation.maxUses)),
         ),
       )
