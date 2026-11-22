@@ -440,7 +440,7 @@ could claim any client address. Set it to **the proxy's own address**:
 
 - a bundled proxy (`deploy/proxy/*`): nothing to do. It runs at a fixed address,
   `10.212.47.2`, and its compose file sets `TRUST_PROXY` to it unless `.env` sets another value.
-  In split mode with Caddy or Nginx, the `collab` container keeps the general value;
+  In split mode, `deploy/proxy/<proxy>/compose.split.yaml` sets the same value on `collab`;
 - a proxy in the same Docker network: its single container IP, e.g.
   `TRUST_PROXY=172.18.0.10`. Pin it with `ipv4_address: 172.18.0.10` in compose
   (and configure network IPAM for that address);

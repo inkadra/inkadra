@@ -1,0 +1,16 @@
+# Split mode with Caddy: sends /collab to the collab container, which is then reached through
+# Caddy only. Use after deploy/compose.split.yaml and deploy/proxy/caddy/compose.yaml:
+#   docker compose -f compose.yaml -f deploy/compose.split.yaml \
+#     -f deploy/proxy/caddy/compose.yaml -f deploy/proxy/caddy/compose.split.yaml up -d
+
+services:
+  caddy:
+    environment:
+      INKADRA_COLLAB_UPSTREAM: ${INKADRA_COLLAB_UPSTREAM:-collab:3001}
+
+  collab:
+    # Reached through Caddy only.
+    ports: !reset []
+    environment:
+      # Only Caddy may say who the client is, unless .env names another proxy.
+      TRUST_PROXY: ${TRUST_PROXY:-10.212.47.2}

@@ -798,6 +798,21 @@ jobs:
           docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.office.yaml \
             -f deploy/compose.office.split.yaml config -q
           S3_ACCESS_KEY_ID=ci S3_SECRET_ACCESS_KEY=ci docker compose -f compose.yaml -f deploy/compose.rustfs.yaml config -q
+      # With a bundled proxy, every Inkadra container is reached through it only, and believes it only.
+      - name: Behind a bundled proxy, no Inkadra port is published
+        env:
+          INKADRA_DOMAIN: inkadra.example.com
+        run: |
+          set -e
+          for proxy in caddy nginx traefik; do
+            echo "== $proxy"
+            docker compose -f compose.yaml -f "deploy/proxy/$proxy/compose.yaml" config --format json |
+              jq -e '.services.inkadra.ports == null and .services.inkadra.environment.TRUST_PROXY == "10.212.47.2"'
+            docker compose -f compose.yaml -f deploy/compose.split.yaml -f "deploy/proxy/$proxy/compose.yaml" \
+              -f "deploy/proxy/$proxy/compose.split.yaml" config --format json |
+              jq -e '([.services.inkadra, .services.collab, .services.worker] | all(.ports == null))
+                and ([.services.inkadra, .services.collab] | all(.environment.TRUST_PROXY == "10.212.47.2"))'
+          done
       # The worker overrides security_opt for its seccomp profile: no-new-privileges must survive.
       - name: The Office worker is on the -office image, with the base's restrictions
         run: |
