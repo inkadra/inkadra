@@ -622,22 +622,24 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   it("refuses the Clipper's limited token and keeps app tokens (decision 0137)", async () => {
     const owner = people.owner?.id ?? '';
-    const failed = (c: ReturnType<typeof connect>) =>
-      new Promise<boolean>((resolve) => {
-        c.provider.on('authenticationFailed', () => resolve(true));
-        c.provider.on('synced', () => resolve(false));
-        setTimeout(() => resolve(false), 4000);
+    /** How the sign-in ended; a timeout is neither, and fails the test. */
+    const outcome = (c: ReturnType<typeof connect>) =>
+      new Promise<'refused' | 'synced' | 'timeout'>((resolve) => {
+        c.provider.on('authenticationFailed', () => resolve('refused'));
+        c.provider.on('synced', () => resolve('synced'));
+        setTimeout(() => resolve('timeout'), 4000);
       });
     const clip = await issueToken(db, owner, { name: 'Clipper', client: 'clipper' });
     const clipper = connect({ token: clip.token });
-    expect(await failed(clipper)).toBe(true);
+    expect(await outcome(clipper)).toBe('refused');
     clipper.close();
     // A refused sign-in does not count as a use of the token.
     const [row] = await db.select().from(personalToken).where(eq(personalToken.id, clip.row.id));
     expect(row?.lastUsedAt).toBeNull();
     const phone = await issueToken(db, owner, { name: 'Phone', client: 'mobile' });
     const mobile = connect({ token: phone.token });
-    expect(await failed(mobile)).toBe(false);
+    expect(await outcome(mobile)).toBe('synced');
+    expect(mobile.provider.isAuthenticated).toBe(true);
     mobile.close();
   });
 
