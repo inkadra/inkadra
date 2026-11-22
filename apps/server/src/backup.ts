@@ -518,8 +518,7 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
       // No row will ever point to this archive: retention would never remove it.
       log.warn({ backup: id, fileName }, 'backup written after it was marked over: removed');
       await rm(join(dir, fileName), { force: true });
-      if (copied && deps.remote)
-        await deps.remote.storage.remove([`${deps.remote.prefix}${fileName}`]).catch(() => {});
+      if (copied) await removeBucketCopy(deps, fileName);
     } else log.info({ backup: id, fileName, size: result.size }, 'backup written');
     await applyBackupRetention(deps);
     return row ?? null;
@@ -573,6 +572,23 @@ async function copyToBucket(
   }
 }
 
+/**
+ * Removes the bucket copy of `fileName`. A failure leaves it there and says so, with its key
+ * and the error message (never the request, which carries the credentials' signature).
+ */
+async function removeBucketCopy(deps: Pick<BackupDeps, 'remote' | 'log'>, fileName: string) {
+  if (!deps.remote) return;
+  const key = `${deps.remote.prefix}${fileName}`;
+  await deps.remote.storage
+    .remove([key])
+    .catch((err) =>
+      deps.log.warn(
+        { key, error: (err as Error).message },
+        'backup copy in the bucket not removed',
+      ),
+    );
+}
+
 /** Backups taken before an upgrade (#805) kept, apart from the nightly `retention`. */
 export const PRE_UPGRADE_KEEP = 2;
 
@@ -580,7 +596,9 @@ export const PRE_UPGRADE_KEEP = 2;
  * Keeps the newest `retention` successful backups, and the newest `PRE_UPGRADE_KEEP` taken
  * before an upgrade; removes older archives and old rows.
  */
-export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'remote' | 'backupDir'>) {
+export async function applyBackupRetention(
+  deps: Pick<BackupDeps, 'db' | 'remote' | 'backupDir' | 'log'>,
+) {
   const { db } = deps;
   const { retention } = await readBackupSettings(db);
   const kept = await db
@@ -597,8 +615,7 @@ export async function applyBackupRetention(deps: Pick<BackupDeps, 'db' | 'remote
       await rm(join(deps.backupDir, row.fileName), { force: true });
       // shortcut: the copy is removed from the bucket configured now; after BACKUP_S3_* changed,
       // copies in the earlier bucket stay there (documented).
-      if (row.copiedToBucket && deps.remote)
-        await deps.remote.storage.remove([`${deps.remote.prefix}${row.fileName}`]).catch(() => {});
+      if (row.copiedToBucket) await removeBucketCopy(deps, row.fileName);
     }
   }
   if (old.length)
@@ -778,7 +795,7 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
     const adopt = async (db: Database) => {
       try {
         await adoptPreUpgradeArchives(db, dir, deps);
-        await applyBackupRetention({ db, remote: deps.remote, backupDir: dir });
+        await applyBackupRetention({ db, remote: deps.remote, backupDir: dir, log });
       } catch (err) {
         // The archives are complete on disk: only the history misses them.
         log.error({ err, dir }, 'backups before the migrations written but not listed');
@@ -828,8 +845,7 @@ export function backupBeforeMigrating(deps: Omit<BackupDeps, 'db'>, opts: { skip
     // One archive per schema state: the new one replaces older copies of the same state.
     for (const old of same) {
       await rm(join(dir, old), { force: true }).catch(() => {});
-      if (deps.remote)
-        await deps.remote.storage.remove([`${deps.remote.prefix}${old}`]).catch(() => {});
+      await removeBucketCopy(deps, old);
     }
     const copied = await copyToBucket(deps, id, fileName);
     const file = join(dir, fileName);

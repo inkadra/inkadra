@@ -190,6 +190,7 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
         status: 'ready' as const,
         fileName: `${trigger}-${daysAgo}.zip`,
         startedAt: new Date(Date.now() - daysAgo * day),
+        copiedToBucket: daysAgo === 300,
       });
       await db
         .insert(instanceBackup)
@@ -199,7 +200,19 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
           row('pre-upgrade', 20),
           ...Array.from({ length: 9 }, (_, i) => row('scheduled', i)),
         ]);
-      await applyBackupRetention({ ...d, db });
+      // A copy the bucket refuses to remove is left there, and the log says which.
+      const refusing = { ...d.storage, remove: () => Promise.reject(new Error('denied')) };
+      const warn = vi.fn();
+      await applyBackupRetention({
+        ...d,
+        db,
+        remote: { storage: refusing, prefix: 'backups/', label: 's3://bucket/backups' },
+        log: { ...log, warn } as unknown as typeof log,
+      });
+      expect(warn).toHaveBeenCalledWith(
+        { key: 'backups/pre-upgrade-300.zip', error: 'denied' },
+        'backup copy in the bucket not removed',
+      );
       const kept = await db.select().from(instanceBackup);
       const live = kept.filter((r) => !r.removedAt);
       expect(live.filter((r) => r.trigger === 'pre-upgrade').map((r) => r.fileName)).toEqual(
