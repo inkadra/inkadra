@@ -2,6 +2,7 @@
 export * from './assets.ts';
 export * from './audit.ts';
 export * from './backups.ts';
+export * from './board-links.ts';
 export * from './boards.ts';
 export * from './bytes.ts';
 export * from './calendar.ts';
