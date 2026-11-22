@@ -1057,11 +1057,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Convert a Word document in the pushed image's sandbox
+        env:
+          # The script's image is $INKADRA_IMAGE:$INKADRA_TAG-office: this repository's, also in a fork.
+          INKADRA_IMAGE: ${{ env.IMAGE }}
+          INKADRA_TAG: smoke
         run: |
           digest=$(ls "$RUNNER_TEMP/digests")
           docker pull "$IMAGE@sha256:$digest"
           docker tag "$IMAGE@sha256:$digest" "$IMAGE:smoke-office"
-          INKADRA_TAG=smoke scripts/test-office.sh
+          scripts/test-office.sh
 
   manifest:
     name: Tag and attest image (${{ matrix.variant }})
