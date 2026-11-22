@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import {
+  clearLocalBoards,
   keepAside,
   localBoardName,
   openLocalBoard,
@@ -147,5 +148,32 @@ it('signs out keeping the copies when they cannot be listed', async () => {
   expect(reload).toHaveBeenCalledOnce();
   // Named after the person: the next account on this browser does not open them.
   expect(await unsavedLocalBoards('leaver')).toContain('unlisted');
+  await act(async () => root.unmount());
+});
+
+it('names an unreadable copy set aside as set aside, with its download', async () => {
+  await clearLocalBoards('leaver');
+  const doc = new Y.Doc();
+  doc.getMap('meta').set('title', 'Refused, then unreadable');
+  await keepAside('leaver', 'aside', doc);
+  const open = indexedDB.open.bind(indexedDB);
+  vi.spyOn(indexedDB, 'open').mockImplementation((name, version) => {
+    if (name !== 'inkadra-kept:leaver:aside') return open(name, version);
+    const failed = { error: new DOMException('Read failed') } as unknown as IDBOpenDBRequest;
+    Object.defineProperty(failed, 'onerror', {
+      set: (handler: () => void) => setTimeout(handler),
+    });
+    return failed;
+  });
+  const signOut = vi.spyOn(authApi, 'signOut').mockResolvedValue(null);
+  const root = createRoot(document.body.appendChild(document.createElement('div')));
+  await act(async () => root.render(<Probe />));
+  await act(async () => start());
+  await settle();
+  expect(document.body.textContent).toContain('auth.signOutUnsaved.kept {"count":1}');
+  expect(document.body.textContent).not.toContain('auth.signOutUnsaved.body');
+  expect(button('auth.signOutUnsaved.download')).toBeDefined();
+  expect(signOut).not.toHaveBeenCalled();
+  await act(async () => button('auth.signOutUnsaved.stay')?.click());
   await act(async () => root.unmount());
 });

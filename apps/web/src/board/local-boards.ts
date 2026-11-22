@@ -295,11 +295,14 @@ export async function keepAside(userId: string, boardId: string, doc: Y.Doc): Pr
   }
 }
 
-/** The boards of the person with edits set aside on this device, not downloaded yet. */
+/**
+ * The boards of the person with edits set aside on this device, not downloaded yet. A copy whose
+ * flag cannot be read counts: it may not be downloaded yet, so signing out asks first.
+ */
 export async function keptBoards(userId: string): Promise<string[]> {
   const boards: string[] = [];
   for (const name of await storedNames(`${KEPT_PREFIX}${userId}:`))
-    if ((await readUnsaved(name).catch(() => undefined)) === 1)
+    if ((await readUnsaved(name).catch(() => 1)) === 1)
       boards.push(name.slice(KEPT_PREFIX.length + userId.length + 1));
   return boards;
 }
@@ -662,10 +665,10 @@ export function discardKept(userId: string, boardId: string): Promise<void> {
  */
 export async function unsavedLocalBoards(userId: string): Promise<string[]> {
   const boards = new Set<string>();
-  for (const prefix of [PREFIX, KEPT_PREFIX])
-    for (const name of await storedNames(`${prefix}${userId}:`))
-      if ((await readUnsaved(name).catch(() => 1)) === 1)
-        boards.add(name.slice(prefix.length + userId.length + 1));
+  for (const name of await storedNames(`${PREFIX}${userId}:`))
+    if ((await readUnsaved(name).catch(() => 1)) === 1)
+      boards.add(name.slice(PREFIX.length + userId.length + 1));
+  for (const board of await keptBoards(userId)) boards.add(board);
   return [...boards];
 }
 
