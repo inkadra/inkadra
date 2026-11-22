@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, stat, statfs, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readdir, rm, stat, statfs, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 /** Prefix of the scratch folder of one media job, in DATA_DIR/tmp. */
@@ -47,6 +47,24 @@ export async function privateInput(dir: string, source: string) {
     throw err;
   }
   return link;
+}
+
+/** The first `max` bytes of a file at most, never the whole of a large original. */
+export async function readPrefix(path: string, max: number) {
+  const file = await open(path, 'r');
+  try {
+    const buf = Buffer.alloc(Math.min((await file.stat()).size, max));
+    // A read may return less than asked before the end (network mounts, FUSE).
+    let filled = 0;
+    while (filled < buf.length) {
+      const { bytesRead } = await file.read(buf, filled, buf.length - filled, filled);
+      if (!bytesRead) break;
+      filled += bytesRead;
+    }
+    return buf.subarray(0, filled);
+  } finally {
+    await file.close();
+  }
 }
 
 /** Removes job folders older than `olderThanMs` (by mtime); returns how many went. */

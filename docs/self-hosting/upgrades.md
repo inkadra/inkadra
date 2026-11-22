@@ -136,6 +136,24 @@ restored with 0.10.1 (see [Going back to an older version](#going-back-to-an-old
 - **Project order per member.** Migration 0056 copies each project's shared order to every member,
   who then keeps their own. A list of projects paged across the upgrade may repeat or skip one
   project once.
+- **A guessable `AUTH_SECRET` stops the start.** With `NODE_ENV=production` (the image's
+  default), 0.11 refuses an `AUTH_SECRET` that is an example value from the documentation or the
+  tests, contains `change-me`, or has fewer than 8 different characters. The server exits at start
+  and its log says:
+
+  ```text
+  Invalid configuration:
+    AUTH_SECRET: Too easy to guess (an example value or too few different characters): generate one with `openssl rand -hex 32`. …
+  ```
+
+  Replace it before or after upgrading, as in
+  [Rotating the authentication secret](configuration.md#rotating-the-authentication-secret):
+  1. In `.env`, copy the current value to a new line `AUTH_SECRET_PREVIOUS=<the current value>`.
+     It may be weak: it only keeps two-factor secrets, app token proofs and sealed invitation and
+     share-link tokens readable.
+  2. Set `AUTH_SECRET` to a new value from `openssl rand -hex 32`.
+  3. Run `docker compose up -d` (every container with the same two values in a split setup).
+     Everyone signs in again, and calendar feeds must be generated again.
 
 ## Upgrading to 0.10.1
 
