@@ -229,13 +229,20 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
   }
 }
 
-/** Entries for every valid element of a document. Elements a newer client wrote are skipped. */
-export function entriesFor(doc: Y.Doc): IndexEntry[] {
-  const read: Array<{ el: Element; map: Y.Map<unknown> }> = [];
+type ReadElements = Array<{ el: Element; map: Y.Map<unknown> }>;
+
+/** Every valid element of a document. Elements a newer client wrote are skipped. */
+function readElements(doc: Y.Doc): ReadElements {
+  const read: ReadElements = [];
   for (const map of roots(doc).elements.values()) {
     const el = readElement(map);
     if (el) read.push({ el, map });
   }
+  return read;
+}
+
+/** Entries for every valid element of a document (`read`: its elements, if already read). */
+export function entriesFor(doc: Y.Doc, read = readElements(doc)): IndexEntry[] {
   const labels = autoFrameLabels(read.map((r) => r.el));
   // A plan is found by the live names of what it links to (decision 0104): the characters its
   // actors play and its location, as they read now.
@@ -327,7 +334,9 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
   });
   const projectId = await lockBoardForIndex(tx, boardId);
   if (!projectId) return 0;
-  const entries = entriesFor(doc);
+  // One pass over the cards for the rows and the tasks.
+  const read = readElements(doc);
+  const entries = entriesFor(doc, read);
   // File cards are searchable by both their file name and their caption.
   const fileIds = entries.flatMap((e) => (e.type === 'file' && e.assetId ? [e.assetId] : []));
   const names = new Map<string, string>();
@@ -401,7 +410,10 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
     .set({
       indexedAt: new Date(),
       counts: docCounts(doc),
-      tasks: openTasks(doc),
+      tasks: openTasks(
+        doc,
+        read.map((r) => r.el),
+      ),
       unsorted: unsortedInDoc(doc),
       updatedAt: sql`${boardDoc.updatedAt}`,
     })
@@ -470,6 +482,37 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
   return { indexed, failed, last: stale.at(-1)?.boardId };
 }
 
+type Reserved = Awaited<ReturnType<Database['$client']['reserve']>>;
+
+/**
+ * Whether the session of `conn` holds no advisory lock any more, so it may go back to the pool.
+ * When the unlock fails, the session is ended (postgres.js cannot drop one reserved connection),
+ * which frees its locks and closes it. If even that fails it is never released: back in the pool
+ * it would keep the backfill lock and stop every later backfill.
+ */
+async function unlocked(conn: Reserved, log: Logger): Promise<boolean> {
+  try {
+    await conn`select pg_advisory_unlock_all()`;
+    return true;
+  } catch (err) {
+    log.warn({ err }, 'board search index backfill lock not released: ending its session');
+  }
+  try {
+    await conn`select pg_terminate_backend(pg_backend_pid())`;
+  } catch (err) {
+    // The session ending under the query is what was asked for.
+    const code = (err as { code?: unknown }).code;
+    if (code !== '57P01' && code !== 'CONNECTION_CLOSED') {
+      log.error(
+        { err },
+        'board search index backfill lock held: its connection is kept out of the pool',
+      );
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Session lock key: one search-index backfill at a time across processes (#815). */
 const BACKFILL_LOCK = 10895;
 
@@ -485,7 +528,7 @@ export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 
     // (#815). The lock lives in the session of one reserved connection.
     if (running) return;
     running = true;
-    let reserved: Awaited<ReturnType<Database['$client']['reserve']>> | undefined;
+    let reserved: Reserved | undefined;
     try {
       reserved = await db.$client.reserve();
       const [lock] = await reserved<
@@ -506,10 +549,7 @@ export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 
     } catch (err) {
       log.error({ err }, 'board search index backfill failed');
     } finally {
-      if (reserved) {
-        await reserved`select pg_advisory_unlock_all()`.catch(() => {});
-        reserved.release();
-      }
+      if (reserved && (await unlocked(reserved, log))) reserved.release();
       running = false;
     }
   };

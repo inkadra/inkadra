@@ -2,11 +2,11 @@ import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, newElementId, roots } from '@inkadra/doc-schema';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
-import { createDatabase, runMigrations } from '../db/client.ts';
+import { createDatabase, type Database, runMigrations } from '../db/client.ts';
 import {
   board,
   boardDoc,
@@ -18,6 +18,9 @@ import {
 import { createApp } from '../http/app.ts';
 import {
   containsPattern,
+  kitDecodes,
+  MAX_WAITING_DECODES,
+  oneAtATime,
   prefixPattern,
   searchTagPatterns,
   snippet,
@@ -28,6 +31,7 @@ import {
   backfillIndex,
   entriesFor,
   fragmentText,
+  startIndexBackfill,
   writeBoardIndex,
 } from './index-doc.ts';
 
@@ -268,6 +272,92 @@ describe('index entries', () => {
       words: ['notte 100%_', 'notte', '100%_'],
       prefixes: ['notte 100\\%\\_%', 'notte%', '100\\%\\_%'],
     });
+  });
+});
+
+describe('documents decoded for the project kit', () => {
+  it('decodes one at a time across requests, and goes on after a failure', async () => {
+    let running = 0;
+    let most = 0;
+    const task = (fail: boolean) => async () => {
+      running += 1;
+      most = Math.max(most, running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running -= 1;
+      if (fail) throw new Error('unreadable');
+      return 'ok';
+    };
+    const results = await Promise.allSettled([
+      oneAtATime(task(false)),
+      oneAtATime(task(true)),
+      oneAtATime(task(false)),
+    ]);
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected', 'fulfilled']);
+    expect(most).toBe(1);
+  });
+
+  it('lets only so many requests wait for a decode', async () => {
+    let unblock = () => {};
+    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const queued = Array.from({ length: MAX_WAITING_DECODES }, () => oneAtATime(async () => 1));
+    expect(queued.every((q) => q !== null)).toBe(true);
+    // One more goes on without waiting: the caller leaves that board out.
+    expect(oneAtATime(async () => 1)).toBeNull();
+    unblock();
+    await blocker;
+    expect(await Promise.all(queued)).toEqual(queued.map(() => 1));
+    expect(kitDecodes.waiting).toBe(0);
+  });
+});
+
+/** A reserved connection whose unlock fails, and whose other queries `forward` answers. */
+function failingUnlock(
+  forward: (text: string, strings: TemplateStringsArray, values: unknown[]) => Promise<unknown>,
+  release: () => void,
+) {
+  return Object.assign(
+    async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = strings.join('?');
+      if (text.includes('pg_advisory_unlock_all')) throw new Error('statement timeout');
+      return forward(text, strings, values);
+    },
+    { release },
+  );
+}
+
+describe('index backfill lock', () => {
+  const run = async (terminate: () => Promise<unknown>) => {
+    const sent: string[] = [];
+    const release = vi.fn();
+    const reserved = failingUnlock(async (text) => {
+      sent.push(text);
+      if (text.includes('pg_try_advisory_lock')) return [{ ok: false }];
+      if (text.includes('pg_terminate_backend')) return terminate();
+      return [];
+    }, release);
+    const db = { $client: { reserve: async () => reserved } } as unknown as Database;
+    const log = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
+    const backfill = startIndexBackfill(db, log as unknown as pino.Logger);
+    await vi.waitFor(() => expect(sent.some((t) => t.includes('pg_terminate_backend'))).toBe(true));
+    await new Promise((resolve) => setImmediate(resolve));
+    backfill.stop();
+    return { release, log };
+  };
+
+  it('ends the session instead of pooling it when the lock cannot be released', async () => {
+    // The session ending under its own query is the expected answer.
+    const ended = await run(async () => {
+      throw Object.assign(new Error('terminating connection'), { code: '57P01' });
+    });
+    expect(ended.log.warn).toHaveBeenCalledTimes(1);
+    expect(ended.release).toHaveBeenCalledTimes(1);
+    // A session that could not be ended keeps the lock: never back in the pool.
+    const stuck = await run(async () => {
+      throw new Error('statement timeout');
+    });
+    expect(stuck.log.error).toHaveBeenCalledTimes(1);
+    expect(stuck.release).not.toHaveBeenCalled();
   });
 });
 
@@ -655,6 +745,159 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     for (const id of [shared, closed]) await db.delete(board).where(eq(board.id, id));
   });
 
+  it('answers cast appearances and the plan kit of several boards, decoding each stored state once', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { name: 'Kit' },
+    });
+    const kitProject = created.json().id as string;
+    const rootBoard = created.json().rootBoardId as string;
+    const addBoard = async (fill: (doc: Y.Doc) => void) => {
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${kitProject}/boards`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { parentBoardId: rootBoard, kind: 'storyboard', title: 'Kit' },
+      });
+      const id = added.json().id as string;
+      const doc = createBoardDoc(id);
+      fill(doc);
+      const update = Y.encodeStateAsUpdate(doc);
+      await db
+        .insert(boardDoc)
+        .values({ boardId: id, state: update, schemaVersion: 26, size: update.byteLength });
+      await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+      return { id, doc };
+    };
+    const at = (z: string, parent: string | null = null) => ({ ...base(parent), z });
+    const icon = (kind: 'cob' | 'camera', extra: Record<string, unknown>) => ({
+      id: newElementId(),
+      kind,
+      color: '#EDD963',
+      x: 100,
+      y: 100,
+      ...extra,
+    });
+    // Oldest first: the answers list the most recently stored boards first.
+    const a = await addBoard((doc) => {
+      const one = { ...at('a0'), type: 'scene' as const, number: '1', title: '' };
+      const two = { ...at('a1'), type: 'scene' as const, number: '2', title: '' };
+      addElement(doc, one);
+      addElement(doc, two);
+      addElement(doc, { ...at('a0', one.id), type: 'frame', cast: ['Marta', 'Leo'] });
+      addElement(doc, { ...at('a1', one.id), type: 'frame', cast: ['marta '] });
+      addElement(doc, { ...at('a0', two.id), type: 'frame', cast: ['Leo'] });
+      addElement(doc, { ...at('a2'), type: 'frame', cast: ['Nina'] });
+      addElement(doc, {
+        ...at('a3'),
+        type: 'plan',
+        icons: [icon('camera', { label: 'A cam', lens: 35 }), icon('cob', { make: 'Aputure' })],
+      });
+    });
+    const b = await addBoard((doc) => {
+      const three = { ...at('a0'), type: 'scene' as const, number: '3', title: '' };
+      addElement(doc, three);
+      addElement(doc, { ...at('a0', three.id), type: 'frame', cast: ['Leo', 'Ada'] });
+      addElement(doc, {
+        ...at('a1'),
+        type: 'plan',
+        icons: [icon('camera', { label: 'A cam', lens: 24 }), icon('cob', { make: 'Nanlux' })],
+      });
+    });
+    await addBoard((doc) => addElement(doc, { ...at('a0'), type: 'note' }));
+    const cast = `/api/v1/projects/${kitProject}/cast-appearances`;
+    const kit = `/api/v1/projects/${kitProject}/plan-kit`;
+    const castItems = [
+      { name: 'leo', frames: 3, scenes: ['3', '1', '2'] },
+      { name: 'ada', frames: 1, scenes: ['3'] },
+      { name: 'marta', frames: 2, scenes: ['1'] },
+      { name: 'nina', frames: 1, scenes: [] },
+    ];
+    const cam = JSON.stringify(['camera', 'A cam', '']);
+    const light = (make: string) => JSON.stringify([{ kind: 'cob', make, color: '#EDD963' }, []]);
+    const kitItems = [
+      {
+        key: cam,
+        icon: { kind: 'camera', label: 'A cam', lens: 24, color: '#EDD963' },
+        modifiers: [],
+        lenses: [24, 35],
+      },
+      {
+        key: light('Nanlux'),
+        icon: { kind: 'cob', make: 'Nanlux', color: '#EDD963' },
+        modifiers: [],
+        lenses: [],
+      },
+      {
+        key: light('Aputure'),
+        icon: { kind: 'cob', make: 'Aputure', color: '#EDD963' },
+        modifiers: [],
+        lenses: [],
+      },
+    ];
+    expect((await get('owner', cast)).body).toEqual({ items: castItems });
+    // The same stored bytes again: nothing is decoded.
+    const decoded = kitDecodes.decoded;
+    expect((await get('owner', cast)).body).toEqual({ items: castItems });
+    expect(kitDecodes.decoded).toBe(decoded);
+    // A board stored again is decoded again, even with the same time.
+    addElement(a.doc, { ...at('a4'), type: 'frame', cast: ['Zoe'] });
+    const stored = Y.encodeStateAsUpdate(a.doc);
+    await db.execute(
+      sql`update board_doc set state = ${stored}, size = ${stored.byteLength}, updated_at = updated_at where board_id = ${a.id}`,
+    );
+    expect((await get('owner', cast)).body.items).toEqual([
+      ...castItems,
+      { name: 'zoe', frames: 1, scenes: [] },
+    ]);
+    expect(kitDecodes.decoded).toBe(decoded + 1);
+    await db.delete(projectTable).where(eq(projectTable.id, kitProject));
+  });
+
+  it('leaves out a board whose grant was closed while its decode waited', async () => {
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Revocata' },
+    });
+    const id = added.json().id as string;
+    const doc = createBoardDoc(id);
+    addElement(doc, { ...base(), type: 'frame', cast: ['Revocata'] });
+    const update = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const [guest] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, 'guest@example.com'));
+    const path = `/api/v1/projects/${projectId}/cast-appearances`;
+    let unblock = () => {};
+    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const pending = get('guest', path);
+    // The new board, the most recently edited, waits for its decode.
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(1));
+    await db
+      .update(boardGrant)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(boardGrant.userId, guest!.id));
+    unblock();
+    await blocker;
+    const names = (await pending).body.items.map((i: { name: string }) => i.name);
+    expect(names).not.toContain('revocata');
+    await db.update(boardGrant).set({ expiresAt: null }).where(eq(boardGrant.userId, guest!.id));
+    // With the grant back, the board is listed.
+    expect((await get('guest', path)).body.items.map((i: { name: string }) => i.name)).toContain(
+      'revocata',
+    );
+    await db.delete(board).where(eq(board.id, id));
+  });
+
   it('limits how often one person reads the project kit', async () => {
     // Each answer decodes board documents: a script must not keep the server busy for everyone.
     const path = `/api/v1/projects/${projectId}/plan-kit`;
@@ -988,5 +1231,38 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     });
     expect((await get('owner', '/api/v1/search?q=binar')).body.items).toEqual([]);
     expect((await get('owner', `/api/v1/projects/${projectId}/tags`)).body.items).toEqual([]);
+  });
+
+  it('frees the backfill lock when releasing it fails', async () => {
+    const release = vi.fn();
+    const failing = Object.create(db) as Database;
+    Object.defineProperty(failing, '$client', {
+      value: {
+        reserve: async () => {
+          const real = await client.reserve();
+          return failingUnlock(
+            (_text, strings, values) => real(strings, ...(values as never[])),
+            () => {
+              release();
+              real.release();
+            },
+          );
+        },
+      },
+    });
+    const log = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
+    const backfill = startIndexBackfill(failing, log as unknown as pino.Logger);
+    await vi.waitFor(() => expect(release).toHaveBeenCalled(), { timeout: 10_000 });
+    backfill.stop();
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    expect(log.error).not.toHaveBeenCalled();
+    // Another session takes the lock: the one that held it is gone.
+    const other = createDatabase(config.DATABASE_URL, 1);
+    try {
+      const [lock] = await other.sql<{ ok: boolean }[]>`select pg_try_advisory_lock(10895) as ok`;
+      expect(lock?.ok).toBe(true);
+    } finally {
+      await other.sql.end();
+    }
   });
 });
