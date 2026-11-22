@@ -91,6 +91,39 @@ describe('parseBoardHref', () => {
     expect(parseBoardHref(`/p/${P}/b/${B}?el=`)).toBeNull();
   });
 
+  it('refuses a key that decodes to el, alone or before or after a literal one', () => {
+    const OTHER = 'W2StGXR8_Z5jdHi6B-myT';
+    const base = `/p/${P}/b/${B}?`;
+    for (const q of [
+      `%65l=${FRAME}`,
+      `%65%6C=${FRAME}`,
+      `e%6c=${FRAME}`,
+      `%65l=${OTHER}&el=${FRAME}`,
+      `el=${FRAME}&%65l=${OTHER}`,
+    ])
+      expect(parseBoardHref(base + q), q).toBeNull();
+    // Other parameters, even with escapes, are left alone.
+    expect(parseBoardHref(`${base}thread=%41&el=${FRAME}&x%2By=1`)?.cardId).toBe(FRAME);
+    expect(parseBoardHref(`${base}%E0%A4%A=1&el=${FRAME}`)?.cardId).toBe(FRAME);
+  });
+
+  it('reads an absolute URL on a bracketed IPv6 origin, host and port exact', () => {
+    const rest = `/p/${P}/b/${B}?el=${FRAME}`;
+    expect(parseBoardHref(`http://[fd00::1]:8080${rest}`, 'http://[fd00::1]:8080')?.cardId).toBe(
+      FRAME,
+    );
+    expect(parseBoardHref(`https://[FD00::1]${rest}`, 'https://[fd00::1]/')?.cardId).toBe(FRAME);
+    for (const [href, origin] of [
+      [`http://[fd00::2]:8080${rest}`, 'http://[fd00::1]:8080'],
+      [`http://[fd00::1]:8081${rest}`, 'http://[fd00::1]:8080'],
+      [`http://[fd00::1]${rest}`, 'http://[fd00::1]:8080'],
+      [`http://[fd00::1]:8080@evil.example${rest}`, 'http://[fd00::1]:8080'],
+      [`http://fd00::1${rest}`, 'http://fd00::1'],
+      [`http://[fd00::1%25eth0]${rest}`, 'http://[fd00::1%25eth0]'],
+    ])
+      expect(parseBoardHref(href as string, origin), href).toBeNull();
+  });
+
   it('reads an absolute URL only on an http(s) origin, matched exactly', () => {
     const rest = `/p/${P}/b/${B}?el=${FRAME}`;
     expect(

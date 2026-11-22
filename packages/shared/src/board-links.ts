@@ -23,8 +23,11 @@ export interface BoardHref {
 
 /** A path as `boardHref` writes it: ids in their own alphabets, nothing to decode. */
 const BOARD_PATH = /^\/p\/([0-9A-Za-z-]+)\/b\/([0-9A-Za-z-]+)\/?(?:\?([^#]*))?(?:#.*)?$/;
-/** An `http(s)` origin: scheme and host (a port allowed), no user, path, query or fragment. */
-const ORIGIN = /^(https?:\/\/[0-9A-Za-z.-]+(?::\d{1,5})?)\/?$/i;
+/**
+ * An `http(s)` origin: scheme and host (a name, an IPv4 or a bracketed IPv6 address; a port
+ * allowed), no user, path, query or fragment.
+ */
+const ORIGIN = /^(https?:\/\/(?:[0-9A-Za-z.-]+|\[[0-9A-Fa-f:.]+\])(?::\d{1,5})?)\/?$/i;
 /** Controls, spaces and backslashes: separators that URL parsers read differently. */
 const ambiguous = (s: string) =>
   [...s].some((ch) => {
@@ -52,6 +55,10 @@ export function parseBoardHref(href: string, origin?: string): BoardHref | null 
   const match = BOARD_PATH.exec(path);
   if (!match) return null;
   const [, projectId = '', boardId = '', query = ''] = match;
+  const keys = query.split('&').map((p) => p.split('=')[0] as string);
+  // The web reads keys decoded (URLSearchParams, the first `el` wins): a key spelled otherwise
+  // that decodes to `el` would make two readers pick two cards, so it is refused.
+  if (keys.some((k) => k !== 'el' && decodedKey(k) === 'el')) return null;
   const cards = query
     .split('&')
     .filter((p) => p === 'el' || p.startsWith('el='))
@@ -61,4 +68,13 @@ export function parseBoardHref(href: string, origin?: string): BoardHref | null 
   if (!Id.safeParse(projectId).success || !Id.safeParse(boardId).success) return null;
   if (cardId !== null && !ElementRef.safeParse(cardId).success) return null;
   return { projectId, boardId, cardId };
+}
+
+/** A query key as URLSearchParams decodes it (`+` a space); a malformed escape stays as it is. */
+function decodedKey(key: string): string {
+  try {
+    return decodeURIComponent(key.replace(/\+/g, ' '));
+  } catch {
+    return key;
+  }
 }
