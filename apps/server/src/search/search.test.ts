@@ -17,7 +17,10 @@ import {
 } from '../db/schema.ts';
 import { createApp } from '../http/app.ts';
 import {
+  cachedPart,
   containsPattern,
+  KIT_CACHE_CHARS,
+  keepPart,
   kitDecodes,
   MAX_WAITING_DECODES,
   oneAtATime,
@@ -276,6 +279,19 @@ describe('index entries', () => {
 });
 
 describe('documents decoded for the project kit', () => {
+  it('keeps derived parts within a size budget, never one too large', () => {
+    const value = (chars: number) => [{ name: 'x'.repeat(chars), frames: 1, scenes: [] }];
+    keepPart('cast', 'huge', 'v1', value(KIT_CACHE_CHARS / 10));
+    expect(cachedPart('cast', 'huge')).toBeUndefined();
+    // Each part a fortieth of the budget: the oldest go first once it is full.
+    for (let i = 0; i < 45; i++) keepPart('cast', `b${i}`, 'v1', value(KIT_CACHE_CHARS / 40));
+    expect(cachedPart('cast', 'b0')).toBeUndefined();
+    expect(cachedPart('cast', 'b44')?.version).toBe('v1');
+    // The other part of a board is kept on its own.
+    expect(cachedPart('plan', 'b44')).toBeUndefined();
+    for (let i = 0; i < 45; i++) keepPart('cast', `b${i}`, 'v1', []);
+  });
+
   it('decodes one at a time across requests, and goes on after a failure', async () => {
     let running = 0;
     let most = 0;

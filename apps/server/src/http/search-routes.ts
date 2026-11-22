@@ -164,8 +164,12 @@ interface BoardKit {
   plan: ProjectKitEntry[];
 }
 
-/** The kit of a stored document, decoded for this alone. */
-function kitOf(state: Uint8Array): BoardKit {
+type Part = keyof BoardKit;
+/** The cards whose index rows say a board has something for that part. */
+const PART_TYPE: Record<Part, ElementType> = { cast: 'frame', plan: 'plan' };
+
+/** One part of the kit of a stored document, decoded for this alone. */
+function kitOf<P extends Part>(state: Uint8Array, part: P): BoardKit[P] {
   const doc = new Y.Doc();
   try {
     Y.applyUpdate(doc, state);
@@ -173,12 +177,13 @@ function kitOf(state: Uint8Array): BoardKit {
       const el = readElement(map);
       return el ? [el] : [];
     });
-    return {
-      cast: castAppearances(elements),
-      plan: projectKit(
-        elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
-      ),
-    };
+    return (
+      part === 'cast'
+        ? castAppearances(elements)
+        : projectKit(
+            elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
+          )
+    ) as BoardKit[P];
   } finally {
     doc.destroy();
   }
@@ -193,9 +198,43 @@ function kitOf(state: Uint8Array): BoardKit {
  */
 const version = sql<string>`${boardDoc.updatedAt}::text || '/' || ${boardDoc.size} || '/' || board_doc.xmin::text`;
 
-/** The kits derived lately, by board, with the version of the bytes they come from. */
-const kitCache = new Map<string, BoardKit & { version: string }>();
-const KIT_CACHE_BOARDS = 500;
+/**
+ * The parts derived lately, by part and board, least recently used first, with the version of
+ * the bytes they come from and their size as JSON (an estimate of their memory).
+ */
+const kitCache = new Map<string, { version: string; value: unknown; size: number }>();
+const KIT_CACHE_ENTRIES = 500;
+export const KIT_CACHE_CHARS = 8_000_000;
+let kitCacheChars = 0;
+
+export function cachedPart<P extends Part>(part: P, boardId: string) {
+  const key = `${part}:${boardId}`;
+  const entry = kitCache.get(key);
+  if (entry) {
+    kitCache.delete(key);
+    kitCache.set(key, entry);
+  }
+  return entry as { version: string; value: BoardKit[P] } | undefined;
+}
+
+export function keepPart(part: Part, boardId: string, version: string, value: unknown) {
+  const key = `${part}:${boardId}`;
+  const old = kitCache.get(key);
+  if (old) {
+    kitCache.delete(key);
+    kitCacheChars -= old.size;
+  }
+  const size = JSON.stringify(value).length;
+  // One huge kit would push out hundreds of others: it is derived again instead.
+  if (size > KIT_CACHE_CHARS / 20) return;
+  kitCache.set(key, { version, value, size });
+  kitCacheChars += size;
+  for (const [oldest, entry] of kitCache) {
+    if (kitCache.size <= KIT_CACHE_ENTRIES && kitCacheChars <= KIT_CACHE_CHARS) break;
+    kitCache.delete(oldest);
+    kitCacheChars -= entry.size;
+  }
+}
 
 /** Kits decoded and requests waiting for a decode, in this process (read by the tests). */
 export const kitDecodes = { decoded: 0, waiting: 0 };
@@ -222,21 +261,22 @@ export function oneAtATime<T>(task: () => Promise<T>): Promise<T> | null {
 }
 
 /**
- * The kits of the boards among `ids` (all readable by `actor` when asked) whose index says they
- * hold cards of `type`: the most recently edited MAX_CAST_BOARDS, most recent first, as decoded
- * from their stored documents. A kit derived from the same stored bytes is reused; the others
- * are decoded one board at a time in the process, read only while `actor` can still read the
+ * The `part` of the kits of the boards among `ids` (all readable by `actor` when asked) whose
+ * index says they hold its cards: the most recently edited MAX_CAST_BOARDS, most recent first,
+ * as decoded from their stored documents. A part derived from the same stored bytes is reused;
+ * the others are decoded one board at a time in the process, read only while `actor` can still read the
  * board, letting other requests run between them. `gone`: the client went away.
  */
-async function boardKits(
+async function boardKits<P extends Part>(
   db: Database,
   actor: Pick<Actor, 'id'>,
   ids: string[],
-  type: ElementType,
+  part: P,
   gone: () => boolean,
   log: FastifyBaseLogger,
-): Promise<BoardKit[]> {
+): Promise<Array<BoardKit[P]>> {
   if (ids.length === 0) return [];
+  const type = PART_TYPE[part];
   const rows = await db
     .select({ boardId: boardDoc.boardId, version })
     .from(boardDoc)
@@ -250,13 +290,11 @@ async function boardKits(
     )
     .orderBy(desc(boardDoc.updatedAt))
     .limit(MAX_CAST_BOARDS);
-  const out: BoardKit[] = [];
+  const out: Array<BoardKit[P]> = [];
   for (const row of rows) {
-    const cached = kitCache.get(row.boardId);
+    const cached = cachedPart(part, row.boardId);
     if (cached?.version === row.version) {
-      kitCache.delete(row.boardId);
-      kitCache.set(row.boardId, cached);
-      out.push(cached);
+      out.push(cached.value);
       continue;
     }
     if (gone()) break;
@@ -266,7 +304,7 @@ async function boardKits(
       // Read under the access rule, in the same statement: a grant may have been closed, or the
       // board trashed, while this request waited its turn. The state only when no request
       // before this one decoded the same version meanwhile.
-      const known = kitCache.get(row.boardId);
+      const known = cachedPart(part, row.boardId);
       const [stored] = await db
         .select({
           version,
@@ -276,13 +314,11 @@ async function boardKits(
         .from(boardDoc)
         .where(and(eq(boardDoc.boardId, row.boardId), boardReadable(boardDoc.boardId, actor.id)));
       if (!stored) return null;
-      if (!stored.state) return known ?? null;
+      if (!stored.state) return known?.value ?? null;
       try {
-        const derived = { ...kitOf(stored.state), version: stored.version };
+        const derived = kitOf(stored.state, part);
         kitDecodes.decoded += 1;
-        kitCache.delete(row.boardId);
-        kitCache.set(row.boardId, derived);
-        if (kitCache.size > KIT_CACHE_BOARDS) kitCache.delete(kitCache.keys().next().value ?? '');
+        keepPart(part, row.boardId, stored.version, derived);
         return derived;
       } catch (err) {
         // One unreadable document must not cost the answers of all the others.
@@ -319,7 +355,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const { boardIds } = await readableBoards(db, actor, projectId);
     const merged = new Map<string, { frames: number; scenes: Set<string> }>();
     const ids = boardIds.filter((id) => id !== excludeBoardId);
-    for (const { cast } of await boardKits(db, actor, ids, 'frame', gone(req), req.log))
+    for (const cast of await boardKits(db, actor, ids, 'cast', gone(req), req.log))
       for (const entry of cast) {
         const seen = merged.get(entry.name) ?? { frames: 0, scenes: new Set<string>() };
         seen.frames += entry.frames;
@@ -345,7 +381,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const ids = boardIds.filter((id) => id !== excludeBoardId);
     const boards = await boardKits(db, actor, ids, 'plan', gone(req), req.log);
     // At most MAX_CAST_BOARDS kits, merged in one pass.
-    return { items: mergeProjectKits(...boards.map((b) => b.plan)) };
+    return { items: mergeProjectKits(...boards) };
   });
 
   app.get(v1('/search'), async (req) => {
