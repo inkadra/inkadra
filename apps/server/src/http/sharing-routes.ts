@@ -308,6 +308,12 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
             eq(invitation.tokenHash, row.tokenHash),
             eq(invitation.uses, 0),
             isNull(invitation.revokedAt),
+            // The clock of this statement, not of the transaction: the access may have ended
+            // while the mail was on its way or this waited for the lock.
+            or(
+              isNull(invitation.accessExpiresAt),
+              gt(invitation.accessExpiresAt, sql`clock_timestamp()`),
+            ),
           ),
         )
         .returning();
