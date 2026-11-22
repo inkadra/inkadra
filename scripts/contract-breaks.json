@@ -4,6 +4,24 @@
     { "break": "openapi: ExportPreferences.preset removed", "pr": 550 },
     { "break": "openapi: ExportPreferences.kickoffSummary removed", "pr": 550 },
     { "break": "openapi: UpdateExportSettings.preset removed", "pr": 550 },
-    { "break": "openapi: UpdateExportSettings.kickoffSummary removed", "pr": 550 }
+    { "break": "openapi: UpdateExportSettings.kickoffSummary removed", "pr": 550 },
+    { "break": "openapi: UpdateCrewMember.name now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.role now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.department now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.phone now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.email now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.pickup now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.notes now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.userId now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.character now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.onSetContact now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.position now required", "pr": 990 },
+    { "break": "openapi: UpdateCrewMember.revision now required", "pr": 990 },
+    { "break": "openapi: Board.icon.shape removed", "pr": 990 },
+    { "break": "openapi: Board.icon.color removed", "pr": 990 },
+    { "break": "openapi: Board.icon.emoji removed", "pr": 990 },
+    { "break": "openapi: Notification.subject.id removed", "pr": 990 },
+    { "break": "openapi: Notification.subject.name removed", "pr": 990 },
+    { "break": "openapi: Notification.subject.image removed", "pr": 990 }
   ]
 }
