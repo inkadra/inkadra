@@ -60,8 +60,8 @@ const FULL_FRAME = 1500;
 
 // Limits from CI runs (22 November 2026, docs/self-hosting/capacity.md), with the headroom of
 // the presets: they catch a regression of several times, not a few percent. Worst seen there:
-// edit p99 358 ms, board save p95 498 ms, 818 MiB, event loop 381 ms in the steady run; in the
-// burst (15 card additions sent at once) 7.6 s to sync and 2.6 s of event loop.
+// edit p99 555 ms, board save p95 1878 ms, 849 MiB, event loop 396 ms in the steady run; in the
+// burst (15 card additions sent at once) 7.7 s to sync and 2.8 s of event loop.
 export const DENSE: DensePreset = {
   editors: 15,
   readers: 3,
@@ -71,7 +71,8 @@ export const DENSE: DensePreset = {
     editP95Ms: 750,
     editP99Ms: 2000,
     deliveryP95Ms: 1500,
-    storeP95Ms: 3000,
+    // Saves of the burst and of everyone leaving count too: up to 1.9 s on CI.
+    storeP95Ms: 6000,
     poolWaitMaxMs: 2000,
     rssMiB: 2048,
     perBoardMiB: 8,
