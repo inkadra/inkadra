@@ -354,7 +354,9 @@ export function placePlanIcon(
     // Every destination is a plan here now (a PlanEdit can outlive a setup deleted since).
     if (roots(doc).elements.get(owner)?.get('type') !== 'plan') return null;
     const list = roots(doc).elements.get(owner)?.get('icons');
-    const stored = list instanceof Y.Array ? list.length : Array.isArray(list) ? list.length : 0;
+    // A list an older writer left as plain JSON is never written to (it would be replaced).
+    if (list !== undefined && !(list instanceof Y.Array)) return null;
+    const stored = list instanceof Y.Array ? list.length : 0;
     if (stored + n > MAX_PLAN_ICONS) return null;
   }
   const icons = edit.drawn.icons ?? [];

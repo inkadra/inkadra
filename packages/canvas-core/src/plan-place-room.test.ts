@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createBoardDoc, MAX_PLAN_ICONS } from '@inkadra/doc-schema';
+import { createBoardDoc, MAX_PLAN_ICONS, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import type * as Y from 'yjs';
 import { createElement, deleteElements, listElements } from './board.ts';
@@ -95,5 +95,20 @@ describe('placing an icon with a PlanEdit older than the board', () => {
       },
     );
     expect(planOf(s.doc, s.base).icons?.find((i) => i.id === lamp)?.layer).toBe('set');
+  });
+});
+
+describe('placing an icon on a plan whose icons are plain JSON', () => {
+  it('refuses before writing anything, even from a full setup', () => {
+    const s = setup();
+    fill(s.doc, s.sera, MAX_PLAN_ICONS);
+    const old = { id: 'old-sofa-0001', kind: 'sofa', color: '#1C1C1E', x: 100, y: 100 };
+    const baseMap = roots(s.doc).elements.get(s.base) as Y.Map<unknown>;
+    baseMap.set('icons', [old]);
+    let changes = 0;
+    s.doc.on('afterTransaction', () => changes++);
+    expect(placePlanIcon(s.doc, s.edit(), 'sofa', { x: 0.5, y: 0.5 }, white)).toBeNull();
+    expect(changes).toBe(0);
+    expect(baseMap.get('icons')).toEqual([old]);
   });
 });
