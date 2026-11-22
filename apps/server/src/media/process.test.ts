@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { truncate } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -21,6 +22,7 @@ import { SOFTWARE_ENCODER } from './hwaccel.ts';
 import {
   ANIMATED_CAPS,
   fitsAnimatedCaps,
+  HEIC_MAX_BYTES,
   processAsset,
   SVG_MAX_BYTES,
   variantWidths,
@@ -505,6 +507,22 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     const { row, variants } = await load(id);
     expect(row?.status).toBe('ready');
     expect(variants).toHaveLength(0);
+  });
+
+  it('keeps a HEIC past the pixel or size budget ready, without decoding it', async () => {
+    // The same picture, declaring 20000×20000 pixels in its header.
+    const body = Buffer.from(fixture('gradient.heic'));
+    const ispe = body.indexOf('ispe');
+    body.writeUInt32BE(20_000, ispe + 8);
+    body.writeUInt32BE(20_000, ispe + 12);
+    const huge = await upload(body, 'image/heic', 'IMG_4323.HEIC');
+    expect(await processAsset(deps, huge)).toMatchObject({ variants: 0 });
+    expect((await load(huge)).row).toMatchObject({ status: 'ready', mime: 'image/heic' });
+
+    const long = await upload(fixture('gradient.heic'), 'image/heic', 'IMG_4324.HEIC');
+    await truncate(join(root, 'files', originalKey(long)), HEIC_MAX_BYTES + 1);
+    expect(await processAsset(deps, long)).toMatchObject({ variants: 0 });
+    expect((await load(long)).row?.status).toBe('ready');
   });
 
   describe('camera RAW', async () => {
