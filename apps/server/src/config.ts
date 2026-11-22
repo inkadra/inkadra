@@ -398,6 +398,21 @@ function withoutEmpty(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   );
 }
 
+/** Secrets printed in this repository (CONTRIBUTING.md, the end-to-end tests). */
+const EXAMPLE_SECRETS = new Set([
+  'change-me-to-32-random-characters-or-more',
+  'e2e-only-secret-e2e-only-secret-e2e-only',
+]);
+
+/** True for an example value or one with too few different characters to be random. */
+export function isWeakSecret(secret: string) {
+  return (
+    EXAMPLE_SECRETS.has(secret) ||
+    secret.toLowerCase().includes('change-me') ||
+    new Set(secret).size < 8
+  );
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = Env.superRefine((c, ctx) => {
     if (c.STORAGE_DRIVER === 's3' && !c.S3_BUCKET)
@@ -425,6 +440,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         code: 'custom',
         path: ['BACKUP_S3_PREFIX'],
         message: `Not inside the folders of stored files (${STORAGE_PREFIXES.join(', ')})`,
+      });
+    // Never the value in the message. AUTH_SECRET_PREVIOUS may be weak: it only keeps values
+    // sealed with the old secret readable, the way out of a weak one (see configuration.md).
+    if (c.NODE_ENV === 'production' && isWeakSecret(c.AUTH_SECRET))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['AUTH_SECRET'],
+        message:
+          'Too easy to guess (an example value or too few different characters): generate one ' +
+          'with `openssl rand -hex 32`. To keep two-factor secrets and sealed tokens readable, ' +
+          'move the old value to AUTH_SECRET_PREVIOUS',
       });
     if (c.SMTP_URL && !c.MAIL_FROM)
       ctx.addIssue({ code: 'custom', path: ['MAIL_FROM'], message: 'Required with SMTP_URL' });

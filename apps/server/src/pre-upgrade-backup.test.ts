@@ -190,6 +190,7 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
         status: 'ready' as const,
         fileName: `${trigger}-${daysAgo}.zip`,
         startedAt: new Date(Date.now() - daysAgo * day),
+        copiedToBucket: daysAgo === 300 || (trigger === 'scheduled' && daysAgo === 8),
       });
       await db
         .insert(instanceBackup)
@@ -199,7 +200,29 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
           row('pre-upgrade', 20),
           ...Array.from({ length: 9 }, (_, i) => row('scheduled', i)),
         ]);
-      await applyBackupRetention({ ...d, db });
+      // A copy the bucket refuses to remove is left there, and the log says which.
+      // A rejection that is no Error is told too.
+      const remove = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('denied'))
+        .mockRejectedValueOnce('timeout');
+      const refusing = { ...d.storage, remove };
+      const warn = vi.fn();
+      await applyBackupRetention({
+        ...d,
+        db,
+        remote: { storage: refusing, prefix: 'backups/', label: 's3://bucket/backups' },
+        log: { ...log, warn } as unknown as typeof log,
+      });
+      expect(remove).toHaveBeenCalledTimes(2);
+      expect(
+        warn.mock.calls.map(([fields]) => fields).sort((a, b) => a.key.localeCompare(b.key)),
+      ).toEqual([
+        { key: 'backups/pre-upgrade-300.zip', error: expect.any(String) },
+        { key: 'backups/scheduled-8.zip', error: expect.any(String) },
+      ]);
+      expect(warn.mock.calls.map(([fields]) => fields.error).sort()).toEqual(['denied', 'timeout']);
+
       const kept = await db.select().from(instanceBackup);
       const live = kept.filter((r) => !r.removedAt);
       expect(live.filter((r) => r.trigger === 'pre-upgrade').map((r) => r.fileName)).toEqual(

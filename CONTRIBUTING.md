@@ -26,11 +26,11 @@ You need Node 26 or newer, pnpm 12 (`npm i -g pnpm@12.18.0`), PostgreSQL 16 or n
 
 ```sh
 pnpm install
-cat > apps/server/.env <<'ENV'
+cat > apps/server/.env <<ENV
 PUBLIC_URL=http://localhost:5173
 DATABASE_URL=postgres://inkadra:inkadra@localhost:5432/inkadra
 REDIS_URL=redis://localhost:6379
-AUTH_SECRET=change-me-to-32-random-characters-or-more
+AUTH_SECRET=$(openssl rand -hex 32)
 ENV
 pnpm dev     # API on :3000, web app on http://localhost:5173
 ```

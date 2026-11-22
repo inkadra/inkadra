@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { loadConfig } from './config.ts';
 
@@ -132,4 +133,44 @@ it('defaults board caps and requires positive safe integers', () => {
     expect(loadConfig({ ...base, BOARD_MAX_STATE_BYTES: value }).BOARD_MAX_STATE_BYTES).toBe(
       64 * 1024 * 1024,
     );
+});
+
+describe('AUTH_SECRET in production', () => {
+  it('refuses example values and too few different characters, never printing them', () => {
+    for (const secret of [
+      'change-me-to-32-random-characters-or-more',
+      'e2e-only-secret-e2e-only-secret-e2e-only',
+      'please-CHANGE-ME-before-you-deploy-this',
+      'abababababababababababababababab1234',
+    ]) {
+      let message = '';
+      try {
+        loadConfig({ ...base, NODE_ENV: 'production', AUTH_SECRET: secret });
+      } catch (err) {
+        message = (err as Error).message;
+      }
+      expect(message).toMatch(/AUTH_SECRET: Too easy to guess.*openssl rand -hex 32/);
+      expect(message).not.toContain(secret);
+    }
+  });
+
+  it('accepts a random one, a weak previous one to rotate away from, and weak ones in development', () => {
+    const random = randomBytes(32).toString('hex');
+    expect(loadConfig({ ...base, NODE_ENV: 'production', AUTH_SECRET: random }).AUTH_SECRET).toBe(
+      random,
+    );
+    const rotating = {
+      ...base,
+      NODE_ENV: 'production',
+      AUTH_SECRET: random,
+      AUTH_SECRET_PREVIOUS: 'change-me-to-32-random-characters-or-more',
+    };
+    expect(loadConfig(rotating).AUTH_SECRET_PREVIOUS).toBe(rotating.AUTH_SECRET_PREVIOUS);
+    const dev = {
+      ...base,
+      NODE_ENV: 'development',
+      AUTH_SECRET: 'e2e-only-secret-e2e-only-secret-e2e-only',
+    };
+    expect(loadConfig(dev).AUTH_SECRET).toBe(dev.AUTH_SECRET);
+  });
 });

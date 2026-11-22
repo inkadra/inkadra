@@ -1,9 +1,9 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, truncate, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { pickExif, readExif } from './exif.ts';
+import { EXIF_MAX_BYTES, pickExif, readExif } from './exif.ts';
 
 describe('pickExif', () => {
   it('keeps camera data and drops location and unknown fields', () => {
@@ -48,6 +48,9 @@ describe('pickExif', () => {
         .toBuffer();
       await writeFile(file, jpeg);
       await expect(readExif(file)).resolves.toMatchObject({ Make: 'FUJIFILM', Model: 'X-T5' });
+      // Only the head of a large original is read: EXIF is still found there.
+      await truncate(file, EXIF_MAX_BYTES * 4);
+      await expect(readExif(file)).resolves.toMatchObject({ Make: 'FUJIFILM' });
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
