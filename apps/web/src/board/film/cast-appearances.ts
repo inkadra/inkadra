@@ -11,20 +11,26 @@ const requests = new Map<string, Promise<CastAppearance[]>>();
 const FRESH_MS = 60_000;
 
 /**
- * Where the names of a cast appear on the other boards of a project, for everyone who asks.
+ * Where the names of a cast appear on the other boards of a project, for everyone who asks;
+ * none while they cannot be read, asked again the next time.
  * shortcut: kept for a minute, so a frame edited on another board can show late.
  */
 export function loadCastAppearances(projectId: string, boardId: string) {
   const key = `${projectId}:${boardId}`;
-  let request = requests.get(key);
-  if (!request) {
-    request = api
-      .get<CastAppearances>(`/projects/${projectId}/cast-appearances?excludeBoardId=${boardId}`)
-      .then((result) => result.items)
-      .catch(() => []);
-    requests.set(key, request);
-    setTimeout(() => requests.delete(key), FRESH_MS);
-  }
+  const kept = requests.get(key);
+  if (kept) return kept;
+  const forget = () => {
+    if (requests.get(key) === request) requests.delete(key);
+  };
+  const request: Promise<CastAppearance[]> = api
+    .get<CastAppearances>(`/projects/${projectId}/cast-appearances?excludeBoardId=${boardId}`)
+    .then((result) => result.items)
+    .catch(() => {
+      forget();
+      return [];
+    });
+  requests.set(key, request);
+  setTimeout(forget, FRESH_MS);
   return request;
 }
 

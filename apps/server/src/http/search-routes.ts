@@ -20,9 +20,17 @@ import {
   z,
 } from '@inkadra/shared';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance, FastifyRequest } from 'fastify';
 import * as Y from 'yjs';
-import { type Actor, activeGrant, activeMember, effectiveRoles, live } from '../access.ts';
+import {
+  type Actor,
+  activeAccount,
+  activeGrant,
+  activeMember,
+  boardReadable,
+  effectiveRoles,
+  live,
+} from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
@@ -151,25 +159,145 @@ export async function readableBoards(
   return { boardIds, projectIds, roles: out };
 }
 
+/** What the project kit routes derive from one stored board document (decisions 0095, 0114). */
+interface BoardKit {
+  cast: CastAppearance[];
+  plan: ProjectKitEntry[];
+}
+
+type Part = keyof BoardKit;
+/** The cards whose index rows say a board has something for that part. */
+const PART_TYPE: Record<Part, ElementType> = { cast: 'frame', plan: 'plan' };
+
+/** One part of the kit of a stored document, decoded for this alone. */
+function kitOf<P extends Part>(state: Uint8Array, part: P): BoardKit[P] {
+  const doc = new Y.Doc();
+  try {
+    Y.applyUpdate(doc, state);
+    const elements = [...roots(doc).elements.values()].flatMap((map): Element[] => {
+      const el = readElement(map);
+      return el ? [el] : [];
+    });
+    return (
+      part === 'cast'
+        ? castAppearances(elements)
+        : projectKit(
+            elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
+          )
+    ) as BoardKit[P];
+  } finally {
+    doc.destroy();
+  }
+}
+
 /**
- * The readable elements of the boards among `ids` whose index says they hold cards of `type`,
- * one list per board. Only the documents of those boards are read: what is asked is not in the
- * index. shortcut: the most recently edited MAX_CAST_BOARDS only, read on each request (clients
- * keep the answer a minute); a project with more needs what is asked in the index.
+ * Which stored bytes a row holds. shortcut: xmin changes with every write of the row, so it
+ * cannot come back for other bytes with the same stored timestamp and size unless transaction
+ * ids wrap around. It also changes when the index writer, in its own transaction after a store,
+ * writes the row's derived columns (same state): a board stored meanwhile can be decoded once
+ * more. No cheaper fact of the state alone tells two states apart; a hash would read them all.
  */
-async function boardsWith(
+const version = sql<string>`${boardDoc.updatedAt}::text || '/' || ${boardDoc.size} || '/' || board_doc.xmin::text`;
+
+/**
+ * The parts derived lately, by part and board, least recently used first, with the version of
+ * the bytes they come from and their size as JSON (an estimate of their memory).
+ */
+const kitCache = new Map<string, { version: string; value: unknown; size: number }>();
+const KIT_CACHE_ENTRIES = 500;
+export const KIT_CACHE_CHARS = 8_000_000;
+let kitCacheChars = 0;
+
+export function cachedPart<P extends Part>(part: P, boardId: string) {
+  const key = `${part}:${boardId}`;
+  const entry = kitCache.get(key);
+  if (entry) {
+    kitCache.delete(key);
+    kitCache.set(key, entry);
+  }
+  return entry as { version: string; value: BoardKit[P] } | undefined;
+}
+
+export function keepPart(part: Part, boardId: string, version: string, value: unknown) {
+  const key = `${part}:${boardId}`;
+  const old = kitCache.get(key);
+  if (old) {
+    kitCache.delete(key);
+    kitCacheChars -= old.size;
+  }
+  const size = JSON.stringify(value).length;
+  // One huge kit would push out hundreds of others: it is derived again instead.
+  if (size > KIT_CACHE_CHARS / 20) return;
+  kitCache.set(key, { version, value, size });
+  kitCacheChars += size;
+  for (const [oldest, entry] of kitCache) {
+    if (kitCache.size <= KIT_CACHE_ENTRIES && kitCacheChars <= KIT_CACHE_CHARS) break;
+    kitCache.delete(oldest);
+    kitCacheChars -= entry.size;
+  }
+}
+
+/** Kits decoded and requests waiting for a decode, in this process (read by the tests). */
+export const kitDecodes = { decoded: 0, waiting: 0 };
+/**
+ * Requests that may wait for a decode. A request beyond them is answered 503: a partial answer
+ * would be kept by the clients as if it were whole.
+ */
+export const MAX_WAITING_DECODES = 16;
+/** Decodes one account may have waiting or running, so one person cannot take every place. */
+export const MAX_DECODES_PER_ACCOUNT = 4;
+const perAccount = new Map<string, number>();
+let decoding: Promise<unknown> = Promise.resolve();
+
+/**
+ * Runs `task` for `account` once every task given before it has settled, one at a time in the
+ * process; null, without running it, when MAX_WAITING_DECODES requests already wait or the
+ * account already has MAX_DECODES_PER_ACCOUNT waiting or running.
+ */
+export function oneAtATime<T>(task: () => Promise<T>, account: string): Promise<T> | null {
+  const mine = perAccount.get(account) ?? 0;
+  if (kitDecodes.waiting >= MAX_WAITING_DECODES || mine >= MAX_DECODES_PER_ACCOUNT) return null;
+  perAccount.set(account, mine + 1);
+  kitDecodes.waiting += 1;
+  const run = decoding.then(() => {
+    kitDecodes.waiting -= 1;
+    return task();
+  });
+  const settled = () => {
+    const left = (perAccount.get(account) ?? 1) - 1;
+    if (left > 0) perAccount.set(account, left);
+    else perAccount.delete(account);
+  };
+  decoding = run.then(settled, settled);
+  return run;
+}
+
+/**
+ * The `part` of the kits of the boards among `ids` (all readable by `actor` when asked) whose
+ * index says they hold its cards: the most recently edited MAX_CAST_BOARDS, most recent first,
+ * as decoded from their stored documents. A part derived from the same stored bytes is reused;
+ * the others are decoded one board at a time in the process, read only while `actor` can still
+ * read the board, letting other requests run between them. `gone`: the client went away.
+ */
+async function boardKits<P extends Part>(
   db: Database,
+  actor: Pick<Actor, 'id'>,
+  projectId: string,
   ids: string[],
-  type: ElementType,
+  part: P,
+  gone: () => boolean,
   log: FastifyBaseLogger,
-): Promise<Element[][]> {
+): Promise<Array<BoardKit[P]>> {
   if (ids.length === 0) return [];
-  const docs = await db
-    .select({ boardId: boardDoc.boardId, state: boardDoc.state })
+  const type = PART_TYPE[part];
+  const rows = await db
+    .select({ boardId: boardDoc.boardId, version })
     .from(boardDoc)
     .where(
       and(
         inArray(boardDoc.boardId, ids),
+        // Again in this statement: a cached part is served only for a board readable now.
+        boardReadable(boardDoc.boardId, actor.id),
         sql`exists (select 1 from ${boardElementIndex}
           where ${boardElementIndex.boardId} = ${boardDoc.boardId}
             and ${boardElementIndex.type} = ${type})`,
@@ -177,26 +305,57 @@ async function boardsWith(
     )
     .orderBy(desc(boardDoc.updatedAt))
     .limit(MAX_CAST_BOARDS);
-  const out: Element[][] = [];
-  for (const { boardId, state } of docs) {
-    const doc = new Y.Doc();
-    try {
-      Y.applyUpdate(doc, state);
-      out.push(
-        [...roots(doc).elements.values()].flatMap((map): Element[] => {
-          const el = readElement(map);
-          return el ? [el] : [];
-        }),
-      );
-    } catch (err) {
-      // One unreadable document must not cost the answers of all the others.
-      log.warn({ err, boardId }, `${type} cards: board document not readable`);
-    } finally {
-      doc.destroy();
+  const out: Array<BoardKit[P]> = [];
+  for (const row of rows) {
+    const cached = cachedPart(part, row.boardId);
+    if (cached?.version === row.version) {
+      out.push(cached.value);
+      continue;
     }
+    if (gone()) break;
+    const queued = oneAtATime(async () => {
+      if (gone()) return null;
+      await new Promise((resolve) => setImmediate(resolve));
+      // The request's own rule again, as if it had just arrived: its account may have been
+      // deactivated, a grant closed or a board (or one above it) trashed while it waited.
+      if (!(await activeAccount(db, actor.id)))
+        throw new HttpError('unauthorized', 'Account deactivated.');
+      if (!(await readableBoards(db, actor, projectId)).boardIds.includes(row.boardId)) return null;
+      // Then the access rule in the same statement as the state, for what changed since. The
+      // state only when no request before this one decoded the same version meanwhile.
+      const known = cachedPart(part, row.boardId);
+      const [stored] = await db
+        .select({
+          version,
+          state: sql<Uint8Array | null>`case when ${version} = ${known?.version ?? ''} then null
+            else ${boardDoc.state} end`,
+        })
+        .from(boardDoc)
+        .where(and(eq(boardDoc.boardId, row.boardId), boardReadable(boardDoc.boardId, actor.id)));
+      if (!stored) return null;
+      if (!stored.state) return known?.value ?? null;
+      // Nobody is left to answer: the decode is for nothing.
+      if (gone()) return null;
+      try {
+        const derived = kitOf(stored.state, part);
+        kitDecodes.decoded += 1;
+        keepPart(part, row.boardId, stored.version, derived);
+        return derived;
+      } catch (err) {
+        // One unreadable document must not cost the answers of all the others.
+        log.warn({ err, boardId: row.boardId }, `${type} cards: board document not readable`);
+        return null;
+      }
+    }, actor.id);
+    if (!queued) throw new HttpError('unavailable', 'The server is busy. Try again.', undefined, 5);
+    const kit = await queued;
+    if (kit) out.push(kit);
   }
   return out;
 }
+
+/** Whether the client of `req` went away: its connection closed before the answer. */
+const gone = (req: FastifyRequest) => () => req.raw.socket?.destroyed === true;
 
 const uuids = (ids: string[]) => sql`${`{${ids.join(',')}}`}::uuid[]`;
 
@@ -205,8 +364,8 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   // Each search ranks trigrams over every card a person can read: a person typing makes a few
   // a second at most, a script would keep the database busy for everyone.
   const searches = new RateLimiter(60, 60_000, 'search-routes:searches');
-  // Each project kit reads and decodes up to MAX_CAST_BOARDS documents; the editor asks once a
-  // minute per board, so a person never needs more than a few (decision 0114).
+  // Each project kit may decode up to MAX_CAST_BOARDS documents; the editor asks once a minute per
+  // board, so a person never needs more than a few (decision 0114).
   const kits = new RateLimiter(20, 60_000, 'search-routes:kits');
 
   app.get(v1('/projects/:projectId/cast-appearances'), async (req) => {
@@ -215,18 +374,21 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const { projectId } = ProjectParams.parse(req.params);
     const { excludeBoardId } = CastAppearancesQuery.parse(req.query ?? {});
     const { boardIds } = await readableBoards(db, actor, projectId);
-    const merged = new Map<string, CastAppearance>();
+    const merged = new Map<string, { frames: number; scenes: Set<string> }>();
     const ids = boardIds.filter((id) => id !== excludeBoardId);
-    for (const elements of await boardsWith(db, ids, 'frame', req.log))
-      for (const entry of castAppearances(elements)) {
-        const seen = merged.get(entry.name);
-        merged.set(entry.name, {
-          name: entry.name,
-          frames: entry.frames + (seen?.frames ?? 0),
-          scenes: [...new Set([...(seen?.scenes ?? []), ...entry.scenes])],
-        });
+    for (const cast of await boardKits(db, actor, projectId, ids, 'cast', gone(req), req.log))
+      for (const entry of cast) {
+        const seen = merged.get(entry.name) ?? { frames: 0, scenes: new Set<string>() };
+        seen.frames += entry.frames;
+        for (const scene of entry.scenes) seen.scenes.add(scene);
+        merged.set(entry.name, seen);
       }
-    return { items: [...merged.values()] };
+    const items: CastAppearance[] = [...merged].map(([name, { frames, scenes }]) => ({
+      name,
+      frames,
+      scenes: [...scenes],
+    }));
+    return { items };
   });
 
   // The project kit of the set plan editor (decision 0114): the configured lights and cameras of
@@ -238,14 +400,9 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const { excludeBoardId } = PlanKitQuery.parse(req.query ?? {});
     const { boardIds } = await readableBoards(db, actor, projectId);
     const ids = boardIds.filter((id) => id !== excludeBoardId);
-    const perBoard: ProjectKitEntry[][] = [];
-    for (const elements of await boardsWith(db, ids, 'plan', req.log))
-      perBoard.push(
-        projectKit(
-          elements.filter((e): e is Extract<Element, { type: 'plan' }> => e.type === 'plan'),
-        ),
-      );
-    return { items: mergeProjectKits(...perBoard) };
+    const boards = await boardKits(db, actor, projectId, ids, 'plan', gone(req), req.log);
+    // At most MAX_CAST_BOARDS kits, merged in one pass.
+    return { items: mergeProjectKits(...boards) };
   });
 
   app.get(v1('/search'), async (req) => {

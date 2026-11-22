@@ -2,11 +2,11 @@ import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, newElementId, roots } from '@inkadra/doc-schema';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
-import { createDatabase, runMigrations } from '../db/client.ts';
+import { createDatabase, type Database, runMigrations } from '../db/client.ts';
 import {
   board,
   boardDoc,
@@ -17,7 +17,14 @@ import {
 } from '../db/schema.ts';
 import { createApp } from '../http/app.ts';
 import {
+  cachedPart,
   containsPattern,
+  KIT_CACHE_CHARS,
+  keepPart,
+  kitDecodes,
+  MAX_DECODES_PER_ACCOUNT,
+  MAX_WAITING_DECODES,
+  oneAtATime,
   prefixPattern,
   searchTagPatterns,
   snippet,
@@ -28,6 +35,7 @@ import {
   backfillIndex,
   entriesFor,
   fragmentText,
+  startIndexBackfill,
   writeBoardIndex,
 } from './index-doc.ts';
 
@@ -268,6 +276,79 @@ describe('index entries', () => {
       words: ['notte 100%_', 'notte', '100%_'],
       prefixes: ['notte 100\\%\\_%', 'notte%', '100\\%\\_%'],
     });
+  });
+});
+
+describe('documents decoded for the project kit', () => {
+  it('keeps derived parts within a size budget, never one too large', () => {
+    const value = (chars: number) => [{ name: 'x'.repeat(chars), frames: 1, scenes: [] }];
+    keepPart('cast', 'huge', 'v1', value(KIT_CACHE_CHARS / 10));
+    expect(cachedPart('cast', 'huge')).toBeUndefined();
+    // Each part a fortieth of the budget: the oldest go first once it is full.
+    for (let i = 0; i < 45; i++) keepPart('cast', `b${i}`, 'v1', value(KIT_CACHE_CHARS / 40));
+    expect(cachedPart('cast', 'b0')).toBeUndefined();
+    expect(cachedPart('cast', 'b44')?.version).toBe('v1');
+    // The other part of a board is kept on its own.
+    expect(cachedPart('plan', 'b44')).toBeUndefined();
+    for (let i = 0; i < 45; i++) keepPart('cast', `b${i}`, 'v1', []);
+  });
+
+  it('decodes one at a time across requests, and goes on after a failure', async () => {
+    let running = 0;
+    let most = 0;
+    const task = (fail: boolean) => async () => {
+      running += 1;
+      most = Math.max(most, running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running -= 1;
+      if (fail) throw new Error('unreadable');
+      return 'ok';
+    };
+    const results = await Promise.allSettled([
+      oneAtATime(task(false), 'a'),
+      oneAtATime(task(true), 'b'),
+      oneAtATime(task(false), 'c'),
+    ]);
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected', 'fulfilled']);
+    expect(most).toBe(1);
+  });
+
+  it('lets one account have only so many decodes waiting or running', async () => {
+    let unblock = () => {};
+    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)), 'busy');
+    // Running, no longer waiting.
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const mine = Array.from({ length: MAX_DECODES_PER_ACCOUNT - 1 }, () =>
+      oneAtATime(async () => 1, 'busy'),
+    );
+    expect(mine.every((q) => q !== null)).toBe(true);
+    // The running one counts too: the account is full, another is not.
+    expect(oneAtATime(async () => 1, 'busy')).toBeNull();
+    const other = oneAtATime(async () => 2, 'other');
+    expect(other).not.toBeNull();
+    unblock();
+    await Promise.all([blocker, ...mine, other]);
+    // Once they are done, the account has its places back.
+    expect(await oneAtATime(async () => 3, 'busy')).toBe(3);
+  });
+
+  it('lets only so many requests wait for a decode', async () => {
+    let unblock = () => {};
+    const blocker = oneAtATime(
+      () => new Promise<void>((resolve) => (unblock = resolve)),
+      'blocker',
+    );
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const queued = Array.from({ length: MAX_WAITING_DECODES }, (_, i) =>
+      oneAtATime(async () => 1, `account-${i}`),
+    );
+    expect(queued.every((q) => q !== null)).toBe(true);
+    // One more is refused: its request is answered 503.
+    expect(oneAtATime(async () => 1, 'another')).toBeNull();
+    unblock();
+    await blocker;
+    expect(await Promise.all(queued)).toEqual(queued.map(() => 1));
+    expect(kitDecodes.waiting).toBe(0);
   });
 });
 
@@ -655,6 +736,321 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     for (const id of [shared, closed]) await db.delete(board).where(eq(board.id, id));
   });
 
+  it('answers cast appearances and the plan kit of several boards, decoding each stored state once', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { name: 'Kit' },
+    });
+    const kitProject = created.json().id as string;
+    const rootBoard = created.json().rootBoardId as string;
+    const addBoard = async (fill: (doc: Y.Doc) => void) => {
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${kitProject}/boards`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { parentBoardId: rootBoard, kind: 'storyboard', title: 'Kit' },
+      });
+      const id = added.json().id as string;
+      const doc = createBoardDoc(id);
+      fill(doc);
+      const update = Y.encodeStateAsUpdate(doc);
+      await db
+        .insert(boardDoc)
+        .values({ boardId: id, state: update, schemaVersion: 26, size: update.byteLength });
+      await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+      return { id, doc };
+    };
+    const at = (z: string, parent: string | null = null) => ({ ...base(parent), z });
+    const icon = (kind: 'cob' | 'camera', extra: Record<string, unknown>) => ({
+      id: newElementId(),
+      kind,
+      color: '#EDD963',
+      x: 100,
+      y: 100,
+      ...extra,
+    });
+    // Oldest first: the answers list the most recently stored boards first.
+    const a = await addBoard((doc) => {
+      const one = { ...at('a0'), type: 'scene' as const, number: '1', title: '' };
+      const two = { ...at('a1'), type: 'scene' as const, number: '2', title: '' };
+      addElement(doc, one);
+      addElement(doc, two);
+      addElement(doc, { ...at('a0', one.id), type: 'frame', cast: ['Marta', 'Leo'] });
+      addElement(doc, { ...at('a1', one.id), type: 'frame', cast: ['marta '] });
+      addElement(doc, { ...at('a0', two.id), type: 'frame', cast: ['Leo'] });
+      addElement(doc, { ...at('a2'), type: 'frame', cast: ['Nina'] });
+      addElement(doc, {
+        ...at('a3'),
+        type: 'plan',
+        icons: [icon('camera', { label: 'A cam', lens: 35 }), icon('cob', { make: 'Aputure' })],
+      });
+    });
+    const b = await addBoard((doc) => {
+      const three = { ...at('a0'), type: 'scene' as const, number: '3', title: '' };
+      addElement(doc, three);
+      addElement(doc, { ...at('a0', three.id), type: 'frame', cast: ['Leo', 'Ada'] });
+      addElement(doc, {
+        ...at('a1'),
+        type: 'plan',
+        icons: [icon('camera', { label: 'A cam', lens: 24 }), icon('cob', { make: 'Nanlux' })],
+      });
+    });
+    await addBoard((doc) => addElement(doc, { ...at('a0'), type: 'note' }));
+    const cast = `/api/v1/projects/${kitProject}/cast-appearances`;
+    const kit = `/api/v1/projects/${kitProject}/plan-kit`;
+    const castItems = [
+      { name: 'leo', frames: 3, scenes: ['3', '1', '2'] },
+      { name: 'ada', frames: 1, scenes: ['3'] },
+      { name: 'marta', frames: 2, scenes: ['1'] },
+      { name: 'nina', frames: 1, scenes: [] },
+    ];
+    const cam = JSON.stringify(['camera', 'A cam', '']);
+    const light = (make: string) => JSON.stringify([{ kind: 'cob', make, color: '#EDD963' }, []]);
+    const kitItems = [
+      {
+        key: cam,
+        icon: { kind: 'camera', label: 'A cam', lens: 24, color: '#EDD963' },
+        modifiers: [],
+        lenses: [24, 35],
+      },
+      {
+        key: light('Nanlux'),
+        icon: { kind: 'cob', make: 'Nanlux', color: '#EDD963' },
+        modifiers: [],
+        lenses: [],
+      },
+      {
+        key: light('Aputure'),
+        icon: { kind: 'cob', make: 'Aputure', color: '#EDD963' },
+        modifiers: [],
+        lenses: [],
+      },
+    ];
+    // Each route decodes its own part of the two boards that have its cards, once.
+    const first = kitDecodes.decoded;
+    expect((await get('owner', cast)).body).toEqual({ items: castItems });
+    expect(kitDecodes.decoded).toBe(first + 2);
+    expect((await get('owner', kit)).body).toEqual({ items: kitItems });
+    expect(kitDecodes.decoded).toBe(first + 4);
+    expect((await get('owner', `${kit}?excludeBoardId=${b.id}`)).body.items).toEqual([
+      { ...kitItems[0], icon: { ...kitItems[0]?.icon, lens: 35 }, lenses: [35] },
+      kitItems[2],
+    ]);
+    // The same stored bytes again: nothing is decoded.
+    const decoded = kitDecodes.decoded;
+    expect(decoded).toBe(first + 4);
+    expect((await get('owner', cast)).body).toEqual({ items: castItems });
+    expect(kitDecodes.decoded).toBe(decoded);
+    // A board stored again is decoded again, even with the same time.
+    addElement(a.doc, { ...at('a4'), type: 'frame', cast: ['Zoe'] });
+    const stored = Y.encodeStateAsUpdate(a.doc);
+    await db.execute(
+      sql`update board_doc set state = ${stored}, size = ${stored.byteLength}, updated_at = updated_at where board_id = ${a.id}`,
+    );
+    expect((await get('owner', cast)).body.items).toEqual([
+      ...castItems,
+      { name: 'zoe', frames: 1, scenes: [] },
+    ]);
+    expect(kitDecodes.decoded).toBe(decoded + 1);
+    // Other bytes with the same time and the same length are told apart too.
+    const frameId = newElementId();
+    const variant = (name: string) => {
+      const doc = new Y.Doc();
+      Y.applyUpdate(doc, stored);
+      doc.clientID = 4242;
+      addElement(doc, { ...at('a5'), id: frameId, type: 'frame', cast: [name] });
+      return Y.encodeStateAsUpdate(doc);
+    };
+    const [ugo, ivo] = [variant('Ugo'), variant('Ivo')];
+    expect(ugo.byteLength).toBe(ivo.byteLength);
+    expect(Buffer.from(ugo).equals(Buffer.from(ivo))).toBe(false);
+    const names = async () =>
+      (await get('owner', cast)).body.items.map((i: { name: string }) => i.name);
+    for (const [state, name, other] of [
+      [ugo, 'ugo', 'ivo'],
+      [ivo, 'ivo', 'ugo'],
+    ] as const) {
+      await db.execute(
+        sql`update board_doc set state = ${state}, size = ${state.byteLength}, updated_at = updated_at where board_id = ${a.id}`,
+      );
+      const before = kitDecodes.decoded;
+      const listed = await names();
+      expect(listed).toContain(name);
+      expect(listed).not.toContain(other);
+      expect(kitDecodes.decoded).toBe(before + 1);
+    }
+    await db.delete(projectTable).where(eq(projectTable.id, kitProject));
+  });
+
+  it('leaves out a board closed or trashed while its decode waited', async () => {
+    const addBoard = async (title: string, cast: string, parentBoardId = boardId) => {
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/boards`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { parentBoardId, kind: 'storyboard', title },
+      });
+      const id = added.json().id as string;
+      const doc = createBoardDoc(id);
+      addElement(doc, { ...base(), type: 'frame', cast: [cast] });
+      const update = Y.encodeStateAsUpdate(doc);
+      await db
+        .insert(boardDoc)
+        .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+      await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+      return { id, doc };
+    };
+    const path = `/api/v1/projects/${projectId}/cast-appearances`;
+    type Answer = { status: number; body: { items: Array<{ name: string }> } };
+    const names = async (res: Promise<Answer>) => (await res).body.items.map((i) => i.name);
+    /** What `who` is answered when `change` happens while the newest board waits its decode. */
+    const answered = async (who: keyof typeof cookies, change: () => Promise<unknown>) => {
+      let unblock = () => {};
+      const blocker = oneAtATime(
+        () => new Promise<void>((resolve) => (unblock = resolve)),
+        'blocker',
+      );
+      await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+      const pending = get(who, path);
+      await vi.waitFor(() => expect(kitDecodes.waiting).toBe(1));
+      await change();
+      unblock();
+      await blocker;
+      return pending as Promise<Answer>;
+    };
+    const whileWaiting = (who: keyof typeof cookies, change: () => Promise<unknown>) =>
+      names(answered(who, change));
+    const [guest] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, 'guest@example.com'));
+    const grant = (expiresAt: Date | null) =>
+      db.update(boardGrant).set({ expiresAt }).where(eq(boardGrant.userId, guest!.id));
+    // The grant closes, then a new state is stored: neither the old nor the new one is read.
+    const closed = await addBoard('Revocata', 'Revocata');
+    addElement(closed.doc, { ...base(), type: 'frame', cast: ['Nuova'] });
+    const newer = Y.encodeStateAsUpdate(closed.doc);
+    const answer = await whileWaiting('guest', async () => {
+      await grant(new Date(Date.now() - 60_000));
+      await db
+        .update(boardDoc)
+        .set({ state: newer, size: newer.byteLength })
+        .where(eq(boardDoc.boardId, closed.id));
+    });
+    expect(answer).not.toContain('revocata');
+    expect(answer).not.toContain('nuova');
+    await grant(null);
+    // With the grant back, the board is listed as stored.
+    expect(await names(get('guest', path))).toEqual(expect.arrayContaining(['revocata', 'nuova']));
+    // A board put in the trash meanwhile is not read either.
+    const trashed = await addBoard('Cestinata', 'Cestinata');
+    expect(
+      await whileWaiting('owner', () =>
+        db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, trashed.id)),
+      ),
+    ).not.toContain('cestinata');
+    // Nor a board whose only way in, a grant on the board above it, went to the trash.
+    const root = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+    });
+    const above = await addBoard('Sopra', 'Sopra', root.json().rootBoardId);
+    const [given] = await db
+      .select({ role: boardGrant.role })
+      .from(boardGrant)
+      .where(eq(boardGrant.userId, guest!.id));
+    await db.insert(boardGrant).values({ boardId: above.id, userId: guest!.id, role: given!.role });
+    const below = await addBoard('Sotto', 'Sotto', above.id);
+    expect(
+      await whileWaiting('guest', () =>
+        db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, above.id)),
+      ),
+    ).not.toContain('sotto');
+    // An account deactivated meanwhile gets nothing.
+    const last = await addBoard('Ultima', 'Ultima');
+    const deactivated = await answered('guest', () =>
+      db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, guest!.id)),
+    );
+    await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, guest!.id));
+    expect(deactivated.status).toBe(401);
+    for (const id of [closed.id, trashed.id, below.id, above.id, last.id])
+      await db.delete(board).where(eq(board.id, id));
+  });
+
+  it('decodes a board once for requests that waited for it together', async () => {
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Insieme' },
+    });
+    const id = added.json().id as string;
+    const doc = createBoardDoc(id);
+    addElement(doc, { ...base(), type: 'frame', cast: ['Insieme'] });
+    const update = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const path = `/api/v1/projects/${projectId}/cast-appearances`;
+    let unblock = () => {};
+    const blocker = oneAtATime(
+      () => new Promise<void>((resolve) => (unblock = resolve)),
+      'blocker',
+    );
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const decoded = kitDecodes.decoded;
+    const both = [get('owner', path), get('guest', path)];
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(2));
+    unblock();
+    await blocker;
+    for (const res of await Promise.all(both))
+      expect(res.body.items.map((i: { name: string }) => i.name)).toContain('insieme');
+    expect(kitDecodes.decoded).toBe(decoded + 1);
+    await db.delete(board).where(eq(board.id, id));
+  });
+
+  it('answers 503 rather than a partial kit while too many requests wait for a decode', async () => {
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Coda' },
+    });
+    const id = added.json().id as string;
+    const doc = createBoardDoc(id);
+    addElement(doc, { ...base(), type: 'frame', cast: ['Coda'] });
+    const update = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    let unblock = () => {};
+    const blocker = oneAtATime(
+      () => new Promise<void>((resolve) => (unblock = resolve)),
+      'blocker',
+    );
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const queued = Array.from({ length: MAX_WAITING_DECODES }, (_, i) =>
+      oneAtATime(async () => 0, `account-${i}`),
+    );
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/cast-appearances`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe('unavailable');
+    expect(res.headers['retry-after']).toBe('5');
+    unblock();
+    await Promise.all([blocker, ...queued]);
+    expect((await get('owner', `/api/v1/projects/${projectId}/cast-appearances`)).status).toBe(200);
+    await db.delete(board).where(eq(board.id, id));
+  });
+
   it('limits how often one person reads the project kit', async () => {
     // Each answer decodes board documents: a script must not keep the server busy for everyone.
     const path = `/api/v1/projects/${projectId}/plan-kit`;
@@ -988,5 +1384,74 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     });
     expect((await get('owner', '/api/v1/search?q=binar')).body.items).toEqual([]);
     expect((await get('owner', `/api/v1/projects/${projectId}/tags`)).body.items).toEqual([]);
+  });
+
+  it('keeps the backfill lock through a run longer than the idle timeout, and frees it at stop', async () => {
+    // Connections idle for a second are closed, the lock's own included if it were idle.
+    const short = createDatabase(config.DATABASE_URL, 2);
+    (short.sql.options as { idle_timeout: number }).idle_timeout = 1;
+    const held = async () => {
+      const [row] = await client<{ n: number }[]>`select count(*)::int as n from pg_locks
+        where locktype = 'advisory' and objid = 10895 and granted`;
+      return row?.n ?? 0;
+    };
+    // A stale board whose row another transaction keeps locked: the run waits on it.
+    const [stale] = await db.execute<{ id: string }>(sql`select d.board_id as id
+      from board_doc d join board b on b.id = d.board_id limit 1`);
+    await db.update(boardDoc).set({ indexedAt: null }).where(eq(boardDoc.boardId, stale!.id));
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let locked = () => {};
+    const rowLocked = new Promise<void>((resolve) => (locked = resolve));
+    const holder = client.begin(async (tx) => {
+      await tx`select 1 from board where id = ${stale!.id} for update`;
+      locked();
+      await gate;
+    });
+    await rowLocked;
+    const log = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
+    const backfill = startIndexBackfill(short.db, log as unknown as pino.Logger);
+    try {
+      await vi.waitFor(async () => expect(await held()).toBe(1));
+      await new Promise((resolve) => setTimeout(resolve, 2_500));
+      expect(await held()).toBe(1);
+    } finally {
+      release();
+      await holder;
+      await backfill.stop();
+    }
+    expect(await held()).toBe(0);
+    expect(log.error).not.toHaveBeenCalled();
+    await short.sql.end();
+  });
+
+  it('frees the backfill lock after a run, even one that failed', async () => {
+    // The backfill's queries fail; the lock was taken on a connection of its own.
+    const failing = Object.create(db) as Database;
+    Object.defineProperty(failing, 'select', {
+      value: () => {
+        throw new Error('database gone');
+      },
+    });
+    const log = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
+    const backfill = startIndexBackfill(failing, log as unknown as pino.Logger);
+    await vi.waitFor(() =>
+      expect(log.error).toHaveBeenCalledWith(
+        expect.anything(),
+        'board search index backfill failed',
+      ),
+    );
+    await backfill.stop();
+    // Another session takes the lock once that connection is closed.
+    const other = createDatabase(config.DATABASE_URL, 1);
+    try {
+      await vi.waitFor(async () => {
+        const [lock] = await other.sql<{ ok: boolean }[]>`select pg_try_advisory_lock(10895) as ok`;
+        expect(lock?.ok).toBe(true);
+      });
+    } finally {
+      await other.sql.end();
+    }
+    expect(log.warn).not.toHaveBeenCalled();
   });
 });

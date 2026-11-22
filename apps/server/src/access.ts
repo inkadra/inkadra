@@ -1,5 +1,5 @@
 import { atLeast, type ProjectRole, PROJECT_ROLE_RANK as rank } from '@inkadra/shared';
-import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, or, type SQLWrapper, sql } from 'drizzle-orm';
 import { visibleBoardCard } from './board-content.ts';
 import type { Database } from './db/client.ts';
 import { asset, board, boardGrant, notification, projectMember, user } from './db/schema.ts';
@@ -386,14 +386,15 @@ export async function boardChains(
   return chains;
 }
 
-/** SQL equivalent of visibility/boardRoles: every granted role permits reading. */
-export function notificationAccess(userId: string) {
-  return sql`(
-    ${notification.subjectUserId} = ${userId}
-    or (${notification.boardId} is not null and exists (
+/**
+ * SQL equivalent of visibility/boardRoles for one board, `boardId` (a column or a value): it is not
+ * in the trash and `userId` has a role on it; every granted role permits reading.
+ */
+export function boardReadable(boardId: SQLWrapper, userId: string) {
+  return sql`exists (
       with recursive up as (
         select b.id, b.parent_board_id, b.project_id from board b
-        where b.id = ${notification.boardId} and b.deleted_at is null
+        where b.id = ${boardId} and b.deleted_at is null
         union all
         select b.id, b.parent_board_id, up.project_id from board b
         join up on b.id = up.parent_board_id
@@ -403,7 +404,15 @@ export function notificationAccess(userId: string) {
           and ${live('g')})
         or exists (select 1 from project_member m
           where m.project_id = up.project_id and m.user_id = ${userId} and ${live('m')})
-    )) or (${notification.boardId} is null and (
+    )`;
+}
+
+/** SQL equivalent of visibility/boardRoles: every granted role permits reading. */
+export function notificationAccess(userId: string) {
+  return sql`(
+    ${notification.subjectUserId} = ${userId}
+    or (${notification.boardId} is not null and ${boardReadable(notification.boardId, userId)})
+    or (${notification.boardId} is null and (
       ${notification.projectId} is null
       or exists (select 1 from project_member m
         where m.project_id = ${notification.projectId} and m.user_id = ${userId} and ${live('m')})
@@ -450,7 +459,10 @@ export async function boardRolesForPeople(
  * Whether an account exists and is not deactivated. Deactivation keeps memberships (decision
  * 0025), so what acts for a person while they are away (a share link) checks this as well.
  */
-async function activeAccount(db: Pick<Database, 'select'>, userId: string): Promise<boolean> {
+export async function activeAccount(
+  db: Pick<Database, 'select'>,
+  userId: string,
+): Promise<boolean> {
   const [row] = await db
     .select({ id: user.id })
     .from(user)

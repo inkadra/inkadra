@@ -2,11 +2,13 @@ import { linkedLocation, linkedPlan } from '@inkadra/canvas-core';
 import { CATALOG_UUID, compareZ, type Element, readElement, roots } from '@inkadra/doc-schema';
 import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
+import postgres from 'postgres';
 import * as Y from 'yjs';
 import { docCounts, openTasks, unsortedInDoc } from '../board-preview.ts';
 import { reviveUsed } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, boardElementIndex, project } from '../db/schema.ts';
+import { settledWithin } from '../shutdown.ts';
 
 /** One row of board_element_index, before the board and project ids are added. */
 export interface IndexEntry {
@@ -229,13 +231,20 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
   }
 }
 
-/** Entries for every valid element of a document. Elements a newer client wrote are skipped. */
-export function entriesFor(doc: Y.Doc): IndexEntry[] {
-  const read: Array<{ el: Element; map: Y.Map<unknown> }> = [];
+type ReadElements = Array<{ el: Element; map: Y.Map<unknown> }>;
+
+/** Every valid element of a document. Elements a newer client wrote are skipped. */
+function readElements(doc: Y.Doc): ReadElements {
+  const read: ReadElements = [];
   for (const map of roots(doc).elements.values()) {
     const el = readElement(map);
     if (el) read.push({ el, map });
   }
+  return read;
+}
+
+/** Entries for every valid element of a document (`read`: its elements, if already read). */
+export function entriesFor(doc: Y.Doc, read = readElements(doc)): IndexEntry[] {
   const labels = autoFrameLabels(read.map((r) => r.el));
   // A plan is found by the live names of what it links to (decision 0104): the characters its
   // actors play and its location, as they read now.
@@ -327,7 +336,9 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
   });
   const projectId = await lockBoardForIndex(tx, boardId);
   if (!projectId) return 0;
-  const entries = entriesFor(doc);
+  // One pass over the cards for the rows and the tasks.
+  const read = readElements(doc);
+  const entries = entriesFor(doc, read);
   // File cards are searchable by both their file name and their caption.
   const fileIds = entries.flatMap((e) => (e.type === 'file' && e.assetId ? [e.assetId] : []));
   const names = new Map<string, string>();
@@ -401,7 +412,10 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
     .set({
       indexedAt: new Date(),
       counts: docCounts(doc),
-      tasks: openTasks(doc),
+      tasks: openTasks(
+        doc,
+        read.map((r) => r.el),
+      ),
       unsorted: unsortedInDoc(doc),
       updatedAt: sql`${boardDoc.updatedAt}`,
     })
@@ -470,6 +484,9 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
   return { indexed, failed, last: stale.at(-1)?.boardId };
 }
 
+/** How long a stop waits for the current backfill batch, within the shutdown deadline. */
+const BACKFILL_STOP_MS = 5_000;
+
 /** Session lock key: one search-index backfill at a time across processes (#815). */
 const BACKFILL_LOCK = 10895;
 
@@ -479,15 +496,22 @@ const BACKFILL_LOCK = 10895;
  */
 export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 * 1000) {
   let stopped = false;
-  let running = false;
+  let running: Promise<void> | undefined;
   const run = async () => {
     // Several collab or all-in-one processes share the database: one backfill at a time
-    // (#815). The lock lives in the session of one reserved connection.
-    if (running) return;
-    running = true;
-    let reserved: Awaited<ReturnType<Database['$client']['reserve']>> | undefined;
+    // (#815). The lock lives in the session of a connection of its own, with the pool's
+    // settings, reserved for the whole run (an idle connection would be closed after the
+    // pool's idle timeout, and the lock with it) and closed after it: closing it frees the lock
+    // whatever happened, and the backfill's queries never wait for a connection the lock holds.
+    const session = postgres({
+      ...db.$client.options,
+      max: 1,
+      shared: { retries: 0 },
+      parameters: {},
+    } as unknown as postgres.Options<Record<string, postgres.PostgresType>>);
+    let reserved: Awaited<ReturnType<typeof session.reserve>> | undefined;
     try {
-      reserved = await db.$client.reserve();
+      reserved = await session.reserve();
       const [lock] = await reserved<
         { ok: boolean }[]
       >`select pg_try_advisory_lock(${BACKFILL_LOCK}) as ok`;
@@ -506,20 +530,26 @@ export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 
     } catch (err) {
       log.error({ err }, 'board search index backfill failed');
     } finally {
-      if (reserved) {
-        await reserved`select pg_advisory_unlock_all()`.catch(() => {});
-        reserved.release();
-      }
-      running = false;
+      reserved?.release();
+      await session.end({ timeout: 5 }).catch((err: unknown) => {
+        log.warn({ err }, 'board search index backfill lock connection not closed cleanly');
+      });
     }
   };
-  void run();
-  const timer = setInterval(() => void run(), everyMs);
+  const start = () => {
+    running ??= run().finally(() => {
+      running = undefined;
+    });
+  };
+  start();
+  const timer = setInterval(start, everyMs);
   timer.unref();
   return {
-    stop() {
+    /** Stops the runs, and waits a few seconds for the current one to close its connection. */
+    async stop() {
       stopped = true;
       clearInterval(timer);
+      if (running) await settledWithin(running, BACKFILL_STOP_MS);
     },
   };
 }

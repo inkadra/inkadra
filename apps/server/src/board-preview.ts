@@ -3,6 +3,7 @@ import { frameLabels, listElements, storyboardOf } from '@inkadra/canvas-core';
 import {
   aspectValue,
   contentCounts,
+  type Element,
   FrameShape,
   getBoardAspect,
   readElement,
@@ -207,11 +208,14 @@ export interface OpenTask {
   dueDate?: string;
 }
 
-/** Every open assigned to-do item of a loaded document; stored with it (#803). */
-export function openTasks(doc: Y.Doc): OpenTask[] {
+/**
+ * Every open assigned to-do item of a loaded document; stored with it (#803). `elements`: its
+ * valid elements, when the caller has already read them.
+ */
+export function openTasks(doc: Y.Doc, elements?: readonly Element[]): OpenTask[] {
   const result: OpenTask[] = [];
-  for (const map of roots(doc).elements.values()) {
-    const el = readElement(map);
+  const all = elements ?? [...roots(doc).elements.values()].map((map) => readElement(map));
+  for (const el of all) {
     if (el?.type !== 'todo') continue;
     for (const item of el.items)
       if (!item.done && item.assigneeId)
