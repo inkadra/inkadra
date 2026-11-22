@@ -9,6 +9,17 @@ import {
   seeded,
 } from './dense.ts';
 
+const kept = { stored: true, storeMs: 4000, reopened: true, detail: null };
+const burst = (over: Partial<NonNullable<DenseResult['burst']>> = {}) => ({
+  clients: 18,
+  syncMs: 2500,
+  converged: true,
+  convergeMs: 900,
+  detail: null,
+  persistence: kept,
+  ...over,
+});
+
 const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   preset: 'dense',
   seed: 7,
@@ -29,7 +40,7 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   cursors: 12000,
   pendingEdits: 0,
   strokes: 180,
-  burst: { clients: 18, unloaded: true, syncMs: 2500, converged: true, detail: null },
+  burst: burst(),
   eventLoopP99MaxMs: 120,
   eventLoopShared: true,
   ...over,
@@ -80,7 +91,9 @@ describe('evaluateDense', () => {
   it('passes a healthy run and keeps the verdict last in the report', () => {
     expect(evaluateDense(result(), DENSE.limits)).toEqual([]);
     const text = formatDense(result(), DENSE.limits, []);
-    expect(text).toContain('18 clients (board reloaded) synced in 2500 ms, converged');
+    expect(text).toContain('18 clients synced in 2500 ms');
+    expect(text).toContain('in the database after 4000 ms, reopened intact');
+    expect(text).toContain('not observable from outside the server: not claimed');
     expect(text.split('\n').at(-1)).toBe('PASSED');
     expect(text).toContain('Seed                  7');
     expect(text).toContain('18 openings of the board');
@@ -89,26 +102,29 @@ describe('evaluateDense', () => {
 
   it('fails a slow, missing or diverging burst', () => {
     const slow = DENSE.limits.burstSyncMs + 1;
-    expect(
-      evaluateDense(
-        result({
-          burst: { clients: 18, unloaded: true, syncMs: slow, converged: true, detail: null },
-        }),
-        DENSE.limits,
-      ),
-    ).toEqual([`reconnect burst ${slow} ms > ${DENSE.limits.burstSyncMs} ms`]);
+    expect(evaluateDense(result({ burst: burst({ syncMs: slow }) }), DENSE.limits)).toEqual([
+      `reconnect burst ${slow} ms > ${DENSE.limits.burstSyncMs} ms`,
+    ]);
     expect(evaluateDense(result({ burst: null }), DENSE.limits)).toEqual([
       'the reconnect burst did not run',
     ]);
-    const split = {
-      clients: 18,
-      unloaded: true,
-      syncMs: 900,
-      converged: false,
-      detail: '2 clients differ',
-    };
+    const split = burst({ converged: false, detail: '2 clients differ', persistence: null });
     expect(evaluateDense(result({ burst: split }), DENSE.limits)).toEqual([
       'reconnect burst did not converge: 2 clients differ',
+    ]);
+  });
+
+  it('fails a burst whose offline edits did not reach the database or a later client', () => {
+    const lost = { stored: false, storeMs: null, reopened: true, detail: 'stored board shows x' };
+    expect(evaluateDense(result({ burst: burst({ persistence: lost }) }), DENSE.limits)).toEqual([
+      'offline edits not persisted: stored board shows x',
+    ]);
+    const changed = { ...kept, reopened: false, detail: 'a client opening it again differs' };
+    expect(evaluateDense(result({ burst: burst({ persistence: changed }) }), DENSE.limits)).toEqual(
+      ['offline edits not persisted: a client opening it again differs'],
+    );
+    expect(evaluateDense(result({ burst: burst({ persistence: null }) }), DENSE.limits)).toEqual([
+      'offline edits not persisted: not checked',
     ]);
   });
 

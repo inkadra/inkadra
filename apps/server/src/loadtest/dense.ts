@@ -8,7 +8,9 @@ import type { HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { addStroke } from '@inkadra/canvas-core';
 import { addElement, roots } from '@inkadra/doc-schema';
 import { generateReferenceBoard } from '@inkadra/doc-schema/reference-board';
+import type { BoardPreview } from '@inkadra/shared';
 import * as Y from 'yjs';
+import { projectBoard } from '../board-preview.ts';
 import { type ClientTarget, collabClients } from './generator.ts';
 import {
   evaluate,
@@ -45,6 +47,10 @@ const CURSOR_MS: [number, number] = [50, 100];
 /** One edit a second per editor, one in five a stroke drawn on a frame. */
 const EDIT_MS = 1000;
 const STROKE_SHARE = 0.2;
+/** How long the burst leaves the board alone: a store on the last close, then the unload. */
+const UNLOAD_WAIT_MS = 15_000;
+/** The offline markers sit above every other card (the reference board ends at -20,000). */
+const MARKER_Y = -50_000;
 /** Share of the expected edits (one a second per editor) that must come back timed. */
 const MIN_SAMPLE_SHARE = 0.5;
 /** Frames this full get no more strokes (MAX_STROKES is 2000). */
@@ -87,18 +93,36 @@ export interface DenseResult extends Omit<Result, 'preset'> {
   strokes: number;
   burst: {
     clients: number;
-    /** The server had closed the board before they came back; null without metrics. */
-    unloaded: boolean | null;
-    /** Null when not every client synced again. */
+    /** From the reconnect until every client synced and saved; null when one did not. */
     syncMs: number | null;
-    /** Every client and a fresh one hold the same document, with every offline edit. */
+    /**
+     * Every client and a fresh one hold the same document (state vector and delete set) with
+     * every offline edit; the time a fresh client took to open and agree.
+     */
     converged: boolean;
+    convergeMs: number | null;
     detail: string | null;
+    /** Null when the burst did not converge, so there was nothing to check. */
+    persistence: Persistence | null;
   } | null;
   /** Null without METRICS_TOKEN or from a server that does not report it. */
   eventLoopP99MaxMs: number | null;
   /** True when the process answering /metrics holds the boards too (`all`). */
   eventLoopShared: boolean;
+}
+
+/**
+ * After the burst everyone leaves. `stored`: the board's preview, which the server computes from
+ * the document stored in the database and never from the open one, shows every offline marker
+ * card (their count and their labels); `storeMs` is how long that took. `reopened`: a client
+ * opening the board afterwards gets the same document with every offline edit. Whether the
+ * server served that one from memory or from the database cannot be seen from outside.
+ */
+export interface Persistence {
+  stored: boolean;
+  storeMs: number | null;
+  reopened: boolean;
+  detail: string | null;
 }
 
 export interface DenseOptions extends ClientTarget {
@@ -219,6 +243,8 @@ export async function runDense(opts: DenseOptions) {
     value: number;
     /** Edits of the run still waiting for their acknowledgement. */
     pending(): number;
+    /** The card it adds while offline in the burst. */
+    marker: string;
   }
   const editors: Editor[] = [];
   let pendingEdits = 0;
@@ -226,7 +252,7 @@ export async function runDense(opts: DenseOptions) {
   async function editor(index: number, frames: string[], end: number) {
     const board = await openBoard(boardIdOf());
     const note = newId();
-    const me: Editor = { board, note, value: 0, pending: () => 0 };
+    const me: Editor = { board, note, value: 0, pending: () => 0, marker: newId() };
     editors[index] = me;
     addElement(board.doc, {
       id: note,
@@ -304,6 +330,50 @@ export async function runDense(opts: DenseOptions) {
     while (Date.now() < end && !stop.signal.aborted) await pause(250);
   }
 
+  /** Offline edits of the burst this replica lacks: a note not moved, a marker missing. */
+  const missingMarks = (doc: Y.Doc) =>
+    editors.filter(
+      (e) =>
+        roots(doc).elements.get(e.note)?.get('x') !== e.value || !roots(doc).elements.has(e.marker),
+    ).length;
+
+  /** Everyone leaves; then the stored board and a client that opens it again are checked. */
+  async function persisted(converged: Y.Doc): Promise<Persistence> {
+    const expected = projectBoard(Y.encodeStateAsUpdate(converged)).preview;
+    const want = JSON.stringify([expected.elementCount, expected.excerpts]);
+    for (const socket of sockets) socket.disconnect();
+    const started = performance.now();
+    let storeMs: number | null = null;
+    let seen = '';
+    while (!stop.signal.aborted && performance.now() - started < 60_000) {
+      try {
+        const preview = (await (
+          await api('GET', `/api/v1/boards/${rootBoard}/preview`)
+        ).json()) as BoardPreview;
+        seen = JSON.stringify([preview.elementCount, preview.excerpts]);
+        if (seen === want) {
+          storeMs = performance.now() - started;
+          break;
+        }
+      } catch (err) {
+        seen = String(err);
+      }
+      await pause(1000);
+    }
+    const stored = storeMs !== null;
+    let reopened = false;
+    let detail: string | null = stored ? null : `stored board shows ${seen}, expected ${want}`;
+    await pause(UNLOAD_WAIT_MS);
+    try {
+      const again = await openBoard(rootBoard);
+      reopened = sameDocument(again.doc, converged) && missingMarks(again.doc) === 0;
+      if (!reopened) detail = `${detail ? `${detail}; ` : ''}a client opening it again differs`;
+    } catch (err) {
+      detail = `${detail ? `${detail}; ` : ''}${String(err)}`;
+    }
+    return { stored, storeMs, reopened, detail };
+  }
+
   let rootBoard = '';
   const boardIdOf = () => rootBoard;
 
@@ -378,42 +448,53 @@ export async function runDense(opts: DenseOptions) {
       pendingEdits = editors.reduce((n, e) => n + e.pending(), 0);
       measuring = false;
       for (const socket of sockets) socket.disconnect();
-      for (const e of editors) {
+      // Offline, each editor moves its note and adds a marker card above everything else on the
+      // board, where the stored preview lists the first texts.
+      for (const [i, e] of editors.entries()) {
         e.value = ++counter;
         e.board.doc.transact(() => roots(e.board.doc).elements.get(e.note)?.set('x', e.value));
+        addElement(e.board.doc, {
+          id: e.marker,
+          type: 'color',
+          hex: '#1F2328',
+          label: `offline ${i} ${opts.seed}`,
+          x: i * 300,
+          y: MARKER_Y - i,
+          w: 160,
+          z: 'a0',
+          parent: null,
+          createdBy: null,
+          createdAt: Date.now(),
+        });
       }
-      // As after a restart: the server has unloaded the board and reads it back from the
-      // database. Without metrics, a fixed wait.
-      let unloaded: boolean | null = null;
-      for (let i = 0; i < 30 && !stop.signal.aborted; i++) {
-        await pause(1000);
-        const reading = await scrape(false);
-        unloaded = reading && reading.openBoards === 0;
-        if (reading ? unloaded && i >= 5 : i >= 10) break;
-      }
+      // As after a restart, the server should close the board and read it back from the
+      // database: it stores it when the last connection goes, then unloads it. Nothing outside
+      // the server tells whether it did (`inkadra_collab_open_boards` counts boards with people
+      // on them, not documents in memory), so the burst does not claim a reload: it waits the
+      // time a store and unload take, and the persistence check below reads the database.
+      await pause(UNLOAD_WAIT_MS);
       measuring = true;
       const clients = sockets.length;
       for (const socket of sockets) socket.connect();
       const syncMs = await settle(boards, 120_000);
       let converged = false;
+      let convergeMs: number | null = null;
       let detail: string | null = syncMs === null ? 'not every client synced again' : null;
+      let fresh: ReturnType<typeof open> | null = null;
       if (syncMs !== null) {
-        // Everyone's offline edit reaches everyone else; then a fresh client checks the server.
-        const fresh = await openBoard(rootBoard).catch((err) => {
+        // Everyone's offline edits reach everyone else, and a fresh client agrees.
+        const started = performance.now();
+        fresh = await openBoard(rootBoard).catch((err) => {
           detail = String(err);
           return null;
         });
-        const deadline = performance.now() + 30_000;
+        const deadline = started + 30_000;
         while (fresh && !stop.signal.aborted) {
-          const lagging = boards.filter((b) => !sameDocument(b.doc, fresh.doc)).length;
-          // Every offline edit on every replica, the fresh one included.
-          const missing = boards.reduce(
-            (n, b) =>
-              n +
-              editors.filter((e) => roots(b.doc).elements.get(e.note)?.get('x') !== e.value).length,
-            0,
-          );
+          const target = fresh.doc;
+          const lagging = boards.filter((b) => !sameDocument(b.doc, target)).length;
+          const missing = boards.reduce((n, b) => n + missingMarks(b.doc), 0);
           converged = lagging === 0 && missing === 0;
+          if (converged) convergeMs = performance.now() - started;
           if (converged || performance.now() > deadline) {
             if (!converged) detail = `${lagging} clients differ, ${missing} offline edits missing`;
             break;
@@ -421,8 +502,11 @@ export async function runDense(opts: DenseOptions) {
           await pause(250);
         }
       }
-      burst = { clients, unloaded, syncMs, converged, detail };
       await scrape(true);
+      // Leaving on purpose from here: not reconnects.
+      measuring = false;
+      const persistence = fresh && converged ? await persisted(fresh.doc) : null;
+      burst = { clients, syncMs, convergeMs, converged, detail, persistence };
     }
   } catch (err) {
     error(String(err));
@@ -505,6 +589,9 @@ export function evaluateDense(r: DenseResult, limits: DenseLimits): string[] {
       out.push(`reconnect burst ${Math.round(r.burst.syncMs)} ms > ${limits.burstSyncMs} ms`);
     if (r.burst.syncMs !== null && !r.burst.converged)
       out.push(`reconnect burst did not converge: ${r.burst.detail}`);
+    const p = r.burst.persistence;
+    if (r.burst.converged && !(p?.stored && p.reopened))
+      out.push(`offline edits not persisted: ${p?.detail ?? 'not checked'}`);
   }
   if (
     r.eventLoopShared &&
@@ -543,9 +630,18 @@ export function formatDense(r: DenseResult, limits: DenseLimits, failures: strin
         ? `limit ${limits.eventLoopP99Ms} ms`
         : '(info) of the web role, not the boards'
     }`,
-    b
-      ? `Reconnect burst       ${b.clients} clients${b.unloaded ? ' (board reloaded)' : ''} synced in ${ms(b.syncMs)}, ${b.converged ? 'converged' : `NOT converged (${b.detail})`}   limit ${limits.burstSyncMs} ms`
-      : 'Reconnect burst       did not run',
+    ...(b
+      ? [
+          `Reconnect burst       ${b.clients} clients synced in ${ms(b.syncMs)}   limit ${limits.burstSyncMs} ms`,
+          `  converged           ${b.converged ? `yes, a fresh client agreed in ${ms(b.convergeMs)}` : `NO (${b.detail})`}`,
+          `  stored              ${
+            b.persistence
+              ? `${b.persistence.stored ? `in the database after ${ms(b.persistence.storeMs)}` : 'NO'}, ${b.persistence.reopened ? 'reopened intact' : 'NOT reopened intact'}${b.persistence.detail ? ` (${b.persistence.detail})` : ''}`
+              : 'not checked'
+          }`,
+          '  reload              not observable from outside the server: not claimed',
+        ]
+      : ['Reconnect burst       did not run']),
   );
   return [...base, ...verdict].join('\n');
 }
