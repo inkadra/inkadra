@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { Id, Timestamp, z } from './common.ts';
+import { Id, orNull, Timestamp, z } from './common.ts';
 
 /**
  * Project exports and imports (docs/decisions/0037). Both run in the background: the request
@@ -69,7 +69,7 @@ export const ProjectTransfer = z
     projectName: z.string(),
     size: z.number().int().min(0).nullable().openapi({ description: 'Archive size in bytes.' }),
     failure: TransferFailure.nullable(),
-    summary: TransferSummary.nullable().openapi({ description: 'Counts, once ready.' }),
+    summary: orNull(TransferSummary).openapi({ description: 'Counts, once ready.' }),
     createdAt: Timestamp,
     finishedAt: Timestamp.nullable(),
     expiresAt: Timestamp.nullable().openapi({

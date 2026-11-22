@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { Author, ElementRef, ListLimit } from './comments.ts';
-import { Cursor, Id, Timestamp, z } from './common.ts';
+import { Cursor, Id, orNull, Timestamp, z } from './common.ts';
 import { ReviewStatus } from './reviews.ts';
 import { ServerAlert } from './server-status.ts';
 import { UserSummary } from './users.ts';
@@ -56,7 +56,7 @@ export const Notification = z
   .object({
     id: Id,
     type: NotificationType,
-    actor: Author.nullable().openapi({ description: 'Who did it; null when nobody did.' }),
+    actor: orNull(Author).openapi({ description: 'Who did it; null when nobody did.' }),
     projectId: Id.nullable(),
     projectName: z.string().nullable(),
     boardId: Id.nullable(),
@@ -81,7 +81,7 @@ export const Notification = z
           'comment is deleted.',
       }),
     reviewStatus: ReviewStatus.nullable().openapi({ description: 'For review.' }),
-    subject: UserSummary.nullable()
+    subject: orNull(UserSummary)
       .optional()
       .openapi({
         description:

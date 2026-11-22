@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { Id, Timestamp, z } from './common.ts';
+import { Id, orNull, Timestamp, z } from './common.ts';
 import { AssetPlayback } from './video.ts';
 
 export const AssetKind = z.enum(['image', 'video', 'audio', 'file']);
@@ -126,7 +126,7 @@ export const Asset = z
           'Pages of a PDF; null for other files and for PDFs the server could not read ' +
           '(encrypted with a password to open, broken) or has no poppler for.',
       }),
-    proxy: AssetProxy.nullable().openapi({
+    proxy: orNull(AssetProxy).openapi({
       description:
         'Playable MP4 copy of a video in a format browsers do not play, or AAC copy of an ' +
         'audio file not every browser plays. Null for other files and for media that already ' +
@@ -177,7 +177,7 @@ export const Asset = z
         'posters: add `?animated=1` to a variant URL up to 1024 px wide to play it. False ' +
         'for still pictures, for videos, and for GIFs past the worker limits.',
     }),
-    track: AssetTrack.nullable().openapi({
+    track: orNull(AssetTrack).openapi({
       description:
         'The route of a GPX file, read by the worker; null for other files and GPX files ' +
         'without a track. Its preview (`variants`) is the map around the route, when the ' +

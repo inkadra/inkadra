@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { Asset } from './assets.ts';
-import { Id, Timestamp, z } from './common.ts';
+import { Id, orNull, Timestamp, z } from './common.ts';
 import { ProjectIcon } from './projects.ts';
 
 /**
@@ -122,7 +122,7 @@ export const DEFAULT_EXPORT_PREFERENCES: ExportPreferences = {
 
 export const ExportSettings = ExportPreferences.extend({
   logoAssetId: Id.nullable(),
-  logo: Asset.nullable().openapi({
+  logo: orNull(Asset).openapi({
     description:
       'The logo asset, so readers need no second request. Null without a logo or while its ' +
       'file is not ready.',

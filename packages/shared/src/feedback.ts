@@ -25,9 +25,13 @@ export const FeedbackSettingsInput = z
   .strict()
   .openapi('FeedbackSettingsInput');
 export type FeedbackSettingsInput = z.infer<typeof FeedbackSettingsInput>;
-export const FeedbackSettings = FeedbackSettingsInput.extend({
-  tokenConfigured: z.boolean(),
-}).openapi('FeedbackSettings');
+// A spread, not `.extend()`: see CrewMember in crew.ts.
+export const FeedbackSettings = z
+  .strictObject({
+    ...FeedbackSettingsInput.shape,
+    tokenConfigured: z.boolean(),
+  })
+  .openapi('FeedbackSettings');
 export type FeedbackSettings = z.infer<typeof FeedbackSettings>;
 export const FeedbackStatus = z
   .object({

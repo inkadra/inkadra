@@ -63,6 +63,7 @@ import {
   InvalidToken,
   ListPage,
   OutcomeUnknown,
+  orNull,
   PageQuery,
   page,
   z,
@@ -956,7 +957,7 @@ registry.registerPath({
   path: `${AUTH_PREFIX}/get-session`,
   tags: ['Auth'],
   summary: 'Current session, or null.',
-  responses: { 200: { description: 'Session', ...json(Session.nullable()) } },
+  responses: { 200: { description: 'Session', ...json(orNull(Session)) } },
 });
 
 registry.registerPath({

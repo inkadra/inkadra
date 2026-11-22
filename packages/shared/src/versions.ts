@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { ListLimit } from './comments.ts';
-import { Cursor, Id, Timestamp, z } from './common.ts';
+import { Cursor, Id, orNull, Timestamp, z } from './common.ts';
 import { UserSummary } from './users.ts';
 
 /**
@@ -28,7 +28,7 @@ export const BoardVersion = z
     boardId: Id,
     kind: BoardVersionKind,
     name: z.string().nullable(),
-    createdBy: UserSummary.nullable().openapi({ description: 'Null for automatic versions.' }),
+    createdBy: orNull(UserSummary).openapi({ description: 'Null for automatic versions.' }),
     importedAuthor: z
       .string()
       .nullable()
@@ -112,7 +112,7 @@ export const BoardRestore = z
     restoredAt: Timestamp.openapi({
       description: 'When the record was saved, a moment after the board changed.',
     }),
-    restoredBy: UserSummary.nullable().openapi({
+    restoredBy: orNull(UserSummary).openapi({
       description: 'Null below editor, and when the account was deleted since.',
     }),
     version: z
@@ -213,7 +213,7 @@ export const BoardWriter = z
   .object({
     client: YjsClientId,
     kind: BoardWriterKind,
-    user: UserSummary.nullable().openapi({
+    user: orNull(UserSummary).openapi({
       description: 'Set only for `user`; never an email.',
     }),
     changedAt: Timestamp.nullable().openapi({
