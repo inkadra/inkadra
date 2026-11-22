@@ -2053,7 +2053,17 @@ registry.registerPath({
     'Send an email invitation again and push its expiry back. When the email cannot be sent ' +
     '(503 `unavailable`), the earlier link keeps working.',
   request: { params: idParam('invitationId') },
-  responses: { 200: { description: 'Sent', ...json(Invitation) }, ...errors },
+  responses: {
+    200: { description: 'Sent', ...json(Invitation) },
+    ...errors,
+    409: {
+      description:
+        'Cannot be sent again: not an unused email invitation, the access it offers has ended, ' +
+        'its inviter can no longer give it, the instance cannot send email, or the invitation ' +
+        'changed while it was being sent (the earlier link then stays).',
+      ...json(ApiError),
+    },
+  },
 });
 registry.registerPath({
   method: 'delete',
