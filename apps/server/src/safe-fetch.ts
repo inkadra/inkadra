@@ -34,6 +34,8 @@ for (const [net, prefix] of [
   ['::', 96],
   ['::1', 128],
   ['100::', 64],
+  // Local-use NAT64 (RFC 8215): the network's own translator, to any IPv4 address it chooses.
+  ['64:ff9b:1::', 48],
   // Teredo and 6to4 tunnel an IPv4 address that could be internal.
   ['2001::', 32],
   ['2001:db8::', 32],
