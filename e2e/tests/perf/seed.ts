@@ -361,7 +361,7 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
     rollback.abort();
     for (const cleanup of cleanups.splice(0).reverse()) cleanup();
   };
-  let moves = 0;
+  const moves = Array.from({ length: count }, () => 0);
   try {
     await Promise.all(
       Array.from({ length: count }, async (_, i) => {
@@ -397,7 +397,7 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
           at.x = Math.max(0, Math.min(11_000, at.x + (random() - 0.5) * 120));
           at.y = Math.max(0, Math.min(7_000, at.y + (random() - 0.5) * 90));
           provider.awareness?.setLocalState({ cursor: { ...at }, selection: [], editing: null });
-          moves += 1;
+          moves[i] = (moves[i] ?? 0) + 1;
         }, 50);
         cleanups.push(() => clearInterval(timer));
       }),
@@ -406,7 +406,11 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
     stop();
     throw err;
   }
-  return { moves: () => moves, stop };
+  return {
+    /** Cursor moves each peer published so far. */
+    moves: () => [...moves],
+    stop,
+  };
 }
 
 /** mulberry32: the same seed, the same numbers. */

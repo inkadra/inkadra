@@ -43,6 +43,8 @@ const NO_BLUR = 'none';
 // and the job summary, and fails nothing. PERF_DENSE_GATE=1 judges it. Turn it on in CI once
 // about ten runs of main in a row (the nightly CI run and merges) stay within the bars.
 const DENSE_GATE = process.env.PERF_DENSE_GATE === '1';
+/** A round lasts several seconds; a peer moving every 50 ms makes far more moves than this. */
+const MIN_PEER_MOVES = 20;
 const DENSE_FRAMES = 8;
 const DENSE_PEERS = Number(process.env.PERF_DENSE_PEERS ?? 3);
 const DENSE_OPEN_LIMIT_MS = Number(process.env.PERF_DENSE_OPEN_LIMIT_MS ?? 4000);
@@ -212,7 +214,17 @@ async function measure(
     try {
       // Their cursors are drawn (or gone) before anything is timed.
       if (count || i > 0) await expect(page.locator('.peer-cursor')).toHaveCount(count);
-      measured.push({ peers: count, ...(await series()), peerCursorMoves: peers?.moves() ?? 0 });
+      const before = peers?.moves() ?? [];
+      const timed = await series();
+      const after = peers?.moves() ?? [];
+      // Every peer kept moving through the whole round, or the round measured nothing: this
+      // fails the test even while the dense bars only report.
+      const moved = after.map((n, p) => n - (before[p] ?? 0));
+      expect(
+        moved.every((n) => n >= MIN_PEER_MOVES),
+        `could not measure: cursor moves per peer during the round ${moved.join(', ')}`,
+      ).toBe(true);
+      measured.push({ peers: count, ...timed, peerCursorMoves: moved.reduce((a, b) => a + b, 0) });
     } finally {
       peers?.stop();
     }
