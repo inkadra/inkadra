@@ -387,6 +387,11 @@ export function placePlanIcon(
  * its layer belongs to: on a setup, what goes on Set is the base's, shared by its setups
  * (decisions 0062, 0104), as placePlanIcon does for icons. Returns its id and the plan it went
  * to; null when that plan is full or the mark is empty (addPlanMark).
+ *
+ * It routes by the mark's own layer: a measure or a zone the Measure tool draws carries
+ * `layer: 'notes'` when it belongs on Notes, as the web's tool writes it. The mark is not checked
+ * against the schema here (one that does not read is stored, then left out when read): the
+ * caller checks it first. Nor are `lockedLayers`: the tools are off on a locked layer.
  */
 export function placePlanMark<K extends 'strokes' | 'shapes'>(
   doc: Y.Doc,
