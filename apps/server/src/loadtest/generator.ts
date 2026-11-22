@@ -101,7 +101,7 @@ export function collabClients(
   ) {
     const res = await fetch(new URL(path, opts.baseUrl), {
       method,
-      signal: AbortSignal.timeout(Math.max(1, timeoutMs)),
+      signal: AbortSignal.timeout(Math.max(1, Math.floor(timeoutMs))),
       headers: {
         origin,
         ...authHeaders,
