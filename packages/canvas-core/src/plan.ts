@@ -1381,6 +1381,18 @@ export function updatePlanItems(
     for (const kind of ['strokes', 'shapes', 'icons'] as const) {
       const list = listOf(doc, planId, kind);
       if (!list) return;
+      // Two copies of a stroke or a shape (two people changed it at once): the last one, the one
+      // read (doc-schema readElement), is written; the others go.
+      const last = new Map<unknown, number>();
+      list.toArray().forEach((value, index) => {
+        if (!(value instanceof Y.Map)) last.set(idOf(value), index);
+      });
+      for (let i = list.length - 1; i >= 0; i--) {
+        const value = list.get(i);
+        const id = idOf(value);
+        if (!(value instanceof Y.Map) && byId.has(id as string) && last.get(id) !== i)
+          list.delete(i, 1);
+      }
       list.toArray().forEach((value, index) => {
         const next = byId.get(idOf(value) as string) as Record<string, unknown> | undefined;
         if (!next) return;
