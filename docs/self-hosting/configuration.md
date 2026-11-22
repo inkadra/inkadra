@@ -298,26 +298,26 @@ Nominatim instance or a compatible provider whose policy permits it.
 
 These change `compose.yaml` itself. They reach the container too, which ignores them.
 
-| Variable                  | Default                   | Meaning                                                                        |
-| ------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.10.0` (recommended), `latest`, `next`, `edge`  |
-| `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                     |
-| `INKADRA_ENV_FILE`        | `.env`                    | File whose lines reach the container; set it when you use `--env-file`         |
-| `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                       |
-| `INKADRA_COLLAB_PORT`     | `3001`                    | Host port of `collab`, in split mode                                           |
-| `INKADRA_BIND`            | `127.0.0.1`               | Host address of the ports. `0.0.0.0`: [also set `TRUST_PROXY`][lan]            |
-| `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume. See [Storage][data-disks]       |
-| `POSTGRES_PASSWORD`       | required                  | Password of the bundled Postgres                                               |
-| `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database (or the name of another volume)                   |
-| `VALKEY_PASSWORD`         |                           | Password of the bundled Valkey, letters and digits (`openssl rand -hex 32`)    |
-| `POSTGRES_MAJOR`          | `16`                      | PostgreSQL version, only with `deploy/compose.postgres-old-layout.yaml`        |
-| `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey. See [Storage][data-disks]                              |
-| `RUSTFS_DATA`             | volume `rustfs-data`      | Host folder for the bundled RustFS                                             |
-| `INKADRA_DOMAIN`          |                           | Host of `PUBLIC_URL`, for the bundled proxies                                  |
-| `INKADRA_COLLAB_UPSTREAM` | `inkadra:3000`            | Where the bundled Caddy and Nginx send `/collab`: `collab:3001` in split mode  |
-| `ACME_EMAIL`              |                           | Contact for Let's Encrypt, for the bundled Traefik                             |
-| `TRAEFIK_CERTRESOLVER`    | `letsencrypt`             | Which Traefik certresolver gets the certificate, for the bundled Traefik       |
-| `NGINX_CERTS`             | `./certs`                 | Folder with `fullchain.pem` and `privkey.pem`, for the bundled Nginx           |
+| Variable                  | Default                   | Meaning                                                                       |
+| ------------------------- | ------------------------- | ----------------------------------------------------------------------------- |
+| `INKADRA_TAG`             | `latest`                  | Image tag: a version such as `0.10.0` (recommended), `latest`, `next`, `edge` |
+| `INKADRA_IMAGE`           | `ghcr.io/inkadra/inkadra` | Image name, for a mirror or your own build                                    |
+| `INKADRA_ENV_FILE`        | `.env`                    | File whose lines reach the container; set it when you use `--env-file`        |
+| `INKADRA_PORT`            | `3000`                    | Host port of the web app                                                      |
+| `INKADRA_COLLAB_PORT`     | `3001`                    | Host port of `collab`, in split mode                                          |
+| `INKADRA_BIND`            | `127.0.0.1`               | Host address of the ports. `0.0.0.0`: [also set `TRUST_PROXY`][lan]           |
+| `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume. See [Storage][data-disks]      |
+| `POSTGRES_PASSWORD`       | required                  | Password of the bundled Postgres                                              |
+| `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database (or the name of another volume)                  |
+| `VALKEY_PASSWORD`         |                           | Password of the bundled Valkey, letters and digits (`openssl rand -hex 32`)   |
+| `POSTGRES_MAJOR`          | `16`                      | PostgreSQL version, only with `deploy/compose.postgres-old-layout.yaml`       |
+| `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey. See [Storage][data-disks]                             |
+| `RUSTFS_DATA`             | volume `rustfs-data`      | Host folder for the bundled RustFS                                            |
+| `INKADRA_DOMAIN`          |                           | Host of `PUBLIC_URL`, for the bundled proxies                                 |
+| `INKADRA_COLLAB_UPSTREAM` | `inkadra:3000`            | Where the bundled Caddy and Nginx send `/collab`: `collab:3001` in split mode |
+| `ACME_EMAIL`              |                           | Contact for Let's Encrypt, for the bundled Traefik                            |
+| `TRAEFIK_CERTRESOLVER`    | `letsencrypt`             | Which Traefik certresolver gets the certificate, for the bundled Traefik      |
+| `NGINX_CERTS`             | `./certs`                 | Folder with `fullchain.pem` and `privkey.pem`, for the bundled Nginx          |
 
 [data-disks]: storage.md#data-on-different-disks
 [lan]: #direct-lan-and-tailscale-access
