@@ -58,9 +58,10 @@ const MIN_SAMPLE_SHARE = 0.5;
 /** Frames this full get no more strokes (MAX_STROKES is 2000). */
 const FULL_FRAME = 1500;
 
-// Limits from two CI runs per mode (22 November 2026, docs/self-hosting/capacity.md), with the
-// headroom of the presets: they catch a regression of several times, not a few percent. Worst
-// seen there: edit p99 358 ms, board save p95 498 ms, 739 MiB, burst 817 ms, event loop 381 ms.
+// Limits from CI runs (22 November 2026, docs/self-hosting/capacity.md), with the headroom of
+// the presets: they catch a regression of several times, not a few percent. Worst seen there:
+// edit p99 358 ms, board save p95 498 ms, 818 MiB, event loop 381 ms in the steady run; in the
+// burst (15 card additions sent at once) 7.6 s to sync and 2.6 s of event loop.
 export const DENSE: DensePreset = {
   editors: 15,
   readers: 3,
