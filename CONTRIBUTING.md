@@ -172,6 +172,17 @@ permissions it needs, declared on the job. `actionlint` and `zizmor` check every
 `.github/workflows`. `scripts/test-proxy.sh <caddy|traefik|nginx> [all|split]` runs the reverse
 proxy checks locally against a built image (`INKADRA_TAG=…`).
 
+The `audit` job, a gate of **All checks**, fails on a high or critical advisory that has a fix
+in the production dependencies of the workspace (`pnpm audit --prod --ignore-unfixable`) or of
+`relay/` (`npm audit --omit=dev`), the rule grype applies to the image. A new advisory fails
+every open pull request and the nightly run, so fix it in a pull request of its own: update the
+dependency (`pnpm update <name>`, or an entry in `overrides` of `pnpm-workspace.yaml` for a
+transitive one) and commit the lockfile. If the fix must wait, accept the advisory for a while
+in `auditConfig.ignoreGhsas` of `pnpm-workspace.yaml`, with a comment saying why it does not
+apply or what it waits for, and when to remove it. `relay/` has no production dependency today;
+if it gains one, `npm audit` reads no such list: update it, pin a fixed version through
+`overrides` in `relay/package.json`, or replace it.
+
 CI measures the line and branch coverage of every workspace and fails when one drops under its
 floor in `scripts/coverage-floors.json` (#852); raise a floor when coverage grows.
 `e2e/tests/axe.spec.ts` runs axe-core on the key pages in both themes and fails on serious and
