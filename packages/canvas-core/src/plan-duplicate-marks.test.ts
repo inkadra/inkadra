@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createBoardDoc, type PlanShape } from '@inkadra/doc-schema';
+import { checkCard, createBoardDoc, MAX_SHAPES, type PlanShape, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { createElement, listElements } from './board.ts';
@@ -44,6 +44,8 @@ describe('a text two people change at the same time', () => {
     const read = planOf(a, plan).shapes!.filter((s) => s.id === text);
     expect(read).toHaveLength(1);
     expect(planOf(b, plan).shapes).toEqual(planOf(a, plan).shapes);
+    // The card is still one this build knows: its copies are no hidden item, so it stays editable.
+    expect(checkCard(roots(a).elements.get(plan) as Y.Map<unknown>).status).toBe('known');
     // The next change writes the one read and removes the other.
     updatePlanItems(a, plan, [{ ...read[0]!, text: 'Way out' }]);
     expect(
@@ -51,5 +53,56 @@ describe('a text two people change at the same time', () => {
         .filter((s) => s.id === text)
         .map((s) => s.text),
     ).toEqual(['Way out']);
+  });
+
+  it('a shape that does not read, with no copy that does, still makes the card unknown', () => {
+    const doc = createBoardDoc(boardId);
+    const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    const shapes = (roots(doc).elements.get(plan) as Y.Map<unknown>).get(
+      'shapes',
+    ) as Y.Array<unknown>;
+    shapes.push([
+      {
+        id: 'from-a-newer-build',
+        kind: 'cloud',
+        color: '#1C1C1E',
+        width: 2,
+        x0: 1,
+        y0: 1,
+        x1: 2,
+        y1: 2,
+      },
+    ]);
+    expect(checkCard(roots(doc).elements.get(plan) as Y.Map<unknown>).status).toBe('foreign');
+  });
+
+  it('at the limit, the copy read is the copy written: a move keeps the text shown', () => {
+    const doc = createBoardDoc(boardId);
+    const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    const shapes = (roots(doc).elements.get(plan) as Y.Map<unknown>).get(
+      'shapes',
+    ) as Y.Array<unknown>;
+    const box = { kind: 'rect', color: '#1C1C1E', width: 2, x0: 1, y0: 1, x1: 9, y1: 9 };
+    const text = { kind: 'text', color: '#1C1C1E', width: 2, x0: 10, y0: 10, x1: 90, y1: 30 };
+    doc.transact(() => {
+      shapes.push(
+        Array.from({ length: MAX_SHAPES - 1 }, (_, i) => ({
+          ...box,
+          id: `box-${String(i).padStart(6, '0')}`,
+        })),
+      );
+      // Two copies of one text, the second past the limit as stored.
+      shapes.push([
+        { ...text, id: 'text-twice-01', text: 'Exit A' },
+        { ...text, id: 'text-twice-01', text: 'Exit B' },
+      ]);
+    });
+    const shown = planOf(doc, plan).shapes ?? [];
+    expect(shown).toHaveLength(MAX_SHAPES);
+    const visible = shown.find((s) => s.id === 'text-twice-01') as PlanShape;
+    // A move only: the text shown stays.
+    updatePlanItems(doc, plan, [{ ...visible, x0: 200, x1: 280 }], undefined, [visible]);
+    const after = storedShapes(doc, plan).filter((s) => s.id === 'text-twice-01');
+    expect(after.map((s) => [s.text, s.x0])).toEqual([[visible.text, 200]]);
   });
 });

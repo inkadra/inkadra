@@ -17,6 +17,7 @@ import {
   type PlanShape,
   type PlanStroke,
   planItemLayer,
+  planMarkCopies,
   roots,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
@@ -1381,17 +1382,12 @@ export function updatePlanItems(
     for (const kind of ['strokes', 'shapes', 'icons'] as const) {
       const list = listOf(doc, planId, kind);
       if (!list) return;
-      // Two copies of a stroke or a shape (two people changed it at once): the last one, the one
-      // read (doc-schema readElement), is written; the others go.
-      const last = new Map<unknown, number>();
-      list.toArray().forEach((value, index) => {
-        if (!(value instanceof Y.Map)) last.set(idOf(value), index);
-      });
-      for (let i = list.length - 1; i >= 0; i--) {
-        const value = list.get(i);
-        const id = idOf(value);
-        if (!(value instanceof Y.Map) && byId.has(id as string) && last.get(id) !== i)
-          list.delete(i, 1);
+      // Two copies of a stroke or a shape (two people changed it at once): the one every reader
+      // takes (doc-schema planMarkCopies) is written; the others of an id written here go.
+      if (kind !== 'icons') {
+        const read = new Set(planMarkCopies(kind, list.toArray()));
+        for (let i = list.length - 1; i >= 0; i--)
+          if (!read.has(i) && byId.has(idOf(list.get(i)) as string)) list.delete(i, 1);
       }
       list.toArray().forEach((value, index) => {
         const next = byId.get(idOf(value) as string) as Record<string, unknown> | undefined;

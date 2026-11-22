@@ -377,10 +377,15 @@ export type FrameShape = z.infer<typeof FrameShape>;
  * Lists read item by item that leave out the items they cannot read, with their item schema and
  * the length they keep: the strict check (strict.ts) walks the items and notices the left-out ones.
  */
-const LENIENT_LISTS = new WeakMap<z.ZodType, { item: z.ZodType; max: number }>();
+const LENIENT_LISTS = new WeakMap<
+  z.ZodType,
+  { item: z.ZodType; max: number; lastPerId?: boolean }
+>();
 
 /** Item schema and kept length of a list that leaves out the items it cannot read. */
-export function lenientListOf(schema: z.ZodType): { item: z.ZodType; max: number } | undefined {
+export function lenientListOf(
+  schema: z.ZodType,
+): { item: z.ZodType; max: number; lastPerId?: boolean } | undefined {
   return LENIENT_LISTS.get(schema);
 }
 
@@ -853,17 +858,44 @@ export type PlanIcon = z.infer<typeof PlanIcon>;
  * added later) is left out, and items past the limit are cut instead of failing the whole card,
  * so two people adding at the limit at once never make the plan disappear.
  */
-function lenientList<T extends z.ZodType>(item: T, max: number) {
-  const list = z.array(z.unknown()).transform((items) =>
-    items
-      .flatMap((value) => {
-        const parsed = item.safeParse(value);
+function lenientList<T extends z.ZodType>(item: T, max: number, lastPerId = false) {
+  const list = z.array(z.unknown()).transform((items) => {
+    const read = (lastPerId ? survivingCopies(items, item) : items.map((_, i) => i)).flatMap(
+      (index) => {
+        const parsed = item.safeParse(items[index]);
         return parsed.success ? [parsed.data as z.infer<T>] : [];
-      })
-      .slice(0, max),
-  );
-  LENIENT_LISTS.set(list, { item, max });
+      },
+    );
+    return read.slice(0, max);
+  });
+  LENIENT_LISTS.set(list, { item, max, lastPerId });
   return list;
+}
+
+/**
+ * Where the items of a plan's strokes or shapes are read from (decision 0104): a stroke or a shape
+ * is a plain object, replaced to change it, so two people changing one at once leave two copies
+ * with its id. Of each id the last copy that reads is kept, where it stands; items without an id,
+ * and those that do not read with no copy that does, stay where they are (the read leaves them
+ * out). The indexes, in order, before any limit: every reader and writer takes the same copy.
+ */
+export function survivingCopies(items: readonly unknown[], item: z.ZodType): number[] {
+  const idOf = (value: unknown) =>
+    typeof value === 'object' && value !== null ? (value as { id?: unknown }).id : undefined;
+  const last = new Map<unknown, number>();
+  items.forEach((value, index) => {
+    const id = idOf(value);
+    if (typeof id === 'string' && item.safeParse(value).success) last.set(id, index);
+  });
+  return items.flatMap((value, index) => {
+    const id = idOf(value);
+    return typeof id === 'string' && last.has(id) && last.get(id) !== index ? [] : [index];
+  });
+}
+
+/** The copies of a plan's strokes or shapes that are read (survivingCopies), by list. */
+export function planMarkCopies(kind: 'strokes' | 'shapes', items: readonly unknown[]): number[] {
+  return survivingCopies(items, kind === 'strokes' ? PlanStroke : PlanShape);
 }
 
 const PlanIcons = lenientList(PlanIcon, MAX_PLAN_ICONS);
@@ -898,8 +930,8 @@ export const PlanShape = FrameShape.extend({
 });
 export type PlanShape = z.infer<typeof PlanShape>;
 
-const PlanShapes = lenientList(PlanShape, MAX_SHAPES);
-const PlanStrokes = lenientList(PlanStroke, MAX_STROKES);
+const PlanShapes = lenientList(PlanShape, MAX_SHAPES, true);
+const PlanStrokes = lenientList(PlanStroke, MAX_STROKES, true);
 
 export const MAX_PLAN_WALLS = 200;
 export const MAX_WALL_POINTS = 100;

@@ -2,7 +2,7 @@
 import * as Y from 'yjs';
 import type { z } from 'zod';
 import { cachedPerMap, readElement } from './doc.ts';
-import { Element, lenientListOf } from './elements.ts';
+import { Element, lenientListOf, survivingCopies } from './elements.ts';
 
 /**
  * The strict check of a card (decision 0101): does this build understand everything stored in
@@ -156,7 +156,10 @@ function checkNow(
       const raw = lenient && itemsOf(get(key));
       if (!lenient || !raw) continue;
       const kept = (element[key] as unknown[] | undefined)?.length ?? 0;
-      if (kept < Math.min(raw.length, lenient.max) && !issues.some((i) => i.path[0] === key))
+      // Copies of one id the read keeps one of (a plan's strokes and shapes) are no hidden item;
+      // an item that does not read, with no copy that does, still is.
+      const counted = lenient.lastPerId ? survivingCopies(raw, lenient.item).length : raw.length;
+      if (kept < Math.min(counted, lenient.max) && !issues.some((i) => i.path[0] === key))
         issues.push(invalid([key]));
     }
   }

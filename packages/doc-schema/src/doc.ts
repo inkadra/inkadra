@@ -710,28 +710,7 @@ export function* readElementSteps(
   const result = Element.safeParse(plain);
   if (!result.success) return null;
   if (list && items) (result.data as Record<string, unknown>)[list.key] = items;
-  if (result.data.type === 'plan') {
-    // A stroke or a shape is a plain object, replaced (deleted and inserted again) to change it:
-    // two people changing the same one at once leave two copies with its id. One is read: the
-    // last; the next write of it removes the others (canvas-core updatePlanItems).
-    const plan = result.data as { strokes?: Array<{ id: string }>; shapes?: Array<{ id: string }> };
-    if (plan.strokes) plan.strokes = lastPerId(plan.strokes);
-    if (plan.shapes) plan.shapes = lastPerId(plan.shapes);
-  }
   return result.data;
-}
-
-/** The items with the last copy of each id, where that copy is. */
-function lastPerId<T extends { id: string }>(items: T[]): T[] {
-  const seen = new Set<string>();
-  const out: T[] = [];
-  for (let i = items.length - 1; i >= 0; i--) {
-    const item = items[i] as T;
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    out.push(item);
-  }
-  return out.length === items.length ? items : out.reverse();
 }
 
 export interface ValidationIssue {
