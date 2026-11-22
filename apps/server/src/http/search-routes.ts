@@ -315,6 +315,8 @@ async function boardKits<P extends Part>(
         .where(and(eq(boardDoc.boardId, row.boardId), boardReadable(boardDoc.boardId, actor.id)));
       if (!stored) return null;
       if (!stored.state) return known?.value ?? null;
+      // Nobody is left to answer: the decode is for nothing.
+      if (gone()) return null;
       try {
         const derived = kitOf(stored.state, part);
         kitDecodes.decoded += 1;

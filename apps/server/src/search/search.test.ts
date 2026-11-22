@@ -803,9 +803,19 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
         lenses: [],
       },
     ];
+    // Each route decodes its own part of the two boards that have its cards, once.
+    const first = kitDecodes.decoded;
     expect((await get('owner', cast)).body).toEqual({ items: castItems });
+    expect(kitDecodes.decoded).toBe(first + 2);
+    expect((await get('owner', kit)).body).toEqual({ items: kitItems });
+    expect(kitDecodes.decoded).toBe(first + 4);
+    expect((await get('owner', `${kit}?excludeBoardId=${b.id}`)).body.items).toEqual([
+      { ...kitItems[0], icon: { ...kitItems[0]?.icon, lens: 35 }, lenses: [35] },
+      kitItems[2],
+    ]);
     // The same stored bytes again: nothing is decoded.
     const decoded = kitDecodes.decoded;
+    expect(decoded).toBe(first + 4);
     expect((await get('owner', cast)).body).toEqual({ items: castItems });
     expect(kitDecodes.decoded).toBe(decoded);
     // A board stored again is decoded again, even with the same time.
@@ -819,6 +829,33 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       { name: 'zoe', frames: 1, scenes: [] },
     ]);
     expect(kitDecodes.decoded).toBe(decoded + 1);
+    // Other bytes with the same time and the same length are told apart too.
+    const frameId = newElementId();
+    const variant = (name: string) => {
+      const doc = new Y.Doc();
+      Y.applyUpdate(doc, stored);
+      doc.clientID = 4242;
+      addElement(doc, { ...at('a5'), id: frameId, type: 'frame', cast: [name] });
+      return Y.encodeStateAsUpdate(doc);
+    };
+    const [ugo, ivo] = [variant('Ugo'), variant('Ivo')];
+    expect(ugo.byteLength).toBe(ivo.byteLength);
+    expect(Buffer.from(ugo).equals(Buffer.from(ivo))).toBe(false);
+    const names = async () =>
+      (await get('owner', cast)).body.items.map((i: { name: string }) => i.name);
+    for (const [state, name, other] of [
+      [ugo, 'ugo', 'ivo'],
+      [ivo, 'ivo', 'ugo'],
+    ] as const) {
+      await db.execute(
+        sql`update board_doc set state = ${state}, size = ${state.byteLength}, updated_at = updated_at where board_id = ${a.id}`,
+      );
+      const before = kitDecodes.decoded;
+      const listed = await names();
+      expect(listed).toContain(name);
+      expect(listed).not.toContain(other);
+      expect(kitDecodes.decoded).toBe(before + 1);
+    }
     await db.delete(projectTable).where(eq(projectTable.id, kitProject));
   });
 
