@@ -19,6 +19,21 @@ let nextId = 0;
 let seeded: ReadonlyMap<string, SeededCounts> = new Map();
 // Boards open in a Canvas, whose synced doc is newer than anything the server has stored.
 const live = new Set<string>();
+// Boards closed since, by when: their local counts hold until the server has stored them.
+const released = new Map<string, number>();
+
+/**
+ * How long a closed board's counts may differ from the server's before the server's win. The
+ * collaboration server stores a board within 10 s of its last edit (`maxDebounce` in apps/server
+ * collab.ts), but a store that fails is retried, up to a minute apart: only counts that match
+ * ours say the board was stored. Past this, someone else most likely changed it since.
+ * shortcut: a store still failing after this shows the server's older counts until it succeeds;
+ * upgrade to a notice when a board is stored if that matters.
+ */
+export const RELEASED_HOLD_MS = 120_000;
+
+/** The board closed and its local counts still stand in for the server's. */
+export const holdsReleasedCounts = (boardId: string) => released.has(boardId);
 const listeners = new Set<() => void>();
 const emit = () => {
   for (const l of listeners) l();
@@ -65,27 +80,38 @@ const sameCounts = (a: SeededCounts, b: SeededCounts) =>
 export function setLiveCounts(boardId: string, counts: SeededCounts) {
   const previous = seeded.get(boardId);
   live.add(boardId);
+  released.delete(boardId);
   if (previous && sameCounts(previous, counts)) return;
   seeded = new Map(seeded).set(boardId, counts);
   emit();
 }
 
-/** The Canvas closed: the local counts last until the server has had time to store the edits. */
+/**
+ * The Canvas closed: the local counts last until counts from the server match them, or were
+ * asked for once it must have stored the edits (forgetSeededCounts).
+ */
 export function releaseLiveCounts(boardId: string) {
   live.delete(boardId);
-  setTimeout(() => {
-    if (live.has(boardId) || !seeded.has(boardId)) return;
-    const rest = new Map(seeded);
-    rest.delete(boardId);
-    seeded = rest;
-    emit();
-  }, 10_000);
+  if (seeded.has(boardId)) released.set(boardId, Date.now());
+}
+
+/**
+ * The closed board's local counts expire (`RELEASED_HOLD_MS` after it closed): the server's win
+ * now, also when no answer from the server had the board (its project was left).
+ */
+export function expireReleasedCounts(boardId: string) {
+  if (!released.delete(boardId)) return;
+  const rest = new Map(seeded);
+  rest.delete(boardId);
+  seeded = rest;
+  emit();
 }
 
 /**
  * The server stores a board a couple of seconds after its last edit, so counts fetched when
  * a seed finishes can still be empty: seeded boards keep their local counts until the server
- * reports elements on them. Boards open in a Canvas always show the counts of their doc.
+ * reports elements on them. Boards open in a Canvas, and closed ones until the server has
+ * caught up (forgetSeededCounts), show the counts of their doc.
  */
 export function mergeSeededCounts(
   server: ReadonlyMap<string, BoardCount>,
@@ -93,19 +119,42 @@ export function mergeSeededCounts(
 ): Map<string, BoardCount> {
   const merged = new Map(server);
   for (const [boardId, counts] of local)
-    if (live.has(boardId) || !server.get(boardId)?.elementCount)
+    if (live.has(boardId) || released.has(boardId) || !server.get(boardId)?.elementCount)
       merged.set(boardId, { ...server.get(boardId), boardId, ...counts });
   return merged;
 }
 
-/** Drops local counts the server has caught up with. */
-export function forgetSeededCounts(server: ReadonlyMap<string, BoardCount>) {
-  const stored = [...seeded.keys()].filter((id) => !live.has(id) && server.get(id)?.elementCount);
-  if (stored.length === 0) return;
+/**
+ * Drops local counts the server has caught up with: a seeded board once it has elements there,
+ * a closed one once its counts there match, or once they were asked for (`askedAt`) past
+ * `RELEASED_HOLD_MS` after it closed. Only boards in `server` are judged: counts of another
+ * project say nothing about them. True when it dropped any.
+ */
+export function forgetSeededCounts(
+  server: ReadonlyMap<string, BoardCount>,
+  askedAt: number = Date.now(),
+) {
+  const caughtUp = (id: string, counts: SeededCounts) => {
+    const there = server.get(id);
+    const closedAt = released.get(id);
+    if (closedAt === undefined) return !!there?.elementCount;
+    if (!there) return false;
+    // Counts stored by an older server may lack the newer kinds: only those it has compare.
+    const matches = (Object.keys(counts) as (keyof SeededCounts)[]).every(
+      (key) => there[key] === undefined || there[key] === counts[key],
+    );
+    return matches || askedAt >= closedAt + RELEASED_HOLD_MS;
+  };
+  const stored = [...seeded].filter(([id, counts]) => !live.has(id) && caughtUp(id, counts));
+  if (stored.length === 0) return false;
   const rest = new Map(seeded);
-  for (const id of stored) rest.delete(id);
+  for (const [id] of stored) {
+    rest.delete(id);
+    released.delete(id);
+  }
   seeded = rest;
   emit();
+  return true;
 }
 
 // The board connection and store load with the first seed, not with every page (#774).
