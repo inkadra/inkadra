@@ -62,7 +62,8 @@ never set it. No redirect address or user agent is stored on the token.
     snippet, tags, element, asset or crew data, no board kind; project hits are left out. A hit
     still tells that one of those boards holds the words searched.
   - `GET /projects` lists active projects where the person is editor or owner (`archived=true`
-    gives an empty list), without type, time zone, shooting dates, pin and group.
+    gives an empty list), without type, time zone, shooting dates, pin and group. The query
+    itself leaves the others out, so pages are full and a cursor only names a listed project.
   - `GET /shared-boards` lists the shared boards where the person is editor or owner.
   - `GET /projects/{projectId}/boards` answers only for a project with a destination: at least
     one board where the person is editor or owner. It then keeps every board the person can read

@@ -12,7 +12,7 @@ import {
   Timestamp,
   z,
 } from '@inkadra/shared';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
@@ -425,6 +425,23 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     // A full token still reads the read-only project's boards.
     const full = (await issueToken(db, me, { name: 'Phone', client: 'mobile' })).token;
     expect((await call(full, 'GET', `/projects/${viewed}/boards`)).statusCode).toBe(200);
+  });
+
+  it('pages the projects of a Clipper token among admitted projects only', async () => {
+    const { token } = await clipperSignIn();
+    // The read-only project first in the person's own order.
+    await db
+      .update(projectMember)
+      .set({ position: 'Zz' })
+      .where(and(eq(projectMember.projectId, viewed), eq(projectMember.userId, me)));
+    const first = await call(token, 'GET', '/projects?limit=1');
+    expect(first.statusCode).toBe(200);
+    // A full page, and no cursor that names the project left out.
+    expect(first.json()).toMatchObject({ items: [{ id: mine }], nextCursor: null });
+    const full = (await issueToken(db, me, { name: 'Phone', client: 'mobile' })).token;
+    const all = (await call(full, 'GET', '/projects?limit=1')).json();
+    expect(all.items.map((p: { id: string }) => p.id)).toEqual([viewed]);
+    expect(all.nextCursor).not.toBeNull();
   });
 
   it('refuses a Clipper token everywhere else with the usual 403', async () => {
