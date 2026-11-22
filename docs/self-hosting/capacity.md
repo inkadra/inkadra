@@ -37,6 +37,53 @@ opens a random board, adds a note, then moves it about once a second while movin
 uploads a small picture about once a minute, and moves to another board every 20 to 40 seconds.
 Each reader follows an editor from board to board without writing.
 
+## Dense: one heavy board
+
+The presets spread people over many light boards, about one editor per board. `--preset dense`
+is the other shape, the riskiest for one collaboration process: **15 editors and 3 readers on
+the same board**, a heavy one.
+
+```sh
+METRICS_TOKEN=<the token of the instance> \
+pnpm loadtest --preset dense --url https://inkadra-test.example.com --yes-i-know
+```
+
+- **The board** is the medium [reference board](../testing/reference-board.md) (decision 0093):
+  1000 cards with a real editing history by about 400 sessions, 20 storyboard frames and 10 set
+  plans drawn with 500 to 1000 strokes each (15,130 strokes on the frames), notes with rich text,
+  a table of 500 rows; about 7.3 MB encoded. It takes a few seconds to build on the machine
+  running the test, then one client sends it to the board.
+- **The editors** arrive within 3 seconds. Each adds a note and then, once a second, moves it or
+  (one time in five) draws a pencil stroke on a frame, and moves its cursor every 50 to 100 ms
+  all the time: the web app sends a cursor at most every 50 ms. The readers time how long the
+  editors' changes take to reach them.
+- **The reconnect burst** at the end is what people go through when the collaboration role
+  restarts: every connection drops, each editor changes its note while offline, the test waits
+  until the server has closed the board (it reads the board back from the database, as after a
+  restart; without `METRICS_TOKEN` it waits 10 s), then all 18 clients reconnect in the same
+  instant. It measures the time until every one of them is synced and its offline change saved,
+  then checks that they converge: every client and a fresh one hold the same state (the same
+  clock for every client id) and every offline change.
+- **The event loop delay** is `inkadra_web_event_loop_delay_p99_seconds`, the p99 of the process
+  answering `/metrics` over each 5 s between readings. With `all` it is the process that holds
+  the board, and a limit; in split mode it is the web role's and only shown.
+- It is CLI only: **Settings → Server** keeps the three presets.
+
+| Limit                        | `dense`       | Why it differs from the presets                                                          |
+| ---------------------------- | ------------- | ---------------------------------------------------------------------------------------- |
+| Edit round trip p95 / p99    | 750 / 2000 ms |                                                                                          |
+| Delivery to readers p95      | 1500 ms       |                                                                                          |
+| Board save p95               | 3000 ms       | each save writes the whole 7 MB board                                                    |
+| Peak memory                  | 2 GiB         |                                                                                          |
+| Board documents              | 16 MiB        | the 256 KiB of the presets is a mean over light boards; this board starts at about 7 MiB |
+| Reconnects                   | 15            |                                                                                          |
+| Reconnect burst, all synced  | 15 s          | new                                                                                      |
+| Event loop delay p99 (`all`) | 1500 ms       | new                                                                                      |
+
+Also on any error, a burst that does not converge, and a pool wait over 2 s. Memory per open
+board is never a limit here (one board). The limits live in
+[`apps/server/src/loadtest/dense.ts`](../../apps/server/src/loadtest/dense.ts).
+
 ## From the settings
 
 **Settings → Server → Load test** (administrators) runs the same presets as a worker job of the
@@ -159,9 +206,10 @@ Prometheus can watch them on a production instance too.
 
 ## Measured
 
-The nightly [load test workflow](../../.github/workflows/loadtest.yml) runs `medium` against the
-image of `main` on a GitHub runner (4 cores, 16 GB), with the bundled Postgres and Valkey, in
-`all` mode and in split mode, and keeps both reports as artifacts. A red night opens an issue.
+The nightly [load test workflow](../../.github/workflows/loadtest.yml) runs `medium`, then
+`dense`, against the image of `main` on a GitHub runner (4 cores, 16 GB), with the bundled
+Postgres and Valkey, in `all` mode and in split mode, and keeps the reports as artifacts. A red
+night opens an issue. It also runs on pull requests that change the load test.
 
 | Run                           | Edit round trip p50 / p95 / p99 | Board save p95 | Pool wait | Memory before → peak | Per open board |
 | ----------------------------- | ------------------------------- | -------------- | --------- | -------------------- | -------------- |
@@ -177,3 +225,31 @@ Since #911 the `all` runs show **Per open board** as information only, and **Boa
 decides: a `small` run in `all` mode on the workstation measured 4.8 KiB per open board
 (15 November 2026), well under the 256 KiB limit, which is there to catch a document that keeps
 growing, not boards with more content.
+
+### Dense
+
+| Run                          | Edit round trip p50 / p95 / p99 | Delivery p95 / p99 | Board save p95 | Memory before → peak | Event loop p99 | Burst: 18 clients synced |
+| ---------------------------- | ------------------------------- | ------------------ | -------------- | -------------------- | -------------- | ------------------------ |
+| `dense`, `all`, CI           | 1.4 / 7.7 / 223 ms              | 15 / 372 ms        | 336 ms         | 307 → 628 MiB        | 367 ms         | 555 ms                   |
+| `dense`, `all`, CI           | 1.6 / 13 / 106 ms               | 35 / 571 ms        | 498 ms         | 273 → 739 MiB        | 381 ms         | 665 ms                   |
+| `dense`, split, CI†          | 1.4 / 6.7 / 210 ms              | 16 / 245 ms        | 316 ms         | 223 → 508 MiB        | (web) 13 ms    | 599 ms                   |
+| `dense`, split, CI†          | 2.6 / 22 / 358 ms               | 51 / 422 ms        | 485 ms         | 218 → 539 MiB        | (web) 13 ms    | 817 ms                   |
+| `dense`, `all`, dev machine‡ | 2.5 / 98 / 1605 ms              | 666 / 1157 ms      | 636 ms         | 315 → 692 MiB        | 706 ms         | 977 ms                   |
+
+Runs of 22 November 2026; the CI runs last 180 s, the dev machine's 60 s. In every run: about
+2600 edits (500 of them strokes on frames) and 34,000 cursor moves on the CI runs, no error, no
+reconnect, the board read back from the database before the burst, and all clients converged.
+Board documents 7.4 MiB, the seeded 7.3 MB and what the run drew. † Memory and saves of the
+`collab` role. ‡ A 12-thread Linux machine shared with other work, server run from source,
+clients on the same machine.
+
+What it shows: the edits themselves stay fast (p95 under 25 ms on CI), but the **p99 of the edit
+round trip and of the delivery is 100 to 600 ms on CI** (1.6 s on the busier dev machine), against
+about 1.5 ms with `medium`, and the event loop of the process holding the board stalls about as
+long (370 to 380 ms at p99 in `all`, 706 ms on the dev machine). Something in that process
+works on the whole 7 MB document at once while everyone waits, and everyone on that process, on
+any board, feels it. Part of it is the synchronous start of each save (2 to 10 s after a change):
+validating every card and encoding the whole document took about 130 ms on the dev machine for
+this board; the rest is not pinned down yet. Board saves (the database write, which does not
+block) take 300 to 500 ms on CI. The reconnect burst is not a problem at this size:
+18 clients are synced again in under a second, the board read back from the database included.

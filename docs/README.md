@@ -33,6 +33,7 @@ request. A new wiki page also goes in the list in `scripts/wiki-sync.mjs`.
 | [Opening large boards](opening-boards.md)                       | How a client opens a board without blocking                        |
 | [Reference board](testing/reference-board.md)                   | A realistic board document for performance work                    |
 | [Collaboration simulation](testing/collaboration-simulation.md) | The ten-user collaboration test and how to run a long soak         |
+| [Canvas performance](testing/canvas-performance.md)             | The canvas perf suite: its boards, peers, bars and numbers         |
 | [End-to-end tests](../e2e)                                      | Running the Playwright tests and the load tests                    |
 | [Report relay](../relay)                                        | The Worker that passes in-app reports to the developers            |
 | [The demo projects](demo-project.md)                            | Story bible of the sample film and photo shoot                     |

@@ -25,6 +25,9 @@ size and seed always give the same bytes. It writes:
 | medium | 1000     | 30 (500–1000)              | 50         | 500        | 400      | 7.5 MB  | 6 s               |
 | large  | 3000     | 60 (500–1000)              | 150        | 500        | 1000     | 14.9 MB | 34 s              |
 
+The load test's `dense` scenario seeds its one board with the medium board, seed 1, built on the
+fly ([Capacity](../self-hosting/capacity.md#dense-one-heavy-board)).
+
 ## How it is built
 
 Eight replicas (devices) edit at the same time; every session on a replica takes a new

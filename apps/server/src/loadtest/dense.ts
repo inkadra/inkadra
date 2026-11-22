@@ -48,8 +48,9 @@ const STROKE_SHARE = 0.2;
 /** Frames this full get no more strokes (MAX_STROKES is 2000). */
 const FULL_FRAME = 1500;
 
-// Limits from runs on CI runners (docs/self-hosting/capacity.md), with the same generous
-// headroom as the presets: they catch a regression of several times, not a few percent.
+// Limits from two CI runs per mode (22 November 2026, docs/self-hosting/capacity.md), with the
+// headroom of the presets: they catch a regression of several times, not a few percent. Worst
+// seen there: edit p99 358 ms, board save p95 498 ms, 739 MiB, burst 817 ms, event loop 381 ms.
 export const DENSE: DensePreset = {
   editors: 15,
   readers: 3,
@@ -68,8 +69,8 @@ export const DENSE: DensePreset = {
     docPerBoardKiB: 16384,
     errors: 0,
     reconnects: 15,
-    burstSyncMs: 30_000,
-    eventLoopP99Ms: 1000,
+    burstSyncMs: 15_000,
+    eventLoopP99Ms: 1500,
   },
 };
 
@@ -463,9 +464,11 @@ export function formatDense(r: DenseResult, limits: DenseLimits, failures: strin
   base.push(
     `Board                 ${r.board.elements} cards, ${r.board.frames} frames with ${r.board.strokes} strokes, ${Math.round(r.board.bytes / 1024)} KiB seeded`,
     `Presence              ${r.cursors} cursor moves, ${r.strokes} strokes drawn`,
-    `Event loop p99        worst ${ms(r.eventLoopP99MaxMs)} (${
-      r.eventLoopShared ? `limit ${limits.eventLoopP99Ms} ms` : '(info) web role, not the boards'
-    })`,
+    `Event loop p99        worst ${ms(r.eventLoopP99MaxMs)}   ${
+      r.eventLoopShared
+        ? `limit ${limits.eventLoopP99Ms} ms`
+        : '(info) of the web role, not the boards'
+    }`,
     b
       ? `Reconnect burst       ${b.clients} clients${b.unloaded ? ' (board reloaded)' : ''} synced in ${ms(b.syncMs)}, ${b.converged ? 'converged' : `NOT converged (${b.detail})`}   limit ${limits.burstSyncMs} ms`
       : 'Reconnect burst       did not run',
