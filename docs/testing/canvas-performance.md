@@ -28,7 +28,7 @@ the page it measures on a runner.
 
 **The dense measurement only reports for now.** Its bars come from a handful of runs, so in the
 required **Canvas performance** job it fails only on what it needs to measure anything (the frames
-on the board, the peers drawn), never on a bar: it writes its rounds to the job summary and a
+on the board, the peers drawn, and every peer's cursor moves going up through each round), never on a bar: it writes its rounds to the job summary and a
 warning for each bar passed, judged on the worse of the two rounds with peers. `PERF_DENSE_GATE=1`
 makes the bars fail the test; turn it on in CI once about ten runs of `main` in a row stay within
 them. The bars can be moved with `PERF_DENSE_OPEN_LIMIT_MS`, `PERF_DENSE_FRAME_AVG_LIMIT_MS` and
@@ -53,6 +53,11 @@ drawing the canvas again). The dense rounds ran in this order on one page:
 |                       |      | 3     | 16.9 / 16.7 | 23.9 / 50.0 | 16.7 / 16.8  |
 |                       |      | 0     | 16.9 / 16.7 | 22.5 / 33.4 | 16.7 / 16.8  |
 |                       |      | 3     | 17.5 / 33.3 | 24.7 / 50.0 | 16.7 / 16.8  |
+| Gate, CI, third run   | 1080 | 0     | 16.7 / 16.8 | 19.7 / 33.4 | 16.7 / 16.8  |
+| Dense, CI, third run  | 1239 | 0     | 16.9 / 16.8 | 19.4 / 33.4 | 16.7 / 16.7  |
+|                       |      | 3     | 16.9 / 16.8 | 25.8 / 50.0 | 16.7 / 16.7  |
+|                       |      | 0     | 17.1 / 16.8 | 20.0 / 33.4 | 16.7 / 16.8  |
+|                       |      | 3     | 16.8 / 16.8 | 22.5 / 66.7 | 16.7 / 16.8  |
 | Dense, dev machine\*  | 1588 | 0     | 22.4 / 49.9 | 23.1 / 50.0 | 16.7 / 16.8  |
 |                       |      | 3     | 22.4 / 50.0 | 30.3 / 66.7 | 16.8 / 16.7  |
 |                       |      | 0     | 21.5 / 33.4 | 26.9 / 50.0 | 16.7 / 16.7  |
@@ -62,10 +67,10 @@ drawing the canvas again). The dense rounds ran in this order on one page:
 use by other work showed no difference between the rounds (zoom 31 to 37 ms on average with or
 without peers): numbers from a busy machine do not tell the peers' cost.
 
-What they say: the drawings (3654 strokes) add about 300 ms to the open. Three moving cursors
-still cost the zoom, less than before that change: 2 to 8 ms more on average than the rounds
-without them on the same page, on CI and on the quiet dev machine; panning does not change. Why
-the zoom still pays for them is not pinned down. Two runs are too few for bars that gate merges,
+What they say: the drawings (3654 strokes) add about 300 ms to the open. With three moving cursors,
+the mean zoom frame time showed an observed increase of about 2 to 8 ms over the rounds without
+them on the same page, on CI and on the quiet dev machine, after that change; there is no
+systematic difference in pan. Why the zoom still pays for them is not pinned down. Three runs are too few for bars that gate merges,
 which is why the measurement only reports.
 
 The load on the server of many people on one heavy board is the load test's `dense` scenario
