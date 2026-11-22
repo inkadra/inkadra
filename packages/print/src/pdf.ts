@@ -47,6 +47,17 @@ function color(hex: string) {
   return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
 }
 
+// The web and the server load each font once and pass the same bytes to every export.
+const paddedFonts = new WeakMap<Uint8Array, Uint8Array>();
+function padded(font: Uint8Array): Uint8Array {
+  let even = paddedFonts.get(font);
+  if (!even) {
+    even = evenGlyphs(font);
+    paddedFonts.set(font, even);
+  }
+  return even;
+}
+
 /**
  * Writes the pages as a PDF with Inter and the heading font embedded (subset) and the pictures
  * as JPEG or PNG. The caller supplies the fonts' bytes, the pictures and, for a picture drawn in
@@ -76,7 +87,7 @@ export async function renderPdf(
   pdf.setLanguage(meta.language);
   pdf.setCreator('Inkadra');
   pdf.setProducer('Inkadra');
-  const embed = (bytes: Uint8Array) => pdf.embedFont(evenGlyphs(bytes), { subset: true });
+  const embed = (bytes: Uint8Array) => pdf.embedFont(padded(bytes), { subset: true });
   const semibold = await embed(fonts[600]);
   const embedded = {
     400: await embed(fonts[400]),
