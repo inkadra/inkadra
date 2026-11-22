@@ -26,7 +26,7 @@ function operation(method: string, route: string, path: string) {
   if (!route.includes('*')) return operations.get(`${method} ${shape(route)}`);
   for (const [key, responses] of operations) {
     const [m, template = ''] = key.split(' ');
-    const pattern = template.replace(/[.]/g, '\\.').replaceAll('{}', '[^/]+');
+    const pattern = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('\\{\\}', '[^/]+');
     if (m === method && new RegExp(`^${pattern}$`).test(path)) return responses;
   }
 }
