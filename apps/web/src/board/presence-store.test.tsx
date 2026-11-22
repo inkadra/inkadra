@@ -22,7 +22,8 @@ function board() {
       ...states.get(2),
       ...state,
     });
-    for (const l of listeners) l();
+    // As the Yjs observable does: a copy of the handlers.
+    for (const l of [...listeners]) l();
   };
   const provider = {
     awareness: {
@@ -103,4 +104,21 @@ it('shows the people already on the board in the first render', async () => {
   expect(shownFirst).toEqual([1]);
   expect(source.get()).toBe(before);
   await act(async () => root.unmount());
+});
+
+it('tells each listener once per change, even one that subscribes again meanwhile', () => {
+  const { provider, set } = board();
+  const source = peerSource(provider);
+  let calls = 0;
+  let stop = source.subscribe(function listener() {
+    calls++;
+    // Capped so that a live iteration ends instead of looping.
+    if (calls < 5) {
+      stop();
+      stop = source.subscribe(listener);
+    }
+  });
+  set({ cursor: { x: 1, y: 1 } });
+  expect(calls).toBe(1);
+  stop();
 });

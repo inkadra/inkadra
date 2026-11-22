@@ -61,7 +61,8 @@ export function peerSource(provider: HocuspocusProvider): PeerSource {
   let peers = read();
   const changed = () => {
     peers = read();
-    for (const listener of listeners) listener();
+    // A copy: a listener may unsubscribe or subscribe again while being told.
+    for (const listener of [...listeners]) listener();
   };
   return {
     subscribe(onChange) {
