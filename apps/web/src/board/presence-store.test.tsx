@@ -84,3 +84,23 @@ it('redraws only the pointers when someone moves theirs, the outlines when they 
   await act(async () => root.unmount());
   expect(listeners.size).toBe(0);
 });
+
+let shownFirst: number[] = [];
+function People({ peers }: { peers: PeerSource }) {
+  const people = usePeers(peers);
+  shownFirst.push(people.length);
+  return null;
+}
+
+it('shows the people already on the board in the first render', async () => {
+  const { provider } = board();
+  const source = peerSource(provider);
+  const before = source.get();
+  shownFirst = [];
+  const root = createRoot(document.createElement('div'));
+  await act(async () => root.render(<People peers={source} />));
+  // One render, with the person, and the same list once subscribed: nothing changed.
+  expect(shownFirst).toEqual([1]);
+  expect(source.get()).toBe(before);
+  await act(async () => root.unmount());
+});

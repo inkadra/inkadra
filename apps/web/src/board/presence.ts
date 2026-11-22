@@ -41,23 +41,26 @@ const NONE: readonly Peer[] = [];
 /** A board without anyone else: previews and guest pages. */
 export const NO_PEERS: PeerSource = { subscribe: () => () => {}, get: () => NONE };
 
-/** The people on a connection's board, read from its awareness while anything listens. */
+/**
+ * The people on a connection's board: read when the source is made, so the first render shows
+ * them, and from its awareness while anything listens.
+ */
 export function peerSource(provider: HocuspocusProvider): PeerSource {
-  let peers = NONE;
   const listeners = new Set<() => void>();
-  const read = () => {
+  const read = (): readonly Peer[] => {
     const awareness = provider.awareness;
-    if (!awareness) return;
+    if (!awareness) return NONE;
     const next: Peer[] = [];
     for (const [clientId, state] of awareness.getStates()) {
       if (clientId === awareness.clientID) continue;
       const p = readPresence(state);
       if (p) next.push({ ...p, clientId, color: peerColor(p.user.id) });
     }
-    peers = next;
+    return next;
   };
+  let peers = read();
   const changed = () => {
-    read();
+    peers = read();
     for (const listener of listeners) listener();
   };
   return {
@@ -65,7 +68,9 @@ export function peerSource(provider: HocuspocusProvider): PeerSource {
       const awareness = provider.awareness;
       if (!awareness) return () => {};
       if (listeners.size === 0) {
-        read();
+        // Nobody listened meanwhile: read again, keeping the same list when nothing changed.
+        const next = read();
+        if (JSON.stringify(next) !== JSON.stringify(peers)) peers = next;
         awareness.on('change', changed);
       }
       listeners.add(onChange);
