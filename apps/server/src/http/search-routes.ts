@@ -262,12 +262,19 @@ async function boardKits(
       if (gone()) return null;
       await new Promise((resolve) => setImmediate(resolve));
       // Read under the access rule, in the same statement: a grant may have been closed, or the
-      // board trashed, while this request waited its turn.
+      // board trashed, while this request waited its turn. The state only when no request
+      // before this one decoded the same version meanwhile.
+      const known = kitCache.get(row.boardId);
       const [stored] = await db
-        .select({ state: boardDoc.state, version })
+        .select({
+          version,
+          state: sql<Uint8Array | null>`case when ${version} = ${known?.version ?? ''} then null
+            else ${boardDoc.state} end`,
+        })
         .from(boardDoc)
         .where(and(eq(boardDoc.boardId, row.boardId), boardReadable(boardDoc.boardId, actor.id)));
       if (!stored) return null;
+      if (!stored.state) return known ?? null;
       try {
         const derived = { ...kitOf(stored.state), version: stored.version };
         kitDecodes.decoded += 1;

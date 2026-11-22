@@ -921,6 +921,36 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     for (const id of [closed.id, trashed.id]) await db.delete(board).where(eq(board.id, id));
   });
 
+  it('decodes a board once for requests that waited for it together', async () => {
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Insieme' },
+    });
+    const id = added.json().id as string;
+    const doc = createBoardDoc(id);
+    addElement(doc, { ...base(), type: 'frame', cast: ['Insieme'] });
+    const update = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const path = `/api/v1/projects/${projectId}/cast-appearances`;
+    let unblock = () => {};
+    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const decoded = kitDecodes.decoded;
+    const both = [get('owner', path), get('guest', path)];
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(2));
+    unblock();
+    await blocker;
+    for (const res of await Promise.all(both))
+      expect(res.body.items.map((i: { name: string }) => i.name)).toContain('insieme');
+    expect(kitDecodes.decoded).toBe(decoded + 1);
+    await db.delete(board).where(eq(board.id, id));
+  });
+
   it('answers 503 rather than a partial kit while too many requests wait for a decode', async () => {
     const added = await app.inject({
       method: 'POST',
