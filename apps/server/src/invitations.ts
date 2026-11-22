@@ -1,5 +1,5 @@
 import type { AcceptedInvitation, InvitationPreview, ProjectRole } from '@inkadra/shared';
-import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { activeGrant, activeMember, atLeast, boardAccess, projectRole } from './access.ts';
 import { mergeInvitedRole } from './access-expiry.ts';
 import type { Database } from './db/client.ts';
@@ -13,7 +13,7 @@ import {
   user,
 } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
-import { lockActiveAccount } from './locks.ts';
+import { lockAccount, lockActiveAccount } from './locks.ts';
 import { nextOwnPosition } from './project-order.ts';
 import { sha256 } from './secrets.ts';
 
@@ -37,6 +37,87 @@ export function invitationStatus(
   return 'valid';
 }
 
+/**
+ * Whether the person who made an invitation can still give what it gives, checked like the
+ * creator of a share link (decision 0013): their account exists and is not deactivated, and they
+ * still hold at least the invited role on its board or project, or are still an administrator
+ * for an invitation to the instance alone.
+ */
+export async function inviterCanGrant(
+  db: Pick<Database, 'select' | 'execute'>,
+  row: InvitationRow,
+): Promise<boolean> {
+  if (!row.invitedBy) return false;
+  const [inviter] = await db
+    .select({ role: user.role })
+    .from(user)
+    .where(and(eq(user.id, row.invitedBy), isNull(user.deactivatedAt)));
+  if (!inviter) return false;
+  return row.projectId ? inviterHoldsRole(db, row) : inviter.role === 'admin';
+}
+
+/**
+ * The role part of inviterCanGrant, whatever the state of the account: a deactivation only
+ * suspends an invitation, so revoking it for good looks at the role alone.
+ */
+export async function inviterHoldsRole(
+  db: Pick<Database, 'select' | 'execute'>,
+  row: InvitationRow,
+): Promise<boolean> {
+  if (!row.invitedBy) return false;
+  const role = invitedRole(row) ?? 'viewer';
+  if (row.boardId) {
+    const access = await boardAccess(db, { id: row.invitedBy }, row.boardId);
+    return access !== null && atLeast(access.role, role);
+  }
+  if (row.projectId)
+    return atLeast(await projectRole(db, { id: row.invitedBy }, row.projectId), role);
+  const [admin] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.id, row.invitedBy), eq(user.role, 'admin')));
+  return admin !== undefined;
+}
+
+/** invitationStatus, with an invitation its inviter can no longer give read as revoked. */
+export async function currentStatus(
+  db: Pick<Database, 'select' | 'execute'>,
+  row: InvitationRow,
+): Promise<InvitationPreview['status']> {
+  const status = invitationStatus(row);
+  return status === 'valid' && !(await inviterCanGrant(db, row)) ? 'revoked' : status;
+}
+
+/**
+ * Revokes the pending invitations a person made in a project that they can no longer give, in
+ * the transaction that removed or lowered their access (after their account lock, decision 0134).
+ */
+export async function revokeOutgrownInvitations(
+  tx: Pick<Database, 'select' | 'execute' | 'update'>,
+  invitedBy: string,
+  projectId: string,
+) {
+  const pending = await tx
+    .select()
+    .from(invitation)
+    .where(
+      and(
+        eq(invitation.invitedBy, invitedBy),
+        eq(invitation.projectId, projectId),
+        isNull(invitation.revokedAt),
+      ),
+    );
+  const outgrown: string[] = [];
+  for (const row of pending)
+    if (invitationStatus(row) === 'valid' && !(await inviterHoldsRole(tx, row)))
+      outgrown.push(row.id);
+  if (outgrown.length > 0)
+    await tx
+      .update(invitation)
+      .set({ revokedAt: new Date() })
+      .where(inArray(invitation.id, outgrown));
+}
+
 export async function findInvitation(db: Database, token: string): Promise<InvitationRow | null> {
   const [row] = await db
     .select()
@@ -54,7 +135,7 @@ export async function invitationFromCookie(
   const token = readCookie(cookieHeader, invitationCookieName(publicUrl));
   if (!token) return null;
   const row = await findInvitation(db, token);
-  return row && invitationStatus(row) === 'valid' ? row : null;
+  return row && (await currentStatus(db, row)) === 'valid' ? row : null;
 }
 
 export function readCookie(header: string | null | undefined, name: string): string | null {
@@ -85,28 +166,45 @@ export function invitedAddressMatches(row: InvitationRow, email: string): boolea
 }
 
 /**
- * Counts one use of an invitation before the account it creates exists. A single conditional
- * UPDATE, so parallel sign-ups with the same link can never exceed `maxUses`: the ones that
- * find no use left get null. A use stays counted if creating the account fails afterwards.
+ * Counts one use of an invitation before the account it creates exists, while its inviter can
+ * still give it. Under the inviter's account lock (decision 0134), so a deactivation, removal or
+ * demotion of theirs comes first and is seen, or waits. The count is a conditional UPDATE, so
+ * parallel sign-ups with the same link can never exceed `maxUses`: the ones that find no use
+ * left get null. A use stays counted if creating the account fails afterwards.
  */
 export async function reserveInvitationUse(
   db: Database,
   invitationId: string,
 ): Promise<InvitationRow | null> {
-  const [row] = await db
-    .update(invitation)
-    .set({ uses: sql`${invitation.uses} + 1` })
-    .where(
-      and(
-        eq(invitation.id, invitationId),
-        isNull(invitation.revokedAt),
-        gt(invitation.expiresAt, sql`now()`),
-        or(isNull(invitation.accessExpiresAt), gt(invitation.accessExpiresAt, sql`now()`)),
-        or(isNull(invitation.maxUses), lt(invitation.uses, invitation.maxUses)),
-      ),
-    )
-    .returning();
-  return row ?? null;
+  return db.transaction(async (tx) => {
+    const [about] = await tx
+      .select({ invitedBy: invitation.invitedBy })
+      .from(invitation)
+      .where(eq(invitation.id, invitationId));
+    if (!about?.invitedBy) return null;
+    await lockAccount(tx, about.invitedBy);
+    const [current] = await tx.select().from(invitation).where(eq(invitation.id, invitationId));
+    if (!current || !(await inviterCanGrant(tx, current))) return null;
+    const [row] = await tx
+      .update(invitation)
+      .set({ uses: sql`${invitation.uses} + 1` })
+      .where(
+        and(
+          eq(invitation.id, invitationId),
+          eq(invitation.invitedBy, about.invitedBy),
+          isNull(invitation.revokedAt),
+          // The time now, not when the transaction began: the lock may have been a long wait.
+          gt(invitation.expiresAt, sql`clock_timestamp()`),
+          or(
+            isNull(invitation.accessExpiresAt),
+            gt(invitation.accessExpiresAt, sql`clock_timestamp()`),
+          ),
+          or(isNull(invitation.maxUses), lt(invitation.uses, invitation.maxUses)),
+        ),
+      )
+      .returning();
+    return row ?? null;
+  });
 }
 
 /**
@@ -163,6 +261,9 @@ export async function acceptInvitation(
     )
       return { projectId: row.projectId, boardId: row.boardId };
     if (!reserved && invitationStatus(row) !== 'valid')
+      throw new HttpError('not_found', 'This invitation can no longer be used.');
+    // Read under the inviter's account lock: a removal or demotion committed first is seen.
+    if (!(await inviterCanGrant(db2, row)))
       throw new HttpError('not_found', 'This invitation can no longer be used.');
     if (!me || !invitedAddressMatches(row, me.email))
       throw new HttpError(

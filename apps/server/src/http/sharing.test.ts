@@ -4,13 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { eq, like, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createAuth } from '../auth.ts';
+import { claimSetup, createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   asset,
   assetRendition,
   assetVariant,
+  instanceSetting,
   invitation as invitationTable,
   personalToken,
   project,
@@ -18,6 +19,7 @@ import {
   user,
   verification,
 } from '../db/schema.ts';
+import { lockAccount } from '../locks.ts';
 import { memoryMailer } from '../mailer.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
@@ -310,6 +312,30 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       .where(like(user.email, 'racer%'));
     expect(created).toHaveLength(1);
     await db.delete(user).where(like(user.email, 'racer%'));
+  });
+
+  it('makes no administrator once accounts exist, even without the setup row', async () => {
+    await db.delete(instanceSetting).where(eq(instanceSetting.key, 'setup'));
+    const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
+    const { cookie } = await claim(link.body.invitation.url);
+    const res = await call(
+      { cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'late@example.com', password: PASSWORD, name: 'Late' },
+      '198.18.9.1',
+    );
+    expect(res.status).toBe(200);
+    const [late] = await db.select().from(user).where(eq(user.email, 'late@example.com'));
+    expect(late?.role).toBe('member');
+    await db.delete(user).where(eq(user.email, 'late@example.com'));
+    // A claim left stale is not taken over while accounts exist.
+    await db
+      .insert(instanceSetting)
+      .values({ key: 'setup', value: {}, updatedAt: new Date(Date.now() - 120_000) });
+    expect(await claimSetup(db)).toBe(false);
+    await db.delete(instanceSetting).where(eq(instanceSetting.key, 'setup'));
+    expect(await claimSetup(db)).toBe(false);
   });
 
   it('sets up a project with nested boards', async () => {
@@ -607,6 +633,408 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call(null, 'POST', `/api/v1/invitations/by-token/${token}/claim`)).status).toBe(
       404,
     );
+  });
+
+  it('stops invitations once the inviter no longer has the role they give', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Sopralluogo' });
+    const p = made.body.id as string;
+    const sub = await call('owner', 'POST', `/api/v1/projects/${p}/boards`, {
+      parentBoardId: made.body.rootBoardId,
+      title: 'Location',
+    });
+    const member = `/api/v1/projects/${p}/members/${as.guest.id}`;
+    const setRole = async (role: string) =>
+      expect((await call('owner', 'PUT', member, { role })).status).toBe(200);
+    const invite = async (body: object) => {
+      const res = await call('guest', 'POST', '/api/v1/invitations', { projectId: p, ...body });
+      expect(res.status).toBe(201);
+      return res.body.invitation as { id: string; url: string };
+    };
+    const token = (i: { url: string }) => i.url.split('/join/')[1];
+    const status = async (i: { url: string }) =>
+      (await call(null, 'GET', `/api/v1/invitations/by-token/${token(i)}`)).body.status;
+    const accept = async (i: { url: string }, who: Who = 'outsider') =>
+      (await call(who, 'POST', `/api/v1/invitations/by-token/${token(i)}/accept`)).status;
+    const unrevoke = (i: { id: string }) =>
+      db.update(invitationTable).set({ revokedAt: null }).where(eq(invitationTable.id, i.id));
+    const revokedAt = async (i: { id: string }) =>
+      (
+        await db
+          .select({ at: invitationTable.revokedAt })
+          .from(invitationTable)
+          .where(eq(invitationTable.id, i.id))
+      )[0]?.at ?? null;
+
+    // Removed from the project: their link gives nothing, not even to themselves.
+    await setRole('editor');
+    const removed = await invite({ kind: 'link', role: 'editor' });
+    expect(await status(removed)).toBe('valid');
+    expect((await call('owner', 'DELETE', member)).status).toBe(204);
+    expect(await status(removed)).toBe('revoked');
+    // Revoked with the removal, and refused at acceptance even without that.
+    expect(await revokedAt(removed)).not.toBeNull();
+    await unrevoke(removed);
+    expect(await status(removed)).toBe('revoked');
+    expect(await accept(removed, 'guest')).toBe(404);
+    expect(
+      (await call(null, 'POST', `/api/v1/invitations/by-token/${token(removed)}/claim`)).status,
+    ).toBe(404);
+
+    // Demoted below the role a link gives; one that gives less keeps working.
+    await setRole('editor');
+    const demoted = await invite({ kind: 'link', role: 'editor' });
+    const lesser = await invite({ kind: 'link', role: 'viewer' });
+    await setRole('viewer');
+    expect(await status(demoted)).toBe('revoked');
+    expect(await revokedAt(demoted)).not.toBeNull();
+    expect(await revokedAt(lesser)).toBeNull();
+    await unrevoke(demoted);
+    expect(await accept(demoted)).toBe(404);
+    expect(await status(lesser)).toBe('valid');
+
+    // An owner's email invitation, once they are no longer owner.
+    await setRole('owner');
+    const email = await invite({ kind: 'email', email: 'producer@example.com', role: 'owner' });
+    expect(await status(email)).toBe('valid');
+    await setRole('editor');
+    expect(await status(email)).toBe('revoked');
+    expect(await revokedAt(email)).not.toBeNull();
+
+    // A board grant taken away.
+    await setRole('viewer');
+    const grant = `/api/v1/boards/${sub.body.id}/grants/${as.guest.id}`;
+    expect((await call('owner', 'PUT', grant, { role: 'editor' })).status).toBe(200);
+    const onBoard = await invite({ kind: 'link', boardId: sub.body.id, role: 'editor' });
+    expect(await status(onBoard)).toBe('valid');
+    expect((await call('owner', 'DELETE', grant)).status).toBe(204);
+    expect(await status(onBoard)).toBe('revoked');
+    expect(await revokedAt(onBoard)).not.toBeNull();
+
+    // A deactivated inviter (decision 0025): unusable while deactivated, usable again after.
+    expect(await status(lesser)).toBe('valid');
+    const issued = await claim(lesser.url);
+    await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+    expect(await status(lesser)).toBe('revoked');
+    expect(await accept(lesser)).toBe(404);
+    // A sign-up cookie issued before the deactivation opens no account either.
+    const late = await call(
+      { cookie: issued.cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'cookie@example.com', password: PASSWORD, name: 'Cookie' },
+      '198.18.11.1',
+    );
+    expect(late.status).toBe(403);
+    expect(await db.select().from(user).where(eq(user.email, 'cookie@example.com'))).toEqual([]);
+    await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+    expect(await status(lesser)).toBe('valid');
+    expect(await accept(lesser)).toBe(200);
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
+  it('keeps the invitations of a deactivated member when their access is changed', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Pausa' });
+    const p = made.body.id as string;
+    const member = `/api/v1/projects/${p}/members/${as.guest.id}`;
+    expect((await call('owner', 'PUT', member, { role: 'editor' })).status).toBe(200);
+    const link = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      projectId: p,
+      role: 'editor',
+    });
+    await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+    try {
+      // Still an editor: a change that keeps the role must not end what they could still give.
+      expect((await call('owner', 'PUT', member, { role: 'editor' })).status).toBe(200);
+      const [row] = await db
+        .select({ revokedAt: invitationTable.revokedAt })
+        .from(invitationTable)
+        .where(eq(invitationTable.id, link.body.invitation.id));
+      expect(row?.revokedAt).toBeNull();
+    } finally {
+      await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+    }
+    const token = link.body.invitation.url.split('/join/')[1];
+    expect((await call(null, 'GET', `/api/v1/invitations/by-token/${token}`)).body.status).toBe(
+      'valid',
+    );
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
+  it('shows, resends and replaces invitations by what their inviter can still give', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Doppiaggio' });
+    const p = made.body.id as string;
+    expect(
+      (
+        await call('owner', 'PUT', `/api/v1/projects/${p}/members/${as.guest.id}`, {
+          role: 'editor',
+        })
+      ).status,
+    ).toBe(200);
+    const link = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      projectId: p,
+      role: 'viewer',
+    });
+    const mail = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'email',
+      email: 'voice@example.com',
+      projectId: p,
+      role: 'viewer',
+    });
+    expect(mail.status).toBe(201);
+    const again = { kind: 'email', email: 'voice@example.com', projectId: p, role: 'viewer' };
+    const revokedAt = async (id: string) =>
+      (
+        await db
+          .select({ at: invitationTable.revokedAt })
+          .from(invitationTable)
+          .where(eq(invitationTable.id, id))
+      )[0]?.at ?? null;
+    const listed = async () =>
+      (await call('owner', 'GET', `/api/v1/invitations?projectId=${p}`)).body.items as Array<{
+        id: string;
+        url: string | null;
+      }>;
+    expect((await listed()).find((i) => i.id === link.body.invitation.id)?.url).toBeTruthy();
+    await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+    try {
+      // Suspended: no link to copy, no email with a token that would not work.
+      expect((await listed()).find((i) => i.id === link.body.invitation.id)?.url).toBeNull();
+      const resend = await call(
+        'owner',
+        'POST',
+        `/api/v1/invitations/${mail.body.invitation.id}/resend`,
+      );
+      expect(resend.status).toBe(409);
+      // Suspended, not orphaned: it still blocks a new one and stays as it was.
+      expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(409);
+      expect(await revokedAt(mail.body.invitation.id)).toBeNull();
+    } finally {
+      await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+    }
+    expect((await listed()).find((i) => i.id === link.body.invitation.id)?.url).toBeTruthy();
+    expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(409);
+    // The same address can be invited again once nobody can give the pending invitation: its
+    // inviter lost the role (a membership that ended, say), or their account was deleted.
+    await db.execute(
+      sql`delete from project_member where project_id = ${p} and user_id = ${as.guest.id}`,
+    );
+    const replacement = await call('owner', 'POST', '/api/v1/invitations', again);
+    expect(replacement.status).toBe(201);
+    expect(await revokedAt(mail.body.invitation.id)).not.toBeNull();
+    await db
+      .update(invitationTable)
+      .set({ invitedBy: null })
+      .where(eq(invitationTable.id, replacement.body.invitation.id));
+    expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(201);
+    expect(await revokedAt(replacement.body.invitation.id)).not.toBeNull();
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
+  it('counts no sign-up on an invitation whose inviter is deactivated meanwhile', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Provino' });
+    const p = made.body.id as string;
+    const member = `/api/v1/projects/${p}/members/${as.guest.id}`;
+    expect((await call('owner', 'PUT', member, { role: 'editor' })).status).toBe(200);
+    const link = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      projectId: p,
+      role: 'viewer',
+    });
+    const { cookie } = await claim(link.body.invitation.url);
+    // The deactivation holds the inviter's account while the sign-up passes the cookie check.
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    const deactivation = db.transaction(async (tx) => {
+      await lockAccount(tx, as.guest.id);
+      await tx.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+      held();
+      await released;
+    });
+    await holding;
+    const signUp = call(
+      { cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'racer@example.com', password: PASSWORD, name: 'Racer' },
+      '198.18.10.1',
+    );
+    await vi.waitFor(
+      async () => {
+        const [waiting] = await db.execute<{ n: number }>(
+          sql`select count(*)::int as n from pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock'`,
+        );
+        expect(waiting?.n).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
+    release();
+    await deactivation;
+    try {
+      expect((await signUp).status).toBe(403);
+      expect(await db.select().from(user).where(eq(user.email, 'racer@example.com'))).toEqual([]);
+      const [row] = await db
+        .select({ uses: invitationTable.uses })
+        .from(invitationTable)
+        .where(eq(invitationTable.id, link.body.invitation.id));
+      expect(row?.uses).toBe(0);
+    } finally {
+      await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+      await db.delete(user).where(eq(user.email, 'racer@example.com'));
+      await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+    }
+  });
+
+  it('sends no invitation again once the access it offers has ended', async () => {
+    const sent = await call('owner', 'POST', '/api/v1/invitations', {
+      kind: 'email',
+      email: 'ended@example.com',
+      projectId,
+      role: 'viewer',
+    });
+    expect(sent.status).toBe(201);
+    const id = sent.body.invitation.id as string;
+    const past = new Date(Date.now() - 3_600_000);
+    await db
+      .update(invitationTable)
+      .set({ accessExpiresAt: past, lastSentAt: past })
+      .where(eq(invitationTable.id, id));
+    const [before] = await db.select().from(invitationTable).where(eq(invitationTable.id, id));
+    const mails = mailer.sent.length;
+    const resend = await call('owner', 'POST', `/api/v1/invitations/${id}/resend`);
+    expect(resend.status).toBe(409);
+    expect(mailer.sent.length).toBe(mails);
+    const [after] = await db.select().from(invitationTable).where(eq(invitationTable.id, id));
+    expect(after?.tokenHash).toBe(before?.tokenHash);
+    await call('owner', 'DELETE', `/api/v1/invitations/${id}`);
+  });
+
+  it('counts no sign-up on an invitation that expired while it waited for the inviter', async () => {
+    const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
+    const { cookie } = await claim(link.body.invitation.url);
+    const expiresAt = new Date(Date.now() + 3_000);
+    await db
+      .update(invitationTable)
+      .set({ expiresAt })
+      .where(eq(invitationTable.id, link.body.invitation.id));
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    const hold = db.transaction(async (tx) => {
+      await lockAccount(tx, as.owner.id);
+      held();
+      await released;
+    });
+    await holding;
+    const signUp = call(
+      { cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'waiter@example.com', password: PASSWORD, name: 'Waiter' },
+      '198.18.12.1',
+    );
+    await vi.waitFor(
+      async () => {
+        const [waiting] = await db.execute<{ n: number }>(
+          sql`select count(*)::int as n from pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock'`,
+        );
+        expect(waiting?.n).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
+    // Released only once the invitation has expired.
+    await new Promise((resolve) => setTimeout(resolve, expiresAt.getTime() - Date.now() + 200));
+    release();
+    await hold;
+    try {
+      expect((await signUp).status).toBe(403);
+      const [row] = await db
+        .select({ uses: invitationTable.uses })
+        .from(invitationTable)
+        .where(eq(invitationTable.id, link.body.invitation.id));
+      expect(row?.uses).toBe(0);
+    } finally {
+      await db.delete(user).where(eq(user.email, 'waiter@example.com'));
+    }
+  });
+
+  it('checks the role of the inviter again when the invitation is written', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Casting' });
+    const p = made.body.id as string;
+    expect(
+      (
+        await call('owner', 'PUT', `/api/v1/projects/${p}/members/${as.guest.id}`, {
+          role: 'editor',
+        })
+      ).status,
+    ).toBe(200);
+    // A demotion that holds the inviter's account while the request passes its first check.
+    async function demotedDuring(body: object) {
+      let release = () => {};
+      const released = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let held = () => {};
+      const holding = new Promise<void>((resolve) => {
+        held = resolve;
+      });
+      const demotion = db.transaction(async (tx) => {
+        await lockAccount(tx, as.guest.id);
+        await tx.execute(
+          sql`update project_member set role = 'viewer'
+            where project_id = ${p} and user_id = ${as.guest.id}`,
+        );
+        held();
+        await released;
+      });
+      await holding;
+      const res = call('guest', 'POST', '/api/v1/invitations', { projectId: p, ...body });
+      await vi.waitFor(
+        async () => {
+          const [waiting] = await db.execute<{ n: number }>(
+            sql`select count(*)::int as n from pg_stat_activity
+              where datname = current_database() and wait_event_type = 'Lock'`,
+          );
+          expect(waiting?.n).toBeGreaterThan(0);
+        },
+        { timeout: 10_000 },
+      );
+      release();
+      await demotion;
+      const done = await res;
+      await db.execute(
+        sql`update project_member set role = 'editor'
+          where project_id = ${p} and user_id = ${as.guest.id}`,
+      );
+      return done;
+    }
+    // Someone with an account would be added straight away.
+    const added = await demotedDuring({ kind: 'email', email: as.outsider.email, role: 'viewer' });
+    expect(added.status).toBe(403);
+    const members = await call('owner', 'GET', `/api/v1/projects/${p}/members`);
+    expect(members.body.items.map((m: { user: { id: string } }) => m.user.id)).not.toContain(
+      as.outsider.id,
+    );
+    const link = await demotedDuring({ kind: 'link', role: 'editor' });
+    expect(link.status).toBe(403);
+    expect(await db.select().from(invitationTable).where(eq(invitationTable.projectId, p))).toEqual(
+      [],
+    );
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
   });
 
   it('caps invitation links at editor; owners are named from the people page', async () => {

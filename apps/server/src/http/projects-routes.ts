@@ -56,6 +56,7 @@ import {
   user,
 } from '../db/schema.ts';
 import { recordDeletions } from '../file-deletions.ts';
+import { revokeOutgrownInvitations } from '../invitations.ts';
 import type { Jobs } from '../jobs.ts';
 import { lockAccount, lockActiveAccount } from '../locks.ts';
 import { officeFiles } from '../media/office.ts';
@@ -721,6 +722,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { role, before: current?.role ?? null, expiresAt: end?.toISOString() ?? null },
       });
+      await revokeOutgrownInvitations(tx, userId, projectId);
       // Read before the commit: their deletion may come right after it.
       const member = (await listMembers(tx, projectId)).items.find((m) => m.user.id === userId);
       if (!member) throw new Error('Member vanished after upsert');
@@ -760,6 +762,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { role: current.role, left: userId === actor.id },
       });
+      await revokeOutgrownInvitations(tx, userId, projectId);
     });
     notices.recheckAccess();
     return reply.status(204).send();

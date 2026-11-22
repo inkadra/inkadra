@@ -26,3 +26,8 @@ archived projects, excluding board-only grants. No seats/quota or capacity is in
 Instance invitations reuse existing email invitations with no project or board. They always
 create members; only explicit admin mutations promote them. ADR 0019 link role limits are
 unchanged. Pending invitations, resend and revoke reuse existing endpoints.
+
+## Amendment
+
+Kept memberships do not act for a deactivated person: their share links read as suspended and
+their pending invitations as revoked until the account is reactivated, when both work again.

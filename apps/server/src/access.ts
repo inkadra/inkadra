@@ -2,7 +2,7 @@ import { atLeast, type ProjectRole, PROJECT_ROLE_RANK as rank } from '@inkadra/s
 import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { visibleBoardCard } from './board-content.ts';
 import type { Database } from './db/client.ts';
-import { asset, board, boardGrant, notification, projectMember } from './db/schema.ts';
+import { asset, board, boardGrant, notification, projectMember, user } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
 
 export interface Actor {
@@ -446,6 +446,18 @@ export async function boardRolesForPeople(
   return new Map(rows.flatMap((r) => (r.role ? [[r.user_id, r.role]] : [])));
 }
 
+/**
+ * Whether an account exists and is not deactivated. Deactivation keeps memberships (decision
+ * 0025), so what acts for a person while they are away (a share link) checks this as well.
+ */
+async function activeAccount(db: Pick<Database, 'select'>, userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(eq(user.id, userId), isNull(user.deactivatedAt)));
+  return row !== undefined;
+}
+
 /** Whether an active link can reach a board through visible cards and its creator's access. */
 export async function linkIncludesBoard(
   db: Pick<Database, 'select' | 'execute'>,
@@ -454,6 +466,7 @@ export async function linkIncludesBoard(
 ): Promise<boolean> {
   // Guests never reach the Production board (decision 0123).
   if (!link.createdBy || access.board.kind === 'production') return false;
+  if (!(await activeAccount(db, link.createdBy))) return false;
   const stop = access.chain.findIndex((b) => b.id === link.boardId);
   if (stop < 0 || (stop > 0 && !link.includeSubBoards)) return false;
   for (let i = 0; i <= stop; i++) {
@@ -467,7 +480,8 @@ export async function linkIncludesBoard(
 }
 
 /**
- * Every board of a project that is not in the trash, with a person's effective role on it.
+ * Every board of a project that is not in the trash, with a person's effective role on it (none
+ * while their account is deactivated).
  * A share link acts for its creator: this is what decides, at each guest request, whether the
  * link works and which of its boards guests can open.
  */
@@ -476,19 +490,45 @@ export async function rolesOnProjectBoards(
   userId: string,
   projectId: string,
 ): Promise<{ boards: Array<typeof board.$inferSelect>; roles: Map<string, Effective> }> {
-  const [boards, grants, pRole] = await Promise.all([
+  // A deactivated person has no role here, like one who is gone: both role queries leave out
+  // their rows.
+  const [boards, grants, [member]] = await Promise.all([
     db.select().from(board).where(eq(board.projectId, projectId)),
     db
       .select({ boardId: boardGrant.boardId, role: boardGrant.role })
       .from(boardGrant)
       .innerJoin(board, eq(board.id, boardGrant.boardId))
-      .where(and(eq(boardGrant.userId, userId), eq(board.projectId, projectId), activeGrant())),
-    projectRole(db, { id: userId }, projectId),
+      .innerJoin(user, eq(user.id, boardGrant.userId))
+      .where(
+        and(
+          eq(boardGrant.userId, userId),
+          eq(board.projectId, projectId),
+          activeGrant(),
+          isNull(user.deactivatedAt),
+        ),
+      ),
+    db
+      .select({ role: projectMember.role })
+      .from(projectMember)
+      .innerJoin(user, eq(user.id, projectMember.userId))
+      .where(
+        and(
+          eq(projectMember.projectId, projectId),
+          eq(projectMember.userId, userId),
+          activeMember(),
+          isNull(user.deactivatedAt),
+        ),
+      ),
   ]);
+  const roles = effectiveRoles(
+    boards,
+    new Map(grants.map((g) => [g.boardId, g.role])),
+    member?.role ?? null,
+  );
   // Keep ancestors in the role calculation even when trashed: boardAccess uses their grants
   // too. Only the returned boards can be opened by guests.
   return {
     boards: boards.filter((b) => b.deletedAt === null),
-    roles: effectiveRoles(boards, new Map(grants.map((g) => [g.boardId, g.role])), pRole),
+    roles,
   };
 }

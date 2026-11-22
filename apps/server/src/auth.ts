@@ -43,16 +43,21 @@ export async function countUsers(db: Database): Promise<number> {
  * Atomically claims the first-run setup: exactly one sign-up gets `true`, even when several
  * arrive at once. If the claiming sign-up failed before creating its user, the claim goes
  * stale after a minute and the next sign-up on the still-empty instance can take it over.
+ * Both the claim and the takeover are single statements that also require no account to
+ * exist, so a count read before another sign-up's account was created never decides alone.
+ * shortcut: Better Auth inserts the account after this hook, outside its statements, so a
+ * claimant slower than the minute can still lose its claim to a second one; closing that needs
+ * the insert in the same transaction.
  */
-async function claimSetup(db: Database): Promise<boolean> {
+export async function claimSetup(db: Database): Promise<boolean> {
   const value = { claimedAt: new Date().toISOString() };
-  const claimed = await db
-    .insert(schema.instanceSetting)
-    .values({ key: 'setup', value })
-    .onConflictDoNothing()
-    .returning({ key: schema.instanceSetting.key });
+  const none = sql`not exists (select 1 from ${schema.user})`;
+  const claimed = await db.execute(
+    sql`insert into ${schema.instanceSetting} (key, value)
+      select 'setup', ${JSON.stringify(value)}::jsonb where ${none}
+      on conflict do nothing returning key`,
+  );
   if (claimed.length > 0) return true;
-  if ((await countUsers(db)) > 0) return false;
   const retaken = await db
     .update(schema.instanceSetting)
     .set({ value })
@@ -60,6 +65,7 @@ async function claimSetup(db: Database): Promise<boolean> {
       and(
         eq(schema.instanceSetting.key, 'setup'),
         lt(schema.instanceSetting.updatedAt, sql`now() - interval '1 minute'`),
+        none,
       ),
     )
     .returning({ key: schema.instanceSetting.key });

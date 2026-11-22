@@ -25530,6 +25530,16 @@
               }
             }
           },
+          "409": {
+            "description": "Cannot be sent again: not an unused email invitation, the access it offers has ended, its inviter can no longer give it, the instance cannot send email, or the invitation changed while it was being sent (the earlier link then stays).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {

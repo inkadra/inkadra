@@ -40,6 +40,7 @@ import type { Database } from '../db/client.ts';
 import { board, boardGrant, invitation, project, projectMember, user } from '../db/schema.ts';
 import {
   acceptInvitation,
+  currentStatus,
   findInvitation,
   INVITATION_COOKIE_MAX_AGE,
   type InvitationRow,
@@ -47,9 +48,12 @@ import {
   invitationStatus,
   invitationTarget,
   invitedRole,
+  inviterCanGrant,
+  inviterHoldsRole,
+  revokeOutgrownInvitations,
 } from '../invitations.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
-import { lockActiveAccount } from '../locks.ts';
+import { lockAccount, lockActiveAccount } from '../locks.ts';
 import { type Mailer, maskAddress } from '../mailer.ts';
 import { inviteMail } from '../mails.ts';
 import { nextOwnPosition } from '../project-order.ts';
@@ -206,7 +210,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const [inviter] = row.invitedBy
       ? await db.select().from(user).where(eq(user.id, row.invitedBy))
       : [];
-    const valid = invitationStatus(row) === 'valid';
+    // No link for one its inviter can no longer give: copying it would hand out a dead link.
+    const valid = (await currentStatus(db, row)) === 'valid';
     const token = !valid ? null : (fresh ?? (row.tokenSealed ? seal.open(row.tokenSealed) : null));
     return {
       id: row.id,
@@ -231,9 +236,10 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   async function managerRole(
     actor: Actor,
     target: { projectId: string | null; boardId: string | null },
+    q: Pick<Database, 'select' | 'execute'> = db,
   ): Promise<ProjectRole | null> {
-    if (target.boardId) return (await requireBoardRole(db, actor, target.boardId, 'editor')).role;
-    if (target.projectId) return requireProjectRole(db, actor, target.projectId, 'editor');
+    if (target.boardId) return (await requireBoardRole(q, actor, target.boardId, 'editor')).role;
+    if (target.projectId) return requireProjectRole(q, actor, target.projectId, 'editor');
     if (actor.role !== 'admin')
       throw new HttpError('forbidden', 'Only administrators invite people to the instance.');
     return null;
@@ -278,12 +284,47 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     } finally {
       clearTimeout(timer);
     }
-    const [sent] = await db
-      .update(invitation)
-      .set({ ...rotate, lastSentAt: new Date() })
-      .where(eq(invitation.id, row.id))
-      .returning();
-    return sent ?? row;
+    if (!rotate) {
+      const [sent] = await db
+        .update(invitation)
+        .set({ lastSentAt: new Date() })
+        .where(eq(invitation.id, row.id))
+        .returning();
+      return sent ?? row;
+    }
+    // The new token replaces the old one only if, meanwhile, the invitation was not used,
+    // revoked or sent again, and its inviter can still give the access (under their account
+    // lock, decision 0134); otherwise the earlier link stays.
+    const rotated = await db.transaction(async (tx) => {
+      if (!row.invitedBy) return null;
+      await lockAccount(tx, row.invitedBy);
+      if (!(await inviterCanGrant(tx, row))) return null;
+      const [sent] = await tx
+        .update(invitation)
+        .set({ ...rotate, lastSentAt: new Date() })
+        .where(
+          and(
+            eq(invitation.id, row.id),
+            eq(invitation.tokenHash, row.tokenHash),
+            eq(invitation.uses, 0),
+            isNull(invitation.revokedAt),
+            // The clock of this statement, not of the transaction: the access may have ended
+            // while the mail was on its way or this waited for the lock.
+            or(
+              isNull(invitation.accessExpiresAt),
+              gt(invitation.accessExpiresAt, sql`clock_timestamp()`),
+            ),
+          ),
+        )
+        .returning();
+      return sent ?? null;
+    });
+    if (!rotated)
+      throw new HttpError(
+        'conflict',
+        'This invitation changed while it was being sent: the earlier link stays as it was.',
+      );
+    return rotated;
   }
 
   function setInvitationCookie(reply: FastifyReply, token: string | null) {
@@ -406,6 +447,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { userId, role, expiresAt: end?.toISOString() ?? null },
       });
+      await revokeOutgrownInvitations(tx, userId, mine.board.projectId);
       // The answer is read before the commit: their deletion may come right after it.
       return entryFor(tx as unknown as Database, boardId, userId);
     });
@@ -435,6 +477,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { userId, role: removed[0]?.role ?? null },
       });
+      await revokeOutgrownInvitations(tx, userId, mine.board.projectId);
     });
     notices.recheckAccess();
     return reply.status(204).send();
@@ -564,10 +607,20 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         boardId = null;
       }
     }
-    const mine = await managerRole(actor, { projectId, boardId });
     const role = projectId ? (input.role ?? null) : null;
-    if (role && mine && higher(role, mine))
-      throw new HttpError('forbidden', 'You cannot give a role higher than yours.');
+    /**
+     * The actor's role over the target, within the cap on the role given. Run before the
+     * transactions (fail fast) and again inside them, after the actor's account lock: a
+     * demotion committed meanwhile is then seen, and one that comes later revokes the row
+     * (decision 0134).
+     */
+    const checkManager = async (q: Pick<Database, 'select' | 'execute'>, as: Actor) => {
+      const held = await managerRole(as, { projectId, boardId }, q);
+      if (role && held && higher(role, held))
+        throw new HttpError('forbidden', 'You cannot give a role higher than yours.');
+      return held;
+    };
+    await checkManager(db, actor);
     const accessExpiresAt = (role && readExpiry(input.accessExpiresAt, role)) || null;
 
     const [recent] = await db
@@ -597,7 +650,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         // One transaction, both people first, then the project row, before any other row: a
         // deletion of either, or of the project, comes first or waits (decision 0134).
         const entry = await db.transaction(async (tx) => {
-          await lockActiveAccount(tx, actor.id, existing.id);
+          const self = await lockActiveAccount(tx, actor.id, existing.id);
           const [still] = await tx
             .select({ id: user.id })
             .from(user)
@@ -609,6 +662,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
             .where(eq(project.id, projectId))
             .for('key share');
           if (!live) throw new HttpError('not_found', 'Project not found.');
+          const mine = await checkManager(tx, { ...actor, role: self.role });
           // The answer is read before the commit: their deletion may come right after it.
           const entry = () => entryFor(tx as unknown as Database, target, existing.id);
           const current = await boardAccess(tx, existing, target);
@@ -690,13 +744,27 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         : input.expiresInDays;
     const token = newSecret('', 24);
     const [created] = await db.transaction(async (tx) => {
+      // The actor's account first, so a removal or demotion of theirs either comes first and is
+      // seen below, or comes after and revokes this row with their others (decision 0134).
+      const self = await lockActiveAccount(tx, actor.id);
       if (email) {
         // Serialize the check and insert across requests and server processes without a schema change.
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtextextended(${JSON.stringify([email, projectId, boardId])}, 0))`,
         );
-        const [pending] = await tx
-          .select({ id: invitation.id })
+      }
+      if (projectId) {
+        const [live] = await tx
+          .select({ id: project.id })
+          .from(project)
+          .where(eq(project.id, projectId))
+          .for('key share');
+        if (!live) throw new HttpError('not_found', 'Project not found.');
+      }
+      await checkManager(tx, { ...actor, role: self.role });
+      if (email) {
+        const pending = await tx
+          .select()
           .from(invitation)
           .where(
             and(
@@ -709,8 +777,29 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
               eq(invitation.uses, 0),
             ),
           );
-        if (pending)
-          throw new HttpError('conflict', 'An invitation for this email is already pending.');
+        // One nobody can give any more (its inviter's account deleted, or their role lost) is
+        // replaced. A deactivated inviter only suspends it (decision 0025): it still blocks.
+        for (const row of pending) {
+          if (await inviterHoldsRole(tx, row))
+            throw new HttpError('conflict', 'An invitation for this email is already pending.');
+          // Only if it is still as read: unused, not revoked, the same inviter.
+          const [replaced] = await tx
+            .update(invitation)
+            .set({ revokedAt: new Date() })
+            .where(
+              and(
+                eq(invitation.id, row.id),
+                eq(invitation.uses, 0),
+                isNull(invitation.revokedAt),
+                row.invitedBy
+                  ? eq(invitation.invitedBy, row.invitedBy)
+                  : isNull(invitation.invitedBy),
+              ),
+            )
+            .returning({ id: invitation.id });
+          if (!replaced)
+            throw new HttpError('conflict', 'An invitation for this email is already pending.');
+        }
       }
       const rows = await tx
         .insert(invitation)
@@ -773,6 +862,14 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       invitationStatus(row) === 'used'
     )
       throw new HttpError('conflict', 'Only unused email invitations can be sent again.');
+    if (row.accessExpiresAt && row.accessExpiresAt <= new Date())
+      throw new HttpError('conflict', 'The access this invitation offers has already ended.');
+    // An expired token is renewed, but only while its inviter can still give the access.
+    if (!(await inviterCanGrant(db, row)))
+      throw new HttpError(
+        'conflict',
+        'Whoever sent this invitation can no longer give this access: send a new one instead.',
+      );
     if (!mailer.enabled) throw new HttpError('conflict', 'This instance cannot send email.');
     if (row.lastSentAt && Date.now() - row.lastSentAt.getTime() < 60_000)
       throw new HttpError(
@@ -792,6 +889,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         expiresAt,
       });
     } catch (err) {
+      if (err instanceof HttpError) throw err;
       req.log.warn({ err }, 'invitation email not sent');
       throw new HttpError(
         'unavailable',
@@ -836,7 +934,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       ...(await invitationTarget(db, row)),
       role: invitedRole(row),
       email: row.email,
-      status: invitationStatus(row),
+      status: await currentStatus(db, row),
       expiresAt: iso(row.expiresAt),
       accessExpiresAt: endOf(row.accessExpiresAt),
     };
@@ -847,7 +945,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     await previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);
-    if (!row || invitationStatus(row) !== 'valid')
+    if (!row || (await currentStatus(db, row)) !== 'valid')
       throw new HttpError('not_found', 'This invitation can no longer be used.');
     setInvitationCookie(reply, token);
     return reply.status(204).send();

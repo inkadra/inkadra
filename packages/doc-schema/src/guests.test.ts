@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   Element,
   GUEST_ELEMENT_FIELDS,
+  GUEST_TODO_ITEM_FIELDS,
   hiddenFromGuests,
+  TodoItem,
   toGuestElement,
   UNSORTED,
 } from './index.ts';
@@ -73,6 +75,42 @@ describe('guest element fields', () => {
       }
       for (const key of allowed) expect(Object.keys(option.shape)).toContain(key);
     }
+    // Nested: the fields of a to-do item, where `assigneeId` is an account id.
+    const itemOmitted = ['assigneeId'];
+    const itemAllowed: readonly string[] = GUEST_TODO_ITEM_FIELDS;
+    for (const key of Object.keys(TodoItem.shape))
+      expect(itemAllowed.includes(key) !== itemOmitted.includes(key), `todo.items.${key}`).toBe(
+        true,
+      );
+    for (const key of itemAllowed) expect(Object.keys(TodoItem.shape)).toContain(key);
+  });
+
+  it('gives guests the due date of a to-do item but not who it is assigned to', () => {
+    const element = Element.parse({
+      id: 'V1StGXR8_Z5jdHi6B-myT',
+      type: 'todo',
+      x: 0,
+      y: 0,
+      w: 240,
+      z: 'a0',
+      parent: null,
+      createdBy: 'user-1',
+      createdAt: 1,
+      items: [
+        {
+          id: 'item-1_aaaaaaaaaaaaaa',
+          text: 'Lens kit',
+          done: false,
+          assigneeId: '7f1c2a8e-4b6d-4c3e-9a1f-2b3c4d5e6f70',
+          dueDate: '2026-12-01',
+        },
+      ],
+    });
+    const guest = toGuestElement(element);
+    expect(guest.items).toEqual([
+      { id: 'item-1_aaaaaaaaaaaaaa', text: 'Lens kit', done: false, dueDate: '2026-12-01' },
+    ]);
+    expect(Element.parse(guest)).toEqual(guest);
   });
 
   it('shares file captions like image captions without exposing internal fields', () => {
