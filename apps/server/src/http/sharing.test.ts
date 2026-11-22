@@ -738,6 +738,64 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     await call('owner', 'DELETE', `/api/v1/projects/${p}`);
   });
 
+  it('shows, resends and replaces invitations by what their inviter can still give', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Doppiaggio' });
+    const p = made.body.id as string;
+    expect(
+      (
+        await call('owner', 'PUT', `/api/v1/projects/${p}/members/${as.guest.id}`, {
+          role: 'editor',
+        })
+      ).status,
+    ).toBe(200);
+    const link = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      projectId: p,
+      role: 'viewer',
+    });
+    const mail = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'email',
+      email: 'voice@example.com',
+      projectId: p,
+      role: 'viewer',
+    });
+    expect(mail.status).toBe(201);
+    const listed = async () =>
+      (await call('owner', 'GET', `/api/v1/invitations?projectId=${p}`)).body.items as Array<{
+        id: string;
+        url: string | null;
+      }>;
+    expect((await listed()).find((i) => i.id === link.body.invitation.id)?.url).toBeTruthy();
+    await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+    try {
+      // Suspended: no link to copy, no email with a token that would not work.
+      expect((await listed()).find((i) => i.id === link.body.invitation.id)?.url).toBeNull();
+      const resend = await call(
+        'owner',
+        'POST',
+        `/api/v1/invitations/${mail.body.invitation.id}/resend`,
+      );
+      expect(resend.status).toBe(409);
+    } finally {
+      await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+    }
+    expect((await listed()).find((i) => i.id === link.body.invitation.id)?.url).toBeTruthy();
+    // The same address can be invited again once nobody can give the pending invitation.
+    const again = { kind: 'email', email: 'voice@example.com', projectId: p, role: 'viewer' };
+    expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(409);
+    await db
+      .update(invitationTable)
+      .set({ invitedBy: null })
+      .where(eq(invitationTable.id, mail.body.invitation.id));
+    expect((await call('owner', 'POST', '/api/v1/invitations', again)).status).toBe(201);
+    const [old] = await db
+      .select({ revokedAt: invitationTable.revokedAt })
+      .from(invitationTable)
+      .where(eq(invitationTable.id, mail.body.invitation.id));
+    expect(old?.revokedAt).not.toBeNull();
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
   it('counts no sign-up on an invitation whose inviter is deactivated meanwhile', async () => {
     const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Provino' });
     const p = made.body.id as string;

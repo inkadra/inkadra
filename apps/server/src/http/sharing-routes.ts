@@ -48,6 +48,7 @@ import {
   invitationStatus,
   invitationTarget,
   invitedRole,
+  inviterCanGrant,
   revokeOutgrownInvitations,
 } from '../invitations.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
@@ -208,7 +209,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const [inviter] = row.invitedBy
       ? await db.select().from(user).where(eq(user.id, row.invitedBy))
       : [];
-    const valid = invitationStatus(row) === 'valid';
+    // No link for one its inviter can no longer give: copying it would hand out a dead link.
+    const valid = (await currentStatus(db, row)) === 'valid';
     const token = !valid ? null : (fresh ?? (row.tokenSealed ? seal.open(row.tokenSealed) : null));
     return {
       id: row.id,
@@ -725,8 +727,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       }
       await checkManager(tx, { ...actor, role: self.role });
       if (email) {
-        const [pending] = await tx
-          .select({ id: invitation.id })
+        const pending = await tx
+          .select()
           .from(invitation)
           .where(
             and(
@@ -739,8 +741,18 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
               eq(invitation.uses, 0),
             ),
           );
-        if (pending)
-          throw new HttpError('conflict', 'An invitation for this email is already pending.');
+        // One whose inviter can no longer give it (gone, deactivated, demoted) is replaced.
+        const stale: string[] = [];
+        for (const row of pending) {
+          if (await inviterCanGrant(tx, row))
+            throw new HttpError('conflict', 'An invitation for this email is already pending.');
+          stale.push(row.id);
+        }
+        if (stale.length > 0)
+          await tx
+            .update(invitation)
+            .set({ revokedAt: new Date() })
+            .where(inArray(invitation.id, stale));
       }
       const rows = await tx
         .insert(invitation)
@@ -803,6 +815,12 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       invitationStatus(row) === 'used'
     )
       throw new HttpError('conflict', 'Only unused email invitations can be sent again.');
+    // An expired token is renewed, but only while its inviter can still give the access.
+    if (!(await inviterCanGrant(db, row)))
+      throw new HttpError(
+        'conflict',
+        'Whoever sent this invitation can no longer give this access: send a new one instead.',
+      );
     if (!mailer.enabled) throw new HttpError('conflict', 'This instance cannot send email.');
     if (row.lastSentAt && Date.now() - row.lastSentAt.getTime() < 60_000)
       throw new HttpError(
