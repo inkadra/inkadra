@@ -16,13 +16,20 @@ import { syncSummary } from './header-status.tsx';
 import { NotePhoneTools } from './NotePhoneTools.tsx';
 import { NoteBody, NoteEditor } from './note.tsx';
 import { plainText } from './note-text.ts';
-import { type Peer, TYPING_PAUSE_MS, typingIn } from './presence.ts';
+import {
+  NO_PEERS,
+  type PeerSource,
+  samePeople,
+  TYPING_PAUSE_MS,
+  typingIn,
+  usePeers,
+} from './presence.ts';
 import type { BoardStore } from './store.ts';
 import './note-sheet.css';
 
 /** The live board around the note: who else writes in it, and whether changes are saved. */
 export interface NoteLive {
-  peers: readonly Peer[];
+  peers: PeerSource;
   presence: { writing: (elementId: string | null, typing: boolean) => void };
   saves: SaveStore;
   status: ConnectionStatus;
@@ -197,7 +204,11 @@ function PhoneNote({
   const [error, setError] = useState<string | null>(null);
   const inset = useKeyboardInset();
   const title = useFirstLine(fragment) || t('board.note.label');
-  const writers = live ? typingIn(live.peers, noteId) : [];
+  const writers = usePeers(
+    live?.peers ?? NO_PEERS,
+    useCallback((peers) => typingIn(peers, noteId), [noteId]),
+    samePeople,
+  );
   const writing = live?.presence.writing;
   const editable = !readOnly && !!fragment;
 

@@ -29,13 +29,14 @@ import '/src/pwa/pwa.css';
   const { MemoryRouter, Routes, Route } = await import(routerUrl);
   const { AppLayout } = await import('/src/routes/AppLayout.tsx');
   const { Canvas } = await import('/src/board/Canvas.tsx');
+  const { NO_PEERS } = await import('/src/board/presence.ts');
   const { BoardStore } = await import('/src/board/store.ts');
   const { createBoardDoc } = await import('/@fs/${root}/packages/doc-schema/src/index.ts');
   const { createElement } = await import('/@fs/${root}/packages/canvas-core/src/index.ts');
   const doc = createBoardDoc('b');
   createElement(doc, 'color', { x: 100, y: 100 }, { hex: '#808080' }, { userId: 'u' });
   const conn = { store: new BoardStore(doc), provider: null, status: 'synced', readOnly: false, accessChangedAt: null };
-  const canvas = React.createElement(Canvas, { conn, breadcrumb: [], projectId: 'p', boardId: 'b', userId: 'u', boards: [], canEdit: true, peers: [], onOpenBoard: () => {} });
+  const canvas = React.createElement(Canvas, { conn, breadcrumb: [], projectId: 'p', boardId: 'b', userId: 'u', boards: [], canEdit: true, peers: NO_PEERS, onOpenBoard: () => {} });
   const { SessionProvider, useSession } = await import('/src/lib/session.tsx');
   function Loaded() { const { loading } = useSession(); return loading ? null : React.createElement(Routes, null, React.createElement(Route, { element: React.createElement(AppLayout) }, React.createElement(Route, { path: '*', element: React.createElement('div', { style: { display: 'contents' } }, canvas) }))); }
   ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter, { initialEntries: ['/p/p/b/b?view=canvas'] }, React.createElement(SessionProvider, null, React.createElement(Loaded))));

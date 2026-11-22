@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ConnectionStatus, SaveStore } from './connection.ts';
-import { type Peer, uniquePeople } from './presence.ts';
+import { type Peer, sameList, uniquePeople } from './presence.ts';
 
 /** What the header says about the connection: saving, saved when, or why nothing is syncing. */
 export type SyncSummary =
@@ -60,6 +60,32 @@ export function boardPeople(peers: readonly Peer[], selfId: string | null): Boar
     online: onlineCount(peers, selfId),
     writing: peers.filter((p) => p.editing !== null),
   };
+}
+
+/** The same header: what the avatars, the online count and the editing line show. */
+export function sameBoardPeople(a: BoardPeople, b: BoardPeople): boolean {
+  return (
+    a.online === b.online &&
+    sameList(
+      a.people,
+      b.people,
+      (p, q) =>
+        p.user.id === q.user.id &&
+        p.user.name === q.user.name &&
+        p.user.image === q.user.image &&
+        p.readOnly === q.readOnly &&
+        p.color === q.color,
+    ) &&
+    sameList(
+      a.writing,
+      b.writing,
+      (p, q) =>
+        p.user.id === q.user.id &&
+        p.user.name === q.user.name &&
+        p.editing === q.editing &&
+        p.color === q.color,
+    )
+  );
 }
 
 export interface Editor {

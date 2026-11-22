@@ -25,6 +25,7 @@ import { primeAsset } from '../board/assets.ts';
 import { Canvas } from '../board/Canvas.tsx';
 import { type BoardConnection, createSaveStore } from '../board/connection.ts';
 import { CardExtrasContext, GuestModeContext } from '../board/context.ts';
+import { NO_PEERS } from '../board/presence.ts';
 import { BoardStore } from '../board/store.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
@@ -481,7 +482,7 @@ export function GuestBoardScreen({
                         userId=""
                         boards={boards}
                         canEdit={false}
-                        peers={[]}
+                        peers={NO_PEERS}
                         onOpenBoard={openBoard}
                         onSelectionChange={onSelectionChange}
                         onOpen={onOpen}

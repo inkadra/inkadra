@@ -84,7 +84,13 @@ import {
   ScreenplayImportDialog,
 } from './film/screenplay/ScreenplayImportDialog.tsx';
 import { shootingZone } from './film/sun.ts';
-import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
+import {
+  boardPeople,
+  EditingLine,
+  editingPeople,
+  SyncStatus,
+  sameBoardPeople,
+} from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
 import {
   keptFileMaxSize,
@@ -115,7 +121,7 @@ import {
 } from './views.ts';
 import './film/film.css';
 import { CrewEditorContext } from './context.ts';
-import { type Peer, usePeers } from './presence.ts';
+import { NO_PEERS, type Peer, usePeerSource, usePeers } from './presence.ts';
 import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
@@ -1248,7 +1254,7 @@ function BoardScreen({
         userId={user.id}
         boards={boards}
         canEdit={false}
-        peers={[]}
+        peers={NO_PEERS}
         onOpenBoard={() => {}}
       />
     ) : (
@@ -1562,8 +1568,7 @@ function exportSourceOf(view: string, kind?: Board['kind']): ExportSource {
 }
 
 function BoardCanvas(props: Omit<Parameters<typeof Canvas>[0], 'peers'>) {
-  const peers = usePeers(props.conn.provider);
-  return <Canvas {...props} peers={peers} />;
+  return <Canvas {...props} peers={usePeerSource(props.conn.provider)} />;
 }
 
 const MAX_AVATARS = 5;
@@ -1574,7 +1579,11 @@ const MAX_AVATARS = 5;
  */
 export function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string | null }) {
   const { t } = useTranslation();
-  const { people, online, writing } = boardPeople(usePeers(conn.provider), selfId);
+  const { people, online, writing } = usePeers(
+    usePeerSource(conn.provider),
+    useCallback((peers) => boardPeople(peers, selfId), [selfId]),
+    sameBoardPeople,
+  );
   const shown = people.slice(0, MAX_AVATARS);
   const name = (p: Peer) =>
     p.readOnly ? t('board.peers.viewing', { name: p.user.name }) : p.user.name;

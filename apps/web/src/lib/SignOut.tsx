@@ -10,6 +10,7 @@ import { signOut } from './sign-out.ts';
  * the server does not have yet (made offline, or set aside because the server would not take
  * them), it asks first: staying signed in keeps them, and opening those boards online sends
  * what was made offline. What was set aside can only be downloaded, here or on its board.
+ * When the copies cannot be listed, it signs out and leaves them on the device.
  * `start` signs out, or asks; `dialog` must be rendered.
  */
 export function useSignOut(
@@ -21,28 +22,30 @@ export function useSignOut(
   const [unsaved, setUnsaved] = useState(0);
   const [kept, setKept] = useState<string[]>([]);
   const [downloading, setDownloading] = useState(false);
-  const leave = () => void signOut(userId).catch(onFailed);
+  // Without the id the copies stay: named after the person, the next account does not open them.
+  const leave = (clear = true) => void signOut(clear ? userId : undefined).catch(onFailed);
   const count = (id: string) =>
-    Promise.all([
-      unsavedLocalBoards(id).catch((): string[] => []),
-      keptBoards(id).catch((): string[] => []),
-    ]).then(([boards, aside]) => {
+    Promise.all([unsavedLocalBoards(id), keptBoards(id)]).then(([boards, aside]) => {
       setKept(aside);
       setUnsaved(boards.filter((board) => !aside.includes(board)).length);
       return boards.length;
     });
   const start = () => {
     if (!userId) return leave();
-    void count(userId).then((boards) => {
-      if (!boards) leave();
-    });
+    // Copies that cannot be listed are not deleted unasked: signing out keeps them.
+    void count(userId).then(
+      (boards) => {
+        if (!boards) leave();
+      },
+      () => leave(false),
+    );
   };
   const download = async () => {
     if (!userId) return;
     setDownloading(true);
     try {
       for (const board of kept) await downloadKept(userId, board).catch(() => {});
-      await count(userId);
+      await count(userId).catch(() => {});
     } finally {
       setDownloading(false);
     }

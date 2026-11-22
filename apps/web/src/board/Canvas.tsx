@@ -204,7 +204,7 @@ import {
   usePlanNav,
   useTakeParam,
 } from './plan/scenes.tsx';
-import { type Peer, useLocalPresence } from './presence.ts';
+import { type PeerSource, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
 import {
@@ -428,7 +428,8 @@ export interface CanvasProps {
   canEdit: boolean;
   preview?: boolean;
   initialSelection?: ReadonlySet<string>;
-  peers: Peer[];
+  /** Other people on the board; read only by the parts that draw them. */
+  peers: PeerSource;
   /** Opens a sub-board, on the view its card shows when there is one (decision 0121). */
   onOpenBoard: (boardId: string, view?: string) => void;
   /** Told whenever the selection changes. */
