@@ -1241,13 +1241,25 @@ export function addVariant(
 
 // Writing to the document --------------------------------------------------------
 
-/** The plan's list, created when missing; call inside the transaction that writes to it. */
+/**
+ * The plan's list, created when missing; call inside the transaction that writes to it. A list an
+ * older writer left as plain JSON becomes a Y.Array with its items kept (icons as Y.Maps, strokes
+ * and shapes as plain objects), never an empty one.
+ */
 function listOf(doc: Y.Doc, planId: string, kind: PlanItemKind): Y.Array<unknown> | null {
   const map = roots(doc).elements.get(planId);
   if (map?.get('type') !== 'plan') return null;
   const current = map.get(kind);
   if (current instanceof Y.Array) return current;
   const fresh = new Y.Array<unknown>();
+  if (Array.isArray(current)) {
+    const items = current.filter((i): i is object => typeof i === 'object' && i !== null);
+    fresh.push(
+      kind === 'icons'
+        ? items.map((i) => new Y.Map(Object.entries(i).filter(([, v]) => v !== undefined)))
+        : items,
+    );
+  }
   map.set(kind, fresh);
   return fresh;
 }
