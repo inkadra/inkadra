@@ -24,11 +24,11 @@ local v = redis.call('get', KEYS[1])
 if v == ARGV[1] then return redis.call('pexpire', KEYS[1], ARGV[2]) end
 if not v then redis.call('set', KEYS[1], ARGV[1], 'px', ARGV[2]) return 1 end
 return 0`;
-// Takes a free lease, or one left by an earlier run of this same container (same host name: a
-// restart after a crash must not wait for the TTL).
+// Takes a free lease. One left by a process that crashed is waited for until it expires: nothing
+// tells a holder that has gone from a live one with the same host name in another container.
 const ACQUIRE = `
 local v = redis.call('get', KEYS[1])
-if (not v) or string.sub(v, 1, string.len(ARGV[3])) == ARGV[3] then
+if not v then
   redis.call('set', KEYS[1], ARGV[1], 'px', ARGV[2]) return 1
 end
 return v`;
@@ -57,6 +57,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * a whole TTL (this one must stop). A foreign value seen once is not enough: after a Valkey crash
  * an append-only file can bring back the key of a holder long gone, which expires on its own.
  * A Valkey outage only logs: the lease is renewed again once it is back.
+ * shortcut: a process cut off from Valkey keeps serving until it sees another holder, which may
+ * have taken the lease meanwhile; excluding that needs a fencing token checked by the writes.
  */
 export async function acquireLease(
   redis: Redis,
@@ -85,7 +87,7 @@ export async function acquireLease(
   for (;;) {
     let got: unknown;
     try {
-      got = await redis.eval(ACQUIRE, 1, key, me, ttl, `${host}/`);
+      got = await redis.eval(ACQUIRE, 1, key, me, ttl);
     } catch (err) {
       if (Date.now() >= giveUp) throw err;
       log.warn({ role, err: String(err) }, 'Valkey unavailable: retrying the single-process lease');

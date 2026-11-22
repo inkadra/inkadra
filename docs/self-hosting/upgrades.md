@@ -133,6 +133,9 @@ restored with 0.10.1 (see [Going back to an older version](#going-back-to-an-old
   container. Update and restart it together with the web (`docker compose up -d` with the same
   files does both): a worker left on 0.10 still takes the instance-wide lock that 0.11 replaced
   with locks per account and setting ([decision 0134](../decisions/0134-scoped-locks-and-per-member-project-order.md)).
+- **A start after a crash waits for the lease.** The web and collab processes no longer take back
+  at once a lease their own container left in Valkey: after a crash or an interrupted start (not
+  a clean stop, which releases it) they start up to 30 seconds later, when it expires.
 - **Project order per member.** Migration 0056 copies each project's shared order to every member,
   who then keeps their own. A list of projects paged across the upgrade may repeat or skip one
   project once.

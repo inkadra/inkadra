@@ -36,6 +36,7 @@ import {
   assignedItems,
   dropRemovedAssignees,
   notifyAssignment,
+  trackAssignments,
   validateTaskUpdate,
 } from './tasks.ts';
 import { actorFromToken, isToken } from './tokens.ts';
@@ -110,6 +111,16 @@ function newItems(document: Y.Doc, update: Uint8Array): Array<[client: number, c
     .map(([client, to]) => [client, to - 1]);
 }
 const addsItems = (document: Y.Doc, update: Uint8Array) => newItems(document, update).length > 0;
+
+/**
+ * Presence client ids one connection may hold on a document for as long as it is open, so that
+ * an authenticated connection cannot claim an unbounded number of them; the states of more are
+ * dropped. A provider publishes one id, but several providers of one document can share a
+ * connection: Hocuspocus hands the frames of a session-aware provider to the socket's session-less
+ * connection to the same document until the session's own connection exists. 8 leaves room for
+ * that, far above what a client opens.
+ */
+const PRESENCE_IDS_PER_CONNECTION = 8;
 
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
@@ -511,8 +522,19 @@ export function createCollabServer(deps: {
       );
     }
   };
-  /** Yjs client ids each socket has published presence for, per document. */
-  const owners = new Map<string, string>();
+  /**
+   * The connection (one per document session: several can share a socket) that published
+   * presence under each Yjs client id of a document.
+   */
+  const owners = new Map<string, Connection<Context>>();
+  /**
+   * The same per connection: its cap, and what its close frees without reading every entry. An id
+   * stays claimed until the connection closes, removed or not, as main keeps it. No other
+   * connection can publish it meanwhile, and Hocuspocus removes a closing connection's presence
+   * (its own registry of the ids that first appeared on it) before it runs the close callbacks:
+   * so one connection's close never removes another's presence.
+   */
+  const claims = new WeakMap<Connection<Context>, Set<number>>();
   // Seed lazily from the authoritative transaction, including after a process restart.
   const lastAutoAt = new Map<string, number>();
   const ownerKey = (documentName: string, clientId: number) => `${documentName}#${clientId}`;
@@ -633,6 +655,10 @@ export function createCollabServer(deps: {
   }
 
   const assignments = new WeakMap<Y.Doc, ReturnType<typeof assignedItems>>();
+  /** The schema version each open board was last validated at, for the invalid-elements log. */
+  const validatedAt = new WeakMap<Y.Doc, number>();
+  /** Each open board's assignments now (trackAssignments). */
+  const assignedNow = new WeakMap<Y.Doc, () => ReturnType<typeof assignedItems>>();
   const pendingAssignments = new WeakMap<
     Y.Doc,
     Map<string, { actorId: string; elementId: string; assigneeId: string }>
@@ -672,6 +698,7 @@ export function createCollabServer(deps: {
   >();
   let closing = false;
   const storeTimes = new StoreRecorder();
+  const sizes = new DocSizes();
   const stored = (document: Y.Doc) => {
     clearTimeout(unsaved.get(document)?.timer);
     unsaved.delete(document);
@@ -737,7 +764,15 @@ export function createCollabServer(deps: {
     websocketOptions: { maxPayload: limits?.maxPayload ?? 16 * 1024 * 1024 },
 
     async onConfigure() {
-      timer = setInterval(() => void rechecks.join(), deps.recheckMs ?? ACCESS_RECHECK_MS);
+      timer = setInterval(() => {
+        void rechecks.join();
+        // An automatic version time is kept after its board closes, so a board opened again skips
+        // the database until that version is an hour old; past that the next store checks the
+        // database anyway, so the entry can go (or when the clock moved back).
+        const now = (deps.now?.() ?? new Date()).getTime();
+        for (const [boardId, at] of lastAutoAt)
+          if (now - at >= AUTO_VERSION_EVERY_MS || now < at) lastAutoAt.delete(boardId);
+      }, deps.recheckMs ?? ACCESS_RECHECK_MS);
       timer.unref();
       keepalive = setInterval(keepAlive, deps.keepaliveMs ?? KEEPALIVE_MS);
       keepalive.unref();
@@ -821,18 +856,45 @@ export function createCollabServer(deps: {
      * Presence comes from clients, so the server writes who they are: nobody can appear as
      * someone else, change another client's presence or remove it.
      */
-    async beforeHandleAwareness({ states, removedClients, connection, documentName }) {
+    async beforeHandleAwareness({ states, removedClients, connection, documentName, document }) {
       if (!connection) return;
       const ctx = connection.context;
       for (const [clientId, state] of states) {
         const key = ownerKey(documentName, clientId);
         const owner = owners.get(key);
         const local = LocalPresence.safeParse(state);
-        if ((owner && owner !== connection.socketId) || !ctx?.user || !local.success) {
+        // A message still queued when its connection closed publishes nothing.
+        if (
+          (owner && owner !== connection) ||
+          !ctx?.user ||
+          !local.success ||
+          !document.hasConnection(connection)
+        ) {
           states.delete(clientId);
           continue;
         }
-        owners.set(key, connection.socketId);
+        if (!owner) {
+          let claimed = claims.get(connection);
+          if (!claimed) {
+            const mine = new Set<number>();
+            claimed = mine;
+            claims.set(connection, mine);
+            // Like onDisconnect: once what the connection still had queued is handled.
+            connection.onClose(() => {
+              void connection.waitForPendingMessages().then(() => {
+                for (const id of mine)
+                  if (owners.get(ownerKey(documentName, id)) === connection)
+                    owners.delete(ownerKey(documentName, id));
+              });
+            });
+          }
+          if (claimed.size >= PRESENCE_IDS_PER_CONNECTION) {
+            states.delete(clientId);
+            continue;
+          }
+          claimed.add(clientId);
+          owners.set(key, connection);
+        }
         const stamped: PresenceState = {
           ...local.data,
           // Only someone who can write may appear to be typing.
@@ -845,14 +907,9 @@ export function createCollabServer(deps: {
         states.set(clientId, stamped);
       }
       for (const clientId of removedClients) {
-        if (owners.get(ownerKey(documentName, clientId)) !== connection.socketId)
+        if (owners.get(ownerKey(documentName, clientId)) !== connection)
           removedClients.delete(clientId);
       }
-    },
-
-    async onDisconnect({ socketId, documentName }) {
-      for (const [key, owner] of owners)
-        if (owner === socketId && key.startsWith(`${documentName}#`)) owners.delete(key);
     },
 
     async beforeUnloadDocument({ document }) {
@@ -873,7 +930,9 @@ export function createCollabServer(deps: {
         const steps = migrateBoardDoc(document, boardId);
         if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
         prepareImageDrawings(document);
-        assignments.set(document, assignedItems(document));
+        const track = trackAssignments(document);
+        assignedNow.set(document, track);
+        assignments.set(document, track());
         openedAt.set(document, Date.now());
         return document;
       } catch (err) {
@@ -959,7 +1018,7 @@ export function createCollabServer(deps: {
         }
       }
       const before = assignments.get(document) ?? new Map();
-      const after = assignedItems(document);
+      const after = assignedNow.get(document)?.() ?? assignedItems(document);
       const pending = pendingAssignments.get(document) ?? new Map();
       for (const [key, item] of after) {
         if (before.get(key)?.assigneeId !== item.assigneeId && context?.actor?.id)
@@ -980,11 +1039,20 @@ export function createCollabServer(deps: {
       const { document, documentName } = payload;
       const boardId = parseBoardDocName(documentName);
       if (!boardId) return;
-      const issues = validateBoardDoc(document);
-      if (issues.length > 0) log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
+      // A sample: the first store of an open board, and again after its schema changes, as
+      // validating every card on each store walks the whole board. An element that becomes
+      // invalid later is logged when the board is next opened.
+      const version = getSchemaVersion(document);
+      if (validatedAt.get(document) !== version) {
+        validatedAt.set(document, version);
+        const issues = validateBoardDoc(document);
+        if (issues.length > 0)
+          log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
+      }
       if (frozen.has(document)) return stored(document);
       const pending = new Map(pendingAssignments.get(document));
       const state = Y.encodeStateAsUpdate(document);
+      sizes.measured(document, state.byteLength);
       if (limits?.freeze && state.byteLength > limits.stateBytes) {
         freeze(document, boardId);
         return stored(document);
@@ -1143,7 +1211,6 @@ export function createCollabServer(deps: {
     return out;
   }
 
-  const sizes = new DocSizes();
   /** Encoded size of the boards `presence` lists (#911). */
   const boardBytes = () =>
     sizes.total([...server.hocuspocus.documents.values()].filter((d) => whoIsOn(d)));
