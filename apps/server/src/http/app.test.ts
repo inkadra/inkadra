@@ -232,6 +232,22 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     ]);
   });
 
+  it('keeps API answers out of caches unless the route says otherwise', async () => {
+    const me = await app.inject({ url: '/api/v1/me', headers: { cookie } });
+    expect(me.headers['cache-control']).toBe('private, no-store');
+    expect((await app.inject('/api/v1/me')).headers['cache-control']).toBe('private, no-store');
+    // A route's own policy stands.
+    const list = await app.inject({ url: '/api/v1/projects', headers: { cookie } });
+    const boardId = list.json().items[0].rootBoardId;
+    const preview = await app.inject({
+      url: `/api/v1/boards/${boardId}/preview`,
+      headers: { cookie },
+    });
+    expect(preview.statusCode).toBe(200);
+    expect(preview.headers['cache-control']).toBe('private, no-cache');
+    expect((await app.inject('/livez')).headers['cache-control']).toBeUndefined();
+  });
+
   it('validates input', async () => {
     const res = await app.inject({
       method: 'POST',
