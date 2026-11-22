@@ -4,12 +4,15 @@ import {
   type PlanIcon,
   type PlanIconKind,
   type PlanLayer,
+  type PlanShape,
+  type PlanStroke,
 } from '@inkadra/doc-schema';
 import type * as Y from 'yjs';
 import { updateElement } from './board.ts';
 import type { Point } from './geometry.ts';
 import {
   addPlanIcon,
+  addPlanMark,
   allowedWrites,
   defaultIconSize,
   defaultLayer,
@@ -377,6 +380,24 @@ export function placePlanIcon(
     }
   }, origin);
   return id;
+}
+
+/**
+ * Adds a stroke or a shape (a text, a measure, a zone) of the Draw and Measure tools to the plan
+ * its layer belongs to: on a setup, what goes on Set is the base's, shared by its setups
+ * (decisions 0062, 0104), as placePlanIcon does for icons. Returns its id and the plan it went
+ * to; null when that plan is full or the mark is empty (addPlanMark).
+ */
+export function placePlanMark<K extends 'strokes' | 'shapes'>(
+  doc: Y.Doc,
+  edit: PlanEdit,
+  kind: K,
+  mark: K extends 'strokes' ? Omit<PlanStroke, 'id'> : Omit<PlanShape, 'id'>,
+  origin?: unknown,
+): { id: string; owner: string } | null {
+  const owner = planLayerOwner(edit, layerOf(mark as PlanItem));
+  const id = addPlanMark(doc, owner, kind, mark, origin);
+  return id ? { id, owner } : null;
 }
 
 /**

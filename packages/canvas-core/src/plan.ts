@@ -1282,6 +1282,31 @@ export function addPlanIcon(
   return id;
 }
 
+/**
+ * Adds a stroke or a shape (a text, a measure, a zone) to a plan; its id, or null when the plan
+ * already has MAX_STROKES or MAX_SHAPES, a stroke has no point (as addStroke) or a text is empty.
+ * The cap is checked on the list as stored, inside the transaction that writes it.
+ */
+export function addPlanMark<K extends 'strokes' | 'shapes'>(
+  doc: Y.Doc,
+  planId: string,
+  kind: K,
+  mark: K extends 'strokes' ? Omit<PlanStroke, 'id'> : Omit<PlanShape, 'id'>,
+  origin?: unknown,
+): string | null {
+  if (kind === 'strokes' && (mark as Omit<PlanStroke, 'id'>).points.length < 2) return null;
+  const shape = mark as Omit<PlanShape, 'id'>;
+  if (kind === 'shapes' && shape.kind === 'text' && !shape.text?.trim()) return null;
+  let id: string | null = null;
+  doc.transact(() => {
+    const list = listOf(doc, planId, kind);
+    if (!list || list.length >= LIMITS[kind]) return;
+    id = newElementId();
+    list.push([{ ...mark, id }]);
+  }, origin);
+  return id;
+}
+
 const same = (a: unknown, b: unknown) =>
   a === b ||
   (typeof a === 'object' && typeof b === 'object' && JSON.stringify(a) === JSON.stringify(b));
