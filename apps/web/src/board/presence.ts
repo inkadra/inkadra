@@ -5,7 +5,7 @@ import {
   presenceColor,
   readPresence,
 } from '@inkadra/doc-schema';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 
 export interface Peer extends PresenceState {
   clientId: number;
@@ -25,27 +25,129 @@ export const PEER_COLORS = [
 export const peerColor = (userId: string) =>
   PEER_COLORS[presenceColor(userId, PEER_COLORS.length)] ?? PEER_COLORS[0];
 
-/** Other people on the board: one entry per open tab, as the server stamped them. */
-export function usePeers(provider: HocuspocusProvider): Peer[] {
-  const [peers, setPeers] = useState<Peer[]>([]);
-  useEffect(() => {
+/**
+ * Other people on the board as a store: one entry per open tab, as the server stamped them. A
+ * component reads only what it draws (`usePeers`), so a pointer moving re-renders the cursors,
+ * never the whole canvas.
+ */
+export interface PeerSource {
+  subscribe(onChange: () => void): () => void;
+  /** The same array until awareness changes. */
+  get(): readonly Peer[];
+}
+
+const NONE: readonly Peer[] = [];
+
+/** A board without anyone else: previews and guest pages. */
+export const NO_PEERS: PeerSource = { subscribe: () => () => {}, get: () => NONE };
+
+/** The people on a connection's board, read from its awareness while anything listens. */
+export function peerSource(provider: HocuspocusProvider): PeerSource {
+  let peers = NONE;
+  const listeners = new Set<() => void>();
+  const read = () => {
     const awareness = provider.awareness;
     if (!awareness) return;
-    const read = () => {
-      const next: Peer[] = [];
-      for (const [clientId, state] of awareness.getStates()) {
-        if (clientId === awareness.clientID) continue;
-        const p = readPresence(state);
-        if (p) next.push({ ...p, clientId, color: peerColor(p.user.id) });
-      }
-      setPeers(next);
-    };
+    const next: Peer[] = [];
+    for (const [clientId, state] of awareness.getStates()) {
+      if (clientId === awareness.clientID) continue;
+      const p = readPresence(state);
+      if (p) next.push({ ...p, clientId, color: peerColor(p.user.id) });
+    }
+    peers = next;
+  };
+  const changed = () => {
     read();
-    awareness.on('change', read);
-    return () => awareness.off('change', read);
-  }, [provider]);
-  return peers;
+    for (const listener of listeners) listener();
+  };
+  return {
+    subscribe(onChange) {
+      const awareness = provider.awareness;
+      if (!awareness) return () => {};
+      if (listeners.size === 0) {
+        read();
+        awareness.on('change', changed);
+      }
+      listeners.add(onChange);
+      return () => {
+        listeners.delete(onChange);
+        if (listeners.size === 0) awareness.off('change', changed);
+      };
+    },
+    get: () => peers,
+  };
 }
+
+/** A source for this provider, the same one across renders. */
+export function usePeerSource(provider: HocuspocusProvider): PeerSource {
+  return useMemo(() => peerSource(provider), [provider]);
+}
+
+/**
+ * What a component draws of the people on the board. With `select` and `equal`, it re-renders
+ * only when the selected value changes (`select` must keep its identity, e.g. `useCallback`).
+ */
+export function usePeers(source: PeerSource): readonly Peer[];
+export function usePeers<T>(
+  source: PeerSource,
+  select: (peers: readonly Peer[]) => T,
+  equal: (a: T, b: T) => boolean,
+): T;
+export function usePeers<T>(
+  source: PeerSource,
+  select?: (peers: readonly Peer[]) => T,
+  equal?: (a: T, b: T) => boolean,
+): T | readonly Peer[] {
+  const last = useRef<{ peers: readonly Peer[]; select: unknown; value: T } | null>(null);
+  const get = () => {
+    const peers = source.get();
+    if (!select || !equal) return peers;
+    const prev = last.current;
+    if (prev?.peers === peers && prev.select === select) return prev.value;
+    const value = select(peers);
+    const kept = prev && equal(prev.value, value) ? prev.value : value;
+    last.current = { peers, select, value: kept };
+    return kept;
+  };
+  return useSyncExternalStore(source.subscribe, get);
+}
+
+/** The selections and cards being edited of each tab: what the outlines draw. */
+export function selections(peers: readonly Peer[]) {
+  return peers
+    .filter((p) => p.selection.length > 0)
+    .map(({ clientId, color, selection, editing }) => ({ clientId, color, selection, editing }));
+}
+
+export function sameSelections(
+  a: ReturnType<typeof selections>,
+  b: ReturnType<typeof selections>,
+): boolean {
+  return (
+    a.length === b.length &&
+    a.every((p, i) => {
+      const q = b[i];
+      return (
+        !!q &&
+        p.clientId === q.clientId &&
+        p.color === q.color &&
+        p.editing === q.editing &&
+        sameIds(p.selection, q.selection)
+      );
+    })
+  );
+}
+
+/** The same people, in the same order. */
+export function samePeople(a: readonly Peer[], b: readonly Peer[]): boolean {
+  return sameIds(
+    a.map((p) => p.user.id),
+    b.map((p) => p.user.id),
+  );
+}
+
+const sameIds = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((id, i) => id === b[i]);
 
 /** People typing in a note right now, each once; the server never marks viewers. */
 export function typingIn(peers: readonly Peer[], elementId: string): Peer[] {
