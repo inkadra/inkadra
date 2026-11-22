@@ -1242,26 +1242,31 @@ export function addVariant(
 // Writing to the document --------------------------------------------------------
 
 /**
- * The plan's list, created when missing; call inside the transaction that writes to it. A list an
- * older writer left as plain JSON becomes a Y.Array with its items kept (icons as Y.Maps, strokes
- * and shapes as plain objects), never an empty one.
+ * The plan's list, created when missing; call inside the transaction that writes to it. A list
+ * stored as anything else (plain JSON an older writer left) is never replaced or converted: null,
+ * and the write leaves it as it is (two clients converting it at once would each keep a list of
+ * their own, and one would lose the other's items).
  */
 function listOf(doc: Y.Doc, planId: string, kind: PlanItemKind): Y.Array<unknown> | null {
   const map = roots(doc).elements.get(planId);
   if (map?.get('type') !== 'plan') return null;
   const current = map.get(kind);
   if (current instanceof Y.Array) return current;
+  if (current !== undefined) return null;
   const fresh = new Y.Array<unknown>();
-  if (Array.isArray(current)) {
-    const items = current.filter((i): i is object => typeof i === 'object' && i !== null);
-    fresh.push(
-      kind === 'icons'
-        ? items.map((i) => new Y.Map(Object.entries(i).filter(([, v]) => v !== undefined)))
-        : items,
-    );
-  }
   map.set(kind, fresh);
   return fresh;
+}
+
+/** Whether one of these plans keeps strokes, shapes or icons in something other than a Y.Array. */
+function holdsPlainList(doc: Y.Doc, planIds: readonly string[]): boolean {
+  return planIds.some((id) => {
+    const map = roots(doc).elements.get(id);
+    return (['strokes', 'shapes', 'icons'] as const).some((kind) => {
+      const list = map?.get(kind);
+      return list !== undefined && !(list instanceof Y.Array);
+    });
+  });
 }
 
 const idOf = (value: unknown) =>
@@ -1383,6 +1388,8 @@ export function updatePlanItems(
   before?: readonly PlanItem[],
 ): void {
   const baseline = new Map((before ?? []).map((item) => [item.id, item]));
+  // A plan with a list left as plain JSON is not written at all: never half of a change.
+  if (holdsPlainList(doc, [planId])) return;
   doc.transact(() => {
     const stored = (['strokes', 'shapes', 'icons'] as const).flatMap((kind) =>
       (listOf(doc, planId, kind)?.toArray() ?? []).map(
@@ -1436,6 +1443,7 @@ export function transferPlanItems(
 ): string[] {
   const moved: string[] = [];
   const wanted = new Set(ids);
+  if (holdsPlainList(doc, [fromId, toId])) return moved;
   doc.transact(() => {
     for (const kind of ['strokes', 'shapes', 'icons'] as const) {
       const from = listOf(doc, fromId, kind);
@@ -1478,6 +1486,7 @@ export function removePlanItems(
   ids: Iterable<string>,
   origin?: unknown,
 ): void {
+  if (holdsPlainList(doc, [planId])) return;
   doc.transact(() => {
     const icons = listOf(doc, planId, 'icons');
     const locked = new Set(
@@ -1560,6 +1569,7 @@ export function duplicatePlanItems(
     ...icons.filter((i) => iconIds.has(i.id)).map((i) => ({ kind: 'icons' as const, id: i.id })),
   ];
   const fresh = new Map(all.map((r) => [r.id, newElementId()]));
+  if (holdsPlainList(doc, [targetId])) return out;
   doc.transact(() => {
     for (const ref of all) {
       const found = planItem(plan, ref);

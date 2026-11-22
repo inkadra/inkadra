@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: MPL-2.0
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import * as Y from 'yjs';
-import { createElement, listElements } from './board.ts';
-import { addPlanIcon, addPlanMark, type PlanElement, updatePlanItems } from './plan.ts';
+import type * as Y from 'yjs';
+import { createElement } from './board.ts';
+import {
+  addPlanIcon,
+  addPlanMark,
+  duplicatePlanItems,
+  type PlanElement,
+  removePlanItems,
+  updatePlanItems,
+} from './plan.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
-const planOf = (doc: Y.Doc, id: string) =>
-  listElements(doc).find((e) => e.id === id) as PlanElement;
 
-/** A plan whose lists an older writer left as plain JSON. */
+/** A plan whose icons an older writer left as plain JSON, its strokes a Y.Array. */
 function legacy() {
   const doc = createBoardDoc(boardId);
   const id = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
@@ -24,31 +29,49 @@ function legacy() {
   };
   doc.transact(() => {
     map.set('icons', [lamp]);
-    map.set('strokes', [line]);
+    (map.get('strokes') as Y.Array<unknown>).push([line]);
   });
-  return { doc, id, lamp, line };
+  return { doc, id, map, lamp, line };
 }
 
 describe('a plan list left as plain JSON', () => {
-  it('keeps its items when an icon or a mark is added', () => {
-    const { doc, id, lamp, line } = legacy();
-    const chair = addPlanIcon(doc, id, { kind: 'chair', color: '#1C1C1E', x: 300, y: 300 });
-    const pen = addPlanMark(doc, id, 'strokes', {
-      tool: 'pencil',
-      color: '#1C1C1E',
-      width: 4,
-      points: [2, 2, 8, 8],
-    });
-    expect(planOf(doc, id).icons?.map((i) => i.id)).toEqual([lamp.id, chair]);
-    expect(planOf(doc, id).strokes?.map((s) => s.id)).toEqual([line.id, pen]);
-    // The icons are Y.Maps now, so two people can change different fields of one.
-    const icons = (roots(doc).elements.get(id) as Y.Map<unknown>).get('icons') as Y.Array<unknown>;
-    expect(icons.toArray().every((i) => i instanceof Y.Map)).toBe(true);
+  it('is never replaced or converted: a write on it is refused and changes nothing', () => {
+    const { doc, id, map, lamp, line } = legacy();
+    let changes = 0;
+    doc.on('afterTransaction', () => changes++);
+    expect(addPlanIcon(doc, id, { kind: 'chair', color: '#1C1C1E', x: 300, y: 300 })).toBeNull();
+    updatePlanItems(doc, id, [
+      { ...lamp, label: 'Key' } as never,
+      { ...line, points: [2, 2, 8, 8] } as never,
+    ]);
+    removePlanItems(doc, id, [line.id]);
+    expect(
+      duplicatePlanItems(
+        doc,
+        { id, icons: [] } as unknown as PlanElement,
+        [{ kind: 'strokes', id: line.id }],
+        { x: 5, y: 5 },
+      ),
+    ).toEqual([]);
+    // No change at all, not even half of one: the JSON list and the Y.Array as they were.
+    expect(map.get('icons')).toEqual([lamp]);
+    expect((map.get('strokes') as Y.Array<unknown>).toArray()).toEqual([line]);
+    expect(changes).toBeLessThanOrEqual(1);
   });
 
-  it('keeps its items when one of them is changed', () => {
-    const { doc, id, lamp } = legacy();
-    updatePlanItems(doc, id, [{ ...lamp, label: 'Key' } as never]);
-    expect(planOf(doc, id).icons).toEqual([{ ...lamp, label: 'Key' }]);
+  it('a list that is missing is still made when something is added to it', () => {
+    const doc = createBoardDoc(boardId);
+    const id = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    (roots(doc).elements.get(id) as Y.Map<unknown>).delete('shapes');
+    const mark = addPlanMark(doc, id, 'shapes', {
+      kind: 'rect',
+      color: '#1C1C1E',
+      width: 2,
+      x0: 1,
+      y0: 1,
+      x1: 9,
+      y1: 9,
+    });
+    expect(mark).not.toBeNull();
   });
 });
