@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import { ElementRef } from './comments.ts';
-import { Id, z } from './common.ts';
+import { Id, orNull, z } from './common.ts';
 
 export const ScheduleTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const TextList = z.array(z.string().trim().min(1).max(120)).max(100);
@@ -119,7 +119,7 @@ export const EditSchedule = z
           .object({
             id: Id,
             revision: z.number().int().min(0),
-            input: ShootingDayInput.nullable(),
+            input: orNull(ShootingDayInput),
           })
           .strict(),
       )

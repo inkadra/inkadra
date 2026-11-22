@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { Id, Timestamp, z } from './common.ts';
+import { Id, orNull, Timestamp, z } from './common.ts';
 import { ProjectIcon } from './projects.ts';
 import { InstanceRole } from './users.ts';
 
@@ -348,7 +348,7 @@ export const InstanceUpdates = z
       description: 'Last answer from GitHub; null: never.',
     }),
     failed: z.boolean().openapi({ description: 'The last check could not reach GitHub.' }),
-    available: InstanceRelease.nullable().openapi({
+    available: orNull(InstanceRelease).openapi({
       description: 'The newest release of the channel newer than the running one; null: none.',
     }),
     earlier: z.array(InstanceRelease).max(10).openapi({

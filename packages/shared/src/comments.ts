@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { Cursor, Id, Timestamp, z } from './common.ts';
+import { Cursor, Id, orNull, Timestamp, z } from './common.ts';
 import { UserSummary } from './users.ts';
 
 /**
@@ -179,7 +179,7 @@ const commentFields = {
   parentId: Id.nullable().openapi({
     description: 'Thread the comment replies to; null for the first comment of a thread.',
   }),
-  pin: CommentPin.nullable(),
+  pin: orNull(CommentPin),
   createdAt: Timestamp,
   editedAt: Timestamp.nullable(),
   deletedAt: Timestamp.nullable().openapi({
@@ -230,7 +230,7 @@ export const CommentThread = Comment.extend({
       'The caller has not read it: someone else wrote in it since they last opened it, or ' +
       'they marked it unread (`POST /comments/{commentId}/unread`).',
   }),
-  resolvedBy: Author.nullable(),
+  resolvedBy: orNull(Author),
   replies: z.array(Comment).max(INLINE_REPLIES).openapi({ description: repliesDescription }),
 }).openapi('CommentThread');
 export type CommentThread = z.infer<typeof CommentThread>;
@@ -256,7 +256,7 @@ export type GuestComment = z.infer<typeof GuestComment>;
 
 export const GuestCommentThread = GuestComment.extend({
   ...threadFields,
-  resolvedBy: GuestAuthor.nullable(),
+  resolvedBy: orNull(GuestAuthor),
   replies: z.array(GuestComment).max(INLINE_REPLIES).openapi({ description: repliesDescription }),
 }).openapi('GuestCommentThread');
 export type GuestCommentThread = z.infer<typeof GuestCommentThread>;

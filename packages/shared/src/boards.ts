@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { FractionalIndex, Id, Timestamp, z } from './common.ts';
+import { FractionalIndex, Id, orNull, Timestamp, z } from './common.ts';
 import { CLIP_BOARD_HISTORY_LIMIT } from './constants.ts';
 import { ProjectIcon, ProjectRole } from './projects.ts';
 import { ScheduleBlock, ScheduleTime } from './schedule.ts';
@@ -46,7 +46,7 @@ export const Board = z
     title: z.string().min(1).max(200),
     position: FractionalIndex,
     coverAssetId: Id.nullable(),
-    icon: ProjectIcon.nullable()
+    icon: orNull(ProjectIcon)
       .optional()
       .openapi({
         description:
@@ -100,7 +100,7 @@ export const UpdateBoard = z
     parentBoardId: Id,
     position: FractionalIndex,
     coverAssetId: Id.nullable(),
-    icon: ProjectIcon.nullable(),
+    icon: orNull(ProjectIcon),
     views: z.array(BoardOptionalView).max(5).openapi({
       description: 'The optional views to turn on; each must be one the board kind allows.',
     }),

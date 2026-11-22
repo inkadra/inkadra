@@ -4,6 +4,14 @@ import { z } from 'zod';
 
 extendZodWithOpenApi(z);
 
+/**
+ * `schema` or null, for a schema with an OpenAPI name (`.openapi('Name')`). zod-to-openapi 9 turns
+ * `Named.nullable()` into a reference that admits no null, or makes the component itself nullable
+ * when it meets that use first; a union with null comes out as `anyOf: [{$ref}, {type: 'null'}]`.
+ * The lazy wrapper keeps a named union (`Author`) a reference instead of spreading its branches.
+ */
+export const orNull = <T extends z.ZodType>(schema: T) => z.union([z.lazy(() => schema), z.null()]);
+
 export const Id = z.uuid().openapi({ example: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10' });
 
 export const Timestamp = z.iso.datetime({ offset: true }).openapi({

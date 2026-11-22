@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { ElementRef } from './comments.ts';
-import { Id, z } from './common.ts';
+import { Id, orNull, z } from './common.ts';
 import { UserSummary } from './users.ts';
 
 export const CrewMemberInput = z
@@ -20,18 +20,26 @@ export const CrewMemberInput = z
   .strict()
   .openapi('CrewMemberInput');
 export type CrewMemberInput = z.infer<typeof CrewMemberInput>;
-export const CrewMember = CrewMemberInput.extend({
-  id: Id,
-  projectId: Id,
-  account: UserSummary.nullable().optional(),
-  revision: z.number().int().min(1),
-  createdAt: z.iso.datetime(),
-  updatedAt: z.iso.datetime(),
-}).openapi('CrewMember');
+// A spread, not `.extend()`: zod-to-openapi 9 writes an extended strict object as `allOf` of two
+// strict halves, which admits no object at all.
+export const CrewMember = z
+  .strictObject({
+    ...CrewMemberInput.shape,
+    id: Id,
+    projectId: Id,
+    account: orNull(UserSummary).optional(),
+    revision: z.number().int().min(1),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
+  })
+  .openapi('CrewMember');
 export type CrewMember = z.infer<typeof CrewMember>;
-export const UpdateCrewMember = CrewMemberInput.extend({
-  revision: z.number().int().min(1),
-}).openapi('UpdateCrewMember');
+export const UpdateCrewMember = z
+  .strictObject({
+    ...CrewMemberInput.shape,
+    revision: z.number().int().min(1),
+  })
+  .openapi('UpdateCrewMember');
 /**
  * A character card is played by one crew row (decision 0091): linking it to a second row is a 409
  * with this `details.reason` and the row that plays it as `details.member`. Servers that enforce

@@ -4,7 +4,7 @@ import { AssetTrack, AssetVariant, ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
 import { ShotCatalogs } from './classifications.ts';
 import { CommentCount, ElementRef } from './comments.ts';
-import { Id, Timestamp, z } from './common.ts';
+import { Id, orNull, Timestamp, z } from './common.ts';
 import { GuestElementReview } from './reviews.ts';
 import { UserSummary } from './users.ts';
 import { AssetPlayback } from './video.ts';
@@ -59,7 +59,7 @@ export const ShareLink = z
       description: 'Link to send, for the people who manage it, while it is active.',
     }),
     status: ShareLinkStatus,
-    createdBy: UserSummary.nullable(),
+    createdBy: orNull(UserSummary),
     createdAt: Timestamp,
     expiresAt: Timestamp.nullable().openapi({ description: 'Null: until revoked.' }),
     revokedAt: Timestamp.nullable(),
@@ -280,7 +280,7 @@ export const GuestAsset = z
         'the moving copy of a GIF or animated WebP.',
     }),
     variants: z.array(GuestAssetVariant).openapi({ description: 'Smallest first.' }),
-    track: AssetTrack.nullable().openapi({ description: 'As `Asset.track`: a GPX route.' }),
+    track: orNull(AssetTrack).openapi({ description: 'As `Asset.track`: a GPX route.' }),
     downloadUrl: z
       .string()
       .nullable()

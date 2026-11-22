@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { Id, Timestamp, z } from './common.ts';
+import { Id, orNull, Timestamp, z } from './common.ts';
 
 /**
  * The load test run from Settings → Server (#908): the CLI's presets (#902) as a worker job of
@@ -166,8 +166,8 @@ export const LoadTestRun = z
     startedAt: Timestamp.nullable(),
     finishedAt: Timestamp.nullable(),
     createdAt: Timestamp,
-    progress: LoadTestProgress.nullable(),
-    report: LoadTestReport.nullable(),
+    progress: orNull(LoadTestProgress),
+    report: orNull(LoadTestReport),
     cleanedUp: z.boolean().openapi({
       description: 'The test account, its project, boards and files are deleted.',
     }),

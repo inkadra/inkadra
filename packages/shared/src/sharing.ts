@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { AccessExpiry, Id, Timestamp, z } from './common.ts';
+import { AccessExpiry, Id, orNull, Timestamp, z } from './common.ts';
 import { ProjectRole } from './projects.ts';
 import { UserSummary } from './users.ts';
 
@@ -68,7 +68,7 @@ export const Invitation = z
         'For `link` invitations at most `editor`, also for links made with `owner` before API ' +
         '0.6.0: accepting them gives `editor`.',
     }),
-    invitedBy: UserSummary.nullable(),
+    invitedBy: orNull(UserSummary),
     uses: z.int().min(0),
     maxUses: z.int().min(1).nullable().openapi({ description: 'Null: until it expires.' }),
     url: z

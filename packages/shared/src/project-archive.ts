@@ -2,7 +2,7 @@
 
 import { BoardKind, BoardOptionalView } from './boards.ts';
 import { CommentPin, CommentVisibility, ElementRef, MAX_COMMENT_LENGTH } from './comments.ts';
-import { Id, Timestamp, z } from './common.ts';
+import { Id, orNull, Timestamp, z } from './common.ts';
 import { GuestRole, PickValue } from './guests.ts';
 import { ProjectIcon, ProjectTimeZone, ProjectType } from './projects.ts';
 import { ReviewStatus } from './reviews.ts';
@@ -119,7 +119,7 @@ export const ArchiveBoard = z.object({
   position: z.string().min(1).max(64),
   coverAssetId: Id.nullable(),
   /** Board card icon; absent in archives from before it existed. */
-  icon: ProjectIcon.nullable().optional(),
+  icon: orNull(ProjectIcon).optional(),
   /** Schema version of `document.yjs` (doc-schema), so readers can refuse before loading it. */
   schemaVersion: z.int().min(0),
   createdBy: Id.nullable(),
@@ -187,7 +187,7 @@ export const ArchiveComment = z.object({
   /** Mentions written `@{personId}` with ids of `people.json`. Empty once deleted. */
   body: z.string().max(MAX_COMMENT_LENGTH),
   visibility: CommentVisibility,
-  pin: CommentPin.nullable(),
+  pin: orNull(CommentPin),
   resolvedAt: Timestamp.nullable(),
   resolvedBy: Id.nullable(),
   createdAt: Timestamp,

@@ -496,23 +496,61 @@
         "additionalProperties": false
       },
       "FeedbackSettings": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/FeedbackSettingsInput"
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string",
+            "enum": [
+              "off",
+              "inbox",
+              "github",
+              "relay"
+            ]
           },
-          {
-            "type": "object",
-            "properties": {
-              "tokenConfigured": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "tokenConfigured"
+          "repository": {
+            "type": [
+              "string",
+              "null"
             ],
-            "additionalProperties": false
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*\\/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          "guests": {
+            "type": "boolean"
+          },
+          "retentionDays": {
+            "anyOf": [
+              {
+                "type": "number",
+                "enum": [
+                  30
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  90
+                ]
+              },
+              {
+                "type": "number",
+                "enum": [
+                  365
+                ]
+              }
+            ],
+            "default": 90
+          },
+          "tokenConfigured": {
+            "type": "boolean"
           }
-        ]
+        },
+        "required": [
+          "destination",
+          "repository",
+          "guests",
+          "tokenConfigured"
+        ],
+        "additionalProperties": false
       },
       "FeedbackSettingsInput": {
         "type": "object",
@@ -620,55 +658,141 @@
         ]
       },
       "CrewMember": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/CrewMemberInput"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
           },
-          {
-            "type": "object",
+          "role": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  ""
+                ]
+              }
+            ]
+          },
+          "pickup": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "character": {
+            "type": [
+              "object",
+              "null"
+            ],
             "properties": {
-              "id": {
+              "boardId": {
                 "type": "string",
                 "format": "uuid",
                 "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
               },
-              "projectId": {
+              "elementId": {
                 "type": "string",
-                "format": "uuid",
-                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
-              },
-              "account": {
-                "$ref": "#/components/schemas/UserSummary"
-              },
-              "revision": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "updatedAt": {
-                "type": "string",
-                "format": "date-time"
+                "pattern": "^[A-Za-z0-9_-]{8,64}$",
+                "description": "Element id in the board document.",
+                "example": "V1StGXR8_Z5jdHi6B-myT"
               }
             },
             "required": [
-              "id",
-              "projectId",
-              "revision",
-              "createdAt",
-              "updatedAt"
+              "boardId",
+              "elementId"
             ],
             "additionalProperties": false
+          },
+          "onSetContact": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
-        ]
+        },
+        "required": [
+          "name",
+          "role",
+          "department",
+          "phone",
+          "email",
+          "pickup",
+          "notes",
+          "userId",
+          "character",
+          "onSetContact",
+          "position",
+          "id",
+          "projectId",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
       },
       "UserSummary": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "id": {
             "type": "string",
@@ -809,24 +933,106 @@
         "additionalProperties": false
       },
       "UpdateCrewMember": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/CrewMemberInput"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
           },
-          {
-            "type": "object",
+          "role": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "department": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  ""
+                ]
+              }
+            ]
+          },
+          "pickup": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "userId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "character": {
+            "type": [
+              "object",
+              "null"
+            ],
             "properties": {
-              "revision": {
-                "type": "integer",
-                "minimum": 1
+              "boardId": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
+              "elementId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{8,64}$",
+                "description": "Element id in the board document.",
+                "example": "V1StGXR8_Z5jdHi6B-myT"
               }
             },
             "required": [
-              "revision"
+              "boardId",
+              "elementId"
             ],
             "additionalProperties": false
+          },
+          "onSetContact": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
           }
-        ]
+        },
+        "required": [
+          "name",
+          "role",
+          "department",
+          "phone",
+          "email",
+          "pickup",
+          "notes",
+          "userId",
+          "character",
+          "onSetContact",
+          "position",
+          "revision"
+        ],
+        "additionalProperties": false
       },
       "MergeCrewMember": {
         "type": "object",
@@ -1302,15 +1508,12 @@
                   "minimum": 0
                 },
                 "input": {
-                  "allOf": [
+                  "anyOf": [
                     {
                       "$ref": "#/components/schemas/ShootingDayInput"
                     },
                     {
-                      "type": [
-                        "object",
-                        "null"
-                      ]
+                      "type": "null"
                     }
                   ]
                 }
@@ -2000,7 +2203,15 @@
             "description": "The last check could not reach GitHub."
           },
           "available": {
-            "$ref": "#/components/schemas/InstanceRelease"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstanceRelease"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest release of the channel newer than the running one; null: none."
           },
           "earlier": {
             "type": "array",
@@ -2024,10 +2235,7 @@
         "description": "Releases of Inkadra as last read from GitHub (#515). Edge builds are not compared: a running version that is not SemVer never has an update available."
       },
       "InstanceRelease": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "version": {
             "type": "string",
@@ -2105,8 +2313,7 @@
           "url",
           "highlights",
           "beforeUpdating"
-        ],
-        "description": "The newest release of the channel newer than the running one; null: none."
+        ]
       },
       "InstanceMember": {
         "type": "object",
@@ -3694,7 +3901,14 @@
             "description": "Seconds of video encoded per second, from recent copies; null before any. Divides the minutes of `library` into the time a regeneration takes."
           },
           "backfill": {
-            "$ref": "#/components/schemas/VideoBackfill"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VideoBackfill"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "liveStatus": {
             "$ref": "#/components/schemas/VideoLiveStatus"
@@ -4164,10 +4378,7 @@
         ]
       },
       "VideoBackfill": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "scope": {
             "type": "string",
@@ -4351,54 +4562,42 @@
             "type": "object",
             "properties": {
               "480": {
-                "allOf": [
+                "anyOf": [
                   {
                     "$ref": "#/components/schemas/VideoRungCustom"
                   },
                   {
-                    "type": [
-                      "object",
-                      "null"
-                    ]
+                    "type": "null"
                   }
                 ]
               },
               "720": {
-                "allOf": [
+                "anyOf": [
                   {
                     "$ref": "#/components/schemas/VideoRungCustom"
                   },
                   {
-                    "type": [
-                      "object",
-                      "null"
-                    ]
+                    "type": "null"
                   }
                 ]
               },
               "1080": {
-                "allOf": [
+                "anyOf": [
                   {
                     "$ref": "#/components/schemas/VideoRungCustom"
                   },
                   {
-                    "type": [
-                      "object",
-                      "null"
-                    ]
+                    "type": "null"
                   }
                 ]
               },
               "2160": {
-                "allOf": [
+                "anyOf": [
                   {
                     "$ref": "#/components/schemas/VideoRungCustom"
                   },
                   {
-                    "type": [
-                      "object",
-                      "null"
-                    ]
+                    "type": "null"
                   }
                 ]
               }
@@ -4625,7 +4824,15 @@
             "description": "Why a transfer failed. Known values: `too_large`, `invalid_archive`, `unsupported_version`, `too_new`, `storage`, `storage_full`, `gone`, `interrupted`, `cancelled`, `internal`. Open: clients show unknown values as a generic failure."
           },
           "summary": {
-            "$ref": "#/components/schemas/TransferSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransferSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Counts, once ready."
           },
           "createdAt": {
             "type": "string",
@@ -4666,10 +4873,7 @@
         ]
       },
       "TransferSummary": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "boards": {
             "type": "integer",
@@ -4703,8 +4907,7 @@
           "comments",
           "skippedFiles",
           "remappedPeople"
-        ],
-        "description": "Counts, once ready."
+        ]
       },
       "ProjectTransfers": {
         "type": "object",
@@ -5160,10 +5363,24 @@
             "example": "2026-11-02T09:30:00.000Z"
           },
           "progress": {
-            "$ref": "#/components/schemas/LoadTestProgress"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoadTestProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "report": {
-            "$ref": "#/components/schemas/LoadTestReport"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoadTestReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "cleanedUp": {
             "type": "boolean",
@@ -5185,10 +5402,7 @@
         ]
       },
       "LoadTestProgress": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "phase": {
             "type": "string",
@@ -5270,10 +5484,7 @@
         ]
       },
       "LoadTestReport": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "preset": {
             "type": "string",
@@ -7206,7 +7417,15 @@
                 "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
               },
               "logo": {
-                "$ref": "#/components/schemas/Asset"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Asset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The logo asset, so readers need no second request. Null without a logo or while its file is not ready."
               },
               "theme": {
                 "$ref": "#/components/schemas/ProjectTheme"
@@ -7252,10 +7471,7 @@
         ]
       },
       "Asset": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "id": {
             "type": "string",
@@ -7342,7 +7558,15 @@
             "description": "Pages of a PDF; null for other files and for PDFs the server could not read (encrypted with a password to open, broken) or has no poppler for."
           },
           "proxy": {
-            "$ref": "#/components/schemas/AssetProxy"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetProxy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Playable MP4 copy of a video in a format browsers do not play, or AAC copy of an audio file not every browser plays. Null for other files and for media that already play (H.264 MP4, WebM, MP3, AAC, WAV, FLAC): use `url` then."
           },
           "playback": {
             "type": [
@@ -7439,7 +7663,15 @@
             "description": "True when the source moves and the worker wrote moving thumbnails beside the posters: add `?animated=1` to a variant URL up to 1024 px wide to play it. False for still pictures, for videos, and for GIFs past the worker limits."
           },
           "track": {
-            "$ref": "#/components/schemas/AssetTrack"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetTrack"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The route of a GPX file, read by the worker; null for other files and GPX files without a track. Its preview (`variants`) is the map around the route, when the instance has maps (Instance.maps)."
           },
           "sourceUrl": {
             "type": [
@@ -7480,14 +7712,10 @@
           "track",
           "sourceUrl",
           "createdAt"
-        ],
-        "description": "The logo asset, so readers need no second request. Null without a logo or while its file is not ready."
+        ]
       },
       "AssetProxy": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "status": {
             "type": "string",
@@ -7551,8 +7779,7 @@
           "width",
           "height",
           "size"
-        ],
-        "description": "Playable MP4 copy of a video in a format browsers do not play, or AAC copy of an audio file not every browser plays. Null for other files and for media that already play (H.264 MP4, WebM, MP3, AAC, WAV, FLAC): use `url` then."
+        ]
       },
       "AssetRendition": {
         "type": "object",
@@ -7671,10 +7898,7 @@
         ]
       },
       "AssetTrack": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "distanceM": {
             "type": "number",
@@ -7724,8 +7948,7 @@
           "distanceM",
           "elevationGainM",
           "points"
-        ],
-        "description": "The route of a GPX file, read by the worker; null for other files and GPX files without a track. Its preview (`variants`) is the map around the route, when the instance has maps (Instance.maps)."
+        ]
       },
       "ProjectTheme": {
         "type": "object",
@@ -8267,53 +8490,13 @@
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
           },
           "icon": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "shape": {
-                "type": "string",
-                "enum": [
-                  "diamond",
-                  "circle",
-                  "triangle",
-                  "square",
-                  "hexagon",
-                  "star",
-                  "pentagon",
-                  "cross",
-                  "octagon",
-                  "drop",
-                  "moon",
-                  "clapperboard"
-                ]
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectIcon"
               },
-              "color": {
-                "type": "string",
-                "enum": [
-                  "blue",
-                  "orange",
-                  "purple",
-                  "green",
-                  "neutral",
-                  "teal",
-                  "yellow",
-                  "red",
-                  "pink"
-                ]
-              },
-              "emoji": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "maxLength": 32
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "shape",
-              "color"
             ],
             "description": "Symbol or emoji and colour of the board, picked like the project ones and shown on board cards. Null or omitted = the default board icon."
           },
@@ -8478,15 +8661,12 @@
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
           },
           "icon": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/ProjectIcon"
               },
               {
-                "type": [
-                  "object",
-                  "null"
-                ]
+                "type": "null"
               }
             ]
           },
@@ -8884,7 +9064,14 @@
             "description": "For `link` invitations at most `editor`, also for links made with `owner` before API 0.6.0: accepting them gives `editor`."
           },
           "invitedBy": {
-            "$ref": "#/components/schemas/UserSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "uses": {
             "type": "integer",
@@ -9742,7 +9929,14 @@
                 "description": "The caller has not read it: someone else wrote in it since they last opened it, or they marked it unread (`POST /comments/{commentId}/unread`)."
               },
               "resolvedBy": {
-                "$ref": "#/components/schemas/Author"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Author"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "replies": {
                 "type": "array",
@@ -9764,10 +9958,7 @@
         ]
       },
       "CommentPin": {
-        "type": [
-          "object",
-          "null"
-        ],
+        "type": "object",
         "properties": {
           "x": {
             "type": "number",
@@ -9953,7 +10144,14 @@
             "description": "Thread the comment replies to; null for the first comment of a thread."
           },
           "pin": {
-            "$ref": "#/components/schemas/CommentPin"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommentPin"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -10338,14 +10536,15 @@
             "description": "`server_alert`: something is wrong with the server (`serverAlert` says what), for instance administrators only, in-app (#514); open Settings Server. Missing from older servers. `update_available`: a new Inkadra release, for instance administrators only, once per version; in-app only; open Settings Updates (from API 0.10.0). `feedback_received`: a new in-app report, for instance administrators only; in-app only, no report content; open Settings About Reports. `mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. `review_submitted`: a guest sent their review of `boardId` through a link you made (`shareLinkLabel`); the decisions themselves are in the board reviews. Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
           "actor": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/Author"
               },
               {
-                "description": "Who did it; null when nobody did."
+                "type": "null"
               }
-            ]
+            ],
+            "description": "Who did it; null when nobody did."
           },
           "projectId": {
             "type": [
@@ -10425,33 +10624,13 @@
             "description": "For review."
           },
           "subject": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
               },
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 120
-              },
-              "image": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "format": "uri"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "id",
-              "name",
-              "image"
             ],
             "description": "For access_expiring and access_expired: whose access it is (the recipient themselves, or a member for the owners). Missing from servers before API 0.9.0."
           },
@@ -11136,7 +11315,14 @@
             "description": "`suspended`: the person who created the link no longer has editor on its board, or their account was deleted; it works again if they get the role back. Open: clients treat a status they do not know as not working."
           },
           "createdBy": {
-            "$ref": "#/components/schemas/UserSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -12218,14 +12404,15 @@
             "description": "Smallest first."
           },
           "track": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/AssetTrack"
               },
               {
-                "description": "As `Asset.track`: a GPX route."
+                "type": "null"
               }
-            ]
+            ],
+            "description": "As `Asset.track`: a GPX route."
           },
           "downloadUrl": {
             "type": [
@@ -12560,15 +12747,12 @@
                 "description": "Replies the caller can see."
               },
               "resolvedBy": {
-                "allOf": [
+                "anyOf": [
                   {
                     "$ref": "#/components/schemas/GuestAuthor"
                   },
                   {
-                    "type": [
-                      "object",
-                      "null"
-                    ]
+                    "type": "null"
                   }
                 ]
               },
@@ -12622,7 +12806,14 @@
             "description": "Thread the comment replies to; null for the first comment of a thread."
           },
           "pin": {
-            "$ref": "#/components/schemas/CommentPin"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommentPin"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -12805,14 +12996,15 @@
             ]
           },
           "createdBy": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/UserSummary"
               },
               {
-                "description": "Null for automatic versions."
+                "type": "null"
               }
-            ]
+            ],
+            "description": "Null for automatic versions."
           },
           "importedAuthor": {
             "type": [
@@ -12941,14 +13133,15 @@
             "description": "When the record was saved, a moment after the board changed."
           },
           "restoredBy": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/UserSummary"
               },
               {
-                "description": "Null below editor, and when the account was deleted since."
+                "type": "null"
               }
-            ]
+            ],
+            "description": "Null below editor, and when the account was deleted since."
           },
           "version": {
             "type": [
@@ -13035,14 +13228,15 @@
             "description": "`user`: an account wrote under this id, named in `user` (also when they are no longer a member). `server`: the server itself (a restore, a clip, a migration). `deleted`: the account was deleted since. `unknown`: no record, because the write is older than 30 days, older than this feature, came from an archive, was only a deletion, or reached the server in the last few seconds; retry for a few seconds, then show the change without a name. `contested`: more than one account wrote under this id, so nobody is named. Open: clients treat a kind they do not know like `unknown`."
           },
           "user": {
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/UserSummary"
               },
               {
-                "description": "Set only for `user`; never an email."
+                "type": "null"
               }
-            ]
+            ],
+            "description": "Set only for `user`; never an email."
           },
           "changedAt": {
             "type": [
@@ -17841,15 +18035,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "allOf": [
+                  "anyOf": [
                     {
                       "$ref": "#/components/schemas/Session"
                     },
                     {
-                      "type": [
-                        "object",
-                        "null"
-                      ]
+                      "type": "null"
                     }
                   ]
                 }

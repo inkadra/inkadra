@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { z } from './common.ts';
+import { orNull, z } from './common.ts';
 
 /**
  * Playable video copies in several sizes, played over HLS (decision 0128). A server that makes
@@ -167,7 +167,7 @@ export const UpdateVideoSettings = z
       })
       .optional(),
     /** A rung set to null, or a field left out, goes back to the preset. */
-    custom: z.partialRecord(VideoRung, VideoRungCustom.nullable()).optional(),
+    custom: z.partialRecord(VideoRung, orNull(VideoRungCustom)).optional(),
   })
   .strict()
   .openapi('UpdateVideoSettings');
@@ -252,7 +252,7 @@ export const VideoSettingsView = z
           'Seconds of video encoded per second, from recent copies; null before any. Divides ' +
           'the minutes of `library` into the time a regeneration takes.',
       }),
-    backfill: VideoBackfill.nullable(),
+    backfill: orNull(VideoBackfill),
     liveStatus: VideoLiveStatus.optional(),
     /** A new measurement of the encoder and of live playback asked from the page. */
     benchmark: z
