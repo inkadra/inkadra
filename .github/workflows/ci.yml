@@ -575,6 +575,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: pipx run "zizmor==${ZIZMOR_VERSION}" --persona=regular --min-severity=low .github/workflows
 
+  # Advisories in the production dependencies, by the rule grype applies to the image: high or
+  # critical with a fix fails, so the fix is one lockfile bump away (Dependabot proposes it every
+  # week). The nightly run checks main again, so a new advisory opens an issue (red-main) even
+  # without a pull request. Accepted advisories: auditConfig.ignoreGhsas in pnpm-workspace.yaml.
+  # Both commands read the lockfiles only; nothing is installed.
+  audit:
+    name: Dependency advisories
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Workspace production dependencies (pnpm)
+        run: pnpm audit --prod --audit-level high --ignore-unfixable
+      - name: Report relay production dependencies (npm)
+        working-directory: relay
+        run: npm audit --omit=dev --audit-level=high
+
   # Builds the amd64 image once and hands it to the jobs that try it.
   image:
     name: Docker image
@@ -833,6 +857,7 @@ jobs:
       - relay
       - perf
       - secrets
+      - audit
       - workflows
       - image
       - proxy
