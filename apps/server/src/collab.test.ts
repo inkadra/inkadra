@@ -32,7 +32,13 @@ import {
 } from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { boardDoc, boardElementIndex, notification, projectMember } from './db/schema.ts';
+import {
+  boardDoc,
+  boardElementIndex,
+  notification,
+  personalToken,
+  projectMember,
+} from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import * as drawings from './image-drawing.ts';
 import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
@@ -626,6 +632,9 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     const clipper = connect({ token: clip.token });
     expect(await failed(clipper)).toBe(true);
     clipper.close();
+    // A refused sign-in does not count as a use of the token.
+    const [row] = await db.select().from(personalToken).where(eq(personalToken.id, clip.row.id));
+    expect(row?.lastUsedAt).toBeNull();
     const phone = await issueToken(db, owner, { name: 'Phone', client: 'mobile' });
     const mobile = connect({ token: phone.token });
     expect(await failed(mobile)).toBe(false);

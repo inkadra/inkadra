@@ -47,7 +47,10 @@ export async function issueToken(
   return { token, row };
 }
 
-/** The person a bearer token belongs to, or null for unknown, expired or revoked tokens. */
+/**
+ * The person a bearer token belongs to, or null for unknown, expired or revoked tokens. Only
+ * reads: the caller records the use with `recordTokenUse` once it accepts the request.
+ */
 export async function actorFromToken(
   db: Database,
   token: string,
@@ -72,19 +75,6 @@ export async function actorFromToken(
       ),
     );
   if (!row) return null;
-  // Record the use, at most every five minutes per token.
-  await db
-    .update(personalToken)
-    .set({ lastUsedAt: now })
-    .where(
-      and(
-        eq(personalToken.id, row.id),
-        or(
-          isNull(personalToken.lastUsedAt),
-          lt(personalToken.lastUsedAt, new Date(now.getTime() - 5 * 60_000)),
-        ),
-      ),
-    );
   return {
     id: row.userId,
     role: row.role === 'admin' ? 'admin' : 'member',
@@ -92,6 +82,23 @@ export async function actorFromToken(
     twoFactorEnabled: row.twoFactorEnabled,
     scope: row.scope,
   };
+}
+
+/** Records that a token was used for an accepted request, at most every five minutes. */
+export async function recordTokenUse(db: Pick<Database, 'update'>, tokenId: string) {
+  const now = new Date();
+  await db
+    .update(personalToken)
+    .set({ lastUsedAt: now })
+    .where(
+      and(
+        eq(personalToken.id, tokenId),
+        or(
+          isNull(personalToken.lastUsedAt),
+          lt(personalToken.lastUsedAt, new Date(now.getTime() - 5 * 60_000)),
+        ),
+      ),
+    );
 }
 
 export function bearerToken(authorization: string | undefined): string | null {

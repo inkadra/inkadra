@@ -8,7 +8,7 @@ import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
 import { allowedOrigin, ORIGIN_HEADER, requestOrigin } from '../request-origin.ts';
 import { admitToken, registerScopeNarrowing } from '../token-scope.ts';
-import { actorFromToken, bearerToken, invalidTokenReason } from '../tokens.ts';
+import { actorFromToken, bearerToken, invalidTokenReason, recordTokenUse } from '../tokens.ts';
 import { HttpError, sendError } from './errors.ts';
 
 export function toHeaders(req: FastifyRequest): Headers {
@@ -88,6 +88,7 @@ export async function requireActor(
     }
     if (!actor.tokenId || !admitToken(req, actor.scope, actor.tokenId))
       throw new HttpError('forbidden', 'Not available with this app. Sign in on the web.');
+    await recordTokenUse(db, actor.tokenId);
     if (!enrollment) await enforceAdminTwoFactor(db, actor);
     return actor;
   }

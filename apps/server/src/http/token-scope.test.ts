@@ -446,6 +446,16 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     expect((await call(token, 'GET', '/me/clip-boards')).statusCode).toBe(401);
   });
 
+  it('records the use of a token only for a request its scope admits', async () => {
+    const { token, tokenId } = await clipperSignIn();
+    const lastUsed = async () =>
+      (await db.select().from(personalToken).where(eq(personalToken.id, tokenId)))[0]?.lastUsedAt;
+    expect((await call(token, 'GET', '/me')).statusCode).toBe(403);
+    expect(await lastUsed()).toBeNull();
+    expect((await call(token, 'GET', '/me/clip-boards')).statusCode).toBe(200);
+    expect(await lastUsed()).toBeInstanceOf(Date);
+  });
+
   it('leaves app tokens, personal tokens and sessions as they were', async () => {
     const phone = await issueToken(db, me, { name: 'Phone', client: 'mobile' });
     const script = await issueToken(db, me, { name: 'Script' });
