@@ -2,6 +2,7 @@ import { linkedLocation, linkedPlan } from '@inkadra/canvas-core';
 import { CATALOG_UUID, compareZ, type Element, readElement, roots } from '@inkadra/doc-schema';
 import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
+import postgres from 'postgres';
 import * as Y from 'yjs';
 import { docCounts, openTasks, unsortedInDoc } from '../board-preview.ts';
 import { reviveUsed } from '../classifications.ts';
@@ -482,37 +483,6 @@ export async function backfillIndex(db: Database, limit = 200, after?: string) {
   return { indexed, failed, last: stale.at(-1)?.boardId };
 }
 
-type Reserved = Awaited<ReturnType<Database['$client']['reserve']>>;
-
-/**
- * Whether the session of `conn` holds no advisory lock any more, so it may go back to the pool.
- * When the unlock fails, the session is ended (postgres.js cannot drop one reserved connection),
- * which frees its locks and closes it. If even that fails it is never released: back in the pool
- * it would keep the backfill lock and stop every later backfill.
- */
-async function unlocked(conn: Reserved, log: Logger): Promise<boolean> {
-  try {
-    await conn`select pg_advisory_unlock_all()`;
-    return true;
-  } catch (err) {
-    log.warn({ err }, 'board search index backfill lock not released: ending its session');
-  }
-  try {
-    await conn`select pg_terminate_backend(pg_backend_pid())`;
-  } catch (err) {
-    // The session ending under the query is what was asked for.
-    const code = (err as { code?: unknown }).code;
-    if (code !== '57P01' && code !== 'CONNECTION_CLOSED') {
-      log.error(
-        { err },
-        'board search index backfill lock held: its connection is kept out of the pool',
-      );
-      return false;
-    }
-  }
-  return true;
-}
-
 /** Session lock key: one search-index backfill at a time across processes (#815). */
 const BACKFILL_LOCK = 10895;
 
@@ -525,13 +495,19 @@ export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 
   let running = false;
   const run = async () => {
     // Several collab or all-in-one processes share the database: one backfill at a time
-    // (#815). The lock lives in the session of one reserved connection.
+    // (#815). The lock lives in the session of a connection of its own, with the pool's
+    // settings, closed after the run: closing it frees the lock whatever happened, and the
+    // backfill's queries never wait for a connection the lock holds.
     if (running) return;
     running = true;
-    let reserved: Reserved | undefined;
+    const session = postgres({
+      ...db.$client.options,
+      max: 1,
+      shared: { retries: 0 },
+      parameters: {},
+    } as unknown as postgres.Options<Record<string, postgres.PostgresType>>);
     try {
-      reserved = await db.$client.reserve();
-      const [lock] = await reserved<
+      const [lock] = await session<
         { ok: boolean }[]
       >`select pg_try_advisory_lock(${BACKFILL_LOCK}) as ok`;
       if (!lock?.ok) return;
@@ -549,7 +525,9 @@ export function startIndexBackfill(db: Database, log: Logger, everyMs = 60 * 60 
     } catch (err) {
       log.error({ err }, 'board search index backfill failed');
     } finally {
-      if (reserved && (await unlocked(reserved, log))) reserved.release();
+      await session.end({ timeout: 5 }).catch((err: unknown) => {
+        log.warn({ err }, 'board search index backfill lock connection not closed cleanly');
+      });
       running = false;
     }
   };

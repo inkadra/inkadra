@@ -311,56 +311,6 @@ describe('documents decoded for the project kit', () => {
   });
 });
 
-/** A reserved connection whose unlock fails, and whose other queries `forward` answers. */
-function failingUnlock(
-  forward: (text: string, strings: TemplateStringsArray, values: unknown[]) => Promise<unknown>,
-  release: () => void,
-) {
-  return Object.assign(
-    async (strings: TemplateStringsArray, ...values: unknown[]) => {
-      const text = strings.join('?');
-      if (text.includes('pg_advisory_unlock_all')) throw new Error('statement timeout');
-      return forward(text, strings, values);
-    },
-    { release },
-  );
-}
-
-describe('index backfill lock', () => {
-  const run = async (terminate: () => Promise<unknown>) => {
-    const sent: string[] = [];
-    const release = vi.fn();
-    const reserved = failingUnlock(async (text) => {
-      sent.push(text);
-      if (text.includes('pg_try_advisory_lock')) return [{ ok: false }];
-      if (text.includes('pg_terminate_backend')) return terminate();
-      return [];
-    }, release);
-    const db = { $client: { reserve: async () => reserved } } as unknown as Database;
-    const log = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
-    const backfill = startIndexBackfill(db, log as unknown as pino.Logger);
-    await vi.waitFor(() => expect(sent.some((t) => t.includes('pg_terminate_backend'))).toBe(true));
-    await new Promise((resolve) => setImmediate(resolve));
-    backfill.stop();
-    return { release, log };
-  };
-
-  it('ends the session instead of pooling it when the lock cannot be released', async () => {
-    // The session ending under its own query is the expected answer.
-    const ended = await run(async () => {
-      throw Object.assign(new Error('terminating connection'), { code: '57P01' });
-    });
-    expect(ended.log.warn).toHaveBeenCalledTimes(1);
-    expect(ended.release).toHaveBeenCalledTimes(1);
-    // A session that could not be ended keeps the lock: never back in the pool.
-    const stuck = await run(async () => {
-      throw new Error('statement timeout');
-    });
-    expect(stuck.log.error).toHaveBeenCalledTimes(1);
-    expect(stuck.release).not.toHaveBeenCalled();
-  });
-});
-
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
 
@@ -1319,36 +1269,33 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect((await get('owner', `/api/v1/projects/${projectId}/tags`)).body.items).toEqual([]);
   });
 
-  it('frees the backfill lock when releasing it fails', async () => {
-    const release = vi.fn();
+  it('frees the backfill lock after a run, even one that failed', async () => {
+    // The backfill's queries fail; the lock was taken on a connection of its own.
     const failing = Object.create(db) as Database;
-    Object.defineProperty(failing, '$client', {
-      value: {
-        reserve: async () => {
-          const real = await client.reserve();
-          return failingUnlock(
-            (_text, strings, values) => real(strings, ...(values as never[])),
-            () => {
-              release();
-              real.release();
-            },
-          );
-        },
+    Object.defineProperty(failing, 'select', {
+      value: () => {
+        throw new Error('database gone');
       },
     });
     const log = { warn: vi.fn(), info: vi.fn(), error: vi.fn() };
     const backfill = startIndexBackfill(failing, log as unknown as pino.Logger);
-    await vi.waitFor(() => expect(release).toHaveBeenCalled(), { timeout: 10_000 });
+    await vi.waitFor(() =>
+      expect(log.error).toHaveBeenCalledWith(
+        expect.anything(),
+        'board search index backfill failed',
+      ),
+    );
     backfill.stop();
-    expect(log.warn).toHaveBeenCalledTimes(1);
-    expect(log.error).not.toHaveBeenCalled();
-    // Another session takes the lock: the one that held it is gone.
+    // Another session takes the lock once that connection is closed.
     const other = createDatabase(config.DATABASE_URL, 1);
     try {
-      const [lock] = await other.sql<{ ok: boolean }[]>`select pg_try_advisory_lock(10895) as ok`;
-      expect(lock?.ok).toBe(true);
+      await vi.waitFor(async () => {
+        const [lock] = await other.sql<{ ok: boolean }[]>`select pg_try_advisory_lock(10895) as ok`;
+        expect(lock?.ok).toBe(true);
+      });
     } finally {
       await other.sql.end();
     }
+    expect(log.warn).not.toHaveBeenCalled();
   });
 });
