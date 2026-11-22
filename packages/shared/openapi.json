@@ -27015,6 +27015,17 @@
           "206": {
             "description": "Part of the file"
           },
+          "302": {
+            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27435,6 +27446,17 @@
           "206": {
             "description": "Part of the file"
           },
+          "302": {
+            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27533,6 +27555,17 @@
           },
           "206": {
             "description": "Part of the file"
+          },
+          "302": {
+            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request",
@@ -33337,6 +33370,17 @@
           },
           "206": {
             "description": "Part of the video"
+          },
+          "302": {
+            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request",

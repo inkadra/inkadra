@@ -2160,6 +2160,21 @@ registry.registerPath({
 
 // Assets and uploads ----------------------------------------------------------
 
+/** sendRanged: with S3_PUBLIC_REDIRECT, a browser (no bearer token) gets the bucket's link. */
+const bucketRedirect = {
+  302: {
+    description:
+      'With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a ' +
+      'short-lived signed URL of the bucket. Clients with a token always get the bytes.',
+    headers: {
+      Location: {
+        description: 'Signed URL of the file in the bucket',
+        schema: { type: 'string' as const },
+      },
+    },
+  },
+};
+
 registry.registerPath({
   method: 'post',
   path: v1('/uploads'),
@@ -2303,6 +2318,7 @@ registry.registerPath({
     206: { description: 'Part of the file' },
     ...errors,
     416: { description: 'Range not satisfiable' },
+    ...bucketRedirect,
   },
 });
 registry.registerPath({
@@ -2369,6 +2385,7 @@ registry.registerPath({
     200: { description: 'MP4 video', content: { 'video/mp4': { schema: z.string() } } },
     206: { description: 'Part of the file' },
     ...errors,
+    ...bucketRedirect,
   },
 });
 registry.registerPath({
@@ -2393,6 +2410,7 @@ registry.registerPath({
     },
     206: { description: 'Part of the file' },
     ...errors,
+    ...bucketRedirect,
   },
 });
 registry.registerPath({
@@ -3305,6 +3323,7 @@ registry.registerPath({
     200: { description: 'Playlist or video' },
     206: { description: 'Part of the video' },
     ...guestErrors,
+    ...bucketRedirect,
   },
 });
 // Rungs encoded while watched (decision 0128), for members and for the guests of a link.

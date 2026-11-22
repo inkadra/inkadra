@@ -1010,6 +1010,35 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect(file.headers['content-security-policy']).toContain('sandbox');
   });
 
+  it('redirects a browser to a signed bucket link, as the contract describes', async () => {
+    const text = Buffer.from('signed');
+    const created = await call('owner', 'POST', '/api/v1/uploads', text, {
+      ...tus,
+      'upload-length': String(text.length),
+      'upload-metadata': metadata('notes.txt', 'text/plain'),
+      'content-type': 'application/offset+octet-stream',
+    });
+    expect(created.statusCode).toBe(201);
+    await deps.jobs.idle();
+    // S3_PUBLIC_REDIRECT on a bucket: the local driver has no signed links of its own.
+    const { signedUrl } = deps.storage;
+    deps.storage.signedUrl = async () =>
+      'https://bucket.example.test/originals/a?X-Amz-Signature=s';
+    try {
+      // Through app.inject, so the contract gate checks the real route's 302.
+      const res = await app.inject({
+        url: `/api/v1/assets/${created.headers['inkadra-asset-id']}/file`,
+        headers: { cookie: as.owner.cookie },
+      });
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe(
+        'https://bucket.example.test/originals/a?X-Amz-Signature=s',
+      );
+    } finally {
+      deps.storage.signedUrl = signedUrl;
+    }
+  });
+
   it('refuses uploads from viewers, without metadata or over the limit', async () => {
     const headers = { ...tus, 'upload-length': '10' };
     expect(
