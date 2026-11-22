@@ -5276,6 +5276,18 @@
       "guestDismissed": "Ok. Il giro resta nel pulsante ? in alto.",
       "guestDone": "Tutto qui. Buona revisione!"
     },
+    "start": {
+      "boardsError": "Le board di questo progetto non si sono caricate: riprova tra poco.",
+      "noProject": "Questo giro parte da una board: apri o crea prima un progetto.",
+      "newProject": "Nuovo progetto",
+      "create": "Crea",
+      "unavailable": "{{name}}: questa schermata non si è aperta. Riprova tra poco.",
+      "missing": {
+        "storyboard": "Questo progetto non ha ancora uno storyboard: il giro parte da lì.",
+        "moodboard": "Questo progetto non ha ancora una moodboard: il giro parte da lì.",
+        "production": "Questo progetto non ha ancora la Produzione: il giro parte da lì."
+      }
+    },
     "settings": {
       "welcomeTitle": "Giro di benvenuto",
       "welcomeSub": "Cos’è Inkadra e dove trovi le cose · 7 passi · 1 min",
@@ -5440,7 +5452,8 @@
             "title": "Limiti della board",
             "text": "Se la board raggiunge il limite di dimensione, le aggiunte vengono rifiutate e si ricarica la board confermata. Elimina contenuti per liberare spazio; se non basta, chiedi all’amministratore di alzare il limite."
           }
-        }
+        },
+        "where": "Il giro parte dalla Lavagna di una board che puoi modificare."
       },
       "moodboard": {
         "name": "Moodboard",
@@ -5457,7 +5470,8 @@
             "title": "La palette",
             "text": "I colori dei riferimenti, da copiare."
           }
-        }
+        },
+        "where": "Apri una moodboard, o accendila da «Viste di questa board» nel menu ⋯, e riprova."
       },
       "video": {
         "name": "Video nelle card",
@@ -5478,7 +5492,8 @@
             "title": "Qualità del video",
             "text": "Nella card e nel visualizzatore, «Qualità» sceglie la risoluzione; con Auto segue la connessione."
           }
-        }
+        },
+        "where": "Metti un video su questa board e riprova il giro da qui."
       },
       "storyboard": {
         "name": "Storyboard",
@@ -5503,7 +5518,8 @@
             "title": "Da portare della scena",
             "text": "Costumi, attrezzeria e attrezzatura della scena, in liste per tipo. I giorni che girano la scena le raccolgono in Da portare."
           }
-        }
+        },
+        "where": "Il giro parte da uno storyboard con almeno una scena: aggiungila e riprova."
       },
       "draw": {
         "name": "Disegna sull’inquadratura",
@@ -5520,7 +5536,8 @@
             "title": "Muoviti",
             "text": "Spazio e trascina, la rotella o due dita."
           }
-        }
+        },
+        "where": "Fai doppio clic su un’inquadratura dello storyboard per disegnarci, poi riprova il giro."
       },
       "shotlist": {
         "name": "Shot list",
@@ -5537,7 +5554,8 @@
             "title": "Esporta",
             "text": "CSV o PDF, per la troupe."
           }
-        }
+        },
+        "where": "Accendi la Shot list da «Viste di questa board» nel menu ⋯ dello storyboard, e riprova."
       },
       "schedule": {
         "name": "Piano riprese",
@@ -5570,7 +5588,8 @@
             "title": "Ordine del giorno",
             "text": "Orari con alba e tramonto, location, troupe con telefoni, programma con note e Da portare. Scegli le sezioni e stampa per la troupe. Alba e tramonto seguono il fuso del progetto: si cambia in Progetti, menu ⋯ della card, «Tipo e fuso orario». «Automatico» usa il fuso del dispositivo."
           }
-        }
+        },
+        "where": "Il giro parte dal Piano riprese della Produzione: aprila e riprova."
       },
       "setplan": {
         "name": "Set plan",
@@ -5603,7 +5622,8 @@
             "title": "Muoversi nella pianta",
             "text": "Spazio e trascina, la rotella o due dita spostano la pianta; Ctrl e la rotella o un pizzico la ingrandiscono. Senza selezione le frecce la spostano, 0 la adatta, + e − cambiano lo zoom."
           }
-        }
+        },
+        "where": "Apri una pianta del set (doppio clic sulla sua card) e riprova il giro da lì."
       },
       "characters": {
         "name": "Schede personaggio",
@@ -5620,7 +5640,8 @@
             "title": "Solo per il team",
             "text": "Contatti e note non arrivano agli ospiti."
           }
-        }
+        },
+        "where": "Apri la scheda di un personaggio sulla board e riprova il giro da lì."
       },
       "review": {
         "name": "Revisione cliente",
@@ -5637,7 +5658,8 @@
             "title": "Approva o chiedi modifiche",
             "text": "La decisione arriva subito al team."
           }
-        }
+        },
+        "where": "Accendi Revisione da «Viste di questa board» nel menu ⋯ di una board, e riprova."
       },
       "comments": {
         "name": "Commenti",
@@ -5654,7 +5676,8 @@
             "title": "Chi lo legge",
             "text": "Team, o anche ospiti: lo scegli ogni volta."
           }
-        }
+        },
+        "where": "Apri Commenti in alto a destra della board e riprova il giro da lì."
       },
       "sharing": {
         "name": "Condivisione e ruoli",
@@ -5679,7 +5702,8 @@
             "title": "Link per ospiti",
             "text": "Per i clienti: scegli cosa possono fare e leggi il riepilogo."
           }
-        }
+        },
+        "where": "Apri Condividi in alto a destra della board e riprova il giro da lì."
       },
       "versions": {
         "name": "Versioni",
@@ -5704,14 +5728,15 @@
             "title": "Da un file scaricato",
             "text": "Hai scaricato le modifiche? Nel menu della board, Ripristina modifiche da file… le riporta nella stessa board."
           }
-        }
+        },
+        "where": "Apri le versioni (l’orologio in alto a destra della board) e riprova il giro da lì."
       },
       "present": {
         "name": "Presentazione",
         "steps": {
           "0": {
             "title": "A tutto schermo",
-            "text": "Lo storyboard, inquadratura dopo inquadratura."
+            "text": "Uno storyboard inquadratura dopo inquadratura, o una moodboard un’immagine dopo l’altra."
           },
           "1": {
             "title": "Dove sei",
@@ -5721,7 +5746,8 @@
             "title": "Avanti e indietro",
             "text": "Con le frecce o un tocco."
           }
-        }
+        },
+        "where": "Premi Presenta in uno storyboard o in una moodboard e riprova il giro da lì."
       },
       "export": {
         "name": "Esporta e importa",
@@ -5746,7 +5772,8 @@
             "title": "Il progetto intero",
             "text": "Esportalo in zip e importalo su un altro server."
           }
-        }
+        },
+        "where": "Apri Esporta… in alto a destra della board e riprova il giro da lì."
       },
       "clipper": {
         "name": "Clipper per il browser",
@@ -5936,7 +5963,8 @@
             "title": "Convocazioni e foglio",
             "text": "Nel Piano riprese, scheda Convocazioni, scegli chi è convocato ogni giorno. L’ordine del giorno stampa troupe, telefoni e contatto sul set, mai per ospiti e clienti."
           }
-        }
+        },
+        "where": "Il giro parte dalla Troupe della Produzione: aprila e riprova."
       },
       "setplanLinks": {
         "name": "Collegamenti della pianta",
@@ -5957,7 +5985,8 @@
             "title": "I setup nella shot list",
             "text": "La shot list e il piano riprese mostrano il setup di ogni inquadratura, e la shot list può raggrupparle per setup."
           }
-        }
+        },
+        "where": "Apri la pianta di una scena dello storyboard e riprova il giro da lì."
       },
       "setplanOutputs": {
         "name": "Uscite della pianta",
@@ -5974,7 +6003,8 @@
             "title": "Chi non può modificare",
             "text": "Ospiti e lettori aprono la pianta in una vista con spostamento e zoom, i setup, la legenda e il PDF."
           }
-        }
+        },
+        "where": "Apri una pianta del set (doppio clic sulla sua card) e riprova il giro da lì."
       },
       "modules": {
         "name": "Moduli",

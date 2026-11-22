@@ -5276,6 +5276,18 @@
       "guestDismissed": "Ok. O tour fica no botão ? no alto.",
       "guestDone": "É tudo. Boa revisão!"
     },
+    "start": {
+      "boardsError": "Os quadros deste projeto não carregaram: tente de novo em instantes.",
+      "noProject": "Este tour começa em um quadro: abra ou crie um projeto primeiro.",
+      "newProject": "Novo projeto",
+      "create": "Criar",
+      "unavailable": "{{name}}: esta tela não abriu. Tente de novo em instantes.",
+      "missing": {
+        "storyboard": "Este projeto ainda não tem storyboard: o tour começa aí.",
+        "moodboard": "Este projeto ainda não tem moodboard: o tour começa aí.",
+        "production": "Este projeto ainda não tem Produção: o tour começa aí."
+      }
+    },
     "settings": {
       "welcomeTitle": "Tour de boas-vindas",
       "welcomeSub": "O que é o Inkadra e onde estão as coisas · 7 passos · 1 min",
@@ -5440,7 +5452,8 @@
             "title": "Limites de tamanho do quadro",
             "text": "Se este quadro atingir o limite de tamanho, as adições são recusadas e o quadro confirmado é recarregado. Exclua conteúdo para liberar espaço; se ainda não couber, peça ao administrador para aumentar o limite."
           }
-        }
+        },
+        "where": "O tour começa no Canvas de um quadro que você pode editar."
       },
       "moodboard": {
         "name": "Moodboard",
@@ -5457,7 +5470,8 @@
             "title": "A paleta",
             "text": "As cores das referências, prontas para copiar."
           }
-        }
+        },
+        "where": "Abra um moodboard, ou ative-o em “Visualizações deste quadro” no menu ⋯, e tente de novo."
       },
       "video": {
         "name": "Vídeos nos cards",
@@ -5478,7 +5492,8 @@
             "title": "Qualidade do vídeo",
             "text": "No card e no visualizador, «Qualidade» escolhe a resolução; com Auto, ela acompanha a conexão."
           }
-        }
+        },
+        "where": "Coloque um vídeo neste quadro e inicie o tour de novo a partir daqui."
       },
       "storyboard": {
         "name": "Storyboard",
@@ -5503,7 +5518,8 @@
             "title": "O que uma cena precisa",
             "text": "Figurino, objetos de cena e equipamento da cena, em listas por tipo. Os dias que filmam a cena reúnem tudo em A levar."
           }
-        }
+        },
+        "where": "O tour começa em um storyboard com pelo menos uma cena: adicione uma e tente de novo."
       },
       "draw": {
         "name": "Desenhar no frame",
@@ -5520,7 +5536,8 @@
             "title": "Mova-se",
             "text": "Espaço e arrastar, a roda do mouse ou dois dedos."
           }
-        }
+        },
+        "where": "Clique duas vezes em um frame do storyboard para desenhar nele e inicie o tour de novo."
       },
       "shotlist": {
         "name": "Decupagem",
@@ -5537,7 +5554,8 @@
             "title": "Exporte",
             "text": "CSV ou PDF, para a equipe."
           }
-        }
+        },
+        "where": "Ative a Decupagem em “Visualizações deste quadro” no menu ⋯ do storyboard e tente de novo."
       },
       "schedule": {
         "name": "Cronograma",
@@ -5570,7 +5588,8 @@
             "title": "Ordem do dia",
             "text": "Horários com nascer e pôr do sol, locações, equipe com telefones, programação com notas e o que levar. Escolha as seções e imprima para a equipe. O nascer e o pôr do sol seguem o fuso do projeto: mude em Projetos, menu ⋯ do card, «Tipo e fuso horário». «Automático» usa o fuso do dispositivo."
           }
-        }
+        },
+        "where": "O tour começa no Cronograma da Produção: abra-o e tente de novo."
       },
       "setplan": {
         "name": "Planta do set",
@@ -5603,7 +5622,8 @@
             "title": "Navegar pela planta",
             "text": "Espaço e arrastar, a roda do mouse ou dois dedos movem a planta; Ctrl e a roda ou um gesto de pinça dão zoom. Sem seleção, as setas a movem, 0 a ajusta, + e − mudam o zoom."
           }
-        }
+        },
+        "where": "Abra uma planta do set (clique duas vezes no card) e inicie o tour de novo a partir de lá."
       },
       "characters": {
         "name": "Fichas de personagem",
@@ -5620,7 +5640,8 @@
             "title": "Só para a equipe",
             "text": "Contatos e notas nunca chegam aos convidados."
           }
-        }
+        },
+        "where": "Abra o card de um personagem no quadro e inicie o tour de novo a partir de lá."
       },
       "review": {
         "name": "Revisão do cliente",
@@ -5637,7 +5658,8 @@
             "title": "Aprove ou peça alterações",
             "text": "A decisão chega na hora à equipe."
           }
-        }
+        },
+        "where": "Ative Revisão em “Visualizações deste quadro” no menu ⋯ de um quadro e tente de novo."
       },
       "comments": {
         "name": "Comentários",
@@ -5654,7 +5676,8 @@
             "title": "Quem o lê",
             "text": "Equipe ou também convidados: você escolhe a cada vez."
           }
-        }
+        },
+        "where": "Abra Comentários no canto superior direito do quadro e inicie o tour de novo a partir de lá."
       },
       "sharing": {
         "name": "Compartilhamento e funções",
@@ -5679,7 +5702,8 @@
             "title": "Links para convidados",
             "text": "Para clientes: escolha o que podem fazer e leia o resumo."
           }
-        }
+        },
+        "where": "Abra Compartilhar no canto superior direito do quadro e inicie o tour de novo a partir de lá."
       },
       "versions": {
         "name": "Versões",
@@ -5704,14 +5728,15 @@
             "title": "De um arquivo baixado",
             "text": "Você baixou as alterações? No menu do quadro, Restaurar alterações de um arquivo… as traz de volta ao mesmo quadro."
           }
-        }
+        },
+        "where": "Abra as versões (o relógio no canto superior direito do quadro) e inicie o tour de novo a partir de lá."
       },
       "present": {
         "name": "Apresentação",
         "steps": {
           "0": {
             "title": "Em tela cheia",
-            "text": "O storyboard, frame a frame."
+            "text": "Um storyboard frame a frame, ou um moodboard imagem a imagem."
           },
           "1": {
             "title": "Onde está",
@@ -5721,7 +5746,8 @@
             "title": "Avançar e voltar",
             "text": "Com as setas ou um toque."
           }
-        }
+        },
+        "where": "Pressione Apresentar em um storyboard ou em um moodboard e inicie o tour de novo a partir de lá."
       },
       "export": {
         "name": "Exportar e importar",
@@ -5746,7 +5772,8 @@
             "title": "O projeto inteiro",
             "text": "Exporte-o em zip e importe-o em outro servidor."
           }
-        }
+        },
+        "where": "Abra Exportar… no canto superior direito do quadro e inicie o tour de novo a partir de lá."
       },
       "clipper": {
         "name": "Clipper para o navegador",
@@ -5936,7 +5963,8 @@
             "title": "Chamadas e ordem do dia",
             "text": "No Cronograma, aba Chamadas, escolha quem é chamado a cada dia. A ordem do dia imprime equipe, telefones e contato no set, nunca para convidados nem clientes."
           }
-        }
+        },
+        "where": "O tour começa na Equipe da Produção: abra-a e tente de novo."
       },
       "setplanLinks": {
         "name": "Vínculos da planta",
@@ -5957,7 +5985,8 @@
             "title": "Setups na decupagem",
             "text": "A decupagem e o cronograma mostram o setup de cada plano, e a decupagem pode agrupá-los por setup."
           }
-        }
+        },
+        "where": "Abra a planta de uma cena do storyboard e inicie o tour de novo a partir de lá."
       },
       "setplanOutputs": {
         "name": "Saídas da planta",
@@ -5974,7 +6003,8 @@
             "title": "Quem não pode editar",
             "text": "Convidados e visualizadores abrem a planta em uma visualização com deslocamento e zoom, os setups, a legenda e o PDF."
           }
-        }
+        },
+        "where": "Abra uma planta do set (clique duas vezes no card) e inicie o tour de novo a partir de lá."
       },
       "modules": {
         "name": "Módulos",

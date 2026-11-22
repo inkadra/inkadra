@@ -20,6 +20,7 @@ import {
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -278,12 +279,18 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [inboxInPage]);
+  const closeInbox = useCallback(() => {
+    inboxOpener.current = null;
+    setInboxOpen(false);
+  }, []);
   // Going to another page leaves the Inbox, however it happens (search, a new project, a link).
+  // The page under the settings window: opening or closing Settings is not another page, so a
+  // tour that closes Settings and opens the Inbox keeps it open.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the path is what triggers this.
   useEffect(() => {
     inboxOpener.current = null;
     setInboxOpen(false);
-  }, [url.pathname]);
+  }, [pathname]);
   const [unread, refreshUnread] = useUnreadCount();
   // One list behind the bell and the Inbox.
   const notifications = useNotificationFeed(refreshUnread);
@@ -1043,9 +1050,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             (!setup.error && !!setup.checks && setup.checks.every((c) => c.ok))
           }
           pathname={pathname}
+          search={search}
           firstProject={projects?.[0]?.id}
           settingsOpen={overlay.open}
           closeSettings={closeSettings}
+          closeInbox={closeInbox}
         />
       </ProjectsContext.Provider>
     </InstanceSetupContext.Provider>

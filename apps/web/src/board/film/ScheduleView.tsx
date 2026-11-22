@@ -1425,6 +1425,8 @@ export function ScheduleView({
     <section
       className={`schedule schedule--${view}`}
       aria-label={t('nav.schedule')}
+      // Until the days arrive: a tour waits for them before choosing its steps.
+      aria-busy={loading || undefined}
       data-tour="schedule"
     >
       {docs}

@@ -5276,6 +5276,18 @@
       "guestDismissed": "Okay. Die Tour bleibt oben unter der Schaltfläche ?.",
       "guestDone": "Das war’s. Viel Erfolg bei der Abnahme!"
     },
+    "start": {
+      "boardsError": "Die Boards dieses Projekts wurden nicht geladen: versuche es gleich noch einmal.",
+      "noProject": "Diese Tour beginnt auf einem Board: öffne oder erstelle zuerst ein Projekt.",
+      "newProject": "Neues Projekt",
+      "create": "Erstellen",
+      "unavailable": "{{name}}: Diese Ansicht hat sich nicht geöffnet. Versuche es gleich noch einmal.",
+      "missing": {
+        "storyboard": "Dieses Projekt hat noch kein Storyboard: Die Tour beginnt dort.",
+        "moodboard": "Dieses Projekt hat noch kein Moodboard: Die Tour beginnt dort.",
+        "production": "Dieses Projekt hat noch keine Produktion: Die Tour beginnt dort."
+      }
+    },
     "settings": {
       "welcomeTitle": "Willkommenstour",
       "welcomeSub": "Was Inkadra ist und wo du was findest · 7 Schritte · 1 Min.",
@@ -5440,7 +5452,8 @@
             "title": "Größenbegrenzung des Boards",
             "text": "Erreicht dieses Board seine Größenbegrenzung, werden Ergänzungen abgelehnt und das bestätigte Board wird neu geladen. Lösche Inhalte, um Platz zu schaffen; reicht das nicht, bitte deinen Admin, die Grenze anzuheben."
           }
-        }
+        },
+        "where": "Die Tour beginnt auf dem Canvas eines Boards, das du bearbeiten kannst."
       },
       "moodboard": {
         "name": "Moodboard",
@@ -5457,7 +5470,8 @@
             "title": "Die Palette",
             "text": "Die Farben deiner Referenzen, zum Kopieren."
           }
-        }
+        },
+        "where": "Öffne ein Moodboard oder schalte es unter „Ansichten dieses Boards“ im Menü ⋯ ein und versuche es erneut."
       },
       "video": {
         "name": "Videos in Karten",
@@ -5478,7 +5492,8 @@
             "title": "Videoqualität",
             "text": "In der Karte und im Viewer wählt „Qualität“ die Auflösung; Auto folgt der Verbindung."
           }
-        }
+        },
+        "where": "Lege ein Video auf dieses Board und starte die Tour von hier aus erneut."
       },
       "storyboard": {
         "name": "Storyboard",
@@ -5503,7 +5518,8 @@
             "title": "Was eine Szene braucht",
             "text": "Kostüm, Requisite und Equipment der Szene, in Listen nach Art. Die Drehtage der Szene sammeln sie unter Mitbringen."
           }
-        }
+        },
+        "where": "Die Tour beginnt auf einem Storyboard mit mindestens einer Szene: Füge eine hinzu und versuche es erneut."
       },
       "draw": {
         "name": "Auf dem Frame zeichnen",
@@ -5520,7 +5536,8 @@
             "title": "Bewegen",
             "text": "Leertaste und ziehen, das Mausrad oder zwei Finger."
           }
-        }
+        },
+        "where": "Doppelklicke auf einen Frame des Storyboards, um darauf zu zeichnen, und starte die Tour erneut."
       },
       "shotlist": {
         "name": "Shotlist",
@@ -5537,7 +5554,8 @@
             "title": "Exportieren",
             "text": "CSV oder PDF, für das Team."
           }
-        }
+        },
+        "where": "Schalte die Shotlist unter „Ansichten dieses Boards“ im Menü ⋯ des Storyboards ein und versuche es erneut."
       },
       "schedule": {
         "name": "Drehplan",
@@ -5570,7 +5588,8 @@
             "title": "Tagesdispo",
             "text": "Zeiten mit Sonnenauf- und -untergang, Locations, Team mit Telefonnummern, Ablauf mit Notizen und Mitzubringendem. Wähle die Abschnitte und drucke für das Team. Sonnenauf- und -untergang folgen der Zeitzone des Projekts: Ändere sie unter Projekte, ⋯-Menü der Karte, „Typ und Zeitzone“. „Automatisch“ nutzt die Zeitzone des Geräts."
           }
-        }
+        },
+        "where": "Die Tour beginnt im Drehplan der Produktion: Öffne ihn und versuche es erneut."
       },
       "setplan": {
         "name": "Setplan",
@@ -5603,7 +5622,8 @@
             "title": "Im Plan bewegen",
             "text": "Leertaste und Ziehen, das Mausrad oder zwei Finger verschieben den Plan; Strg und Mausrad oder Fingerspreizen zoomen. Ohne Auswahl verschieben ihn die Pfeiltasten, 0 passt ihn ein, + und − zoomen."
           }
-        }
+        },
+        "where": "Öffne einen Setplan (Doppelklick auf seine Karte) und starte die Tour dort erneut."
       },
       "characters": {
         "name": "Figurenkarten",
@@ -5620,7 +5640,8 @@
             "title": "Nur fürs Team",
             "text": "Kontakte und Notizen erreichen nie Gäste."
           }
-        }
+        },
+        "where": "Öffne eine Figurenkarte auf dem Board und starte die Tour dort erneut."
       },
       "review": {
         "name": "Kundenfreigabe",
@@ -5637,7 +5658,8 @@
             "title": "Freigeben oder Änderungen anfragen",
             "text": "Die Entscheidung erreicht das Team sofort."
           }
-        }
+        },
+        "where": "Schalte Review unter „Ansichten dieses Boards“ im Menü ⋯ eines Boards ein und versuche es erneut."
       },
       "comments": {
         "name": "Kommentare",
@@ -5654,7 +5676,8 @@
             "title": "Wer es liest",
             "text": "Das Team oder auch Gäste: Du wählst jedes Mal."
           }
-        }
+        },
+        "where": "Öffne Kommentare oben rechts im Board und starte die Tour dort erneut."
       },
       "sharing": {
         "name": "Teilen und Rollen",
@@ -5679,7 +5702,8 @@
             "title": "Links für Gäste",
             "text": "Für Kunden: Wähle, was sie dürfen, und lies die Zusammenfassung."
           }
-        }
+        },
+        "where": "Öffne Teilen oben rechts im Board und starte die Tour dort erneut."
       },
       "versions": {
         "name": "Versionen",
@@ -5704,14 +5728,15 @@
             "title": "Aus einer heruntergeladenen Datei",
             "text": "Änderungen heruntergeladen? Im Board-Menü holt „Änderungen aus Datei wiederherstellen…“ sie in dasselbe Board zurück."
           }
-        }
+        },
+        "where": "Öffne die Versionen (die Uhr oben rechts im Board) und starte die Tour dort erneut."
       },
       "present": {
         "name": "Präsentation",
         "steps": {
           "0": {
             "title": "Im Vollbild",
-            "text": "Das Storyboard, Frame für Frame."
+            "text": "Ein Storyboard oder ein Moodboard, Bild für Bild."
           },
           "1": {
             "title": "Wo du bist",
@@ -5721,7 +5746,8 @@
             "title": "Vor und zurück",
             "text": "Mit den Pfeilen oder einem Tipp."
           }
-        }
+        },
+        "where": "Drücke Präsentieren in einem Storyboard oder Moodboard und starte die Tour dort erneut."
       },
       "export": {
         "name": "Export und Import",
@@ -5746,7 +5772,8 @@
             "title": "Das ganze Projekt",
             "text": "Als ZIP exportieren und auf einem anderen Server importieren."
           }
-        }
+        },
+        "where": "Öffne Exportieren… oben rechts im Board und starte die Tour dort erneut."
       },
       "clipper": {
         "name": "Browser-Clipper",
@@ -5936,7 +5963,8 @@
             "title": "Treffzeiten und Dispo",
             "text": "Im Drehplan, Reiter Treffzeiten, wählst du, wer an jedem Tag bestellt ist. Die Dispo druckt Team, Telefonnummern und Ansprechpartner am Set, nie für Gäste oder Kunden."
           }
-        }
+        },
+        "where": "Die Tour beginnt beim Team der Produktion: Öffne es und versuche es erneut."
       },
       "setplanLinks": {
         "name": "Verknüpfungen des Setplans",
@@ -5957,7 +5985,8 @@
             "title": "Setups in der Shotlist",
             "text": "Shotlist und Drehplan zeigen das Setup jedes Shots, und die Shotlist kann nach Setup gruppieren."
           }
-        }
+        },
+        "where": "Öffne den Plan einer Storyboard-Szene und starte die Tour dort erneut."
       },
       "setplanOutputs": {
         "name": "Ausgaben des Setplans",
@@ -5974,7 +6003,8 @@
             "title": "Wer nicht bearbeiten kann",
             "text": "Gäste und Betrachter öffnen den Plan in einer Ansicht mit Verschieben und Zoom, den Setups, der Legende und dem PDF."
           }
-        }
+        },
+        "where": "Öffne einen Setplan (Doppelklick auf seine Karte) und starte die Tour dort erneut."
       },
       "modules": {
         "name": "Module",

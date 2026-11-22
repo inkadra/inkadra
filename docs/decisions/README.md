@@ -143,3 +143,4 @@ and accepted records are not renumbered.
 | [0132](0132-demo-troupe-fixture.md) | The demo's Troupe and day calls come from a file next to each sample archive; crew routes open in a sandbox, capped |
 | [0133](0133-video-player.md) | Inkadra's own video player replaces the browser's controls on cards, in the viewer and for guests; the card gets the Quality menu |
 | [0134](0134-scoped-locks-and-per-member-project-order.md) | One advisory lock per invariant in a fixed order instead of the instance lock 10892; project order per member |
+| [0135](0135-tours-start-on-their-screen.md) | A tour started from Settings opens its screen (page, board view, Inbox) first; what is missing is said in one line, with Create |

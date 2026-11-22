@@ -20,7 +20,8 @@ interface ProjectBoards {
 
 const cache = new Map<string, ProjectBoards>();
 const listeners = new Set<() => void>();
-const loading = new Set<string>();
+/** The request for each project's list in flight: a second reader waits for it. */
+const loading = new Map<string, Promise<void>>();
 /** When each project's list last arrived. */
 const fetched = new Map<string, number>();
 /** How old a list may get while the tab is in view (#824). */
@@ -34,19 +35,23 @@ function emit() {
 export const boardPath = (projectId: string, boardId: string, rootBoardId?: string) =>
   boardId === rootBoardId ? `/p/${projectId}` : `/p/${projectId}/b/${boardId}`;
 
-export async function refreshBoards(projectId: string): Promise<void> {
-  if (loading.has(projectId)) return;
-  loading.add(projectId);
-  try {
-    const page = await api.get<{ items: Board[] }>(`/projects/${projectId}/boards`);
-    cache.set(projectId, { items: page.items, error: false });
-    fetched.set(projectId, Date.now());
-  } catch {
-    cache.set(projectId, { items: cache.get(projectId)?.items ?? null, error: true });
-  } finally {
-    loading.delete(projectId);
-    emit();
-  }
+export function refreshBoards(projectId: string): Promise<void> {
+  const pending = loading.get(projectId);
+  if (pending) return pending;
+  const request = (async () => {
+    try {
+      const page = await api.get<{ items: Board[] }>(`/projects/${projectId}/boards`);
+      cache.set(projectId, { items: page.items, error: false });
+      fetched.set(projectId, Date.now());
+    } catch {
+      cache.set(projectId, { items: cache.get(projectId)?.items ?? null, error: true });
+    } finally {
+      loading.delete(projectId);
+      emit();
+    }
+  })();
+  loading.set(projectId, request);
+  return request;
 }
 
 /** The project's boards from the server, which also fills the cache the sidebar reads. */

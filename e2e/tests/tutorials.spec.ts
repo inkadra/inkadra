@@ -139,9 +139,11 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   // Welcome and Storyboard seen, of the welcome and the tours of a member.
   await expect(page.getByText(/2 di \d+ visti/)).toBeVisible();
   await page.getByRole('button', { name: 'Riproduci Storyboard' }).click();
-  // Far from a storyboard the steps are cards, never a blank screen.
+  // The tour opens the project's storyboard first, and points at its scenes (QA audit).
   const tour = page.locator('dialog.tour');
+  await expect(page).toHaveURL(new RegExp(`/p/${project.id}/b/`));
   await expect(tour.getByRole('heading', { name: 'Scene e inquadrature' })).toBeVisible();
+  await expect(tour).toHaveAttribute('data-anchor', 'storyboard-scene');
   await page.keyboard.press('Escape');
   await expect(tour).toHaveCount(0);
   await expect(page.locator('body')).not.toBeFocused();
@@ -163,6 +165,110 @@ test('Settings → Tutorial replays a tour and counts what was seen', async ({ b
   expect(await page.evaluate(() => window.history.state?.idx)).toBe(idxBefore);
   await page.keyboard.press('Escape');
   await expect(tour).toHaveCount(0);
+  await context.close();
+});
+
+/** Settings → Tutorial over the page that is open, then the tour's Play button. */
+async function replay(page: Page, name: string) {
+  await page.getByRole('button', { name: 'Impostazioni' }).click();
+  await page
+    .locator('dialog.settings-window')
+    .getByRole('link', { name: 'Aiuto e tutorial' })
+    .click();
+  await page.getByRole('button', { name: `Riproduci ${name}` }).click();
+}
+
+test('the Shooting schedule starts on the Production board, made when missing', async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({
+    locale: 'it-IT',
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await signIn(page, member);
+  await expect(page.getByRole('heading', { name: /Nora$/ })).toBeVisible();
+  // From Home, in a project without a Production board: one line and the way to make it.
+  await replay(page, 'Piano riprese');
+  const toast = page.locator('.tour-toast');
+  await expect(toast).toContainText('Questo progetto non ha ancora la Produzione');
+  await expect(page.locator('dialog.tour')).toHaveCount(0);
+  await toast.getByRole('button', { name: 'Crea' }).click();
+  await expect(page).toHaveURL(new RegExp(`/p/${project.id}/b/`));
+  const production = page.url();
+  // A new Production board has no days yet: the steps on days are left out.
+  await walk(page, ['schedule-queue', 'schedule-storyboards']);
+
+  // From the storyboard the same tour goes to that board, without asking again.
+  await page.goto(`/p/${project.id}`);
+  await page.locator('[data-type="board"]', { hasText: 'Binario 9' }).dblclick();
+  await expect(page.getByRole('tab', { name: 'Storyboard' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await replay(page, 'Piano riprese');
+  await expect(page).toHaveURL(production);
+  await expect(page.locator('dialog.tour')).toHaveAttribute('data-anchor', 'schedule-queue');
+  await page.keyboard.press('Escape');
+
+  // Client review: with the view off everywhere, one line says how to turn it on.
+  await replay(page, 'Revisione cliente');
+  await expect(page.locator('.tour-toast')).toContainText('Accendi Revisione');
+  await expect(page.locator('dialog.tour')).toHaveCount(0);
+  const views = await page.request.patch(`/api/v1/boards/${project.rootBoardId}`, {
+    headers: { origin: baseURL as string },
+    data: { views: ['review'] },
+  });
+  expect(views.ok()).toBe(true);
+  // Turned on in a board, the tour opens that board on its Review view.
+  await page.getByRole('button', { name: 'Riproduci Revisione cliente' }).click();
+  await expect(page).toHaveURL(new RegExp(`/p/${project.id}\\?view=review$`));
+  await expect(page.locator('dialog.tour')).toHaveAttribute('data-anchor', /^review-/);
+  await page.keyboard.press('Escape');
+  await context.close();
+});
+
+test('the Inbox stays open for its tour, and a list that did not load offers no Create', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    locale: 'it-IT',
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await signIn(page, member);
+  await expect(page.getByRole('heading', { name: /Nora$/ })).toBeVisible();
+  // Closing Settings is not leaving the page: the Inbox the tour opened stays for its steps.
+  await replay(page, 'Inbox e notifiche');
+  await walk(page, ['inbox', 'inbox-filters']);
+
+  // Without the project's boards nothing is known to be missing: one line, never Create.
+  await page.route('**/api/v1/projects/*/boards', (route) => route.fulfill({ status: 500 }));
+  await replay(page, 'Piano riprese');
+  const toast = page.locator('.tour-toast');
+  await expect(toast).toContainText('Le board di questo progetto non si sono caricate');
+  await expect(toast.getByRole('button', { name: 'Crea' })).toHaveCount(0);
+  await expect(page.locator('dialog.tour')).toHaveCount(0);
+  await context.close();
+});
+
+test('an administrator replays Backup on the backups page', async ({ browser }) => {
+  const context = await browser.newContext({
+    locale: 'it-IT',
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await signIn(page, admin);
+  await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
+  // An instance with many files answers slowly (it adds up their size): the tour waits.
+  await page.route('**/api/v1/instance/backups', async (route) => {
+    await new Promise((done) => setTimeout(done, 4000));
+    await route.continue();
+  });
+  await replay(page, 'Backup');
+  await expect(page).toHaveURL(/section=backups/);
+  await walk(page, ['backups', 'backups-now']);
   await context.close();
 });
 
