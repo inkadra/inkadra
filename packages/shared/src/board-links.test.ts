@@ -107,6 +107,38 @@ describe('parseBoardHref', () => {
     expect(parseBoardHref(`${base}%E0%A4%A=1&el=${FRAME}`)?.cardId).toBe(FRAME);
   });
 
+  it('reads a bracketed host only when it is an IPv6 address, even with a matching origin', () => {
+    const rest = `/p/${P}/b/${B}?el=${FRAME}`;
+    for (const host of [
+      '[::1]',
+      '[::]',
+      '[1:2:3:4:5:6:7:8]',
+      '[fd00::1]',
+      '[::ffff:192.0.2.1]',
+      '[1::2:3:4:5:6:7]',
+    ])
+      expect(parseBoardHref(`https://${host}${rest}`, `https://${host}`)?.cardId, host).toBe(FRAME);
+    for (const host of [
+      '[fd00:::1]',
+      '[::1::]',
+      '[1::2::3]',
+      '[1:2:3:4:5:6:7:8:9]',
+      '[1:2:3:4:5:6:7]',
+      '[1::2:3:4:5:6:7:8]',
+      '[12345::1]',
+      '[fd00::1.2.3]',
+      '[::ffff:256.0.0.1]',
+      '[::ffff:01.0.0.1]',
+      '[1.2.3.4::]',
+      '[::1.2.3.4:5]',
+      '[:1::]',
+      '[1:]',
+      '[:]',
+      '[.]',
+    ])
+      expect(parseBoardHref(`https://${host}${rest}`, `https://${host}`), host).toBeNull();
+  });
+
   it('reads an absolute URL on a bracketed IPv6 origin, host and port exact', () => {
     const rest = `/p/${P}/b/${B}?el=${FRAME}`;
     expect(parseBoardHref(`http://[fd00::1]:8080${rest}`, 'http://[fd00::1]:8080')?.cardId).toBe(
