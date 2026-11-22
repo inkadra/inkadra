@@ -40,6 +40,7 @@ import type { Database } from '../db/client.ts';
 import { board, boardGrant, invitation, project, projectMember, user } from '../db/schema.ts';
 import {
   acceptInvitation,
+  currentStatus,
   findInvitation,
   INVITATION_COOKIE_MAX_AGE,
   type InvitationRow,
@@ -47,6 +48,7 @@ import {
   invitationStatus,
   invitationTarget,
   invitedRole,
+  revokeOutgrownInvitations,
 } from '../invitations.ts';
 import { notTestAccount } from '../loadtest/accounts.ts';
 import { lockActiveAccount } from '../locks.ts';
@@ -406,6 +408,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { userId, role, expiresAt: end?.toISOString() ?? null },
       });
+      await revokeOutgrownInvitations(tx, userId, mine.board.projectId);
       // The answer is read before the commit: their deletion may come right after it.
       return entryFor(tx as unknown as Database, boardId, userId);
     });
@@ -435,6 +438,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         ip: req.ip,
         details: { userId, role: removed[0]?.role ?? null },
       });
+      await revokeOutgrownInvitations(tx, userId, mine.board.projectId);
     });
     notices.recheckAccess();
     return reply.status(204).send();
@@ -836,7 +840,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       ...(await invitationTarget(db, row)),
       role: invitedRole(row),
       email: row.email,
-      status: invitationStatus(row),
+      status: await currentStatus(db, row),
       expiresAt: iso(row.expiresAt),
       accessExpiresAt: endOf(row.accessExpiresAt),
     };
@@ -847,7 +851,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     await previewLimiter.require(addressBucket(req.ip), 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);
-    if (!row || invitationStatus(row) !== 'valid')
+    if (!row || (await currentStatus(db, row)) !== 'valid')
       throw new HttpError('not_found', 'This invitation can no longer be used.');
     setInvitationCookie(reply, token);
     return reply.status(204).send();

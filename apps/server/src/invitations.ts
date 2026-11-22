@@ -1,5 +1,5 @@
 import type { AcceptedInvitation, InvitationPreview, ProjectRole } from '@inkadra/shared';
-import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { activeGrant, activeMember, atLeast, boardAccess, projectRole } from './access.ts';
 import { mergeInvitedRole } from './access-expiry.ts';
 import type { Database } from './db/client.ts';
@@ -37,6 +37,71 @@ export function invitationStatus(
   return 'valid';
 }
 
+/**
+ * Whether the person who made an invitation can still give what it gives, checked like the
+ * creator of a share link (decision 0013): their account exists and is not deactivated, and they
+ * still hold at least the invited role on its board or project, or are still an administrator
+ * for an invitation to the instance alone.
+ */
+export async function inviterCanGrant(
+  db: Pick<Database, 'select' | 'execute'>,
+  row: InvitationRow,
+): Promise<boolean> {
+  if (!row.invitedBy) return false;
+  const [inviter] = await db
+    .select({ role: user.role })
+    .from(user)
+    .where(and(eq(user.id, row.invitedBy), isNull(user.deactivatedAt)));
+  if (!inviter) return false;
+  const role = invitedRole(row) ?? 'viewer';
+  if (row.boardId) {
+    const access = await boardAccess(db, { id: row.invitedBy }, row.boardId);
+    return access !== null && atLeast(access.role, role);
+  }
+  if (row.projectId)
+    return atLeast(await projectRole(db, { id: row.invitedBy }, row.projectId), role);
+  return inviter.role === 'admin';
+}
+
+/** invitationStatus, with an invitation its inviter can no longer give read as revoked. */
+export async function currentStatus(
+  db: Pick<Database, 'select' | 'execute'>,
+  row: InvitationRow,
+): Promise<InvitationPreview['status']> {
+  const status = invitationStatus(row);
+  return status === 'valid' && !(await inviterCanGrant(db, row)) ? 'revoked' : status;
+}
+
+/**
+ * Revokes the pending invitations a person made in a project that they can no longer give, in
+ * the transaction that removed or lowered their access (after their account lock, decision 0134).
+ */
+export async function revokeOutgrownInvitations(
+  tx: Pick<Database, 'select' | 'execute' | 'update'>,
+  invitedBy: string,
+  projectId: string,
+) {
+  const pending = await tx
+    .select()
+    .from(invitation)
+    .where(
+      and(
+        eq(invitation.invitedBy, invitedBy),
+        eq(invitation.projectId, projectId),
+        isNull(invitation.revokedAt),
+      ),
+    );
+  const outgrown: string[] = [];
+  for (const row of pending)
+    if (invitationStatus(row) === 'valid' && !(await inviterCanGrant(tx, row)))
+      outgrown.push(row.id);
+  if (outgrown.length > 0)
+    await tx
+      .update(invitation)
+      .set({ revokedAt: new Date() })
+      .where(inArray(invitation.id, outgrown));
+}
+
 export async function findInvitation(db: Database, token: string): Promise<InvitationRow | null> {
   const [row] = await db
     .select()
@@ -54,7 +119,7 @@ export async function invitationFromCookie(
   const token = readCookie(cookieHeader, invitationCookieName(publicUrl));
   if (!token) return null;
   const row = await findInvitation(db, token);
-  return row && invitationStatus(row) === 'valid' ? row : null;
+  return row && (await currentStatus(db, row)) === 'valid' ? row : null;
 }
 
 export function readCookie(header: string | null | undefined, name: string): string | null {
@@ -163,6 +228,9 @@ export async function acceptInvitation(
     )
       return { projectId: row.projectId, boardId: row.boardId };
     if (!reserved && invitationStatus(row) !== 'valid')
+      throw new HttpError('not_found', 'This invitation can no longer be used.');
+    // Read under the inviter's account lock: a removal or demotion committed first is seen.
+    if (!(await inviterCanGrant(db2, row)))
       throw new HttpError('not_found', 'This invitation can no longer be used.');
     if (!me || !invitedAddressMatches(row, me.email))
       throw new HttpError(

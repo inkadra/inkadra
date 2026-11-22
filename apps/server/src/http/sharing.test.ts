@@ -627,6 +627,80 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     );
   });
 
+  it('stops invitations once the inviter no longer has the role they give', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Sopralluogo' });
+    const p = made.body.id as string;
+    const sub = await call('owner', 'POST', `/api/v1/projects/${p}/boards`, {
+      parentBoardId: made.body.rootBoardId,
+      title: 'Location',
+    });
+    const member = `/api/v1/projects/${p}/members/${as.guest.id}`;
+    const setRole = async (role: string) =>
+      expect((await call('owner', 'PUT', member, { role })).status).toBe(200);
+    const invite = async (body: object) => {
+      const res = await call('guest', 'POST', '/api/v1/invitations', { projectId: p, ...body });
+      expect(res.status).toBe(201);
+      return res.body.invitation as { id: string; url: string };
+    };
+    const token = (i: { url: string }) => i.url.split('/join/')[1];
+    const status = async (i: { url: string }) =>
+      (await call(null, 'GET', `/api/v1/invitations/by-token/${token(i)}`)).body.status;
+    const accept = async (i: { url: string }, who: Who = 'outsider') =>
+      (await call(who, 'POST', `/api/v1/invitations/by-token/${token(i)}/accept`)).status;
+    const unrevoke = (i: { id: string }) =>
+      db.update(invitationTable).set({ revokedAt: null }).where(eq(invitationTable.id, i.id));
+
+    // Removed from the project: their link gives nothing, not even to themselves.
+    await setRole('editor');
+    const removed = await invite({ kind: 'link', role: 'editor' });
+    expect(await status(removed)).toBe('valid');
+    expect((await call('owner', 'DELETE', member)).status).toBe(204);
+    expect(await status(removed)).toBe('revoked');
+    // Revoked with the removal, and refused at acceptance even without that.
+    await unrevoke(removed);
+    expect(await status(removed)).toBe('revoked');
+    expect(await accept(removed, 'guest')).toBe(404);
+    expect(
+      (await call(null, 'POST', `/api/v1/invitations/by-token/${token(removed)}/claim`)).status,
+    ).toBe(404);
+
+    // Demoted below the role a link gives; one that gives less keeps working.
+    await setRole('editor');
+    const demoted = await invite({ kind: 'link', role: 'editor' });
+    const lesser = await invite({ kind: 'link', role: 'viewer' });
+    await setRole('viewer');
+    expect(await status(demoted)).toBe('revoked');
+    await unrevoke(demoted);
+    expect(await accept(demoted)).toBe(404);
+    expect(await status(lesser)).toBe('valid');
+
+    // An owner's email invitation, once they are no longer owner.
+    await setRole('owner');
+    const email = await invite({ kind: 'email', email: 'producer@example.com', role: 'owner' });
+    expect(await status(email)).toBe('valid');
+    await setRole('editor');
+    expect(await status(email)).toBe('revoked');
+
+    // A board grant taken away.
+    await setRole('viewer');
+    const grant = `/api/v1/boards/${sub.body.id}/grants/${as.guest.id}`;
+    expect((await call('owner', 'PUT', grant, { role: 'editor' })).status).toBe(200);
+    const onBoard = await invite({ kind: 'link', boardId: sub.body.id, role: 'editor' });
+    expect(await status(onBoard)).toBe('valid');
+    expect((await call('owner', 'DELETE', grant)).status).toBe(204);
+    expect(await status(onBoard)).toBe('revoked');
+
+    // A deactivated inviter (decision 0025): unusable while deactivated, usable again after.
+    expect(await status(lesser)).toBe('valid');
+    await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+    expect(await status(lesser)).toBe('revoked');
+    expect(await accept(lesser)).toBe(404);
+    await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+    expect(await status(lesser)).toBe('valid');
+    expect(await accept(lesser)).toBe(200);
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
   it('caps invitation links at editor; owners are named from the people page', async () => {
     const own = await call('owner', 'POST', '/api/v1/projects', { name: 'Eredità' });
     const legacyProject = own.body.id;
