@@ -657,6 +657,13 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       (await call(who, 'POST', `/api/v1/invitations/by-token/${token(i)}/accept`)).status;
     const unrevoke = (i: { id: string }) =>
       db.update(invitationTable).set({ revokedAt: null }).where(eq(invitationTable.id, i.id));
+    const revokedAt = async (i: { id: string }) =>
+      (
+        await db
+          .select({ at: invitationTable.revokedAt })
+          .from(invitationTable)
+          .where(eq(invitationTable.id, i.id))
+      )[0]?.at ?? null;
 
     // Removed from the project: their link gives nothing, not even to themselves.
     await setRole('editor');
@@ -665,6 +672,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call('owner', 'DELETE', member)).status).toBe(204);
     expect(await status(removed)).toBe('revoked');
     // Revoked with the removal, and refused at acceptance even without that.
+    expect(await revokedAt(removed)).not.toBeNull();
     await unrevoke(removed);
     expect(await status(removed)).toBe('revoked');
     expect(await accept(removed, 'guest')).toBe(404);
@@ -678,6 +686,8 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const lesser = await invite({ kind: 'link', role: 'viewer' });
     await setRole('viewer');
     expect(await status(demoted)).toBe('revoked');
+    expect(await revokedAt(demoted)).not.toBeNull();
+    expect(await revokedAt(lesser)).toBeNull();
     await unrevoke(demoted);
     expect(await accept(demoted)).toBe(404);
     expect(await status(lesser)).toBe('valid');
@@ -688,6 +698,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(await status(email)).toBe('valid');
     await setRole('editor');
     expect(await status(email)).toBe('revoked');
+    expect(await revokedAt(email)).not.toBeNull();
 
     // A board grant taken away.
     await setRole('viewer');
@@ -697,12 +708,24 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(await status(onBoard)).toBe('valid');
     expect((await call('owner', 'DELETE', grant)).status).toBe(204);
     expect(await status(onBoard)).toBe('revoked');
+    expect(await revokedAt(onBoard)).not.toBeNull();
 
     // A deactivated inviter (decision 0025): unusable while deactivated, usable again after.
     expect(await status(lesser)).toBe('valid');
+    const issued = await claim(lesser.url);
     await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
     expect(await status(lesser)).toBe('revoked');
     expect(await accept(lesser)).toBe(404);
+    // A sign-up cookie issued before the deactivation opens no account either.
+    const late = await call(
+      { cookie: issued.cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'cookie@example.com', password: PASSWORD, name: 'Cookie' },
+      '198.18.11.1',
+    );
+    expect(late.status).toBe(403);
+    expect(await db.select().from(user).where(eq(user.email, 'cookie@example.com'))).toEqual([]);
     await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
     expect(await status(lesser)).toBe('valid');
     expect(await accept(lesser)).toBe(200);
