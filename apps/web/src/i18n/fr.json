@@ -3452,8 +3452,7 @@
     "hideSide": "Masquer le mois et la file",
     "showSide": "Afficher le mois et la file",
     "month": "Mois",
-    "queueCount_one": "À planifier : {{count}}",
-    "queueCount_other": "À planifier : {{count}}",
+    "queueCount": "À planifier : {{what}}",
     "densityLabel": "Densité",
     "densityCompact": "Compact",
     "densityComfy": "Confortable"

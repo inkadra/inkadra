@@ -3452,8 +3452,7 @@
     "hideSide": "Monat und Warteschlange ausblenden",
     "showSide": "Monat und Warteschlange einblenden",
     "month": "Monat",
-    "queueCount_one": "Zu planen: {{count}}",
-    "queueCount_other": "Zu planen: {{count}}",
+    "queueCount": "Zu planen: {{what}}",
     "densityLabel": "Dichte",
     "densityCompact": "Kompakt",
     "densityComfy": "Bequem"
