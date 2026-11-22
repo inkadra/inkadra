@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
 import { seedPerfBoard, startPeers } from './seed.ts';
@@ -39,6 +39,10 @@ const NO_BLUR = 'none';
 // The dense board: 8 frames of 300 to 600 strokes (about 3600 in all) and 3 remote peers moving
 // their cursors every 50 ms through the collaboration server. Bars from runs on CI runners
 // (docs/testing/canvas-performance.md), with the headroom of the gate's.
+// It only reports for now: its bars come from a handful of runs, so passing one writes a warning
+// and the job summary, and fails nothing. PERF_DENSE_GATE=1 judges it. Turn it on in CI once
+// about ten runs of main in a row (the nightly CI run and merges) stay within the bars.
+const DENSE_GATE = process.env.PERF_DENSE_GATE === '1';
 const DENSE_FRAMES = 8;
 const DENSE_PEERS = Number(process.env.PERF_DENSE_PEERS ?? 3);
 const DENSE_OPEN_LIMIT_MS = Number(process.env.PERF_DENSE_OPEN_LIMIT_MS ?? 4000);
@@ -55,6 +59,8 @@ interface FrameStats {
 }
 
 type Metrics = Record<string, number>;
+type Timed = FrameStats & { mainThreadMs: Record<string, number> };
+type Series = { pan: Timed; zoom: Timed; panAt100: Timed };
 const TRACKED = ['ScriptDuration', 'RecalcStyleDuration', 'LayoutDuration', 'TaskDuration'];
 
 /** Main-thread time spent per kind of work between two snapshots, in ms. */
@@ -130,7 +136,7 @@ function wheelFrames(page: Page, frames: number, zoom: boolean): Promise<FrameSt
 async function measure(
   page: Page,
   base: string,
-  options: { drawnFrames: number; peers: number; glass: boolean },
+  options: { drawnFrames: number; peers: number; glass: boolean; alternate?: boolean },
 ) {
   const seeded = await seedPerfBoard(base, { drawnFrames: options.drawnFrames });
 
@@ -189,41 +195,52 @@ async function measure(
     return { pan, zoom, panAt100: await timed(120, false) };
   };
 
-  const peers = options.peers
-    ? await startPeers(base, seeded.cookie, seeded.boardId, options.peers)
-    : null;
-  try {
-    // Their cursors are drawn before anything is timed.
-    if (peers) await expect(page.locator('.peer-cursor')).toHaveCount(options.peers);
-    // Fails if the token stops driving the blur, rather than measuring glass by accident.
-    expect(await setFloatBlur(page, NO_BLUR)).toBe(0);
-    const judged = await series();
-
-    let withGlass: ({ judged: false; blurredSurfaces: number } & typeof judged) | undefined;
-    if (options.glass) {
-      const blurredSurfaces = await setFloatBlur(page, null);
+  // One series with `peers` others on the board; with `alternate`, four on the same page and
+  // board: without them, with them, without, with, so their cost is read on one runner. The
+  // peers join after the opens are timed and leave after each series.
+  const rounds = options.alternate ? [0, options.peers, 0, options.peers] : [options.peers];
+  // Fails if the token stops driving the blur, rather than measuring glass by accident.
+  expect(await setFloatBlur(page, NO_BLUR)).toBe(0);
+  const measured: Array<{ peers: number; peerCursorMoves: number } & Series> = [];
+  for (const [i, count] of rounds.entries()) {
+    if (i > 0) {
+      // Back to the whole board, as the first series starts.
       await page.keyboard.press('Shift+Digit1');
       await page.waitForTimeout(500);
-      withGlass = { judged: false, blurredSurfaces, ...(await series()) };
     }
-    return {
-      measuredAt: new Date().toISOString(),
-      elements: Object.values(seeded.counts).reduce((s, n) => s + n, 0),
-      counts: seeded.counts,
-      images: seeded.images,
-      ...(options.drawnFrames ? { strokes: seeded.strokes } : {}),
-      ...(peers ? { peers: options.peers, peerCursorMoves: peers.moves() } : {}),
-      renderedOnOpen: rendered,
-      openMs,
-      coldOpenMs,
-      openSamples,
-      floatBlur: NO_BLUR,
-      ...judged,
-      ...(withGlass ? { withGlass } : {}),
-    };
-  } finally {
-    peers?.stop();
+    const peers = count ? await startPeers(base, seeded.cookie, seeded.boardId, count) : null;
+    try {
+      // Their cursors are drawn (or gone) before anything is timed.
+      if (count || i > 0) await expect(page.locator('.peer-cursor')).toHaveCount(count);
+      measured.push({ peers: count, ...(await series()), peerCursorMoves: peers?.moves() ?? 0 });
+    } finally {
+      peers?.stop();
+    }
   }
+  const [{ peers: _p, peerCursorMoves: _m, ...judged }] = measured as [(typeof measured)[number]];
+
+  let withGlass: ({ judged: false; blurredSurfaces: number } & Series) | undefined;
+  if (options.glass) {
+    const blurredSurfaces = await setFloatBlur(page, null);
+    await page.keyboard.press('Shift+Digit1');
+    await page.waitForTimeout(500);
+    withGlass = { judged: false, blurredSurfaces, ...(await series()) };
+  }
+  return {
+    measuredAt: new Date().toISOString(),
+    elements: Object.values(seeded.counts).reduce((s, n) => s + n, 0),
+    counts: seeded.counts,
+    images: seeded.images,
+    ...(options.drawnFrames ? { strokes: seeded.strokes } : {}),
+    renderedOnOpen: rendered,
+    openMs,
+    coldOpenMs,
+    openSamples,
+    floatBlur: NO_BLUR,
+    ...judged,
+    ...(options.alternate ? { rounds: measured } : {}),
+    ...(withGlass ? { withGlass } : {}),
+  };
 }
 
 test('a board with 1000 elements opens fast and pans smoothly', async ({ page, baseURL }) => {
@@ -253,14 +270,29 @@ test('a board with 1000 elements opens fast and pans smoothly', async ({ page, b
 });
 
 test('a storyboard drawn by hand, with people on it, stays usable', async ({ page, baseURL }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const measured = await measure(page, baseURL ?? 'http://localhost:3100', {
     drawnFrames: DENSE_FRAMES,
     peers: DENSE_PEERS,
     glass: false,
+    alternate: true,
   });
+  const rounds = measured.rounds ?? [];
+  // Judged on the series with the peers on the board, the worst of the two.
+  const withPeers = rounds.filter((r) => r.peers > 0);
+  const worst = (pick: (r: Series) => Timed) => ({
+    avg: Math.max(...withPeers.map((r) => pick(r).avg)),
+    p95: Math.max(...withPeers.map((r) => pick(r).p95)),
+  });
+  const judgedWithPeers = {
+    pan: worst((r) => r.pan),
+    zoom: worst((r) => r.zoom),
+    panAt100: worst((r) => r.panAt100),
+  };
   const dense = {
     ...measured,
+    judgedWithPeers,
+    gate: DENSE_GATE,
     limits: {
       openMs: DENSE_OPEN_LIMIT_MS,
       frameAvgMs: DENSE_FRAME_AVG_LIMIT_MS,
@@ -272,10 +304,45 @@ test('a storyboard drawn by hand, with people on it, stays usable', async ({ pag
   writeFileSync(resultsPath, `${JSON.stringify({ ...gate, dense }, null, 2)}\n`);
   console.log(JSON.stringify({ dense }, null, 2));
 
+  // What the test needs to measure anything: these always fail it.
   expect(dense.counts.frame).toBe(DENSE_FRAMES);
-  expect(dense.openMs).toBeLessThan(DENSE_OPEN_LIMIT_MS);
-  for (const run of [dense.pan, dense.zoom, dense.panAt100]) {
-    expect(run.avg).toBeLessThan(DENSE_FRAME_AVG_LIMIT_MS);
-    expect(run.p95).toBeLessThan(DENSE_FRAME_P95_LIMIT_MS);
+  expect(withPeers.length).toBe(DENSE_PEERS > 0 ? 2 : 0);
+
+  const over: string[] = [];
+  if (dense.openMs >= DENSE_OPEN_LIMIT_MS)
+    over.push(`open ${dense.openMs} ms ≥ ${DENSE_OPEN_LIMIT_MS} ms`);
+  for (const [name, run] of Object.entries(judgedWithPeers)) {
+    if (run.avg >= DENSE_FRAME_AVG_LIMIT_MS)
+      over.push(`${name} frame average ${run.avg.toFixed(1)} ms ≥ ${DENSE_FRAME_AVG_LIMIT_MS} ms`);
+    if (run.p95 >= DENSE_FRAME_P95_LIMIT_MS)
+      over.push(`${name} frame p95 ${run.p95.toFixed(1)} ms ≥ ${DENSE_FRAME_P95_LIMIT_MS} ms`);
   }
+  report(dense.openMs, rounds, over);
+  if (DENSE_GATE) expect(over).toEqual([]);
+  else if (over.length)
+    test.info().annotations.push({ type: 'warning', description: over.join('; ') });
 });
+
+/**
+ * The dense numbers in the job summary on CI, and a warning annotation for each bar passed while
+ * the measurement only reports.
+ */
+function report(openMs: number, rounds: Array<{ peers: number } & Series>, over: string[]) {
+  const ms = (t: Timed) => `${t.avg.toFixed(1)} / ${t.p95.toFixed(1)}`;
+  const lines = [
+    `### Canvas performance, dense board (${DENSE_GATE ? 'judged' : 'reported only'})`,
+    '',
+    `Best warm open ${openMs} ms. Frame average / p95 in ms, rounds in the order they ran:`,
+    '',
+    '| Peers | Pan | Zoom | Pan at 100 % |',
+    '| ----- | --- | ---- | ------------ |',
+    ...rounds.map((r) => `| ${r.peers} | ${ms(r.pan)} | ${ms(r.zoom)} | ${ms(r.panAt100)} |`),
+    '',
+    over.length ? `Over the bars: ${over.join('; ')}` : 'Within the bars.',
+    '',
+  ];
+  if (process.env.GITHUB_STEP_SUMMARY)
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+  if (!DENSE_GATE && process.env.GITHUB_ACTIONS)
+    for (const line of over) console.log(`::warning title=Dense canvas performance::${line}`);
+}
