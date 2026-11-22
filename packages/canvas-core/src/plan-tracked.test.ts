@@ -12,6 +12,8 @@ describe('the tracked values of a set plan', () => {
   it('names a plan field by itself and an item field by its list and id', () => {
     const values = trackedPlanValues({
       title: 'Diner',
+      north: 90,
+      locationId: 'loc1',
       icons: [{ ...lamp, label: 'Key', kelvin: 5600 }],
       walls: [{ id: 'w1', points: [0, 0, 10, 0], thickness: 5, label: 'Kitchen' }],
       circuits: [{ id: 'c1', name: 'A', amps: 16 }],
@@ -31,6 +33,9 @@ describe('the tracked values of a set plan', () => {
     } as Tracked);
     expect(values.get('title')).toBe('"Diner"');
     expect(values.get('variant')).toBeNull();
+    expect(values.get('sceneIds')).toBeNull();
+    expect(values.get('north')).toBe('90');
+    expect(values.get('locationId')).toBe('"loc1"');
     expect(values.get('icons.l1.label')).toBe('"Key"');
     expect(values.get('icons.l1.kelvin')).toBe('5600');
     expect(values.get('icons.l1.gel')).toBeNull();

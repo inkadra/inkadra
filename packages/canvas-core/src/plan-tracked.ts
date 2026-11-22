@@ -7,7 +7,14 @@ import type { PlanElement } from './plan.ts';
  * (those go to the last writer). Every client names them the same way, so "the same field"
  * means the same thing on the web and in the app (decision 0116).
  */
-export const TRACKED_PLAN_FIELDS = ['title', 'variant', 'voltage'] as const;
+export const TRACKED_PLAN_FIELDS = [
+  'title',
+  'variant',
+  'voltage',
+  'locationId',
+  'north',
+  'sceneIds',
+] as const;
 export const TRACKED_ICON_FIELDS = [
   'label',
   'note',
@@ -24,6 +31,7 @@ export const TRACKED_ICON_FIELDS = [
   'circuit',
   'frameId',
   'characterId',
+  'pose',
 ] as const;
 export const TRACKED_LIST_FIELDS = {
   walls: ['label'],
@@ -37,6 +45,14 @@ export const TRACKED_LIST_FIELDS = {
  * `<list>.<item id>.<field>` (`icons.<id>.label`, `circuits.<id>.amps`). Each value is its JSON,
  * or null when the field is not set. Comparing two readings of the same plan gives the fields
  * that changed between them.
+ *
+ * Read it per stored card: the base and each setup on their own, as the document holds them,
+ * never the merged `variantView` (or `PlanEdit.drawn`), where a setup's view carries its base's
+ * fields and items and a change of the base would look like a change of every setup.
+ * `sceneIds` is compared whole: a writer that adds or removes scenes should write them as a set
+ * against what is stored, so two people linking different scenes keep both. Two items with the
+ * same id in one list (two clients adding at once, which ids make unlikely) give one key, the
+ * last item's value.
  */
 export function trackedPlanValues(
   plan: Pick<PlanElement, 'icons' | 'walls' | 'openings' | 'circuits' | 'shapes'> &
