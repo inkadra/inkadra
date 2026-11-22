@@ -420,11 +420,14 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   app.get(v1('/search'), async (req) => {
     const actor = await requireActor(auth, req, db);
     await searches.require(actor.id, 'Too many searches. Try again in a minute.');
-    const parsed = SearchQuery.parse(req.query ?? {});
     // A Clipper token (decision 0137) looks for a destination: words only, in the boards it can
-    // clip to. Its answer is narrowed to board data by its scope (token-scope.ts).
+    // clip to. Its other filters are dropped before the usual checks, so without words it gets
+    // the 400 of a search without parameters. Its answer is narrowed to board data by its scope
+    // (token-scope.ts).
     const clip = tokenScope(req) === 'clip';
-    const query = clip ? { q: parsed.q, limit: parsed.limit } : parsed;
+    const raw = (req.query ?? {}) as Record<string, unknown>;
+    const words = { q: raw.q, ...(raw.limit === undefined ? {} : { limit: raw.limit }) };
+    const query = SearchQuery.parse(clip ? words : raw);
     const readable = clip
       ? clipDestinations(await readableBoards(db, actor))
       : await readableBoards(db, actor, query.projectId);

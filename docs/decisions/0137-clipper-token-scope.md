@@ -56,7 +56,8 @@ never set it. No redirect address or user agent is stored on the token.
   field the schemas of the oldest (0.3.0) and newest released Clipper require; the other fields
   are left out or empty only where those schemas allow it. Sessions and `full` tokens get the
   same answers as before.
-  - `GET /search` takes the words only (`projectId`, `tag` and `type` are ignored) and looks only
+  - `GET /search` takes the words only (`projectId`, `tag` and `type` are ignored; without words
+    it answers `400 bad_request`, as a search without parameters does) and looks only
     in the boards a clip may go to: editor or owner, the rule of `POST /clip`. Each hit is one
     board: board id and title, project id and name, the person's role, `kind: "board"`; no
     snippet, tags, element, asset or crew data, no board kind; project hits are left out. A hit

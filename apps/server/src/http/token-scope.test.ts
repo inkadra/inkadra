@@ -368,6 +368,25 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     expect(hits.some((h) => h.elementType === 'crew' && h.title === 'Zebra Crewperson')).toBe(true);
   });
 
+  it('asks a Clipper token for words before it searches', async () => {
+    const { token } = await clipperSignIn();
+    const none = await call(token, 'GET', '/search');
+    expect(none.statusCode).toBe(400);
+    for (const params of [
+      'tag=zebra-tag',
+      `type=note&projectId=${mine}`,
+      'q=%20%20&tag=zebra-tag',
+      `q=${'z'.repeat(201)}`,
+      'q=zebra&limit=51',
+    ]) {
+      const res = await call(token, 'GET', `/search?${params}`);
+      expect(res.statusCode, params).toBe(400);
+      expect(ApiError.parse(res.json()).error.code).toBe('bad_request');
+    }
+    // Words alone are enough, the default limit applies.
+    expect((await call(token, 'GET', '/search?q=zebra')).statusCode).toBe(200);
+  });
+
   it('lists for a Clipper token only what its picker offers, with the fields it reads', async () => {
     const { token } = await clipperSignIn();
     const get = async (path: string) => {
