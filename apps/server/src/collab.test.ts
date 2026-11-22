@@ -245,6 +245,36 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     }
   });
 
+  it('logs invalid elements at the first store of an open board, not at every store', async () => {
+    const warned = vi.spyOn(log, 'warn');
+    const owner = connect(as('owner'));
+    await owner.synced;
+    const odd = new Y.Map<unknown>();
+    const oddId = newElementId();
+    const otherId = newElementId();
+    owner.doc.transact(() => {
+      roots(owner.doc).elements.set(oddId, odd);
+      odd.set('id', oddId);
+      odd.set('type', 'not-a-card');
+    });
+    const invalid = () => warned.mock.calls.filter(([, msg]) => msg === 'invalid elements').length;
+    try {
+      collab.hocuspocus.flushPendingStores();
+      await vi.waitFor(() => expect(invalid()).toBe(1), { timeout: 5000 });
+      roots(owner.doc).elements.set(otherId, new Y.Map());
+      await new Promise((r) => setTimeout(r, 100));
+      collab.hocuspocus.flushPendingStores();
+      await new Promise((r) => setTimeout(r, 500));
+      expect(invalid()).toBe(1);
+    } finally {
+      warned.mockRestore();
+      for (const id of [oddId, otherId]) roots(owner.doc).elements.delete(id);
+      await new Promise((r) => setTimeout(r, 100));
+      collab.hocuspocus.flushPendingStores();
+      owner.close();
+    }
+  });
+
   it('syncs a board between two clients and stores it', async () => {
     const a = connect(as('owner'));
     const b = connect(as('owner'));

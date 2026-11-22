@@ -55,4 +55,14 @@ describe('DocSizes (#911)', () => {
     expect(sizes.total([a, b])).toBeGreaterThan(first + 500);
     expect(sizes.total([])).toBe(0);
   });
+
+  it('takes the size a store measured until the document changes', () => {
+    const doc = new Y.Doc();
+    doc.getMap('cards').set('n1', 'x');
+    const sizes = new DocSizes();
+    sizes.measured(doc, 12_345);
+    expect(sizes.total([doc])).toBe(12_345);
+    doc.getMap('cards').set('n2', 'y');
+    expect(sizes.total([doc])).toBe(Y.encodeStateAsUpdate(doc).byteLength);
+  });
 });

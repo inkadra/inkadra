@@ -109,6 +109,11 @@ export class StoreRecorder {
 export class DocSizes {
   private known = new WeakMap<Y.Doc, { sv: string; bytes: number }>();
 
+  /** A size just measured elsewhere (a board store encodes the whole board): not encoded again. */
+  measured(doc: Y.Doc, bytes: number) {
+    this.known.set(doc, { sv: Buffer.from(Y.encodeStateVector(doc)).toString('base64'), bytes });
+  }
+
   total(docs: Iterable<Y.Doc>): number {
     let bytes = 0;
     for (const doc of docs) {

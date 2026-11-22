@@ -655,6 +655,8 @@ export function createCollabServer(deps: {
   }
 
   const assignments = new WeakMap<Y.Doc, ReturnType<typeof assignedItems>>();
+  /** The schema version each open board was last validated at, for the invalid-elements log. */
+  const validatedAt = new WeakMap<Y.Doc, number>();
   /** Each open board's assignments now (trackAssignments). */
   const assignedNow = new WeakMap<Y.Doc, () => ReturnType<typeof assignedItems>>();
   const pendingAssignments = new WeakMap<
@@ -696,6 +698,7 @@ export function createCollabServer(deps: {
   >();
   let closing = false;
   const storeTimes = new StoreRecorder();
+  const sizes = new DocSizes();
   const stored = (document: Y.Doc) => {
     clearTimeout(unsaved.get(document)?.timer);
     unsaved.delete(document);
@@ -1028,11 +1031,20 @@ export function createCollabServer(deps: {
       const { document, documentName } = payload;
       const boardId = parseBoardDocName(documentName);
       if (!boardId) return;
-      const issues = validateBoardDoc(document);
-      if (issues.length > 0) log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
+      // A sample: the first store of an open board, and again after its schema changes, as
+      // validating every card on each store walks the whole board. An element that becomes
+      // invalid later is logged when the board is next opened.
+      const version = getSchemaVersion(document);
+      if (validatedAt.get(document) !== version) {
+        validatedAt.set(document, version);
+        const issues = validateBoardDoc(document);
+        if (issues.length > 0)
+          log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
+      }
       if (frozen.has(document)) return stored(document);
       const pending = new Map(pendingAssignments.get(document));
       const state = Y.encodeStateAsUpdate(document);
+      sizes.measured(document, state.byteLength);
       if (limits?.freeze && state.byteLength > limits.stateBytes) {
         freeze(document, boardId);
         return stored(document);
@@ -1191,7 +1203,6 @@ export function createCollabServer(deps: {
     return out;
   }
 
-  const sizes = new DocSizes();
   /** Encoded size of the boards `presence` lists (#911). */
   const boardBytes = () =>
     sizes.total([...server.hocuspocus.documents.values()].filter((d) => whoIsOn(d)));
