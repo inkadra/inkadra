@@ -202,7 +202,7 @@
 .onboarding-page__form {
   padding: 28px;
 }
-/* New project: the name and a start first; type, dates and team under one quiet disclosure. */
+/* New project: name, type, dates and team in view; the icon under one quiet disclosure. */
 .project-setup {
   display: flex;
   flex-direction: column;
@@ -297,9 +297,44 @@
   padding-top: 6px;
 }
 .project-setup__choices {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+/* A floated legend is the first row of the flex box, so Manage types can sit on its line. */
+.project-setup__choices > legend {
+  float: left;
+  flex-basis: 100%;
+  margin-bottom: 1px;
+}
+.project-setup__manage {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 11.5px;
+  color: var(--ink-accent-soft-fg);
+  text-decoration: none;
+}
+.project-setup__manage:hover {
+  text-decoration: underline;
+}
+.project-setup__manage[aria-disabled="true"] {
+  color: var(--ink-text-muted);
+  text-decoration: none;
+  cursor: default;
+}
+/* A finger gets a taller target without moving the line. */
+@media (pointer: coarse) {
+  .project-setup__manage {
+    top: -12px;
+    padding: 12px 0 12px 12px;
+  }
+}
+.project-setup__manage:focus-visible {
+  border-radius: var(--ink-radius-xs);
+  box-shadow: var(--ink-focus-ring);
+  outline: none;
 }
 .project-setup__dates {
   display: grid;

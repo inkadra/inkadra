@@ -3782,13 +3782,14 @@
       "clipper": "Depuis le navigateur, enregistrez avec <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Paramètres, configuration de l’instance incomplète",
-    "details": "Détails",
-    "detailsHint": "type, dates, équipe",
+    "details": "Plus de détails",
+    "detailsHint": "icône et couleur",
     "clearDate": "Effacer {{label}}",
     "people": "Personnes ou e-mail",
     "peoplePlaceholder": "Ajouter des personnes ou un e-mail…",
     "createAndInvite_one": "Créer et inviter ({{count}})",
-    "createAndInvite_other": "Créer et inviter ({{count}})"
+    "createAndInvite_other": "Créer et inviter ({{count}})",
+    "manageTypes": "Gérer les types"
   },
   "settingsUi": {
     "profile": "Profil",
@@ -5408,7 +5409,7 @@
           },
           "2": {
             "title": "Nouveau projet",
-            "text": "Les tableaux naissent dans un projet : créez-le ici."
+            "text": "Les tableaux vivent dans un projet : créez-le ici, avec son type, ses dates de tournage et son équipe."
           }
         }
       },

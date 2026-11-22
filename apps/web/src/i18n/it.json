@@ -3782,13 +3782,14 @@
       "clipper": "Dal browser, salva con <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Impostazioni, configurazione istanza incompleta",
-    "details": "Dettagli",
-    "detailsHint": "tipo, date, team",
+    "details": "Altri dettagli",
+    "detailsHint": "icona e colore",
     "clearDate": "Cancella {{label}}",
     "people": "Persone o email",
     "peoplePlaceholder": "Aggiungi persone o email…",
     "createAndInvite_one": "Crea e invita ({{count}})",
-    "createAndInvite_other": "Crea e invita ({{count}})"
+    "createAndInvite_other": "Crea e invita ({{count}})",
+    "manageTypes": "Gestisci tipi"
   },
   "settingsUi": {
     "profile": "Profilo",
@@ -5408,7 +5409,7 @@
           },
           "2": {
             "title": "Nuovo progetto",
-            "text": "Le board nascono dentro un progetto: crealo da qui."
+            "text": "Le board nascono dentro un progetto: crealo da qui, con tipo, date delle riprese e team."
           }
         }
       },

@@ -2,14 +2,19 @@
 import { DEFAULT_CLASSIFICATIONS, defaultProjectIcon, type Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createBoard } from '../board/boards.ts';
 import { api } from '../lib/api.ts';
-import { ProjectSetupForm } from './NewProjectDialog.tsx';
+import { NewProjectDialog, ProjectSetupForm } from './NewProjectDialog.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+const session = vi.hoisted(() => ({ role: 'user' }));
 vi.mock('../lib/session.tsx', () => ({
-  useSession: () => ({ user: { id: 'me' }, instance: { auth: { email: false } } }),
+  useSession: () => ({
+    user: { id: 'me', role: session.role },
+    instance: { auth: { email: false } },
+  }),
 }));
 vi.mock('../lib/api.ts', () => ({
   api: {
@@ -37,6 +42,7 @@ const serverDefault = defaultProjectIcon('9b2f3c4d-1e2f-4a3b-8c4d-00ffffabcdef')
 let random: { mockRestore: () => void };
 beforeEach(async () => {
   vi.clearAllMocks();
+  session.role = 'user';
   random = vi.spyOn(crypto, 'getRandomValues').mockImplementation(<T,>(array: T) => {
     (array as Uint32Array)[0] = 0x00abcdef;
     return array;
@@ -50,6 +56,7 @@ beforeEach(async () => {
 });
 afterEach(() => {
   random.mockRestore();
+  for (const restore of restores.splice(0)) restore();
   act(() => root.unmount());
   host.remove();
 });
@@ -67,29 +74,165 @@ const button = (key: string) =>
 async function blank() {
   await input('input[maxlength="120"]', 'Last Run');
 }
-async function openDetails() {
+async function openMore() {
   await act(async () =>
     host.querySelector<HTMLButtonElement>('.project-setup__disclosure')?.click(),
   );
 }
 const people = 'input[role="combobox"]';
+/** happy-dom has no native modal API: open and close the <dialog> by hand. */
+function fakeModal() {
+  const show = vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.open = true;
+  });
+  const shut = vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.open = false;
+    this.dispatchEvent(new Event('close'));
+  });
+  restores.push(
+    () => show.mockRestore(),
+    () => shut.mockRestore(),
+  );
+}
+const restores: Array<() => void> = [];
 const submit = () =>
   act(async () =>
     host
       .querySelector('form')
       ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
   );
-it('shows only the name without templates until Details opens', async () => {
-  expect(host.querySelector('input[name="projectType"]')).toBeNull();
-  expect(host.querySelector('input[type="date"]')).toBeNull();
-  expect(host.querySelector(people)).toBeNull();
+it('shows type, dates and team at once, and the icon under More details', async () => {
+  expect(host.querySelectorAll('input[name="projectType"]').length).toBeGreaterThan(0);
+  expect(host.querySelectorAll('input[type="date"]')).toHaveLength(2);
+  expect(host.querySelector(people)).not.toBeNull();
   expect(host.textContent).not.toContain('onboarding.skip');
-  await openDetails();
+  // Only administrators keep the types: nobody else gets Manage types.
+  expect(host.querySelector('.project-setup__manage')).toBeNull();
+  expect(host.querySelector('[aria-label^="appearance.shapes."]')).toBeNull();
+  await openMore();
   expect(host.querySelector('.project-setup__disclosure')?.getAttribute('aria-expanded')).toBe(
     'true',
   );
-  expect(host.querySelectorAll('input[type="date"]')).toHaveLength(2);
-  expect(host.querySelector(people)).not.toBeNull();
+  expect(host.querySelector('[aria-label^="appearance.shapes."]')).not.toBeNull();
+});
+it('links administrators to the project types in Settings through the owner', async () => {
+  session.role = 'admin';
+  const leave = vi.fn();
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <ProjectSetupForm onClose={close} onLeave={leave} onCreated={created} />
+      </MemoryRouter>,
+    ),
+  );
+  const link = host.querySelector<HTMLAnchorElement>('.project-setup__manage');
+  expect(link?.textContent).toBe('onboarding.manageTypes');
+  const href = '/settings?section=classifications&setting=classifications.projectTypes';
+  expect(link?.getAttribute('href')).toBe(href);
+  // Ctrl/Cmd-click opens Settings in a new tab: the form stays as it is.
+  const modified = new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true });
+  await act(async () => link?.dispatchEvent(modified));
+  expect(leave).not.toHaveBeenCalled();
+  await act(async () => link?.click());
+  expect(leave).toHaveBeenCalledExactlyOnceWith(href);
+  session.role = 'user';
+});
+it('keeps Manage types inert while the project is being created', async () => {
+  session.role = 'admin';
+  const leave = vi.fn();
+  vi.mocked(api.post).mockReturnValueOnce(new Promise(() => {}));
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <ProjectSetupForm onClose={close} onLeave={leave} onCreated={created} />
+      </MemoryRouter>,
+    ),
+  );
+  await blank();
+  await act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  const link = host.querySelector<HTMLAnchorElement>('.project-setup__manage');
+  expect(link?.getAttribute('aria-disabled')).toBe('true');
+  expect(link?.tabIndex).toBe(-1);
+  const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+  await act(async () => link?.dispatchEvent(click));
+  expect(click.defaultPrevented).toBe(true);
+  expect(leave).not.toHaveBeenCalled();
+  session.role = 'user';
+});
+it('asks before Manage types discards a filled form, then goes to Settings', async () => {
+  session.role = 'admin';
+  fakeModal();
+  const closed = vi.fn();
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/projects']}>
+        <Routes>
+          <Route
+            path="/projects"
+            element={<NewProjectDialog open onClose={closed} onCreated={created} />}
+          />
+          <Route path="/settings" element={<p className="at-settings">settings</p>} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  await blank();
+  const discardButton = () =>
+    [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent === 'Discard',
+    );
+  const keepButton = () =>
+    [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      (b) => b.textContent === 'Keep editing',
+    );
+  await act(async () => host.querySelector<HTMLAnchorElement>('.project-setup__manage')?.click());
+  // The filled form is still there, with the question.
+  expect(closed).not.toHaveBeenCalled();
+  expect(host.querySelector('.at-settings')).toBeNull();
+  expect(host.querySelector<HTMLInputElement>('input[maxlength="120"]')?.value).toBe('Last Run');
+  // Keep editing, then Cancel and Discard: closing that way does not follow the old link.
+  await act(async () => keepButton()?.click());
+  await act(async () => button('project.cancel')?.click());
+  await act(async () => discardButton()?.click());
+  expect(closed).toHaveBeenCalledOnce();
+  expect(host.querySelector('.at-settings')).toBeNull();
+});
+it('goes to Settings after Discard from Manage types', async () => {
+  session.role = 'admin';
+  fakeModal();
+  const closed = vi.fn();
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/projects']}>
+        <Routes>
+          <Route
+            path="/projects"
+            element={<NewProjectDialog open onClose={closed} onCreated={created} />}
+          />
+          <Route path="/settings" element={<p className="at-settings">settings</p>} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  await blank();
+  await act(async () => host.querySelector<HTMLAnchorElement>('.project-setup__manage')?.click());
+  expect(closed).not.toHaveBeenCalled();
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>('button')]
+      .find((b) => b.textContent === 'Discard')
+      ?.click(),
+  );
+  expect(closed).toHaveBeenCalledOnce();
+  expect(host.querySelector('.at-settings')).not.toBeNull();
+  session.role = 'user';
 });
 it('cancels without creating data', async () => {
   await act(async () => button('project.cancel')?.click());
@@ -98,7 +241,6 @@ it('cancels without creating data', async () => {
 });
 it('creates metadata and opens the real project', async () => {
   await blank();
-  await openDetails();
   await input('input[type="date"]', '2026-11-02');
   await act(async () => host.querySelector<HTMLInputElement>('input[name="projectType"]')?.click());
   vi.mocked(api.post).mockResolvedValueOnce({ id: 'p', rootBoardId: 'root' } as Project);
@@ -119,7 +261,6 @@ it('creates metadata and opens the real project', async () => {
 });
 it('keeps a project and successful invites on failure; retries only missing invitations', async () => {
   await blank();
-  await openDetails();
   for (const email of ['one@example.com', 'two@example.com']) {
     await input(people, email);
     await act(async () => button('onboarding.add')?.click());
@@ -166,7 +307,6 @@ it('keeps a project and successful invites on failure; retries only missing invi
 
 it('does not let a half-typed email block Create, and invites a complete one', async () => {
   await blank();
-  await openDetails();
   await input(people, 'team@');
   expect(host.textContent).not.toContain('onboarding.pendingEmail');
   expect(button('project.create')?.disabled).toBe(false);
@@ -192,7 +332,6 @@ it('does not let a half-typed email block Create, and invites a complete one', a
 
 it('suggests people on the instance and leaves out those already added', async () => {
   await blank();
-  await openDetails();
   await input(people, 'gi');
   await act(async () => new Promise((r) => setTimeout(r, 300)));
   expect(api.get).toHaveBeenCalledWith('/users/search?q=gi');
@@ -232,7 +371,6 @@ it('offers configured active project types using stable identifiers', async () =
       projectTypes: [custom, { ...custom, id: 'retired', label: 'Retired', archived: true }],
     }),
   );
-  await openDetails();
   expect(host.textContent).toContain('Feature');
   expect(host.textContent).not.toContain('Retired');
   await blank();
@@ -248,6 +386,7 @@ it('offers configured active project types using stable identifiers', async () =
 });
 
 it('proposes the icon a project got without one, and sends the one chosen', async () => {
+  await openMore();
   expect(
     host.querySelector('[role="radio"][aria-checked="true"]')?.getAttribute('aria-label'),
   ).toBe(`appearance.shapes.${serverDefault.shape}`);

@@ -3782,13 +3782,14 @@
       "clipper": "From the browser, save with <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Settings, instance setup incomplete",
-    "details": "Details",
-    "detailsHint": "type, dates, team",
+    "details": "More details",
+    "detailsHint": "icon and color",
     "clearDate": "Clear {{label}}",
     "people": "People or email",
     "peoplePlaceholder": "Add people or an email…",
     "createAndInvite_one": "Create and invite ({{count}})",
-    "createAndInvite_other": "Create and invite ({{count}})"
+    "createAndInvite_other": "Create and invite ({{count}})",
+    "manageTypes": "Manage types"
   },
   "settingsUi": {
     "profile": "Profile",
@@ -5408,7 +5409,7 @@
           },
           "2": {
             "title": "New project",
-            "text": "Boards live inside a project: start one here."
+            "text": "Boards live inside a project: create one here, with its type, shooting dates and team."
           }
         }
       },

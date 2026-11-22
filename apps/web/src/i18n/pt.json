@@ -3782,13 +3782,14 @@
       "clipper": "No navegador, salve com <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Configurações, configuração da instância incompleta",
-    "details": "Detalhes",
-    "detailsHint": "tipo, datas, equipe",
+    "details": "Mais detalhes",
+    "detailsHint": "ícone e cor",
     "clearDate": "Limpar {{label}}",
     "people": "Pessoas ou e-mail",
     "peoplePlaceholder": "Adicionar pessoas ou um e-mail…",
     "createAndInvite_one": "Criar e convidar ({{count}})",
-    "createAndInvite_other": "Criar e convidar ({{count}})"
+    "createAndInvite_other": "Criar e convidar ({{count}})",
+    "manageTypes": "Gerenciar tipos"
   },
   "settingsUi": {
     "profile": "Perfil",
@@ -5408,7 +5409,7 @@
           },
           "2": {
             "title": "Novo projeto",
-            "text": "Os quadros nascem dentro de um projeto: crie-o aqui."
+            "text": "Os quadros nascem dentro de um projeto: crie-o aqui, com tipo, datas de filmagem e equipe."
           }
         }
       },

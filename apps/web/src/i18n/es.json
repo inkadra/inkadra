@@ -3782,13 +3782,14 @@
       "clipper": "Desde el navegador, guarda con <store>Inkadra Clipper ↗</store>"
     },
     "settingsPending": "Ajustes, configuración de la instancia incompleta",
-    "details": "Detalles",
-    "detailsHint": "tipo, fechas, equipo",
+    "details": "Más detalles",
+    "detailsHint": "icono y color",
     "clearDate": "Borrar {{label}}",
     "people": "Personas o correo",
     "peoplePlaceholder": "Añade personas o un correo…",
     "createAndInvite_one": "Crear e invitar ({{count}})",
-    "createAndInvite_other": "Crear e invitar ({{count}})"
+    "createAndInvite_other": "Crear e invitar ({{count}})",
+    "manageTypes": "Gestionar tipos"
   },
   "settingsUi": {
     "profile": "Perfil",
@@ -5408,7 +5409,7 @@
           },
           "2": {
             "title": "Nuevo proyecto",
-            "text": "Los tableros nacen dentro de un proyecto: créalo aquí."
+            "text": "Los tableros viven dentro de un proyecto: créalo aquí, con su tipo, fechas de rodaje y equipo."
           }
         }
       },
