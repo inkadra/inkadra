@@ -194,6 +194,7 @@ const DATA = {
     shotSizes: [],
     shotAngles: [],
     shotMovements: [],
+    todoLists: [{ id: 'props', label: 'Props', archived: false }],
   } as unknown as ClassificationCatalogs,
   reports: [
     {

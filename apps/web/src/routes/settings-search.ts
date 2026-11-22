@@ -5,7 +5,11 @@ import type {
   Invitation,
   StorageUsage,
 } from '@inkadra/shared';
-import { SHOT_CATALOG_KEYS, type ShotCatalogKey, shotOptionLabel } from '@inkadra/shared';
+import {
+  shotOptionLabel,
+  TRANSLATED_CATALOG_KEYS,
+  type TranslatedCatalogKey,
+} from '@inkadra/shared';
 import type { IconName } from '@inkadra/ui';
 import { formatDateTime } from '../lib/datetime.ts';
 import type { Tour } from '../tutorial/tours.ts';
@@ -179,8 +183,8 @@ export interface DataResults {
   more: Partial<Record<ResultGroup, number>>;
 }
 
-type CatalogKey = 'projectTypes' | 'tags' | ShotCatalogKey;
-const CATALOG_KEYS: CatalogKey[] = ['projectTypes', 'tags', ...SHOT_CATALOG_KEYS];
+type CatalogKey = 'projectTypes' | 'tags' | TranslatedCatalogKey;
+const CATALOG_KEYS: CatalogKey[] = ['projectTypes', 'tags', ...TRANSLATED_CATALOG_KEYS];
 
 /**
  * The people, invitations, classification values, received reports, space per person and tours

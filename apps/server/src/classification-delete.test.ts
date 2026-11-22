@@ -51,7 +51,7 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
     ).json() as ClassificationCatalogs;
   const save = (next: ClassificationCatalogs) =>
     call('admin', 'PUT', '/instance/classifications', next);
-  type Key = 'projectTypes' | 'tags' | 'shotSizes';
+  type Key = 'projectTypes' | 'tags' | 'shotSizes' | 'todoLists';
   /** Adds a value to a catalog and returns it as saved. */
   const add = async (key: Key, label: string) => {
     const next = await catalogs();
@@ -67,8 +67,11 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
   };
   const find = async (key: Key, id: string) => (await catalogs())[key].find((o) => o.id === id);
 
-  /** A project of `type` whose root board holds a note with `tags` and a frame of `shot`. */
-  async function board_(content: { type?: string; tags?: string[]; shot?: string }) {
+  /**
+   * A project of `type` whose root board holds a note with `tags`, a frame of `shot` and a to-do
+   * list of the kind `list`.
+   */
+  async function board_(content: { type?: string; tags?: string[]; shot?: string; list?: string }) {
     const created = await call('admin', 'POST', '/projects', {
       name: 'Ultima corsa',
       ...(content.type ? { type: content.type } : {}),
@@ -77,7 +80,7 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
     const boardId = created.json().rootBoardId as string;
     return { projectId: created.json().id as string, boardId, doc: doc(boardId, content) };
   }
-  function doc(boardId: string, content: { tags?: string[]; shot?: string }) {
+  function doc(boardId: string, content: { tags?: string[]; shot?: string; list?: string }) {
     const d = createBoardDoc(boardId);
     const base = { x: 0, y: 0, w: 240, z: 'a0', parent: null, createdBy: null, createdAt: 0 };
     if (content.tags)
@@ -93,6 +96,8 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
         shot: content.shot,
       });
     }
+    if (content.list)
+      addElement(d, { ...base, id: newElementId(), type: 'todo', items: [], list: content.list });
     return d;
   }
   async function store(
@@ -331,5 +336,61 @@ describe.skipIf(!url)('removing classification values (needs DATABASE_URL)', () 
       .map((m) => readElement(m))
       .filter((el) => el?.type === 'frame');
     expect(frames).toMatchObject([{ shot: 'Dettaglio mani' }]);
+  });
+
+  it('counts, keeps and brings back the kinds of to-do lists (decision 0136)', async () => {
+    const version = (await call('member', 'GET', '/instance/version')).json();
+    expect(version.capabilities).toContain('todo-list-catalog');
+    const kind = await add('todoLists', 'Trucco');
+    expect(kind.uses).toBe(0);
+    // The defaults are codes every client knows: never counted, never removed.
+    expect((await catalogs()).todoLists.find((o) => o.id === 'props')?.uses).toBeUndefined();
+    expect((await without('todoLists', 'props')).statusCode).toBe(400);
+    // A client before the catalog leaves it out of a save: the kinds stay as they are.
+    const { todoLists: _left, ...older } = await catalogs();
+    expect((await call('admin', 'PUT', '/instance/classifications', older)).statusCode).toBe(200);
+    expect(await find('todoLists', kind.id)).toMatchObject({ label: 'Trucco', archived: false });
+
+    const { projectId, boardId, doc: d } = await board_({ list: kind.id });
+    await store(db, boardId, d);
+    expect((await find('todoLists', kind.id))?.uses).toBe(1);
+    const refused = await without('todoLists', kind.id);
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json().error.details.values).toEqual([
+      { catalog: 'todoLists', id: kind.id, uses: 1 },
+    ]);
+
+    // Exported, then removed once nothing uses it: the import makes the list's title of it.
+    const started = await call('admin', 'POST', `/projects/${projectId}/exports`);
+    await deps.jobs.idle();
+    const download = await call('admin', 'GET', `/transfers/${started.json().id}/download`);
+    await db.delete(project).where(eq(project.id, projectId));
+    expect((await without('todoLists', kind.id)).statusCode).toBe(200);
+    const imported = await call('admin', 'POST', '/projects/import', download.rawPayload, {
+      'content-type': 'application/zip',
+    });
+    await deps.jobs.idle();
+    const done = (await call('admin', 'GET', `/transfers/${imported.json().id}`)).json();
+    expect(done).toMatchObject({ status: 'ready' });
+    const [root] = await db
+      .select({ id: board.id })
+      .from(board)
+      .where(sql`${board.projectId} = ${done.projectId} and ${board.parentBoardId} is null`);
+    const [row] = await db
+      .select()
+      .from(boardDoc)
+      .where(eq(boardDoc.boardId, root?.id ?? ''));
+    const back = new Y.Doc();
+    Y.applyUpdate(back, row?.state ?? new Uint8Array());
+    const lists = [...roots(back).elements.values()]
+      .map((m) => readElement(m))
+      .filter((el) => el?.type === 'todo');
+    expect(lists).toMatchObject([{ title: 'Trucco' }]);
+    expect(lists[0]).not.toHaveProperty('list');
+
+    // A late use of a removed kind brings it back, archived.
+    const later = await board_({});
+    await store(db, later.boardId, doc(later.boardId, { list: kind.id }));
+    expect(await find('todoLists', kind.id)).toMatchObject({ label: 'Trucco', archived: true });
   });
 });

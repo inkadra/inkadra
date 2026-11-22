@@ -321,6 +321,7 @@ export async function exportProject(
     let elements = 0;
     const tags = new Set<string>();
     const shotValues = new Set<string>();
+    const todoLists = new Set<string>();
     let maxSchema = 0;
     for (const b of ordered) {
       add(b.createdBy);
@@ -340,6 +341,8 @@ export async function exportProject(
       for (const el of readable)
         for (const field of ['shot', 'angle', 'movement'])
           if (typeof el[field] === 'string') shotValues.add(el[field]);
+      for (const el of readable)
+        if (el.type === 'todo' && typeof el.list === 'string') todoLists.add(el.list);
       await zip.addBuffer(`boards/${b.id}/document.yjs`, Buffer.from(Y.encodeStateAsUpdate(doc)));
       await zip.addJson(`boards/${b.id}/elements.json`, {
         boardId: b.id,
@@ -567,6 +570,9 @@ export async function exportProject(
       // An id means nothing on another instance: the import turns these into text.
       shots: SHOT_CATALOG_KEYS.flatMap((key) => catalogs[key])
         .filter((o) => shotValues.has(o.id) && CATALOG_UUID.test(o.id))
+        .map(({ id, label }) => ({ id, label })),
+      todoLists: catalogs.todoLists
+        .filter((o) => todoLists.has(o.id) && CATALOG_UUID.test(o.id))
         .map(({ id, label }) => ({ id, label })),
     });
 

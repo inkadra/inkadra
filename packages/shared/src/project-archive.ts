@@ -316,6 +316,8 @@ export const ArchiveClassifications = z.object({
   tags: z.array(z.object({ id: z.string().max(40), label: z.string().max(40) })),
   /** Catalog values added on the source instance and used by frames; absent from older archives. */
   shots: z.array(z.object({ id: z.string().max(40), label: z.string().max(40) })).optional(),
+  /** Kinds of to-do lists added on the source instance and used (decision 0136); absent before. */
+  todoLists: z.array(z.object({ id: z.string().max(40), label: z.string().max(40) })).optional(),
 });
 export type ArchiveClassifications = z.infer<typeof ArchiveClassifications>;
 

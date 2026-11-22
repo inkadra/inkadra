@@ -1,5 +1,5 @@
 import { linkedLocation, linkedPlan } from '@inkadra/canvas-core';
-import { compareZ, type Element, readElement, roots } from '@inkadra/doc-schema';
+import { CATALOG_UUID, compareZ, type Element, readElement, roots } from '@inkadra/doc-schema';
 import { and, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
@@ -113,7 +113,10 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
       return {
         ...base,
         title: el.title ?? el.items[0]?.text ?? '',
+        // First, never cut off: the UUID of a kind added to the catalog, whose uses are counted
+        // (decision 0136).
         text: join(
+          el.list && CATALOG_UUID.test(el.list) ? el.list : undefined,
           el.title,
           el.items.map((i) => i.text),
         ),
@@ -318,7 +321,7 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
     },
     text: {
       *[Symbol.iterator]() {
-        for (const e of seen()) if (e.type === 'frame') yield e.text;
+        for (const e of seen()) if (e.type === 'frame' || e.type === 'todo') yield e.text;
       },
     },
   });

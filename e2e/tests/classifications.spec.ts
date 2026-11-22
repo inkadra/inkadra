@@ -93,10 +93,10 @@ test('frames keep their values while admins change the storyboard lists', async 
   ).json()) as ClassificationCatalogs;
 
   try {
-    // The page: five closed catalogs in two groups.
+    // The page: six closed catalogs in three groups.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/settings?section=classifications');
-    await expect(page.locator('.catalogs__card')).toHaveCount(5);
+    await expect(page.locator('.catalogs__card')).toHaveCount(6);
     await expect(page.getByRole('heading', { name: 'Storyboard', exact: true })).toBeVisible();
     await shoot(page, '01-closed');
 

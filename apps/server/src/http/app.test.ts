@@ -129,6 +129,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'transfer-cancel',
         'server-live',
         'classification-delete',
+        'todo-list-catalog',
         'idempotent-import',
         'video-renditions',
         'list-pages',

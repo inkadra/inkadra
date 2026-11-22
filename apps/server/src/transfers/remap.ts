@@ -10,6 +10,11 @@ export interface IdMaps {
   person(id: string): string | null;
   /** Catalog ids of frame fields unknown to this instance, with the text that replaces them. */
   shotText?: ReadonlyMap<string, string>;
+  /**
+   * The kind a to-do list's kind becomes here (decision 0136): `list` to keep or swap, or none and
+   * the `title` the card takes if it has none.
+   */
+  todoList?(list: string): { list?: string; title?: string };
 }
 
 const ASSET_FIELDS = ['assetId', 'imageAssetId'] as const;
@@ -89,6 +94,16 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
           const text = maps.shotText?.get(el.get(field) as string);
           if (text) el.set(field, text);
         }
+      const list = el.get('list');
+      if (el.get('type') === 'todo' && typeof list === 'string' && maps.todoList) {
+        const kind = maps.todoList(list);
+        if (kind.list) {
+          if (kind.list !== list) el.set('list', kind.list);
+        } else {
+          el.delete('list');
+          if (kind.title && !el.get('title')) el.set('title', kind.title);
+        }
+      }
       if (el.get('type') === 'board') el.set('boardId', mapped(maps.boards, el.get('boardId')));
       const items = el.get('items');
       if (el.get('type') === 'todo' && items instanceof Y.Array) {

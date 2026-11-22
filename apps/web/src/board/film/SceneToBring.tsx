@@ -8,8 +8,8 @@ import {
   updateElement,
   updateTodoItem,
 } from '@inkadra/canvas-core';
-import { type Element, TODO_LISTS, type TodoList } from '@inkadra/doc-schema';
-import type { Person, ProjectMember } from '@inkadra/shared';
+import type { Element, TodoList } from '@inkadra/doc-schema';
+import { type Person, type ProjectMember, todoListOrder } from '@inkadra/shared';
 import {
   Avatar,
   Button,
@@ -34,6 +34,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api.ts';
+import { getClassifications, useTodoLists } from '../../lib/classifications.ts';
 import { useModules } from '../../lib/modules.ts';
 import { ContextMenu } from '../chrome.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -44,14 +45,15 @@ import './needed.css';
 
 type SceneList = Extract<Element, { type: 'todo' }> & { list: TodoList; sceneId: string };
 
-/** The typed lists of a scene (decision 0058): by kind of list, then oldest first. */
+/**
+ * The typed lists of a scene (decision 0058): by kind of list in the catalog's order
+ * (decision 0136), then oldest first.
+ */
 export function listsOfScene(elements: Iterable<Element>, sceneId: string): SceneList[] {
+  const order = todoListOrder(getClassifications());
   return [...elements]
     .filter((e): e is SceneList => e.type === 'todo' && !!e.list && e.sceneId === sceneId)
-    .sort(
-      (a, b) =>
-        TODO_LISTS.indexOf(a.list) - TODO_LISTS.indexOf(b.list) || a.createdAt - b.createdAt,
-    );
+    .sort((a, b) => order(a.list) - order(b.list) || a.createdAt - b.createdAt);
 }
 
 /**
@@ -222,7 +224,8 @@ function ToBringPanel({
   const [people, setPeople] = useState<Person[]>([]);
   const [shooting, setShooting] = useState<Array<{ n: number; date: string }>>([]);
   const doc = store.doc;
-  const typeName = (list: TodoList) => t(`board.todo.lists.${list}`);
+  const kinds = useTodoLists();
+  const typeName = kinds.label;
   const nameOf = (l: SceneList) => l.title?.trim() || typeName(l.list);
 
   // Under the button, or above it when the room below is short; inside the window on a phone.
@@ -356,7 +359,7 @@ function ToBringPanel({
               <span>{t('needed.scene.emptyBody')}</span>
             </div>
           )}
-          {TODO_LISTS.map((type) => {
+          {[...new Set(lists.map((l) => l.list))].map((type) => {
             const ofType = lists.filter((l) => l.list === type);
             if (!ofType.length) return null;
             return (
@@ -506,6 +509,8 @@ function ToBringPanel({
                 icon="plus"
                 aria-haspopup="menu"
                 aria-expanded={menu?.kind === 'add'}
+                // Every kind archived in Settings → Classifications: nothing to make.
+                disabled={!kinds.active.length}
                 onClick={(e) =>
                   openMenu(e, (r) => ({
                     kind: 'add',
@@ -531,7 +536,10 @@ function ToBringPanel({
           anchor={menuAnchor}
           label={t('needed.scene.listType')}
           onClose={closeMenu}
-          items={TODO_LISTS.map((list) => ({ label: typeName(list), action: () => addList(list) }))}
+          items={kinds.active.map((list) => ({
+            label: typeName(list),
+            action: () => addList(list),
+          }))}
         />
       )}
       {menu?.kind === 'list' && menuList && (
@@ -563,7 +571,11 @@ function ToBringPanel({
           anchor={menuAnchor}
           label={t('needed.scene.changeType')}
           onClose={closeMenu}
-          items={TODO_LISTS.map((list) => ({
+          items={[
+            ...kinds.active,
+            // An archived kind stays on the lists that have it, ticked, never offered to others.
+            ...(kinds.active.includes(menuList.list) ? [] : [menuList.list]),
+          ].map((list) => ({
             label: typeName(list),
             checked: menuList.list === list,
             action: () => step(store, () => updateElement(doc, menuList.id, { list }, LOCAL)),

@@ -3618,7 +3618,7 @@
     "nobody": "niemand",
     "scenes": "Sz. {{scenes}}",
     "sceneNumber": "Sz. {{number}}",
-    "empty": "Die Szenen dieses Tages haben keine Listen zum Mitbringen. Wähle im Menü einer To-do-Karte Kostüm, Requisite oder Equipment und die Szene.",
+    "empty": "Die Szenen dieses Tages haben keine Listen zum Mitbringen. Wähle im Menü einer To-do-Karte einen Listentyp und die Szene.",
     "emptyMine": "An diesem Tag bringst du nichts mit.",
     "scene": {
       "label": "Mitbringen für Szene {{number}}, {{ready}} von {{total}} bereit",
@@ -4193,13 +4193,16 @@
     "shotSizes": "Einstellungsgröße",
     "shotAngles": "Perspektive",
     "shotMovements": "Bewegung",
+    "todoLists": "Listentypen",
     "groups": {
       "projects": "Projekte",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "production": "Produktion"
     },
     "renamed": "Umbenannt",
     "restoreDefaults": "Standardwerte reaktivieren",
     "emptyShots": "Noch keine Werte. Im Frame-Panel gibt es nur „Andere…“.",
+    "emptyTodoLists": "Noch keine Typen. To-do-Listen bleiben nur normal.",
     "duplicate": "Ein Wert mit diesem Namen existiert bereits.",
     "required": "Der Name ist erforderlich.",
     "name": "Name",
@@ -5839,7 +5842,7 @@
         "steps": {
           "0": {
             "title": "Die Listen der Instanz",
-            "text": "Projekttypen, Tags, Einstellungsgrößen, Perspektiven und Bewegungen."
+            "text": "Projekttypen, Tags, Einstellungsgrößen, Perspektiven, Bewegungen und Listentypen."
           },
           "1": {
             "title": "Umbenennen",

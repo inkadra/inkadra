@@ -78,7 +78,7 @@ import {
   worldToScreen,
   zoomAt,
 } from '@inkadra/canvas-core';
-import { type Element, TODO_LISTS, UNSORTED } from '@inkadra/doc-schema';
+import { type Element, UNSORTED } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
   type Board,
@@ -109,6 +109,7 @@ import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { api, RequestError } from '../lib/api.ts';
+import { useTodoLists } from '../lib/classifications.ts';
 import { setModule, takeModuleNotice, useModules } from '../lib/modules.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
@@ -471,6 +472,7 @@ export function Canvas({
   guestMaps,
 }: CanvasProps) {
   const { t, i18n } = useTranslation();
+  const todoKinds = useTodoLists();
   const guest = useContext(GuestModeContext);
   const { instance, user } = useSession();
   const mapAttribution = guestMaps ? guestMaps.attribution : instance?.maps?.attribution;
@@ -3278,8 +3280,13 @@ export function Canvas({
     const listItems: MenuItem[] = listable
       ? [
           { heading: t('board.todo.listType') },
-          ...([undefined, ...TODO_LISTS] as const).map((list) => ({
-            label: t(`board.todo.lists.${list ?? 'none'}`),
+          ...[
+            undefined,
+            ...todoKinds.active,
+            // An archived kind stays on the list that has it, ticked, never offered to others.
+            ...(listable.list && !todoKinds.active.includes(listable.list) ? [listable.list] : []),
+          ].map((list) => ({
+            label: list ? todoKinds.label(list) : t('board.todo.lists.none'),
             content: list && <NeededKind list={list} />,
             checked: listable.list === list,
             action: () => updateElement(doc, listable.id, { list }, LOCAL),
@@ -3707,6 +3714,7 @@ export function Canvas({
     detectedScripts,
     openDetectedScript,
     offers,
+    todoKinds,
   ]);
 
   /** The phone card sheet's own actions (#110), beside the menu's: only with the menu open. */

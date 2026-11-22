@@ -17,6 +17,7 @@ import {
   PLAN_SHEET_PDF_CAPABILITY,
   SCHEDULE_SOURCES_CAPABILITY,
   SERVER_LIVE_CAPABILITY,
+  TODO_LIST_CATALOG_CAPABILITY,
   TRANSFER_CANCEL_CAPABILITY,
   UpdateMe,
   type User,
@@ -172,6 +173,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         TRANSFER_CANCEL_CAPABILITY,
         SERVER_LIVE_CAPABILITY,
         CLASSIFICATION_DELETE_CAPABILITY,
+        TODO_LIST_CATALOG_CAPABILITY,
         IDEMPOTENT_IMPORT_CAPABILITY,
         VIDEO_RENDITIONS_CAPABILITY,
         // Optional `limit` and `cursor` on the member lists (#804).

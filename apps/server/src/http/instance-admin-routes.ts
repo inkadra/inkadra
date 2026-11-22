@@ -88,6 +88,9 @@ export function registerInstanceAdminRoutes(
       if (currentAdmin?.role !== 'admin' || currentAdmin.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
       const current = await readClassifications(tx);
+      // A client before decision 0136 sends no kinds of to-do lists: they stay as they are.
+      if (!(req.body as { todoLists?: unknown } | null)?.todoLists)
+        next.todoLists = current.todoLists;
       const value = validateCatalogUpdate(current, next, await deletedIds(tx));
       return saveCatalogs(tx, current, value);
     });

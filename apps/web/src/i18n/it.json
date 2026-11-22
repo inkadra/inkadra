@@ -3618,7 +3618,7 @@
     "nobody": "nessuno",
     "scenes": "Sc. {{scenes}}",
     "sceneNumber": "Sc. {{number}}",
-    "empty": "Le scene di questo giorno non hanno liste da portare. Dal menu di una card to-do scegli Costumi, Attrezzeria o Attrezzatura e la scena.",
+    "empty": "Le scene di questo giorno non hanno liste da portare. Dal menu di una card to-do scegli un tipo di lista e la scena.",
     "emptyMine": "Per questo giorno non porti niente.",
     "scene": {
       "label": "Da portare per la scena {{number}}, {{ready}} di {{total}} pronti",
@@ -4193,13 +4193,16 @@
     "shotSizes": "Campo",
     "shotAngles": "Angolazione",
     "shotMovements": "Movimento",
+    "todoLists": "Tipi di lista",
     "groups": {
       "projects": "Progetti",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "production": "Produzione"
     },
     "renamed": "Rinominato",
     "restoreDefaults": "Riattiva i valori predefiniti",
     "emptyShots": "Ancora nessun valore. Nel pannello dell’inquadratura resta solo «Altro…».",
+    "emptyTodoLists": "Ancora nessun tipo. Le liste to-do restano solo normali.",
     "duplicate": "Esiste già un valore con questo nome.",
     "required": "Il nome è obbligatorio.",
     "name": "Nome",
@@ -5839,7 +5842,7 @@
         "steps": {
           "0": {
             "title": "Le liste dell’istanza",
-            "text": "Tipi di progetto, tag, campi, angolazioni e movimenti."
+            "text": "Tipi di progetto, tag, campi, angolazioni, movimenti e tipi di lista."
           },
           "1": {
             "title": "Rinomina",

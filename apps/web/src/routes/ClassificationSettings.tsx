@@ -2,9 +2,10 @@ import {
   type ClassificationCatalogs,
   type ClassificationOption,
   canDeleteClassification,
-  DEFAULT_SHOT_CATALOGS,
   SHOT_CATALOG_KEYS,
-  type ShotCatalogKey,
+  TRANSLATED_CATALOG_KEYS,
+  TRANSLATED_DEFAULTS,
+  type TranslatedCatalogKey,
 } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, Icon, IconButton, Input } from '@inkadra/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,25 +17,27 @@ import { anchorCatalog } from './settings-search.ts';
 import { ANCHOR_PARAM } from './settings-sections.ts';
 import './classification-settings.css';
 
-type CatalogKey = 'projectTypes' | 'tags' | ShotCatalogKey;
+type CatalogKey = 'projectTypes' | 'tags' | TranslatedCatalogKey;
 const GROUPS: { title: string; keys: CatalogKey[] }[] = [
   { title: 'projects', keys: ['projectTypes', 'tags'] },
   { title: 'storyboard', keys: SHOT_CATALOG_KEYS },
+  { title: 'production', keys: ['todoLists'] },
 ];
 const ALL_KEYS = GROUPS.flatMap((g) => g.keys);
 const SUMMARY_CHIPS = 6;
 
-const isShot = (key: CatalogKey): key is ShotCatalogKey =>
-  (SHOT_CATALOG_KEYS as string[]).includes(key);
+/** A catalog whose defaults are translated until renamed: storyboard values, kinds of lists. */
+const isShot = (key: CatalogKey): key is TranslatedCatalogKey =>
+  (TRANSLATED_CATALOG_KEYS as string[]).includes(key);
 
 /** The defaults that "Restore" brings back: missing or archived, never a renamed one. */
-function restoredDefaults(key: ShotCatalogKey, options: ClassificationOption[]) {
+function restoredDefaults(key: TranslatedCatalogKey, options: ClassificationOption[]) {
   const next = options.map((o) =>
-    o.archived && DEFAULT_SHOT_CATALOGS[key].some((d) => d.id === o.id) && !isRenamedDefault(key, o)
+    o.archived && TRANSLATED_DEFAULTS[key].some((d) => d.id === o.id) && !isRenamedDefault(key, o)
       ? { ...o, archived: false }
       : o,
   );
-  for (const original of DEFAULT_SHOT_CATALOGS[key])
+  for (const original of TRANSLATED_DEFAULTS[key])
     if (!next.some((o) => o.id === original.id)) next.push({ ...original });
   return next;
 }
@@ -204,7 +207,13 @@ export function ClassificationSettings() {
                     const expanded = open.has(key);
                     const bodyId = `catalog-${key}`;
                     const restored = isShot(key) ? restoredDefaults(key, options) : null;
-                    const emptyText = isShot(key) ? t('catalogs.emptyShots') : t('catalogs.empty');
+                    const emptyText = t(
+                      key === 'todoLists'
+                        ? 'catalogs.emptyTodoLists'
+                        : isShot(key)
+                          ? 'catalogs.emptyShots'
+                          : 'catalogs.empty',
+                    );
                     const deletable = (o: ClassificationOption) =>
                       isNew(key, o) || canDeleteClassification(o);
                     // The buttons line up: every row keeps the place of Delete once one has it.
@@ -320,7 +329,7 @@ export function ClassificationSettings() {
                                           onChange={(e) => {
                                             const original =
                                               isShot(key) &&
-                                              DEFAULT_SHOT_CATALOGS[key].find(
+                                              TRANSLATED_DEFAULTS[key].find(
                                                 (d) => d.id === option.id,
                                               );
                                             // Typing the translation again undoes the rename.
@@ -329,7 +338,11 @@ export function ClassificationSettings() {
                                             const label =
                                               original &&
                                               e.target.value ===
-                                                shotOptionLabel(key as ShotCatalogKey, original, t)
+                                                shotOptionLabel(
+                                                  key as TranslatedCatalogKey,
+                                                  original,
+                                                  t,
+                                                )
                                                 ? original.label
                                                 : e.target.value;
                                             update(

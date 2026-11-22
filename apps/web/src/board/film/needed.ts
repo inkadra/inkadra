@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { updateTodoItem } from '@inkadra/canvas-core';
-import { type Element, TODO_LISTS, type TodoList } from '@inkadra/doc-schema';
-import type { ShootingDayInput } from '@inkadra/shared';
+import type { Element, TodoList } from '@inkadra/doc-schema';
+import { type ShootingDayInput, todoListOrder } from '@inkadra/shared';
 import type * as Y from 'yjs';
+import { getClassifications } from '../../lib/classifications.ts';
 
 /**
  * One line of a shooting day's "Da portare": the same thing in the same kind of list, from
@@ -45,7 +46,10 @@ export function sceneIdsOf(
   return ids;
 }
 
-/** Everything the scenes of the day need, grouped by kind of list, duplicates merged. */
+/**
+ * Everything the scenes of the day need, grouped by kind of list in the catalog's order
+ * (decision 0136), duplicates merged.
+ */
 export function neededForDay(day: ShootingDayInput, elements: Iterable<Element>): NeededRow[] {
   const byId = new Map([...elements].map((el) => [el.id, el]));
   const scenes = sceneIdsOf(day, byId);
@@ -78,7 +82,8 @@ export function neededForDay(day: ShootingDayInput, elements: Iterable<Element>)
       }
     }
   }
-  return [...rows.values()].sort((a, b) => TODO_LISTS.indexOf(a.list) - TODO_LISTS.indexOf(b.list));
+  const order = todoListOrder(getClassifications());
+  return [...rows.values()].sort((a, b) => order(a.list) - order(b.list));
 }
 
 /** Ticks or assigns every item a row merges, on the cards themselves. */

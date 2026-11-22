@@ -2727,6 +2727,58 @@
               }
             ]
           },
+          "todoLists": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "uses": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 200,
+            "default": [
+              {
+                "id": "wardrobe",
+                "label": "Wardrobe",
+                "archived": false
+              },
+              {
+                "id": "props",
+                "label": "Props",
+                "archived": false
+              },
+              {
+                "id": "equipment",
+                "label": "Equipment",
+                "archived": false
+              }
+            ]
+          },
           "revision": {
             "type": "integer",
             "minimum": 0
@@ -11795,6 +11847,58 @@
                   {
                     "id": "zoom",
                     "label": "Zoom",
+                    "archived": false
+                  }
+                ]
+              },
+              "todoLists": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "legacy": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "uses": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "archived"
+                  ]
+                },
+                "maxItems": 200,
+                "default": [
+                  {
+                    "id": "wardrobe",
+                    "label": "Wardrobe",
+                    "archived": false
+                  },
+                  {
+                    "id": "props",
+                    "label": "Props",
+                    "archived": false
+                  },
+                  {
+                    "id": "equipment",
+                    "label": "Equipment",
                     "archived": false
                   }
                 ]

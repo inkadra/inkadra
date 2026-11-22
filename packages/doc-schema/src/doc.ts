@@ -20,7 +20,7 @@ import {
 import { fastCheckOf, UNSURE } from './fast-items.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 27;
+export const CURRENT_SCHEMA_VERSION = 28;
 
 /**
  * For each document schema since decision 0102, the oldest client schema proven safe to write a
@@ -37,6 +37,7 @@ export const WRITER_SCHEMAS: Readonly<Record<number, { min: number; proof?: stri
   // The proof to lower it to 26 exists (older-client.test.ts, "schema 27 from 26: …"); kept at
   // 27 until the maintainer lowers a minimum for the first time.
   27: { min: 27 },
+  28: { min: 28 },
 };
 
 /**
@@ -270,6 +271,10 @@ const migrations: Record<number, Migration> = {
   // clients placed once (decision 0123, answer 2). Nothing is written by the migration. No card
   // edit of an older client touches `meta` (P11); older clients stay read-only all the same.
   26: () => {},
+  // 28: a to-do list's `list` may be the UUID of a kind an administrator added to the instance
+  // catalog (decision 0136). Nothing is written by the migration; older clients stay read-only,
+  // since their check would refuse such a card.
+  27: () => {},
 };
 
 /**
