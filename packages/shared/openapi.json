@@ -13974,6 +13974,16 @@
               }
             }
           },
+          "409": {
+            "description": "The destination of reports changed meanwhile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "413": {
             "description": "Size limit exceeded"
           },
@@ -14282,6 +14292,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The destination of reports changed meanwhile",
             "content": {
               "application/json": {
                 "schema": {
@@ -15183,6 +15203,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Over the crew rows a demo project may hold, or a character already played by another member",
             "content": {
               "application/json": {
                 "schema": {
@@ -17015,6 +17045,16 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -18245,6 +18285,16 @@
               }
             }
           },
+          "409": {
+            "description": "A value in use (details.reason `classification_in_use`), or the configuration changed meanwhile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -18444,6 +18494,16 @@
           },
           "409": {
             "description": "Sole owner of shared projects (details: DeleteMeBlocked), or last active instance administrator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -20538,6 +20598,26 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Another export of this project is still running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -23512,6 +23592,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -23595,6 +23685,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency-Key used with a different request",
             "content": {
               "application/json": {
                 "schema": {
@@ -24109,6 +24209,16 @@
               }
             }
           },
+          "409": {
+            "description": "A project needs at least one owner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -24191,6 +24301,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A project needs at least one owner",
             "content": {
               "application/json": {
                 "schema": {
@@ -24410,6 +24530,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The project already has a Production board",
             "content": {
               "application/json": {
                 "schema": {
@@ -25665,6 +25795,16 @@
               }
             }
           },
+          "409": {
+            "description": "Already a member, already has an account, or an invitation for this email is pending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -25757,6 +25897,16 @@
           },
           "409": {
             "description": "Cannot be sent again: not an unused email invitation, the access it offers has ended, its inviter can no longer give it, the instance cannot send email, or the invitation changed while it was being sent (the earlier link then stays).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -25905,6 +26055,16 @@
           },
           "429": {
             "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26861,6 +27021,9 @@
               }
             }
           },
+          "416": {
+            "description": "Range not satisfiable"
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -26957,6 +27120,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -27535,6 +27708,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
@@ -28206,6 +28382,16 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -28301,6 +28487,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -29238,6 +29434,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -30385,6 +30591,16 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -30623,6 +30839,16 @@
                     "items",
                     "nextCursor"
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -31467,6 +31693,16 @@
               }
             }
           },
+          "409": {
+            "description": "A revoked link cannot be changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
@@ -31681,6 +31917,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShareLinkPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -32537,6 +32783,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -32999,6 +33248,9 @@
                 }
               }
             }
+          },
+          "416": {
+            "description": "Range not satisfiable"
           }
         }
       }
@@ -35764,6 +36016,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
