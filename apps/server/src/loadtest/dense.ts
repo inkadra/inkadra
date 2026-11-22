@@ -45,6 +45,8 @@ const CURSOR_MS: [number, number] = [50, 100];
 /** One edit a second per editor, one in five a stroke drawn on a frame. */
 const EDIT_MS = 1000;
 const STROKE_SHARE = 0.2;
+/** Share of the expected edits (one a second per editor) that must come back timed. */
+const MIN_SAMPLE_SHARE = 0.5;
 /** Frames this full get no more strokes (MAX_STROKES is 2000). */
 const FULL_FRAME = 1500;
 
@@ -79,6 +81,8 @@ export interface DenseResult extends Omit<Result, 'preset'> {
   board: { elements: number; frames: number; strokes: number; bytes: number };
   /** Cursor moves the editors published. */
   cursors: number;
+  /** Edits of the run still not acknowledged 30 s after its end. */
+  pendingEdits: number;
   strokes: number;
   burst: {
     clients: number;
@@ -206,12 +210,20 @@ export async function runDense(opts: DenseOptions) {
     return performance.now() - started;
   };
 
-  const editors: Array<{ board: ReturnType<typeof open>; note: string; value: number }> = [];
+  interface Editor {
+    board: ReturnType<typeof open>;
+    note: string;
+    value: number;
+    /** Edits of the run still waiting for their acknowledgement. */
+    pending(): number;
+  }
+  const editors: Editor[] = [];
+  let pendingEdits = 0;
 
   async function editor(index: number, frames: string[], end: number) {
     const board = await openBoard(boardIdOf());
     const note = newId();
-    const me = { board, note, value: 0 };
+    const me: Editor = { board, note, value: 0, pending: () => 0 };
     editors[index] = me;
     addElement(board.doc, {
       id: note,
@@ -224,13 +236,27 @@ export async function runDense(opts: DenseOptions) {
       createdBy: null,
       createdAt: Date.now(),
     });
-    let started = 0;
+    // Each edit timed to its own acknowledgement: the provider counts the updates it sent that
+    // the server has not acknowledged yet, and the server acknowledges one connection's updates
+    // in the order they came. `timed` marks the edits of the run, not the note's creation.
+    const waiting: Array<{ at: number; timed: boolean }> = [];
+    let timing = false;
+    let last = board.provider.unsyncedChanges;
     board.provider.on('unsyncedChanges', ({ number }: { number: number }) => {
-      if (number === 0 && started && Date.now() < end) {
-        editMs.push(performance.now() - started);
-        started = 0;
+      const now = performance.now();
+      for (let i = last; i < number; i++) waiting.push({ at: now, timed: timing });
+      for (let i = number; i < last; i++) {
+        const sent = waiting.shift();
+        if (sent?.timed) editMs.push(now - sent.at);
       }
+      last = number;
     });
+    // A closed connection forgets what it waited for; the sync after it counts again from one.
+    board.provider.on('close', () => {
+      waiting.length = 0;
+      last = 0;
+    });
+    me.pending = () => waiting.filter((w) => w.timed).length;
     const cursor = { x: Math.random() * 4000, y: Math.random() * 3000 };
     let nextEdit = Date.now() + Math.random() * EDIT_MS;
     while (Date.now() < end && !stop.signal.aborted) {
@@ -244,7 +270,7 @@ export async function runDense(opts: DenseOptions) {
       cursors += 1;
       if (Date.now() >= nextEdit) {
         nextEdit += EDIT_MS * (0.8 + Math.random() * 0.4);
-        if (board.provider.unsyncedChanges === 0) started = performance.now();
+        timing = true;
         const frame = frames[Math.floor(Math.random() * frames.length)];
         if (frame && Math.random() < STROKE_SHARE) {
           addStroke(board.doc, frame, strokeOf());
@@ -254,6 +280,7 @@ export async function runDense(opts: DenseOptions) {
           sentAt.set(me.value, performance.now());
           board.doc.transact(() => roots(board.doc).elements.get(note)?.set('x', me.value));
         }
+        timing = false;
         edits += 1;
       }
       await pause(CURSOR_MS[0] + Math.random() * (CURSOR_MS[1] - CURSOR_MS[0]));
@@ -343,6 +370,7 @@ export async function runDense(opts: DenseOptions) {
     if (!stop.signal.aborted && editors.filter(Boolean).length === preset.editors) {
       log('Reconnect burst: every client drops, edits offline, and comes back at once…');
       await settle(boards, 30_000);
+      pendingEdits = editors.reduce((n, e) => n + e.pending(), 0);
       measuring = false;
       for (const socket of sockets) socket.disconnect();
       for (const e of editors) {
@@ -421,6 +449,7 @@ export async function runDense(opts: DenseOptions) {
     server: baseline ? summarizeServer(baseline, readings) : null,
     board: boardInfo,
     cursors,
+    pendingEdits,
     strokes,
     burst,
     eventLoopP99MaxMs: loopMax,
@@ -445,6 +474,12 @@ function strokeOf() {
 /** What `evaluate` checks, plus the burst and the event loop. */
 export function evaluateDense(r: DenseResult, limits: DenseLimits): string[] {
   const out = evaluate(r, limits);
+  // About one edit a second per editor: a run with far fewer samples says nothing.
+  const minimum = Math.floor(r.editors * r.durationS * MIN_SAMPLE_SHARE);
+  if (r.editMs.length < minimum)
+    out.push(`only ${r.editMs.length} edit round trips measured, at least ${minimum} needed`);
+  if (r.pendingEdits > 0)
+    out.push(`${r.pendingEdits} edits not acknowledged 30 s after the end of the run`);
   if (!r.burst) out.push('the reconnect burst did not run');
   else {
     if (r.burst.syncMs === null) out.push(`reconnect burst: ${r.burst.detail}`);
@@ -473,6 +508,9 @@ export function formatDense(r: DenseResult, limits: DenseLimits, failures: strin
   base.push(
     `Board                 ${r.board.elements} cards, ${r.board.frames} frames with ${r.board.strokes} strokes, ${Math.round(r.board.bytes / 1024)} KiB seeded`,
     `Presence              ${r.cursors} cursor moves, ${r.strokes} strokes drawn`,
+    'Timing                edit round trip: each edit until the server acknowledged it;',
+    '                      delivery: each value a reader received (one overwritten first is not)',
+    `Unacknowledged edits  ${r.pendingEdits} 30 s after the end   limit 0`,
     `Event loop p99        worst ${ms(r.eventLoopP99MaxMs)}   ${
       r.eventLoopShared
         ? `limit ${limits.eventLoopP99Ms} ms`

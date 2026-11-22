@@ -10,7 +10,7 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   readers: 3,
   boards: 1,
   edits: 900,
-  editMs: [5, 6, 7],
+  editMs: Array.from({ length: 600 }, (_, i) => 5 + (i % 7)),
   deliveryMs: [8, 9],
   switches: 18,
   uploads: { ok: 0, failed: 0 },
@@ -19,6 +19,7 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   server: null,
   board: { elements: 1000, frames: 20, strokes: 15000, bytes: 7_500_000 },
   cursors: 12000,
+  pendingEdits: 0,
   strokes: 180,
   burst: { clients: 18, unloaded: true, syncMs: 2500, converged: true, detail: null },
   eventLoopP99MaxMs: 120,
@@ -86,6 +87,16 @@ describe('evaluateDense', () => {
     };
     expect(evaluateDense(result({ burst: split }), DENSE.limits)).toEqual([
       'reconnect burst did not converge: 2 clients differ',
+    ]);
+  });
+
+  it('fails a run with too few timed edits or edits never acknowledged', () => {
+    // 15 editors for 60 s: at least 450 of about 900 edits must come back timed.
+    expect(evaluateDense(result({ editMs: [5, 6, 7] }), DENSE.limits)).toEqual([
+      'only 3 edit round trips measured, at least 450 needed',
+    ]);
+    expect(evaluateDense(result({ pendingEdits: 2 }), DENSE.limits)).toEqual([
+      '2 edits not acknowledged 30 s after the end of the run',
     ]);
   });
 
