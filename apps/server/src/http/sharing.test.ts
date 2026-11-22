@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { eq, like, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createAuth } from '../auth.ts';
+import { claimSetup, createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
@@ -329,6 +329,13 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const [late] = await db.select().from(user).where(eq(user.email, 'late@example.com'));
     expect(late?.role).toBe('member');
     await db.delete(user).where(eq(user.email, 'late@example.com'));
+    // A claim left stale is not taken over while accounts exist.
+    await db
+      .insert(instanceSetting)
+      .values({ key: 'setup', value: {}, updatedAt: new Date(Date.now() - 120_000) });
+    expect(await claimSetup(db)).toBe(false);
+    await db.delete(instanceSetting).where(eq(instanceSetting.key, 'setup'));
+    expect(await claimSetup(db)).toBe(false);
   });
 
   it('sets up a project with nested boards', async () => {
