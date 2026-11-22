@@ -197,7 +197,10 @@ const KIT_CACHE_BOARDS = 500;
 
 /** Kits decoded and requests waiting for a decode, in this process (read by the tests). */
 export const kitDecodes = { decoded: 0, waiting: 0 };
-/** Requests that may wait for a decode: a request beyond them goes on without that board. */
+/**
+ * Requests that may wait for a decode. A request beyond them is answered 503: a partial answer
+ * would be kept by the clients as if it were whole.
+ */
 export const MAX_WAITING_DECODES = 16;
 let decoding: Promise<unknown> = Promise.resolve();
 
@@ -255,7 +258,7 @@ async function boardKits(
       continue;
     }
     if (gone()) break;
-    const kit = await oneAtATime(async () => {
+    const queued = oneAtATime(async () => {
       if (gone()) return null;
       await new Promise((resolve) => setImmediate(resolve));
       // Read under the access rule, in the same statement: a grant may have been closed, or the
@@ -278,6 +281,8 @@ async function boardKits(
         return null;
       }
     });
+    if (!queued) throw new HttpError('unavailable', 'The server is busy. Try again.', undefined, 5);
+    const kit = await queued;
     if (kit) out.push(kit);
   }
   return out;

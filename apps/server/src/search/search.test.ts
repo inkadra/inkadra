@@ -302,7 +302,7 @@ describe('documents decoded for the project kit', () => {
     await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
     const queued = Array.from({ length: MAX_WAITING_DECODES }, () => oneAtATime(async () => 1));
     expect(queued.every((q) => q !== null)).toBe(true);
-    // One more goes on without waiting: the caller leaves that board out.
+    // One more is refused: its request is answered 503.
     expect(oneAtATime(async () => 1)).toBeNull();
     unblock();
     await blocker;
@@ -919,6 +919,39 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       ),
     ).not.toContain('cestinata');
     for (const id of [closed.id, trashed.id]) await db.delete(board).where(eq(board.id, id));
+  });
+
+  it('answers 503 rather than a partial kit while too many requests wait for a decode', async () => {
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Coda' },
+    });
+    const id = added.json().id as string;
+    const doc = createBoardDoc(id);
+    addElement(doc, { ...base(), type: 'frame', cast: ['Coda'] });
+    const update = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    let unblock = () => {};
+    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const queued = Array.from({ length: MAX_WAITING_DECODES }, () => oneAtATime(async () => 0));
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}/cast-appearances`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe('unavailable');
+    expect(res.headers['retry-after']).toBe('5');
+    unblock();
+    await Promise.all([blocker, ...queued]);
+    expect((await get('owner', `/api/v1/projects/${projectId}/cast-appearances`)).status).toBe(200);
+    await db.delete(board).where(eq(board.id, id));
   });
 
   it('limits how often one person reads the project kit', async () => {
