@@ -100,9 +100,10 @@ judges nothing on its own:
 
 The names each `packages/*` entry point exports are compared with the commit the change builds on.
 
-The server tests check every answer under `/api/v1` against this contract
+The server tests check every answer they produce under `/api/v1` against this contract
 (`apps/server/src/test-response-contract.ts`). A test failing with "Answers that do not match
-the API contract" names the route, the status and the field: either the handler is wrong (it
+the API contract" names the route and the status, and for a body that breaks its schema the
+field too: either the handler is wrong (it
 left out a field the contract promises, or sent a wrong type), so fix the handler; or the server
 has always answered like this and the contract does not say so (a status such as 409 or 429, a
 field, a `null`), so describe it additively in `src/openapi.ts` and regenerate. A difference
