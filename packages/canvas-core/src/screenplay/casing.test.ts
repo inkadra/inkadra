@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseScreenplay } from './parse.ts';
 import { castName, defaultOptions, placeName, planImport } from './plan.ts';

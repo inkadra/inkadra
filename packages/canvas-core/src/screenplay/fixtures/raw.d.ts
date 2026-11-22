@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /** Fixture files read as text by the tests, as Vite's `?raw` does. */
 declare module '*?raw' {
   const text: string;

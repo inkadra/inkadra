@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /**
  * A screenplay read into scenes and laid over a storyboard (decisions 0040, 0064, 0082): the
  * Fountain and Final Draft readers, the text of a PDF's pages as Fountain, the import plan and

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type * as Y from 'yjs';
 import { createElement, DEFAULT_WIDTH, listElements } from '../board.ts';
 import { addScenes, frameLetter, type NewScene } from '../film.ts';

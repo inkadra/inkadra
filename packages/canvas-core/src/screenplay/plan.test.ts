@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';

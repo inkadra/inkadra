@@ -4,6 +4,8 @@
 // apps/clipper), with MPL-2.0 (docs/decisions/0008). Add exceptions only with a note in
 // docs/decisions.
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ALLOWED = new Set([
@@ -41,6 +43,21 @@ const REVIEWED = new Map([
   // Dependency of tus-js-client; MIT per its Readme, the package.json has no licence field.
   ['combine-errors', 'MIT'],
 ]);
+
+/** Files of the MPL-2.0 components that must start with their SPDX line (decision 0008). */
+const MPL_SOURCES =
+  /^(packages\/[^/]+|apps\/clipper)\/.*\.(c|m)?(j|t)sx?$|^(packages\/[^/]+|apps\/clipper)\/.*\.css$/;
+
+/** The tracked source files of the MPL-2.0 components whose first lines lack the SPDX line. */
+export function missingSpdx(files, read) {
+  return files.filter(
+    (file) =>
+      MPL_SOURCES.test(file) &&
+      !read(file)
+        .split('\n', 3)
+        .some((line) => line.includes('SPDX-License-Identifier: MPL-2.0')),
+  );
+}
 
 function ok(expr, allowed) {
   // Accept SPDX expressions where every alternative of an OR, or every part of an AND, is allowed.
@@ -88,6 +105,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ],
   ];
   let failed = false;
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const tracked = execFileSync('git', ['ls-files', 'packages', 'apps/clipper'], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  const unmarked = missingSpdx(tracked.split('\n').filter(Boolean), (file) =>
+    readFileSync(join(root, file), 'utf8'),
+  );
+  if (unmarked.length > 0) {
+    console.error(
+      `Files without "SPDX-License-Identifier: MPL-2.0" in their first lines (${unmarked.length}):\n  ${unmarked.join('\n  ')}`,
+    );
+    failed = true;
+  }
   for (const [name, { count, problems }] of runs) {
     if (count === 0) {
       console.error(

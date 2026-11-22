@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { check } from './check-licenses.mjs';
+import { check, missingSpdx } from './check-licenses.mjs';
 
 test('counts every package and flags only licences outside the allow-list', () => {
   const pkg = (name) => ({ name, versions: ['1.0.0'] });
@@ -30,4 +30,20 @@ test('the MPL-2.0 components may not depend on AGPL, GPL or LGPL code, even revi
     'c@1.0.0: LGPL-3.0-or-later',
     'libheif-js@1.0.0: Unknown',
   ]);
+});
+
+test('every source file of an MPL-2.0 component starts with its SPDX line', () => {
+  const files = {
+    'packages/ui/src/a.ts': '// SPDX-License-Identifier: MPL-2.0\nexport {};',
+    'packages/ui/src/b.ts': 'export {};\n',
+    'packages/ui/src/c.css': '/* SPDX-License-Identifier: MPL-2.0 */\n',
+    'packages/ui/src/d.tsx': '#!/usr/bin/env node\n// SPDX-License-Identifier: MPL-2.0\n',
+    'packages/ui/package.json': '{}',
+    'apps/clipper/src/e.mjs': 'export {};\n',
+    'apps/web/src/f.ts': 'export {};\n',
+  };
+  assert.deepEqual(
+    missingSpdx(Object.keys(files), (f) => files[f]),
+    ['packages/ui/src/b.ts', 'apps/clipper/src/e.mjs'],
+  );
 });

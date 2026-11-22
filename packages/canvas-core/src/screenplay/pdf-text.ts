@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { HEADING, MAX_SCRIPT_BYTES, ScriptError } from './script.ts';
 
 /** A run of text with its position on the page, as pdf.js reports it (origin bottom left). */

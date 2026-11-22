@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /**
  * A small, strict XML reader: enough of XML 1.0 for a Final Draft file, without the DOM, so it
  * runs where `DOMParser` does not (Node, Hermes). It keeps elements, their attributes and their
