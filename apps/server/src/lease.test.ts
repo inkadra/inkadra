@@ -50,7 +50,7 @@ describe.skipIf(!process.env.REDIS_URL)('single-process lease (#790, #819)', () 
     redis.disconnect();
   });
 
-  it('refuses a second holder, lets the same host restart, frees on release and expiry', async () => {
+  it('refuses a second holder, frees on release and expiry', async () => {
     const onLost = vi.fn();
     const first = await acquireLease(redis, role, log, { host: 'a', onLost });
     await expect(acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 })).rejects.toThrow(
@@ -59,19 +59,30 @@ describe.skipIf(!process.env.REDIS_URL)('single-process lease (#790, #819)', () 
     await expect(acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 })).rejects.toThrow(
       /one web-.* process per instance/,
     );
-    // A restart of the same container after a crash: taken back at once.
-    const again = await acquireLease(redis, role, log, { host: 'a', onLost });
-    await first.release(); // not the holder any more: leaves the lease alone
-    await expect(
-      acquireLease(redis, role, log, { host: 'b', onLost, waitMs: 0 }),
-    ).rejects.toThrow();
-    await again.release();
+    // Another live process with the same host name (a container given the same `hostname:`,
+    // even with the same pid in its own namespace) is refused too.
+    await expect(acquireLease(redis, role, log, { host: 'a', onLost, waitMs: 0 })).rejects.toThrow(
+      LeaseTakenError,
+    );
+    await first.release();
     const other = await acquireLease(redis, role, log, { host: 'b', onLost, ttlMs: 200 });
     // A crashed holder (never renewed, never released): free once its time is over.
     await other.release();
     // A holder killed before releasing: the next process waits for the lease to end.
     await redis.set(leaseKey(role), 'gone/1/x', 'PX', 1500);
     await (await acquireLease(redis, role, log, { host: 'c', onLost, waitMs: 5000 })).release();
+  });
+
+  it('waits for a lease its own host left after a crash', async () => {
+    const onLost = vi.fn();
+    // Nothing tells a crashed run of this container from a live one elsewhere with its name.
+    await redis.set(leaseKey(role), `a/${process.pid}/x`, 'PX', 1500);
+    await expect(acquireLease(redis, role, log, { host: 'a', onLost, waitMs: 0 })).rejects.toThrow(
+      LeaseTakenError,
+    );
+    const lease = await acquireLease(redis, role, log, { host: 'a', onLost, waitMs: 5000 });
+    expect(await redis.get(leaseKey(role))).toMatch(new RegExp(`^a/${process.pid}/`));
+    await lease.release();
   });
 
   it('renews while held and stops the holder when another took over', async () => {

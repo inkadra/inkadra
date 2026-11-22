@@ -298,13 +298,13 @@ volume and live video sessions in memory, so two of either would lose edits or u
 ([#790](https://github.com/inkadra/inkadra/issues/790),
 [#819](https://github.com/inkadra/inkadra/issues/819)). Each of these processes holds a lease
 in Valkey while it runs, and a second one with the same role refuses to start with
-"Another inkadra process with the … role is running" after waiting 35 seconds. After a crash
-the lease ends by itself within 30 seconds, and a new process waits for it; the same container
-restarting takes it back at once. On an orchestrator,
+"Another inkadra process with the … role is running" after waiting 35 seconds. A clean stop
+releases the lease. After a crash, or a start that failed or was stopped before it ended, the
+lease ends by itself within 30 seconds, and the next process,
+the same container restarting included, waits for it: web or collab start up to 30 seconds
+later. On an orchestrator,
 update by recreating (stop the old process, then start the new one), not by a rolling update.
-Only `worker` can run as several replicas. The restart takeover tells processes apart by host
-name: never `--scale` web or collab with a fixed `hostname:` or with host networking. Replicas
-sharing one host name take the lease from each other in turn instead of refusing to start.
+Only `worker` can run as several replicas.
 
 ```sh
 docker compose -f compose.yaml -f deploy/compose.split.yaml \
