@@ -709,6 +709,35 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     await call('owner', 'DELETE', `/api/v1/projects/${p}`);
   });
 
+  it('keeps the invitations of a deactivated member when their access is changed', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Pausa' });
+    const p = made.body.id as string;
+    const member = `/api/v1/projects/${p}/members/${as.guest.id}`;
+    expect((await call('owner', 'PUT', member, { role: 'editor' })).status).toBe(200);
+    const link = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      projectId: p,
+      role: 'editor',
+    });
+    await db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+    try {
+      // Still an editor: a change that keeps the role must not end what they could still give.
+      expect((await call('owner', 'PUT', member, { role: 'editor' })).status).toBe(200);
+      const [row] = await db
+        .select({ revokedAt: invitationTable.revokedAt })
+        .from(invitationTable)
+        .where(eq(invitationTable.id, link.body.invitation.id));
+      expect(row?.revokedAt).toBeNull();
+    } finally {
+      await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+    }
+    const token = link.body.invitation.url.split('/join/')[1];
+    expect((await call(null, 'GET', `/api/v1/invitations/by-token/${token}`)).body.status).toBe(
+      'valid',
+    );
+    await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
   it('counts no sign-up on an invitation whose inviter is deactivated meanwhile', async () => {
     const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Provino' });
     const p = made.body.id as string;

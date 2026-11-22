@@ -53,6 +53,18 @@ export async function inviterCanGrant(
     .from(user)
     .where(and(eq(user.id, row.invitedBy), isNull(user.deactivatedAt)));
   if (!inviter) return false;
+  return row.projectId ? inviterHoldsRole(db, row) : inviter.role === 'admin';
+}
+
+/**
+ * The role part of inviterCanGrant, whatever the state of the account: a deactivation only
+ * suspends an invitation, so revoking it for good looks at the role alone.
+ */
+async function inviterHoldsRole(
+  db: Pick<Database, 'select' | 'execute'>,
+  row: InvitationRow,
+): Promise<boolean> {
+  if (!row.invitedBy) return false;
   const role = invitedRole(row) ?? 'viewer';
   if (row.boardId) {
     const access = await boardAccess(db, { id: row.invitedBy }, row.boardId);
@@ -60,7 +72,7 @@ export async function inviterCanGrant(
   }
   if (row.projectId)
     return atLeast(await projectRole(db, { id: row.invitedBy }, row.projectId), role);
-  return inviter.role === 'admin';
+  return false;
 }
 
 /** invitationStatus, with an invitation its inviter can no longer give read as revoked. */
@@ -93,7 +105,7 @@ export async function revokeOutgrownInvitations(
     );
   const outgrown: string[] = [];
   for (const row of pending)
-    if (invitationStatus(row) === 'valid' && !(await inviterCanGrant(tx, row)))
+    if (invitationStatus(row) === 'valid' && !(await inviterHoldsRole(tx, row)))
       outgrown.push(row.id);
   if (outgrown.length > 0)
     await tx
