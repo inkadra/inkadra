@@ -97,7 +97,8 @@ jq '.syscalls += [{"names": ["clone", "clone3", "unshare", "setns", "mount", "um
 ```
 
 `cap_drop: [ALL]`, `no-new-privileges` and a read-only root file system all work with it
-(checked on Docker 29 with bubblewrap 0.12). The extra calls are allowed to the worker's
+(checked on Docker 29 with bubblewrap 0.12, and by CI: before an `-office` image is tagged,
+`scripts/test-office.sh` converts a Word document in it with these options, on amd64 and arm64). The extra calls are allowed to the worker's
 processes, so only the worker gets this profile, and inside, the converter is sandboxed again
 by a second filter that denies them (and `io_uring`, the kernel keyring, `ptrace`, mounts, eBPF…)
 and its own user namespaces are forbidden: bubblewrap's `--disable-userns` when the container

@@ -774,13 +774,19 @@ jobs:
           docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.office.yaml \
             -f deploy/compose.office.split.yaml config -q
           S3_ACCESS_KEY_ID=ci S3_SECRET_ACCESS_KEY=ci docker compose -f compose.yaml -f deploy/compose.rustfs.yaml config -q
-      - name: The Office worker is on the -office image
+      # The worker overrides security_opt for its seccomp profile: no-new-privileges must survive.
+      - name: The Office worker is on the -office image, with the base's restrictions
         run: |
           set -e
           docker compose -f compose.yaml -f deploy/compose.office.yaml config --format json > "$RUNNER_TEMP/office.json"
           jq -e '.services["office-worker"].image == "ghcr.io/inkadra/inkadra:0.9.0-office"
             and .services["office-worker"].command == ["worker"]
             and .services["office-worker"].environment.OFFICE_PREVIEWS == "true"
+            and .services["office-worker"].user == "1000:1000"
+            and .services["office-worker"].cap_drop == ["ALL"]
+            and (.services["office-worker"].cap_add // []) == []
+            and (.services["office-worker"].security_opt | index("no-new-privileges:true")) != null
+            and (.services["office-worker"].security_opt | index("seccomp=./deploy/office-seccomp.json")) != null
             and .services.inkadra.environment.OFFICE_PREVIEWS == "true"
             and .services.inkadra.image == "ghcr.io/inkadra/inkadra:0.9.0"' "$RUNNER_TEMP/office.json"
       # The bundled object store sits with the database on the internal network, without
@@ -970,9 +976,56 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           retention-days: 1
 
+  # A real conversion in each pushed -office image before anything is tagged (#900): the server's
+  # convertOffice under the worker's security options of deploy/compose.office.yaml. Here and not
+  # on pull requests: the variant has no PR build (LibreOffice makes it slow), and this reuses
+  # the images publish just built on both architectures. A separate job, so the dependency
+  # install that bundles convertOffice never runs next to a token that can push packages.
+  office-sandbox:
+    name: Office conversion (${{ matrix.arch }})
+    needs: publish
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          # Like the publish jobs: nothing restored from a cache feeds an image that gets tagged.
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: digest-office-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Convert a Word document in the pushed image's sandbox
+        run: |
+          digest=$(ls "$RUNNER_TEMP/digests")
+          docker pull "$IMAGE@sha256:$digest"
+          docker tag "$IMAGE@sha256:$digest" "$IMAGE:smoke-office"
+          INKADRA_TAG=smoke scripts/test-office.sh
+
   manifest:
     name: Tag and attest image (${{ matrix.variant }})
-    needs: publish
+    needs: [publish, office-sandbox]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
