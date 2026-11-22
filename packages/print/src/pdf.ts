@@ -19,6 +19,7 @@ import {
   rgb,
   setLineJoin,
 } from 'pdf-lib';
+import { evenGlyphs } from './even-glyphs.ts';
 import {
   type FontWeight,
   type ImageInfo,
@@ -75,16 +76,14 @@ export async function renderPdf(
   pdf.setLanguage(meta.language);
   pdf.setCreator('Inkadra');
   pdf.setProducer('Inkadra');
-  const semibold = await pdf.embedFont(fonts[600], { subset: true });
+  const embed = (bytes: Uint8Array) => pdf.embedFont(evenGlyphs(bytes), { subset: true });
+  const semibold = await embed(fonts[600]);
   const embedded = {
-    400: await pdf.embedFont(fonts[400], { subset: true }),
-    500: await pdf.embedFont(fonts[500], { subset: true }),
+    400: await embed(fonts[400]),
+    500: await embed(fonts[500]),
     600: semibold,
-    700: await pdf.embedFont(fonts[700], { subset: true }),
-    heading:
-      fonts.heading === fonts[600]
-        ? semibold
-        : await pdf.embedFont(fonts.heading, { subset: true }),
+    700: await embed(fonts[700]),
+    heading: fonts.heading === fonts[600] ? semibold : await embed(fonts.heading),
   } satisfies Record<FontWeight, PDFFont>;
   const pictures = new Map<string, PDFImage>();
   const pictureOf = async (key: string, inGreys = false) => {

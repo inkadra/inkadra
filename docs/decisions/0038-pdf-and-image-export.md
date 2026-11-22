@@ -71,6 +71,11 @@ measures and wraps exactly as before.
   `pnpm deploy` of the server allows the patch to go unused there, as the server does not depend
   on fontkit yet. Upgrading fontkit means checking whether the fix is still needed before
   dropping the patch.
+  Update (2026-11): the patch only applied inside this workspace, not where the mobile app uses
+  `@inkadra/print` from a pinned revision. `evenGlyphs` in `@inkadra/print` now pads the glyphs
+  of a TrueType font before pdf-lib subsets it, and the patch, its `patchedDependencies` entry
+  and the Dockerfile's `patches/` copy are gone. A WOFF is embedded as given: the heading fonts'
+  WOFFs have no odd glyph.
 - `@inkadra/print` measures and writes with these files, so a sheet made on the server from the
   same files stays identical to the web's.
 - No CJK: Inter has none, and a second font per text would change the page model.
