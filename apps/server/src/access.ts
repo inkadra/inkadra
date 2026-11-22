@@ -459,7 +459,10 @@ export async function boardRolesForPeople(
  * Whether an account exists and is not deactivated. Deactivation keeps memberships (decision
  * 0025), so what acts for a person while they are away (a share link) checks this as well.
  */
-async function activeAccount(db: Pick<Database, 'select'>, userId: string): Promise<boolean> {
+export async function activeAccount(
+  db: Pick<Database, 'select'>,
+  userId: string,
+): Promise<boolean> {
   const [row] = await db
     .select({ id: user.id })
     .from(user)

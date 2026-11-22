@@ -24,6 +24,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyRequest } from 'fastify
 import * as Y from 'yjs';
 import {
   type Actor,
+  activeAccount,
   activeGrant,
   activeMember,
   boardReadable,
@@ -264,12 +265,13 @@ export function oneAtATime<T>(task: () => Promise<T>): Promise<T> | null {
  * The `part` of the kits of the boards among `ids` (all readable by `actor` when asked) whose
  * index says they hold its cards: the most recently edited MAX_CAST_BOARDS, most recent first,
  * as decoded from their stored documents. A part derived from the same stored bytes is reused;
- * the others are decoded one board at a time in the process, read only while `actor` can still read the
- * board, letting other requests run between them. `gone`: the client went away.
+ * the others are decoded one board at a time in the process, read only while `actor` can still
+ * read the board, letting other requests run between them. `gone`: the client went away.
  */
 async function boardKits<P extends Part>(
   db: Database,
   actor: Pick<Actor, 'id'>,
+  projectId: string,
   ids: string[],
   part: P,
   gone: () => boolean,
@@ -303,9 +305,13 @@ async function boardKits<P extends Part>(
     const queued = oneAtATime(async () => {
       if (gone()) return null;
       await new Promise((resolve) => setImmediate(resolve));
-      // Read under the access rule, in the same statement: a grant may have been closed, or the
-      // board trashed, while this request waited its turn. The state only when no request
-      // before this one decoded the same version meanwhile.
+      // The request's own rule again, as if it had just arrived: its account may have been
+      // deactivated, a grant closed or a board (or one above it) trashed while it waited.
+      if (!(await activeAccount(db, actor.id)))
+        throw new HttpError('unauthorized', 'Account deactivated.');
+      if (!(await readableBoards(db, actor, projectId)).boardIds.includes(row.boardId)) return null;
+      // Then the access rule in the same statement as the state, for what changed since. The
+      // state only when no request before this one decoded the same version meanwhile.
       const known = cachedPart(part, row.boardId);
       const [stored] = await db
         .select({
@@ -359,7 +365,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const { boardIds } = await readableBoards(db, actor, projectId);
     const merged = new Map<string, { frames: number; scenes: Set<string> }>();
     const ids = boardIds.filter((id) => id !== excludeBoardId);
-    for (const cast of await boardKits(db, actor, ids, 'cast', gone(req), req.log))
+    for (const cast of await boardKits(db, actor, projectId, ids, 'cast', gone(req), req.log))
       for (const entry of cast) {
         const seen = merged.get(entry.name) ?? { frames: 0, scenes: new Set<string>() };
         seen.frames += entry.frames;
@@ -383,7 +389,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const { excludeBoardId } = PlanKitQuery.parse(req.query ?? {});
     const { boardIds } = await readableBoards(db, actor, projectId);
     const ids = boardIds.filter((id) => id !== excludeBoardId);
-    const boards = await boardKits(db, actor, ids, 'plan', gone(req), req.log);
+    const boards = await boardKits(db, actor, projectId, ids, 'plan', gone(req), req.log);
     // At most MAX_CAST_BOARDS kits, merged in one pass.
     return { items: mergeProjectKits(...boards) };
   });

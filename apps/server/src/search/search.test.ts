@@ -860,12 +860,12 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
   });
 
   it('leaves out a board closed or trashed while its decode waited', async () => {
-    const addBoard = async (title: string, cast: string) => {
+    const addBoard = async (title: string, cast: string, parentBoardId = boardId) => {
       const added = await app.inject({
         method: 'POST',
         url: `/api/v1/projects/${projectId}/boards`,
         headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
-        payload: { parentBoardId: boardId, kind: 'storyboard', title },
+        payload: { parentBoardId, kind: 'storyboard', title },
       });
       const id = added.json().id as string;
       const doc = createBoardDoc(id);
@@ -878,10 +878,10 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       return { id, doc };
     };
     const path = `/api/v1/projects/${projectId}/cast-appearances`;
-    const names = async (res: Promise<{ body: { items: Array<{ name: string }> } }>) =>
-      (await res).body.items.map((i) => i.name);
+    type Answer = { status: number; body: { items: Array<{ name: string }> } };
+    const names = async (res: Promise<Answer>) => (await res).body.items.map((i) => i.name);
     /** What `who` is answered when `change` happens while the newest board waits its decode. */
-    const whileWaiting = async (who: keyof typeof cookies, change: () => Promise<unknown>) => {
+    const answered = async (who: keyof typeof cookies, change: () => Promise<unknown>) => {
       let unblock = () => {};
       const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
       await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
@@ -890,8 +890,10 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       await change();
       unblock();
       await blocker;
-      return names(pending);
+      return pending as Promise<Answer>;
     };
+    const whileWaiting = (who: keyof typeof cookies, change: () => Promise<unknown>) =>
+      names(answered(who, change));
     const [guest] = await db
       .select({ id: user.id })
       .from(user)
@@ -921,7 +923,33 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
         db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, trashed.id)),
       ),
     ).not.toContain('cestinata');
-    for (const id of [closed.id, trashed.id]) await db.delete(board).where(eq(board.id, id));
+    // Nor a board whose only way in, a grant on the board above it, went to the trash.
+    const root = await app.inject({
+      method: 'GET',
+      url: `/api/v1/projects/${projectId}`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+    });
+    const above = await addBoard('Sopra', 'Sopra', root.json().rootBoardId);
+    const [given] = await db
+      .select({ role: boardGrant.role })
+      .from(boardGrant)
+      .where(eq(boardGrant.userId, guest!.id));
+    await db.insert(boardGrant).values({ boardId: above.id, userId: guest!.id, role: given!.role });
+    const below = await addBoard('Sotto', 'Sotto', above.id);
+    expect(
+      await whileWaiting('guest', () =>
+        db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, above.id)),
+      ),
+    ).not.toContain('sotto');
+    // An account deactivated meanwhile gets nothing.
+    const last = await addBoard('Ultima', 'Ultima');
+    const deactivated = await answered('guest', () =>
+      db.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, guest!.id)),
+    );
+    await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, guest!.id));
+    expect(deactivated.status).toBe(401);
+    for (const id of [closed.id, trashed.id, below.id, above.id, last.id])
+      await db.delete(board).where(eq(board.id, id));
   });
 
   it('decodes a board once for requests that waited for it together', async () => {
