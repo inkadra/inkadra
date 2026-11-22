@@ -347,12 +347,18 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
   class CookieSocket extends WebSocket {
     constructor(address: string, protocols?: string | string[]) {
       super(address, protocols, { headers: { cookie, origin: base } });
+      // Closing a socket still connecting emits `error`, maybe after the provider dropped its
+      // listener: without one it would throw out of the process (as in the load test's).
+      this.on('error', () => {});
     }
   }
   // Every resource is registered as soon as it exists, so a peer that fails to sync takes the
-  // whole group down with it: no interval, socket or document is left behind.
+  // whole group down with it: no interval, socket or document is left behind, and the others
+  // stop waiting for their sync.
   const cleanups: Array<() => void> = [];
+  const rollback = new AbortController();
   const stop = () => {
+    rollback.abort();
     for (const cleanup of cleanups.splice(0).reverse()) cleanup();
   };
   let moves = 0;
@@ -377,11 +383,13 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
         try {
           await new Promise<void>((resolve, reject) => {
             timeout = setTimeout(() => reject(new Error('Peer sync timed out')), 20_000);
+            rollback.signal.addEventListener('abort', () => reject(new Error('Peers rolled back')));
             provider.on('synced', () => resolve());
           });
         } finally {
           clearTimeout(timeout);
         }
+        if (rollback.signal.aborted) return;
         // Same path every run: a seeded walk over the seeded area.
         const random = seeded(i + 1);
         const at = { x: 1500 + i * 3000, y: 1500 };
