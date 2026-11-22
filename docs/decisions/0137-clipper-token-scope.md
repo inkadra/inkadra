@@ -97,6 +97,10 @@ never set it. No redirect address or user agent is stored on the token.
   (`apps/server/src/token-scope.ts`) in the same pull request; older servers would refuse it with
   `403`, so the extension must treat that like any other refusal on an older server.
 - Self-built clippers (`CLIPPER_EXTENSION_IDS`) are limited the same way.
+- The limit holds once every web and collaboration process runs a version that enforces it; one
+  left on an older version serves Clipper tokens as before. Restoring the backup taken before the
+  upgrade (the way back, see [upgrades](../self-hosting/upgrades.md)) brings Clipper tokens back
+  with their earlier reach: a token believed copied must be revoked again after a rollback.
 
 ## Not done
 
