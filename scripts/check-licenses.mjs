@@ -36,17 +36,27 @@ const MPL_ALLOWED = new Set([...ALLOWED].filter((l) => !/^(A|L)?GPL-/.test(l)));
 /** The MPL-2.0 components, as pnpm filters. Their workspace dependencies are packages too. */
 const MPL_COMPONENTS = ['./packages/*', './apps/clipper'];
 
-/** Packages whose licence field is missing or non-SPDX but were checked by hand. */
+/**
+ * Packages whose licence field is missing or non-SPDX but were checked by hand: only the versions
+ * reviewed, and only while pnpm still reports the licence string seen then. Another version or
+ * another string needs a new review.
+ */
 const REVIEWED = new Map([
   // LGPL-3.0-only WebAssembly build of libheif, loaded unmodified (docs/decisions/0009).
-  ['libheif-js', 'LGPL-3.0'],
+  ['libheif-js', { versions: ['1.23.5'], seen: 'LGPL-3.0', license: 'LGPL-3.0-only' }],
   // Dependency of tus-js-client; MIT per its Readme, the package.json has no licence field.
-  ['combine-errors', 'MIT'],
+  ['combine-errors', { versions: ['3.0.3'], seen: 'Unknown', license: 'MIT' }],
 ]);
 
 /** Files of the MPL-2.0 components that must start with their SPDX line (decision 0008). */
 const MPL_SOURCES =
   /^(packages\/[^/]+|apps\/clipper)\/.*\.(c|m)?(j|t)sx?$|^(packages\/[^/]+|apps\/clipper)\/.*\.css$/;
+
+/** The header line itself, as a line comment or a block comment; nothing else on the line. */
+const SPDX_LINES = new Set([
+  '// SPDX-License-Identifier: MPL-2.0',
+  '/* SPDX-License-Identifier: MPL-2.0 */',
+]);
 
 /** The tracked source files of the MPL-2.0 components whose first lines lack the SPDX line. */
 export function missingSpdx(files, read) {
@@ -55,16 +65,66 @@ export function missingSpdx(files, read) {
       MPL_SOURCES.test(file) &&
       !read(file)
         .split('\n', 3)
-        .some((line) => line.includes('SPDX-License-Identifier: MPL-2.0')),
+        .some((line) => SPDX_LINES.has(line.trim())),
   );
 }
 
-function ok(expr, allowed) {
-  // Accept SPDX expressions where every alternative of an OR, or every part of an AND, is allowed.
-  const clean = expr.replace(/[()]/g, '').trim();
-  if (clean.includes(' OR ')) return clean.split(' OR ').some((p) => ok(p, allowed));
-  if (clean.includes(' AND ')) return clean.split(' AND ').every((p) => ok(p, allowed));
-  return allowed.has(clean);
+/** The tracked files of the MPL-2.0 components, with -z so a non-ASCII path is not quoted. */
+export function trackedFiles(root) {
+  return execFileSync('git', ['ls-files', '-z', 'packages', 'apps/clipper'], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+    .split('\0')
+    .filter(Boolean);
+}
+
+/**
+ * Whether an SPDX expression is satisfied with `allowed` licences: AND binds tighter than OR,
+ * parentheses group. Anything it cannot read, and any WITH exception, needs a review (false).
+ * shortcut: no exception is known yet; list the ones reviewed here when one shows up.
+ */
+export function ok(expr, allowed) {
+  const tokens = expr.match(/\(|\)|[^\s()]+/g) ?? [];
+  let at = 0;
+  const next = () => tokens[at++];
+  const or = () => {
+    let value = and();
+    while (tokens[at] === 'OR') {
+      next();
+      value = and() || value;
+    }
+    return value;
+  };
+  const and = () => {
+    let value = term();
+    while (tokens[at] === 'AND') {
+      next();
+      value = term() && value;
+    }
+    return value;
+  };
+  const term = () => {
+    const token = next();
+    if (token === '(') {
+      const value = or();
+      if (next() !== ')') throw new Error('unbalanced');
+      return value;
+    }
+    if (!token || ['AND', 'OR', 'WITH', ')'].includes(token)) throw new Error('unexpected');
+    if (tokens[at] === 'WITH') {
+      next();
+      if (!next()) throw new Error('exception');
+      return false;
+    }
+    return allowed.has(token);
+  };
+  try {
+    const value = or();
+    return at === tokens.length && value;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -80,7 +140,12 @@ export function check(byLicense, { mpl = false } = {}) {
     for (const pkg of pkgs) {
       count += 1;
       const reviewed = REVIEWED.get(pkg.name);
-      if (ok(license, allowed) || (reviewed && (!mpl || ok(reviewed, allowed)))) continue;
+      const asReviewed =
+        reviewed &&
+        reviewed.seen === license &&
+        pkg.versions.every((v) => reviewed.versions.includes(v)) &&
+        (!mpl || ok(reviewed.license, allowed));
+      if (ok(license, allowed) || asReviewed) continue;
       problems.push(`${pkg.name}@${pkg.versions.join(',')}: ${license}`);
     }
   }
@@ -106,11 +171,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   ];
   let failed = false;
   const root = fileURLToPath(new URL('..', import.meta.url));
-  const tracked = execFileSync('git', ['ls-files', 'packages', 'apps/clipper'], {
-    cwd: root,
-    encoding: 'utf8',
-  });
-  const unmarked = missingSpdx(tracked.split('\n').filter(Boolean), (file) =>
+  const unmarked = missingSpdx(trackedFiles(root), (file) =>
     readFileSync(join(root, file), 'utf8'),
   );
   if (unmarked.length > 0) {
