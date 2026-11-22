@@ -35,8 +35,9 @@ never set it. No redirect address or user agent is stored on the token.
   written by the exchange for a `chromiumapp.org` redirect address, so no Android or personal
   token is limited by mistake. Clipper tokens can't be told apart further (for example by
   extension id) because the redirect isn't stored, and they don't need to be.
-- **What `clip` allows** (the routes every released Clipper, 0.3.0 to today, calls with its
-  token; `GET /instance` and the code exchange need no token):
+- **What `clip` allows**: the union of the routes the released Clipper versions, 0.3.0 to today,
+  call with their token (0.3.0 had no recent boards yet: `/me/clip-boards` came with 0.4.3).
+  `GET /instance` and the code exchange need no token:
 
   | Route                                     | Used for                                              |
   | ----------------------------------------- | ----------------------------------------------------- |
@@ -76,12 +77,19 @@ never set it. No redirect address or user agent is stored on the token.
   page, including formats the server does not recognise as images (SVG, HEIC, BMP and others),
   which become file cards today. So a `clip` token can add a file of any type to a board the
   person can edit.
-- **Everything else is refused, by default.** `requireActor` compares the matched route
-  (method and registered path) with the scope's list, so a route added later is closed to a
-  `clip` token until it is listed. Uploads (`/api/v1/uploads`), the version endpoint, token proof
-  ([0113](0113-token-proof.md)), `/me`, admin routes and the collaboration socket (`/collab`,
-  which the Clipper never opens) are refused. Routes behind `requireSession` refuse every token
-  as before.
+- **Everything else that reads the token is refused, by default.** `requireActor` compares the
+  matched route (method and registered path) with the scope's list, so on a server that enforces
+  scopes a route added later is closed to a `clip` token until it is listed. Uploads
+  (`/api/v1/uploads`), the version endpoint, the token proof key
+  (`POST /me/token-proof-key`, [0113](0113-token-proof.md)), `/me`, admin routes and the
+  collaboration socket (`/collab`, which the Clipper never opens) are refused. Routes behind
+  `requireSession` refuse every token as before. Public routes, which read no token, answer a
+  `clip` token as they answer anyone.
+- **Token proof.** The public check `POST /token-proof` answers `404` for the key of a `clip`
+  token, as for an unknown key. No released Clipper asks for a key, but one could have been made
+  with a Clipper token before this limit; the check would otherwise keep proving the server to
+  whoever holds that key id, which says nothing about boards but would keep a limited token
+  useful for recognising the server on another network.
 - **The answer** is the existing `403` with code `forbidden` and the usual error body; no new
   code, no new `reason`. An installed Clipper never sees it, since it calls only listed routes.
 - **No capability** in `GET /instance/version`: no client has to detect the behaviour. The

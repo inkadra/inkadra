@@ -31,6 +31,7 @@ import {
 } from '../db/schema.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
+import { proofKeyFor } from '../token-proof.ts';
 import { issueToken } from '../tokens.ts';
 import { OFFICIAL_CLIPPER_IDS } from './account-routes.ts';
 import { createApp } from './app.ts';
@@ -454,6 +455,23 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     expect(await lastUsed()).toBeNull();
     expect((await call(token, 'GET', '/me/clip-boards')).statusCode).toBe(200);
     expect(await lastUsed()).toBeInstanceOf(Date);
+  });
+
+  it('gives no token proof for a Clipper token, even with a key made before the limit', async () => {
+    const { tokenId } = await clipperSignIn();
+    const key = await proofKeyFor(db, config.AUTH_SECRET, tokenId);
+    if (!key || key === 'not_app') throw new Error('no key');
+    const prove = (keyId: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/token-proof',
+        payload: { keyId, nonce: randomBytes(32).toString('base64url') },
+      });
+    expect((await prove(key.keyId)).statusCode).toBe(404);
+    const phone = await issueToken(db, me, { name: 'Phone', client: 'mobile' });
+    const phoneKey = await proofKeyFor(db, config.AUTH_SECRET, phone.row.id);
+    if (!phoneKey || phoneKey === 'not_app') throw new Error('no key');
+    expect((await prove(phoneKey.keyId)).statusCode).toBe(200);
   });
 
   it('leaves app tokens, personal tokens and sessions as they were', async () => {
