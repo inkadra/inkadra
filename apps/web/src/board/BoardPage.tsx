@@ -84,7 +84,13 @@ import {
   ScreenplayImportDialog,
 } from './film/screenplay/ScreenplayImportDialog.tsx';
 import { shootingZone } from './film/sun.ts';
-import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
+import {
+  boardPeople,
+  EditingLine,
+  editingPeople,
+  SyncStatus,
+  sameBoardPeople,
+} from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
 import {
   keptFileMaxSize,
@@ -1573,7 +1579,11 @@ const MAX_AVATARS = 5;
  */
 export function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string | null }) {
   const { t } = useTranslation();
-  const { people, online, writing } = boardPeople(usePeers(usePeerSource(conn.provider)), selfId);
+  const { people, online, writing } = usePeers(
+    usePeerSource(conn.provider),
+    useCallback((peers) => boardPeople(peers, selfId), [selfId]),
+    sameBoardPeople,
+  );
   const shown = people.slice(0, MAX_AVATARS);
   const name = (p: Peer) =>
     p.readOnly ? t('board.peers.viewing', { name: p.user.name }) : p.user.name;

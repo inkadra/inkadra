@@ -83,9 +83,16 @@ export function peerSource(provider: HocuspocusProvider): PeerSource {
   };
 }
 
-/** A source for this provider, the same one across renders. */
+const sources = new WeakMap<HocuspocusProvider, PeerSource>();
+
+/** The source of this provider: one per connection, shared by the canvas and the header. */
 export function usePeerSource(provider: HocuspocusProvider): PeerSource {
-  return useMemo(() => peerSource(provider), [provider]);
+  let source = sources.get(provider);
+  if (!source) {
+    source = peerSource(provider);
+    sources.set(provider, source);
+  }
+  return source;
 }
 
 /**
