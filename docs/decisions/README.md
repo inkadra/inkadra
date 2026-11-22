@@ -2,6 +2,10 @@
 
 Short records of choices that are not obvious from the code. One file per decision, numbered
 in order. An accepted decision is never rewritten: a later one supersedes it.
+Seven numbers were given twice (0025, 0054, 0069, 0071, 0077, 0104, 0124) and are kept, since
+code and other records cite them: cite a decision by number and slug (`0069-in-app-feedback`)
+wherever the number alone is ambiguous. A new decision takes the next free number;
+`scripts/decisions.test.mjs` fails on a further duplicate.
 
 | #                                                    | Decision                                                                               |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
