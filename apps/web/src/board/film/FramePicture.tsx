@@ -87,7 +87,8 @@ export const FramePicture = memo(function FramePicture({
   );
 });
 
-export function StrokePath({
+/** One pen line. Memoized: a stroke keeps its object while it lives (decision 0094). */
+export const StrokePath = memo(function StrokePath({
   stroke,
   height,
   color,
@@ -109,4 +110,4 @@ export function StrokePath({
       vectorEffect="none"
     />
   );
-}
+});
