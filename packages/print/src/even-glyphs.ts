@@ -38,7 +38,8 @@ function checksum(bytes: Uint8Array): number {
  * a malformed glyph past its `loca` end, so the file only guarantees that no glyph has fewer
  * bytes after its start than in the given font (zeros are added at the end when needed); a read
  * fontkit could make before stays inside the file, though past a glyph's end it may meet other
- * bytes. Walk each glyph's records instead if that ever matters.
+ * bytes, and a malformed glyph that happened to decode before may then fail to. Walk each
+ * glyph's records instead if a font that is not one of ours is ever embedded.
  * The input is never written to: a Node Buffer's `slice` shares its memory, so copies are made
  * with `new Uint8Array(…)`.
  */

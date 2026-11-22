@@ -41,6 +41,13 @@ test('SPDX expressions: AND before OR, parentheses group, review beats any OR', 
     ['MIT OR LicenseRef-Custom', mit, 'review'],
     ['SEE LICENSE IN LICENSE.md', mit, 'review'],
     ['Unknown', mit, 'review'],
+    // An id this check does not know is not a licence an OR may skip.
+    ['MIT OR NotAnSpdxId', mit, 'review'],
+    ['NotAnSpdxId', mit, 'review'],
+    ['(MIT OR Apache-2.0 WITH LLVM-exception)', mit, 'review'],
+    ['(MIT OR UNLICENSED)', mit, 'review'],
+    ['(Apache-2.0 WITH LLVM-exception) AND MIT', mit, 'review'],
+    ['MIT OR (GPL-3.0-only AND UNLICENSED)', mit, 'review'],
   ];
   for (const [expr, list, expected] of cases) assert.equal(verdict(expr, list), expected, expr);
   for (const odd of ['(MIT', 'MIT)', 'MIT OR', 'AND MIT', '', 'MIT OR (Apache-2.0']) {

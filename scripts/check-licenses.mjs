@@ -33,6 +33,42 @@ const ALLOWED = new Set([
 /** What code an MPL-2.0 component imports may use: MPL-2.0 or more permissive (decision 0008). */
 const MPL_ALLOWED = new Set([...ALLOWED].filter((l) => !/^(A|L)?GPL-/.test(l)));
 
+/**
+ * Licence ids this check recognises without allowing them. An id on neither list may be a typo
+ * or not SPDX at all: it needs a review, and an OR does not route around it.
+ */
+const KNOWN_DENIED = new Set([
+  'AGPL-1.0-only',
+  'AGPL-1.0-or-later',
+  'Artistic-2.0',
+  'BUSL-1.1',
+  'CC-BY-3.0',
+  'CC-BY-NC-4.0',
+  'CC-BY-NC-SA-4.0',
+  'CC-BY-SA-4.0',
+  'CDDL-1.0',
+  'CDDL-1.1',
+  'EPL-1.0',
+  'EPL-2.0',
+  'EUPL-1.2',
+  'GPL-2.0',
+  'GPL-2.0-only',
+  'GPL-2.0-or-later',
+  'GPL-3.0',
+  'GPL-3.0-only',
+  'GPL-3.0-or-later',
+  'LGPL-2.0-only',
+  'LGPL-2.0-or-later',
+  'LGPL-2.1',
+  'LGPL-2.1-only',
+  'LGPL-2.1-or-later',
+  'LGPL-3.0',
+  'LGPL-3.0-only',
+  'MPL-1.1',
+  'SSPL-1.0',
+  'WTFPL',
+]);
+
 /** The MPL-2.0 components, as pnpm filters. Their workspace dependencies are packages too. */
 const MPL_COMPONENTS = ['./packages/*', './apps/clipper'];
 
@@ -134,7 +170,8 @@ export function verdict(expr, allowed) {
     if (token === 'UNLICENSED' || token === 'Unknown' || token.startsWith('LicenseRef-')) {
       return 'review';
     }
-    return allowed.has(token) ? 'allowed' : 'denied';
+    if (allowed.has(token)) return 'allowed';
+    return ALLOWED.has(token) || KNOWN_DENIED.has(token.replace(/\+$/, '')) ? 'denied' : 'review';
   };
   try {
     const value = or();
