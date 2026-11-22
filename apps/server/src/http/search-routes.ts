@@ -283,6 +283,8 @@ async function boardKits<P extends Part>(
     .where(
       and(
         inArray(boardDoc.boardId, ids),
+        // Again in this statement: a cached part is served only for a board readable now.
+        boardReadable(boardDoc.boardId, actor.id),
         sql`exists (select 1 from ${boardElementIndex}
           where ${boardElementIndex.boardId} = ${boardDoc.boardId}
             and ${boardElementIndex.type} = ${type})`,
