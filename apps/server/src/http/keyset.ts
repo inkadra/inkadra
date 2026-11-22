@@ -1,3 +1,4 @@
+import { Id } from '@inkadra/shared';
 import { type SQL, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { HttpError } from './errors.ts';
@@ -13,7 +14,6 @@ export interface Keyset {
 }
 
 const AT = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d{1,6})?([+-]\d{2}(:?\d{2})?|Z)$/;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Reject malformed calendar dates before PostgreSQL tries to cast untrusted cursor data. */
 function validTimestamp(value: string): boolean {
@@ -41,7 +41,7 @@ export function decodeTextCursor(cursor: string): [string, string] {
       value.length === 2 &&
       typeof value[0] === 'string' &&
       typeof value[1] === 'string' &&
-      UUID.test(value[1])
+      Id.safeParse(value[1]).success
     )
       return value as [string, string];
   } catch {}
@@ -62,7 +62,7 @@ export function decodeCursor(cursor: string | undefined): Keyset | null {
       typeof value[0] === 'string' &&
       typeof value[1] === 'string' &&
       validTimestamp(value[0]) &&
-      UUID.test(value[1])
+      Id.safeParse(value[1]).success
     )
       return { at: value[0], id: value[1] };
   } catch {}

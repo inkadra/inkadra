@@ -1,4 +1,4 @@
-import type { FeedbackStatus } from '@inkadra/shared';
+import { type FeedbackStatus, Id } from '@inkadra/shared';
 import { useSyncExternalStore } from 'react';
 
 /** Light on purpose: the board's toasts and menus read it without loading the report form. */
@@ -77,7 +77,6 @@ export interface FeedbackDraft {
   /** Kept with the text: sending again after a reload cannot make a second report. */
   requestId: string;
 }
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function readFeedbackDraft(key: string): Partial<FeedbackDraft> | null {
   try {
     const draft = JSON.parse(localStorage.getItem(key) ?? 'null');
@@ -86,7 +85,8 @@ export function readFeedbackDraft(key: string): Partial<FeedbackDraft> | null {
       title: typeof draft.title === 'string' ? draft.title : '',
       description: typeof draft.description === 'string' ? draft.description : '',
       ...(['bug', 'idea', 'question'].includes(draft.type) ? { type: draft.type } : {}),
-      ...(UUID.test(draft.requestId) ? { requestId: draft.requestId } : {}),
+      // The server takes the same Id schema: a draft it would refuse gets a new requestId.
+      ...(Id.safeParse(draft.requestId).success ? { requestId: draft.requestId } : {}),
     };
   } catch {
     return null;

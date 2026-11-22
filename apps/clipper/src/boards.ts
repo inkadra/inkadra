@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { Board, ProjectRole } from '@inkadra/shared';
+import type { Board } from '@inkadra/shared';
+import { atLeast } from '@inkadra/shared/permissions';
 import type { InkadraApi } from './api.ts';
 import type { BoardOption } from './messages.ts';
 import type { BoardRef } from './storage.ts';
-
-/** Roles that may add cards. The server decides with the effective role; this only hides noise. */
-export const CAN_EDIT: ReadonlySet<ProjectRole> = new Set(['owner', 'editor']);
 
 /**
  * The picker before anything is typed: recent boards, then the root board of every active
@@ -20,7 +18,8 @@ export async function startingBoards(api: InkadraApi, recent: BoardRef[]): Promi
     expandable: false,
   }));
   for (const p of projects) {
-    if (p.archivedAt || !CAN_EDIT.has(p.myRole)) continue;
+    // Only roles that may add cards: the server decides with the effective role; this hides noise.
+    if (p.archivedAt || !atLeast(p.myRole, 'editor')) continue;
     options.push({
       id: p.rootBoardId,
       projectId: p.id,
@@ -32,7 +31,7 @@ export async function startingBoards(api: InkadraApi, recent: BoardRef[]): Promi
     });
   }
   for (const b of shared) {
-    if (!CAN_EDIT.has(b.myRole)) continue;
+    if (!atLeast(b.myRole, 'editor')) continue;
     options.push({
       id: b.id,
       projectId: b.projectId,
@@ -65,7 +64,7 @@ export function boardTree(
   const visit = (id: string, depth: number) => {
     for (const child of children.get(id) ?? []) {
       // A board one cannot edit is skipped, not its sub-boards: a grant may allow them.
-      if (CAN_EDIT.has(child.myRole))
+      if (atLeast(child.myRole, 'editor'))
         out.push({
           id: child.id,
           projectId: child.projectId,
@@ -100,7 +99,7 @@ export async function searchBoards(api: InkadraApi, query: string): Promise<Boar
   const seen = new Set<string>();
   const out: BoardOption[] = [];
   for (const hit of ordered) {
-    if (hit.myRole !== undefined && !CAN_EDIT.has(hit.myRole)) continue;
+    if (hit.myRole !== undefined && !atLeast(hit.myRole, 'editor')) continue;
     if (!hit.boardId || seen.has(hit.boardId)) continue;
     seen.add(hit.boardId);
     out.push({
