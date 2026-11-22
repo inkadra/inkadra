@@ -827,6 +827,114 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     for (const c of [viewer, check]) c.close();
   });
 
+  for (const mode of ['direct', 'split'] as const) {
+    it.skipIf(mode === 'split' && !process.env.REDIS_URL)(
+      `applies a role change and a removal at once, not at the next re-check, in ${mode} mode`,
+      async () => {
+        // The default re-check (30 s): only the member routes can make this quick.
+        const slow = createCollabServer({ limits, db, auth, log, publicUrl: config.PUBLIC_URL });
+        const redisUrl = process.env.REDIS_URL ?? '';
+        const prefix = `inkadra-recheck-${randomUUID()}`;
+        const queued =
+          mode === 'split' ? queuedBoardNotifier(redisUrl, log, { prefix }) : undefined;
+        const worker =
+          mode === 'split'
+            ? startBoardWorker(redisUrl, directBoardWriter(slow), log, {
+                prefix,
+                notices: directBoardNotifier(slow),
+              })
+            : undefined;
+        const web = await createApp({
+          config,
+          db,
+          auth,
+          log,
+          ...testDeps(db, log),
+          notices: queued?.notifier ?? directBoardNotifier(slow),
+        });
+        attachCollab(web.server, slow);
+        await web.listen({ host: '127.0.0.1', port: 0 });
+        const shared = base;
+        base = `127.0.0.1:${(web.server.address() as AddressInfo).port}`;
+        const member = `/api/v1/projects/${projectId}/members/${people.viewer?.id}`;
+        const viewer = connect(as('viewer'));
+        try {
+          await viewer.synced;
+          const notices: unknown[] = [];
+          viewer.provider.on('stateless', ({ payload }: { payload: string }) =>
+            notices.push(JSON.parse(payload)),
+          );
+          await web.inject({
+            method: 'PUT',
+            url: member,
+            headers: as('owner'),
+            payload: { role: 'editor' },
+          });
+          await expect
+            .poll(() => notices, { timeout: 3000 })
+            .toEqual([{ type: 'access', readOnly: false }]);
+          const closed = closedWith(viewer);
+          await web.inject({ method: 'DELETE', url: member, headers: as('owner') });
+          expect(await closed).toBe('Forbidden');
+
+          // A board grant is a role too.
+          const name = `grantee-${mode}`;
+          await signUp(name);
+          const child = await web.inject({
+            method: 'POST',
+            url: `/api/v1/projects/${projectId}/boards`,
+            headers: as('owner'),
+            payload: { title: `Granted ${mode}`, parentBoardId: boardId },
+          });
+          const childId = child.json().id as string;
+          const grant = `/api/v1/boards/${childId}/grants/${people[name]?.id}`;
+          const granted = await web.inject({
+            method: 'PUT',
+            url: grant,
+            headers: as('owner'),
+            payload: { role: 'viewer' },
+          });
+          expect(granted.statusCode, granted.body).toBe(200);
+          const grantee = connect(as(name), undefined, CURRENT_SCHEMA_VERSION, childId);
+          try {
+            await grantee.synced;
+            const told: unknown[] = [];
+            grantee.provider.on('stateless', ({ payload }: { payload: string }) =>
+              told.push(JSON.parse(payload)),
+            );
+            await web.inject({
+              method: 'PUT',
+              url: grant,
+              headers: as('owner'),
+              payload: { role: 'editor' },
+            });
+            await expect
+              .poll(() => told, { timeout: 3000 })
+              .toEqual([{ type: 'access', readOnly: false }]);
+            const ended = closedWith(grantee);
+            await web.inject({ method: 'DELETE', url: grant, headers: as('owner') });
+            expect(await ended).toBe('Forbidden');
+          } finally {
+            grantee.close();
+          }
+        } finally {
+          viewer.close();
+          base = shared;
+          await app.inject({
+            method: 'PUT',
+            url: member,
+            headers: as('owner'),
+            payload: { role: 'viewer' },
+          });
+          await slow.destroy();
+          await web.close();
+          await queued?.close();
+          await worker?.close();
+        }
+      },
+    );
+  }
+
   describe('an assignee who is not a project member', () => {
     let runs = 0;
     /** Its own project, so the other tests' role changes don't reach it. */

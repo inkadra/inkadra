@@ -122,6 +122,32 @@ export const ACCESS_RECHECK_MS = 30_000;
  */
 export const KEEPALIVE_MS = 15_000;
 
+/**
+ * Passes that never overlap. `join` starts a pass or joins the one under way, so a tick that
+ * finds the last pass still running waits for it instead of starting another (#760). `fresh`
+ * waits for a pass that starts after the call, for a change just made: the pass under way may
+ * have read the state before it. Calls during that wait share the same next pass.
+ */
+export function serialPasses(pass: () => Promise<void>) {
+  let running: Promise<void> | undefined;
+  let next: Promise<void> | undefined;
+  const join = () =>
+    (running ??= pass().finally(() => {
+      running = undefined;
+    }));
+  const fresh = () => {
+    if (!running) return join();
+    next ??= running
+      .catch(() => {})
+      .then(() => {
+        next = undefined;
+        return join();
+      });
+    return next;
+  };
+  return { join, fresh };
+}
+
 export interface CollabLimits {
   /** Largest WebSocket message. */
   maxPayload: number;
@@ -542,16 +568,9 @@ export function createCollabServer(deps: {
   /**
    * Closes connections whose token or session ended (4401) or that lost their role (4403), and
    * updates read-only on the others. Each person, sign-in and (person, board) pair is read once
-   * per pass however many tabs they have open, and a tick that finds the last pass still
-   * running waits for it instead of starting another (#760).
+   * per pass however many tabs they have open.
    */
-  let rechecking: Promise<void> | undefined;
-  function recheck(server: Server<Context>) {
-    rechecking ??= recheckAll(server).finally(() => {
-      rechecking = undefined;
-    });
-    return rechecking;
-  }
+  const rechecks = serialPasses(() => recheckAll(server));
 
   async function recheckAll(server: Server<Context>) {
     const now = new Date();
@@ -718,7 +737,7 @@ export function createCollabServer(deps: {
     websocketOptions: { maxPayload: limits?.maxPayload ?? 16 * 1024 * 1024 },
 
     async onConfigure() {
-      timer = setInterval(() => void recheck(server), deps.recheckMs ?? ACCESS_RECHECK_MS);
+      timer = setInterval(() => void rechecks.join(), deps.recheckMs ?? ACCESS_RECHECK_MS);
       timer.unref();
       keepalive = setInterval(keepAlive, deps.keepaliveMs ?? KEEPALIVE_MS);
       keepalive.unref();
@@ -1130,7 +1149,7 @@ export function createCollabServer(deps: {
     sizes.total([...server.hocuspocus.documents.values()].filter((d) => whoIsOn(d)));
 
   return Object.assign(server, {
-    recheck: () => recheck(server),
+    recheck: rechecks.fresh,
     presence,
     boardBytes,
     hasRoom,

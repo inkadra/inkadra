@@ -40,6 +40,7 @@ import { type Actor, activeMember, atLeast, higher, live, requireProjectRole } f
 import { readExpiry, requireProjectCreation } from '../access-expiry.ts';
 import { recordAudit } from '../audit.ts';
 import type { Auth } from '../auth.ts';
+import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import { lockUses, readClassifications, validateProjectType } from '../classifications.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -82,6 +83,7 @@ interface Deps {
   auth: Auth;
   jobs: Jobs;
   storage: Storage;
+  notices?: BoardNotifier;
 }
 
 const ProjectParams = z.object({ projectId: Id });
@@ -234,6 +236,7 @@ async function ownerCount(db: Pick<Database, 'select'>, projectId: string) {
 
 export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, jobs, storage } = deps;
+  const notices = deps.notices ?? noNotices;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
   app.get(v1('/instance/storage'), async (req, reply) => {
@@ -664,7 +667,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     await requireProjectRole(db, actor, projectId, 'editor');
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
-    return db.transaction(async (tx) => {
+    const saved = await db.transaction(async (tx) => {
       // Both people first, before any row: either one's deletion comes first or waits (0134).
       await lockActiveAccount(tx, actor.id, userId);
       const [still] = await tx.select({ id: user.id }).from(user).where(eq(user.id, userId));
@@ -723,6 +726,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       if (!member) throw new Error('Member vanished after upsert');
       return member;
     });
+    // Their open boards follow the new role now, not at the next periodic check.
+    notices.recheckAccess();
+    return saved;
   });
 
   app.delete(v1('/projects/:projectId/members/:userId'), async (req, reply) => {
@@ -755,6 +761,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         details: { role: current.role, left: userId === actor.id },
       });
     });
+    notices.recheckAccess();
     return reply.status(204).send();
   });
 }

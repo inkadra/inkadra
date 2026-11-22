@@ -43,7 +43,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useRegisterActions } from '../commands/actions.ts';
 import { setFeedbackConnection } from '../feedback/diagnostics.ts';
 import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
-import { api } from '../lib/api.ts';
+import { api, RequestError } from '../lib/api.ts';
 import { useHeaderContent } from '../lib/header.tsx';
 import { MODULE_GLYPHS, setModule, useModules } from '../lib/modules.ts';
 import { useIsPhone } from '../lib/phone.ts';
@@ -93,6 +93,7 @@ import {
   RestoreError,
 } from './local-boards.ts';
 import { RestoredToast } from './RestoredToast.tsx';
+import { useRoleRecheck } from './role-recheck.ts';
 import { isMac } from './shortcuts.ts';
 import { LOCAL, REPAIR } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
@@ -715,17 +716,28 @@ function BoardScreen({
   );
 
   // Read again when the server changes our access, so the role shown and checked is current.
-  const accessVersion = conn?.accessChangedAt;
+  const { key: roleCheck, failed: roleCheckFailed } = useRoleRecheck(
+    conn,
+    detail ? canEdit(detail.myRole) : null,
+  );
   useEffect(() => {
     let alive = true;
-    void accessVersion;
+    void roleCheck;
     fetchBoard(boardId)
       .then((d) => alive && setDetail(d))
-      .catch(() => alive && setDetail(null));
+      .catch((err) => {
+        if (!alive) return;
+        // A refusal means the board is no longer ours to read; anything else (offline, a 503)
+        // keeps the role last read, so a mismatch with the connection stays visible and is read
+        // again.
+        const refused = err instanceof RequestError && err.status >= 400 && err.status < 500;
+        setDetail((prev) => (!refused && prev?.id === boardId ? prev : null));
+        if (!refused) roleCheckFailed();
+      });
     return () => {
       alive = false;
     };
-  }, [boardId, accessVersion]);
+  }, [boardId, roleCheck, roleCheckFailed]);
 
   // The card of a sub-board opens the view it shows (decision 0121); the board page falls back
   // to the board's first view when that one is off.

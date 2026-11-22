@@ -472,7 +472,14 @@ export function useBoardConnection(
         if (status === 'denied') drop();
         if (status) update({ status });
       },
-      onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
+      onAuthenticated: ({ scope }) => {
+        const readOnly = scope === 'readonly';
+        // A reconnection with another role is an access change like an `access` message: the
+        // server's periodic check may not have told us before the socket dropped.
+        const changed = authenticated && readOnly !== roleReadOnly;
+        authenticated = true;
+        update(changed ? { readOnly, accessChangedAt: Date.now() } : { readOnly });
+      },
       onAuthenticationFailed: ({ reason }) => {
         const status = CLOSE_REASONS[reason];
         if (status === 'denied') drop();
@@ -494,6 +501,7 @@ export function useBoardConnection(
     // A provider on a shared socket is not attached by itself.
     if (socket) provider.attach();
     let roleReadOnly = cached?.readOnly ?? false;
+    let authenticated = false;
     let docTooNew = false;
     let copyTooNew = false;
     function update(patch: Partial<typeof state>) {

@@ -114,6 +114,7 @@ export type JobPayloads = {
   'maintenance:version-retention': Record<string, never>;
   /** A stateless message for the open clients of a board (comments, reviews). */
   'collab:notice': { boardId: string; notice: BoardNotice; sentAt: number };
+  'collab:recheck-access': { sentAt: number };
   'maintenance:purge-notifications': Record<string, never>;
   /** Warns about and removes ended memberships and grants (decision 0041), every minute. */
   'maintenance:access-expiry': Record<string, never>;
@@ -1017,6 +1018,13 @@ export function startBoardWorker(
         opts.notices?.notify(boardId, notice);
         return { sent: true };
       }
+      if (job.name === 'recheck-access') {
+        const { sentAt } = job.data as JobPayloads['collab:recheck-access'];
+        // The periodic check has run since.
+        if (Date.now() - sentAt > NOTICE_TTL_MS) return { sent: false };
+        opts.notices?.recheckAccess();
+        return { sent: true };
+      }
       const name = job.name as CollabJob;
       const input = job.data as { expiresAt: number };
       // Checked again inside the write; this one spares opening the document.
@@ -1187,20 +1195,26 @@ export function queuedBoardNotifier(url: string, log: Logger, opts: { prefix?: s
   });
   const queue = new Queue(QUEUES.collab, { connection, prefix: opts.prefix });
   queue.on('error', queueErrors(log)(QUEUES.collab));
+  const send = (name: string, data: object, boardId?: string) => {
+    if (connection.status !== 'ready') {
+      log.warn({ boardId }, 'board notice dropped: Redis is not ready');
+      return;
+    }
+    const adding = queue.add(
+      name,
+      { ...data, sentAt: Date.now() },
+      { attempts: 1, removeOnComplete: true, removeOnFail: { age: 3600 } },
+    );
+    within(adding, ENQUEUE_TIMEOUT_MS, 'The collaboration queue is unreachable.').catch((err) =>
+      log.warn({ err, boardId }, 'board notice not queued'),
+    );
+  };
   const notifier: BoardNotifier = {
     notify(boardId, notice) {
-      if (connection.status !== 'ready') {
-        log.warn({ boardId }, 'board notice dropped: Redis is not ready');
-        return;
-      }
-      const adding = queue.add(
-        'notice',
-        { boardId, notice, sentAt: Date.now() },
-        { attempts: 1, removeOnComplete: true, removeOnFail: { age: 3600 } },
-      );
-      within(adding, ENQUEUE_TIMEOUT_MS, 'The collaboration queue is unreachable.').catch((err) =>
-        log.warn({ err, boardId }, 'board notice not queued'),
-      );
+      send('notice', { boardId, notice }, boardId);
+    },
+    recheckAccess() {
+      send('recheck-access', {});
     },
   };
   return {

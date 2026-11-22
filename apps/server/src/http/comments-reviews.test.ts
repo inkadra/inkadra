@@ -78,7 +78,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
   const deps = testDeps(db, log);
   const collab = createCollabServer({ db, auth, log, publicUrl: config.PUBLIC_URL });
   const boardReader = directBoardReader(collab, db);
-  const notices = { notify: vi.fn() };
+  const notices = { notify: vi.fn(), recheckAccess: vi.fn() };
   const people = {} as Record<Who, { id: string; cookie: string }>;
   let app: Awaited<ReturnType<typeof createApp>>;
   let projectId: string;
