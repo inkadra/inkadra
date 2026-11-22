@@ -16,18 +16,18 @@ const shape = (path: string) =>
     .replace(/\{[^}]+\}/g, '{}')
     .replace(/\/$/, '');
 
-type Responses = ReturnType<typeof apiOperations>[number]['responses'];
-let operations: Map<string, Responses> | undefined;
+type Operation = ReturnType<typeof apiOperations>[number];
+let operations: Map<string, Operation> | undefined;
 /** By route pattern; a wildcard route (`hls/*`) by the path that was asked instead. */
 function operation(method: string, route: string, path: string) {
   operations ??= new Map(
-    apiOperations().map((op) => [`${op.method.toUpperCase()} ${shape(op.path)}`, op.responses]),
+    apiOperations().map((op) => [`${op.method.toUpperCase()} ${shape(op.path)}`, op]),
   );
   if (!route.includes('*')) return operations.get(`${method} ${shape(route)}`);
-  for (const [key, responses] of operations) {
+  for (const [key, op] of operations) {
     const [m, template = ''] = key.split(' ');
     const pattern = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('\\{\\}', '[^/]+');
-    if (m === method && new RegExp(`^${pattern}$`).test(path)) return responses;
+    if (m === method && new RegExp(`^${pattern}$`).test(path)) return op;
   }
 }
 
@@ -43,11 +43,28 @@ interface Exception {
 /**
  * Answers the gate lets through although the contract does not describe them: drift that
  * cannot be fixed on either side without breaking installed clients, each with its reason and
- * a decision left to the maintainers. Empty: every mismatch found so far was fixed.
+ * a decision left to the maintainers.
  * Not needed here: Better Auth (`/api/auth`), calendar feeds, guest pages and the web app live
- * outside /api/v1 and are never checked; uploads (tus), HLS and file downloads are described.
+ * outside /api/v1 and are never checked.
  */
-export const EXCEPTIONS: readonly Exception[] = [];
+export const EXCEPTIONS: readonly Exception[] = [
+  // Live HLS files past the viewing limits or not encoded in time answer 503 with
+  // `{ code, message }` instead of ApiError (hls.ts). Players only read the status and
+  // Retry-After, so the body may never have mattered; changing it is left to the maintainers.
+  ...['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetId}'].flatMap((prefix) =>
+    ['init.mp4', 'seg-{segment}.m4s'].map((file) => ({
+      method: 'GET',
+      path: `${API_PREFIX}${prefix}/hls/live/{name}/${file}`,
+      status: 503,
+      reason: 'live HLS 503 without the ApiError shape',
+    })),
+  ),
+];
+
+/** The error shape of decision 0003. */
+const apiError = z.object({
+  error: z.object({ code: z.string(), message: z.string(), details: z.unknown().optional() }),
+});
 
 const internal = {
   'application/json': {
@@ -73,9 +90,14 @@ export function contractMismatch(
   path = route,
 ): string | null {
   const where = `${method} ${route} → ${status}`;
-  if (excepted(method, route, status)) return null;
-  const responses = operation(method, route, path);
-  if (!responses) return `${where}: the contract has no such operation`;
+  const op = operation(method, route, path);
+  if (!op) {
+    // A wildcard route answers names it does not serve with its own 404 (an unknown HLS file).
+    if (route.includes('*') && status === 404) return checkJson(where, apiError, contentType, body);
+    return `${where}: the contract has no such operation`;
+  }
+  if (excepted(method, op.path, status)) return null;
+  const responses = op.responses;
   const response =
     responses[status] ??
     responses[`${String(status)[0]}XX`] ??
@@ -101,10 +123,15 @@ export function contractMismatch(
   }
   if (!media || !('schema' in media))
     return `${where}: answers JSON, the contract describes ${types.join(', ')}`;
+  if (!(media.schema instanceof z.ZodType)) return null;
+  return checkJson(where, media.schema, contentType, body);
+}
+
+function checkJson(where: string, schema: z.ZodType, contentType: string, body: string | null) {
+  if (!/^application\/([a-z.+-]+\+)?json/.test(contentType))
+    return `${where}: the contract declares a JSON body, the answer has ${contentType || 'no body'}`;
   // shortcut: a JSON stream is not read here; no route streams JSON today.
   if (body === null) return null;
-  if (!(media.schema instanceof z.ZodType)) return null;
-  const schema: z.ZodType = media.schema;
   let value: unknown;
   try {
     value = body === '' ? undefined : JSON.parse(body);

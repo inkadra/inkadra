@@ -80,4 +80,31 @@ describe('the response contract gate', () => {
       'declares a JSON body',
     );
   });
+
+  it('matches the live HLS files and answers the names a wildcard route does not serve', () => {
+    const member = '/api/v1/assets/:assetId/hls/*';
+    const guest = '/api/v1/guest/links/:linkId/assets/:assetId/hls/*';
+    const asset = `/api/v1/assets/${crypto.randomUUID()}/hls`;
+    const shared = `/api/v1/guest/links/${crypto.randomUUID()}/assets/${crypto.randomUUID()}/hls`;
+    const at = (route: string, path: string, status: number, type: string, body: string | null) =>
+      contractMismatch('GET', route, status, type, body, path);
+    expect(at(member, `${asset}/live/480/init.mp4`, 200, 'video/mp4', null)).toBeNull();
+    expect(
+      at(member, `${asset}/live/720.m3u8`, 200, 'application/vnd.apple.mpegurl', ''),
+    ).toBeNull();
+    expect(at(guest, `${shared}/live/480/seg-12.m4s`, 200, 'video/iso.segment', null)).toBeNull();
+    const missing = JSON.stringify({ error: { code: 'not_found', message: 'No such copy.' } });
+    expect(at(member, `${asset}/poster.jpg`, 404, 'application/json', missing)).toBeNull();
+    expect(at(member, `${asset}/poster.jpg`, 404, 'text/plain', 'no')).toContain('JSON body');
+    expect(at(member, `${asset}/poster.jpg`, 200, 'image/jpeg', null)).toContain(
+      'no such operation',
+    );
+    // The live 503 keeps its own shape (EXCEPTIONS); elsewhere that shape is drift.
+    const odd = JSON.stringify({ code: 'unavailable', message: 'Not ready yet.' });
+    expect(at(member, `${asset}/live/480/init.mp4`, 503, 'application/json', odd)).toBeNull();
+    expect(at(guest, `${shared}/live/480/seg-3.m4s`, 503, 'application/json', odd)).toBeNull();
+    expect(at(member, `${asset}/master.m3u8`, 503, 'application/json', odd)).toContain(
+      'does not match',
+    );
+  });
 });

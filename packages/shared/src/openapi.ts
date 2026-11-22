@@ -3297,6 +3297,68 @@ registry.registerPath({
     ...guestErrors,
   },
 });
+// Rungs encoded while watched (decision 0128), for members and for the guests of a link.
+for (const prefix of ['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetId}']) {
+  const forGuests = prefix.startsWith('/guest/');
+  const shared = {
+    tags: [forGuests ? 'Guests' : 'Assets'],
+    security: forGuests ? guest : secured,
+    request: {
+      params: z.object({
+        ...(forGuests ? { linkId: Id } : {}),
+        assetId: Id,
+        name: VideoRung,
+      }),
+    },
+  };
+  const failures = forGuests ? guestErrors : errors;
+  const notReady =
+    'Past the viewing limits or not encoded in time: 503 with `Retry-After`, the player ' +
+    'retries, then keeps to the stored rungs. That 503 has the body `{ code, message }`, ' +
+    'not ApiError.';
+  registry.registerPath({
+    ...shared,
+    method: 'get',
+    path: v1(`${prefix}/hls/live/{name}.m3u8`),
+    summary: 'Media playlist of a rung encoded while watched (`video-live`).',
+    responses: {
+      200: {
+        description: 'Playlist; `Cache-Control: private, no-store`',
+        content: { 'application/vnd.apple.mpegurl': { schema: z.string() } },
+      },
+      ...failures,
+    },
+  });
+  registry.registerPath({
+    ...shared,
+    method: 'get',
+    path: v1(`${prefix}/hls/live/{name}/init.mp4`),
+    summary: 'Initialization segment of a rung encoded while watched.',
+    description: notReady,
+    responses: {
+      200: { description: 'MP4 header', content: { 'video/mp4': { schema: z.string() } } },
+      ...failures,
+    },
+  });
+  registry.registerPath({
+    ...shared,
+    method: 'get',
+    path: v1(`${prefix}/hls/live/{name}/seg-{segment}.m4s`),
+    summary: 'One media segment of a rung encoded while watched.',
+    description: notReady,
+    request: {
+      params: shared.request.params.extend({ segment: z.string().regex(/^\d{1,6}$/) }),
+    },
+    responses: {
+      200: {
+        description: 'Media segment',
+        content: { 'video/iso.segment': { schema: z.string() } },
+      },
+      ...failures,
+    },
+  });
+}
+
 registry.registerPath({
   method: 'get',
   path: v1('/guest/links/{linkId}/assets/{assetId}/stream'),
