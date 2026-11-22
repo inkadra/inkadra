@@ -41,24 +41,29 @@ Best warm open, then frame average / p95, in ms, on the head of the pull request
 dense measurement (22 November 2026, after the change that stops remote cursor moves from
 drawing the canvas again). The dense rounds ran in this order on one page:
 
-| Run                  | Open | Peers | Pan         | Zoom        | Pan at 100 % |
-| -------------------- | ---- | ----- | ----------- | ----------- | ------------ |
-| Gate, CI             | 1461 | 0     | 21.9 / 33.4 | 28.1 / 49.9 | 16.7 / 16.8  |
-| Dense, CI            | 1777 | 0     | 22.2 / 33.4 | 26.7 / 66.6 | 16.7 / 16.8  |
-|                      |      | 3     | 23.1 / 33.4 | 34.7 / 66.7 | 16.7 / 16.8  |
-|                      |      | 0     | 21.4 / 33.4 | 30.6 / 50.1 | 16.7 / 16.7  |
-|                      |      | 3     | 22.2 / 49.9 | 33.6 / 83.3 | 16.8 / 16.8  |
-| Dense, dev machine\* | 1588 | 0     | 22.4 / 49.9 | 23.1 / 50.0 | 16.7 / 16.8  |
-|                      |      | 3     | 22.4 / 50.0 | 30.3 / 66.7 | 16.8 / 16.7  |
-|                      |      | 0     | 21.5 / 33.4 | 26.9 / 50.0 | 16.7 / 16.7  |
-|                      |      | 3     | 21.9 / 50.0 | 31.1 / 50.1 | 16.7 / 16.7  |
+| Run                   | Open | Peers | Pan         | Zoom        | Pan at 100 % |
+| --------------------- | ---- | ----- | ----------- | ----------- | ------------ |
+| Gate, CI              | 1461 | 0     | 21.9 / 33.4 | 28.1 / 49.9 | 16.7 / 16.8  |
+| Dense, CI             | 1777 | 0     | 22.2 / 33.4 | 26.7 / 66.6 | 16.7 / 16.8  |
+|                       |      | 3     | 23.1 / 33.4 | 34.7 / 66.7 | 16.7 / 16.8  |
+|                       |      | 0     | 21.4 / 33.4 | 30.6 / 50.1 | 16.7 / 16.7  |
+|                       |      | 3     | 22.2 / 49.9 | 33.6 / 83.3 | 16.8 / 16.8  |
+| Gate, CI, second run  | 1149 | 0     | 16.7 / 16.7 | 19.4 / 33.4 | 16.7 / 16.8  |
+| Dense, CI, second run | 1263 | 0     | 16.9 / 16.8 | 19.7 / 33.4 | 16.7 / 16.8  |
+|                       |      | 3     | 16.9 / 16.7 | 23.9 / 50.0 | 16.7 / 16.8  |
+|                       |      | 0     | 16.9 / 16.7 | 22.5 / 33.4 | 16.7 / 16.8  |
+|                       |      | 3     | 17.5 / 33.3 | 24.7 / 50.0 | 16.7 / 16.8  |
+| Dense, dev machine\*  | 1588 | 0     | 22.4 / 49.9 | 23.1 / 50.0 | 16.7 / 16.8  |
+|                       |      | 3     | 22.4 / 50.0 | 30.3 / 66.7 | 16.8 / 16.7  |
+|                       |      | 0     | 21.5 / 33.4 | 26.9 / 50.0 | 16.7 / 16.7  |
+|                       |      | 3     | 21.9 / 50.0 | 31.1 / 50.1 | 16.7 / 16.7  |
 
 \* A 12-thread Linux machine shared with other work, at a quiet moment. A run there during heavy
 use by other work showed no difference between the rounds (zoom 31 to 37 ms on average with or
 without peers): numbers from a busy machine do not tell the peers' cost.
 
 What they say: the drawings (3654 strokes) add about 300 ms to the open. Three moving cursors
-still cost the zoom, less than before that change: 4 to 8 ms more on average than the rounds
+still cost the zoom, less than before that change: 2 to 8 ms more on average than the rounds
 without them on the same page, on CI and on the quiet dev machine; panning does not change. Why
 the zoom still pays for them is not pinned down. Two runs are too few for bars that gate merges,
 which is why the measurement only reports.

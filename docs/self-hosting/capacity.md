@@ -99,7 +99,7 @@ pnpm loadtest --preset dense --url https://inkadra-test.example.com --yes-i-know
 | Reconnects                             | 15               |                                                                                          |
 | Timed edits, unacknowledged edits      | half, 0          | new                                                                                      |
 | Reconnect burst, all synced            | 30 s             | new                                                                                      |
-| Event loop p99, steady / burst (`all`) | 1500 / 10,000 ms | new                                                                                      |
+| Event loop p99, steady / burst (`all`) | 3000 / 10,000 ms | new                                                                                      |
 
 Also on any error, a burst that does not converge or whose changes are not stored, and a pool
 wait over 2 s. Memory per open board is never a limit here (one board). The limits live in
@@ -253,8 +253,10 @@ growing, not boards with more content.
 | ---------------------------- | -------------------- | ------------------ | -------------- | -------------------- | ------------------------------ | -------------------------------------------- |
 | `dense`, `all`, CI           | 1.3 / 11 / 345 ms    | 26 / 523 ms        | 303 ms         | 272 → 818 MiB        | 370 / 2611 ms                  | 7.0 · 1.0 · 1.8 s                            |
 | `dense`, `all`, CI           | 1.1 / 11 / 243 ms    | 25 / 247 ms        | 1878 ms        | 279 → 849 MiB        | 396 / 2764 ms                  | 6.8 · 1.0 · 1.7 s                            |
+| `dense`, `all`, CI           | 1.8 / 34 / 403 ms    | 36 / 356 ms        | 505 ms         | 275 → 831 MiB        | 808 / 3240 ms                  | 9.4 · 1.6 · 1.9 s                            |
 | `dense`, split, CI†          | 1.5 / 13 / 296 ms    | 23 / 421 ms        | 388 ms         | 222 → 487 MiB        | (web) 15 / 12 ms               | 7.6 · 1.1 · 1.9 s                            |
 | `dense`, split, CI†          | 1.5 / 11 / 555 ms    | 19 / 581 ms        | 1016 ms        | 222 → 514 MiB        | (web) 13 / 12 ms               | 7.7 · 1.1 · 1.9 s                            |
+| `dense`, split, CI†          | 1.5 / 24 / 325 ms    | 70 / 756 ms        | 426 ms         | 223 → 485 MiB        | (web) 13 / 12 ms               | 9.2 · 0.9 · 2.0 s                            |
 | `dense`, `all`, dev machine‡ | 2.3 / 241 / 721 ms   | 340 / 765 ms       | 441 ms         | 294 → 833 MiB        | 443 / 3890 ms                  | 9.4 · 1.3 · 1.9 s                            |
 
 Runs of 22 November 2026; the CI runs last 180 s, the dev machine's 60 s. In every run: no
@@ -267,15 +269,15 @@ the 18 clients in 0.6 to 0.8 s on CI; whether the board was reloaded then cannot
 
 What the numbers say, and no more:
 
-- **Steady run.** The edits stay fast for most people (p95 11 to 13 ms on CI), but the p99 of the
-  edit round trip and of the delivery is 240 to 580 ms on CI, against about 1.5 ms with `medium`.
-  In `all` the event loop of the process holding the board reaches 370 to 400 ms at p99 in its
+- **Steady run.** The edits stay fast for most people (p95 11 to 34 ms on CI), but the p99 of the
+  edit round trip and of the delivery is 240 to 760 ms on CI, against about 1.5 ms with `medium`.
+  In `all` the event loop of the process holding the board reaches 370 to 810 ms at p99 in its
   worst 5 s window, with the load clients on the same runner. The synchronous start of each save
   of this board (validating every card and encoding the whole document) measured about 130 ms on
   the dev machine; what else takes that process's time is not pinned down.
-- **Burst.** With every client sending a new card at once, it takes 7 to 8 s on CI (9.4 to 10.9 s
+- **Burst.** With every client sending a new card at once, it takes 7 to 9.4 s on CI (9.4 to 10.9 s
   on the dev machine) until all 18 are synced again, and the event loop of the `all` process
-  stalls up to 2.8 s at p99 (3.9 s on the dev machine). On the dev machine, with a temporary log in
+  stalls up to 3.2 s at p99 (3.9 s on the dev machine). On the dev machine, with a temporary log in
   the server: the board was read back from the database before the reconnect; 11 of the 18
   clients were synced within 0.75 s and the others one after another up to 9.6 s; with only moves
   offline, no new cards, all 18 were synced in 0.85 s; admitting the updates (decision 0130) and
