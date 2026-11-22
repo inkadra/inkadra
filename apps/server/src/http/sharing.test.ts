@@ -19,6 +19,7 @@ import {
   user,
   verification,
 } from '../db/schema.ts';
+import { lockAccount } from '../locks.ts';
 import { memoryMailer } from '../mailer.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
@@ -699,6 +700,67 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(await status(lesser)).toBe('valid');
     expect(await accept(lesser)).toBe(200);
     await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+  });
+
+  it('counts no sign-up on an invitation whose inviter is deactivated meanwhile', async () => {
+    const made = await call('owner', 'POST', '/api/v1/projects', { name: 'Provino' });
+    const p = made.body.id as string;
+    const member = `/api/v1/projects/${p}/members/${as.guest.id}`;
+    expect((await call('owner', 'PUT', member, { role: 'editor' })).status).toBe(200);
+    const link = await call('guest', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      projectId: p,
+      role: 'viewer',
+    });
+    const { cookie } = await claim(link.body.invitation.url);
+    // The deactivation holds the inviter's account while the sign-up passes the cookie check.
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    const deactivation = db.transaction(async (tx) => {
+      await lockAccount(tx, as.guest.id);
+      await tx.update(user).set({ deactivatedAt: new Date() }).where(eq(user.id, as.guest.id));
+      held();
+      await released;
+    });
+    await holding;
+    const signUp = call(
+      { cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'racer@example.com', password: PASSWORD, name: 'Racer' },
+      '198.18.10.1',
+    );
+    await vi.waitFor(
+      async () => {
+        const [waiting] = await db.execute<{ n: number }>(
+          sql`select count(*)::int as n from pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock'`,
+        );
+        expect(waiting?.n).toBeGreaterThan(0);
+      },
+      { timeout: 10_000 },
+    );
+    release();
+    await deactivation;
+    try {
+      expect((await signUp).status).toBe(403);
+      expect(await db.select().from(user).where(eq(user.email, 'racer@example.com'))).toEqual([]);
+      const [row] = await db
+        .select({ uses: invitationTable.uses })
+        .from(invitationTable)
+        .where(eq(invitationTable.id, link.body.invitation.id));
+      expect(row?.uses).toBe(0);
+    } finally {
+      await db.update(user).set({ deactivatedAt: null }).where(eq(user.id, as.guest.id));
+      await db.delete(user).where(eq(user.email, 'racer@example.com'));
+      await call('owner', 'DELETE', `/api/v1/projects/${p}`);
+    }
   });
 
   it('caps invitation links at editor; owners are named from the people page', async () => {

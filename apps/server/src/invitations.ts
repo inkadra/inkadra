@@ -13,7 +13,7 @@ import {
   user,
 } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
-import { lockActiveAccount } from './locks.ts';
+import { lockAccount, lockActiveAccount } from './locks.ts';
 import { nextOwnPosition } from './project-order.ts';
 import { sha256 } from './secrets.ts';
 
@@ -150,28 +150,41 @@ export function invitedAddressMatches(row: InvitationRow, email: string): boolea
 }
 
 /**
- * Counts one use of an invitation before the account it creates exists. A single conditional
- * UPDATE, so parallel sign-ups with the same link can never exceed `maxUses`: the ones that
- * find no use left get null. A use stays counted if creating the account fails afterwards.
+ * Counts one use of an invitation before the account it creates exists, while its inviter can
+ * still give it. Under the inviter's account lock (decision 0134), so a deactivation, removal or
+ * demotion of theirs comes first and is seen, or waits. The count is a conditional UPDATE, so
+ * parallel sign-ups with the same link can never exceed `maxUses`: the ones that find no use
+ * left get null. A use stays counted if creating the account fails afterwards.
  */
 export async function reserveInvitationUse(
   db: Database,
   invitationId: string,
 ): Promise<InvitationRow | null> {
-  const [row] = await db
-    .update(invitation)
-    .set({ uses: sql`${invitation.uses} + 1` })
-    .where(
-      and(
-        eq(invitation.id, invitationId),
-        isNull(invitation.revokedAt),
-        gt(invitation.expiresAt, sql`now()`),
-        or(isNull(invitation.accessExpiresAt), gt(invitation.accessExpiresAt, sql`now()`)),
-        or(isNull(invitation.maxUses), lt(invitation.uses, invitation.maxUses)),
-      ),
-    )
-    .returning();
-  return row ?? null;
+  return db.transaction(async (tx) => {
+    const [about] = await tx
+      .select({ invitedBy: invitation.invitedBy })
+      .from(invitation)
+      .where(eq(invitation.id, invitationId));
+    if (!about?.invitedBy) return null;
+    await lockAccount(tx, about.invitedBy);
+    const [current] = await tx.select().from(invitation).where(eq(invitation.id, invitationId));
+    if (!current || !(await inviterCanGrant(tx, current))) return null;
+    const [row] = await tx
+      .update(invitation)
+      .set({ uses: sql`${invitation.uses} + 1` })
+      .where(
+        and(
+          eq(invitation.id, invitationId),
+          eq(invitation.invitedBy, about.invitedBy),
+          isNull(invitation.revokedAt),
+          gt(invitation.expiresAt, sql`now()`),
+          or(isNull(invitation.accessExpiresAt), gt(invitation.accessExpiresAt, sql`now()`)),
+          or(isNull(invitation.maxUses), lt(invitation.uses, invitation.maxUses)),
+        ),
+      )
+      .returning();
+    return row ?? null;
+  });
 }
 
 /**
