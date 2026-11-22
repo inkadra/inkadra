@@ -160,6 +160,12 @@ export const GUEST_ELEMENT_FIELDS = {
 } as const satisfies Record<ElementType, readonly string[]>;
 
 /**
+ * The fields of a to-do item that guests receive, an allow list like GUEST_ELEMENT_FIELDS:
+ * `assigneeId` stays out (no account ids for guests, decision 0013).
+ */
+export const GUEST_TODO_ITEM_FIELDS = ['id', 'text', 'done', 'dueDate'] as const;
+
+/**
  * An element as guests receive it: only the fields of GUEST_ELEMENT_FIELDS, `createdBy` null.
  * It still parses with `Element`. Whether the element is shown at all is hiddenFromGuests.
  * When `label` is passed for a frame (computed from the full document before hiding), it sets
@@ -170,6 +176,13 @@ export function toGuestElement(element: Element, label?: string): Record<string,
   const out: Record<string, unknown> = {};
   for (const key of GUEST_ELEMENT_FIELDS[element.type]) {
     if (source[key] !== undefined) out[key] = source[key];
+  }
+  if (element.type === 'todo') {
+    out.items = element.items.map((item) => {
+      const kept: Record<string, unknown> = {};
+      for (const key of GUEST_TODO_ITEM_FIELDS) if (item[key] !== undefined) kept[key] = item[key];
+      return kept;
+    });
   }
   if (element.type === 'frame' && label !== undefined) {
     out.label = label;
