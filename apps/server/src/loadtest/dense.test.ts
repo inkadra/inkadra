@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { DENSE, type DenseResult, evaluateDense, formatDense, sameDocument } from './dense.ts';
+import {
+  DENSE,
+  type DenseResult,
+  evaluateDense,
+  formatDense,
+  sameDocument,
+  seeded,
+} from './dense.ts';
 
 const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   preset: 'dense',
+  seed: 7,
   url: 'https://test.example',
   durationS: 60,
   editors: 15,
@@ -25,6 +33,17 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   eventLoopP99MaxMs: 120,
   eventLoopShared: true,
   ...over,
+});
+
+describe('seeded', () => {
+  it('repeats its numbers for a seed', () => {
+    const a = seeded(42);
+    const b = seeded(42);
+    const first = [a(), a(), a()];
+    expect([b(), b(), b()]).toEqual(first);
+    expect(first.every((n) => n >= 0 && n < 1)).toBe(true);
+    expect(seeded(43)()).not.toBe(first[0]);
+  });
 });
 
 describe('sameDocument', () => {
@@ -63,6 +82,9 @@ describe('evaluateDense', () => {
     const text = formatDense(result(), DENSE.limits, []);
     expect(text).toContain('18 clients (board reloaded) synced in 2500 ms, converged');
     expect(text.split('\n').at(-1)).toBe('PASSED');
+    expect(text).toContain('Seed                  7');
+    expect(text).toContain('18 openings of the board');
+    expect(text).not.toContain('board switches');
   });
 
   it('fails a slow, missing or diverging burst', () => {

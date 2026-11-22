@@ -78,6 +78,7 @@ export const DENSE: DensePreset = {
 
 export interface DenseResult extends Omit<Result, 'preset'> {
   preset: 'dense';
+  seed: number;
   board: { elements: number; frames: number; strokes: number; bytes: number };
   /** Cursor moves the editors published. */
   cursors: number;
@@ -102,6 +103,8 @@ export interface DenseResult extends Omit<Result, 'preset'> {
 
 export interface DenseOptions extends ClientTarget {
   preset: DensePreset;
+  /** Seeds the moves (timing jitter, cursors, frames, strokes); ids stay random. */
+  seed: number;
   durationS: number;
   signal: AbortSignal;
   /** The samples of /metrics; null without a token. */
@@ -257,11 +260,13 @@ export async function runDense(opts: DenseOptions) {
       last = 0;
     });
     me.pending = () => waiting.filter((w) => w.timed).length;
-    const cursor = { x: Math.random() * 4000, y: Math.random() * 3000 };
-    let nextEdit = Date.now() + Math.random() * EDIT_MS;
+    // Its own stream of the run's seed: the same seed gives each editor the same moves.
+    const random = seeded(opts.seed + index * 7919);
+    const cursor = { x: random() * 4000, y: random() * 3000 };
+    let nextEdit = Date.now() + random() * EDIT_MS;
     while (Date.now() < end && !stop.signal.aborted) {
-      cursor.x += (Math.random() - 0.5) * 80;
-      cursor.y += (Math.random() - 0.5) * 60;
+      cursor.x += (random() - 0.5) * 80;
+      cursor.y += (random() - 0.5) * 60;
       board.provider.awareness?.setLocalState({
         cursor: { ...cursor },
         selection: [note],
@@ -269,11 +274,11 @@ export async function runDense(opts: DenseOptions) {
       });
       cursors += 1;
       if (Date.now() >= nextEdit) {
-        nextEdit += EDIT_MS * (0.8 + Math.random() * 0.4);
+        nextEdit += EDIT_MS * (0.8 + random() * 0.4);
         timing = true;
-        const frame = frames[Math.floor(Math.random() * frames.length)];
-        if (frame && Math.random() < STROKE_SHARE) {
-          addStroke(board.doc, frame, strokeOf());
+        const frame = frames[Math.floor(random() * frames.length)];
+        if (frame && random() < STROKE_SHARE) {
+          addStroke(board.doc, frame, strokeOf(random));
           strokes += 1;
         } else {
           me.value = ++counter;
@@ -283,7 +288,7 @@ export async function runDense(opts: DenseOptions) {
         timing = false;
         edits += 1;
       }
-      await pause(CURSOR_MS[0] + Math.random() * (CURSOR_MS[1] - CURSOR_MS[0]));
+      await pause(CURSOR_MS[0] + random() * (CURSOR_MS[1] - CURSOR_MS[0]));
     }
   }
 
@@ -434,6 +439,7 @@ export async function runDense(opts: DenseOptions) {
   }
   const result: DenseResult = {
     preset: 'dense',
+    seed: opts.seed,
     url: new URL(opts.origin ?? opts.baseUrl).origin,
     durationS: opts.durationS,
     editors: preset.editors,
@@ -458,14 +464,26 @@ export async function runDense(opts: DenseOptions) {
   return { result, projectId, stopped: opts.signal.aborted };
 }
 
+/** mulberry32: small, fast and good enough to pick moves; the same seed, the same moves. */
+export function seeded(seed: number) {
+  let state = seed >>> 0 || 1;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
+  };
+}
+
 /** A stroke as a pencil draws it: 8 to 60 points in the frame's grid. */
-function strokeOf() {
+function strokeOf(random: () => number) {
   const points: number[] = [];
-  let x = Math.floor(Math.random() * 4096);
-  let y = Math.floor(Math.random() * 4096);
-  for (let i = 8 + Math.floor(Math.random() * 53); i > 0; i--) {
-    x = Math.max(0, Math.min(4096, x + Math.round((Math.random() - 0.5) * 160)));
-    y = Math.max(0, Math.min(4096, y + Math.round((Math.random() - 0.5) * 160)));
+  let x = Math.floor(random() * 4096);
+  let y = Math.floor(random() * 4096);
+  for (let i = 8 + Math.floor(random() * 53); i > 0; i--) {
+    x = Math.max(0, Math.min(4096, x + Math.round((random() - 0.5) * 160)));
+    y = Math.max(0, Math.min(4096, y + Math.round((random() - 0.5) * 160)));
     points.push(x, y);
   }
   return { tool: 'pencil' as const, color: '#1F2328', width: 3, points };
@@ -500,12 +518,21 @@ export function evaluateDense(r: DenseResult, limits: DenseLimits): string[] {
 }
 
 export function formatDense(r: DenseResult, limits: DenseLimits, failures: string[]): string {
-  const base = formatReport(r, limits, failures).split('\n');
+  // Opening the one board, not moving between boards as in the presets.
+  const base = formatReport(r, limits, failures)
+    .split('\n')
+    .map((line) =>
+      line.startsWith('Edits ')
+        ? `Edits                 ${r.edits} (${r.strokes} of them strokes; ${r.switches} openings of the board)`
+        : line,
+    );
   // The verdict stays last.
   const verdict = base.splice(base.lastIndexOf(''));
   const ms = (v: number | null) => (v === null ? '–' : `${Math.round(v)} ms`);
   const b = r.burst;
   base.push(
+    `Seed                  ${r.seed} (moves, cursors and strokes; ids are random)`,
+    `Readers               ${r.readers} connections of the same account that only observe`,
     `Board                 ${r.board.elements} cards, ${r.board.frames} frames with ${r.board.strokes} strokes, ${Math.round(r.board.bytes / 1024)} KiB seeded`,
     `Presence              ${r.cursors} cursor moves, ${r.strokes} strokes drawn`,
     'Timing                edit round trip: each edit until the server acknowledged it;',

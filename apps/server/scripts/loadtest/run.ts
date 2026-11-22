@@ -23,6 +23,7 @@ const { values: args } = parseArgs({
     url: { type: 'string' },
     'collab-url': { type: 'string' },
     duration: { type: 'string' },
+    seed: { type: 'string' },
     out: { type: 'string' },
     'yes-i-know': { type: 'boolean', default: false },
   },
@@ -43,6 +44,9 @@ const origin = base.origin;
 const durationS = args.duration ? Number(args.duration) : preset.durationS;
 if (!Number.isFinite(durationS) || durationS < 10) fail('--duration is in seconds, at least 10.');
 const metricsToken = process.env.METRICS_TOKEN || undefined;
+// `dense` only: the seed of its moves, printed in the report so a run can be repeated.
+const seed = args.seed ? Number(args.seed) : Math.floor(Math.random() * 2 ** 31);
+if (!Number.isInteger(seed)) fail('--seed is an integer.');
 
 console.log(
   [
@@ -128,7 +132,7 @@ async function load(onProject: (id: string) => void) {
     onProject,
   };
   if (dense) {
-    const outcome = await runDense({ ...target, ...common, preset: DENSE, metrics });
+    const outcome = await runDense({ ...target, ...common, preset: DENSE, metrics, seed });
     const failures = evaluateDense(outcome.result, DENSE.limits);
     return { outcome, failures, report: formatDense(outcome.result, DENSE.limits, failures) };
   }
