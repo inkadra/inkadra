@@ -1030,6 +1030,8 @@ jobs:
       contents: read
       packages: read
     strategy:
+      # Both architectures report, even when one fails.
+      fail-fast: false
       matrix:
         include:
           - arch: amd64
@@ -1069,7 +1071,11 @@ jobs:
 
   manifest:
     name: Tag and attest image (${{ matrix.variant }})
-    needs: [publish, office-sandbox]
+    # Temporary: office-sandbox does not gate the tags while its arm64 leg fails in bwrap
+    # ("loopback: Failed RTM_NEWADDR: Operation not permitted"); it still runs and turns the run
+    # red, so the Release workflow, which needs a successful CI run on main, still waits for it.
+    # Put it back in needs once it passes on both architectures on main.
+    needs: publish
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
