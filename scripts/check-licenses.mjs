@@ -80,19 +80,32 @@ export function trackedFiles(root) {
 }
 
 /**
- * Whether an SPDX expression is satisfied with `allowed` licences: AND binds tighter than OR,
- * parentheses group. Anything it cannot read, and any WITH exception, needs a review (false).
- * shortcut: no exception is known yet; list the ones reviewed here when one shows up.
+ * What an SPDX expression means with `allowed` licences: 'allowed', 'denied' (a licence id not
+ * on the list, which an OR can route around) or 'review' (a WITH exception, UNLICENSED, a
+ * LicenseRef, "SEE LICENSE IN …", anything unreadable). AND binds tighter than OR, parentheses
+ * group, and a branch that needs review makes the whole expression need review, OR or not.
+ * shortcut: no WITH exception is known yet; list the ones reviewed here when one shows up.
  */
-export function ok(expr, allowed) {
+export function verdict(expr, allowed) {
   const tokens = expr.match(/\(|\)|[^\s()]+/g) ?? [];
   let at = 0;
   const next = () => tokens[at++];
+  // Review wins over everything; then OR needs one allowed side, AND both.
+  const join = (a, b, need) =>
+    a === 'review' || b === 'review'
+      ? 'review'
+      : need === 'any'
+        ? a === 'allowed' || b === 'allowed'
+          ? 'allowed'
+          : 'denied'
+        : a === 'allowed' && b === 'allowed'
+          ? 'allowed'
+          : 'denied';
   const or = () => {
     let value = and();
     while (tokens[at] === 'OR') {
       next();
-      value = and() || value;
+      value = join(value, and(), 'any');
     }
     return value;
   };
@@ -100,7 +113,7 @@ export function ok(expr, allowed) {
     let value = term();
     while (tokens[at] === 'AND') {
       next();
-      value = term() && value;
+      value = join(value, term(), 'all');
     }
     return value;
   };
@@ -115,17 +128,23 @@ export function ok(expr, allowed) {
     if (tokens[at] === 'WITH') {
       next();
       if (!next()) throw new Error('exception');
-      return false;
+      return 'review';
     }
-    return allowed.has(token);
+    if (!/^[A-Za-z0-9][A-Za-z0-9.-]*\+?$/.test(token)) throw new Error('not an id');
+    if (token === 'UNLICENSED' || token === 'Unknown' || token.startsWith('LicenseRef-')) {
+      return 'review';
+    }
+    return allowed.has(token) ? 'allowed' : 'denied';
   };
   try {
     const value = or();
-    return at === tokens.length && value;
+    return at === tokens.length ? value : 'review';
   } catch {
-    return false;
+    return 'review';
   }
 }
+
+const ok = (expr, allowed) => verdict(expr, allowed) === 'allowed';
 
 /**
  * Returns how many packages `pnpm licenses list --json` gave and which ones need a review.

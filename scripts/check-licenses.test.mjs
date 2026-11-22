@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { check, missingSpdx, ok, trackedFiles } from './check-licenses.mjs';
+import { check, missingSpdx, trackedFiles, verdict } from './check-licenses.mjs';
 
 test('counts every package and flags only licences outside the allow-list', () => {
   const pkg = (name, version = '1.0.0') => ({ name, versions: [version] });
@@ -19,20 +19,32 @@ test('counts every package and flags only licences outside the allow-list', () =
   assert.deepEqual(check({}), { count: 0, problems: [] });
 });
 
-test('SPDX expressions: AND before OR, parentheses group, WITH and nonsense need a review', () => {
-  const allowed = new Set(['MIT', 'Zlib', 'LGPL-3.0-only']);
-  const mit = new Set(['MIT', 'Zlib']);
-  assert.equal(ok('MIT', mit), true);
-  assert.equal(ok('(MIT AND Zlib)', mit), true);
-  assert.equal(ok('GPL-3.0-only OR MIT AND Zlib', mit), true);
-  // The OR inside the parentheses does not excuse the LGPL the AND requires.
-  assert.equal(ok('(MIT OR GPL-3.0-only) AND LGPL-3.0-only', mit), false);
-  assert.equal(ok('(MIT OR GPL-3.0-only) AND LGPL-3.0-only', allowed), true);
-  assert.equal(ok('MIT AND (GPL-3.0-only OR Zlib)', mit), true);
-  assert.equal(ok('MIT AND GPL-3.0-only OR Zlib', mit), true);
-  assert.equal(ok('MIT AND GPL-3.0-only', mit), false);
-  for (const odd of ['MIT WITH Classpath-exception-2.0', '(MIT', 'MIT)', 'MIT OR', 'AND MIT', '']) {
-    assert.equal(ok(odd, allowed), false, odd);
+test('SPDX expressions: AND before OR, parentheses group, review beats any OR', () => {
+  const allowed = new Set(['MIT', 'Apache-2.0', 'Zlib', 'LGPL-3.0-only']);
+  const mit = new Set(['MIT', 'Apache-2.0', 'Zlib']);
+  const cases = [
+    ['MIT', mit, 'allowed'],
+    ['MIT OR Apache-2.0', mit, 'allowed'],
+    ['(MIT AND Zlib)', mit, 'allowed'],
+    ['(MIT OR GPL-3.0-only)', mit, 'allowed'],
+    ['GPL-3.0-only OR MIT AND Zlib', mit, 'allowed'],
+    ['MIT AND (GPL-3.0-only OR Zlib)', mit, 'allowed'],
+    ['MIT AND GPL-3.0-only OR Zlib', mit, 'allowed'],
+    // The OR inside the parentheses does not excuse the LGPL the AND requires.
+    ['(MIT OR GPL-3.0-only) AND LGPL-3.0-only', mit, 'denied'],
+    ['(MIT OR GPL-3.0-only) AND LGPL-3.0-only', allowed, 'allowed'],
+    ['MIT AND GPL-3.0-only', mit, 'denied'],
+    ['GPL-3.0-only', mit, 'denied'],
+    // A branch that needs a review is not routed around by an allowed one.
+    ['MIT OR Apache-2.0 WITH LLVM-exception', mit, 'review'],
+    ['MIT OR UNLICENSED', mit, 'review'],
+    ['MIT OR LicenseRef-Custom', mit, 'review'],
+    ['SEE LICENSE IN LICENSE.md', mit, 'review'],
+    ['Unknown', mit, 'review'],
+  ];
+  for (const [expr, list, expected] of cases) assert.equal(verdict(expr, list), expected, expr);
+  for (const odd of ['(MIT', 'MIT)', 'MIT OR', 'AND MIT', '', 'MIT OR (Apache-2.0']) {
+    assert.equal(verdict(odd, allowed), 'review', odd);
   }
 });
 
