@@ -3,14 +3,16 @@
 // (scripts/loadtest/run.ts): Settings → Server keeps the presets of report.ts, which spread
 // people over many light boards. See docs/self-hosting/capacity.md.
 import { randomBytes } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { addStroke } from '@inkadra/canvas-core';
 import { addElement, roots } from '@inkadra/doc-schema';
 import { generateReferenceBoard } from '@inkadra/doc-schema/reference-board';
-import type { BoardPreview } from '@inkadra/shared';
 import * as Y from 'yjs';
-import { projectBoard } from '../board-preview.ts';
+import { readZip } from '../transfers/zip.ts';
 import { type ClientTarget, collabClients } from './generator.ts';
 import {
   evaluate,
@@ -51,6 +53,9 @@ const EDIT_MS = 1000;
 const STROKE_SHARE = 0.2;
 /** How long the burst leaves the board alone: a store on the last close, then the unload. */
 const UNLOAD_WAIT_MS = 15_000;
+/** How long the stored board may take to have every offline edit, and a reopen to sync. */
+const PERSIST_MS = 120_000;
+const REOPEN_MS = 60_000;
 /** The offline markers sit above every other card (the reference board ends at -20,000). */
 const MARKER_Y = -50_000;
 /** Share of the expected edits (one a second per editor) that must come back timed. */
@@ -122,11 +127,12 @@ export interface DenseResult extends Omit<Result, 'preset'> {
 }
 
 /**
- * After the burst everyone leaves. `stored`: the board's preview, which the server computes from
- * the document stored in the database and never from the open one, shows every offline marker
- * card (their count and their labels); `storeMs` is how long that took. `reopened`: a client
- * opening the board afterwards gets the same document with every offline edit. Whether the
- * server served that one from memory or from the database cannot be seen from outside.
+ * After the burst everyone leaves. `stored`: the board as stored in PostgreSQL, read through a
+ * project export (which reads `board_doc.state`, never the document in memory), is the converged
+ * document (state vector and delete set) with every offline edit: each note's position, each
+ * marker card and its label; `storeMs` is how long until it was. `reopened`, secondary: a client
+ * opening the board afterwards gets the same document; whether the server served that one from
+ * memory or from the database cannot be seen from outside.
  */
 export interface Persistence {
   stored: boolean;
@@ -232,8 +238,8 @@ export async function runDense(opts: DenseOptions) {
     });
     return socket;
   };
-  const openBoard = async (boardId: string) => {
-    const board = open(socketOf(), boardId, 120_000);
+  const openBoard = async (boardId: string, syncMs = 120_000) => {
+    const board = open(socketOf(), boardId, syncMs);
     boards.push(board);
     await board.synced;
     opens += 1;
@@ -257,8 +263,9 @@ export async function runDense(opts: DenseOptions) {
     value: number;
     /** Edits of the run still waiting for their acknowledgement. */
     pending(): number;
-    /** The card it adds while offline in the burst. */
+    /** The card it adds while offline in the burst, and its label. */
     marker: string;
+    label: string;
   }
   const editors: Editor[] = [];
   let pendingEdits = 0;
@@ -266,7 +273,14 @@ export async function runDense(opts: DenseOptions) {
   async function editor(index: number, frames: string[], end: number) {
     const board = await openBoard(boardIdOf());
     const note = newId();
-    const me: Editor = { board, note, value: 0, pending: () => 0, marker: newId() };
+    const me: Editor = {
+      board,
+      note,
+      value: 0,
+      pending: () => 0,
+      marker: newId(),
+      label: `offline ${index} ${opts.seed}`,
+    };
     editors[index] = me;
     addElement(board.doc, {
       id: note,
@@ -331,42 +345,99 @@ export async function runDense(opts: DenseOptions) {
     while (Date.now() < end && !stop.signal.aborted) await pause(250);
   }
 
-  /** Offline edits of the burst this replica lacks: a note not moved, a marker missing. */
+  /** Offline edits of the burst this replica lacks: a note not moved, a marker or its label. */
   const missingMarks = (doc: Y.Doc) =>
     editors.filter(
       (e) =>
-        roots(doc).elements.get(e.note)?.get('x') !== e.value || !roots(doc).elements.has(e.marker),
+        roots(doc).elements.get(e.note)?.get('x') !== e.value ||
+        roots(doc).elements.get(e.marker)?.get('label') !== e.label,
     ).length;
 
-  /** Everyone leaves; then the stored board and a client that opens it again are checked. */
+  /**
+   * The board as stored in PostgreSQL: a project export reads `board_doc.state` from the
+   * database, never the document in memory, and writes it as `boards/<id>/document.yjs`. Null
+   * when the export is not ready within `left()`.
+   */
+  async function storedBoard(left: () => number): Promise<Y.Doc | null> {
+    const exportsPath = `/api/v1/projects/${projectId}/exports`;
+    type Transfer = { id: string; status: string };
+    let transfer = (await (
+      await api('POST', exportsPath, undefined, {}, left())
+    ).json()) as Transfer;
+    while (transfer.status === 'queued' || transfer.status === 'running') {
+      if (left() <= 0) return null;
+      await pause(500);
+      transfer = (await (
+        await api('GET', `/api/v1/transfers/${transfer.id}`, undefined, {}, left())
+      ).json()) as Transfer;
+    }
+    if (transfer.status !== 'ready') throw new Error(`the export ended ${transfer.status}`);
+    const res = await api(
+      'GET',
+      `/api/v1/transfers/${transfer.id}/download`,
+      undefined,
+      {},
+      left(),
+    );
+    const dir = await mkdtemp(join(tmpdir(), 'inkadra-loadtest-'));
+    try {
+      const path = join(dir, 'export.zip');
+      await writeFile(path, Buffer.from(await res.arrayBuffer()));
+      const zip = await readZip(path, {
+        entries: 100_000,
+        totalBytes: 2 ** 31,
+        compressionRatio: 1000,
+      });
+      try {
+        const doc = new Y.Doc();
+        Y.applyUpdate(doc, await zip.buffer(`boards/${rootBoard}/document.yjs`, 2 ** 28));
+        return doc;
+      } finally {
+        zip.close();
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * Everyone leaves; then the stored board must be the converged document, every offline edit
+   * included (read through an export, from the database), and a client opening the board again
+   * must get it too (secondary: the server may serve that one from memory).
+   */
   async function persisted(converged: Y.Doc): Promise<Persistence> {
-    const expected = projectBoard(Y.encodeStateAsUpdate(converged)).preview;
-    const want = JSON.stringify([expected.elementCount, expected.excerpts]);
     for (const socket of sockets) socket.disconnect();
     const started = performance.now();
+    const deadline = started + PERSIST_MS;
+    const left = () => deadline - performance.now();
     let storeMs: number | null = null;
-    let seen = '';
-    while (!stop.signal.aborted && performance.now() - started < 60_000) {
+    let detail: string | null = 'the stored board was not read in time';
+    // A store comes 2 to 10 s after the last change: export until the stored board has it all.
+    while (!stop.signal.aborted && left() > 0) {
       try {
-        const preview = (await (
-          await api('GET', `/api/v1/boards/${rootBoard}/preview`)
-        ).json()) as BoardPreview;
-        seen = JSON.stringify([preview.elementCount, preview.excerpts]);
-        if (seen === want) {
-          storeMs = performance.now() - started;
-          break;
+        const stored = await storedBoard(left);
+        // A result past the deadline does not count.
+        if (stored && left() > 0) {
+          const missing = missingMarks(stored);
+          const same = sameDocument(stored, converged);
+          stored.destroy();
+          if (missing === 0 && same) {
+            storeMs = performance.now() - started;
+            detail = null;
+            break;
+          }
+          detail = `stored board ${same ? 'matches' : 'differs from'} the converged copy, ${missing} offline edits missing`;
         }
       } catch (err) {
-        seen = String(err);
+        detail = String(err);
       }
-      await pause(1000);
+      await pause(2000);
     }
     const stored = storeMs !== null;
     let reopened = false;
-    let detail: string | null = stored ? null : `stored board shows ${seen}, expected ${want}`;
     await pause(UNLOAD_WAIT_MS);
     try {
-      const again = await openBoard(rootBoard);
+      const again = await openBoard(rootBoard, REOPEN_MS);
       reopened = sameDocument(again.doc, converged) && missingMarks(again.doc) === 0;
       if (!reopened) detail = `${detail ? `${detail}; ` : ''}a client opening it again differs`;
     } catch (err) {
@@ -458,7 +529,7 @@ export async function runDense(opts: DenseOptions) {
           id: e.marker,
           type: 'color',
           hex: '#1F2328',
-          label: `offline ${i} ${opts.seed}`,
+          label: e.label,
           x: i * 300,
           y: MARKER_Y - i,
           w: 160,
@@ -684,7 +755,7 @@ export function formatDense(r: DenseResult, limits: DenseLimits, failures: strin
           `  converged           ${b.converged ? `yes, a fresh client agreed in ${ms(b.convergeMs)}` : `NO (${b.detail})`}`,
           `  stored              ${
             b.persistence
-              ? `${b.persistence.stored ? `in the database after ${ms(b.persistence.storeMs)}` : 'NO'}, ${b.persistence.reopened ? 'reopened intact' : 'NOT reopened intact'}${b.persistence.detail ? ` (${b.persistence.detail})` : ''}`
+              ? `${b.persistence.stored ? `exported from the database equal to the converged copy after ${ms(b.persistence.storeMs)}` : 'NO'}, ${b.persistence.reopened ? 'reopened intact' : 'NOT reopened intact'}${b.persistence.detail ? ` (${b.persistence.detail})` : ''}`
               : 'not checked'
           }`,
           '  reload              not observable from outside the server: not claimed',

@@ -96,11 +96,12 @@ export function collabClients(
     path: string,
     body?: unknown,
     headers: Record<string, string> = {},
+    /** A hung server must not hold the run, its stop or its cleanup. */
+    timeoutMs = 60_000,
   ) {
     const res = await fetch(new URL(path, opts.baseUrl), {
       method,
-      // A hung server must not hold the run, its stop or its cleanup.
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(Math.max(1, timeoutMs)),
       headers: {
         origin,
         ...authHeaders,

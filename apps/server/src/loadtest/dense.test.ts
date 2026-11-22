@@ -117,7 +117,9 @@ describe('evaluateDense', () => {
     expect(evaluateDense(result(), DENSE.limits)).toEqual([]);
     const text = formatDense(result(), DENSE.limits, []);
     expect(text).toContain('18 clients synced in 2500 ms');
-    expect(text).toContain('in the database after 4000 ms, reopened intact');
+    expect(text).toContain(
+      'exported from the database equal to the converged copy after 4000 ms, reopened intact',
+    );
     expect(text).toContain('not observable from outside the server: not claimed');
     expect(text.split('\n').at(-1)).toBe('PASSED');
     expect(text).toContain('Seed                  7');
