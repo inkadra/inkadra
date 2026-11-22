@@ -1,20 +1,46 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { ApiError } from '@inkadra/shared';
+import { ApiError, Id, ProjectRole, SearchResult, z } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { board, personalToken, project, projectMember, user } from '../db/schema.ts';
+import {
+  board,
+  boardElementIndex,
+  crewMember,
+  personalToken,
+  project,
+  projectMember,
+  shootingDay,
+  user,
+} from '../db/schema.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
 import { OFFICIAL_CLIPPER_IDS } from './account-routes.ts';
 import { createApp } from './app.ts';
 import { requireActor } from './auth-routes.ts';
+
+/** `SearchHit` as the oldest released Clipper (v0.3.0) knew it, copied from that tag. */
+const SearchHitV030 = z.object({
+  kind: z.enum(['project', 'board', 'element']),
+  projectId: Id,
+  projectName: z.string(),
+  boardId: Id.nullable(),
+  boardTitle: z.string().nullable(),
+  boardKind: z.enum(['board', 'storyboard']).nullable(),
+  elementId: z.string().nullable(),
+  elementType: z.string().nullable(),
+  title: z.string(),
+  snippet: z.string().nullable(),
+  assetId: Id.nullable(),
+  tags: z.array(z.string()),
+  myRole: ProjectRole.optional(),
+});
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
 
@@ -35,6 +61,9 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
   const theirs = randomUUID();
   const myBoard = randomUUID();
   const theirBoard = randomUUID();
+  const viewed = randomUUID();
+  const viewedBoard = randomUUID();
+  const production = randomUUID();
   let me = '';
   let cookie = '';
   let app: Awaited<ReturnType<typeof createApp>>;
@@ -102,15 +131,67 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     await db.insert(project).values([
       { id: mine, name: 'Mine', position: 'a0' },
       { id: theirs, name: 'Theirs', position: 'a1' },
+      { id: viewed, name: 'Viewed', position: 'a2' },
     ]);
     await db.insert(projectMember).values([
       { projectId: mine, userId: me, role: 'owner' },
       { projectId: theirs, userId: other, role: 'owner' },
+      { projectId: viewed, userId: other, role: 'owner' },
+      { projectId: viewed, userId: me, role: 'viewer' },
     ]);
     await db.insert(board).values([
       { id: myBoard, projectId: mine, title: 'Refs', position: 'a0' },
       { id: theirBoard, projectId: theirs, title: 'Private', position: 'a0' },
+      { id: viewedBoard, projectId: viewed, title: 'Read only', position: 'a0' },
+      {
+        id: production,
+        projectId: mine,
+        parentBoardId: myBoard,
+        kind: 'production',
+        title: 'Shoot',
+        position: 'a1',
+      },
     ]);
+    // Content that matches "zebra" on an editable board, and on a read-only one.
+    await db.insert(boardElementIndex).values([
+      {
+        boardId: myBoard,
+        elementId: 'card-editable-0001',
+        projectId: mine,
+        type: 'note',
+        title: 'Hidden card title',
+        text: 'Hidden card title: a zebra crossing at dawn',
+        tags: ['zebra-tag'],
+      },
+      {
+        boardId: viewedBoard,
+        elementId: 'card-readonly-0001',
+        projectId: viewed,
+        type: 'note',
+        title: 'Read only card',
+        text: 'a zebra seen by a viewer',
+        tags: [],
+      },
+    ]);
+    await db.insert(crewMember).values({
+      projectId: mine,
+      name: 'Zebra Crewperson',
+      role: 'Zebra wrangler',
+      department: 'Animals',
+      phone: '',
+      email: '',
+      pickup: '',
+      notes: '',
+    });
+    await db.insert(shootingDay).values({
+      projectId: mine,
+      boardId: production,
+      date: '2027-03-04',
+      callTime: '08:00',
+      location: 'Zebra farm',
+      notes: '',
+      blocks: [],
+    });
   });
   afterAll(async () => {
     await app?.close();
@@ -148,6 +229,61 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     expect(
       (await call(token, 'POST', '/clip', { boardId: theirBoard, text: 'No' })).statusCode,
     ).not.toBe(201);
+  });
+
+  it("finds a Clipper's boards by their content, and answers with board data only", async () => {
+    const { token } = await clipperSignIn();
+    const search = async (params: string, as: Record<string, string> = bearer(token)) => {
+      const res = await app.inject({ url: `/api/v1/search?${params}`, headers: as });
+      expect(res.statusCode).toBe(200);
+      return res;
+    };
+    const res = await search('q=zebra&limit=20');
+    const items = SearchResult.parse(res.json()).items;
+    // The schema of the oldest and of the newest released Clipper both read it.
+    expect(z.object({ items: z.array(SearchHitV030) }).parse(res.json()).items).toHaveLength(
+      items.length,
+    );
+    expect(items.map((h) => h.boardId).sort()).toEqual([myBoard, production].sort());
+    for (const hit of items)
+      expect(hit).toMatchObject({
+        kind: 'board',
+        elementId: null,
+        elementType: null,
+        snippet: null,
+        assetId: null,
+        tags: [],
+        boardKind: null,
+        myRole: 'owner',
+      });
+    // Nothing of what matched is in the answer: text, titles, tags, ids, crew, dates, places.
+    for (const word of [
+      'zebra',
+      'Hidden card',
+      'card-editable',
+      'card-readonly',
+      'Crewperson',
+      'wrangler',
+      'Animals',
+      '2027-03-04',
+      'farm',
+      'Read only',
+    ])
+      expect(res.body.toLowerCase()).not.toContain(word.toLowerCase());
+    // Filters the Clipper never sends change nothing.
+    for (const params of [`tag=zebra-tag`, `type=note`, `projectId=${viewed}`])
+      expect((await search(`q=zebra&limit=20&${params}`)).json()).toEqual(res.json());
+
+    // A session and a full token get today's answer: cards, snippets, tags, read-only boards.
+    const full = (await issueToken(db, me, { name: 'Phone', client: 'mobile' })).token;
+    const session = (await search('q=zebra&limit=20', { cookie })).json();
+    expect((await search('q=zebra&limit=20', bearer(full))).json()).toEqual(session);
+    const hits = SearchResult.parse(session).items;
+    expect(hits.map((h) => h.boardId)).toContain(viewedBoard);
+    expect(hits).toContainEqual(
+      expect.objectContaining({ elementId: 'card-editable-0001', tags: ['zebra-tag'] }),
+    );
+    expect(hits.some((h) => h.elementType === 'crew' && h.title === 'Zebra Crewperson')).toBe(true);
   });
 
   it('refuses a Clipper token everywhere else with the usual 403', async () => {
