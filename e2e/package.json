@@ -16,7 +16,7 @@
     "@hocuspocus/provider": "^4.8.0",
     "@inkadra/canvas-core": "workspace:*",
     "@inkadra/doc-schema": "workspace:*",
-    "@playwright/test": "1.65.0",
+    "@playwright/test": "1.65.1",
     "@types/node": "^26.6.6",
     "@types/ws": "^8.18.2",
     "pdfjs-dist": "^6.5.438",
