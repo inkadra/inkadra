@@ -11,6 +11,6 @@ scripts
 e2e/test-results
 e2e/playwright-report
 *.log
-.env
-.env.*
-!.env.example
+**/.env
+**/.env.*
+!**/.env.example
