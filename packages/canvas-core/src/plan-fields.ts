@@ -5,10 +5,12 @@ import type { PlanElement } from './plan.ts';
 import type { PlanEdit } from './plan-editing.ts';
 
 /**
- * The fields of a plan a setup shows from its base and writes there (decisions 0104, 0110,
- * 0117): the scale and its grid and rulers, whether the rooms' sizes show, the mains voltage, the
- * picture under the plan and the title. `variantView` reads the same list; every other field of a
- * setup is its own.
+ * The fields of a plan that belong to the base of its setups, so an editor writes them there
+ * (decisions 0104, 0110, 0117): the scale with its grid and rulers, whether the rooms' sizes
+ * show, the mains voltage, the picture under the plan, the title, and the set's location and
+ * north. `variantView` and `standAlone` each hard-code the fields they take from a base;
+ * plan-fields.test.ts checks this list against both. The scenes stay each setup's own (read
+ * from the base only when a setup has none), and so does the sun.
  */
 export const PLAN_BASE_FIELDS = [
   'title',
@@ -18,6 +20,8 @@ export const PLAN_BASE_FIELDS = [
   'roomSizes',
   'voltage',
   'background',
+  'locationId',
+  'north',
 ] as const;
 export type PlanBaseField = (typeof PLAN_BASE_FIELDS)[number];
 
