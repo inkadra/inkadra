@@ -41,7 +41,7 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   pendingEdits: 0,
   strokes: 180,
   burst: burst(),
-  eventLoopP99MaxMs: 120,
+  eventLoop: { steadyMs: 120, burstMs: 300 },
   eventLoopShared: true,
   ...over,
 });
@@ -140,9 +140,21 @@ describe('evaluateDense', () => {
 
   it('judges the event loop only when that process holds the boards', () => {
     const slow = DENSE.limits.eventLoopP99Ms + 1;
-    expect(evaluateDense(result({ eventLoopP99MaxMs: slow }), DENSE.limits)).toHaveLength(1);
     expect(
-      evaluateDense(result({ eventLoopP99MaxMs: slow, eventLoopShared: false }), DENSE.limits),
+      evaluateDense(result({ eventLoop: { steadyMs: 120, burstMs: slow } }), DENSE.limits),
+    ).toEqual([]);
+    const slower = DENSE.limits.burstEventLoopP99Ms + 1;
+    expect(
+      evaluateDense(result({ eventLoop: { steadyMs: slow, burstMs: slower } }), DENSE.limits),
+    ).toEqual([
+      `event loop delay p99 (steady run) ${slow} ms > ${DENSE.limits.eventLoopP99Ms} ms`,
+      `event loop delay p99 (burst) ${slower} ms > ${DENSE.limits.burstEventLoopP99Ms} ms`,
+    ]);
+    expect(
+      evaluateDense(
+        result({ eventLoop: { steadyMs: slow, burstMs: slow }, eventLoopShared: false }),
+        DENSE.limits,
+      ),
     ).toEqual([]);
   });
 });

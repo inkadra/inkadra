@@ -31,6 +31,8 @@ export interface DenseLimits extends Limits {
    * when that process also holds the boards (`all`); in split mode it is the web role's.
    */
   eventLoopP99Ms: number;
+  /** The same during the burst, when every client comes back at once. */
+  burstEventLoopP99Ms: number;
 }
 
 export interface DensePreset {
@@ -77,8 +79,9 @@ export const DENSE: DensePreset = {
     docPerBoardKiB: 16384,
     errors: 0,
     reconnects: 15,
-    burstSyncMs: 15_000,
+    burstSyncMs: 30_000,
     eventLoopP99Ms: 1500,
+    burstEventLoopP99Ms: 10_000,
   },
 };
 
@@ -105,8 +108,13 @@ export interface DenseResult extends Omit<Result, 'preset'> {
     /** Null when the burst did not converge, so there was nothing to check. */
     persistence: Persistence | null;
   } | null;
-  /** Null without METRICS_TOKEN or from a server that does not report it. */
-  eventLoopP99MaxMs: number | null;
+  /**
+   * The worst event loop delay p99 of a 5 s window of the process answering /metrics, in the
+   * steady run and in the burst (reconnect to convergence); null without METRICS_TOKEN or from a
+   * server that does not report it. The load clients run on the same machine as the server in
+   * CI, so the number is of the server under this whole load, not of one cause.
+   */
+  eventLoop: { steadyMs: number | null; burstMs: number | null };
   /** True when the process answering /metrics holds the boards too (`all`). */
   eventLoopShared: boolean;
 }
@@ -164,7 +172,11 @@ export async function runDense(opts: DenseOptions) {
   const { api, connect, open } = collabClients(opts, error, pause);
 
   const readings: ServerReading[] = [];
-  let loopMax: number | null = null;
+  const loopMax: { steadyMs: number | null; burstMs: number | null } = {
+    steadyMs: null,
+    burstMs: null,
+  };
+  let phase: 'steadyMs' | 'burstMs' = 'steadyMs';
   let loopShared = false;
   async function scrape(keep: boolean) {
     try {
@@ -174,7 +186,7 @@ export async function runDense(opts: DenseOptions) {
       if (keep) {
         readings.push(reading);
         const loop = samples.find((s) => s.name === LOOP_METRIC);
-        if (loop) loopMax = Math.max(loopMax ?? 0, loop.value * 1000);
+        if (loop) loopMax[phase] = Math.max(loopMax[phase] ?? 0, loop.value * 1000);
         loopShared ||= reading.shared;
       }
       return reading;
@@ -473,6 +485,8 @@ export async function runDense(opts: DenseOptions) {
       // on them, not documents in memory), so the burst does not claim a reload: it waits the
       // time a store and unload take, and the persistence check below reads the database.
       await pause(UNLOAD_WAIT_MS);
+      await scrape(false); // the window of the burst starts here
+      phase = 'burstMs';
       measuring = true;
       const clients = sockets.length;
       for (const socket of sockets) socket.connect();
@@ -542,7 +556,7 @@ export async function runDense(opts: DenseOptions) {
     pendingEdits,
     strokes,
     burst,
-    eventLoopP99MaxMs: loopMax,
+    eventLoop: loopMax,
     eventLoopShared: loopShared,
   };
   return { result, projectId, stopped: opts.signal.aborted };
@@ -593,14 +607,13 @@ export function evaluateDense(r: DenseResult, limits: DenseLimits): string[] {
     if (r.burst.converged && !(p?.stored && p.reopened))
       out.push(`offline edits not persisted: ${p?.detail ?? 'not checked'}`);
   }
-  if (
-    r.eventLoopShared &&
-    r.eventLoopP99MaxMs !== null &&
-    r.eventLoopP99MaxMs > limits.eventLoopP99Ms
-  )
-    out.push(
-      `event loop delay p99 ${Math.round(r.eventLoopP99MaxMs)} ms > ${limits.eventLoopP99Ms} ms`,
-    );
+  if (r.eventLoopShared)
+    for (const [what, value, limit] of [
+      ['steady run', r.eventLoop.steadyMs, limits.eventLoopP99Ms],
+      ['burst', r.eventLoop.burstMs, limits.burstEventLoopP99Ms],
+    ] as const)
+      if (value !== null && value > limit)
+        out.push(`event loop delay p99 (${what}) ${Math.round(value)} ms > ${limit} ms`);
   return out;
 }
 
@@ -625,9 +638,9 @@ export function formatDense(r: DenseResult, limits: DenseLimits, failures: strin
     'Timing                edit round trip: each edit until the server acknowledged it;',
     '                      delivery: each value a reader received (one overwritten first is not)',
     `Unacknowledged edits  ${r.pendingEdits} 30 s after the end   limit 0`,
-    `Event loop p99        worst ${ms(r.eventLoopP99MaxMs)}   ${
+    `Event loop p99        worst steady ${ms(r.eventLoop.steadyMs)}, burst ${ms(r.eventLoop.burstMs)}   ${
       r.eventLoopShared
-        ? `limit ${limits.eventLoopP99Ms} ms`
+        ? `limit ${limits.eventLoopP99Ms} / ${limits.burstEventLoopP99Ms} ms`
         : '(info) of the web role, not the boards'
     }`,
     ...(b
