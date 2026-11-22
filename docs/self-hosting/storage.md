@@ -219,8 +219,11 @@ printf 'S3_ACCESS_KEY_ID=%s\nS3_SECRET_ACCESS_KEY=%s\n' \
 docker compose -f compose.yaml -f deploy/compose.rustfs.yaml up -d
 ```
 
-RustFS is not published on the host: only Inkadra talks to it. Its data is in the
-`rustfs-data` volume, or in `RUSTFS_DATA` (owned by uid 10001).
+RustFS is not published on the host: it shares the internal `backend` network with the database,
+so only Inkadra talks to it and it cannot reach the internet. It runs without capabilities, on a
+read-only root filesystem, within `RUSTFS_MEM_LIMIT` (see
+[Resource limits](configuration.md#resource-limits)). Its data is in the `rustfs-data` volume, or
+in `RUSTFS_DATA` (owned by uid 10001).
 
 ## Moving between local and S3
 

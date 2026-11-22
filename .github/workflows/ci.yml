@@ -773,6 +773,7 @@ jobs:
           docker compose -f compose.yaml -f deploy/compose.office.yaml config -q
           docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/compose.office.yaml \
             -f deploy/compose.office.split.yaml config -q
+          S3_ACCESS_KEY_ID=ci S3_SECRET_ACCESS_KEY=ci docker compose -f compose.yaml -f deploy/compose.rustfs.yaml config -q
       - name: The Office worker is on the -office image
         run: |
           set -e
@@ -782,6 +783,28 @@ jobs:
             and .services["office-worker"].environment.OFFICE_PREVIEWS == "true"
             and .services.inkadra.environment.OFFICE_PREVIEWS == "true"
             and .services.inkadra.image == "ghcr.io/inkadra/inkadra:0.9.0"' "$RUNNER_TEMP/office.json"
+      # The bundled object store sits with the database on the internal network, without
+      # capabilities or a writable root, bounded like the services of compose.yaml; the bucket
+      # job never puts the keys on curl's command line.
+      - name: The bundled RustFS is locked down
+        env:
+          S3_ACCESS_KEY_ID: ci
+          S3_SECRET_ACCESS_KEY: ci
+        run: |
+          set -e
+          docker compose -f compose.yaml -f deploy/compose.rustfs.yaml config --format json > "$RUNNER_TEMP/rustfs.json"
+          jq -e '.networks.backend.internal == true
+            and ([.services.rustfs, .services["rustfs-bucket"]] | all(
+              (.networks | keys) == ["backend"]
+              and .cap_drop == ["ALL"] and (.cap_add // []) == []
+              and .read_only == true
+              and (.security_opt | index("no-new-privileges:true")) != null
+              and (.ports // []) == []
+              and .deploy.resources.limits.memory != null
+              and .deploy.resources.limits.pids != null))
+            and .services.rustfs.user == "10001:10001"
+            and (.services["rustfs-bucket"].command | join(" ") | test("--user|-u ") | not)
+            and (.services["rustfs-bucket"].command | join(" ") | test("curl -K - "))' "$RUNNER_TEMP/rustfs.json"
       - name: The seccomp profile is Docker's default plus the namespace calls
         run: |
           set -e

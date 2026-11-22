@@ -340,6 +340,8 @@ them in `.env` on a larger machine; a limit above the host's memory only means n
 | `POSTGRES_SHARED_BUFFERS`  | `256MB` | PostgreSQL's `shared_buffers`: about a quarter of its memory limit          |
 | `POSTGRES_MAX_CONNECTIONS` | `100`   | PostgreSQL's `max_connections`                                              |
 | `VALKEY_MEM_LIMIT`         | `1g`    | `valkey`; `VALKEY_CPUS` as above                                            |
+| `RUSTFS_MEM_LIMIT`         | `1g`    | `rustfs` (with `deploy/compose.rustfs.yaml`); `RUSTFS_CPUS` as above        |
+| `RUSTFS_PIDS_LIMIT`        | `1024`  | `rustfs` processes and threads                                              |
 
 Size the worker for itself plus `VIDEO_PROXY_CONCURRENCY` copies of ffmpeg, 1 to 2 GB each at
 1080p. A copy that needs more is stopped by the limit and made again with the next attempt.
