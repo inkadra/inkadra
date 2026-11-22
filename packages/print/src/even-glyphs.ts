@@ -27,35 +27,56 @@ function checksum(bytes: Uint8Array): number {
 
 /**
  * The font with every glyph padded to an even length, its `loca` in the long format; the same
- * bytes when no glyph is odd or the font has no TrueType outlines.
+ * bytes when no glyph is odd, the font has no TrueType outlines, or anything in it does not add
+ * up: this only ever helps, so an export never fails because of it.
+ * Only `glyf`, `loca` and `head` change. No other TrueType table depends on a glyph's byte length
+ * (`gvar` and `hdmx` go by glyph id, instructions carry their own length), so variable and
+ * hinted fonts keep working.
  * shortcut: TrueType files only; a WOFF is passed as given (the heading fonts' WOFFs have no odd
  * glyph today). Decode WOFF here too if one with odd glyphs is ever embedded.
  */
 export function evenGlyphs(font: Uint8Array): Uint8Array {
+  try {
+    return pad(font) ?? font;
+  } catch {
+    return font; // A check missed below: the font goes as given, as before.
+  }
+}
+
+// The padded font, or undefined when there is nothing to do or the font is inconsistent.
+function pad(font: Uint8Array): Uint8Array | undefined {
+  if (font.length < 12) return undefined;
   const view = new DataView(font.buffer, font.byteOffset, font.byteLength);
-  if (font.length < 12) return font;
   const version = view.getUint32(0);
-  if (version !== 0x00010000 && version !== 0x74727565 /* 'true' */) return font;
+  if (version !== 0x00010000 && version !== 0x74727565 /* 'true' */) return undefined;
   const count = view.getUint16(4);
+  if (12 + count * 16 > font.length) return undefined;
   const tables = new Map<string, Uint8Array>();
   const order: string[] = [];
   for (let i = 0; i < count; i++) {
     const record = 12 + i * 16;
     const offset = view.getUint32(record + 8);
     const length = view.getUint32(record + 12);
-    order.push(tag(view, record));
-    tables.set(tag(view, record), font.subarray(offset, offset + length));
+    const name = tag(view, record);
+    if (offset + length > font.length || tables.has(name)) return undefined;
+    order.push(name);
+    tables.set(name, font.subarray(offset, offset + length));
   }
   const [head, loca, glyf, maxp] = ['head', 'loca', 'glyf', 'maxp'].map((t) => tables.get(t));
-  if (!head || !loca || !glyf || !maxp) return font;
+  if (!head || !loca || !glyf || !maxp || head.length < 54 || maxp.length < 6) return undefined;
   const local = (bytes: Uint8Array) => new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
   const glyphs = local(maxp).getUint16(4);
-  const long = local(head).getInt16(50) === 1;
+  const format = local(head).getInt16(50);
+  if (format !== 0 && format !== 1) return undefined;
+  const long = format === 1;
+  if (loca.length < (glyphs + 1) * (long ? 4 : 2)) return undefined;
   const offsets = Array.from({ length: glyphs + 1 }, (_, i) =>
     long ? local(loca).getUint32(i * 4) : local(loca).getUint16(i * 2) * 2,
   );
   const lengths = offsets.slice(1).map((end, i) => end - (offsets[i] ?? 0));
-  if (lengths.every((length) => length % 2 === 0)) return font;
+  if (lengths.some((length) => length < 0) || (offsets[glyphs] ?? 0) > glyf.length)
+    return undefined;
+  if (lengths.every((length) => length % 2 === 0)) return undefined;
 
   const evenGlyf = new Uint8Array(lengths.reduce((sum, length) => sum + length + (length % 2), 0));
   const evenLoca = new Uint8Array((glyphs + 1) * 4);
