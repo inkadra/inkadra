@@ -41,6 +41,7 @@ import {
 import { exportsOf, refuse } from '../demo.ts';
 import type { Jobs } from '../jobs.ts';
 import { lockActiveAccount, lockRoles, lockSetting } from '../locks.ts';
+import { ensureFreeSpace, NotEnoughSpace } from '../media/scratch.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { sha256 } from '../secrets.ts';
 import {
@@ -204,6 +205,14 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
         );
       const id = randomUUID();
       await mkdir(transfersDir(dataDir), { recursive: true, mode: 0o700 });
+      // The storage limits are checked once the archive is here: the disk is checked now.
+      try {
+        await ensureFreeSpace(transfersDir(dataDir), declared, 'the archive');
+      } catch (err) {
+        if (err instanceof NotEnoughSpace)
+          throw new HttpError('payload_too_large', 'The server has no room for this archive.');
+        throw err;
+      }
       const file = transferFile(dataDir, id);
       const partial = `${file}.partial`;
       let seen = 0;

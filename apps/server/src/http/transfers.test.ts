@@ -1521,6 +1521,24 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     );
   });
 
+  it('refuses an archive the disk has no room for before receiving it', async () => {
+    const roomy = await instance(await freshDatabase(url as string, 'import_space'), {
+      IMPORT_MAX_SIZE: '0',
+    });
+    try {
+      const who = await signUp(roomy.app, 'big-importer');
+      const response = await call(roomy.app, who, 'POST', '/projects/import', archive, {
+        'content-type': 'application/zip',
+        'content-length': String(2 ** 52),
+      });
+      expect(response.statusCode).toBe(413);
+      expect(response.json().error.code).toBe('payload_too_large');
+      expect(await readdir(transfersDir(roomy.deps.root))).toEqual([]);
+    } finally {
+      await roomy.close();
+    }
+  });
+
   describe('Idempotency-Key on POST /projects/import (decision 0127)', () => {
     let importer: { id: string; cookie: string };
     const zip = { 'content-type': 'application/zip' };
