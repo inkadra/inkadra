@@ -27,7 +27,7 @@ const BOARD_PATH = /^\/p\/([0-9A-Za-z-]+)\/b\/([0-9A-Za-z-]+)\/?(?:\?([^#]*))?(?
  * An `http(s)` origin: scheme and host (a name, an IPv4 or a bracketed IPv6 address; a port
  * allowed), no user, path, query or fragment.
  */
-const ORIGIN = /^(https?:\/\/(?:[0-9A-Za-z.-]+|\[[0-9A-Fa-f:.]+\])(?::\d{1,5})?)\/?$/i;
+const ORIGIN = /^(https?:\/\/(?:[0-9A-Za-z.-]+|\[([0-9A-Fa-f:.]+)\])(?::\d{1,5})?)\/?$/i;
 /** Controls, spaces and backslashes: separators that URL parsers read differently. */
 const ambiguous = (s: string) =>
   [...s].some((ch) => {
@@ -48,7 +48,9 @@ export function parseBoardHref(href: string, origin?: string): BoardHref | null 
   if (ambiguous(href)) return null;
   let path = href;
   if (!href.startsWith('/')) {
-    const base = origin === undefined ? null : ORIGIN.exec(origin)?.[1];
+    const m = origin === undefined ? null : ORIGIN.exec(origin);
+    // A bracketed host must be an IPv6 address ([fd00:::1] is not one).
+    const base = m && (m[2] === undefined || isIPv6(m[2])) ? m[1] : null;
     if (!base || href.slice(0, base.length).toLowerCase() !== base.toLowerCase()) return null;
     path = href.slice(base.length);
   }
@@ -77,4 +79,27 @@ function decodedKey(key: string): string {
   } catch {
     return key;
   }
+}
+
+const IPV4_PART = /^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+const HEX_GROUP = /^[0-9A-Fa-f]{1,4}$/;
+
+/** An IPv6 address as written between brackets (RFC 4291 text forms, no zone). */
+function isIPv6(s: string): boolean {
+  const halves = s.split('::');
+  if (halves.length > 2) return false;
+  const groupsOf = (h: string) => (h === '' ? [] : h.split(':'));
+  const groups = halves.flatMap(groupsOf);
+  let count = groups.length;
+  const last = groups[groups.length - 1];
+  if (last?.includes('.')) {
+    // An embedded IPv4 address ends the address and counts as two groups.
+    const parts = last.split('.');
+    if (s.endsWith(':') || parts.length !== 4 || !parts.every((p) => IPV4_PART.test(p)))
+      return false;
+    groups.pop();
+    count += 1;
+  }
+  if (!groups.every((g) => HEX_GROUP.test(g))) return false;
+  return halves.length === 2 ? count <= 7 : count === 8;
 }
