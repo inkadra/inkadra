@@ -11,6 +11,7 @@ import {
   asset,
   assetRendition,
   assetVariant,
+  instanceSetting,
   invitation as invitationTable,
   personalToken,
   project,
@@ -310,6 +311,23 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       .where(like(user.email, 'racer%'));
     expect(created).toHaveLength(1);
     await db.delete(user).where(like(user.email, 'racer%'));
+  });
+
+  it('makes no administrator once accounts exist, even without the setup row', async () => {
+    await db.delete(instanceSetting).where(eq(instanceSetting.key, 'setup'));
+    const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
+    const { cookie } = await claim(link.body.invitation.url);
+    const res = await call(
+      { cookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email: 'late@example.com', password: PASSWORD, name: 'Late' },
+      '198.18.9.1',
+    );
+    expect(res.status).toBe(200);
+    const [late] = await db.select().from(user).where(eq(user.email, 'late@example.com'));
+    expect(late?.role).toBe('member');
+    await db.delete(user).where(eq(user.email, 'late@example.com'));
   });
 
   it('sets up a project with nested boards', async () => {

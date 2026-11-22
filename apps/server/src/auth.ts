@@ -45,6 +45,8 @@ export async function countUsers(db: Database): Promise<number> {
  * stale after a minute and the next sign-up on the still-empty instance can take it over.
  */
 async function claimSetup(db: Database): Promise<boolean> {
+  // Only an instance without accounts is set up, whether or not the `setup` row is there.
+  if ((await countUsers(db)) > 0) return false;
   const value = { claimedAt: new Date().toISOString() };
   const claimed = await db
     .insert(schema.instanceSetting)
@@ -52,7 +54,6 @@ async function claimSetup(db: Database): Promise<boolean> {
     .onConflictDoNothing()
     .returning({ key: schema.instanceSetting.key });
   if (claimed.length > 0) return true;
-  if ((await countUsers(db)) > 0) return false;
   const retaken = await db
     .update(schema.instanceSetting)
     .set({ value })
