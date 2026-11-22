@@ -309,10 +309,13 @@ async function processRow(
       let delays: number[] | undefined;
       if (mime === 'image/heic') {
         if (!deps.heic || !(await heicFits(copy.path))) {
-          await db
-            .update(asset)
-            .set({ sha256: digest, mime, kind: 'image', status: 'ready', animated: false })
-            .where(eq(asset.id, assetId));
+          await save(db, assetId, [], {
+            sha256: digest,
+            mime,
+            kind: 'image',
+            status: 'ready',
+            animated: false,
+          });
           return { variants: 0 };
         }
         const image = await decodeHeic(await readFile(copy.path));
@@ -322,10 +325,7 @@ async function processRow(
         });
       } else {
         if (svg && (await stat(copy.path)).size > SVG_MAX_BYTES) {
-          await db
-            .update(asset)
-            .set({ sha256: digest, status: 'ready', animated: false })
-            .where(eq(asset.id, assetId));
+          await save(db, assetId, [], { sha256: digest, status: 'ready', animated: false });
           return { variants: 0 };
         }
         const source = svg ? await readPrefix(copy.path, SVG_MAX_BYTES) : copy.path;

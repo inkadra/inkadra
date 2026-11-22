@@ -299,11 +299,18 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(Math.max(...data.filter((_, i) => i % 4 === 3))).toBe(0);
   });
 
-  it('keeps an SVG past the size cap ready, without thumbnails', async () => {
+  it('keeps an SVG past the size cap ready, without thumbnails, old ones included', async () => {
+    const small =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>';
+    const id = await upload(Buffer.from(small), 'image/svg+xml', 'huge.svg');
+    expect(await processAsset(deps, id)).toMatchObject({ variants: 1 });
+    // The same asset processed again once its file is past the cap.
     const body = `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><!--${'x'.repeat(SVG_MAX_BYTES)}--></svg>`;
-    const id = await upload(Buffer.from(body), 'image/svg+xml', 'huge.svg');
+    await storage.write(originalKey(id), Buffer.from(body), 'image/svg+xml');
     expect(await processAsset(deps, id)).toMatchObject({ variants: 0 });
-    expect((await load(id)).row?.status).toBe('ready');
+    const { row, variants } = await load(id);
+    expect(row?.status).toBe('ready');
+    expect(variants).toEqual([]);
   });
 
   it('ignores disguised SVG previews and broken design files without failing the upload', async () => {
@@ -519,10 +526,14 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(await processAsset(deps, huge)).toMatchObject({ variants: 0 });
     expect((await load(huge)).row).toMatchObject({ status: 'ready', mime: 'image/heic' });
 
+    // Processed once with thumbnails, then again once the file is past the cap: none are left.
     const long = await upload(fixture('gradient.heic'), 'image/heic', 'IMG_4324.HEIC');
+    expect(await processAsset(deps, long)).toMatchObject({ variants: 1 });
     await truncate(join(root, 'files', originalKey(long)), HEIC_MAX_BYTES + 1);
     expect(await processAsset(deps, long)).toMatchObject({ variants: 0 });
-    expect((await load(long)).row?.status).toBe('ready');
+    const { row, variants } = await load(long);
+    expect(row?.status).toBe('ready');
+    expect(variants).toEqual([]);
   });
 
   describe('camera RAW', async () => {
