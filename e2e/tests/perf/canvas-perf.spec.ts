@@ -1,11 +1,15 @@
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
-import { seedPerfBoard } from './seed.ts';
+import { seedPerfBoard, startPeers } from './seed.ts';
 
 /**
  * Gate 0.2: a board with 1000 elements, 500 of them images, opens fast (the bar below is set
- * for shared CI runners) and stays smooth while panning and zooming. The numbers land in e2e/perf-results.json and in the job log.
+ * for shared CI runners) and stays smooth while panning and zooming.
+ *
+ * The dense measurement after it: the same board with a storyboard of frames drawn with several
+ * hundred strokes each, and three other people moving their cursors while frames are timed. It
+ * has bars of its own (DENSE_*), so the gate above keeps judging what it always judged. The numbers land in e2e/perf-results.json and in the job log.
  *
  * The perf project blocks service workers (playwright.config.ts). The worker's first install
  * downloads the whole build while the board opens, which would make the timings depend on
@@ -32,6 +36,14 @@ const FRAME_P95_LIMIT_MS = Number(process.env.PERF_FRAME_P95_LIMIT_MS ?? 70);
 // about 0.5 ms a frame at most. The series with glass is still recorded in perf-results.json,
 // not judged. This loosens the check: nothing here measures glass on a weak GPU.
 const NO_BLUR = 'none';
+// The dense board: 8 frames of 300 to 600 strokes (about 3600 in all) and 3 remote peers moving
+// their cursors every 50 ms through the collaboration server. Bars from runs on CI runners
+// (docs/testing/canvas-performance.md), with the headroom of the gate's.
+const DENSE_FRAMES = 8;
+const DENSE_PEERS = Number(process.env.PERF_DENSE_PEERS ?? 3);
+const DENSE_OPEN_LIMIT_MS = Number(process.env.PERF_DENSE_OPEN_LIMIT_MS ?? 4000);
+const DENSE_FRAME_AVG_LIMIT_MS = Number(process.env.PERF_DENSE_FRAME_AVG_LIMIT_MS ?? 60);
+const DENSE_FRAME_P95_LIMIT_MS = Number(process.env.PERF_DENSE_FRAME_P95_LIMIT_MS ?? 120);
 
 const resultsPath = fileURLToPath(new URL('../../perf-results.json', import.meta.url));
 
@@ -111,10 +123,16 @@ function wheelFrames(page: Page, frames: number, zoom: boolean): Promise<FrameSt
   );
 }
 
-test('a board with 1000 elements opens fast and pans smoothly', async ({ page, baseURL }) => {
-  test.setTimeout(180_000);
-  const base = baseURL ?? 'http://localhost:3100';
-  const seeded = await seedPerfBoard(base);
+/**
+ * Seeds a board, opens it four times and times frames while panning and zooming. With `glass`,
+ * the series runs again with the floating glass's blur on (recorded, not judged).
+ */
+async function measure(
+  page: Page,
+  base: string,
+  options: { drawnFrames: number; peers: number; glass: boolean },
+) {
+  const seeded = await seedPerfBoard(base, { drawnFrames: options.drawnFrames });
 
   const url = new URL(base);
   await page.context().addCookies(
@@ -171,27 +189,52 @@ test('a board with 1000 elements opens fast and pans smoothly', async ({ page, b
     return { pan, zoom, panAt100: await timed(120, false) };
   };
 
-  // Fails if the token stops driving the blur, rather than measuring glass by accident.
-  expect(await setFloatBlur(page, NO_BLUR)).toBe(0);
-  const judged = await series();
+  const peers = options.peers
+    ? await startPeers(base, seeded.cookie, seeded.boardId, options.peers)
+    : null;
+  try {
+    // Their cursors are drawn before anything is timed.
+    if (peers) await expect(page.locator('.peer-cursor')).toHaveCount(options.peers);
+    // Fails if the token stops driving the blur, rather than measuring glass by accident.
+    expect(await setFloatBlur(page, NO_BLUR)).toBe(0);
+    const judged = await series();
 
-  const blurredSurfaces = await setFloatBlur(page, null);
-  await page.keyboard.press('Shift+Digit1');
-  await page.waitForTimeout(500);
-  const withGlass = { judged: false, blurredSurfaces, ...(await series()) };
+    let withGlass: ({ judged: false; blurredSurfaces: number } & typeof judged) | undefined;
+    if (options.glass) {
+      const blurredSurfaces = await setFloatBlur(page, null);
+      await page.keyboard.press('Shift+Digit1');
+      await page.waitForTimeout(500);
+      withGlass = { judged: false, blurredSurfaces, ...(await series()) };
+    }
+    return {
+      measuredAt: new Date().toISOString(),
+      elements: Object.values(seeded.counts).reduce((s, n) => s + n, 0),
+      counts: seeded.counts,
+      images: seeded.images,
+      ...(options.drawnFrames ? { strokes: seeded.strokes } : {}),
+      ...(peers ? { peers: options.peers, peerCursorMoves: peers.moves() } : {}),
+      renderedOnOpen: rendered,
+      openMs,
+      coldOpenMs,
+      openSamples,
+      floatBlur: NO_BLUR,
+      ...judged,
+      ...(withGlass ? { withGlass } : {}),
+    };
+  } finally {
+    peers?.stop();
+  }
+}
 
+test('a board with 1000 elements opens fast and pans smoothly', async ({ page, baseURL }) => {
+  test.setTimeout(180_000);
+  const measured = await measure(page, baseURL ?? 'http://localhost:3100', {
+    drawnFrames: 0,
+    peers: 0,
+    glass: true,
+  });
   const results = {
-    measuredAt: new Date().toISOString(),
-    elements: Object.values(seeded.counts).reduce((s, n) => s + n, 0),
-    counts: seeded.counts,
-    images: seeded.images,
-    renderedOnOpen: rendered,
-    openMs,
-    coldOpenMs,
-    openSamples,
-    floatBlur: NO_BLUR,
-    ...judged,
-    withGlass,
+    ...measured,
     limits: {
       openMs: OPEN_LIMIT_MS,
       frameAvgMs: FRAME_AVG_LIMIT_MS,
@@ -202,9 +245,37 @@ test('a board with 1000 elements opens fast and pans smoothly', async ({ page, b
   console.log(JSON.stringify(results, null, 2));
 
   expect(results.elements).toBeGreaterThanOrEqual(1000);
-  expect(openMs).toBeLessThan(OPEN_LIMIT_MS);
-  for (const run of [judged.pan, judged.zoom, judged.panAt100]) {
+  expect(results.openMs).toBeLessThan(OPEN_LIMIT_MS);
+  for (const run of [results.pan, results.zoom, results.panAt100]) {
     expect(run.avg).toBeLessThan(FRAME_AVG_LIMIT_MS);
     expect(run.p95).toBeLessThan(FRAME_P95_LIMIT_MS);
+  }
+});
+
+test('a storyboard drawn by hand, with people on it, stays usable', async ({ page, baseURL }) => {
+  test.setTimeout(180_000);
+  const measured = await measure(page, baseURL ?? 'http://localhost:3100', {
+    drawnFrames: DENSE_FRAMES,
+    peers: DENSE_PEERS,
+    glass: false,
+  });
+  const dense = {
+    ...measured,
+    limits: {
+      openMs: DENSE_OPEN_LIMIT_MS,
+      frameAvgMs: DENSE_FRAME_AVG_LIMIT_MS,
+      frameP95Ms: DENSE_FRAME_P95_LIMIT_MS,
+    },
+  };
+  // Next to the gate's numbers, in the same file the CI job keeps.
+  const gate = existsSync(resultsPath) ? JSON.parse(readFileSync(resultsPath, 'utf8')) : {};
+  writeFileSync(resultsPath, `${JSON.stringify({ ...gate, dense }, null, 2)}\n`);
+  console.log(JSON.stringify({ dense }, null, 2));
+
+  expect(dense.counts.frame).toBe(DENSE_FRAMES);
+  expect(dense.openMs).toBeLessThan(DENSE_OPEN_LIMIT_MS);
+  for (const run of [dense.pan, dense.zoom, dense.panAt100]) {
+    expect(run.avg).toBeLessThan(DENSE_FRAME_AVG_LIMIT_MS);
+    expect(run.p95).toBeLessThan(DENSE_FRAME_P95_LIMIT_MS);
   }
 });

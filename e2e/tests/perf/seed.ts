@@ -1,6 +1,6 @@
 import { deflateSync } from 'node:zlib';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { createElement, moveIntoParent } from '@inkadra/canvas-core';
+import { addStroke, createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
@@ -27,6 +27,9 @@ export interface SeedOptions {
   account?: Account;
   /** Name of the project whose root board is filled. */
   name?: string;
+  /** Storyboard frames with a drawing, and the range of their stroke counts. */
+  drawnFrames?: number;
+  strokesPerFrame?: [number, number];
 }
 
 export interface Seeded {
@@ -35,6 +38,8 @@ export interface Seeded {
   cookie: string;
   counts: Record<string, number>;
   images: 'uploaded' | 'unavailable';
+  /** Strokes drawn on the frames. */
+  strokes: number;
 }
 
 /**
@@ -197,7 +202,12 @@ export async function pushBoardDoc(
 }
 
 export async function seedPerfBoard(base: string, options: SeedOptions = {}): Promise<Seeded> {
-  const { total = 1000, account = perfUser } = options;
+  const {
+    total = 1000,
+    account = perfUser,
+    drawnFrames = 0,
+    strokesPerFrame = [300, 600],
+  } = options;
   const name = options.name ?? `Carico ${new Date().toISOString().slice(11, 19)}`;
   const cookie = await signIn(base, account);
   const res = await fetch(`${base}/api/v1/projects`, {
@@ -221,6 +231,17 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
 
   const doc = new Y.Doc();
   const counts: Record<string, number> = {};
+  let strokes = 0;
+  // Same board every run: a seeded generator (mulberry32) for the drawings.
+  let state = 1;
+  const random = () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
+  };
+  const int = (min: number, max: number) => min + Math.floor(random() * (max - min + 1));
   const opts = { userId: null };
   const cols = 40;
   doc.transact(() => {
@@ -252,6 +273,24 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
       moveIntoParent(doc, kids, col.id, 0);
     }
     slot = cols * 2;
+    // A storyboard: frames drawn with several hundred pencil strokes each, as a film's are.
+    for (let f = 0; f < drawnFrames; f++) {
+      const frame = createElement(doc, 'frame', next(), { action: `Inquadratura ${f + 1}` }, opts);
+      count('frame');
+      const n = int(strokesPerFrame[0], strokesPerFrame[1]);
+      for (let k = 0; k < n; k++) {
+        const points: number[] = [];
+        let x = int(0, 4096);
+        let y = int(0, 4096);
+        for (let p = int(8, 60); p > 0; p--) {
+          x = Math.max(0, Math.min(4096, x + int(-80, 80)));
+          y = Math.max(0, Math.min(4096, y + int(-80, 80)));
+          points.push(x, y);
+        }
+        addStroke(doc, frame.id, { tool: 'pencil', color: '#1F2328', width: int(1, 12), points });
+      }
+      strokes += n;
+    }
     for (let i = 0; placed < total; i++) {
       const at = next();
       const kind = i % 10;
@@ -302,5 +341,62 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
     cookie,
     counts,
     images: assets.length > 0 ? 'uploaded' : 'unavailable',
+    strokes,
+  };
+}
+
+/**
+ * Other people on the board: each a connection of its own through the collaboration server,
+ * moving its cursor every 50 ms (the most the web app sends) over the seeded area. They are
+ * the account's other tabs, which the board shows as peers like anyone else's.
+ */
+export async function startPeers(base: string, cookie: string, boardId: string, count: number) {
+  class CookieSocket extends WebSocket {
+    constructor(address: string, protocols?: string | string[]) {
+      super(address, protocols, { headers: { cookie, origin: base } });
+    }
+  }
+  const peers = await Promise.all(
+    Array.from({ length: count }, async (_, i) => {
+      const websocketProvider = new HocuspocusProviderWebsocket({
+        url: `${base.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
+        WebSocketPolyfill: CookieSocket,
+      });
+      const provider = new HocuspocusProvider({
+        websocketProvider,
+        name: boardDocName(boardId),
+        document: new Y.Doc(),
+      });
+      provider.attach();
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Peer sync timed out')), 20_000);
+        provider.on('synced', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+      const at = { x: 1500 + i * 3000, y: 1500 };
+      let moves = 0;
+      const timer = setInterval(() => {
+        at.x = Math.max(0, Math.min(11_000, at.x + (Math.random() - 0.5) * 120));
+        at.y = Math.max(0, Math.min(7_000, at.y + (Math.random() - 0.5) * 90));
+        provider.awareness?.setLocalState({ cursor: { ...at }, selection: [], editing: null });
+        moves += 1;
+      }, 50);
+      return {
+        moves: () => moves,
+        stop() {
+          clearInterval(timer);
+          provider.destroy();
+          websocketProvider.destroy();
+        },
+      };
+    }),
+  );
+  return {
+    moves: () => peers.reduce((n, p) => n + p.moves(), 0),
+    stop: () => {
+      for (const p of peers) p.stop();
+    },
   };
 }
