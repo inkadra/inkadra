@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { DENSE, evaluateDense, formatDense, runDense } from '../../src/loadtest/dense.ts';
 import { runLoad } from '../../src/loadtest/generator.ts';
 import {
   evaluate,
@@ -31,9 +32,12 @@ const fail = (message: string): never => {
   console.error(message);
   process.exit(2);
 };
+// `dense` is a CLI scenario of its own (src/loadtest/dense.ts): one heavy board, many people.
+const dense = args.preset === 'dense';
 const presetName = args.preset as PresetName;
-const preset =
-  PRESETS[presetName] ?? fail(`Unknown preset ${args.preset}: small, medium or large.`);
+const preset = dense
+  ? DENSE
+  : (PRESETS[presetName] ?? fail(`Unknown preset ${args.preset}: small, medium, large or dense.`));
 const base = new URL(args.url ?? fail('Give the instance with --url https://…'));
 const origin = base.origin;
 const durationS = args.duration ? Number(args.duration) : preset.durationS;
@@ -43,7 +47,9 @@ const metricsToken = process.env.METRICS_TOKEN || undefined;
 console.log(
   [
     `This load test connects ${preset.editors} editors and ${preset.readers} readers to ${origin} for ${durationS} s,`,
-    `creates an account, a project with ${preset.boards} boards and small uploads, and deletes them at the end.`,
+    dense
+      ? 'creates an account and a project with one large board, drops every connection at once at the end, and deletes them.'
+      : `creates an account, a project with ${PRESETS[presetName].boards} boards and small uploads, and deletes them at the end.`,
     'Run it against a test copy of your instance, never production: everyone on it will feel the load.',
   ].join('\n'),
 );
@@ -91,13 +97,47 @@ async function signIn() {
     .join('; ');
 }
 
-async function scrape() {
+async function metrics() {
   if (!metricsToken) return null;
   const res = await fetch(new URL('/metrics', origin), {
     headers: { authorization: `Bearer ${metricsToken}` },
   });
   if (!res.ok) throw new Error(`/metrics: ${res.status}`);
-  return readServer(parseMetrics(await res.text()));
+  return parseMetrics(await res.text());
+}
+const scrape = async () => {
+  const samples = await metrics();
+  return samples && readServer(samples);
+};
+
+/** The load of a preset or of the dense scenario: the outcome, report and failures. */
+async function load(onProject: (id: string) => void) {
+  const target = {
+    baseUrl: origin,
+    ...(args['collab-url'] ? { collabUrl: args['collab-url'] } : {}),
+    auth: { cookie },
+  };
+  const common = {
+    durationS,
+    signal: stop.signal,
+    log: (line: string) => console.log(line),
+    onProject,
+  };
+  if (dense) {
+    const outcome = await runDense({ ...target, ...common, preset: DENSE, metrics });
+    const failures = evaluateDense(outcome.result, DENSE.limits);
+    return { outcome, failures, report: formatDense(outcome.result, DENSE.limits, failures) };
+  }
+  const limits = PRESETS[presetName].limits;
+  const outcome = await runLoad({
+    ...target,
+    ...common,
+    presetName,
+    preset: PRESETS[presetName],
+    scrape,
+  });
+  const failures = evaluate(outcome.result, limits);
+  return { outcome, failures, report: formatReport(outcome.result, limits, failures) };
 }
 
 async function main(): Promise<number> {
@@ -108,19 +148,8 @@ async function main(): Promise<number> {
     return 2;
   }
   let projectId: string | undefined;
-  const outcome = await runLoad({
-    baseUrl: origin,
-    ...(args['collab-url'] ? { collabUrl: args['collab-url'] } : {}),
-    auth: { cookie },
-    presetName,
-    preset,
-    durationS,
-    signal: stop.signal,
-    scrape,
-    log: (line) => console.log(line),
-    onProject: (id) => {
-      projectId = id;
-    },
+  const { outcome, failures, report } = await load((id) => {
+    projectId = id;
   }).finally(async () => {
     // Deleting the project deletes its boards and files; the account goes after it.
     if (projectId)
@@ -135,8 +164,6 @@ async function main(): Promise<number> {
   });
   if (outcome.stopped) return 130;
   const { result } = outcome;
-  const failures = evaluate(result, preset.limits);
-  const report = formatReport(result, preset.limits, failures);
   console.log(`\n${report}`);
   if (args.out) {
     const out = resolve(process.env.INIT_CWD ?? process.cwd(), args.out);
