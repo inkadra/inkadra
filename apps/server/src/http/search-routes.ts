@@ -185,9 +185,11 @@ function kitOf(state: Uint8Array): BoardKit {
 }
 
 /**
- * Which stored bytes a row holds. shortcut: xmin changes with every write of the row, and with
- * the time and size it cannot come back for other bytes unless the transaction ids wrap around
- * within the same microsecond and size; a hash of the state would read every document.
+ * Which stored bytes a row holds. shortcut: xmin changes with every write of the row, so it
+ * cannot come back for other bytes with the same stored timestamp and size unless transaction
+ * ids wrap around. It also changes when the index writer, in its own transaction after a store,
+ * writes the row's derived columns (same state): a board stored meanwhile can be decoded once
+ * more. No cheaper fact of the state alone tells two states apart; a hash would read them all.
  */
 const version = sql<string>`${boardDoc.updatedAt}::text || '/' || ${boardDoc.size} || '/' || board_doc.xmin::text`;
 
