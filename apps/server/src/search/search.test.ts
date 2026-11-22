@@ -22,6 +22,7 @@ import {
   KIT_CACHE_CHARS,
   keepPart,
   kitDecodes,
+  MAX_DECODES_PER_ACCOUNT,
   MAX_WAITING_DECODES,
   oneAtATime,
   prefixPattern,
@@ -304,22 +305,46 @@ describe('documents decoded for the project kit', () => {
       return 'ok';
     };
     const results = await Promise.allSettled([
-      oneAtATime(task(false)),
-      oneAtATime(task(true)),
-      oneAtATime(task(false)),
+      oneAtATime(task(false), 'a'),
+      oneAtATime(task(true), 'b'),
+      oneAtATime(task(false), 'c'),
     ]);
     expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected', 'fulfilled']);
     expect(most).toBe(1);
   });
 
+  it('lets one account have only so many decodes waiting or running', async () => {
+    let unblock = () => {};
+    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)), 'busy');
+    // Running, no longer waiting.
+    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+    const mine = Array.from({ length: MAX_DECODES_PER_ACCOUNT - 1 }, () =>
+      oneAtATime(async () => 1, 'busy'),
+    );
+    expect(mine.every((q) => q !== null)).toBe(true);
+    // The running one counts too: the account is full, another is not.
+    expect(oneAtATime(async () => 1, 'busy')).toBeNull();
+    const other = oneAtATime(async () => 2, 'other');
+    expect(other).not.toBeNull();
+    unblock();
+    await Promise.all([blocker, ...mine, other]);
+    // Once they are done, the account has its places back.
+    expect(await oneAtATime(async () => 3, 'busy')).toBe(3);
+  });
+
   it('lets only so many requests wait for a decode', async () => {
     let unblock = () => {};
-    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+    const blocker = oneAtATime(
+      () => new Promise<void>((resolve) => (unblock = resolve)),
+      'blocker',
+    );
     await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
-    const queued = Array.from({ length: MAX_WAITING_DECODES }, () => oneAtATime(async () => 1));
+    const queued = Array.from({ length: MAX_WAITING_DECODES }, (_, i) =>
+      oneAtATime(async () => 1, `account-${i}`),
+    );
     expect(queued.every((q) => q !== null)).toBe(true);
     // One more is refused: its request is answered 503.
-    expect(oneAtATime(async () => 1)).toBeNull();
+    expect(oneAtATime(async () => 1, 'another')).toBeNull();
     unblock();
     await blocker;
     expect(await Promise.all(queued)).toEqual(queued.map(() => 1));
@@ -883,7 +908,10 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     /** What `who` is answered when `change` happens while the newest board waits its decode. */
     const answered = async (who: keyof typeof cookies, change: () => Promise<unknown>) => {
       let unblock = () => {};
-      const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+      const blocker = oneAtATime(
+        () => new Promise<void>((resolve) => (unblock = resolve)),
+        'blocker',
+      );
       await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
       const pending = get(who, path);
       await vi.waitFor(() => expect(kitDecodes.waiting).toBe(1));
@@ -969,7 +997,10 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     await db.transaction((tx) => writeBoardIndex(tx, id, doc));
     const path = `/api/v1/projects/${projectId}/cast-appearances`;
     let unblock = () => {};
-    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+    const blocker = oneAtATime(
+      () => new Promise<void>((resolve) => (unblock = resolve)),
+      'blocker',
+    );
     await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
     const decoded = kitDecodes.decoded;
     const both = [get('owner', path), get('guest', path)];
@@ -998,9 +1029,14 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
     await db.transaction((tx) => writeBoardIndex(tx, id, doc));
     let unblock = () => {};
-    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+    const blocker = oneAtATime(
+      () => new Promise<void>((resolve) => (unblock = resolve)),
+      'blocker',
+    );
     await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
-    const queued = Array.from({ length: MAX_WAITING_DECODES }, () => oneAtATime(async () => 0));
+    const queued = Array.from({ length: MAX_WAITING_DECODES }, (_, i) =>
+      oneAtATime(async () => 0, `account-${i}`),
+    );
     const res = await app.inject({
       method: 'GET',
       url: `/api/v1/projects/${projectId}/cast-appearances`,

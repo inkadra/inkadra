@@ -244,20 +244,31 @@ export const kitDecodes = { decoded: 0, waiting: 0 };
  * would be kept by the clients as if it were whole.
  */
 export const MAX_WAITING_DECODES = 16;
+/** Decodes one account may have waiting or running, so one person cannot take every place. */
+export const MAX_DECODES_PER_ACCOUNT = 4;
+const perAccount = new Map<string, number>();
 let decoding: Promise<unknown> = Promise.resolve();
 
 /**
- * Runs `task` once every task given before it has settled, one at a time in the process; null,
- * without running it, when MAX_WAITING_DECODES requests already wait.
+ * Runs `task` for `account` once every task given before it has settled, one at a time in the
+ * process; null, without running it, when MAX_WAITING_DECODES requests already wait or the
+ * account already has MAX_DECODES_PER_ACCOUNT waiting or running.
  */
-export function oneAtATime<T>(task: () => Promise<T>): Promise<T> | null {
-  if (kitDecodes.waiting >= MAX_WAITING_DECODES) return null;
+export function oneAtATime<T>(task: () => Promise<T>, account: string): Promise<T> | null {
+  const mine = perAccount.get(account) ?? 0;
+  if (kitDecodes.waiting >= MAX_WAITING_DECODES || mine >= MAX_DECODES_PER_ACCOUNT) return null;
+  perAccount.set(account, mine + 1);
   kitDecodes.waiting += 1;
   const run = decoding.then(() => {
     kitDecodes.waiting -= 1;
     return task();
   });
-  decoding = run.catch(() => {});
+  const settled = () => {
+    const left = (perAccount.get(account) ?? 1) - 1;
+    if (left > 0) perAccount.set(account, left);
+    else perAccount.delete(account);
+  };
+  decoding = run.then(settled, settled);
   return run;
 }
 
@@ -335,7 +346,7 @@ async function boardKits<P extends Part>(
         log.warn({ err, boardId: row.boardId }, `${type} cards: board document not readable`);
         return null;
       }
-    });
+    }, actor.id);
     if (!queued) throw new HttpError('unavailable', 'The server is busy. Try again.', undefined, 5);
     const kit = await queued;
     if (kit) out.push(kit);
