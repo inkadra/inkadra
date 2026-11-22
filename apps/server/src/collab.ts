@@ -764,7 +764,15 @@ export function createCollabServer(deps: {
     websocketOptions: { maxPayload: limits?.maxPayload ?? 16 * 1024 * 1024 },
 
     async onConfigure() {
-      timer = setInterval(() => void rechecks.join(), deps.recheckMs ?? ACCESS_RECHECK_MS);
+      timer = setInterval(() => {
+        void rechecks.join();
+        // An automatic version time is kept after its board closes, so a board opened again skips
+        // the database until that version is an hour old; past that the next store checks the
+        // database anyway, so the entry can go (or when the clock moved back).
+        const now = (deps.now?.() ?? new Date()).getTime();
+        for (const [boardId, at] of lastAutoAt)
+          if (now - at >= AUTO_VERSION_EVERY_MS || now < at) lastAutoAt.delete(boardId);
+      }, deps.recheckMs ?? ACCESS_RECHECK_MS);
       timer.unref();
       keepalive = setInterval(keepAlive, deps.keepaliveMs ?? KEEPALIVE_MS);
       keepalive.unref();
