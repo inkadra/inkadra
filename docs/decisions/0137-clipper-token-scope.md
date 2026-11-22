@@ -67,7 +67,11 @@ never set it. No redirect address or user agent is stored on the token.
   - `GET /projects` lists active projects where the person is editor or owner (`archived=true`
     gives an empty list), without type, time zone, shooting dates, pin and group. The query
     itself leaves the others out, so pages are full and a cursor only names a listed project.
-  - `GET /shared-boards` lists the shared boards where the person is editor or owner.
+  - `GET /shared-boards` lists the shared boards where the person is editor or owner. It also
+    lists the boards a grant lets the person edit in a project where their membership cannot
+    clip (viewer or commenter): `GET /projects` leaves that project out, so the picker reaches
+    those boards here, once, with the role the grant gives. Sessions and `full` tokens still get
+    them through the project and not in this list.
   - `GET /projects/{projectId}/boards` answers only for a project with a destination: at least
     one board where the person is editor or owner. It then keeps every board the person can read
     in that project, read-only ones included, because an editable board can sit below a

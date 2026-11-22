@@ -566,4 +566,47 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     expect((await call(rows[0]?.token ?? '', 'GET', '/me')).statusCode).toBe(403);
     expect((await call(rows[1]?.token ?? '', 'GET', '/me')).statusCode).toBe(200);
   });
+
+  it('offers a Clipper token, as a shared board, what it edits in a project it only views', async () => {
+    const mixed = randomUUID();
+    const mixedRoot = randomUUID();
+    const mixedEdit = randomUUID();
+    await db.insert(project).values({ id: mixed, name: 'Mixed', position: 'a5' });
+    await db.insert(projectMember).values([
+      { projectId: mixed, userId: other, role: 'owner' },
+      { projectId: mixed, userId: me, role: 'viewer' },
+    ]);
+    await db.insert(board).values([
+      { id: mixedRoot, projectId: mixed, title: 'Mixed root', position: 'a0' },
+      {
+        id: mixedEdit,
+        projectId: mixed,
+        parentBoardId: mixedRoot,
+        title: 'Mixed edit',
+        position: 'a0',
+      },
+    ]);
+    await db.insert(boardGrant).values({ boardId: mixedEdit, userId: me, role: 'editor' });
+    const { token } = await clipperSignIn();
+    const shared = (await call(token, 'GET', '/shared-boards')).json();
+    // Explicit fields only, valid against the current contract.
+    expect(
+      z.strictObject({ items: z.array(Board.strict()), nextCursor: z.null() }).parse(shared),
+    ).toBeTruthy();
+    expect(shared.items).toContainEqual(
+      expect.objectContaining({ id: mixedEdit, projectId: mixed, myRole: 'editor' }),
+    );
+    // The project itself is not offered, so the picker shows the board once.
+    expect((await call(token, 'GET', '/projects?limit=200')).json().items).not.toContainEqual(
+      expect.objectContaining({ id: mixed }),
+    );
+    expect((await call(token, 'GET', `/projects/${mixed}/boards`)).statusCode).toBe(200);
+    const clip = await call(token, 'POST', '/clip', { boardId: mixedEdit, text: 'Quote' });
+    expect(clip.statusCode).toBe(201);
+    // A full token reaches it through the project, as before: not a shared board.
+    const full = (await issueToken(db, me, { name: 'Phone', client: 'mobile' })).token;
+    expect((await call(full, 'GET', '/shared-boards')).json().items).not.toContainEqual(
+      expect.objectContaining({ id: mixedEdit }),
+    );
+  });
 });
