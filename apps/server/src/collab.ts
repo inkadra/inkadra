@@ -36,6 +36,7 @@ import {
   assignedItems,
   dropRemovedAssignees,
   notifyAssignment,
+  trackAssignments,
   validateTaskUpdate,
 } from './tasks.ts';
 import { actorFromToken, isToken } from './tokens.ts';
@@ -654,6 +655,8 @@ export function createCollabServer(deps: {
   }
 
   const assignments = new WeakMap<Y.Doc, ReturnType<typeof assignedItems>>();
+  /** Each open board's assignments now (trackAssignments). */
+  const assignedNow = new WeakMap<Y.Doc, () => ReturnType<typeof assignedItems>>();
   const pendingAssignments = new WeakMap<
     Y.Doc,
     Map<string, { actorId: string; elementId: string; assigneeId: string }>
@@ -916,7 +919,9 @@ export function createCollabServer(deps: {
         const steps = migrateBoardDoc(document, boardId);
         if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
         prepareImageDrawings(document);
-        assignments.set(document, assignedItems(document));
+        const track = trackAssignments(document);
+        assignedNow.set(document, track);
+        assignments.set(document, track());
         openedAt.set(document, Date.now());
         return document;
       } catch (err) {
@@ -1002,7 +1007,7 @@ export function createCollabServer(deps: {
         }
       }
       const before = assignments.get(document) ?? new Map();
-      const after = assignedItems(document);
+      const after = assignedNow.get(document)?.() ?? assignedItems(document);
       const pending = pendingAssignments.get(document) ?? new Map();
       for (const [key, item] of after) {
         if (before.get(key)?.assigneeId !== item.assigneeId && context?.actor?.id)

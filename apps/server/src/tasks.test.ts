@@ -4,7 +4,13 @@ import { expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { openTasks } from './board-preview.ts';
 import type { Database } from './db/client.ts';
-import { mayTouchTasks, tasksInDoc, validateTaskUpdate } from './tasks.ts';
+import {
+  changesTasks,
+  mayTouchTasks,
+  tasksInDoc,
+  trackAssignments,
+  validateTaskUpdate,
+} from './tasks.ts';
 
 it('returns only open items assigned to this person with their card link and date', () => {
   const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
@@ -125,6 +131,61 @@ it('checks an update that fills a gap, which integrates an assignment held back 
   );
   doc.destroy();
   server.destroy();
+});
+
+it('tells which transactions can change who is assigned', () => {
+  const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+  const doc = createBoardDoc(id);
+  const seen: boolean[] = [];
+  doc.on('afterTransaction', (tr: Y.Transaction) => seen.push(changesTasks(tr)));
+  const changes = (change: () => void) => {
+    seen.length = 0;
+    change();
+    return seen.some(Boolean);
+  };
+  let todo = '';
+  expect(
+    changes(() => {
+      todo = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+    }),
+  ).toBe(true);
+  let item = '';
+  expect(
+    changes(() => {
+      item = addTodoItem(doc, todo, 'Permit')!;
+    }),
+  ).toBe(true);
+  const card = doc.getMap('elements').get(todo) as Y.Map<unknown>;
+  expect(changes(() => card.set('x', 40))).toBe(false);
+  expect(changes(() => updateTodoItem(doc, todo, item, { done: true }))).toBe(false);
+  expect(changes(() => updateTodoItem(doc, todo, item, { assigneeId: id }))).toBe(true);
+  expect(changes(() => (card.get('items') as Y.Array<unknown>).delete(0))).toBe(true);
+  expect(changes(() => doc.getMap('elements').delete(todo))).toBe(true);
+  doc.destroy();
+});
+
+it('keeps the assignments until they can change, and reads shared-type ids every time', () => {
+  const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+  const doc = createBoardDoc(id);
+  const todo = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+  const item = addTodoItem(doc, todo, 'Permit')!;
+  updateTodoItem(doc, todo, item, { assigneeId: id });
+  const now = trackAssignments(doc);
+  const first = now();
+  const card = doc.getMap('elements').get(todo) as Y.Map<unknown>;
+  card.set('x', 40);
+  // Nothing a reader of assignments sees changed: the same map, not read again.
+  expect(now()).toBe(first);
+  updateTodoItem(doc, todo, item, { assigneeId: 'other' });
+  expect([...now().values()].map((a) => a.assigneeId)).toEqual(['other']);
+  // An item id held in a Y.Text: editing the text moves the assignment, with no write under id.
+  const stored = (card.get('items') as Y.Array<Y.Map<unknown>>).get(0);
+  const text = new Y.Text('t1');
+  stored.set('id', text);
+  expect([...now().keys()]).toEqual([`${todo}:t1`]);
+  text.insert(2, 'x');
+  expect([...now().keys()]).toEqual([`${todo}:t1x`]);
+  doc.destroy();
 });
 
 it('reads a long chain of map writes in bounded time', () => {

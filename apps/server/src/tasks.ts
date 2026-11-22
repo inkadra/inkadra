@@ -140,6 +140,55 @@ const TaskFields = TodoItem.pick({ assigneeId: true, dueDate: true });
 const TASK_KEYS = new Set(['assigneeId', 'dueDate', 'id', 'type', 'items']);
 
 /**
+ * Whether a transaction can change what `assignedItems` reads: a card added or removed, an item
+ * added to or removed from a list of items, or a write under one of TASK_KEYS. Yjs records only
+ * the types that existed before the transaction, so what goes into a new type shows on the one
+ * that holds it. It cannot see a change inside an id held in a shared type (a Y.Text, which
+ * `assignedItems` reads with String): trackAssignments reads such a board every time.
+ */
+export function changesTasks(transaction: Y.Transaction): boolean {
+  const { elements } = roots(transaction.doc);
+  for (const [type, keys] of transaction.changed) {
+    if ((type as unknown) === elements) return true;
+    if (type instanceof Y.Array && type._item?.parentSub === 'items') return true;
+    for (const key of keys) if (key !== null && TASK_KEYS.has(key)) return true;
+  }
+  return false;
+}
+
+/** Whether every id `assignedItems` reads on a board is a plain value, not a shared type. */
+function plainTodoIds(doc: Y.Doc) {
+  for (const map of roots(doc).elements.values()) {
+    const list = map.get('items');
+    if (map.get('type') !== 'todo' || !(list instanceof Y.Array)) continue;
+    if (map.get('id') instanceof Y.AbstractType) return false;
+    for (const item of list)
+      if (item instanceof Y.Map && item.get('id') instanceof Y.AbstractType) return false;
+  }
+  return true;
+}
+
+/**
+ * The assignments of a board, read again only after a transaction that can change them
+ * (changesTasks), instead of walking every card on each edit. Conservative: a board where an id
+ * read by `assignedItems` is a shared type is read again every time, as before.
+ */
+export function trackAssignments(doc: Y.Doc): () => ReturnType<typeof assignedItems> {
+  let items = assignedItems(doc);
+  let stale = !plainTodoIds(doc);
+  doc.on('afterTransaction', (transaction: Y.Transaction) => {
+    if (changesTasks(transaction)) stale = true;
+  });
+  return () => {
+    if (stale) {
+      items = assignedItems(doc);
+      stale = !plainTodoIds(doc);
+    }
+    return items;
+  };
+}
+
+/**
  * Whether an update can assign a task or set a due date (#755). Todo items are Y.Maps, so such a
  * write is always an item under one of TASK_KEYS; the full check, which copies the whole board,
  * runs only then. A first value carries its key; a new value of a key that had one carries only
