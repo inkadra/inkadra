@@ -41,7 +41,7 @@ Each reader follows an editor from board to board without writing.
 
 The presets spread people over many light boards, about one editor per board. `--preset dense`
 is the other shape, the riskiest for one collaboration process: **15 editors and 3 readers on
-the same board**, a heavy one.
+the same board**, a heavy one, then everyone dropping and coming back at once.
 
 ```sh
 METRICS_TOKEN=<the token of the instance> \
@@ -55,33 +55,54 @@ pnpm loadtest --preset dense --url https://inkadra-test.example.com --yes-i-know
   running the test, then one client sends it to the board.
 - **The editors** arrive within 3 seconds. Each adds a note and then, once a second, moves it or
   (one time in five) draws a pencil stroke on a frame, and moves its cursor every 50 to 100 ms
-  all the time: the web app sends a cursor at most every 50 ms. The readers time how long the
-  editors' changes take to reach them.
-- **The reconnect burst** at the end is what people go through when the collaboration role
-  restarts: every connection drops, each editor changes its note while offline, the test waits
-  until the server has closed the board (it reads the board back from the database, as after a
-  restart; without `METRICS_TOKEN` it waits 10 s), then all 18 clients reconnect in the same
-  instant. It measures the time until every one of them is synced and its offline change saved,
-  then checks that they converge: every client and a fresh one hold the same state (the same
-  clock for every client id) and every offline change.
+  the whole time. That is a sustained stress, not typical use: the web app sends a cursor at most
+  every 50 ms, and only while the pointer moves. The readers are connections of the same account
+  that only observe, and time how long the editors' changes take to reach them. All of it is
+  seeded (`--seed`, printed in the report); only ids are random.
+- **What is timed.** The edit round trip of each edit, from the change until the server
+  acknowledged that update (a connection's updates are acknowledged in order); an edit still not
+  acknowledged 30 s after the run fails it, and a run with fewer timed edits than half the
+  expected ones (one a second per editor) fails too. Delivery is timed for each value a reader
+  received; a value overwritten before it arrived is not counted.
+- **The reconnect burst** is what people go through when the collaboration role restarts: every
+  connection drops; each editor moves its note and adds a marker card while offline; the test
+  leaves the board alone for 15 s, the time the server takes to store it and close it; then all
+  18 clients reconnect in the same instant. It measures the time until every one is synced with
+  its offline changes acknowledged, then checks that they **converge**: every client and a fresh
+  one hold the same document (state vector and delete set, so a deletion that reached only some
+  of them counts) with every offline change on every one of them.
+- **Persistence.** Then everyone leaves, and the board's preview, which the server computes from
+  the document stored in PostgreSQL and never from the one in memory, must list every marker card
+  (their count and their labels). A client that opens the board afterwards must get the same
+  document with every offline change.
+- **What it cannot see.** Whether the server really closed the board and read it back from the
+  database before the clients came back: `inkadra_collab_open_boards` counts boards with people
+  on them, so it reads zero as soon as everyone leaves, while the document may still be in memory,
+  and nothing else outside the server tells resident documents apart. The report says so instead
+  of claiming a reload. On the dev machine a temporary log line in the server showed that it did
+  reload the board both at the burst and at the reopen (22 November 2026).
 - **The event loop delay** is `inkadra_web_event_loop_delay_p99_seconds`, the p99 of the process
-  answering `/metrics` over each 5 s between readings. With `all` it is the process that holds
-  the board, and a limit; in split mode it is the web role's and only shown.
+  answering `/metrics` over each 5 s between readings, the worst window of the steady run and of
+  the burst apart. With `all` that process holds the board, and the numbers are limits; in split
+  mode it is the web role's and only shown. On CI the load clients run on the same 4-core runner
+  as the server and compete for its CPU: the number is the server's under this whole load, and
+  tells neither which work nor which phase of a window caused it.
 - It is CLI only: **Settings → Server** keeps the three presets.
 
-| Limit                        | `dense`       | Why it differs from the presets                                                          |
-| ---------------------------- | ------------- | ---------------------------------------------------------------------------------------- |
-| Edit round trip p95 / p99    | 750 / 2000 ms |                                                                                          |
-| Delivery to readers p95      | 1500 ms       |                                                                                          |
-| Board save p95               | 3000 ms       | each save writes the whole 7 MB board                                                    |
-| Peak memory                  | 2 GiB         |                                                                                          |
-| Board documents              | 16 MiB        | the 256 KiB of the presets is a mean over light boards; this board starts at about 7 MiB |
-| Reconnects                   | 15            |                                                                                          |
-| Reconnect burst, all synced  | 15 s          | new                                                                                      |
-| Event loop delay p99 (`all`) | 1500 ms       | new                                                                                      |
+| Limit                                  | `dense`          | Why it differs from the presets                                                          |
+| -------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| Edit round trip p95 / p99              | 750 / 2000 ms    |                                                                                          |
+| Delivery to readers p95                | 1500 ms          |                                                                                          |
+| Board save p95                         | 6000 ms          | each save writes the whole 7 MB board; the saves of the burst count too                  |
+| Peak memory                            | 2 GiB            |                                                                                          |
+| Board documents                        | 16 MiB           | the 256 KiB of the presets is a mean over light boards; this board starts at about 7 MiB |
+| Reconnects                             | 15               |                                                                                          |
+| Timed edits, unacknowledged edits      | half, 0          | new                                                                                      |
+| Reconnect burst, all synced            | 30 s             | new                                                                                      |
+| Event loop p99, steady / burst (`all`) | 1500 / 10,000 ms | new                                                                                      |
 
-Also on any error, a burst that does not converge, and a pool wait over 2 s. Memory per open
-board is never a limit here (one board). The limits live in
+Also on any error, a burst that does not converge or whose changes are not stored, and a pool
+wait over 2 s. Memory per open board is never a limit here (one board). The limits live in
 [`apps/server/src/loadtest/dense.ts`](../../apps/server/src/loadtest/dense.ts).
 
 ## From the settings
@@ -228,28 +249,36 @@ growing, not boards with more content.
 
 ### Dense
 
-| Run                          | Edit round trip p50 / p95 / p99 | Delivery p95 / p99 | Board save p95 | Memory before → peak | Event loop p99 | Burst: 18 clients synced |
-| ---------------------------- | ------------------------------- | ------------------ | -------------- | -------------------- | -------------- | ------------------------ |
-| `dense`, `all`, CI           | 1.4 / 7.7 / 223 ms              | 15 / 372 ms        | 336 ms         | 307 → 628 MiB        | 367 ms         | 555 ms                   |
-| `dense`, `all`, CI           | 1.6 / 13 / 106 ms               | 35 / 571 ms        | 498 ms         | 273 → 739 MiB        | 381 ms         | 665 ms                   |
-| `dense`, split, CI†          | 1.4 / 6.7 / 210 ms              | 16 / 245 ms        | 316 ms         | 223 → 508 MiB        | (web) 13 ms    | 599 ms                   |
-| `dense`, split, CI†          | 2.6 / 22 / 358 ms               | 51 / 422 ms        | 485 ms         | 218 → 539 MiB        | (web) 13 ms    | 817 ms                   |
-| `dense`, `all`, dev machine‡ | 2.5 / 98 / 1605 ms              | 666 / 1157 ms      | 636 ms         | 315 → 692 MiB        | 706 ms         | 977 ms                   |
+| Run                          | Edit p50 / p95 / p99 | Delivery p95 / p99 | Board save p95 | Memory before → peak | Event loop p99, steady / burst | Burst: synced · fresh client agreed · stored |
+| ---------------------------- | -------------------- | ------------------ | -------------- | -------------------- | ------------------------------ | -------------------------------------------- |
+| `dense`, `all`, CI           | 1.3 / 11 / 345 ms    | 26 / 523 ms        | 303 ms         | 272 → 818 MiB        | 370 / 2611 ms                  | 7.0 · 1.0 · 1.8 s                            |
+| `dense`, `all`, CI           | 1.1 / 11 / 243 ms    | 25 / 247 ms        | 1878 ms        | 279 → 849 MiB        | 396 / 2764 ms                  | 6.8 · 1.0 · 1.7 s                            |
+| `dense`, split, CI†          | 1.5 / 13 / 296 ms    | 23 / 421 ms        | 388 ms         | 222 → 487 MiB        | (web) 15 / 12 ms               | 7.6 · 1.1 · 1.9 s                            |
+| `dense`, split, CI†          | 1.5 / 11 / 555 ms    | 19 / 581 ms        | 1016 ms        | 222 → 514 MiB        | (web) 13 / 12 ms               | 7.7 · 1.1 · 1.9 s                            |
+| `dense`, `all`, dev machine‡ | 2.3 / 241 / 721 ms   | 340 / 765 ms       | 441 ms         | 294 → 833 MiB        | 443 / 3890 ms                  | 9.4 · 1.3 · 1.9 s                            |
 
-Runs of 22 November 2026; the CI runs last 180 s, the dev machine's 60 s. In every run: about
-2600 edits (500 of them strokes on frames) and 34,000 cursor moves on the CI runs, no error, no
-reconnect, the board read back from the database before the burst, and all clients converged.
-Board documents 7.4 MiB, the seeded 7.3 MB and what the run drew. † Memory and saves of the
-`collab` role. ‡ A 12-thread Linux machine shared with other work, server run from source,
-clients on the same machine.
+Runs of 22 November 2026; the CI runs last 180 s, the dev machine's 60 s. In every run: no
+error, no reconnect, no edit left unacknowledged, every edit timed (about 2600 on CI, 500 of them
+strokes, with about 34,000 cursor moves), all clients converged and the offline changes stored
+and reopened intact. Board documents 7.4 MiB. † Memory and saves of the `collab` role. ‡ A
+12-thread Linux machine shared with other work, server run from source, clients on the same
+machine. Runs of an earlier version of the scenario, before the markers were added offline, synced
+the 18 clients in 0.6 to 0.8 s on CI; whether the board was reloaded then cannot be told.
 
-What it shows: the edits themselves stay fast (p95 under 25 ms on CI), but the **p99 of the edit
-round trip and of the delivery is 100 to 600 ms on CI** (1.6 s on the busier dev machine), against
-about 1.5 ms with `medium`, and the event loop of the process holding the board stalls about as
-long (370 to 380 ms at p99 in `all`, 706 ms on the dev machine). Something in that process
-works on the whole 7 MB document at once while everyone waits, and everyone on that process, on
-any board, feels it. Part of it is the synchronous start of each save (2 to 10 s after a change):
-validating every card and encoding the whole document took about 130 ms on the dev machine for
-this board; the rest is not pinned down yet. Board saves (the database write, which does not
-block) take 300 to 500 ms on CI. The reconnect burst is not a problem at this size:
-18 clients are synced again in under a second, the board read back from the database included.
+What the numbers say, and no more:
+
+- **Steady run.** The edits stay fast for most people (p95 11 to 13 ms on CI), but the p99 of the
+  edit round trip and of the delivery is 240 to 580 ms on CI, against about 1.5 ms with `medium`.
+  In `all` the event loop of the process holding the board reaches 370 to 400 ms at p99 in its
+  worst 5 s window, with the load clients on the same runner. The synchronous start of each save
+  of this board (validating every card and encoding the whole document) measured about 130 ms on
+  the dev machine; what else takes that process's time is not pinned down.
+- **Burst.** With every client sending a new card at once, it takes 7 to 8 s on CI (9.4 to 10.9 s
+  on the dev machine) until all 18 are synced again, and the event loop of the `all` process
+  stalls up to 2.8 s at p99 (3.9 s on the dev machine). On the dev machine, with a temporary log in
+  the server: the board was read back from the database before the reconnect; 11 of the 18
+  clients were synced within 0.75 s and the others one after another up to 9.6 s; with only moves
+  offline, no new cards, all 18 were synced in 0.85 s; admitting the updates (decision 0130) and
+  the change hook each took under 20 ms but for the first size measurement after the load (120
+  ms). Where the rest of the time goes is not pinned down.
+- Once everyone left, the stored board had every offline change within 2 s.

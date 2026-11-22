@@ -17,37 +17,51 @@ other three is), then times frames while panning over the whole board, zooming, 
 60 fps of a real browser. The gate also records the same series with the floating glass's blur
 on, not judged. The comments in the spec say where its bars come from.
 
-The peers are not browsers: the test process opens three Hocuspocus connections as the same
-account (the account's other tabs, which the board shows as people like any other) and
-publishes a cursor every 50 ms, the most the web app sends, over the seeded area. The test waits
-until the page draws their three cursors before it times anything. A second or third browser
-context would weigh more than the page it measures on a runner.
+The dense measurement times four rounds of that series on the same page and board, the peers
+joining and leaving between them: without peers, with three, without, with three. The peers join
+**after** the opens are timed, so the open time is the drawings' alone. They are not browsers:
+the test process opens three Hocuspocus connections as the same account (the account's other
+tabs, which the board shows as people like any other) and publishes a cursor every 50 ms, the
+most the web app sends, along a seeded path over the seeded area. Each round starts once the page
+draws exactly the cursors of that round. A second or third browser context would weigh more than
+the page it measures on a runner.
 
-The bars of the dense measurement can be moved with `PERF_DENSE_OPEN_LIMIT_MS`,
-`PERF_DENSE_FRAME_AVG_LIMIT_MS` and `PERF_DENSE_FRAME_P95_LIMIT_MS`, and the peers with
-`PERF_DENSE_PEERS` (0 times the drawings alone); the gate's with `PERF_OPEN_LIMIT_MS`,
-`PERF_FRAME_AVG_LIMIT_MS` and `PERF_FRAME_P95_LIMIT_MS`.
+**The dense measurement only reports for now.** Its bars come from a handful of runs, so in the
+required **Canvas performance** job it fails only on what it needs to measure anything (the frames
+on the board, the peers drawn), never on a bar: it writes its rounds to the job summary and a
+warning for each bar passed, judged on the worse of the two rounds with peers. `PERF_DENSE_GATE=1`
+makes the bars fail the test; turn it on in CI once about ten runs of `main` in a row stay within
+them. The bars can be moved with `PERF_DENSE_OPEN_LIMIT_MS`, `PERF_DENSE_FRAME_AVG_LIMIT_MS` and
+`PERF_DENSE_FRAME_P95_LIMIT_MS`, and the peers with `PERF_DENSE_PEERS`; the gate's with
+`PERF_OPEN_LIMIT_MS`, `PERF_FRAME_AVG_LIMIT_MS` and `PERF_FRAME_P95_LIMIT_MS`.
 
 ## Measured
 
-Best warm open, then average / p95 of the frames, in ms (22 November 2026):
+Best warm open, then frame average / p95, in ms, on the head of the pull request that added the
+dense measurement (22 November 2026, after the change that stops remote cursor moves from
+drawing the canvas again). The dense rounds ran in this order on one page:
 
-| Run                    | Open | Pan     | Zoom    | Pan at 100 % |
-| ---------------------- | ---- | ------- | ------- | ------------ |
-| Gate, CI               | 1333 | 21 / 33 | 24 / 33 | 17 / 17      |
-| Dense, CI              | 1657 | 20 / 33 | 30 / 67 | 17 / 17      |
-| Gate, dev machine\*    | 1427 | 24 / 50 | 23 / 33 | 17 / 17      |
-| Dense, dev machine\*   | 1758 | 24 / 50 | 37 / 67 | 17 / 17      |
-| Dense, dev machine\*   | 1838 | 27 / 50 | 38 / 83 | 17 / 33      |
-| Dense, no peers, dev\* | 1704 | 22 / 50 | 24 / 50 | 17 / 17      |
+| Run                  | Open | Peers | Pan         | Zoom        | Pan at 100 % |
+| -------------------- | ---- | ----- | ----------- | ----------- | ------------ |
+| Gate, CI             | 1461 | 0     | 21.9 / 33.4 | 28.1 / 49.9 | 16.7 / 16.8  |
+| Dense, CI            | 1777 | 0     | 22.2 / 33.4 | 26.7 / 66.6 | 16.7 / 16.8  |
+|                      |      | 3     | 23.1 / 33.4 | 34.7 / 66.7 | 16.7 / 16.8  |
+|                      |      | 0     | 21.4 / 33.4 | 30.6 / 50.1 | 16.7 / 16.7  |
+|                      |      | 3     | 22.2 / 49.9 | 33.6 / 83.3 | 16.8 / 16.8  |
+| Dense, dev machine\* | 1588 | 0     | 22.4 / 49.9 | 23.1 / 50.0 | 16.7 / 16.8  |
+|                      |      | 3     | 22.4 / 50.0 | 30.3 / 66.7 | 16.8 / 16.7  |
+|                      |      | 0     | 21.5 / 33.4 | 26.9 / 50.0 | 16.7 / 16.7  |
+|                      |      | 3     | 21.9 / 50.0 | 31.1 / 50.1 | 16.7 / 16.7  |
 
-\* A 12-thread Linux machine shared with other work.
+\* A 12-thread Linux machine shared with other work, at a quiet moment. A run there during heavy
+use by other work showed no difference between the rounds (zoom 31 to 37 ms on average with or
+without peers): numbers from a busy machine do not tell the peers' cost.
 
-The drawings cost about 300 ms of the open (3654 strokes). The peers cost the zoom: with the
-drawings alone it stays as smooth as the gate's (24 ms on average), with three cursors moving it
-takes 30 to 38 ms on average and 67 to 83 ms at p95. Judged by the gate's 70 ms bar, that would
-fail now and then, which is why the dense measurement has bars of its own. Why three moving
-cursors cost the zoom this much is not pinned down yet.
+What they say: the drawings (3654 strokes) add about 300 ms to the open. Three moving cursors
+still cost the zoom, less than before that change: 4 to 8 ms more on average than the rounds
+without them on the same page, on CI and on the quiet dev machine; panning does not change. Why
+the zoom still pays for them is not pinned down. Two runs are too few for bars that gate merges,
+which is why the measurement only reports.
 
 The load on the server of many people on one heavy board is the load test's `dense` scenario
 ([Capacity](../self-hosting/capacity.md#dense-one-heavy-board)).
