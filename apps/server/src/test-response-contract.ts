@@ -7,9 +7,12 @@
 // What it cannot see: answers written on the raw socket after `reply.hijack()` skip onSend, so
 // the tus protocol (POST, PATCH, DELETE and OPTIONS on /uploads, and HEAD, which is never
 // checked) is out of its reach; its tests assert those answers with contractMismatch directly.
-// Mismatches fail the test that is running when they are found (test-setup.ts): every request
-// must be awaited within its test and cases must stay serial (no it.concurrent). An answer that
-// arrives outside its own test still fails, and its message says which test sent it.
+// Who fails (test-setup.ts): a mismatch belongs to whoever sent the request, one attempt of one
+// test (by Vitest's task id and the attempt) or the suite hooks of the file. A test fails on its
+// own mismatches; what belongs to the suite hooks, or arrives after its test ended, fails the
+// file in the setup's last afterAll, which first waits up to 2 s for requests still answering.
+// Guaranteed only with serial cases (no it.concurrent: one owner at a time) and awaited
+// requests; an answer arriving after that last afterAll is not seen at all.
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { apiOperations } from '@inkadra/shared/openapi';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -153,11 +156,42 @@ function checkJson(where: string, schema: z.ZodType, contentType: string, body: 
   return `${where}: the body does not match the contract\n${issues.join('\n')}`;
 }
 
-const mismatches: string[] = [];
+/** Who answers for a mismatch: one attempt of one test, or the suite hooks of the file. */
+export interface Owner {
+  id: string;
+  label: string;
+}
+const SUITE: Owner = { id: 'suite', label: 'the suite hooks (beforeAll or afterAll)' };
+let current: Owner = SUITE;
 
-/** The mismatches seen since the last call, emptied. */
-export function takeMismatches(): string[] {
-  return mismatches.splice(0);
+/** Set by test-setup.ts around each test; null gives the answers back to the suite hooks. */
+export function setOwner(owner: Owner | null) {
+  current = owner ?? SUITE;
+}
+export function currentOwner(): Owner {
+  return current;
+}
+
+const mismatches: Array<{ owner: Owner; problem: string }> = [];
+
+/** The mismatches of one owner, or all of them, taken out of the queue. */
+export function takeMismatches(owner?: Owner): string[] {
+  const taken: string[] = [];
+  for (let i = mismatches.length - 1; i >= 0; i--) {
+    const found = mismatches[i];
+    if (found && (!owner || found.owner.id === owner.id)) {
+      taken.unshift(found.problem);
+      mismatches.splice(i, 1);
+    }
+  }
+  return taken;
+}
+
+let inFlight = 0;
+/** Waits, within a short bound, for the requests still being answered. */
+export async function settled(boundMs = 2000) {
+  for (let waited = 0; inFlight > 0 && waited < boundMs; waited += 50)
+    await new Promise((resolve) => setTimeout(resolve, 50));
 }
 
 const unchecked = new WeakSet<object>();
@@ -170,52 +204,65 @@ export function uncheckedResponses(app: FastifyInstance) {
   unchecked.add(app);
 }
 
-/** The test running now, set by test-setup.ts around each test. */
-let current: string | null = null;
-export function setCurrentTest(name: string | null) {
-  current = name;
-}
+const printed = (error: unknown) => {
+  try {
+    return String(error);
+  } catch {
+    return 'an error that cannot be printed';
+  }
+};
 
 export function checkResponses(app: FastifyInstance, check = contractMismatch) {
-  const startedIn = new WeakMap<object, string | null>();
-  app.addHook('onRequest', async (req) => {
-    startedIn.set(req, current);
+  const sentBy = new WeakMap<object, Owner>();
+  app.addHook('onRequest', async (req, reply) => {
+    sentBy.set(req, current);
+    inFlight += 1;
+    let done = false;
+    const end = () => {
+      if (!done) inFlight -= 1;
+      done = true;
+    };
+    reply.raw.once('finish', end);
+    reply.raw.once('close', end);
   });
   app.addHook('onSend', async (req: FastifyRequest, reply: FastifyReply, payload: unknown) => {
-    const route = req.routeOptions.url;
-    // Unknown paths answer the generic 404 of the not-found handler; HEAD carries no body.
-    if (!route?.startsWith(API_PREFIX) || req.method === 'HEAD' || unchecked.has(app))
-      return payload;
-    // The hook only observes: whatever happens here, the answer leaves as it was.
-    let problem: string | null;
+    // The hook only observes: whatever happens or is thrown here, the answer leaves as it was.
     try {
-      // No payload at all is an empty body; only a stream is left unread (null).
-      const body =
-        payload === undefined || payload === null
-          ? ''
-          : typeof payload === 'string'
-            ? payload
-            : Buffer.isBuffer(payload)
-              ? payload.toString('utf8')
-              : null;
-      problem = check(
-        req.method,
-        route,
-        reply.statusCode,
-        String(reply.getHeader('content-type') ?? ''),
-        body,
-        req.url.split('?')[0],
-      );
-    } catch (error) {
-      problem = `${req.method} ${route} → ${reply.statusCode}: the check threw: ${String(error)}`;
+      const route = req.routeOptions.url;
+      // Unknown paths answer the generic 404 of the not-found handler; HEAD carries no body.
+      if (!route?.startsWith(API_PREFIX) || req.method === 'HEAD' || unchecked.has(app))
+        return payload;
+      let problem: string | null;
+      try {
+        // No payload at all is an empty body; only a stream is left unread (null).
+        const body =
+          payload === undefined || payload === null
+            ? ''
+            : typeof payload === 'string'
+              ? payload
+              : Buffer.isBuffer(payload)
+                ? payload.toString('utf8')
+                : null;
+        problem = check(
+          req.method,
+          route,
+          reply.statusCode,
+          String(reply.getHeader('content-type') ?? ''),
+          body,
+          req.url.split('?')[0],
+        );
+      } catch (error) {
+        problem = `${req.method} ${route} → ${reply.statusCode}: the check threw: ${printed(error)}`;
+      }
+      if (!problem) return payload;
+      const owner = sentBy.get(req) ?? current;
+      if (owner.id !== current.id)
+        problem += `\n  (sent by ${owner.label}, answered during ${current.label}: await every request)`;
+      else if (owner === SUITE) problem += `\n  (in ${SUITE.label})`;
+      mismatches.push({ owner, problem });
+    } catch {
+      // Recording failed: the answer still leaves untouched.
     }
-    if (!problem) return payload;
-    const started = startedIn.get(req) ?? null;
-    if (started === null && current === null)
-      problem = `${problem}\n  (outside a running test: in beforeAll or afterAll, or not awaited)`;
-    else if (started !== current)
-      problem = `${problem}\n  (sent by "${started ?? 'no test'}", answered ${current === null ? 'after it ended' : `during "${current}"`}: await every request)`;
-    mismatches.push(problem);
     return payload;
   });
 }

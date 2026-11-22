@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   checkResponses,
   contractMismatch,
+  currentOwner,
   EXCEPTIONS,
-  setCurrentTest,
+  type Owner,
+  setOwner,
   takeMismatches,
 } from './test-response-contract.ts';
 
@@ -153,7 +155,30 @@ describe('the response contract gate', () => {
     ]);
   });
 
-  it('names the test that sent an answer arriving after it ended', async ({ task }) => {
+  it('says so when even printing what the check threw fails, and still answers', async () => {
+    const app = Fastify();
+    checkResponses(app, () => {
+      throw {
+        toString() {
+          throw new Error('cannot print');
+        },
+      };
+    });
+    app.get('/api/v1/instance/version', async () => ({ version: '1.0.0' }));
+    const res = await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.close();
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ version: '1.0.0' });
+    expect(takeMismatches()).toEqual([
+      'GET /api/v1/instance/version → 200: the check threw: an error that cannot be printed',
+    ]);
+  });
+
+  it('blames the attempt that sent an answer, and leaves suite answers to the file', async () => {
+    const self = currentOwner();
+    // Two attempts of cases with the same name are two owners.
+    const first: Owner = { id: 'same#1', label: '"same" (attempt 1)' };
+    const second: Owner = { id: 'same#2', label: '"same" (attempt 2)' };
     const app = Fastify();
     let reached!: () => void;
     let release!: () => void;
@@ -168,23 +193,26 @@ describe('the response contract gate', () => {
       await held;
       return { version: 7 };
     });
-    const answer = async (before: string | null, after: string | null) => {
-      setCurrentTest(before);
+    const answer = async (sender: Owner | null, during: Owner | null) => {
+      setOwner(sender);
       const pending = app.inject({ method: 'GET', url: '/api/v1/instance/version' });
       await atHandler;
-      setCurrentTest(after);
+      setOwner(during);
       release();
       await pending;
     };
     try {
-      await answer('an earlier test', task.name);
+      await answer(first, second);
       await answer(null, null);
     } finally {
-      setCurrentTest(task.name);
+      setOwner(self);
       await app.close();
     }
-    const [late, outside] = takeMismatches();
-    expect(late).toContain(`(sent by "an earlier test", answered during "${task.name}"`);
-    expect(outside).toContain('(outside a running test');
+    expect(takeMismatches(second)).toEqual([]);
+    expect(takeMismatches(self)).toEqual([]);
+    expect(takeMismatches(first)).toEqual([
+      expect.stringContaining('(sent by "same" (attempt 1), answered during "same" (attempt 2)'),
+    ]);
+    expect(takeMismatches()).toEqual([expect.stringContaining('(in the suite hooks')]);
   });
 });
