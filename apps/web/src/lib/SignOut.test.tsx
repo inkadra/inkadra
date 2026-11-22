@@ -98,3 +98,54 @@ it('downloads edits set aside, which then no longer hold the sign-out back (#791
   expect(signOut).toHaveBeenCalledOnce();
   await act(async () => root.unmount());
 });
+
+/** A stored board copy of `leaver` with edits only this device has. */
+async function unsavedCopy(board: string) {
+  const doc = new Y.Doc();
+  const copy = await openLocalBoard(localBoardName('leaver', board), board, doc, () => {});
+  doc.getMap('meta').set('title', 'Edited offline');
+  copy.mark(true);
+  await copy.close();
+}
+
+it('asks when a copy cannot be read, instead of deleting it unasked', async () => {
+  await unsavedCopy('unreadable');
+  const open = indexedDB.open.bind(indexedDB);
+  vi.spyOn(indexedDB, 'open').mockImplementation((name, version) => {
+    if (name !== localBoardName('leaver', 'unreadable')) return open(name, version);
+    const failed = { error: new DOMException('Read failed') } as unknown as IDBOpenDBRequest;
+    Object.defineProperty(failed, 'onerror', {
+      set: (handler: () => void) => setTimeout(handler),
+    });
+    return failed;
+  });
+  const signOut = vi.spyOn(authApi, 'signOut').mockResolvedValue(null);
+  const root = createRoot(document.body.appendChild(document.createElement('div')));
+  await act(async () => root.render(<Probe />));
+  await act(async () => start());
+  await settle();
+  expect(document.body.textContent).toContain('auth.signOutUnsaved.body {"count":1}');
+  expect(signOut).not.toHaveBeenCalled();
+  vi.mocked(indexedDB.open).mockRestore();
+  await act(async () => button('auth.signOutUnsaved.stay')?.click());
+  expect(await unsavedLocalBoards('leaver')).toEqual(['unreadable']);
+  await act(async () => root.unmount());
+});
+
+it('signs out keeping the copies when they cannot be listed', async () => {
+  await unsavedCopy('unlisted');
+  vi.spyOn(indexedDB, 'databases').mockImplementationOnce(() => {
+    throw new DOMException('List failed');
+  });
+  const signOut = vi.spyOn(authApi, 'signOut').mockResolvedValue(null);
+  const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+  const root = createRoot(document.body.appendChild(document.createElement('div')));
+  await act(async () => root.render(<Probe />));
+  await act(async () => start());
+  await settle();
+  expect(signOut).toHaveBeenCalledOnce();
+  expect(reload).toHaveBeenCalledOnce();
+  // Named after the person: the next account on this browser does not open them.
+  expect(await unsavedLocalBoards('leaver')).toContain('unlisted');
+  await act(async () => root.unmount());
+});

@@ -656,14 +656,16 @@ export function discardKept(userId: string, boardId: string): Promise<void> {
   return dropLocalBoard(keptName(userId, boardId));
 }
 
-/** The boards with edits only on this device, of the person: signing out would delete them. */
+/**
+ * The boards with edits only on this device, of the person: signing out would delete them. A
+ * copy whose flag cannot be read counts too: it may hold edits, so signing out asks first.
+ */
 export async function unsavedLocalBoards(userId: string): Promise<string[]> {
   const boards = new Set<string>();
-  for (const name of await storedNames(`${PREFIX}${userId}:`)) {
-    if ((await readUnsaved(name).catch(() => undefined)) === 1)
-      boards.add(name.slice(PREFIX.length + userId.length + 1));
-  }
-  for (const board of await keptBoards(userId)) boards.add(board);
+  for (const prefix of [PREFIX, KEPT_PREFIX])
+    for (const name of await storedNames(`${prefix}${userId}:`))
+      if ((await readUnsaved(name).catch(() => 1)) === 1)
+        boards.add(name.slice(prefix.length + userId.length + 1));
   return [...boards];
 }
 
