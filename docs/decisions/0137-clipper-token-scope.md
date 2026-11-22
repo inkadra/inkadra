@@ -52,9 +52,14 @@ never set it. No redirect address or user agent is stored on the token.
   | `DELETE /api/v1/me/tokens/{tokenId}`      | Disconnect: only the token's own id                   |
 
   Roles and grants still decide what each of these returns or allows, as before.
-- **What a `clip` token reads.** Answers are narrowed to what the picker reads, keeping every
-  field the schemas of the oldest (0.3.0) and newest released Clipper require; the other fields
-  are left out or empty only where those schemas allow it. Each narrowed answer is built field
+- **What a `clip` token reads.** Answers are narrowed to what the picker reads. Two separate
+  claims hold. Every released Clipper keeps working: it does not validate the JSON and reads only
+  `id`, `name`, `rootBoardId`, `archivedAt` and `myRole` of a project; `id`, `projectId`,
+  `parentBoardId`, `position`, `title` and `myRole` of a board; `kind`, `boardId`, `boardTitle`,
+  `projectId`, `projectName` and `myRole` of a search hit. And the answers are valid against the
+  current contract, which allows the fields left out or emptied. They are not guaranteed valid against older
+  copies of the schemas for values added later (a newer icon, a production board), which the
+  0.3.0 client receives today too and its picker does not use. Each narrowed answer is built field
   by field, the envelope too (`items`, and `nextCursor` where `page()` requires it): a field added
   later to these answers or their items stays out of a `clip` token's answer until it is listed
   in `token-scope.ts`. Sessions and `full` tokens get the same answers as before.

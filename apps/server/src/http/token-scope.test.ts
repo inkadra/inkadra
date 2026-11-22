@@ -398,6 +398,8 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
       return res.json();
     };
     const projects = await get('/projects?limit=200');
+    // These fixtures use only values that existed in 0.3.0 (default icon, plain boards), so the
+    // 0.3.0 schemas apply; later values are checked against the current contract below.
     page(ProjectV030).parse(projects);
     page(Project).parse(projects);
     // Active projects where a card can go: not the read-only one, not the archived one.
@@ -608,5 +610,29 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     expect((await call(full, 'GET', '/shared-boards')).json().items).not.toContainEqual(
       expect.objectContaining({ id: mixedEdit }),
     );
+  });
+
+  it('answers values added after 0.3.0 within the current contract, with what old clients read', async () => {
+    await db
+      .update(project)
+      .set({ iconShape: 'star', iconColor: 'teal' })
+      .where(eq(project.id, mine));
+    const { token } = await clipperSignIn();
+    const projects = (await call(token, 'GET', '/projects?limit=200')).json();
+    const boards = (await call(token, 'GET', `/projects/${mine}/boards`)).json();
+    // Valid against the current contract, not guaranteed against 0.3.0's (a later icon, a
+    // production board): the 0.3.0 Clipper reads the JSON without validating it.
+    page(Project).parse(projects);
+    page(Board).parse(boards);
+    expect(page(ProjectV030).safeParse(projects).success).toBe(false);
+    expect(boards.items).toContainEqual(expect.objectContaining({ kind: 'production' }));
+    expect(page(BoardV030).safeParse(boards).success).toBe(false);
+    // Every field the released pickers read is there.
+    for (const p of projects.items)
+      for (const key of ['id', 'name', 'rootBoardId', 'archivedAt', 'myRole'])
+        expect(p).toHaveProperty(key);
+    for (const b of boards.items)
+      for (const key of ['id', 'projectId', 'parentBoardId', 'position', 'title', 'myRole'])
+        expect(b).toHaveProperty(key);
   });
 });
