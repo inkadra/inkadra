@@ -31,7 +31,7 @@ import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { readPhotoshop } from './photoshop.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
-import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
+import { ensureFreeSpace, privateInput, readPrefix, withJobDir } from './scratch.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   extractPoster,
@@ -111,6 +111,12 @@ export const ANIMATED_CAPS: AnimatedCaps = {
   maxFramePixels: 16_777_216,
   maxBytes: 6 * 1024 * 1024,
 };
+
+/**
+ * Largest SVG rasterised. librsvg is given the bytes, never the path: given a path it resolves
+ * relative references (`<image href>`, `xi:include`) next to it, the folder of every original.
+ */
+export const SVG_MAX_BYTES = 5 * 1024 * 1024;
 
 const SIZES = ThumbnailSize.options.map(Number).sort((a, b) => a - b);
 
@@ -305,7 +311,15 @@ async function processRow(
           raw: { width: image.width, height: image.height, channels: 4 },
         });
       } else {
-        input = sharp(copy.path, { failOn: 'error', animated: false });
+        const source = svg ? await readPrefix(copy.path, SVG_MAX_BYTES + 1) : copy.path;
+        if (svg && source.length > SVG_MAX_BYTES) {
+          await db
+            .update(asset)
+            .set({ sha256: digest, status: 'ready', animated: false })
+            .where(eq(asset.id, assetId));
+          return { variants: 0 };
+        }
+        input = sharp(source, { failOn: 'error', animated: false });
         const meta = await input.metadata();
         mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
         frames = meta.pages ?? 1;

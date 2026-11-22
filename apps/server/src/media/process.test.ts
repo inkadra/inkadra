@@ -18,7 +18,13 @@ import { writeZip } from '../transfers/zip.ts';
 import { chooseVideoEncoder, forgetVideoEncoder, readVideoEncoder } from './encoder-setting.ts';
 import { photoshopFixture } from './fixtures/photoshop.ts';
 import { SOFTWARE_ENCODER } from './hwaccel.ts';
-import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
+import {
+  ANIMATED_CAPS,
+  fitsAnimatedCaps,
+  processAsset,
+  SVG_MAX_BYTES,
+  variantWidths,
+} from './process.ts';
 import { runProxy } from './proxy.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
@@ -274,6 +280,28 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     const result = await load(id);
     expect(result.row).toMatchObject({ kind: 'file', status: 'ready', width: 120, height: 80 });
     expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
+  });
+
+  it('rasterises an SVG without reading the other originals next to it', async () => {
+    const red = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#f00' } })
+      .png()
+      .toBuffer();
+    const sibling = await upload(red, 'image/png', 'other-project.png');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64"><image href="${sibling}" xlink:href="${sibling}" width="64" height="64"/></svg>`;
+    const id = await upload(Buffer.from(svg), 'image/svg+xml', 'drawing.svg');
+    expect(await processAsset(deps, id)).toMatchObject({ variants: 1 });
+    const { variants } = await load(id);
+    const thumb = await readAll(await storage.read(variants[0]?.storageKey ?? ''));
+    const { data } = await sharp(thumb).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    // Transparent: the picture next to it in files/originals was not drawn.
+    expect(Math.max(...data.filter((_, i) => i % 4 === 3))).toBe(0);
+  });
+
+  it('keeps an SVG past the size cap ready, without thumbnails', async () => {
+    const body = `<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><!--${'x'.repeat(SVG_MAX_BYTES)}--></svg>`;
+    const id = await upload(Buffer.from(body), 'image/svg+xml', 'huge.svg');
+    expect(await processAsset(deps, id)).toMatchObject({ variants: 0 });
+    expect((await load(id)).row?.status).toBe('ready');
   });
 
   it('ignores disguised SVG previews and broken design files without failing the upload', async () => {
