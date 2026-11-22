@@ -138,13 +138,19 @@ export function sameSelections(
   );
 }
 
-/** The same people, in the same order. */
+/** The same people in the same order, with the same name and picture: what a typing line shows. */
 export function samePeople(a: readonly Peer[], b: readonly Peer[]): boolean {
-  return sameIds(
-    a.map((p) => p.user.id),
-    b.map((p) => p.user.id),
+  return sameList(
+    a,
+    b,
+    (p, q) =>
+      p.user.id === q.user.id && p.user.name === q.user.name && p.user.image === q.user.image,
   );
 }
+
+/** Lists of the same length whose items match pairwise. */
+export const sameList = <T>(a: readonly T[], b: readonly T[], same: (a: T, b: T) => boolean) =>
+  a.length === b.length && a.every((item, i) => same(item, b[i] as T));
 
 const sameIds = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((id, i) => id === b[i]);
