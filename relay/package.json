@@ -1,6 +1,7 @@
 {
   "name": "inkadra-report-relay",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "test": "node --disable-warning=ExperimentalWarning --import ./test/cloudflare-shim.mjs --test test/*.test.mjs"
