@@ -64,13 +64,17 @@ never set it. No redirect address or user agent is stored on the token.
   - `GET /projects` lists active projects where the person is editor or owner (`archived=true`
     gives an empty list), without type, time zone, shooting dates, pin and group.
   - `GET /shared-boards` lists the shared boards where the person is editor or owner.
-  - `GET /projects/{projectId}/boards` keeps every board the person can read in that project,
-    read-only ones included, because an editable board can sit below a read-only one; covers,
-    icons, views and edit times are left out.
+  - `GET /projects/{projectId}/boards` answers only for a project with a destination: at least
+    one board where the person is editor or owner. It then keeps every board the person can read
+    in that project, read-only ones included, because an editable board can sit below a
+    read-only one; covers, icons, views and edit times are left out. A project with no
+    destination is not readable at all through a `clip` token: `404 not_found`, the answer to a
+    project that does not exist.
   - `GET /me/clip-boards` and `GET /boards/{boardId}/columns` answer as before.
 
   What stays readable is accepted: the names, order, roles and structure of the account's active
-  editable projects and of the boards it can read in them, column names, and recent clip boards.
+  editable projects, of the boards it can read in projects where it has a destination, column
+  names, and recent clip boards.
 - **Files through `/clip`.** The multipart form takes one file of any type, within the storage
   limits: an image card when its bytes are an image the server recognises, a file card
   otherwise. It is not limited to images: released Clippers send the bytes of any picture on a

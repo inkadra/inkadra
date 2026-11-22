@@ -8,6 +8,7 @@ import {
 } from '@inkadra/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { personalToken } from './db/schema.ts';
+import { HttpError } from './http/errors.ts';
 
 export type TokenScope = (typeof personalToken.$inferSelect)['scope'];
 
@@ -62,8 +63,16 @@ function clipProjects(items: unknown[]): Project[] {
 function clipBoard({ icon, views, editedAt, ...kept }: Board): Board {
   return { ...kept, coverAssetId: null };
 }
-/** Every board of a project: a read-only board can lead to an editable one below it. */
-const clipProjectBoards = (items: unknown[]) => (items as Board[]).map(clipBoard);
+/**
+ * Every board of a project: a read-only board can lead to an editable one below it. A project
+ * with nowhere to clip is not shown at all: the answer to a project that does not exist.
+ */
+function clipProjectBoards(items: unknown[]): Board[] {
+  const boards = items as Board[];
+  if (!boards.some((b) => atLeast(b.myRole, 'editor')))
+    throw new HttpError('not_found', 'Project not found.');
+  return boards.map(clipBoard);
+}
 /** Shared boards the picker offers: those where the person may add cards. */
 const clipSharedBoards = (items: unknown[]) =>
   (items as Board[]).filter((b) => atLeast(b.myRole, 'editor')).map(clipBoard);

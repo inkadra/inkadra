@@ -412,6 +412,21 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
     expect((await call(full, 'GET', '/shared-boards')).json().items).toHaveLength(2);
   });
 
+  it("hides from a Clipper token the boards of a project it can't clip to", async () => {
+    const { token } = await clipperSignIn();
+    const unknown = await call(token, 'GET', `/projects/${randomUUID()}/boards`);
+    expect(unknown.statusCode).toBe(404);
+    // Only a viewer here: the same answer as for a project that does not exist.
+    const readOnly = await call(token, 'GET', `/projects/${viewed}/boards`);
+    expect(readOnly.statusCode).toBe(404);
+    expect(readOnly.json()).toEqual(unknown.json());
+    // One editable board is enough for the readable tree.
+    expect((await call(token, 'GET', `/projects/${granted}/boards`)).statusCode).toBe(200);
+    // A full token still reads the read-only project's boards.
+    const full = (await issueToken(db, me, { name: 'Phone', client: 'mobile' })).token;
+    expect((await call(full, 'GET', `/projects/${viewed}/boards`)).statusCode).toBe(200);
+  });
+
   it('refuses a Clipper token everywhere else with the usual 403', async () => {
     const { token, tokenId } = await clipperSignIn();
     const phone = await issueToken(db, me, { name: 'Phone', client: 'mobile' });
