@@ -26,6 +26,7 @@ function meterNamespace() {
   const instance = new Meter({ storage: { sql } }, {});
   const stub = {
     status: async (...a) => instance.status(...a),
+    used: async (...a) => instance.used(...a),
     claim: async (...a) => instance.claim(...a),
     lookup: async (...a) => instance.lookup(...a),
     begin: async (...a) => instance.begin(...a),
@@ -174,6 +175,25 @@ test('without a valid ticket not a byte of the body is read', async () => {
   const res = await worker.fetch(new Request('https://relay.test/report', { method: 'POST', body, headers, duplex: 'half' }), env());
   assert.equal(res.status, 403);
   assert.equal(pulls, 0);
+});
+
+test('a used ticket is refused before its body is read or GitHub is asked', async () => {
+  const e = env();
+  const calls = mockGitHub();
+  const t = await ticketFor(e);
+  await later(10_000, async () => {
+    const nonce = await solve(t.seed, t.bits);
+    assert.equal((await sendReport(e, reportForm(t, nonce))).status, 201);
+    const before = calls.length;
+    let pulls = 0;
+    const body = new ReadableStream({ pull(c) { pulls++; c.enqueue(new Uint8Array(1024)); } }, { highWaterMark: 0 });
+    const headers = { 'cf-connecting-ip': IP, 'content-type': 'multipart/form-data; boundary=test', ...ticketHeaders({ installId: INSTALL, ticket: t.ticket, powNonce: nonce }) };
+    const res = await worker.fetch(new Request('https://relay.test/report', { method: 'POST', body, headers, duplex: 'half' }), e);
+    assert.equal(res.status, 409);
+    assert.deepEqual(await res.json(), { error: 'duplicate' });
+    assert.equal(pulls, 0);
+    assert.equal(calls.length, before);
+  });
 });
 
 test('malformed multipart forms return a client error', async () => {

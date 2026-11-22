@@ -7,6 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./constants": "./src/constants.ts",
+    "./bytes": "./src/bytes.ts",
+    "./permissions": "./src/permissions.ts",
     "./notification-words/it": "./src/notification-words-it.ts",
     "./notification-words/es": "./src/notification-words-es.ts",
     "./notification-words/de": "./src/notification-words-de.ts",

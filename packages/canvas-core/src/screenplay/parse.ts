@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { parseFdx } from './fdx.ts';
 import { parseFountain } from './fountain.ts';
 import { MAX_SCRIPT_BYTES, type Script, ScriptError } from './script.ts';

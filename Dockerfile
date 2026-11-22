@@ -18,15 +18,12 @@ WORKDIR /src
 # build cache of CI carries it too.
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .pnpmfile.cjs ./
-COPY patches ./patches
 RUN pnpm fetch
 
 FROM deps AS build
 COPY . .
 RUN pnpm install --frozen-lockfile --offline
 RUN pnpm turbo run build --filter=@inkadra/server --filter=@inkadra/web
-# The server writes the set plan's sheet with the patched fontkit (decisions 0038, 0122): every
-# patch in patches/ must apply here, so an unused one fails the build.
 RUN pnpm --filter @inkadra/server deploy --prod --legacy /out
 
 FROM node-base AS runtime

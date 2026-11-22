@@ -19,6 +19,7 @@ import {
   rgb,
   setLineJoin,
 } from 'pdf-lib';
+import { evenGlyphs } from './even-glyphs.ts';
 import {
   type FontWeight,
   type ImageInfo,
@@ -46,11 +47,24 @@ function color(hex: string) {
   return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
 }
 
+// The web and the server load each font once and pass the same bytes to every export.
+const paddedFonts = new WeakMap<Uint8Array, Uint8Array>();
+function padded(font: Uint8Array): Uint8Array {
+  let even = paddedFonts.get(font);
+  if (!even) {
+    even = evenGlyphs(font);
+    paddedFonts.set(font, even);
+  }
+  return even;
+}
+
 /**
  * Writes the pages as a PDF with Inter and the heading font embedded (subset) and the pictures
  * as JPEG or PNG. The caller supplies the fonts' bytes, the pictures and, for a picture drawn in
  * greys, `grey`, which gives the same picture in greys (`greyPixels` is how; decision 0110);
  * without it such a picture is drawn as given.
+ * Each font's bytes are prepared once per array and kept for later exports: do not change a
+ * font's array after passing it here (pass a new array for new bytes).
  */
 export async function renderPdf(
   pages: readonly Page[],
@@ -75,16 +89,14 @@ export async function renderPdf(
   pdf.setLanguage(meta.language);
   pdf.setCreator('Inkadra');
   pdf.setProducer('Inkadra');
-  const semibold = await pdf.embedFont(fonts[600], { subset: true });
+  const embed = (bytes: Uint8Array) => pdf.embedFont(padded(bytes), { subset: true });
+  const semibold = await embed(fonts[600]);
   const embedded = {
-    400: await pdf.embedFont(fonts[400], { subset: true }),
-    500: await pdf.embedFont(fonts[500], { subset: true }),
+    400: await embed(fonts[400]),
+    500: await embed(fonts[500]),
     600: semibold,
-    700: await pdf.embedFont(fonts[700], { subset: true }),
-    heading:
-      fonts.heading === fonts[600]
-        ? semibold
-        : await pdf.embedFont(fonts.heading, { subset: true }),
+    700: await embed(fonts[700]),
+    heading: fonts.heading === fonts[600] ? semibold : await embed(fonts.heading),
   } satisfies Record<FontWeight, PDFFont>;
   const pictures = new Map<string, PDFImage>();
   const pictureOf = async (key: string, inGreys = false) => {

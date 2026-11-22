@@ -148,8 +148,8 @@ describe('renderPdf', () => {
   });
 
   it('embeds Inter subsets whose glyphs keep their outlines, Polish and Cyrillic too', async () => {
-    // Google Fonts' TTFs have glyphs of odd length; unpatched, fontkit's subset truncates their
-    // offsets and most letters print blank (the fontkit patch in `patches/`).
+    // Google Fonts' TTFs have glyphs of odd length; as given, fontkit's subset truncates their
+    // offsets and most letters print blank (`evenGlyphs` pads them first).
     const text = 'Przez okno, łagodne światło · Свет из окна, мягкий · NOTES';
     const fonts = inter();
     const page: Page = {

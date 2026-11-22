@@ -62,6 +62,8 @@ with its own capability, since an older server ignores a parameter it does not k
   Cyrillic, update of 0038), read once per process, measured with the same `measureFrom`. The
   server then depends on fontkit, so the patch `patches/@pdf-lib__fontkit@1.1.1.patch` must
   apply in the server image: the `pnpm deploy` of the server stops allowing unused patches.
+  Update (2026-11): the patch is gone; `@inkadra/print` pads the glyphs itself (see the update
+  in [0038](0038-pdf-and-image-export.md)).
 
 **Response.** `200 application/pdf`, the whole file in the answer (no job: one sheet is
 expected to take well under 2 s). `Content-Disposition: attachment` with the web export's file

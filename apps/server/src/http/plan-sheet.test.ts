@@ -268,7 +268,8 @@ describe('the pictures and the fonts of the PDF', () => {
   });
 
   it('embeds Inter subsets whose glyphs keep their outlines, Polish and Cyrillic too', async () => {
-    // The fontkit patch (patches/, decision 0038): unpatched, most letters print blank.
+    // Odd-length glyphs, padded by evenGlyphs in @inkadra/print (decision 0038): unpadded, most
+    // letters print blank.
     const text = 'Przez okno, łagodne światło · Свет из окна, мягкий · NOTES';
     const page: Page = {
       width: 400,

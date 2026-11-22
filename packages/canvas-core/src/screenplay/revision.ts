@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type * as Y from 'yjs';
 import { keysAt, updateElements } from '../board.ts';
 import { addScenes, type NewScene, type SceneElement } from '../film.ts';
