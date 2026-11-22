@@ -856,46 +856,69 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     await db.delete(projectTable).where(eq(projectTable.id, kitProject));
   });
 
-  it('leaves out a board whose grant was closed while its decode waited', async () => {
-    const added = await app.inject({
-      method: 'POST',
-      url: `/api/v1/projects/${projectId}/boards`,
-      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
-      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Revocata' },
-    });
-    const id = added.json().id as string;
-    const doc = createBoardDoc(id);
-    addElement(doc, { ...base(), type: 'frame', cast: ['Revocata'] });
-    const update = Y.encodeStateAsUpdate(doc);
-    await db
-      .insert(boardDoc)
-      .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
-    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+  it('leaves out a board closed or trashed while its decode waited', async () => {
+    const addBoard = async (title: string, cast: string) => {
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${projectId}/boards`,
+        headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+        payload: { parentBoardId: boardId, kind: 'storyboard', title },
+      });
+      const id = added.json().id as string;
+      const doc = createBoardDoc(id);
+      addElement(doc, { ...base(), type: 'frame', cast: [cast] });
+      const update = Y.encodeStateAsUpdate(doc);
+      await db
+        .insert(boardDoc)
+        .values({ boardId: id, state: update, schemaVersion: 2, size: update.byteLength });
+      await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+      return { id, doc };
+    };
+    const path = `/api/v1/projects/${projectId}/cast-appearances`;
+    const names = async (res: Promise<{ body: { items: Array<{ name: string }> } }>) =>
+      (await res).body.items.map((i) => i.name);
+    /** What `who` is answered when `change` happens while the newest board waits its decode. */
+    const whileWaiting = async (who: keyof typeof cookies, change: () => Promise<unknown>) => {
+      let unblock = () => {};
+      const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
+      await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
+      const pending = get(who, path);
+      await vi.waitFor(() => expect(kitDecodes.waiting).toBe(1));
+      await change();
+      unblock();
+      await blocker;
+      return names(pending);
+    };
     const [guest] = await db
       .select({ id: user.id })
       .from(user)
       .where(eq(user.email, 'guest@example.com'));
-    const path = `/api/v1/projects/${projectId}/cast-appearances`;
-    let unblock = () => {};
-    const blocker = oneAtATime(() => new Promise<void>((resolve) => (unblock = resolve)));
-    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(0));
-    const pending = get('guest', path);
-    // The new board, the most recently edited, waits for its decode.
-    await vi.waitFor(() => expect(kitDecodes.waiting).toBe(1));
-    await db
-      .update(boardGrant)
-      .set({ expiresAt: new Date(Date.now() - 60_000) })
-      .where(eq(boardGrant.userId, guest!.id));
-    unblock();
-    await blocker;
-    const names = (await pending).body.items.map((i: { name: string }) => i.name);
-    expect(names).not.toContain('revocata');
-    await db.update(boardGrant).set({ expiresAt: null }).where(eq(boardGrant.userId, guest!.id));
-    // With the grant back, the board is listed.
-    expect((await get('guest', path)).body.items.map((i: { name: string }) => i.name)).toContain(
-      'revocata',
-    );
-    await db.delete(board).where(eq(board.id, id));
+    const grant = (expiresAt: Date | null) =>
+      db.update(boardGrant).set({ expiresAt }).where(eq(boardGrant.userId, guest!.id));
+    // The grant closes, then a new state is stored: neither the old nor the new one is read.
+    const closed = await addBoard('Revocata', 'Revocata');
+    addElement(closed.doc, { ...base(), type: 'frame', cast: ['Nuova'] });
+    const newer = Y.encodeStateAsUpdate(closed.doc);
+    const answer = await whileWaiting('guest', async () => {
+      await grant(new Date(Date.now() - 60_000));
+      await db
+        .update(boardDoc)
+        .set({ state: newer, size: newer.byteLength })
+        .where(eq(boardDoc.boardId, closed.id));
+    });
+    expect(answer).not.toContain('revocata');
+    expect(answer).not.toContain('nuova');
+    await grant(null);
+    // With the grant back, the board is listed as stored.
+    expect(await names(get('guest', path))).toEqual(expect.arrayContaining(['revocata', 'nuova']));
+    // A board put in the trash meanwhile is not read either.
+    const trashed = await addBoard('Cestinata', 'Cestinata');
+    expect(
+      await whileWaiting('owner', () =>
+        db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, trashed.id)),
+      ),
+    ).not.toContain('cestinata');
+    for (const id of [closed.id, trashed.id]) await db.delete(board).where(eq(board.id, id));
   });
 
   it('limits how often one person reads the project kit', async () => {

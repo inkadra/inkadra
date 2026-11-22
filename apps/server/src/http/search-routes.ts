@@ -26,7 +26,7 @@ import {
   type Actor,
   activeGrant,
   activeMember,
-  boardRole,
+  boardReadable,
   effectiveRoles,
   live,
 } from '../access.ts';
@@ -220,8 +220,8 @@ export function oneAtATime<T>(task: () => Promise<T>): Promise<T> | null {
  * The kits of the boards among `ids` (all readable by `actor` when asked) whose index says they
  * hold cards of `type`: the most recently edited MAX_CAST_BOARDS, most recent first, as decoded
  * from their stored documents. A kit derived from the same stored bytes is reused; the others
- * are decoded one board at a time in the process, after checking again that `actor` can still
- * read the board, letting other requests run between them. `gone`: the client went away.
+ * are decoded one board at a time in the process, read only while `actor` can still read the
+ * board, letting other requests run between them. `gone`: the client went away.
  */
 async function boardKits(
   db: Database,
@@ -258,12 +258,12 @@ async function boardKits(
     const kit = await oneAtATime(async () => {
       if (gone()) return null;
       await new Promise((resolve) => setImmediate(resolve));
-      // A grant may have been closed while this request waited its turn.
-      if (!(await boardRole(db, actor, row.boardId))?.role) return null;
+      // Read under the access rule, in the same statement: a grant may have been closed, or the
+      // board trashed, while this request waited its turn.
       const [stored] = await db
         .select({ state: boardDoc.state, version })
         .from(boardDoc)
-        .where(eq(boardDoc.boardId, row.boardId));
+        .where(and(eq(boardDoc.boardId, row.boardId), boardReadable(boardDoc.boardId, actor.id)));
       if (!stored) return null;
       try {
         const derived = { ...kitOf(stored.state), version: stored.version };
