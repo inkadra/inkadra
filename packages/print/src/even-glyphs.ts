@@ -34,7 +34,11 @@ function checksum(bytes: Uint8Array): number {
  * hinted fonts keep working.
  * shortcut: TrueType files only; a WOFF is passed as given (the heading fonts' WOFFs have no odd
  * glyph today), and so is a signed font (`DSIG`), whose signature a rewrite would break. Decode
- * WOFF here too if one with odd glyphs is ever embedded.
+ * WOFF here too if one with odd glyphs is ever embedded. Glyphs are not parsed: fontkit may read
+ * a malformed glyph past its `loca` end, so the file only guarantees that no glyph has fewer
+ * bytes after its start than in the given font (zeros are added at the end when needed); a read
+ * fontkit could make before stays inside the file, though past a glyph's end it may meet other
+ * bytes. Walk each glyph's records instead if that ever matters.
  * The input is never written to: a Node Buffer's `slice` shares its memory, so copies are made
  * with `new Uint8Array(…)`.
  */
@@ -90,9 +94,11 @@ function pad(font: Uint8Array): Uint8Array | undefined {
 
   const evenGlyf = new Uint8Array(lengths.reduce((sum, length) => sum + length + (length % 2), 0));
   const evenLoca = new Uint8Array((glyphs + 1) * 4);
+  const evenOffsets: number[] = [];
   let at = 0;
   for (let i = 0; i < glyphs; i++) {
     local(evenLoca).setUint32(i * 4, at);
+    evenOffsets.push(at);
     const start = offsets[i] ?? 0;
     evenGlyf.set(glyf.subarray(start, start + (lengths[i] ?? 0)), at);
     at += (lengths[i] ?? 0) + ((lengths[i] ?? 0) % 2);
@@ -106,20 +112,34 @@ function pad(font: Uint8Array): Uint8Array | undefined {
   tables.set('glyf', evenGlyf);
 
   // The same table directory, each table at a 4-byte boundary with its new checksum.
-  const size = order.reduce((sum, t) => sum + (((tables.get(t)?.length ?? 0) + 3) & ~3), directory);
+  const placed = new Map<string, number>();
+  let end = directory;
+  for (const t of order) {
+    placed.set(t, end);
+    end += ((tables.get(t)?.length ?? 0) + 3) & ~3;
+  }
+  // fontkit reads a glyph from where it starts without stopping at its loca end, so a malformed
+  // glyph may read bytes past it. Every glyph keeps at least as many bytes after its start, up to
+  // the end of the file, as it had: a read that stayed inside the given font stays inside this one.
+  const glyfAt = glyf.byteOffset - font.byteOffset;
+  const newGlyfAt = placed.get('glyf') ?? 0;
+  const size = evenOffsets.reduce(
+    (most, start, i) =>
+      Math.max(most, newGlyfAt + start + font.length - glyfAt - (offsets[i] ?? 0)),
+    end,
+  );
   const out = new Uint8Array(size);
   const write = new DataView(out.buffer);
   out.set(font.subarray(0, 12));
-  let offset = directory;
   order.forEach((t, i) => {
     const bytes = tables.get(t) ?? new Uint8Array();
     const record = 12 + i * 16;
+    const offset = placed.get(t) ?? 0;
     out.set(font.subarray(record, record + 4), record);
     write.setUint32(record + 4, checksum(bytes));
     write.setUint32(record + 8, offset);
     write.setUint32(record + 12, bytes.length);
     out.set(bytes, offset);
-    offset += (bytes.length + 3) & ~3;
   });
   const headAt = write.getUint32(12 + order.indexOf('head') * 16 + 8);
   write.setUint32(headAt + 8, (0xb1b0afba - checksum(out)) >>> 0);

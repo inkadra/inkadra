@@ -115,4 +115,36 @@ describe('evenGlyphs', () => {
     ];
     for (const font of fonts) expect(evenGlyphs(font)).toBe(font);
   });
+
+  it('keeps a glyph fontkit reads past its loca end readable', () => {
+    // glyf last in the directory, and the last glyph 5 bytes shorter in loca than its data, which
+    // stays in the file: fontkit reads the whole outline from the bytes that follow.
+    const font = new Uint8Array(readFileSync(interFile));
+    const view = new DataView(font.buffer, font.byteOffset, font.length);
+    const count = view.getUint16(4);
+    const records = Array.from({ length: count }, (_, i) => font.slice(12 + i * 16, 28 + i * 16));
+    const name = (r: Uint8Array) => String.fromCharCode(...r.subarray(0, 4));
+    records.sort((a, b) => Number(name(a) === 'glyf') - Number(name(b) === 'glyf'));
+    records.forEach((r, i) => {
+      font.set(r, 12 + i * 16);
+    });
+    const table = (t: string) => {
+      const r = records.find((x) => name(x) === t) as Uint8Array;
+      return new DataView(r.buffer, r.byteOffset, 16).getUint32(8);
+    };
+    const glyphs = view.getUint16(table('maxp') + 4);
+    const last = table('loca') + glyphs * 4; // long loca
+    view.setUint32(last, view.getUint32(last) - 5);
+    const outline = (bytes: Uint8Array) =>
+      fontkit
+        .create(Buffer.from(bytes))
+        .getGlyph(glyphs - 1)
+        .path.toSVG();
+    expect(outline(font)).not.toBe('');
+    // Past its loca end the glyph now meets other bytes, so its outline may differ; a PDF subset
+    // copies only the loca range anyway. What must hold: fontkit still reads it, as before.
+    const even = evenGlyphs(font);
+    expect(even).not.toBe(font);
+    expect(() => outline(even)).not.toThrow();
+  });
 });
