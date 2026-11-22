@@ -289,8 +289,8 @@ after it; they combine, in this order:
 
 Split mode is for larger teams: you can restart the parts on their own, and a busy worker does
 not slow down the web app. The proxy must send `/collab` to the `collab` container on port 3001:
-with the bundled proxies, set `INKADRA_COLLAB_UPSTREAM=collab:3001` (Caddy, Nginx) or add
-`deploy/proxy/traefik/compose.split.yaml` (Traefik).
+with the bundled proxies, add `deploy/proxy/<proxy>/compose.split.yaml` after the proxy's
+`compose.yaml`, which also keeps `collab` off the host's ports.
 
 Run **one replica per role** of `inkadra` (web) and `collab`, in either mode: collab keeps each
 open board in memory, and the web role runs migrations, keeps upload parts on its own data
@@ -307,7 +307,8 @@ name: never `--scale` web or collab with a fixed `hostname:` or with host networ
 sharing one host name take the lease from each other in turn instead of refusing to start.
 
 ```sh
-INKADRA_COLLAB_UPSTREAM=collab:3001 docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/proxy/caddy/compose.yaml up -d
+docker compose -f compose.yaml -f deploy/compose.split.yaml \
+  -f deploy/proxy/caddy/compose.yaml -f deploy/proxy/caddy/compose.split.yaml up -d
 ```
 
 ## Backups

@@ -1,4 +1,5 @@
-# Split mode with Traefik: sends /collab to the collab container. Use after
+# Split mode with Traefik: sends /collab to the collab container, which is then reached through
+# Traefik only. Use after
 # deploy/compose.split.yaml and deploy/proxy/traefik/compose.yaml.
 
 services:
@@ -8,6 +9,8 @@ services:
         target: /etc/traefik/dynamic/inkadra-collab.yaml
 
   collab:
+    # Reached through Traefik only.
+    ports: !reset []
     environment:
       # Only Traefik may say who the client is, unless .env names another proxy.
       TRUST_PROXY: ${TRUST_PROXY:-10.212.47.2}

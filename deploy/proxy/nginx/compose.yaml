@@ -2,8 +2,8 @@
 #   docker compose -f compose.yaml -f deploy/proxy/nginx/compose.yaml up -d
 # Needs INKADRA_DOMAIN in .env and the certificate as fullchain.pem and privkey.pem in
 # NGINX_CERTS (default: ./certs next to compose.yaml), for example from certbot.
-# Split mode: add -f deploy/compose.split.yaml before this file and set
-# INKADRA_COLLAB_UPSTREAM=collab:3001.
+# Split mode: docker compose -f compose.yaml -f deploy/compose.split.yaml \
+#   -f deploy/proxy/nginx/compose.yaml -f deploy/proxy/nginx/compose.split.yaml up -d
 
 services:
   nginx:
