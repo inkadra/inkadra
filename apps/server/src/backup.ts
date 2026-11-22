@@ -583,7 +583,7 @@ async function removeBucketCopy(deps: Pick<BackupDeps, 'remote' | 'log'>, fileNa
     .remove([key])
     .catch((err) =>
       deps.log.warn(
-        { key, error: (err as Error).message },
+        { key, error: err instanceof Error ? err.message : String(err) },
         'backup copy in the bucket not removed',
       ),
     );
