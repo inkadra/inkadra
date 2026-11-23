@@ -261,8 +261,13 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
 
   await signInPage(page);
   // The other cards of the board ask their metadata together, not one request each.
+  // Only the board's own: Home, where sign-in lands, previews this board and may still be
+  // asking about its files when the wait starts (#971).
   const lookup = page.waitForRequest(
-    (r) => r.method() === 'POST' && r.url().endsWith('/api/v1/assets/lookup'),
+    (r) =>
+      r.method() === 'POST' &&
+      r.url().endsWith('/api/v1/assets/lookup') &&
+      new URL(r.headers().referer ?? '/', r.url()).pathname === `/p/${projectId}/b/${boardId}`,
   );
   await page.goto(`/p/${projectId}/b/${boardId}`);
   expect(((await lookup).postDataJSON() as { ids: string[] }).ids.length).toBeGreaterThan(1);
