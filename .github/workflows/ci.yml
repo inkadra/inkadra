@@ -1104,11 +1104,14 @@ jobs:
 
   manifest:
     name: Tag and attest image (${{ matrix.variant }})
-    # Temporary: office-sandbox does not gate the tags, since it failed in bwrap on both runners
-    # ("loopback: Failed RTM_NEWADDR: Operation not permitted"); it still runs and turns the run
-    # red, so the Release workflow, which needs a successful CI run on main, still waits for it.
-    # Put it back in needs once it passes on both architectures on main.
-    needs: publish
+    # Only images whose -office variant converted a document in its sandbox on both architectures
+    # are tagged. The condition names the two results: office-sandbox also needs office-scope,
+    # which is skipped outside pull requests, and a skipped ancestor would skip this job too.
+    needs: [publish, office-sandbox]
+    if: >-
+      !cancelled()
+      && needs.publish.result == 'success'
+      && needs.office-sandbox.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
