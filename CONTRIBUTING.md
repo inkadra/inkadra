@@ -94,8 +94,8 @@ judges nothing on its own:
   ```
 
 - A new path that an existing template would also match (`/assets/lookup` next to
-  `/assets/{assetId}`): the `why` states the methods of both and that the server registers the
-  fixed route first.
+  `/assets/{assetId}`): the `why` states the methods of both and that the router gives the
+  fixed path precedence over the parametric one.
 - Lines are removed once a release containing them is the base: CI reports them as STALE.
 
 The names each `packages/*` entry point exports are compared with the commit the change builds on.

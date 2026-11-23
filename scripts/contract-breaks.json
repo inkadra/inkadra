@@ -459,7 +459,7 @@
     {
       "break": "openapi: #/paths/~1api~1v1~1assets~1lookup: (absent) → {\"post\":{\"requestBody\":{\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/AssetLookupQuery\"}}},\"requ…#5b6259522624c4738a7573cd72646d7b0216e6e36af48a90f62dc8bb6e85c3ee",
       "pr": 986,
-      "why": "New endpoint (additive): the metadata of many assets in one request, for clients that see the capability asset-lookup in /instance/version. The existing template /api/v1/assets/{assetId} only has GET and the new operation is POST on the fixed path /assets/lookup, which the router matches before the parametric one; no existing request changes its answer."
+      "why": "New endpoint (additive): the metadata of many assets in one request, for clients that see the capability asset-lookup in /instance/version. The existing template /api/v1/assets/{assetId} only has GET and the new operation is POST on the fixed path /assets/lookup: the methods differ, and the router gives a static path precedence over a parametric one whatever the order of registration; no existing request changes its answer."
     }
   ]
 }

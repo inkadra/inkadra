@@ -274,10 +274,11 @@ function resolves(doc, ref) {
  */
 export function baseTag(tags, ref = '') {
   const stable = /^v(\d+)\.(\d+)\.(\d+)$/;
-  const version = (t) => stable.exec(t).slice(1, 4).map(Number);
+  const version = (t) => stable.exec(t).slice(1, 4).map(BigInt);
   const order = (a, b) => {
     const [x, y] = [version(a), version(b)];
-    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+    const at = [0, 1, 2].find((i) => x[i] !== y[i]);
+    return at === undefined ? 0 : x[at] < y[at] ? -1 : 1;
   };
   const own = ref.replace(/^refs\/tags\//, '');
   const releaseTag = ref.startsWith('refs/tags/') && stable.test(own);

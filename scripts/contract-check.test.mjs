@@ -327,6 +327,14 @@ test('the base release', () => {
   assert.equal(baseTag(['v0.1.0'], 'refs/tags/v0.1.0'), undefined);
   assert.equal(baseTag(['v0.1.0'], 'refs/heads/main'), 'v0.1.0');
   assert.equal(baseTag([], 'refs/heads/main'), undefined);
+  // Version numbers are compared exactly, past what a double holds.
+  assert.equal(
+    baseTag(
+      ['v0.10.1', 'v0.11.9007199254740992', 'v0.11.9007199254740993'],
+      'refs/tags/v0.11.9007199254740993',
+    ),
+    'v0.11.9007199254740992',
+  );
 });
 
 test('reads exported names through re-exports, types and lists', () => {
