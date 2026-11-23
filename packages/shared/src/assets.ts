@@ -189,6 +189,33 @@ export const Asset = z
   .openapi('Asset');
 export type Asset = z.infer<typeof Asset>;
 
+/** Capability on `GET /instance/version` of servers that answer `POST /assets/lookup`. */
+export const ASSET_LOOKUP_CAPABILITY = 'asset-lookup';
+/** The most ids one `POST /assets/lookup` takes; clients ask in chunks of this size. */
+export const ASSET_LOOKUP_MAX = 200;
+
+export const AssetLookupQuery = z
+  .object({
+    ids: z
+      .array(Id)
+      .min(1)
+      .max(ASSET_LOOKUP_MAX)
+      .openapi({ description: '1 to 200 asset ids; repeated ids count once.' }),
+  })
+  .openapi('AssetLookupQuery');
+export type AssetLookupQuery = z.infer<typeof AssetLookupQuery>;
+
+export const AssetLookup = z
+  .object({
+    items: z.array(Asset).openapi({
+      description:
+        'Each asked asset the caller may read, as `GET /assets/{assetId}` answers it, in no ' +
+        'particular order. Ids that do not exist or that the caller cannot read are left out.',
+    }),
+  })
+  .openapi('AssetLookup');
+export type AssetLookup = z.infer<typeof AssetLookup>;
+
 /** The waveform of an audio file: peaks from 0 to 100, the loudest at 100, oldest first. */
 export const AudioWaveform = z
   .object({ peaks: z.array(z.int().min(0).max(100)).max(1000) })

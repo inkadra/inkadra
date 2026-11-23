@@ -3,6 +3,8 @@
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import {
   Asset,
+  AssetLookup,
+  AssetLookupQuery,
   AudioWaveform,
   CreateLinkPreview,
   LinkPreview,
@@ -2179,6 +2181,34 @@ registry.registerPath({
   security: secured,
   request: { params: idParam('assetId') },
   responses: { 200: { description: 'Asset', ...json(Asset) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/assets/lookup'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'The metadata of many assets at once, as `GET /assets/{assetId}` answers each.',
+  description:
+    'For a client opening a board with many files: one request instead of one per file. Each ' +
+    'id is answered with the same rule as `GET /assets/{assetId}` (a role on the project or a ' +
+    'grant on one of its boards); ids that do not exist or that the caller cannot read are ' +
+    'left out, never an error. One exception: the files of a project where the caller holds ' +
+    'a role this server does not recognise (written outside the app) are left out, although ' +
+    'the single route may answer some of them. Files still being processed are polled with ' +
+    '`GET /assets/{assetId}` as before. Servers that answer advertise `asset-lookup` on ' +
+    '`GET /instance/version`; an older server answers 404 `not_found`. At most 120 requests a ' +
+    'minute per account.',
+  request: { body: { required: true, ...json(AssetLookupQuery) } },
+  responses: {
+    200: { description: 'The readable assets among those asked', ...json(AssetLookup) },
+    ...errors,
+    400: {
+      description: 'Invalid request: 0 or more than 200 ids, or an id that is not a UUID',
+      ...json(ApiError),
+    },
+    413: { description: 'Body over 16 KiB', ...json(ApiError) },
+    429: { description: 'Too many lookups: wait a minute', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'get',
