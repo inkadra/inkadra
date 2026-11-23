@@ -207,6 +207,15 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const drop = (item: LocalAttachment | null) => {
     if (item) URL.revokeObjectURL(item.url);
   };
+  // What is still attached when the launcher goes away (another page, signing out) is released.
+  const held = useRef<Array<LocalAttachment | null>>([]);
+  held.current = [shot, video, candidate, ...files];
+  useEffect(
+    () => () => {
+      for (const item of held.current) if (item) URL.revokeObjectURL(item.url);
+    },
+    [],
+  );
 
   const refresh = useCallback(() => {
     void api

@@ -340,8 +340,11 @@ export function dismissRefused(batchId: number) {
 
 function dismiss(key: string) {
   const item = items.find((i) => i.key === key);
-  // Keep the preview while cards may still show it; the browser frees it with the page.
-  if (item && item.state !== 'done' && item.preview) URL.revokeObjectURL(item.preview);
+  // A card that showed the preview of a finished upload keeps it (`previews`), and the browser
+  // frees it with the page; any other preview can no longer be reached once the item is gone.
+  const shown =
+    item?.state === 'done' && item.assetId && previews.get(item.assetId) === item.preview;
+  if (item?.preview && !shown) URL.revokeObjectURL(item.preview);
   items = items.filter((i) => i.key !== key);
   changed();
 }
