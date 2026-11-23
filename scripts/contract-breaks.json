@@ -479,7 +479,7 @@
     {
       "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1file/get/responses/416: (absent) → {}",
       "pr": 989,
-      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+      "why": "416 with Content-Range and no body, as the server has always answered a Range it cannot satisfy on the original file; only a client that asks for such a range sees it."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1frame/get/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
@@ -489,17 +489,17 @@
     {
       "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1live~1{name}.m3u8: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"assetId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"p…#7ac560d5a98d09bb3a6366eed84776903a8770850f8faa9b502242eb2f9309bc",
       "pr": 989,
-      "why": "New path documenting what servers with video-live have served since decision 0128 (hls.ts). No existing template matched it: a path parameter does not span `/`, so neither /hls/{name}.m3u8, /hls/{name}.mp4 nor the guest /hls/{file} (documented as master.m3u8, {name}.m3u8, {name}.mp4) covered live/...; nothing changes for existing requests."
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1live~1{name}~1init.mp4: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"assetId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"p…#8d3013fa0a29f59dfc49cab811915a4c50c17aef0d62535d48f30c7259f2391d",
       "pr": 989,
-      "why": "New path documenting what servers with video-live have served since decision 0128 (hls.ts). No existing template matched it: a path parameter does not span `/`, so neither /hls/{name}.m3u8, /hls/{name}.mp4 nor the guest /hls/{file} (documented as master.m3u8, {name}.m3u8, {name}.mp4) covered live/...; nothing changes for existing requests."
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1live~1{name}~1seg-{segment}.m4s: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"assetId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"p…#785cca456ce45ef3b9ff0fc983212630e47bebe7a1d6f33846c55d276641b8bd",
       "pr": 989,
-      "why": "New path documenting what servers with video-live have served since decision 0128 (hls.ts). No existing template matched it: a path parameter does not span `/`, so neither /hls/{name}.m3u8, /hls/{name}.mp4 nor the guest /hls/{file} (documented as master.m3u8, {name}.m3u8, {name}.mp4) covered live/...; nothing changes for existing requests."
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1{name}.mp4/get/responses/302: (absent) → {\"headers\":{\"Location\":{\"schema\":{\"type\":\"string\"}}}}",
@@ -574,27 +574,27 @@
     {
       "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1file/get/responses/416: (absent) → {}",
       "pr": 989,
-      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+      "why": "416 with Content-Range and no body, as the server has always answered a Range it cannot satisfy on the original file; only a client that asks for such a range sees it."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1live~1{name}.m3u8: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"linkId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"pa…#c98fa200eb0653523fef6772d6455cecee8ff072129cc31879a7c7d4f7c4f4a5",
       "pr": 989,
-      "why": "New path documenting what servers with video-live have served since decision 0128 (hls.ts). No existing template matched it: a path parameter does not span `/`, so neither /hls/{name}.m3u8, /hls/{name}.mp4 nor the guest /hls/{file} (documented as master.m3u8, {name}.m3u8, {name}.mp4) covered live/...; nothing changes for existing requests."
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1live~1{name}~1init.mp4: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"linkId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"pa…#c364b0ded999df18dcf3b23aa3786792061f4e392a6721978a780627441a44e0",
       "pr": 989,
-      "why": "New path documenting what servers with video-live have served since decision 0128 (hls.ts). No existing template matched it: a path parameter does not span `/`, so neither /hls/{name}.m3u8, /hls/{name}.mp4 nor the guest /hls/{file} (documented as master.m3u8, {name}.m3u8, {name}.mp4) covered live/...; nothing changes for existing requests."
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1live~1{name}~1seg-{segment}.m4s: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"linkId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"pa…#f441032e796eb568cafa36fcc1850503353df5029e9a8a1ef7fa8166172b8564",
       "pr": 989,
-      "why": "New path documenting what servers with video-live have served since decision 0128 (hls.ts). No existing template matched it: a path parameter does not span `/`, so neither /hls/{name}.m3u8, /hls/{name}.mp4 nor the guest /hls/{file} (documented as master.m3u8, {name}.m3u8, {name}.mp4) covered live/...; nothing changes for existing requests."
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1{file}/get/responses/302: (absent) → {\"headers\":{\"Location\":{\"schema\":{\"type\":\"string\"}}}}",
       "pr": 989,
-      "why": "302 with Location to a signed bucket URL, sent as before when signed links are on (S3_PUBLIC_REDIRECT) to browsers without a bearer token; clients with a token keep getting the bytes."
+      "why": "302 with Location to a signed bucket URL, sent as before when signed links are on (S3_PUBLIC_REDIRECT), only for a stored MP4, only when the link allows downloads and the request has no Authorization header; otherwise the guest gets the bytes from the server."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1{file}/get/responses/304: (absent) → {}",
@@ -649,7 +649,7 @@
     {
       "break": "openapi: #/paths/~1api~1v1~1me/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
       "pr": 989,
-      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+      "why": "403 forbidden that this operation already answers through requireActor to a token whose scope does not cover it (decision 0137); an administrator who has not set up two-factor yet still reaches it, since enrolment starts here. Same ApiError as elsewhere."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1me~1notification-preferences/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
@@ -694,7 +694,7 @@
     {
       "break": "openapi: #/paths/~1api~1v1~1projects/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
       "pr": 989,
-      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+      "why": "403 forbidden that this operation already answers through requireActor to an administrator who must set up two-factor first; the limited token scope (clip, decision 0137) includes this operation. Same ApiError as elsewhere."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1projects/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
@@ -749,7 +749,7 @@
     {
       "break": "openapi: #/paths/~1api~1v1~1shared-boards/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
       "pr": 989,
-      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+      "why": "403 forbidden that this operation already answers through requireActor to an administrator who must set up two-factor first; the limited token scope (clip, decision 0137) includes this operation. Same ApiError as elsewhere."
     },
     {
       "break": "openapi: #/paths/~1api~1v1~1uploads/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}},\"text/plain\":{\"schema\":{\"type\":\"strin…#8779fd1cebad23a4a1de47d1d1bdd7bae8685755700f3eac917aa9d3e656d00f",
