@@ -228,7 +228,7 @@ const decodedPath = (route: string, params: unknown) => {
   const values = (params ?? {}) as Record<string, unknown>;
   return route
     .replace(/:([A-Za-z0-9_]+)/g, (_, name: string) => String(values[name] ?? ''))
-    .replace('*', String(values['*'] ?? ''));
+    .replace(/\*/g, () => String(values['*'] ?? ''));
 };
 
 const printed = (error: unknown) => {
