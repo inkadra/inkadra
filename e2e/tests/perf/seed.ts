@@ -1,5 +1,9 @@
 import { deflateSync } from 'node:zlib';
-import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
+import {
+  HocuspocusProvider,
+  HocuspocusProviderWebsocket,
+  WebSocketStatus,
+} from '@hocuspocus/provider';
 import { addStroke, createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import WebSocket from 'ws';
@@ -361,7 +365,11 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
     rollback.abort();
     for (const cleanup of cleanups.splice(0).reverse()) cleanup();
   };
+  // Per peer: cursor moves published while connected and synced, connections lost, and whether
+  // it is connected and synced now.
   const moves = Array.from({ length: count }, () => 0);
+  const drops = Array.from({ length: count }, () => 0);
+  const live: Array<() => boolean> = Array.from({ length: count }, () => () => false);
   try {
     await Promise.all(
       Array.from({ length: count }, async (_, i) => {
@@ -378,6 +386,10 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
           document,
         });
         cleanups.push(() => provider.destroy());
+        provider.on('close', () => {
+          drops[i] = (drops[i] ?? 0) + 1;
+        });
+        live[i] = () => provider.synced && websocketProvider.status === WebSocketStatus.Connected;
         provider.attach();
         let timeout: ReturnType<typeof setTimeout> | undefined;
         try {
@@ -397,7 +409,8 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
           at.x = Math.max(0, Math.min(11_000, at.x + (random() - 0.5) * 120));
           at.y = Math.max(0, Math.min(7_000, at.y + (random() - 0.5) * 90));
           provider.awareness?.setLocalState({ cursor: { ...at }, selection: [], editing: null });
-          moves[i] = (moves[i] ?? 0) + 1;
+          // A move made without a connection reaches nobody: it does not count.
+          if (live[i]?.()) moves[i] = (moves[i] ?? 0) + 1;
         }, 50);
         cleanups.push(() => clearInterval(timer));
       }),
@@ -407,8 +420,9 @@ export async function startPeers(base: string, cookie: string, boardId: string, 
     throw err;
   }
   return {
-    /** Cursor moves each peer published so far. */
-    moves: () => [...moves],
+    /** Each peer's cursor moves sent while connected, its lost connections, and its state now. */
+    state: () =>
+      moves.map((n, i) => ({ moves: n, drops: drops[i] ?? 0, live: live[i]?.() ?? false })),
     stop,
   };
 }

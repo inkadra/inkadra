@@ -214,15 +214,16 @@ async function measure(
     try {
       // Their cursors are drawn (or gone) before anything is timed.
       if (count || i > 0) await expect(page.locator('.peer-cursor')).toHaveCount(count);
-      const before = peers?.moves() ?? [];
+      const before = peers?.state() ?? [];
       const timed = await series();
-      const after = peers?.moves() ?? [];
-      // Every peer kept moving through the whole round, or the round measured nothing: this
-      // fails the test even while the dense bars only report.
-      const moved = after.map((n, p) => n - (before[p] ?? 0));
+      const after = peers?.state() ?? [];
+      // Every peer stayed connected and synced and kept moving through the whole round, or the
+      // round measured nothing: this fails the test even while the dense bars only report.
+      const moved = after.map((p, n) => p.moves - (before[n]?.moves ?? 0));
+      const dropped = after.map((p, n) => p.drops - (before[n]?.drops ?? 0));
       expect(
-        moved.every((n) => n >= MIN_PEER_MOVES),
-        `could not measure: cursor moves per peer during the round ${moved.join(', ')}`,
+        after.every((p, n) => p.live && dropped[n] === 0 && (moved[n] ?? 0) >= MIN_PEER_MOVES),
+        `could not measure: per peer, moves ${moved.join(', ')}, connections lost ${dropped.join(', ')}, connected at the end ${after.map((p) => p.live).join(', ')}`,
       ).toBe(true);
       measured.push({ peers: count, ...timed, peerCursorMoves: moved.reduce((a, b) => a + b, 0) });
     } finally {
