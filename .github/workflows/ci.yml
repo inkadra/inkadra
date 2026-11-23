@@ -1016,14 +1016,41 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           retention-days: 1
 
+  # Whether a pull request changes the Office sandbox or its check: then office-sandbox also runs
+  # on it, against the published edge-office image. Nothing is built or pushed for it.
+  office-scope:
+    name: Office sandbox changed
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git diff --quiet "$BASE" HEAD -- .github/workflows/ci.yml scripts/test-office.sh \
+            scripts/bwrap-apparmor.sh deploy/office-seccomp.json apps/server/src/media/office.ts \
+            apps/server/src/media/seccomp.ts; then changed=false; else changed=true; fi
+          echo "changed=$changed" | tee -a "$GITHUB_OUTPUT"
+
   # A real conversion in each pushed -office image before anything is tagged (#900): the server's
-  # convertOffice under the worker's security options of deploy/compose.office.yaml. Here and not
-  # on pull requests: the variant has no PR build (LibreOffice makes it slow), and this reuses
-  # the images publish just built on both architectures. A separate job, so the dependency
-  # install that bundles convertOffice never runs next to a token that can push packages.
+  # convertOffice under the worker's security options of deploy/compose.office.yaml. On main and
+  # tags it reuses the images publish just built on both architectures (the variant has no PR
+  # build: LibreOffice makes it slow); on a pull request that office-scope picks, the published
+  # edge-office image. A separate job, so the dependency install that bundles convertOffice never
+  # runs next to a token that can push packages.
   office-sandbox:
     name: Office conversion (${{ matrix.arch }})
-    needs: publish
+    needs: [publish, office-scope]
+    if: >-
+      !cancelled()
+      && (needs.publish.result == 'success' || needs.office-scope.outputs.changed == 'true')
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     permissions:
@@ -1050,6 +1077,7 @@ jobs:
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: github.event_name != 'pull_request'
         with:
           name: digest-office-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests
@@ -1058,15 +1086,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Convert a Word document in the pushed image's sandbox
+      # Like a standard Ubuntu host: a runner that restricts unprivileged user namespaces gets
+      # the profile that lets bwrap use them, which Ubuntu 24.04 does not ship (office.md).
+      - name: Load Ubuntu's AppArmor profile for bwrap where the runner needs it
+        run: scripts/bwrap-apparmor.sh
+      - name: Convert a Word document in the image's sandbox
         env:
           # The script's image is $INKADRA_IMAGE:$INKADRA_TAG-office: this repository's, also in a fork.
           INKADRA_IMAGE: ${{ env.IMAGE }}
           INKADRA_TAG: smoke
         run: |
-          digest=$(ls "$RUNNER_TEMP/digests")
-          docker pull "$IMAGE@sha256:$digest"
-          docker tag "$IMAGE@sha256:$digest" "$IMAGE:smoke-office"
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then source="$IMAGE:edge-office"
+          else source="$IMAGE@sha256:$(ls "$RUNNER_TEMP/digests")"; fi
+          docker pull "$source"
+          docker tag "$source" "$IMAGE:smoke-office"
           scripts/test-office.sh
 
   manifest:
