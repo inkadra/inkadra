@@ -33490,7 +33490,7 @@
             "description": "Part of the video"
           },
           "302": {
-            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "description": "Only for a stored `{name}.mp4` and only when the link allows downloads, with signed bucket links on (`S3_PUBLIC_REDIRECT`): the file at a short-lived signed URL. With `allowDownload: false` the guest gets the file from the server; playlists never redirect.",
             "headers": {
               "Location": {
                 "description": "Signed URL of the file in the bucket",

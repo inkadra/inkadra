@@ -3353,7 +3353,13 @@ registry.registerPath({
     200: { description: 'Playlist or video' },
     206: { description: 'Part of the video' },
     ...guestErrors,
-    ...bucketRedirect,
+    302: {
+      ...bucketRedirect[302],
+      description:
+        'Only for a stored `{name}.mp4` and only when the link allows downloads, with signed ' +
+        'bucket links on (`S3_PUBLIC_REDIRECT`): the file at a short-lived signed URL. With ' +
+        '`allowDownload: false` the guest gets the file from the server; playlists never redirect.',
+    },
     304: { description: 'Not changed since If-None-Match' },
   },
 });
