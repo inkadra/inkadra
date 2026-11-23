@@ -32,6 +32,7 @@ import {
 } from '../db/schema.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
+import { uncheckedResponses } from '../test-response-contract.ts';
 import { proofKeyFor } from '../token-proof.ts';
 import { issueToken } from '../tokens.ts';
 import { OFFICIAL_CLIPPER_IDS } from './account-routes.ts';
@@ -165,7 +166,8 @@ describe.skipIf(!url)('token scopes (decision 0137)', () => {
       ...testDeps(db, log),
       boards: { addCard: async () => ({ ok: true, elementId: randomUUID() }) },
     });
-    // A route nobody listed: a limited token must not reach it.
+    // A route nobody listed: a limited token must not reach it. Not in the API contract.
+    uncheckedResponses(app, '/api/v1/test-only/new-route');
     app.get('/api/v1/test-only/new-route', async (req) => {
       await requireActor(auth, req, db);
       return { ok: true };

@@ -194,15 +194,24 @@ export async function settled(boundMs = 2000) {
     await new Promise((resolve) => setTimeout(resolve, 50));
 }
 
-const unchecked = new WeakSet<object>();
+/** Apps whose answers are not checked: all of them (true), or those of some routes. */
+const unchecked = new WeakMap<object, true | Set<string>>();
 
 /**
  * For a test whose app stands in fake routes under /api/v1 to exercise something around them
- * (CSRF, compression): their answers are fixtures, not the server's.
+ * (CSRF, compression): their answers are fixtures, not the server's. With `route`, only that
+ * route pattern of an otherwise real app is left out.
  */
-export function uncheckedResponses(app: FastifyInstance) {
-  unchecked.add(app);
+export function uncheckedResponses(app: FastifyInstance, route?: string) {
+  const routes = unchecked.get(app);
+  if (route === undefined) unchecked.set(app, true);
+  else if (routes !== true) unchecked.set(app, new Set([...(routes ?? []), route]));
 }
+
+const isUnchecked = (app: object, route: string) => {
+  const routes = unchecked.get(app);
+  return routes === true || routes?.has(route) === true;
+};
 
 const printed = (error: unknown) => {
   try {
@@ -230,7 +239,7 @@ export function checkResponses(app: FastifyInstance, check = contractMismatch) {
     try {
       const route = req.routeOptions.url;
       // Unknown paths answer the generic 404 of the not-found handler; HEAD carries no body.
-      if (!route?.startsWith(API_PREFIX) || req.method === 'HEAD' || unchecked.has(app))
+      if (!route?.startsWith(API_PREFIX) || req.method === 'HEAD' || isUnchecked(app, route))
         return payload;
       let problem: string | null;
       try {

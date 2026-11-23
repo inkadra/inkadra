@@ -8,6 +8,7 @@ import {
   type Owner,
   setOwner,
   takeMismatches,
+  uncheckedResponses,
 } from './test-response-contract.ts';
 
 describe('the response contract gate', () => {
@@ -214,5 +215,16 @@ describe('the response contract gate', () => {
       expect.stringContaining('(sent by "same" (attempt 1), answered during "same" (attempt 2)'),
     ]);
     expect(takeMismatches()).toEqual([expect.stringContaining('(in the suite hooks')]);
+  });
+
+  it('leaves out one stand-in route of a real app and checks the others', async () => {
+    const app = Fastify();
+    uncheckedResponses(app, '/api/v1/stand-in');
+    app.get('/api/v1/stand-in', async () => ({ ok: true }));
+    app.get('/api/v1/instance/version', async () => ({ version: 7 }));
+    await app.inject({ url: '/api/v1/stand-in' });
+    await app.inject({ url: '/api/v1/instance/version' });
+    await app.close();
+    expect(takeMismatches()).toEqual([expect.stringContaining('/api/v1/instance/version → 200')]);
   });
 });
