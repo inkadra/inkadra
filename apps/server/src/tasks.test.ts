@@ -570,18 +570,24 @@ it('checks removing or replacing a card that shares its id with another', async 
   ]);
 });
 
-/**
- * An update of one item, encoded by hand: Yjs's API never writes an item with no content, or one
- * that names both a parent and clocks the receiver already holds.
- */
-function itemUpdate(item: {
-  client: number;
-  clock?: number;
+type ItemSpec = {
   origin?: Y.ID;
+  rightOrigin?: Y.ID;
   parent?: string | Y.ID;
   key?: string;
   content: { any: Array<string | null> } | { text: string };
-}) {
+};
+/** A Skip struct, written with `info` (10, or with upper bits set, which only applyUpdate reads). */
+type SkipSpec = { skip: number; info: number };
+
+/**
+ * An update encoded by hand, in blocks of one client's structs each: Yjs's API never writes an item
+ * with no content, one that names both a parent and clocks the receiver already holds, a Skip
+ * with upper bits set, or two blocks of one client.
+ */
+function encodeUpdate(
+  blocks: Array<{ client: number; clock: number; structs: Array<ItemSpec | SkipSpec> }>,
+) {
   const bytes: number[] = [];
   const varUint = (n: number) => {
     while (n > 0x7f) {
@@ -595,35 +601,60 @@ function itemUpdate(item: {
     varUint(utf8.length);
     bytes.push(...utf8);
   };
-  // One client, one struct.
-  for (const n of [1, 1, item.client, item.clock ?? 0]) varUint(n);
-  const ref = 'any' in item.content ? 8 : 4;
-  bytes.push(ref | (item.origin ? 0x80 : 0) | (!item.origin && item.key ? 0x20 : 0));
-  if (item.origin) {
-    varUint(item.origin.client);
-    varUint(item.origin.clock);
-  } else if (typeof item.parent === 'string') {
-    varUint(1);
-    string(item.parent);
-  } else if (item.parent) {
-    varUint(0);
-    varUint(item.parent.client);
-    varUint(item.parent.clock);
-  }
-  if (!item.origin && item.key) string(item.key);
-  if ('any' in item.content) {
-    varUint(item.content.any.length);
-    // lib0's writeAny: 126 for null, 119 then the string.
-    for (const v of item.content.any)
-      if (v === null) bytes.push(126);
-      else {
-        bytes.push(119);
-        string(v);
+  varUint(blocks.length);
+  for (const block of blocks) {
+    for (const n of [block.structs.length, block.client, block.clock]) varUint(n);
+    for (const item of block.structs) {
+      if ('skip' in item) {
+        bytes.push(item.info);
+        varUint(item.skip);
+        continue;
       }
-  } else string(item.content.text);
+      const ref = 'any' in item.content ? 8 : 4;
+      const hasParent = !item.origin && !item.rightOrigin;
+      bytes.push(
+        ref |
+          (item.origin ? 0x80 : 0) |
+          (item.rightOrigin ? 0x40 : 0) |
+          (hasParent && item.key ? 0x20 : 0),
+      );
+      for (const id of [item.origin, item.rightOrigin])
+        if (id) {
+          varUint(id.client);
+          varUint(id.clock);
+        }
+      if (hasParent && typeof item.parent === 'string') {
+        varUint(1);
+        string(item.parent);
+      } else if (hasParent && typeof item.parent === 'object') {
+        varUint(0);
+        varUint(item.parent.client);
+        varUint(item.parent.clock);
+      }
+      if (hasParent && item.key) string(item.key);
+      if ('any' in item.content) {
+        varUint(item.content.any.length);
+        // lib0's writeAny: 126 for null, 119 then the string.
+        for (const v of item.content.any)
+          if (v === null) bytes.push(126);
+          else {
+            bytes.push(119);
+            string(v);
+          }
+      } else string(item.content.text);
+    }
+  }
   varUint(0);
   return new Uint8Array(bytes);
 }
+
+/** An update of one item. */
+const itemUpdate = ({
+  client,
+  clock = 0,
+  ...item
+}: ItemSpec & { client: number; clock?: number }) =>
+  encodeUpdate([{ client, clock, structs: [item] }]);
 
 it('checks an item with no content, which Yjs integrates at the end of what it holds', async () => {
   const { id, server, items } = boardWithTask();
@@ -737,11 +768,12 @@ it('checks an item that overlaps stored clocks inside an id kept in a Y.Text', a
   );
 });
 
-it('refuses held-back structs that overlap stored clocks, on arrival or once released', async () => {
+it('refuses held-back structs that overlap stored clocks once they are released', async () => {
   const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
   const db = {} as Database;
-  // Waiting for a map another client writes later, and overlapping what the guest wrote: refused
-  // on arrival.
+  vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: victim });
+  // Waiting for a map another client writes later, overlapping what the guest wrote: nothing is
+  // placed on arrival; refused when the map comes.
   {
     const b = boardWithTask();
     const guest = b.other();
@@ -754,10 +786,21 @@ it('refuses held-back structs that overlap stored clocks, on arrival or once rel
       key: 'x',
       content: { any: [null, victim] },
     });
-    expect(mayTouchTasks(b.server, forged)).toBe(true);
-    await expect(validateTaskUpdate(db, b.id, undefined, b.server, forged)).rejects.toThrow(
+    await validateTaskUpdate(db, b.id, undefined, b.server, forged);
+    Y.applyUpdate(b.server, forged);
+    expect(b.server.store.pendingStructs).not.toBeNull();
+    const later = new Y.Doc();
+    later.clientID = 888;
+    later.getMap('meta').set('pad', 1);
+    later.getMap('meta').set('map', new Y.Map());
+    const release = Y.encodeStateAsUpdate(later);
+    expect(mayTouchTasks(b.server, release)).toBe(true);
+    await expect(validateTaskUpdate(db, b.id, 'editor', b.server, release)).rejects.toThrow(
       'places items elsewhere than it stores them',
     );
+    Y.applyUpdate(b.server, release);
+    const { memory, stored } = heldAndStored(b.server);
+    expect(stored).not.toEqual(memory);
   }
   // Sent before the guest's own writes it overlaps: held back, then released by them.
   const b = boardWithTask();
@@ -785,4 +828,200 @@ it('refuses held-back structs that overlap stored clocks, on arrival or once rel
   Y.applyUpdate(b.server, legal);
   const { memory, stored } = heldAndStored(b.server);
   expect(stored).not.toEqual(memory);
+});
+
+/** A guest (client 555) whose first write, at clock 0, is a legal one on the assigned item. */
+async function afterLegalWrite() {
+  const b = boardWithTask();
+  const guest = b.other();
+  guest.clientID = 555;
+  const legal = b.at(guest, () => b.items(guest).get(0).set('assigneeId', b.id));
+  await validateTaskUpdate({} as Database, b.id, undefined, b.server, legal);
+  Y.applyUpdate(b.server, legal);
+  return b;
+}
+
+it('runs the full check when the update cannot be read as Yjs applies it', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  const db = {} as Database;
+  const forged: ItemSpec = { parent: 'decoy', key: 'x', content: { any: [null, victim] } };
+  const updates = {
+    // A Skip with upper bits set: applyUpdate reads it, decodeUpdate throws.
+    'a skip with upper bits': encodeUpdate([
+      { client: 999, clock: 0, structs: [{ skip: 1, info: 0x2a }] },
+      { client: 555, clock: 0, structs: [forged] },
+    ]),
+    // Two blocks of one client: applyUpdate keeps the last, decodeUpdate yields both.
+    'two blocks of one client': encodeUpdate([
+      {
+        client: 666,
+        clock: 0,
+        structs: [{ origin: Y.createID(555, 0), content: { any: [null] } }],
+      },
+      { client: 666, clock: 0, structs: [{ parent: 'decoy', key: 'x', content: { any: [null] } }] },
+      {
+        client: 555,
+        clock: 0,
+        structs: [{ origin: Y.createID(666, 0), content: { any: [null, victim] } }],
+      },
+    ]),
+  };
+  // Two blocks of one client are read in full even when they name no task.
+  const harmless: ItemSpec = { parent: 'decoy', key: 'x', content: { any: [null] } };
+  const twice = encodeUpdate([
+    { client: 666, clock: 0, structs: [harmless] },
+    { client: 666, clock: 0, structs: [harmless] },
+  ]);
+  expect(mayTouchTasks(boardWithTask().server, twice)).toBe(true);
+  for (const [name, update] of Object.entries(updates)) {
+    const b = await afterLegalWrite();
+    const { memory, stored } = heldAndStoredAfter(b.server, update);
+    expect(stored, name).not.toEqual(memory);
+    expect(mayTouchTasks(b.server, update), name).toBe(true);
+    await expect(validateTaskUpdate(db, b.id, undefined, b.server, update), name).rejects.toThrow(
+      'places items elsewhere than it stores them',
+    );
+  }
+});
+
+/** A card with an empty Y.Text under a key no task check reads, on a client and the server. */
+function boardWithLabel() {
+  const b = boardWithTask();
+  const label = new Y.Text();
+  Y.applyUpdate(
+    b.server,
+    b.at(b.doc, () => b.card(b.doc, b.note).set('label', label)),
+  );
+  return { ...b, label };
+}
+
+it('lets through edits that resend clocks the board holds, in the place they were written', async () => {
+  const db = {} as Database;
+  // Typed one letter (sent), then another before hearing back: the sync sends both as one item,
+  // which overlaps the first. The text sits inside a card, named by its parent's id.
+  {
+    const b = boardWithLabel();
+    const sv = Y.encodeStateVector(b.doc);
+    const first = b.at(b.doc, () => b.label.insert(0, 'a'));
+    b.label.insert(1, 'b');
+    const both = Y.encodeStateAsUpdate(b.doc, sv);
+    expect(Y.decodeUpdate(both).structs).toHaveLength(1);
+    Y.applyUpdate(b.server, first);
+    expect(mayTouchTasks(b.server, both)).toBe(false);
+    await validateTaskUpdate(db, b.id, undefined, b.server, both);
+    Y.applyUpdate(b.server, both);
+    expect((b.card(b.server, b.note).get('label') as Y.Text).toString()).toBe('ab');
+  }
+  // The same once the card was deleted and collected: Yjs keeps the rest as removed content.
+  {
+    const b = boardWithLabel();
+    const sv = Y.encodeStateVector(b.doc);
+    const first = b.at(b.doc, () => b.label.insert(0, 'a'));
+    b.label.insert(1, 'b');
+    const both = Y.encodeStateAsUpdate(b.doc, sv);
+    Y.applyUpdate(b.server, first);
+    b.server.getMap('elements').delete(b.note);
+    expect(Y.getItem(b.server.store, Y.decodeUpdate(first).structs[0]!.id)).toBeInstanceOf(Y.GC);
+    // The item before it is gone: read in full, and let through.
+    expect(mayTouchTasks(b.server, both)).toBe(true);
+    await validateTaskUpdate(db, b.id, undefined, b.server, both);
+  }
+  // Held back, then released by an update it overlaps, in the place of the letter before it.
+  {
+    const b = boardWithLabel();
+    const typist = b.other();
+    typist.clientID = 555;
+    const text = typist.getMap('elements').get(b.note) as Y.Map<unknown>;
+    const label = text.get('label') as Y.Text;
+    const sv = Y.encodeStateVector(typist);
+    for (const letter of ['x', 'y', 'z']) label.insert(label.length, letter);
+    const all = Y.encodeStateAsUpdate(typist);
+    // Its last two letters alone, after the first one (not sent yet): held back.
+    const tail = Y.diffUpdate(
+      all,
+      Y.encodeStateVector(
+        (() => {
+          const d = new Y.Doc();
+          Y.applyUpdate(d, Y.encodeStateAsUpdate(b.server));
+          d.clientID = 555;
+          (d.getMap('elements').get(b.note) as Y.Map<unknown>).get('label') as Y.Text;
+          ((d.getMap('elements').get(b.note) as Y.Map<unknown>).get('label') as Y.Text).insert(
+            0,
+            'x',
+          );
+          return d;
+        })(),
+      ),
+    );
+    Y.applyUpdate(b.server, tail);
+    expect(b.server.store.pendingStructs).not.toBeNull();
+    // The first two letters, which the held ones overlap.
+    const firstTwo = (() => {
+      const d = new Y.Doc();
+      Y.applyUpdate(d, Y.encodeStateAsUpdate(b.server));
+      d.clientID = 555;
+      const l = (d.getMap('elements').get(b.note) as Y.Map<unknown>).get('label') as Y.Text;
+      l.insert(0, 'x');
+      l.insert(1, 'y');
+      return Y.encodeStateAsUpdate(d, sv);
+    })();
+    expect(mayTouchTasks(b.server, firstTwo)).toBe(false);
+    await validateTaskUpdate(db, b.id, undefined, b.server, firstTwo);
+    Y.applyUpdate(b.server, firstTwo);
+    expect(b.server.store.pendingStructs).toBeNull();
+    expect((b.card(b.server, b.note).get('label') as Y.Text).toString()).toBe('xyz');
+    const stored = new Y.Doc();
+    Y.applyUpdate(stored, Y.encodeStateAsUpdate(b.server));
+    expect((b.card(stored, b.note).get('label') as Y.Text).toString()).toBe('xyz');
+  }
+});
+
+it('reads places through a right origin, through collected items and at any depth', async () => {
+  const b = boardWithTask();
+  const text = new Y.Text('t1');
+  const deep = new Y.Text('k');
+  Y.applyUpdate(
+    b.server,
+    b.at(b.doc, () => {
+      b.items(b.doc).get(0).set('id', text);
+      b.card(b.doc, b.note).set('id', new Y.Map<unknown>([['nested', deep]]));
+    }),
+  );
+  // At the start of the text: only a right origin names the place.
+  const start = b.at(b.doc, () => text.insert(0, 'x'));
+  expect(Y.decodeUpdate(start).structs[0]).toMatchObject({ origin: null });
+  expect(mayTouchTasks(b.server, start)).toBe(true);
+  Y.applyUpdate(b.server, start);
+  // Two levels under an id.
+  expect(
+    mayTouchTasks(
+      b.server,
+      b.at(b.doc, () => deep.insert(1, 'x')),
+    ),
+  ).toBe(true);
+  // After an item the board has collected: its place is unknown, so the full check reads it.
+  const c = boardWithLabel();
+  Y.applyUpdate(
+    c.server,
+    c.at(c.doc, () => c.label.insert(0, 'a')),
+  );
+  c.server.getMap('elements').delete(c.note);
+  const after = c.at(c.doc, () => c.label.insert(1, 'b'));
+  expect(mayTouchTasks(c.server, after)).toBe(true);
+  await validateTaskUpdate({} as Database, c.id, undefined, c.server, after);
+});
+
+it('reads nothing in removing what an earlier deletion removed with its card', () => {
+  const b = boardWithTask();
+  const stale = b.other();
+  Y.applyUpdate(
+    b.server,
+    b.at(b.doc, () => b.doc.getMap('elements').delete(b.todo)),
+  );
+  expect(
+    mayTouchTasks(
+      b.server,
+      b.at(stale, () => b.items(stale).get(0).delete('assigneeId')),
+    ),
+  ).toBe(false);
 });

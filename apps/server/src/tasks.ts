@@ -202,9 +202,6 @@ type Struct = ReturnType<typeof Y.decodeUpdate>['structs'][number];
 /** Where an item sits: the item of the type that holds it (null: a root type) and its map key. */
 type Place = { parent: Y.Item | null; key: string | null; root?: unknown } | undefined;
 
-/** What reading an update without applying it found. */
-type Reading = 'nothing' | 'tasks' | 'misplaced';
-
 /**
  * Whether an update can assign a task or set a due date (#755), read from the update without
  * applying it: the full check, which copies the whole board, runs only then. An item can change
@@ -216,18 +213,9 @@ type Reading = 'nothing' | 'tasks' | 'misplaced';
  * nothing that remains. Anything that can't be resolved here gets the full check.
  */
 export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
-  return readUpdate(document, update) !== 'nothing';
-}
-
-/**
- * mayTouchTasks, which also tells apart an item that overlaps clocks the board already holds and
- * names another place than the item before it ('misplaced'). Yjs integrates the rest of such an
- * item after that one but under the place it names, and writes it with only its origin: what the
- * server holds would differ from what it stores and sends. No Yjs client writes one.
- */
-function readUpdate(document: Y.Doc, update: Uint8Array): Reading {
   const { store } = document;
   try {
+    // decodeUpdate fails on some structs that applyUpdate reads (caught below).
     const { structs, ds } = Y.decodeUpdate(update);
     // Structs Yjs holds back (pending) were never checked (they could not be read yet). The next
     // update integrates them once a clock they wait for is there: one it brings, or one the
@@ -275,6 +263,14 @@ function readUpdate(document: Y.Doc, update: Uint8Array): Reading {
       return undefined;
     };
     const sent = index(structs);
+    // decodeUpdate yields every block of a client, where applyUpdate keeps the last: two structs
+    // with the same clocks can't tell which one an origin names.
+    for (const list of sent.values())
+      for (let i = 1, end = list[0]?.id.clock ?? 0; i <= list.length; i++) {
+        const next = list[i - 1];
+        if (!next || (i > 1 && next.id.clock < end)) return true;
+        end = next.id.clock + next.length;
+      }
     let heldIndex: Map<number, Struct[]> | undefined;
     const find = (id: Y.ID): Struct | undefined => {
       if (id.clock < Y.getState(store, id.client)) return Y.getItem(store, id);
@@ -301,7 +297,11 @@ function readUpdate(document: Y.Doc, update: Uint8Array): Reading {
         }
         // In the document, or a decoded item that names a root type itself.
         if (s.parent instanceof Y.AbstractType) {
-          place = { parent: s.parent._item, key: s.parentSub, root: s.parent };
+          place = {
+            parent: s.parent._item,
+            key: s.parentSub,
+            root: s.parent._item ? undefined : s.parent,
+          };
           break;
         }
         chain.push(s);
@@ -377,36 +377,30 @@ function readUpdate(document: Y.Doc, update: Uint8Array): Reading {
       const b = left instanceof Y.Item ? placeOf(left) : undefined;
       return !!a && !!b && a.parent === b.parent && a.key === b.key && a.root === b.root;
     };
-    const read = (s: Struct, released: boolean): Reading => {
-      if (!(s instanceof Y.Item)) return 'nothing';
+    /**
+     * Whether an item can change what the check reads. One that overlaps clocks the board holds
+     * goes after the item before them: when it names another place, or that one is gone, the
+     * full check (which also refuses an item held in another place than it is stored) reads it.
+     */
+    const read = (s: Struct, released: boolean) => {
+      if (!(s instanceof Y.Item)) return false;
       const { client, clock } = s.id;
       const state = Y.getState(store, client);
       const end = clock + s.length;
-      // Integrated from the clock the board has, after the item before it.
       if (clock < state && end > state && !sameAs(s, find(Y.createID(client, state - 1))))
-        return 'misplaced';
+        return true;
       // Released after this update's structs of its client: after any of those it overlaps.
       if (released && clock < reach(client) && end > state)
         for (const u of sent.get(client) ?? [])
-          if (u.id.clock <= end - 2 && u.id.clock + u.length > clock && !sameAs(s, u))
-            return 'misplaced';
+          if (u.id.clock <= end - 2 && u.id.clock + u.length > clock && !sameAs(s, u)) return true;
       const place = placeOf(s);
-      return touches(place) || showsAnother(replaced(place)) ? 'tasks' : 'nothing';
+      return touches(place) || showsAnother(replaced(place));
     };
     // Structs past a sender's gap are held back with the rest, and read when those are released.
     // An item of no length at the end of what a client has is integrated too.
-    let tasks = false;
-    const readAll = (list: Struct[], released: boolean) => {
-      for (const s of list) {
-        if (!releases && s.id.clock > reach(s.id.client)) continue;
-        const reading = read(s, released);
-        if (reading === 'misplaced') return true;
-        if (reading === 'tasks') tasks = true;
-      }
-      return false;
-    };
-    if (readAll(structs, false) || (releases && readAll(heldStructs(), true))) return 'misplaced';
-    if (tasks) return 'tasks';
+    const readAll = (list: Struct[], released: boolean) =>
+      list.some((s) => (releases || s.id.clock <= reach(s.id.client)) && read(s, released));
+    if (readAll(structs, false) || (releases && readAll(heldStructs(), true))) return true;
 
     // Deletions of items the document holds, with those Yjs holds back (applied with every update).
     // Those of items it doesn't have yet apply to the structs read above, in the place read there.
@@ -429,13 +423,62 @@ function readUpdate(document: Y.Doc, update: Uint8Array): Reading {
     }
     for (const item of removed) {
       const parent = (item.parent as Y.AbstractType<unknown>)._item;
-      if (parent && (parent.deleted || removed.has(parent))) continue;
-      if (touches(placeOf(item)) || showsAnother(item)) return 'tasks';
+      if (parent && removed.has(parent)) continue;
+      if (touches(placeOf(item)) || showsAnother(item)) return true;
     }
-    return 'nothing';
+    return false;
   } catch {
-    return 'tasks';
+    return true;
   }
+}
+
+/**
+ * A copy of the board that holds back what the board holds back, as it holds it: encoding the
+ * board merges those structs into its state, which can place them otherwise.
+ */
+function copyOf(document: Y.Doc) {
+  const { store } = document;
+  const { pendingStructs, pendingDs } = store;
+  let state: Uint8Array;
+  try {
+    store.pendingStructs = null;
+    store.pendingDs = null;
+    state = Y.encodeStateAsUpdate(document);
+  } finally {
+    store.pendingStructs = pendingStructs;
+    store.pendingDs = pendingDs;
+  }
+  const copy = new Y.Doc({ gc: document.gc });
+  Y.applyUpdate(copy, state);
+  if (pendingStructs) Y.applyUpdateV2(copy, pendingStructs.update);
+  if (pendingDs) Y.applyUpdateV2(copy, pendingDs);
+  return copy;
+}
+
+/**
+ * Whether every item integrated since `before` sits where it is written: in the parent and under
+ * the key of its origins. Yjs writes an item with its origin only, so every copy read from what
+ * the server stores or sends places it there; an item that overlaps clocks already held is kept
+ * under the parent it names instead, which no Yjs client writes.
+ */
+function placedAsWritten(doc: Y.Doc, before: Map<number, number>) {
+  for (const [client, structs] of doc.store.clients) {
+    const from = before.get(client) ?? 0;
+    if (from >= Y.getState(doc.store, client)) continue;
+    for (let i = Y.findIndexSS(structs, from); i < structs.length; i++) {
+      const item = structs[i];
+      if (!(item instanceof Y.Item)) continue;
+      for (const id of [item.origin, item.rightOrigin]) {
+        const next = id && Y.getItem(doc.store, id);
+        if (
+          next instanceof Y.Item &&
+          (next.parent !== item.parent || next.parentSub !== item.parentSub)
+        )
+          return false;
+      }
+    }
+  }
+  return true;
 }
 
 /**
@@ -451,13 +494,13 @@ export async function validateTaskUpdate(
   document: Y.Doc,
   update: Uint8Array,
 ) {
-  const reading = readUpdate(document, update);
-  if (reading === 'misplaced') throw new Error('Update places items elsewhere than it stores them');
-  if (reading === 'nothing') return;
-  const candidate = new Y.Doc();
+  if (!mayTouchTasks(document, update)) return;
+  const candidate = copyOf(document);
   try {
-    Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
+    const integratedFrom = Y.decodeStateVector(Y.encodeStateVector(candidate));
     Y.applyUpdate(candidate, update);
+    if (!placedAsWritten(candidate, integratedFrom))
+      throw new Error('Update places items elsewhere than it stores them');
     let assigns = false;
     const check = (item: Y.Map<unknown>, was: Y.Map<unknown> | undefined) => {
       const assigneeId = item.get('assigneeId');
