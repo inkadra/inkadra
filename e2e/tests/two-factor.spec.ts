@@ -41,7 +41,6 @@ async function signInWithPassword(page: Page) {
 
 const home = (page: Page) => expect(page.getByRole('heading', { name: /Tea$/ })).toBeVisible();
 
-
 /** A refused code shows the error and grants no session. */
 async function refused(page: Page) {
   await expect(page.getByRole('alert')).toHaveText('Codice non valido. Riprova.');
