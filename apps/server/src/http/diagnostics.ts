@@ -187,7 +187,8 @@ export function proxyTrustNarrow(
   const peer = request.peerAddress;
   const direct =
     trustProxy !== true &&
-    request.forwardedFor === null &&
+    // An empty X-Forwarded-For names no client: as good as none.
+    !request.forwardedFor?.split(',').some((hop) => hop.trim()) &&
     peer !== '' &&
     !trustsPeer('loopback', peer) &&
     trustsPeer(trustProxy, peer);

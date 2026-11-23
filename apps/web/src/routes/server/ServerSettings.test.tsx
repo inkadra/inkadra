@@ -288,6 +288,38 @@ it('names a failing configuration check and links its guide', async () => {
   expect(row.querySelector('.server-problem__actions')).toBeNull();
 });
 
+it('names a failing check without a guide but links nothing', async () => {
+  const s = status();
+  vi.mocked(api.get).mockResolvedValue({
+    ...s,
+    checks: [
+      ...s.checks,
+      { id: 'public_url_https', status: 'warning', expected: 'https:', actual: 'http:' },
+    ],
+    problems: [
+      {
+        ...(s.problems[0] as ServerStatus['problems'][number]),
+        id: 'check:public_url_https',
+        kind: 'config_check',
+        severity: 'warning',
+        count: 1,
+        retry: false,
+        checkId: 'public_url_https',
+        service: 'configuration',
+        file: null,
+        board: null,
+      },
+    ],
+  });
+  await render();
+  const row = host.querySelector('.server-problem') as HTMLElement;
+  expect(row.querySelector('.settings-badge--warn')?.textContent).toBe(
+    'diagnostics.checks.public_url_https.title',
+  );
+  expect(row.querySelector('a.server-link')).toBeNull();
+  expect(row.querySelector('button.server-link')).not.toBeNull();
+});
+
 it('leaves out the last successful backup when the server does not send it', async () => {
   const s = status();
   vi.mocked(api.get).mockResolvedValue({ ...s, backup: { ...s.backup, lastStatus: 'failed' } });

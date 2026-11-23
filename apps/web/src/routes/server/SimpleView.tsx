@@ -575,7 +575,10 @@ function Problems({ status, checks, actions }: Props) {
                       <button
                         type="button"
                         className="server-link"
-                        aria-label={t('server.problems.technicalInNamed', { title: text.title })}
+                        aria-label={t('server.problems.technicalInNamed', {
+                          // Two failing checks share the row title: name the check instead.
+                          title: check ? t(`diagnostics.checks.${check}.title`) : text.title,
+                        })}
                         onClick={() => peekProblem(p.id)}
                       >
                         {t('server.problems.technicalIn')}
