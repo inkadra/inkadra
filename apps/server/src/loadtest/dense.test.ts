@@ -40,6 +40,7 @@ const result = (over: Partial<DenseResult> = {}): DenseResult => ({
   board: { elements: 1000, frames: 20, strokes: 15000, bytes: 7_500_000 },
   cursors: 12000,
   pendingEdits: 0,
+  offlineEdits: 30,
   strokes: 180,
   burst: burst(),
   eventLoop: { steadyMs: 120, burstMs: 300 },
@@ -57,16 +58,30 @@ describe('AckClock', () => {
     expect(clock.unconfirmed()).toBe(0);
   });
 
-  it('keeps timed edits lost with a closed connection as unconfirmed', () => {
+  it('times no edit across a reconnect with two edits made while disconnected', () => {
     const clock = new AckClock(0);
-    clock.change(1, 100, true);
-    clock.change(2, 200, true);
-    clock.change(1, 250, false); // the first one only
-    clock.close();
-    expect(clock.unconfirmed()).toBe(1);
-    // The new connection's sync counts from zero and does not credit the lost edit.
+    expect(clock.change(1, 100, true)).toEqual([]);
+    clock.close(); // the timed edit is never acknowledged
+    // Hocuspocus 4.8 keeps the count (1) and adds the two offline edits.
+    expect(clock.change(2, 200, true)).toEqual([]);
+    expect(clock.change(3, 210, false)).toEqual([]);
+    clock.open();
+    // startSync resets the count to one: no acknowledgement, no timed entry taken.
     expect(clock.change(1, 300, false)).toEqual([]);
-    expect(clock.change(0, 320, false)).toEqual([]);
+    expect(clock.change(0, 320, false)).toEqual([]); // the sync's own acknowledgement
+    expect(clock.offlineEdits()).toBe(2);
+    expect(clock.unconfirmed()).toBe(1); // the edit lost with the connection
+    expect(clock.online).toBe(true);
+    // Timing goes on normally after it.
+    expect(clock.change(1, 400, true)).toEqual([]);
+    expect(clock.change(0, 410, false)).toEqual([10]);
+  });
+
+  it('counts an acknowledgement after the deadline as unconfirmed', () => {
+    const clock = new AckClock(0);
+    clock.expireAt(150);
+    clock.change(1, 100, true);
+    expect(clock.change(0, 151, false)).toEqual([]);
     expect(clock.unconfirmed()).toBe(1);
   });
 });

@@ -60,6 +60,8 @@ const PERSIST_MS = 120_000;
 const REOPEN_MS = 60_000;
 /** The offline markers sit above every other card (the reference board ends at -20,000). */
 const MARKER_Y = -50_000;
+/** How long after the end of the edits their acknowledgements may come. */
+const ACK_WAIT_MS = 30_000;
 /** Share of the expected edits (one a second per editor) that must come back timed. */
 const MIN_SAMPLE_SHARE = 0.5;
 /** Frames this full get no more strokes (MAX_STROKES is 2000). */
@@ -102,6 +104,8 @@ export interface DenseResult extends Omit<Result, 'preset'> {
   cursors: number;
   /** Edits of the run still not acknowledged 30 s after its end. */
   pendingEdits: number;
+  /** Edits made while disconnected in the burst: never timed, confirmed by convergence. */
+  offlineEdits: number;
   strokes: number;
   burst: {
     clients: number;
@@ -260,21 +264,27 @@ export async function runDense(opts: DenseOptions) {
       if (stop.signal.aborted || performance.now() - started > timeoutMs) return null;
       await pause(20);
     }
-    return performance.now() - started;
+    // Seen within one poll (20 ms) of the moment it happened; past the timeout it failed.
+    const took = performance.now() - started;
+    return took > timeoutMs ? null : took;
   };
 
   interface Editor {
     board: ReturnType<typeof open>;
     note: string;
     value: number;
-    /** Edits of the run still waiting for their acknowledgement. */
+    /** Edits of the run not acknowledged by the deadline. */
     pending(): number;
+    /** Edits made while its connection was closed (the burst's). */
+    offline(): number;
     /** The card it adds while offline in the burst, and its label. */
     marker: string;
     label: string;
   }
   const editors: Editor[] = [];
   let pendingEdits = 0;
+  let offlineEdits = 0;
+  let ackDeadline = Number.POSITIVE_INFINITY;
 
   async function editor(index: number, frames: string[], end: number) {
     const board = await openBoard(boardIdOf());
@@ -284,6 +294,7 @@ export async function runDense(opts: DenseOptions) {
       note,
       value: 0,
       pending: () => 0,
+      offline: () => 0,
       marker: newId(),
       label: `offline ${index} ${opts.seed}`,
     };
@@ -301,12 +312,15 @@ export async function runDense(opts: DenseOptions) {
     });
     // Each edit timed to its own acknowledgement (AckClock), from the updates already waiting.
     const clock = new AckClock(board.provider.unsyncedChanges);
+    clock.expireAt(ackDeadline);
     let timing = false;
     board.provider.on('unsyncedChanges', ({ number }: { number: number }) => {
       for (const ms of clock.change(number, performance.now(), timing)) editMs.push(ms);
     });
     board.provider.on('close', () => clock.close());
+    board.provider.on('open', () => clock.open());
     me.pending = () => clock.unconfirmed();
+    me.offline = () => clock.offlineEdits();
     // Its own stream of the run's seed: the same seed gives each editor the same moves.
     const random = seeded(opts.seed + index * 7919);
     const cursor = { x: random() * 4000, y: random() * 3000 };
@@ -320,7 +334,8 @@ export async function runDense(opts: DenseOptions) {
         editing: null,
       });
       cursors += 1;
-      if (Date.now() >= nextEdit) {
+      // Timed edits only while connected; a reconnect in the run skips its ticks.
+      if (Date.now() >= nextEdit && clock.online) {
         nextEdit += EDIT_MS * (0.8 + random() * 0.4);
         timing = true;
         const frame = frames[Math.floor(random() * frames.length)];
@@ -509,6 +524,8 @@ export async function runDense(opts: DenseOptions) {
       await scrape(false); // the event loop delay of the seeding is not the run's
       measuring = true;
       const end = Date.now() + opts.durationS * 1000;
+      // One absolute deadline for every acknowledgement: the end of the edits plus 30 s.
+      ackDeadline = performance.now() + (end - Date.now()) + ACK_WAIT_MS;
       // People arrive within a few seconds, not in the same millisecond (that is the burst).
       await Promise.all([
         ...Array.from({ length: preset.editors }, (_, i) =>
@@ -522,7 +539,9 @@ export async function runDense(opts: DenseOptions) {
 
     if (!stop.signal.aborted && editors.filter(Boolean).length === preset.editors) {
       log('Reconnect burst: every client drops, edits offline, and comes back at once…');
-      await settle(boards, 30_000);
+      while (performance.now() <= ackDeadline && editors.some((e) => e.pending() > 0))
+        await pause(20);
+      // Read at or after the deadline: an acknowledgement after it confirms nothing (AckClock).
       pendingEdits = editors.reduce((n, e) => n + e.pending(), 0);
       measuring = false;
       for (const socket of sockets) socket.disconnect();
@@ -557,6 +576,7 @@ export async function runDense(opts: DenseOptions) {
       const clients = sockets.length;
       for (const socket of sockets) socket.connect();
       const syncMs = await settle(boards, 120_000);
+      offlineEdits = editors.reduce((n, e) => n + e.offline(), 0);
       let converged = false;
       let convergeMs: number | null = null;
       let detail: string | null = syncMs === null ? 'not every client synced again' : null;
@@ -628,6 +648,7 @@ export async function runDense(opts: DenseOptions) {
     board: boardInfo,
     cursors,
     pendingEdits,
+    offlineEdits,
     strokes,
     burst,
     eventLoop: loopMax,
@@ -641,12 +662,23 @@ export async function runDense(opts: DenseOptions) {
  * the server has not acknowledged yet, and the server acknowledges one connection's updates in
  * the order they came (Hocuspocus handles its messages one at a time), so the counter going up
  * queues send times and going down takes them off in order. `timed` marks the run's edits.
+ *
+ * A reconnect is three distinct events (Hocuspocus 4.8): `close`, after which the counter keeps
+ * its value and only goes up with edits made offline, which are never timed (convergence
+ * confirms them); `open`, after which the next change is the sync resetting the counter to one,
+ * which acknowledges nothing; then the sync's own acknowledgement. Callers make timed edits
+ * only while `online`.
  */
 export class AckClock {
   private waiting: Array<{ at: number; timed: boolean }> = [];
   private last: number;
+  private state: 'online' | 'offline' | 'reopening' = 'online';
   /** Timed edits whose connection closed before they were acknowledged. */
   private lost = 0;
+  /** Timed edits acknowledged after the deadline. */
+  private late = 0;
+  private offline = 0;
+  private deadline = Number.POSITIVE_INFINITY;
 
   /** `pending`: updates already waiting when timing starts; they are not the run's. */
   constructor(pending: number) {
@@ -654,31 +686,62 @@ export class AckClock {
     for (let i = 0; i < pending; i++) this.waiting.push({ at: 0, timed: false });
   }
 
+  get online() {
+    return this.state === 'online';
+  }
+
+  /** Acknowledgements after this moment (same clock as `now`) do not confirm a timed edit. */
+  expireAt(deadline: number) {
+    this.deadline = deadline;
+  }
+
   /** The provider's new count; returns the round trips of the timed edits it acknowledged. */
   change(count: number, now: number, timed: boolean): number[] {
+    if (this.state === 'offline') {
+      // Nothing is acknowledged without a connection: only edits made offline move it.
+      if (count > this.last) this.offline += count - this.last;
+      this.last = count;
+      return [];
+    }
+    if (this.state === 'reopening') {
+      // The sync's reset: what it now waits for is the sync itself, never a timed edit.
+      this.waiting = Array.from({ length: count }, () => ({ at: now, timed: false }));
+      this.last = count;
+      this.state = 'online';
+      return [];
+    }
     const out: number[] = [];
     for (let i = this.last; i < count; i++) this.waiting.push({ at: now, timed });
     for (let i = count; i < this.last; i++) {
       const sent = this.waiting.shift();
-      if (sent?.timed) out.push(now - sent.at);
+      if (!sent?.timed) continue;
+      if (now > this.deadline) this.late += 1;
+      else out.push(now - sent.at);
     }
     this.last = count;
     return out;
   }
 
-  /**
-   * The connection closed: what it waited for is never acknowledged as such, and the sync after
-   * it counts again from zero. Timed edits among them stay unconfirmed.
-   */
+  /** The connection closed: timed edits still waiting are never acknowledged as such. */
   close() {
     this.lost += this.waiting.filter((w) => w.timed).length;
     this.waiting = [];
-    this.last = 0;
+    this.state = 'offline';
   }
 
-  /** Timed edits not acknowledged: waiting now, or lost with a closed connection. */
+  /** The connection opened again: the next change is the sync's reset. */
+  open() {
+    if (this.state === 'offline') this.state = 'reopening';
+  }
+
+  /** Timed edits not acknowledged in time: waiting, lost with a connection, or late. */
   unconfirmed() {
-    return this.lost + this.waiting.filter((w) => w.timed).length;
+    return this.lost + this.late + this.waiting.filter((w) => w.timed).length;
+  }
+
+  /** Edits made while the connection was closed. */
+  offlineEdits() {
+    return this.offline;
   }
 }
 
@@ -758,6 +821,7 @@ export function formatDense(r: DenseResult, limits: DenseLimits, failures: strin
     'Timing                edit round trip: each edit until the server acknowledged it;',
     '                      delivery: each value a reader received (one overwritten first is not)',
     `Unacknowledged edits  ${r.pendingEdits} 30 s after the end   limit 0`,
+    `Offline edits         ${r.offlineEdits} in the burst (not timed; convergence confirms them)`,
     `Event loop p99        worst steady ${ms(r.eventLoop.steadyMs)}, burst ${ms(r.eventLoop.burstMs)}   ${
       r.eventLoopShared
         ? `limit ${limits.eventLoopP99Ms} / ${limits.burstEventLoopP99Ms} ms`
