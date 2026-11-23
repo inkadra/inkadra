@@ -253,15 +253,15 @@ growing, not boards with more content.
 
 ### Dense
 
-| Run                          | Edit p50 / p95 / p99 | Delivery p95 / p99 | Board save p95 | Memory before → peak | Event loop p99, steady / burst | Burst: synced · fresh client agreed · stored |
-| ---------------------------- | -------------------- | ------------------ | -------------- | -------------------- | ------------------------------ | -------------------------------------------- |
-| `dense`, `all`, CI           | 1.3 / 11 / 345 ms    | 26 / 523 ms        | 303 ms         | 272 → 818 MiB        | 370 / 2611 ms                  | 7.0 · 1.0 · 1.8 s                            |
-| `dense`, `all`, CI           | 1.1 / 11 / 243 ms    | 25 / 247 ms        | 1878 ms        | 279 → 849 MiB        | 396 / 2764 ms                  | 6.8 · 1.0 · 1.7 s                            |
-| `dense`, `all`, CI           | 1.8 / 34 / 403 ms    | 36 / 356 ms        | 505 ms         | 275 → 831 MiB        | 808 / 3240 ms                  | 9.4 · 1.6 · 1.9 s                            |
-| `dense`, split, CI†          | 1.5 / 13 / 296 ms    | 23 / 421 ms        | 388 ms         | 222 → 487 MiB        | (web) 15 / 12 ms               | 7.6 · 1.1 · 1.9 s                            |
-| `dense`, split, CI†          | 1.5 / 11 / 555 ms    | 19 / 581 ms        | 1016 ms        | 222 → 514 MiB        | (web) 13 / 12 ms               | 7.7 · 1.1 · 1.9 s                            |
-| `dense`, split, CI†          | 1.5 / 24 / 325 ms    | 70 / 756 ms        | 426 ms         | 223 → 485 MiB        | (web) 13 / 12 ms               | 9.2 · 0.9 · 2.0 s                            |
-| `dense`, `all`, dev machine‡ | 2.3 / 241 / 721 ms   | 340 / 765 ms       | 441 ms         | 294 → 833 MiB        | 443 / 3890 ms                  | 9.4 · 1.3 · 1.9 s                            |
+| Run                          | Edit p50 / p95 / p99 | Delivery p95 / p99 | Board save p95 | Memory before → peak | Event loop p99, steady / burst | Burst: synced · fresh client agreed · preview check |
+| ---------------------------- | -------------------- | ------------------ | -------------- | -------------------- | ------------------------------ | --------------------------------------------------- |
+| `dense`, `all`, CI           | 1.3 / 11 / 345 ms    | 26 / 523 ms        | 303 ms         | 272 → 818 MiB        | 370 / 2611 ms                  | 7.0 · 1.0 · 1.8 s                                   |
+| `dense`, `all`, CI           | 1.1 / 11 / 243 ms    | 25 / 247 ms        | 1878 ms        | 279 → 849 MiB        | 396 / 2764 ms                  | 6.8 · 1.0 · 1.7 s                                   |
+| `dense`, `all`, CI           | 1.8 / 34 / 403 ms    | 36 / 356 ms        | 505 ms         | 275 → 831 MiB        | 808 / 3240 ms                  | 9.4 · 1.6 · 1.9 s                                   |
+| `dense`, split, CI†          | 1.5 / 13 / 296 ms    | 23 / 421 ms        | 388 ms         | 222 → 487 MiB        | (web) 15 / 12 ms               | 7.6 · 1.1 · 1.9 s                                   |
+| `dense`, split, CI†          | 1.5 / 11 / 555 ms    | 19 / 581 ms        | 1016 ms        | 222 → 514 MiB        | (web) 13 / 12 ms               | 7.7 · 1.1 · 1.9 s                                   |
+| `dense`, split, CI†          | 1.5 / 24 / 325 ms    | 70 / 756 ms        | 426 ms         | 223 → 485 MiB        | (web) 13 / 12 ms               | 9.2 · 0.9 · 2.0 s                                   |
+| `dense`, `all`, dev machine‡ | 2.3 / 241 / 721 ms   | 340 / 765 ms       | 441 ms         | 294 → 833 MiB        | 443 / 3890 ms                  | 9.4 · 1.3 · 1.9 s                                   |
 
 Runs of 22 November 2026; the CI runs last 180 s, the dev machine's 60 s. In every run: no
 error, no reconnect, no edit left unacknowledged, every edit timed (about 2600 on CI, 500 of them
@@ -276,23 +276,25 @@ What the numbers say, and no more:
 - **Steady run.** The edits stay fast for most people (p95 11 to 34 ms on CI), but the p99 of the
   edit round trip is 243 to 555 ms and of the delivery 247 to 756 ms on CI, against about 1.5 ms
   with `medium`.
-  In `all` the event loop of the process holding the board reaches 370 to 810 ms at p99 in its
+  In `all` the event loop of the process holding the board reaches 335 to 810 ms at p99 in its
   worst 5 s window, with the load clients on the same runner. The synchronous start of each save
   of this board (validating every card and encoding the whole document) measured about 130 ms on
   the dev machine; what else takes that process's time is not pinned down.
 - **Burst.** With 18 reconnections at once, 15 of them each bringing a new card, it takes 7 to
-  9.4 s on CI (9.4 to 11.9 s on the dev machine) until all 18 are synced again, and the worst
+  10.2 s on CI (9.4 to 11.9 s on the dev machine) until all 18 are synced again, and the worst
   sampled p99 of the event loop delay of the `all` process over a window of about 5 s is up to
-  3.2 s (3.9 to 4.5 s on the dev machine): a percentile over a window, not the proven length of one
+  4.2 s (3.9 to 4.5 s on the dev machine): a percentile over a window, not the proven length of one
   block. On the dev machine, with a temporary log in
   the server: the board was read back from the database before the reconnect; 11 of the 18
   clients were synced within 0.75 s and the others one after another up to 9.6 s; with only moves
   offline, no new cards, all 18 were synced in 0.85 s; admitting the updates (decision 0130) and
   the change hook each took under 20 ms but for the first size measurement after the load (120
   ms). Where the rest of the time goes is not pinned down.
-- Once everyone left, the stored board had every offline change within about 2 s. In the runs in
-  the table above this was checked with the board's preview (the card count and the first three
-  texts), a weaker check than the export described above; see the runs below for the export.
+- The last column of the table above ("stored", about 2 s) is the time of a partial check, with
+  the board's preview: the number of cards and the first three texts, no positions. It does not
+  show that every offline change was stored. Persistence is shown by the export check below:
+  the stored board equal to the converged copy, every note's position and every marker included,
+  5.2 to 6.3 s on CI after everyone left (export time included).
 
 With the export check (runs of 22 November 2026, after the changes above):
 
@@ -300,6 +302,8 @@ With the export check (runs of 22 November 2026, after the changes above):
 | ---------------------------- | -------------------- | ------------------ | -------------- | -------------------- | ------------------------------ | -------------------------------------------------------- |
 | `dense`, `all`, CI           | 1.3 / 12 / 311 ms    | 26 / 337 ms        | 730 ms         | 278 → 955 MiB        | 335 / 1413 ms                  | 7.0 · 1.0 · 5.2 s                                        |
 | `dense`, split, CI†          | 1.3 / 15 / 365 ms    | 27 / 370 ms        | 1090 ms        | 221 → 502 MiB        | (web) 13 / 12 ms               | 8.0 · 1.1 · 5.9 s                                        |
+| `dense`, `all`, CI           | 1.5 / 22 / 403 ms    | 60 / 396 ms        | 1752 ms        | –                    | 433 / 4186 ms                  | 8.9 · – · 5.4 s                                          |
+| `dense`, split, CI†          | 2.0 / 35 / 401 ms    | 43 / 421 ms        | 1537 ms        | –                    | (web) 13 / 12 ms               | 10.2 · – · 6.3 s                                         |
 | `dense`, `all`, dev machine‡ | 2.2 / 438 / 838 ms   |                    | 977 ms         |                      | 498 / 4450 ms                  | 11.9 · 1.4 · 6.1 s                                       |
 
 "Stored board equal" is the time from everyone leaving until an export showed the stored board
