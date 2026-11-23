@@ -343,17 +343,24 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     // database log, so no store transaction fails.
     const writes = vi.spyOn(db, 'transaction');
     try {
+      // An edit the server holds but has not stored yet when the board is deleted: it tries to
+      // store it afterwards. (An edit sent after the deletion is refused once the access check
+      // closes the connection: decision 0139.)
+      const late = column('Too late');
+      addElement(c.doc, late);
+      await expect
+        .poll(
+          () =>
+            roots(collab.hocuspocus.documents.get(boardDocName(goneBoard))!).elements.has(late.id),
+          { timeout: 5000 },
+        )
+        .toBe(true);
       const deleted = await app.inject({
         method: 'DELETE',
         url: `/api/v1/projects/${goneProject}`,
         headers: as('owner'),
       });
       expect(deleted.statusCode).toBe(204);
-      // An edit made after the deletion reaches the server, which tries to store it.
-      addElement(c.doc, column('Too late'));
-      await expect
-        .poll(() => collab.hocuspocus.documents.has(boardDocName(goneBoard)), { timeout: 5000 })
-        .toBe(true);
       c.close();
       collab.hocuspocus.flushPendingStores();
       await expect
