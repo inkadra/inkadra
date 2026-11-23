@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import {
   API_PREFIX,
   type Asset,
+  type AssetLookup,
+  AssetLookupQuery,
   type AssetProxy,
   atLeast,
   CAPABILITY_ROLE,
@@ -12,6 +14,7 @@ import {
   OfficePartParams,
   OfficePartQuery,
   OfficePreview,
+  ProjectRole,
   VariantParams,
   VariantQuery,
   VideoFrameQuery,
@@ -19,13 +22,13 @@ import {
   type VideoRung,
   z,
 } from '@inkadra/shared';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, notInArray, or } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { requireAssetRole } from '../access.ts';
+import { type Actor, activeGrant, activeMember, requireAssetRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { type asset, assetVariant, user } from '../db/schema.ts';
+import { asset, assetVariant, board, boardGrant, projectMember, user } from '../db/schema.ts';
 import { officeKey } from '../media/office.ts';
 import { ensureFreeSpace, NotEnoughSpace, privateInput, withJobDir } from '../media/scratch.ts';
 import { extractVideoFrame, FRAME_MAX_BYTES, mediaTools, NoVideoFrame } from '../media/video.ts';
@@ -38,7 +41,7 @@ import {
   type LiveContext,
   offeredLive,
   proxyRendition,
-  type RenditionRow,
+  type RenditionMeta,
   renditionsOf,
   sendHls,
   toPlayback,
@@ -57,6 +60,9 @@ interface Deps {
 
 /** Frames one person may ask for in a minute: each can start ffmpeg and download an original. */
 const FRAMES_PER_MINUTE = 12;
+/** Batch lookups one person may make in a minute: a board of 1000 files takes five. */
+const LOOKUPS_PER_MINUTE = 120;
+const LOOKUP_BODY_LIMIT = 16 * 1024;
 /** ffmpeg runs in the web role here (decision 0070): never more than this at once. */
 const MAX_RUNNING_FRAMES = 2;
 /** The whole request, download from a bucket and sending included. */
@@ -92,7 +98,7 @@ export const isThumbnail = (v: VariantRow): v is ThumbnailRow =>
 export function toProxy(
   row: typeof asset.$inferSelect,
   variants: VariantRow[],
-  renditions: RenditionRow[] = [],
+  renditions: RenditionMeta[] = [],
 ): AssetProxy | null {
   if (!row.proxyStatus) return null;
   const ready = row.proxyStatus === 'ready';
@@ -122,7 +128,7 @@ const IMMUTABLE = 'private, max-age=31536000, immutable';
 export function toAsset(
   row: typeof asset.$inferSelect,
   variants: VariantRow[],
-  renditions?: RenditionRow[],
+  renditions?: RenditionMeta[],
   live: VideoRung[] = [],
   noLive: VideoNoLive | null = null,
 ): Asset {
@@ -259,10 +265,65 @@ export async function sendRanged(
   return reply.send(await storage.read(key));
 }
 
+/**
+ * The assets among `ids` the person may read, in one query: the rule of requireAssetRole with
+ * the viewer role, the lowest there is, so any active membership of the project or any active
+ * grant on one of its boards not in the trash. A role the app does not know (written outside
+ * it) fails atLeast in the single route: here it gives nothing and closes the whole project.
+ */
+export function readableAssets(
+  db: Pick<Database, 'select'>,
+  actor: Pick<Actor, 'id'>,
+  ids: string[],
+) {
+  const known = ProjectRole.options;
+  const memberships = (roles: 'known' | 'unknown') =>
+    db
+      .select({ projectId: projectMember.projectId })
+      .from(projectMember)
+      .where(
+        and(
+          eq(projectMember.userId, actor.id),
+          activeMember(),
+          roles === 'known'
+            ? inArray(projectMember.role, known)
+            : notInArray(projectMember.role, known),
+        ),
+      );
+  const grants = (roles: 'known' | 'unknown') =>
+    db
+      .select({ projectId: board.projectId })
+      .from(boardGrant)
+      .innerJoin(board, eq(board.id, boardGrant.boardId))
+      .where(
+        and(
+          eq(boardGrant.userId, actor.id),
+          isNull(board.deletedAt),
+          activeGrant(),
+          roles === 'known' ? inArray(boardGrant.role, known) : notInArray(boardGrant.role, known),
+        ),
+      );
+  return db
+    .select()
+    .from(asset)
+    .where(
+      and(
+        inArray(asset.id, ids),
+        or(
+          inArray(asset.projectId, memberships('known')),
+          inArray(asset.projectId, grants('known')),
+        ),
+        notInArray(asset.projectId, memberships('unknown')),
+        notInArray(asset.projectId, grants('unknown')),
+      ),
+    );
+}
+
 export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage } = deps;
   const frameLimiter = new RateLimiter(FRAMES_PER_MINUTE, 60_000, 'assets-routes:frameLimiter');
   let runningFrames = 0;
+  const lookups = new RateLimiter(LOOKUPS_PER_MINUTE, 60_000, 'assets-routes:lookups');
 
   app.get(v1('/assets/:assetId'), async (req) => {
     const actor = await requireActor(auth, req, db);
@@ -277,6 +338,46 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     const live =
       deps.live && row.kind === 'video' ? await offeredLive(deps.live, row, renditions) : null;
     return toAsset(row, variants, renditions, live?.names ?? [], live?.noLive ?? null);
+  });
+
+  // Many assets at once, for a client opening a board with many files: up to three metadata
+  // queries whatever their number. Unreadable and unknown ids are left out, as a 404 of the
+  // single route.
+  // 200 ids are about 8 KiB: anything much larger is refused before any other work.
+  app.post(v1('/assets/lookup'), { bodyLimit: LOOKUP_BODY_LIMIT }, async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { ids } = AssetLookupQuery.parse(req.body);
+    await lookups.require(actor.id, 'Too many asset lookups: wait a minute.');
+    const rows = await readableAssets(db, actor, [...new Set(ids.map((id) => id.toLowerCase()))]);
+    const found = rows.map((r) => r.id);
+    const videos = rows.filter((r) => r.kind === 'video').map((r) => r.id);
+    const [variants, renditions] = await Promise.all([
+      found.length
+        ? db
+            .select()
+            .from(assetVariant)
+            .where(inArray(assetVariant.assetId, found))
+            .orderBy(asc(assetVariant.width))
+        : [],
+      renditionsOf(db, videos),
+    ]);
+    const items: Asset[] = [];
+    for (const row of rows) {
+      const own = renditions.filter((r) => r.assetId === row.id);
+      const live =
+        deps.live && row.kind === 'video' ? await offeredLive(deps.live, row, own) : null;
+      items.push(
+        toAsset(
+          row,
+          variants.filter((v) => v.assetId === row.id),
+          row.kind === 'video' ? own : [],
+          live?.names ?? [],
+          live?.noLive ?? null,
+        ),
+      );
+    }
+    const body: AssetLookup = { items };
+    return body;
   });
 
   // The adaptive playback of a video (decision 0128), for every role that sees its card.
