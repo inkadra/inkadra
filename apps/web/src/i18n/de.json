@@ -2001,7 +2001,9 @@
       "pin": "In die Leiste",
       "pinned": "In der Leiste",
       "pinFor": "{{name}} in die Leiste legen"
-    }
+    },
+    "planListsNotReady": "Dieser Setplan wartet darauf, dass der Server seine Listen aktualisiert: Lade das Board neu, um ihn zu bearbeiten.",
+    "planBaseKept": "Der Setplan bleibt: Eines seiner Setups wartet darauf, dass der Server seine Listen aktualisiert. Lade das Board neu und versuche es noch einmal."
   },
   "tags": {
     "title": "Tags",

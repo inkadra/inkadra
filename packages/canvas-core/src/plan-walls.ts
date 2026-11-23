@@ -420,20 +420,18 @@ export function shownOpenings(plan: Pick<PlanElement, 'walls' | 'openings'>): Pl
 // Lists written before that (plain objects) are still read, and an edit of such an item stores
 // it as a Y.Map in its place.
 
-/** The plan's list, created when missing; call inside the transaction that writes to it. */
 type ListKey = 'walls' | 'openings' | 'circuits';
 
+/**
+ * The plan's list, or null when it is not a Y.Array: a client never converts or makes a plan list
+ * (see plan.ts listOf; the server prepares them on load). Plain items inside a Y.Array, written by
+ * the first builds of decision 0104, are still read and stored as Y.Maps when they are edited.
+ */
 function listOf(doc: Y.Doc, planId: string, key: ListKey): Y.Array<unknown> | null {
   const map = roots(doc).elements.get(planId);
   if (map?.get('type') !== 'plan') return null;
   const current = map.get(key);
-  if (current instanceof Y.Array) return current;
-  const fresh = new Y.Array<unknown>();
-  // Circuits written by the first builds of decision 0104: one plain list, kept as Y.Maps.
-  if (Array.isArray(current))
-    fresh.push(current.filter((i) => typeof i === 'object' && i !== null).map(toMap));
-  map.set(key, fresh);
-  return fresh;
+  return current instanceof Y.Array ? current : null;
 }
 
 const idOf = (value: unknown) =>
@@ -545,6 +543,8 @@ export function removePlanWalls(
   origin?: unknown,
 ): void {
   const doomed = new Set(ids);
+  // Never half of a change: walls and their openings go together, or nothing does.
+  if (!listOf(doc, planId, 'walls') || !listOf(doc, planId, 'openings')) return;
   doc.transact(() => {
     for (const key of ['walls', 'openings'] as const) {
       const map = roots(doc).elements.get(planId);

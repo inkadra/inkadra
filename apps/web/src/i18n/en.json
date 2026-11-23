@@ -2001,7 +2001,9 @@
       "pin": "Put in the bar",
       "pinned": "In the bar",
       "pinFor": "Put {{name}} in the bar"
-    }
+    },
+    "planListsNotReady": "This set plan is waiting for the server to update its lists: reload the board to edit it.",
+    "planBaseKept": "The set plan stays: one of its setups is waiting for the server to update its lists. Reload the board and try again."
   },
   "tags": {
     "title": "Tags",

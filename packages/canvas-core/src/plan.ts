@@ -1234,6 +1234,10 @@ export function addVariant(
     // Circuits are the base's, shared by its setups (decision 0117): the setup's own list stays
     // empty, as the card's shape expects.
     copy.set('circuits', new Y.Array());
+    // Every list a client edits, made with the new card (no other client has it yet): its walls and
+    // openings stay empty, as the Set is the base's, until it stands alone.
+    copy.set('walls', new Y.Array());
+    copy.set('openings', new Y.Array());
     roots(doc).elements.set(id, copy);
   }, opts.origin);
   return id;
@@ -1241,16 +1245,41 @@ export function addVariant(
 
 // Writing to the document --------------------------------------------------------
 
-/** The plan's list, created when missing; call inside the transaction that writes to it. */
+/**
+ * The plan's list, or null when it is not a Y.Array (plain JSON an older writer left, or missing):
+ * a client never converts or makes a plan list. The server prepares them when it loads a board
+ * (apps/server plan-lists.ts, decision of 23 Nov); two clients doing it at once would each keep a
+ * list of their own and one would lose the other's items. A write needing such a list is refused.
+ */
 function listOf(doc: Y.Doc, planId: string, kind: PlanItemKind): Y.Array<unknown> | null {
   const map = roots(doc).elements.get(planId);
   if (map?.get('type') !== 'plan') return null;
   const current = map.get(kind);
-  if (current instanceof Y.Array) return current;
-  const fresh = new Y.Array<unknown>();
-  map.set(kind, fresh);
-  return fresh;
+  return current instanceof Y.Array ? current : null;
 }
+
+/**
+ * Whether a client may edit this plan: every list of it, and of its base for a setup, is a
+ * Y.Array (listOf). Otherwise the editor opens it read-only and says why: the board was served by
+ * a server older than the one that prepares plan lists, or from an old copy.
+ */
+export function planListsReady(doc: Y.Doc, planId: string): boolean {
+  const map = roots(doc).elements.get(planId);
+  if (map?.get('type') !== 'plan') return false;
+  const base = map.get('variantOf');
+  const ids = typeof base === 'string' && roots(doc).elements.has(base) ? [planId, base] : [planId];
+  return ids.every((id) =>
+    (['strokes', 'shapes', 'icons', 'walls', 'openings', 'circuits'] as const).every(
+      (key) => roots(doc).elements.get(id)?.get(key) instanceof Y.Array,
+    ),
+  );
+}
+
+/** The lists of these plans a client may not write: not Y.Arrays (see listOf). */
+const unready = (doc: Y.Doc, planIds: readonly string[]) =>
+  planIds.some((id) =>
+    (['strokes', 'shapes', 'icons'] as const).some((kind) => !listOf(doc, id, kind)),
+  );
 
 const idOf = (value: unknown) =>
   value instanceof Y.Map ? value.get('id') : (value as { id?: unknown } | null)?.id;
@@ -1269,7 +1298,6 @@ export function addPlanIcon(
   origin?: unknown,
 ): string | null {
   let id: string | null = null;
-  // The list is created, when a plan lacks it, in the same undo step as the icon.
   doc.transact(() => {
     const icons = listOf(doc, planId, 'icons');
     if (!icons || icons.length >= MAX_PLAN_ICONS) return;
@@ -1371,6 +1399,8 @@ export function updatePlanItems(
   before?: readonly PlanItem[],
 ): void {
   const baseline = new Map((before ?? []).map((item) => [item.id, item]));
+  // Never half of a change: a plan with a list a client may not write is not written at all.
+  if (unready(doc, [planId])) return;
   doc.transact(() => {
     const stored = (['strokes', 'shapes', 'icons'] as const).flatMap((kind) =>
       (listOf(doc, planId, kind)?.toArray() ?? []).map(
@@ -1424,6 +1454,7 @@ export function transferPlanItems(
 ): string[] {
   const moved: string[] = [];
   const wanted = new Set(ids);
+  if (unready(doc, [fromId, toId])) return moved;
   doc.transact(() => {
     for (const kind of ['strokes', 'shapes', 'icons'] as const) {
       const from = listOf(doc, fromId, kind);
@@ -1466,6 +1497,7 @@ export function removePlanItems(
   ids: Iterable<string>,
   origin?: unknown,
 ): void {
+  if (unready(doc, [planId])) return;
   doc.transact(() => {
     const icons = listOf(doc, planId, 'icons');
     const locked = new Set(
@@ -1548,6 +1580,7 @@ export function duplicatePlanItems(
     ...icons.filter((i) => iconIds.has(i.id)).map((i) => ({ kind: 'icons' as const, id: i.id })),
   ];
   const fresh = new Map(all.map((r) => [r.id, newElementId()]));
+  if (unready(doc, [targetId])) return out;
   doc.transact(() => {
     for (const ref of all) {
       const found = planItem(plan, ref);

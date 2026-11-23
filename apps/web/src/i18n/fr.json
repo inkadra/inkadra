@@ -2001,7 +2001,9 @@
       "pin": "Mettre dans la barre",
       "pinned": "Dans la barre",
       "pinFor": "Mettre {{name}} dans la barre"
-    }
+    },
+    "planListsNotReady": "Ce plan au sol attend que le serveur mette à jour ses listes : rechargez le tableau pour le modifier.",
+    "planBaseKept": "Le plan au sol reste : l’un de ses setups attend que le serveur mette à jour ses listes. Rechargez le tableau et réessayez."
   },
   "tags": {
     "title": "Tags",

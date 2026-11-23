@@ -2001,7 +2001,9 @@
       "pin": "Colocar na barra",
       "pinned": "Na barra",
       "pinFor": "Colocar {{name}} na barra"
-    }
+    },
+    "planListsNotReady": "Esta planta do set está à espera de que o servidor atualize as suas listas: recarregue o quadro para a editar.",
+    "planBaseKept": "A planta do set fica: um dos seus setups está à espera de que o servidor atualize as suas listas. Recarregue o quadro e tente de novo."
   },
   "tags": {
     "title": "Tags",

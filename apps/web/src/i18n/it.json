@@ -2001,7 +2001,9 @@
       "pin": "Metti nella barra",
       "pinned": "Nella barra",
       "pinFor": "Metti {{name}} nella barra"
-    }
+    },
+    "planListsNotReady": "Questa pianta del set aspetta che il server aggiorni le sue liste: ricarica la board per modificarla.",
+    "planBaseKept": "La pianta del set resta: uno dei suoi setup aspetta che il server aggiorni le sue liste. Ricarica la board e riprova."
   },
   "tags": {
     "title": "Tag",

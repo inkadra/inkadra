@@ -50,6 +50,7 @@ import {
   pasteElements,
   pinchViewport,
   placeProductionCard,
+  planListsReady,
   type Rect,
   type ResizeCorner,
   type ResizeOptions,
@@ -1467,10 +1468,12 @@ export function Canvas({
     if (readOnly || selection.size === 0) return;
     const count = selection.size;
     store.undo.stopCapturing();
-    deleteElements(doc, selection, LOCAL);
+    const stayed = deleteElements(doc, selection, LOCAL);
     store.undo.stopCapturing();
     setSelection(EMPTY_SET);
-    setToast({ text: t('board.deleted', { count }), undo: true });
+    // A set plan whose setup keeps a list this client may not write stays (canvas-core).
+    if (stayed.length) setToast({ text: t('board.planBaseKept'), undo: false, ok: true });
+    else setToast({ text: t('board.deleted', { count }), undo: true });
   }, [readOnly, selection, store, doc, t]);
 
   const duplicate = useCallback(() => {
@@ -2825,7 +2828,8 @@ export function Canvas({
       const data = copyElements(doc, [...selection], { instance: window.location.origin });
       encodeClipboard(e.clipboardData, data);
       e.preventDefault();
-      if (e.type === 'cut' && !readOnly) deleteElements(doc, selection, LOCAL);
+      if (e.type === 'cut' && !readOnly && deleteElements(doc, selection, LOCAL).length)
+        notify(t('board.planBaseKept'));
       return;
     }
     if (readOnly) return;
@@ -2968,7 +2972,17 @@ export function Canvas({
   // Editing a swatch opens its colour picker, with the board's other colours (#308).
   const editedEl = editing ? snap.byId.get(editing) : undefined;
   const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
-  const editedPlan = editedEl?.type === 'plan' && !readOnly ? editedEl : null;
+  // A set plan whose lists the server has not prepared opens read-only, saying why (canvas-core
+  // planListsReady): a client never converts or makes them.
+  const planNotReady =
+    editedEl?.type === 'plan' && !readOnly && !planListsReady(doc, editedEl.id) ? editedEl : null;
+  const editedPlan = editedEl?.type === 'plan' && !readOnly && !planNotReady ? editedEl : null;
+  useEffect(() => {
+    if (!planNotReady) return;
+    setEditing(null);
+    setViewedPlanId(planNotReady.id);
+    notify(t('board.planListsNotReady'));
+  }, [planNotReady, setEditing, notify, t]);
   const isPhone = useIsPhone();
   const { openScene } = usePlanNav();
   const boardScenes = useMemo(

@@ -2001,7 +2001,9 @@
       "pin": "Poner en la barra",
       "pinned": "En la barra",
       "pinFor": "Poner {{name}} en la barra"
-    }
+    },
+    "planListsNotReady": "Esta planta del set espera a que el servidor actualice sus listas: vuelve a cargar el tablero para editarla.",
+    "planBaseKept": "La planta del set se queda: uno de sus setups espera a que el servidor actualice sus listas. Vuelve a cargar el tablero e inténtalo de nuevo."
   },
   "tags": {
     "title": "Etiquetas",
