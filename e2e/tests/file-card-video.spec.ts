@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { singleAssetRoute } from '../helpers/assets.ts';
+import { omitFromLookup } from '../helpers/assets.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 const shots = process.env.E2E_SHOTS;
@@ -223,7 +223,7 @@ test('the card plays the converted copy once ready and stays as it is while prep
   let proxy: unknown = { status: 'processing', progress: 42, url: null };
   // No ladder: the worker may have made its rungs by the time the seed read the asset, and a
   // ready rung plays at once (decision 0128), so the card would never show "preparing" (#744).
-  await singleAssetRoute(page);
+  await omitFromLookup(page, [assetId]);
   await page.route(`**/api/v1/assets/${assetId}`, (route) =>
     route.fulfill({ json: { ...asset, proxy, playback: null } }),
   );
@@ -301,7 +301,7 @@ test('a finger plays a video on a phone', async ({ page, browser, baseURL }) => 
 async function portraitBoard(page: Page, base: string, zoom: number) {
   const seeded = await seedVideos(page, base);
   const { asset, assetId, project } = seeded;
-  await singleAssetRoute(page);
+  await omitFromLookup(page, [assetId]);
   await page.route(`**/api/v1/assets/${assetId}`, (route) =>
     route.fulfill({ json: { ...asset, width: 1080, height: 1920, playback: null } }),
   );
@@ -380,7 +380,7 @@ test('the phone keeps the phone layout in the viewer, its centre buttons inside 
     url: asset.url,
   });
   const renditions = [copy('480', 480, 854), copy('720', 720, 1280), copy('1080', 1080, 1920)];
-  await singleAssetRoute(context);
+  await omitFromLookup(context, [assetId]);
   await context.route(`**/api/v1/assets/${assetId}`, (route) =>
     route.fulfill({
       json: {

@@ -8,7 +8,7 @@ import { createElement } from '@inkadra/canvas-core';
 import { initBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
-import { singleAssetRoute } from '../helpers/assets.ts';
+import { omitFromLookup } from '../helpers/assets.ts';
 import { addFromBar } from '../helpers/phone-board.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -244,7 +244,7 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
 
   // The "Preparing preview" state of a long camera file, shown on the second video.
   const preparing = ids[1] as string;
-  await singleAssetRoute(page);
+  await omitFromLookup(page, [preparing]);
   await page.route(`**/api/v1/assets/${preparing}`, async (route) => {
     const response = await route.fetch();
     const asset = await response.json();
@@ -260,7 +260,12 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
   });
 
   await signInPage(page);
+  // The other cards of the board ask their metadata together, not one request each.
+  const lookup = page.waitForRequest(
+    (r) => r.method() === 'POST' && r.url().endsWith('/api/v1/assets/lookup'),
+  );
   await page.goto(`/p/${projectId}/b/${boardId}`);
+  expect(((await lookup).postDataJSON() as { ids: string[] }).ids.length).toBeGreaterThan(1);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await expect(page.locator('.fcard')).toHaveCount(ids.length - 1);
   await expect(page.locator('.fbadge').filter({ hasText: 'RAW' })).toHaveCount(1);

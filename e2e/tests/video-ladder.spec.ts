@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
-import { singleAssetRoute } from '../helpers/assets.ts';
+import { omitFromLookup } from '../helpers/assets.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 const shots = process.env.E2E_SHOTS;
@@ -196,7 +196,7 @@ test('a camera file gets two rungs, plays in its card and offers them in the vie
   };
   // The real asset once, then fixed answers: no request of the page waits on another.
   const real = (await (await page.request.get(`/api/v1/assets/${assetId}`)).json()) as Asset;
-  await singleAssetRoute(page);
+  await omitFromLookup(page, [assetId]);
   for (const [name, change] of Object.entries(states)) {
     const json = change(real);
     await page.route(`**/api/v1/assets/${assetId}`, (route) => route.fulfill({ json }));
