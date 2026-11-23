@@ -1,7 +1,8 @@
 name: Load test
 
-# The `medium` preset of the load test (#902) against the image of this commit, with Postgres
-# and Valkey, in `all` and in split mode (web + collab + worker). Too slow for every pull
+# The `medium` preset of the load test (#902), then the `dense` scenario (one heavy board, many
+# cursors, a reconnect burst), against the image of this commit, with Postgres and Valkey, in
+# `all` and in split mode (web + collab + worker). Too slow for every pull
 # request: nightly on main, on demand, and on pull requests that change the load test itself.
 # A red night opens an issue, like a red main in ci.yml. See docs/self-hosting/capacity.md.
 on:
@@ -23,7 +24,7 @@ concurrency:
 
 jobs:
   loadtest:
-    name: Load test (medium, ${{ matrix.mode }})
+    name: Load test (medium and dense, ${{ matrix.mode }})
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -85,6 +86,17 @@ jobs:
           [[ $MODE == split ]] && collab=(--collab-url http://localhost:3001)
           METRICS_TOKEN=$(sed -n 's/^METRICS_TOKEN=//p' "$RUNNER_TEMP/.env") \
             pnpm loadtest --preset medium --url http://localhost:3000 "${collab[@]}" --out "loadtest-$MODE"
+      - name: Run the dense scenario
+        # Also after a red medium run: both reports are worth having.
+        if: ${{ !cancelled() }}
+        env:
+          MODE: ${{ matrix.mode }}
+          INKADRA_LOADTEST_CONFIRM: "yes"
+        run: |
+          collab=()
+          [[ $MODE == split ]] && collab=(--collab-url http://localhost:3001)
+          METRICS_TOKEN=$(sed -n 's/^METRICS_TOKEN=//p' "$RUNNER_TEMP/.env") \
+            pnpm loadtest --preset dense --url http://localhost:3000 "${collab[@]}" --out "loadtest-$MODE-dense"
       - name: Server logs
         if: always()
         run: docker compose --env-file "$RUNNER_TEMP/.env" logs --no-color > "loadtest-$MODE-server.log" 2>&1 || true

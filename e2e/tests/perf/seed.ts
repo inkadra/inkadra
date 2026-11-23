@@ -1,6 +1,10 @@
 import { deflateSync } from 'node:zlib';
-import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { createElement, moveIntoParent } from '@inkadra/canvas-core';
+import {
+  HocuspocusProvider,
+  HocuspocusProviderWebsocket,
+  WebSocketStatus,
+} from '@hocuspocus/provider';
+import { addStroke, createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
@@ -27,6 +31,9 @@ export interface SeedOptions {
   account?: Account;
   /** Name of the project whose root board is filled. */
   name?: string;
+  /** Storyboard frames with a drawing, and the range of their stroke counts. */
+  drawnFrames?: number;
+  strokesPerFrame?: [number, number];
 }
 
 export interface Seeded {
@@ -35,6 +42,8 @@ export interface Seeded {
   cookie: string;
   counts: Record<string, number>;
   images: 'uploaded' | 'unavailable';
+  /** Strokes drawn on the frames. */
+  strokes: number;
 }
 
 /**
@@ -197,7 +206,12 @@ export async function pushBoardDoc(
 }
 
 export async function seedPerfBoard(base: string, options: SeedOptions = {}): Promise<Seeded> {
-  const { total = 1000, account = perfUser } = options;
+  const {
+    total = 1000,
+    account = perfUser,
+    drawnFrames = 0,
+    strokesPerFrame = [300, 600],
+  } = options;
   const name = options.name ?? `Carico ${new Date().toISOString().slice(11, 19)}`;
   const cookie = await signIn(base, account);
   const res = await fetch(`${base}/api/v1/projects`, {
@@ -221,6 +235,10 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
 
   const doc = new Y.Doc();
   const counts: Record<string, number> = {};
+  let strokes = 0;
+  // Same board every run: a seeded generator (mulberry32) for the drawings.
+  const random = seeded(1);
+  const int = (min: number, max: number) => min + Math.floor(random() * (max - min + 1));
   const opts = { userId: null };
   const cols = 40;
   doc.transact(() => {
@@ -252,6 +270,24 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
       moveIntoParent(doc, kids, col.id, 0);
     }
     slot = cols * 2;
+    // A storyboard: frames drawn with several hundred pencil strokes each, as a film's are.
+    for (let f = 0; f < drawnFrames; f++) {
+      const frame = createElement(doc, 'frame', next(), { action: `Inquadratura ${f + 1}` }, opts);
+      count('frame');
+      const n = int(strokesPerFrame[0], strokesPerFrame[1]);
+      for (let k = 0; k < n; k++) {
+        const points: number[] = [];
+        let x = int(0, 4096);
+        let y = int(0, 4096);
+        for (let p = int(8, 60); p > 0; p--) {
+          x = Math.max(0, Math.min(4096, x + int(-80, 80)));
+          y = Math.max(0, Math.min(4096, y + int(-80, 80)));
+          points.push(x, y);
+        }
+        addStroke(doc, frame.id, { tool: 'pencil', color: '#1F2328', width: int(1, 12), points });
+      }
+      strokes += n;
+    }
     for (let i = 0; placed < total; i++) {
       const at = next();
       const kind = i % 10;
@@ -302,5 +338,103 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
     cookie,
     counts,
     images: assets.length > 0 ? 'uploaded' : 'unavailable',
+    strokes,
+  };
+}
+
+/**
+ * Other people on the board: each a connection of its own through the collaboration server,
+ * moving its cursor every 50 ms (the most the web app sends) over the seeded area. They are
+ * the account's other tabs, which the board shows as peers like anyone else's.
+ */
+export async function startPeers(base: string, cookie: string, boardId: string, count: number) {
+  class CookieSocket extends WebSocket {
+    constructor(address: string, protocols?: string | string[]) {
+      super(address, protocols, { headers: { cookie, origin: base } });
+      // Closing a socket still connecting emits `error`, maybe after the provider dropped its
+      // listener: without one it would throw out of the process (as in the load test's).
+      this.on('error', () => {});
+    }
+  }
+  // Every resource is registered as soon as it exists, so a peer that fails to sync takes the
+  // whole group down with it: no interval, socket or document is left behind, and the others
+  // stop waiting for their sync.
+  const cleanups: Array<() => void> = [];
+  const rollback = new AbortController();
+  const stop = () => {
+    rollback.abort();
+    for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+  };
+  // Per peer: cursor moves published while connected and synced, connections lost, and whether
+  // it is connected and synced now.
+  const moves = Array.from({ length: count }, () => 0);
+  const drops = Array.from({ length: count }, () => 0);
+  const live: Array<() => boolean> = Array.from({ length: count }, () => () => false);
+  try {
+    await Promise.all(
+      Array.from({ length: count }, async (_, i) => {
+        const document = new Y.Doc();
+        cleanups.push(() => document.destroy());
+        const websocketProvider = new HocuspocusProviderWebsocket({
+          url: `${base.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
+          WebSocketPolyfill: CookieSocket,
+        });
+        cleanups.push(() => websocketProvider.destroy());
+        const provider = new HocuspocusProvider({
+          websocketProvider,
+          name: boardDocName(boardId),
+          document,
+        });
+        cleanups.push(() => provider.destroy());
+        provider.on('close', () => {
+          drops[i] = (drops[i] ?? 0) + 1;
+        });
+        live[i] = () => provider.synced && websocketProvider.status === WebSocketStatus.Connected;
+        provider.attach();
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            timeout = setTimeout(() => reject(new Error('Peer sync timed out')), 20_000);
+            rollback.signal.addEventListener('abort', () => reject(new Error('Peers rolled back')));
+            provider.on('synced', () => resolve());
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (rollback.signal.aborted) return;
+        // Same path every run: a seeded walk over the seeded area.
+        const random = seeded(i + 1);
+        const at = { x: 1500 + i * 3000, y: 1500 };
+        const timer = setInterval(() => {
+          at.x = Math.max(0, Math.min(11_000, at.x + (random() - 0.5) * 120));
+          at.y = Math.max(0, Math.min(7_000, at.y + (random() - 0.5) * 90));
+          provider.awareness?.setLocalState({ cursor: { ...at }, selection: [], editing: null });
+          // A move made without a connection reaches nobody: it does not count.
+          if (live[i]?.()) moves[i] = (moves[i] ?? 0) + 1;
+        }, 50);
+        cleanups.push(() => clearInterval(timer));
+      }),
+    );
+  } catch (err) {
+    stop();
+    throw err;
+  }
+  return {
+    /** Each peer's cursor moves sent while connected, its lost connections, and its state now. */
+    state: () =>
+      moves.map((n, i) => ({ moves: n, drops: drops[i] ?? 0, live: live[i]?.() ?? false })),
+    stop,
+  };
+}
+
+/** mulberry32: the same seed, the same numbers. */
+function seeded(seed: number) {
+  let state = seed >>> 0 || 1;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
   };
 }
