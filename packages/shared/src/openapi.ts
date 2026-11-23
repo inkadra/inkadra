@@ -265,7 +265,12 @@ const errors = {
     description: 'Not signed in (for a recognised bearer token, details: InvalidToken)',
     ...json(ApiError),
   },
-  403: { description: 'Not allowed', ...json(ApiError) },
+  403: {
+    description:
+      'Not allowed; also a token whose scope does not cover this route (decision 0137) or an ' +
+      'administrator who must set up two-factor first',
+    ...json(ApiError),
+  },
   404: { description: 'Not found', ...json(ApiError) },
   503: {
     description:
@@ -570,7 +575,11 @@ registry.registerPath({
   security: secured,
   summary:
     'Open to-do items assigned to you in active projects and readable boards, ordered by due date.',
-  responses: { 200: { description: 'My tasks', ...json(MyTasks) }, 401: errors[401] },
+  responses: {
+    200: { description: 'My tasks', ...json(MyTasks) },
+    401: errors[401],
+    403: errors[403],
+  },
 });
 
 /** Days belong to the Production board once a project has one (decision 0123). */
@@ -711,6 +720,7 @@ registry.registerPath({
     200: { description: 'Shooting days', ...json(MySchedule) },
     400: errors[400],
     401: errors[401],
+    403: errors[403],
   },
 });
 
@@ -1016,7 +1026,11 @@ registry.registerPath({
   path: v1('/me'),
   tags: ['Users'],
   security: secured,
-  responses: { 200: { description: 'Signed-in user', ...json(User) }, 401: errors[401] },
+  responses: {
+    200: { description: 'Signed-in user', ...json(User) },
+    401: errors[401],
+    403: errors[403],
+  },
 });
 registry.registerPath({
   method: 'patch',
@@ -1987,6 +2001,7 @@ registry.registerPath({
     },
     400: errors[400],
     401: errors[401],
+    403: errors[403],
   },
 });
 
@@ -2003,6 +2018,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Boards', ...json(page(Board)) },
     401: errors[401],
+    403: errors[403],
   },
 });
 
@@ -2651,6 +2667,7 @@ registry.registerPath({
       ...json(ApiError),
     },
     ...planSheetTooMany,
+    403: errors[403],
   },
 });
 
@@ -2903,6 +2920,7 @@ registry.registerPath({
     200: { description: 'Notifications', ...json(page(Notification)) },
     401: errors[401],
     400: errors[400],
+    403: errors[403],
   },
 });
 registry.registerPath({
@@ -2912,7 +2930,11 @@ registry.registerPath({
   security: secured,
   summary: 'Number for the badge. Cheap enough to poll every minute.',
   description: 'Counts only what the list would show: the same access filter applies.',
-  responses: { 200: { description: 'Count', ...json(UnreadCount) }, 401: errors[401] },
+  responses: {
+    200: { description: 'Count', ...json(UnreadCount) },
+    401: errors[401],
+    403: errors[403],
+  },
 });
 registry.registerPath({
   method: 'post',
@@ -2946,6 +2968,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Preferences', ...json(NotificationPreferences) },
     401: errors[401],
+    403: errors[403],
   },
 });
 registry.registerPath({
@@ -2965,6 +2988,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Preferences', ...json(UserPreferences) },
     401: errors[401],
+    403: errors[403],
   },
 });
 registry.registerPath({

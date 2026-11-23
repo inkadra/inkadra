@@ -13885,7 +13885,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -13974,7 +13974,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14103,7 +14103,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14199,7 +14199,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14300,7 +14300,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14439,7 +14439,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14523,7 +14523,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14609,7 +14609,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14698,7 +14698,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14787,7 +14787,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14869,7 +14869,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14993,7 +14993,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15102,7 +15102,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15211,7 +15211,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15330,7 +15330,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15450,7 +15450,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15570,7 +15570,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15670,7 +15670,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15740,7 +15740,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15808,7 +15808,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15923,6 +15923,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -15985,7 +15995,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16094,7 +16104,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16223,7 +16233,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16324,7 +16334,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16416,7 +16426,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16526,7 +16536,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16635,7 +16645,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16755,7 +16765,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16866,6 +16876,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -16916,7 +16936,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17045,7 +17065,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17131,7 +17151,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17200,7 +17220,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17278,7 +17298,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17364,7 +17384,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17442,7 +17462,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17520,7 +17540,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17641,7 +17661,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17753,7 +17773,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17833,7 +17853,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18201,7 +18221,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18285,7 +18305,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18360,6 +18380,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -18416,7 +18446,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18492,7 +18522,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18595,7 +18625,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18667,7 +18697,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18766,7 +18796,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18842,7 +18872,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18902,7 +18932,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19030,7 +19060,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19113,7 +19143,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19307,7 +19337,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19392,7 +19422,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19536,7 +19566,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19601,7 +19631,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19679,7 +19709,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19766,7 +19796,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19844,7 +19874,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19931,7 +19961,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20010,7 +20040,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20099,7 +20129,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20175,7 +20205,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20266,7 +20296,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20344,7 +20374,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20422,7 +20452,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20508,7 +20538,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20606,7 +20636,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20738,7 +20768,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20856,7 +20886,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20946,7 +20976,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21036,7 +21066,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21117,7 +21147,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21208,7 +21238,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21318,7 +21348,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21406,7 +21436,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21482,7 +21512,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21580,7 +21610,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21658,7 +21688,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21744,7 +21774,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21844,7 +21874,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22009,7 +22039,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22145,7 +22175,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22240,7 +22270,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22335,7 +22365,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22423,7 +22453,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22506,7 +22536,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22577,7 +22607,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22660,7 +22690,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22748,7 +22778,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22847,7 +22877,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22947,7 +22977,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23036,7 +23066,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23122,7 +23152,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23221,7 +23251,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23302,7 +23332,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23393,7 +23423,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23491,7 +23521,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23613,7 +23643,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23693,7 +23723,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23792,7 +23822,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23888,7 +23918,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23969,7 +23999,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24099,7 +24129,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24209,7 +24239,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24309,7 +24339,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24430,7 +24460,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24538,7 +24568,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24638,7 +24668,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24734,7 +24764,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24815,7 +24845,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24907,7 +24937,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24990,7 +25020,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25069,7 +25099,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25174,6 +25204,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -25226,6 +25266,16 @@
           },
           "401": {
             "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25296,7 +25346,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25387,7 +25437,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25497,7 +25547,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25588,7 +25638,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25699,7 +25749,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25795,7 +25845,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25895,7 +25945,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25998,7 +26048,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26192,7 +26242,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26295,7 +26345,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26403,7 +26453,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26484,7 +26534,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26565,7 +26615,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26654,7 +26704,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26938,7 +26988,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27047,7 +27097,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27154,7 +27204,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27255,7 +27305,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27359,7 +27409,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27478,7 +27528,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27588,7 +27638,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27679,7 +27729,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27800,7 +27850,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27888,7 +27938,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27976,7 +28026,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28064,7 +28114,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28189,7 +28239,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28327,7 +28377,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28430,7 +28480,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28543,7 +28593,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28655,7 +28705,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28870,6 +28920,16 @@
               }
             }
           },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No role on the board, no such plan, or not a set plan",
             "content": {
@@ -29046,7 +29106,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29156,7 +29216,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29257,7 +29317,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29390,7 +29450,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29490,7 +29550,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29582,7 +29642,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29672,7 +29732,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29762,7 +29822,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29846,7 +29906,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29929,7 +29989,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30028,7 +30088,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30125,7 +30185,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30216,7 +30276,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30327,7 +30387,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30436,7 +30496,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30527,7 +30587,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30639,7 +30699,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30793,7 +30853,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30929,6 +30989,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -30961,6 +31031,16 @@
           },
           "401": {
             "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31022,7 +31102,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31104,7 +31184,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31190,7 +31270,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31255,6 +31335,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -31311,7 +31401,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31377,6 +31467,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -31433,7 +31533,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31534,7 +31634,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31632,7 +31732,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31741,7 +31841,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31832,7 +31932,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31923,7 +32023,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -33497,7 +33597,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -33602,7 +33702,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -33723,7 +33823,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35443,7 +35543,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35541,7 +35641,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35671,7 +35771,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35779,7 +35879,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35881,7 +35981,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35983,7 +36083,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -36094,7 +36194,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -36228,7 +36328,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -36329,7 +36429,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -36481,7 +36581,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -36611,7 +36711,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -36711,7 +36811,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -36804,7 +36904,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
