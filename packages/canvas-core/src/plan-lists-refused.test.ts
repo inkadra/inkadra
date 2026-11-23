@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { createElement, deleteElements, listElements } from './board.ts';
 import { addShape, addStroke } from './film.ts';
 import { addPlanIcon, addVariant, type PlanElement, planListsReady } from './plan.ts';
