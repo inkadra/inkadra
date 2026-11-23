@@ -9,8 +9,7 @@ import { board, boardDoc, project, projectMember } from './db/schema.ts';
 import { notify, Recipients } from './notifications.ts';
 
 /** Read raw: one item that no longer fits the schema must not hide or block the others. */
-function rawTodoItems(doc: Y.Doc) {
-  const items = new Map<string, { elementId: string; itemId: string; item: Y.Map<unknown> }>();
+function* eachTodoItem(doc: Y.Doc) {
   for (const map of roots(doc).elements.values()) {
     const list = map.get('items');
     if (map.get('type') !== 'todo' || !(list instanceof Y.Array)) continue;
@@ -18,9 +17,14 @@ function rawTodoItems(doc: Y.Doc) {
       if (item instanceof Y.Map) {
         const elementId = String(map.get('id'));
         const itemId = String(item.get('id'));
-        items.set(`${elementId}:${itemId}`, { elementId, itemId, item });
+        yield { key: `${elementId}:${itemId}`, elementId, itemId, item };
       }
   }
+}
+
+function rawTodoItems(doc: Y.Doc) {
+  const items = new Map<string, { elementId: string; itemId: string; item: Y.Map<unknown> }>();
+  for (const { key, ...entry } of eachTodoItem(doc)) items.set(key, entry);
   return items;
 }
 
@@ -189,28 +193,54 @@ export function trackAssignments(doc: Y.Doc): () => ReturnType<typeof assignedIt
 }
 
 /**
- * Whether an update can assign a task or set a due date (#755). Todo items are Y.Maps, so such a
- * write is always an item under one of TASK_KEYS; the full check, which copies the whole board,
- * runs only then. A first value carries its key; a new value of a key that had one carries only
- * its origin, the value it replaces, so the key is read from that item, in the document or earlier
- * in the update. A deletion alone assigns nobody: at most it uncovers what someone already wrote
- * under the same key. Anything that can't be resolved here gets the full check.
+ * Keys under which a change at any depth can change what the task check reads: an id kept in a
+ * shared type (a Y.Text) is read with String.
+ */
+const VALUE_KEYS = new Set(['assigneeId', 'dueDate', 'id', 'type']);
+
+type Struct = ReturnType<typeof Y.decodeUpdate>['structs'][number];
+/** Where an item sits: the item of the type that holds it (null: a root type) and its map key. */
+type Place = { parent: Y.Item | null; key: string | null } | undefined;
+
+/**
+ * Whether an update can assign a task or set a due date (#755), read from the update without
+ * applying it: the full check, which copies the whole board, runs only then. An item can change
+ * what the check reads only by where it goes: under one of TASK_KEYS, or anywhere inside a type
+ * held under one of VALUE_KEYS. A first value carries its place; a new value of a key that had one,
+ * and content inside a type, carry only their origin, which sits in the same place: in the
+ * document, earlier in the update, or in the structs Yjs holds back. A deletion is read the same
+ * way, from the items it removes; one removed with its parent (a whole card, a whole item) changes
+ * nothing that remains. Anything that can't be resolved here gets the full check.
  */
 export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
-  // Structs or deletions held back for a missing earlier update were never checked against this
-  // test (they could not be read yet): an update that fills the gap integrates them, so the full
-  // check, whose candidate includes them, has to run (#880 review).
-  if (document.store.pendingStructs || document.store.pendingDs) return true;
+  const { store } = document;
   try {
-    const { structs } = Y.decodeUpdate(update);
-    // The structs of each client, in clock order as an update lists them, for a binary search.
-    const byClient = new Map<number, Array<(typeof structs)[number]>>();
-    for (const s of structs) {
+    const { structs, ds } = Y.decodeUpdate(update);
+    // Structs Yjs holds back (pending) were never checked (they could not be read yet). The next
+    // update integrates them once a clock they wait for is there: one it brings, or one the
+    // server wrote itself since. They count as part of such an update (#880 review); any other
+    // update leaves them where they are.
+    const pending = store.pendingStructs;
+    const held = pending ? Y.decodeUpdateV2(pending.update).structs : [];
+    // How far each client's clocks reach once the update is in: Yjs integrates a client's structs
+    // only in order from the clock it has, so a sender past a gap reaches no further.
+    const reach = (client: number) => reached.get(client) ?? Y.getState(store, client);
+    const reached = new Map<number, number>();
+    for (const s of [...structs].sort((a, b) => a.id.clock - b.id.clock))
+      if (s.id.clock <= reach(s.id.client))
+        reached.set(s.id.client, Math.max(reach(s.id.client), s.id.clock + s.length));
+    const releases =
+      pending !== null && [...pending.missing].some(([client, clock]) => clock < reach(client));
+    // The structs of each client in clock order, for a binary search; held ones resolve origins.
+    const byClient = new Map<number, Struct[]>();
+    for (const s of [...structs, ...held]) {
       const list = byClient.get(s.id.client);
       if (list) list.push(s);
       else byClient.set(s.id.client, [s]);
     }
-    const sent = (id: Y.ID) => {
+    for (const list of byClient.values()) list.sort((a, b) => a.id.clock - b.id.clock);
+    const find = (id: Y.ID): Struct | undefined => {
+      if (id.clock < Y.getState(store, id.client)) return Y.getItem(store, id);
       const list = byClient.get(id.client);
       if (!list) return undefined;
       let lo = 0;
@@ -224,58 +254,101 @@ export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
       }
       return undefined;
     };
-    // The key of each item read so far: a chain of origins is walked once, not once per item,
+    // Longer than anything there is to read, nesting of the board included: a cycle, which only a
+    // malformed update makes.
+    const limit = structs.length + held.length + 1000;
+    // The place of each item read so far: a chain of origins is walked once, not once per item,
     // so a long chained update stays linear (#880 review).
-    const keys = new Map<unknown, string | null | undefined>();
-    /** The map key of an item, null when it is not a map value, undefined when unknown. */
-    const keyOf = (first: (typeof structs)[number] | undefined): string | null | undefined => {
-      const chain: unknown[] = [];
-      let item = first;
-      let key: string | null | undefined;
+    const places = new Map<Struct, Place>();
+    const placeOf = (first: Struct | undefined): Place => {
+      const chain: Struct[] = [];
+      let s = first;
+      let place: Place;
       for (;;) {
-        if (!(item instanceof Y.Item)) {
-          key = undefined;
+        if (!(s instanceof Y.Item)) break;
+        if (places.has(s)) {
+          place = places.get(s);
           break;
         }
-        if (keys.has(item)) {
-          key = keys.get(item);
+        // In the document, or a decoded item that names a root type itself.
+        if (s.parent instanceof Y.AbstractType) {
+          place = { parent: s.parent._item, key: s.parentSub };
           break;
         }
-        chain.push(item);
-        if (item.parentSub !== null) {
-          key = item.parentSub;
-          break;
-        }
-        // Read from the document: a decoded item names neither its key nor its parent.
-        if (item.parent !== null && item.origin === null && item.rightOrigin === null) {
-          key = null;
-          break;
-        }
-        const origin = item.origin ?? item.rightOrigin;
+        chain.push(s);
+        // A decoded item names its parent and key only when it has no origin.
+        const origin = s.origin ?? s.rightOrigin;
         if (!origin) {
-          key = null;
+          const parent = s.parent as Y.ID | string | null;
+          if (typeof parent === 'string') place = { parent: null, key: s.parentSub };
+          else if (parent) {
+            const type = find(parent);
+            if (type instanceof Y.Item) place = { parent: type, key: s.parentSub };
+          }
           break;
         }
-        if (origin.clock < Y.getState(document.store, origin.client)) {
-          const stored = Y.getItem(document.store, origin);
-          key = stored instanceof Y.Item ? stored.parentSub : undefined;
+        s = find(origin);
+        if (chain.length > limit) break;
+      }
+      for (const c of chain) places.set(c, place);
+      return place;
+    };
+    /** Whether a type is held, at any depth, under one of VALUE_KEYS. */
+    const inValue = new Map<Y.Item, boolean>();
+    const heldInValue = (type: Y.Item | null): boolean => {
+      const path: Y.Item[] = [];
+      let found = false;
+      while (type) {
+        const known = inValue.get(type);
+        if (known !== undefined) {
+          found = known;
           break;
         }
-        item = sent(origin);
-        // Longer than the update: a cycle, which only a malformed update makes.
-        if (chain.length > structs.length) {
-          key = undefined;
+        path.push(type);
+        const place = placeOf(type);
+        if (!place || (place.key !== null && VALUE_KEYS.has(place.key)) || path.length > limit) {
+          found = true;
           break;
+        }
+        type = place.parent;
+      }
+      for (const t of path) inValue.set(t, found);
+      return found;
+    };
+    const touches = (place: Place) =>
+      !place || (place.key !== null && TASK_KEYS.has(place.key)) || heldInValue(place.parent);
+
+    // Structs past a sender's gap are held back with the rest, and read when those are released.
+    const integrated = releases
+      ? [...structs, ...held]
+      : structs.filter((s) => s.id.clock < reach(s.id.client));
+    for (const s of integrated) if (s instanceof Y.Item && touches(placeOf(s))) return true;
+
+    // Deletions of items the document holds, with those Yjs holds back (applied with every update).
+    // Those of items it doesn't have yet apply to the structs read above, in the place read there.
+    const deletions = [ds.clients];
+    if (store.pendingDs) deletions.push(Y.decodeUpdateV2(store.pendingDs).ds.clients);
+    const removed = new Set<Y.Item>();
+    for (const [client, ranges] of deletions.flatMap((clients) => [...clients])) {
+      const list = store.clients.get(client);
+      if (!list) continue;
+      const state = Y.getState(store, client);
+      for (const { clock, len } of ranges) {
+        const end = Math.min(clock + len, state);
+        if (clock >= end) continue;
+        for (let i = Y.findIndexSS(list, clock); i < list.length; i++) {
+          const s = list[i];
+          if (!s || s.id.clock >= end) break;
+          if (s instanceof Y.Item && !s.deleted) removed.add(s);
         }
       }
-      for (const c of chain) keys.set(c, key);
-      return key;
-    };
-    return structs.some((s) => {
-      if (!(s instanceof Y.Item)) return false;
-      const key = keyOf(s);
-      return key === undefined || (key !== null && TASK_KEYS.has(key));
-    });
+    }
+    for (const item of removed) {
+      const parent = (item.parent as Y.AbstractType<unknown>)._item;
+      if (parent && (parent.deleted || removed.has(parent))) continue;
+      if (touches(placeOf(item))) return true;
+    }
+    return false;
   } catch {
     return true;
   }
@@ -299,17 +372,27 @@ export async function validateTaskUpdate(
   try {
     Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
     Y.applyUpdate(candidate, update);
-    const stored = rawTodoItems(document);
     let assigns = false;
-    for (const [key, { item }] of rawTodoItems(candidate)) {
-      const was = stored.get(key)?.item;
+    const check = (item: Y.Map<unknown>, was: Y.Map<unknown> | undefined) => {
       const assigneeId = item.get('assigneeId');
       const dueDate = item.get('dueDate');
       const newAssignee = assigneeId !== was?.get('assigneeId');
       // What is already stored can't be helped by refusing this sender.
-      if (!newAssignee && dueDate === was?.get('dueDate')) continue;
+      if (!newAssignee && dueDate === was?.get('dueDate')) return;
       TaskFields.parse({ assigneeId, dueDate });
       if (newAssignee && assigneeId) assigns = true;
+    };
+    const stored = rawTodoItems(document);
+    for (const [key, { item }] of rawTodoItems(candidate)) check(item, stored.get(key)?.item);
+    // Ids are not unique on every board: an item that shares one with another hides it from the
+    // check by key above. Each item also against itself, by its Yjs id, which is unique; one whose
+    // key changed counts as new there, as it does by key.
+    const yjsId = (item: Y.Map<unknown>) => `${item._item?.id.client}:${item._item?.id.clock}`;
+    const before = new Map<string, { key: string; item: Y.Map<unknown> }>();
+    for (const entry of eachTodoItem(document)) before.set(yjsId(entry.item), entry);
+    for (const { key, item } of eachTodoItem(candidate)) {
+      const was = before.get(yjsId(item));
+      check(item, was?.key === key ? was.item : undefined);
     }
     if (!assigns) return;
     if (!actorId) throw new Error('Guests cannot assign tasks');
