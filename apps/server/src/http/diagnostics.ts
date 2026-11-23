@@ -8,6 +8,7 @@ import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { readVideoEncoder } from '../media/encoder-setting.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
+import { trustsPeer } from '../request-origin.ts';
 import type { Storage } from '../storage.ts';
 import { readVideoSettings } from '../video-settings.ts';
 import { requireSession } from './auth-routes.ts';
@@ -113,6 +114,9 @@ export async function runChecks(
     );
   }
 
+  const narrow = proxyTrustNarrow(config.TRUST_PROXY, request);
+  add('proxy_trust_narrow', narrow.status, narrow.expected, narrow.actual);
+
   try {
     await db.execute(sql`select 1`);
     add('database', 'ok');
@@ -168,6 +172,35 @@ export async function runChecks(
   }
 
   return checks;
+}
+
+/**
+ * The opposite of `proxy_trusted`: TRUST_PROXY must trust only the proxy, or clients can claim
+ * any address. It fails when TRUST_PROXY is `true`, or when this request reached the server
+ * from an address TRUST_PROXY trusts but without X-Forwarded-For, so straight from a client.
+ * Loopback is left out: a proxy, a health check or a shell on the same machine is no client.
+ */
+export function proxyTrustNarrow(
+  trustProxy: boolean | string,
+  request: Pick<Diagnostics['request'], 'peerAddress' | 'forwardedFor'>,
+): Pick<DiagnosticCheck, 'status' | 'expected' | 'actual'> {
+  const peer = request.peerAddress;
+  const direct =
+    trustProxy !== true &&
+    request.forwardedFor === null &&
+    peer !== '' &&
+    !trustsPeer('loopback', peer) &&
+    trustsPeer(trustProxy, peer);
+  return {
+    status: trustProxy === true || direct ? 'warning' : 'ok',
+    expected: 'TRUST_PROXY lists only the proxy’s address',
+    actual:
+      trustProxy === true
+        ? 'TRUST_PROXY=true trusts every address'
+        : direct
+          ? `TRUST_PROXY=${trustProxy} trusts ${peer}, which sent no X-Forwarded-For`
+          : `TRUST_PROXY=${String(trustProxy)}`,
+  };
 }
 
 function message(err: unknown) {

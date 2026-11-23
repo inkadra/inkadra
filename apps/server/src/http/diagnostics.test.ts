@@ -119,6 +119,11 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
       expected: `TRUST_PROXY includes ${body.request.peerAddress}`,
       actual: 'TRUST_PROXY=127.0.0.1',
     });
+    // inject() connects from loopback, which the check leaves out.
+    expect(check(body, 'proxy_trust_narrow')).toMatchObject({
+      status: 'ok',
+      actual: 'TRUST_PROXY=127.0.0.1',
+    });
     expect(check(body, 'data_dir_writable')?.actual).toBe(deps.root);
     expect(check(body, 'video_encoding')).toEqual({
       id: 'video_encoding',
