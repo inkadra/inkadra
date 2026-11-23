@@ -457,6 +457,8 @@ export function createCollabServer(deps: {
   unsavedDir?: string;
   /** Oldest client schema that may write (decision 0102); tests lower it. */
   minWriterSchema?: number;
+  /** Waits GUEST_HIDING_STORE_MS, then runs; returns a cancel. Tests drive it by hand. */
+  hidingTimer?: (run: () => void) => () => void;
   /** Where a board that cannot be saved or opened goes for the Server page (#514). */
   monitor?: { store: MonitorStore; role: 'collab' | 'all' };
 }) {
@@ -735,8 +737,19 @@ export function createCollabServer(deps: {
   const guestHiding = new WeakMap<Y.Doc, () => boolean>();
   /** Counts each change that hid from guests a card they saw, so a store knows if it wrote it. */
   const hidingCount = new WeakMap<Y.Doc, number>();
-  /** The pending early store of each board with a card newly hidden from guests. */
-  const hidingStores = new Map<Y.Doc, NodeJS.Timeout>();
+  /** The count the last store that succeeded had read. */
+  const storedHiding = new WeakMap<Y.Doc, number>();
+  /** Boards a store is writing: an early store waits for it instead of queueing behind it. */
+  const storing = new WeakSet<Y.Doc>();
+  /** The pending early store of each board with a card newly hidden from guests: its cancel. */
+  const hidingStores = new Map<Y.Doc, () => void>();
+  const hidingTimer =
+    deps.hidingTimer ??
+    ((run: () => void) => {
+      const timer = setTimeout(run, GUEST_HIDING_STORE_MS);
+      timer.unref();
+      return () => clearTimeout(timer);
+    });
   /** No early store can be due: frozen boards and a shutdown don't store, and a retry will. */
   const mayStoreSoon = (document: Y.Doc) =>
     !closing && !frozen.has(document) && !unsaved.has(document);
@@ -744,17 +757,20 @@ export function createCollabServer(deps: {
     const { document, documentName } = payload;
     // One per board until it runs, so a burst of changes stores once.
     if (hidingStores.has(document) || !mayStoreSoon(document)) return;
-    const timer = setTimeout(() => {
+    const cancel = hidingTimer(() => {
       hidingStores.delete(document);
       if (!mayStoreSoon(document) || server.hocuspocus.documents.get(documentName) !== document)
         return;
+      // Never queued behind a store in flight: that store, once written, arms it again if the
+      // state it read was older; a store that already read the hiding makes it moot.
+      if (storing.has(document)) return;
+      if ((hidingCount.get(document) ?? 0) <= (storedHiding.get(document) ?? 0)) return;
       void server.hocuspocus.storeDocumentHooks(document, payload, true);
-    }, GUEST_HIDING_STORE_MS);
-    timer.unref();
-    hidingStores.set(document, timer);
+    });
+    hidingStores.set(document, cancel);
   };
   function cancelHiding(document: Y.Doc) {
-    clearTimeout(hidingStores.get(document));
+    hidingStores.get(document)?.();
     hidingStores.delete(document);
   }
   /** At shutdown, after one last failed store: keep the board on disk for the next start. */
@@ -1091,111 +1107,124 @@ export function createCollabServer(deps: {
       const { document, documentName } = payload;
       const boardId = parseBoardDocName(documentName);
       if (!boardId) return;
-      // A sample: the first store of an open board, and again after its schema changes, as
-      // validating every card on each store walks the whole board. An element that becomes
-      // invalid later is logged when the board is next opened.
-      const version = getSchemaVersion(document);
-      if (validatedAt.get(document) !== version) {
-        validatedAt.set(document, version);
-        const issues = validateBoardDoc(document);
-        if (issues.length > 0)
-          log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
-      }
-      if (frozen.has(document)) return stored(document);
-      const pending = new Map(pendingAssignments.get(document));
-      const hiding = hidingCount.get(document);
-      const state = Y.encodeStateAsUpdate(document);
-      sizes.measured(document, state.byteLength);
-      if (limits?.freeze && state.byteLength > limits.stateBytes) {
-        freeze(document, boardId);
-        return stored(document);
-      }
-      const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
-      const elementCount = document.getMap('elements').size;
+      let wrote = false;
+      storing.add(document);
       try {
-        const asked = performance.now();
-        let began = 0;
-        const write = db.transaction(async (tx) => {
-          began = performance.now();
-          // A database that stopped answering fails the store (retried) instead of holding it.
-          await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
-          return storeIfBoardExists(tx, boardId, state, schemaVersion);
-        });
-        const written = await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
-        storeTimes.record(began - asked, performance.now() - asked);
-        if (!written) {
-          log.info({ boardId }, 'board deleted while open: document not stored');
-          return stored(document);
-        }
-      } catch (err) {
-        // Deleted between the check and the write: there is nothing to keep it for either.
-        // Returning lets Hocuspocus unload the document.
-        if (boardGone(err)) {
-          log.info({ boardId }, 'board deleted while open: document not stored');
-          return stored(document);
-        }
-        // The structured line and the Server page problem.
-        reportBoard('board_save_failed', boardId, err);
-        if (closing) {
+        return await (async () => {
+          // A sample: the first store of an open board, and again after its schema changes, as
+          // validating every card on each store walks the whole board. An element that becomes
+          // invalid later is logged when the board is next opened.
+          const version = getSchemaVersion(document);
+          if (validatedAt.get(document) !== version) {
+            validatedAt.set(document, version);
+            const issues = validateBoardDoc(document);
+            if (issues.length > 0)
+              log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
+          }
+          if (frozen.has(document)) return stored(document);
+          const pending = new Map(pendingAssignments.get(document));
+          const hiding = hidingCount.get(document);
+          const state = Y.encodeStateAsUpdate(document);
+          sizes.measured(document, state.byteLength);
+          if (limits?.freeze && state.byteLength > limits.stateBytes) {
+            freeze(document, boardId);
+            return stored(document);
+          }
+          const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
+          const elementCount = document.getMap('elements').size;
+          try {
+            const asked = performance.now();
+            let began = 0;
+            const write = db.transaction(async (tx) => {
+              began = performance.now();
+              // A database that stopped answering fails the store (retried) instead of holding it.
+              await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
+              return storeIfBoardExists(tx, boardId, state, schemaVersion);
+            });
+            const written = await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
+            storeTimes.record(began - asked, performance.now() - asked);
+            if (!written) {
+              log.info({ boardId }, 'board deleted while open: document not stored');
+              return stored(document);
+            }
+          } catch (err) {
+            // Deleted between the check and the write: there is nothing to keep it for either.
+            // Returning lets Hocuspocus unload the document.
+            if (boardGone(err)) {
+              log.info({ boardId }, 'board deleted while open: document not stored');
+              return stored(document);
+            }
+            // The structured line and the Server page problem.
+            reportBoard('board_save_failed', boardId, err);
+            if (closing) {
+              stored(document);
+              log.error({ err, boardId }, 'board not stored at shutdown');
+              // Returning lets the shutdown finish instead of waiting for a store that cannot happen.
+              return spill(boardId, document);
+            }
+            const retryInMs = retryStore(payload);
+            log.error({ err, boardId, retryInMs }, 'board not stored: retrying');
+            throw err;
+          }
           stored(document);
-          log.error({ err, boardId }, 'board not stored at shutdown');
-          // Returning lets the shutdown finish instead of waiting for a store that cannot happen.
-          return spill(boardId, document);
-        }
-        const retryInMs = retryStore(payload);
-        log.error({ err, boardId, retryInMs }, 'board not stored: retrying');
-        throw err;
-      }
-      stored(document);
-      // A card hidden while this store (or its retry) was writing an older state: store again.
-      if (hidingCount.get(document) !== hiding) storeSoon(payload);
-      // Best effort (decision 0120): a failure loses who wrote, never the document.
-      const written = writers.get(document);
-      writers.delete(document);
-      if (written)
-        try {
-          await storeWriters(db, boardId, written, deps.now?.() ?? new Date());
-        } catch (err) {
-          log.error({ err, boardId }, 'board writers not recorded');
-        }
-      for (const [key, value] of pending) {
-        if (pendingAssignments.get(document)?.get(key) === value)
-          pendingAssignments.get(document)?.delete(key);
-      }
-      for (const [key, item] of pending ?? []) {
-        if (assignedItems(document).get(key)?.assigneeId !== item.assigneeId) continue;
-        try {
-          await notifyAssignment(db, boardId, item.elementId, item.assigneeId, item.actorId);
-        } catch (err) {
-          log.error({ err, boardId }, 'task notification failed');
-        }
-      }
-      // The document is safe at this point. If indexing fails, the backfill job retries it
-      // (indexed_at stays older than updated_at).
-      try {
-        await db.transaction(async (tx) => {
-          await writeBoardIndex(tx, boardId, document);
-          await tx
-            .update(board)
-            .set({ docSchemaVersion: schemaVersion, updatedAt: sql`${board.updatedAt}` })
-            .where(eq(board.id, boardId));
-        });
-      } catch (err) {
-        log.error({ err, boardId }, 'board search index not updated');
-      }
-      // Decision 0013: an automatic version when the last one is more than an hour old.
-      try {
-        const now = deps.now?.() ?? new Date();
-        const last = lastAutoAt.get(boardId);
-        const elapsed = last === undefined ? Infinity : now.getTime() - last;
-        // Recheck the database if the clock moves backwards.
-        if (elapsed < 0 || elapsed >= AUTO_VERSION_EVERY_MS) {
-          const snap = { state, schemaVersion, elementCount };
-          const takenAt = await takeAutoVersion(db, boardId, snap, now);
-          lastAutoAt.set(boardId, takenAt.getTime());
-        }
-      } catch (err) {
-        log.error({ err, boardId }, 'automatic board version not saved');
+          storedHiding.set(document, hiding ?? 0);
+          wrote = true;
+          // Best effort (decision 0120): a failure loses who wrote, never the document.
+          const written = writers.get(document);
+          writers.delete(document);
+          if (written)
+            try {
+              await storeWriters(db, boardId, written, deps.now?.() ?? new Date());
+            } catch (err) {
+              log.error({ err, boardId }, 'board writers not recorded');
+            }
+          for (const [key, value] of pending) {
+            if (pendingAssignments.get(document)?.get(key) === value)
+              pendingAssignments.get(document)?.delete(key);
+          }
+          for (const [key, item] of pending ?? []) {
+            if (assignedItems(document).get(key)?.assigneeId !== item.assigneeId) continue;
+            try {
+              await notifyAssignment(db, boardId, item.elementId, item.assigneeId, item.actorId);
+            } catch (err) {
+              log.error({ err, boardId }, 'task notification failed');
+            }
+          }
+          // The document is safe at this point. If indexing fails, the backfill job retries it
+          // (indexed_at stays older than updated_at).
+          try {
+            await db.transaction(async (tx) => {
+              await writeBoardIndex(tx, boardId, document);
+              await tx
+                .update(board)
+                .set({ docSchemaVersion: schemaVersion, updatedAt: sql`${board.updatedAt}` })
+                .where(eq(board.id, boardId));
+            });
+          } catch (err) {
+            log.error({ err, boardId }, 'board search index not updated');
+          }
+          // Decision 0013: an automatic version when the last one is more than an hour old.
+          try {
+            const now = deps.now?.() ?? new Date();
+            const last = lastAutoAt.get(boardId);
+            const elapsed = last === undefined ? Infinity : now.getTime() - last;
+            // Recheck the database if the clock moves backwards.
+            if (elapsed < 0 || elapsed >= AUTO_VERSION_EVERY_MS) {
+              const snap = { state, schemaVersion, elementCount };
+              const takenAt = await takeAutoVersion(db, boardId, snap, now);
+              lastAutoAt.set(boardId, takenAt.getTime());
+            }
+          } catch (err) {
+            log.error({ err, boardId }, 'automatic board version not saved');
+          }
+        })();
+      } finally {
+        storing.delete(document);
+        // A card hidden after this store read the board: its early store, which waited for this
+        // one, is due now. Never after a failure (its retry stores the board) or a store that
+        // could not happen (deleted, frozen, shutdown).
+        if (wrote && (hidingCount.get(document) ?? 0) > (storedHiding.get(document) ?? 0))
+          storeSoon(payload);
       }
     },
   });
@@ -1213,7 +1242,7 @@ export function createCollabServer(deps: {
     // Hocuspocus runs onDestroy only once every board unloaded: a hung store never gets there.
     clearInterval(timer);
     clearInterval(keepalive);
-    for (const pending of hidingStores.values()) clearTimeout(pending);
+    for (const cancel of hidingStores.values()) cancel();
     hidingStores.clear();
     for (const [document, { timer, payload }] of unsaved) {
       clearTimeout(timer);

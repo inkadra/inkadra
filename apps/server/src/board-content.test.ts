@@ -1,7 +1,21 @@
-import { addElement, createBoardDoc, Element, roots, UNSORTED } from '@inkadra/doc-schema';
-import { describe, expect, it } from 'vitest';
+import {
+  addElement,
+  createBoardDoc,
+  Element,
+  hiddenFromGuests,
+  roots,
+  UNSORTED,
+} from '@inkadra/doc-schema';
+import { describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { scheduleSource, trackGuestHiding } from './board-content.ts';
+import { viewOf } from './share-links.ts';
+
+// Counted, to tell a whole board read again from one element read again.
+vi.mock('@inkadra/doc-schema', async (original) => {
+  const schema = await original<typeof import('@inkadra/doc-schema')>();
+  return { ...schema, hiddenFromGuests: vi.fn(schema.hiddenFromGuests) };
+});
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-0000000000aa';
 
@@ -98,6 +112,32 @@ describe('trackGuestHiding', () => {
     const { doc, newlyHidden } = setup();
     roots(doc).elements.delete('shownAAAAAAAA');
     expect(newlyHidden()).toBe(true);
+  });
+
+  it('reorders a card inside its container without reading the board again', () => {
+    const { doc, el, newlyHidden } = setup();
+    vi.mocked(hiddenFromGuests).mockClear();
+    doc.transact(() => {
+      el('cardAAAAAAAAA').set('parent', 'shownAAAAAAAA');
+      el('cardAAAAAAAAA').set('z', 'a5');
+    });
+    expect(newlyHidden()).toBe(false);
+    expect(hiddenFromGuests).not.toHaveBeenCalled();
+  });
+
+  it('tells when a container turns invalid, as share pages leave it out with its cards', () => {
+    const { doc, el, newlyHidden } = setup();
+    el('shownAAAAAAAA').set('w', 0);
+    expect(viewOf(doc).visible.map((v) => v.id)).not.toContain('cardAAAAAAAAA');
+    expect(newlyHidden()).toBe(true);
+  });
+
+  it('ignores a card of an invalid container moved into a hidden one', () => {
+    const { el, newlyHidden } = setup();
+    el('shownAAAAAAAA').set('w', 0);
+    newlyHidden();
+    el('cardAAAAAAAAA').set('parent', 'hiddenAAAAAAA');
+    expect(newlyHidden()).toBe(false);
   });
 
   it('ignores a card moved between two containers that were both hidden', () => {

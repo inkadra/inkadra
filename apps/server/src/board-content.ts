@@ -86,48 +86,67 @@ function guestLookup(elements: Y.Map<Y.Map<unknown>>) {
   };
 }
 
-/** The ids of the elements of a board document that guests of share links can see. */
-function guestVisibleIds(doc: Y.Doc): Set<string> {
-  const { elements } = roots(doc);
-  const lookup = guestLookup(elements);
-  const visible = new Set<string>();
-  for (const id of elements.keys()) if (!hiddenFromGuests(id, lookup)) visible.add(id);
-  return visible;
+/** What the guest projection (`viewOf` in share-links.ts) reads of an element: null if invalid. */
+type GuestInfo = { parent: string | null; guestHidden: boolean } | null;
+
+function guestInfo(elements: Y.Map<Y.Map<unknown>>, id: string): GuestInfo {
+  const map = elements.get(id);
+  if (!(map instanceof Y.Map)) return null;
+  const el = readElement(map);
+  return el?.id === id ? { parent: el.parent, guestHidden: el.guestHidden === true } : null;
 }
 
-/**
- * Whether a transaction can change what guests see: an element added or removed, or a
- * `guestHidden` or `parent` written on one.
- */
-function changesGuestHiding(transaction: Y.Transaction): boolean {
-  const { elements } = roots(transaction.doc);
-  for (const [type, keys] of transaction.changed) {
-    if ((type as unknown) === elements) return true;
-    if (keys.has('guestHidden') || keys.has('parent')) return true;
-  }
-  return false;
-}
+const sameInfo = (a: GuestInfo | undefined, b: GuestInfo | undefined) =>
+  a === b || (!!a && !!b && a.parent === b.parent && a.guestHidden === b.guestHidden);
 
 /**
  * Tells, on each call, whether an element guests could see at the previous call is now hidden
- * from them, by its own flag or through a container (a container deleted counts: what stays
- * inside is hidden). Elements added hidden or moved between containers that were already hidden
- * don't count: guests never saw them. A deleted element doesn't count either, on purpose: guests
- * see it go with the usual store, like any other edit. The board is read again only after a
- * transaction that can change it.
+ * from them, as share pages decide it (`viewOf`): by its own flag, through a container, or by
+ * becoming invalid itself or in a container (a container deleted counts: what stays inside is
+ * hidden). Elements added hidden or moved between containers that were already hidden don't
+ * count: guests never saw them. A deleted element doesn't count either, on purpose: guests see
+ * it go with the usual store, like any other edit.
+ *
+ * Only the elements a change touches are read again (rich text is skipped: it never decides
+ * validity), and the whole board only when one of them changed its parent, its flag or its
+ * validity, or was added or deleted; reordering inside a container rewrites the same parent.
  */
 export function trackGuestHiding(doc: Y.Doc): () => boolean {
-  let visible = guestVisibleIds(doc);
-  let stale = false;
-  doc.on('afterTransaction', (transaction: Y.Transaction) => {
-    if (!stale && changesGuestHiding(transaction)) stale = true;
+  const { elements } = roots(doc);
+  const info = new Map<string, GuestInfo>();
+  for (const id of elements.keys()) info.set(id, guestInfo(elements, id));
+  const lookup = (id: string) => info.get(id) ?? undefined;
+  const visibleIds = () => {
+    const visible = new Set<string>();
+    for (const id of info.keys()) if (!hiddenFromGuests(id, lookup)) visible.add(id);
+    return visible;
+  };
+  let visible = visibleIds();
+  const touched = new Set<string>();
+  elements.observeDeep((events) => {
+    for (const event of events) {
+      if (event.target === elements) {
+        for (const id of (event as Y.YMapEvent<unknown>).keysChanged) touched.add(id);
+        continue;
+      }
+      if (event.target instanceof Y.XmlFragment || event.target instanceof Y.XmlText) continue;
+      const id = event.path[0];
+      if (typeof id === 'string') touched.add(id);
+    }
   });
   return () => {
+    let stale = false;
+    for (const id of touched) {
+      const before = info.get(id);
+      const now = elements.has(id) ? guestInfo(elements, id) : undefined;
+      if (now === undefined) info.delete(id);
+      else info.set(id, now);
+      if (!sameInfo(before, now)) stale = true;
+    }
+    touched.clear();
     if (!stale) return false;
-    stale = false;
     const before = visible;
-    visible = guestVisibleIds(doc);
-    const { elements } = roots(doc);
+    visible = visibleIds();
     for (const id of before) if (!visible.has(id) && elements.has(id)) return true;
     return false;
   };
