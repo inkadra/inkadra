@@ -569,3 +569,220 @@ it('checks removing or replacing a card that shares its id with another', async 
     'concurrent, pending true',
   ]);
 });
+
+/**
+ * An update of one item, encoded by hand: Yjs's API never writes an item with no content, or one
+ * that names both a parent and clocks the receiver already holds.
+ */
+function itemUpdate(item: {
+  client: number;
+  clock?: number;
+  origin?: Y.ID;
+  parent?: string | Y.ID;
+  key?: string;
+  content: { any: Array<string | null> } | { text: string };
+}) {
+  const bytes: number[] = [];
+  const varUint = (n: number) => {
+    while (n > 0x7f) {
+      bytes.push((n & 0x7f) | 0x80);
+      n >>>= 7;
+    }
+    bytes.push(n);
+  };
+  const string = (s: string) => {
+    const utf8 = new TextEncoder().encode(s);
+    varUint(utf8.length);
+    bytes.push(...utf8);
+  };
+  // One client, one struct.
+  for (const n of [1, 1, item.client, item.clock ?? 0]) varUint(n);
+  const ref = 'any' in item.content ? 8 : 4;
+  bytes.push(ref | (item.origin ? 0x80 : 0) | (!item.origin && item.key ? 0x20 : 0));
+  if (item.origin) {
+    varUint(item.origin.client);
+    varUint(item.origin.clock);
+  } else if (typeof item.parent === 'string') {
+    varUint(1);
+    string(item.parent);
+  } else if (item.parent) {
+    varUint(0);
+    varUint(item.parent.client);
+    varUint(item.parent.clock);
+  }
+  if (!item.origin && item.key) string(item.key);
+  if ('any' in item.content) {
+    varUint(item.content.any.length);
+    // lib0's writeAny: 126 for null, 119 then the string.
+    for (const v of item.content.any)
+      if (v === null) bytes.push(126);
+      else {
+        bytes.push(119);
+        string(v);
+      }
+  } else string(item.content.text);
+  varUint(0);
+  return new Uint8Array(bytes);
+}
+
+it('checks an item with no content, which Yjs integrates at the end of what it holds', async () => {
+  const { id, server, items } = boardWithTask();
+  const db = {} as Database;
+  for (const key of ['id', 'assigneeId']) {
+    const entry = items(server).get(0)._map.get(key)!;
+    const update = itemUpdate({ client: 777, origin: entry.id, content: { any: [] } });
+    expect(Y.decodeUpdate(update).structs[0]?.length).toBe(0);
+    expect(mayTouchTasks(server, update)).toBe(true);
+    if (key === 'id')
+      await expect(validateTaskUpdate(db, id, undefined, server, update)).rejects.toThrow(
+        'Guests cannot assign tasks',
+      );
+  }
+});
+
+/** Each to-do item's id, assignee and due date. */
+const todoView = (doc: Y.Doc) =>
+  [...doc.getMap<Y.Map<unknown>>('elements').values()].flatMap((card) =>
+    card.get('items') instanceof Y.Array
+      ? (card.get('items') as Y.Array<Y.Map<unknown>>)
+          .map((item) => [item.get('id'), item.get('assigneeId'), item.get('dueDate')])
+          .map((values) => values.map((v) => (v === undefined ? null : String(v))))
+      : [],
+  );
+
+/** A board as the server holds it and as a copy of what it stores (and sends) reads it. */
+function heldAndStored(memory: Y.Doc) {
+  const stored = new Y.Doc();
+  Y.applyUpdate(stored, Y.encodeStateAsUpdate(memory));
+  return { memory: todoView(memory), stored: todoView(stored) };
+}
+
+/** The same after an update, applied to a copy of the board. */
+function heldAndStoredAfter(server: Y.Doc, update: Uint8Array) {
+  const memory = new Y.Doc();
+  Y.applyUpdate(memory, Y.encodeStateAsUpdate(server));
+  Y.applyUpdate(memory, update);
+  return heldAndStored(memory);
+}
+
+it('refuses an item that overlaps stored clocks and names another place than Yjs writes it to', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  const db = {} as Database;
+  /** The guest's legal write at clock 0, then a second value at clock 1 sent as part of one item. */
+  const cases: Record<
+    string,
+    (b: ReturnType<typeof boardWithTask>, g: Y.Doc) => [unknown, string]
+  > = {
+    assigneeId: (b, g) => [b.items(g).get(0).set('assigneeId', b.id), victim],
+    dueDate: (b, g) => [b.items(g).get(0).set('dueDate', '2026-11-20'), '2026-11-21'],
+    id: (b, g) => [b.items(g).get(0).set('id', b.item), 'other'],
+  };
+  for (const pending of [false, true])
+    for (const [name, write] of Object.entries(cases)) {
+      const b = boardWithTask();
+      const label = `${name}, pending ${pending}`;
+      if (pending) b.holdBack();
+      const guest = b.other();
+      guest.clientID = 555;
+      let second = '';
+      const legal = b.at(guest, () => {
+        second = write(b, guest)[1];
+      });
+      await validateTaskUpdate(db, b.id, undefined, b.server, legal);
+      Y.applyUpdate(b.server, legal);
+      const forged = itemUpdate({
+        client: 555,
+        parent: 'decoy',
+        key: 'x',
+        content: { any: [null, second] },
+      });
+      // Applied, the server would hold one thing and store (and send) another.
+      const { memory, stored } = heldAndStoredAfter(b.server, forged);
+      expect(stored, label).not.toEqual(memory);
+      expect(mayTouchTasks(b.server, forged), label).toBe(true);
+      await expect(
+        validateTaskUpdate(db, b.id, undefined, b.server, forged),
+        label,
+      ).rejects.toThrow('places items elsewhere than it stores them');
+    }
+});
+
+it('checks an item that overlaps stored clocks inside an id kept in a Y.Text', async () => {
+  const b = boardWithTask();
+  const db = {} as Database;
+  const text = new Y.Text('t1');
+  Y.applyUpdate(
+    b.server,
+    b.at(b.doc, () => b.items(b.doc).get(0).set('id', text)),
+  );
+  const guest = b.other();
+  guest.clientID = 555;
+  // Typing a letter and removing it again leaves the id as it was.
+  const legal = b.at(guest, () =>
+    guest.transact(() => {
+      const t = b.items(guest).get(0).get('id') as Y.Text;
+      t.insert(0, 'x');
+      t.delete(0, 1);
+    }),
+  );
+  await validateTaskUpdate(db, b.id, undefined, b.server, legal);
+  Y.applyUpdate(b.server, legal);
+  // Named under another root, the second letter still goes into the id after the first.
+  const forged = itemUpdate({ client: 555, parent: 'decoy', content: { text: 'xy' } });
+  const { stored } = heldAndStoredAfter(b.server, forged);
+  expect(stored.map(([itemId]) => itemId)).toEqual(['yt1']);
+  expect(mayTouchTasks(b.server, forged)).toBe(true);
+  await expect(validateTaskUpdate(db, b.id, undefined, b.server, forged)).rejects.toThrow(
+    'places items elsewhere than it stores them',
+  );
+});
+
+it('refuses held-back structs that overlap stored clocks, on arrival or once released', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  const db = {} as Database;
+  // Waiting for a map another client writes later, and overlapping what the guest wrote: refused
+  // on arrival.
+  {
+    const b = boardWithTask();
+    const guest = b.other();
+    guest.clientID = 555;
+    const legal = b.at(guest, () => b.items(guest).get(0).set('assigneeId', b.id));
+    Y.applyUpdate(b.server, legal);
+    const forged = itemUpdate({
+      client: 555,
+      parent: Y.createID(888, 1),
+      key: 'x',
+      content: { any: [null, victim] },
+    });
+    expect(mayTouchTasks(b.server, forged)).toBe(true);
+    await expect(validateTaskUpdate(db, b.id, undefined, b.server, forged)).rejects.toThrow(
+      'places items elsewhere than it stores them',
+    );
+  }
+  // Sent before the guest's own writes it overlaps: held back, then released by them.
+  const b = boardWithTask();
+  const guest = b.other();
+  guest.clientID = 555;
+  const legal = b.at(guest, () => {
+    b.items(guest).get(0).set('dueDate', '2026-11-20');
+    b.items(guest).get(0).set('assigneeId', b.id);
+  });
+  const forged = itemUpdate({
+    client: 555,
+    clock: 1,
+    parent: 'decoy',
+    key: 'x',
+    content: { any: [null, victim] },
+  });
+  await validateTaskUpdate(db, b.id, undefined, b.server, forged);
+  Y.applyUpdate(b.server, forged);
+  expect(b.server.store.pendingStructs).not.toBeNull();
+  expect(mayTouchTasks(b.server, legal)).toBe(true);
+  await expect(validateTaskUpdate(db, b.id, undefined, b.server, legal)).rejects.toThrow(
+    'places items elsewhere than it stores them',
+  );
+  // Applied anyway, the server would hold one thing and store (and send) another.
+  Y.applyUpdate(b.server, legal);
+  const { memory, stored } = heldAndStored(b.server);
+  expect(stored).not.toEqual(memory);
+});
