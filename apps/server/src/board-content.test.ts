@@ -1,4 +1,4 @@
-import { addElement, createBoardDoc, Element, roots } from '@inkadra/doc-schema';
+import { addElement, createBoardDoc, Element, roots, UNSORTED } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { scheduleSource, trackGuestHiding } from './board-content.ts';
@@ -71,6 +71,32 @@ describe('trackGuestHiding', () => {
   it('tells when a container or a card is hidden by its own flag', () => {
     const { el, newlyHidden } = setup();
     el('shownAAAAAAAA').set('guestHidden', true);
+    expect(newlyHidden()).toBe(true);
+  });
+
+  it('tells when a card is hidden through a container of its container', () => {
+    const { doc, el, newlyHidden } = setup();
+    addElement(doc, Element.parse(column('innerAAAAAAAA')));
+    addElement(doc, Element.parse(note('deepAAAAAAAAA', 'innerAAAAAAAA')));
+    expect(newlyHidden()).toBe(false);
+    el('innerAAAAAAAA').set('parent', 'shownAAAAAAAA');
+    expect(newlyHidden()).toBe(false);
+    el('shownAAAAAAAA').set('guestHidden', true);
+    expect(newlyHidden()).toBe(true);
+    // Between two nested containers both hidden.
+    el('deepAAAAAAAAA').set('parent', 'shownAAAAAAAA');
+    expect(newlyHidden()).toBe(false);
+  });
+
+  it('tells when a card goes to the unsorted tray', () => {
+    const { el, newlyHidden } = setup();
+    el('cardAAAAAAAAA').set('parent', UNSORTED);
+    expect(newlyHidden()).toBe(true);
+  });
+
+  it('tells when the container of a card guests saw is deleted and the card stays', () => {
+    const { doc, newlyHidden } = setup();
+    roots(doc).elements.delete('shownAAAAAAAA');
     expect(newlyHidden()).toBe(true);
   });
 

@@ -110,9 +110,11 @@ function changesGuestHiding(transaction: Y.Transaction): boolean {
 
 /**
  * Tells, on each call, whether an element guests could see at the previous call is now hidden
- * from them, by its own flag or through a container. Elements added hidden, moved between
- * containers that were already hidden, or deleted don't count: guests never saw them, or still
- * don't. The board is read again only after a transaction that can change it.
+ * from them, by its own flag or through a container (a container deleted counts: what stays
+ * inside is hidden). Elements added hidden or moved between containers that were already hidden
+ * don't count: guests never saw them. A deleted element doesn't count either, on purpose: guests
+ * see it go with the usual store, like any other edit. The board is read again only after a
+ * transaction that can change it.
  */
 export function trackGuestHiding(doc: Y.Doc): () => boolean {
   let visible = guestVisibleIds(doc);
