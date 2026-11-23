@@ -111,6 +111,11 @@ const mapOf = (read) => (node, at, refs) => {
   for (const k of sortedKeys(node)) out[k] = read(node[k], [...at, k], refs);
   return out;
 };
+/** A Paths or Responses Object: its `x-` keys are extensions, plain data, not entries. */
+const entriesOf = (read) =>
+  mapOf((node, at, refs) =>
+    String(at.at(-1)).startsWith('x-') ? data(node) : read(node, at, refs),
+  );
 const listOf = (read) => (node, at, refs) =>
   Array.isArray(node) ? node.map((v, i) => read(v, [...at, i], refs)) : data(node);
 const sortedList = (node) => (Array.isArray(node) ? node.map(data).sort(byJson) : data(node));
@@ -153,7 +158,7 @@ const response = walker(['description'], { content, headers: mapOf(header) }, tr
 const operation = walker(['summary', 'description', 'tags'], {
   parameters: listOf(parameter),
   requestBody,
-  responses: mapOf(response),
+  responses: entriesOf(response),
 });
 const pathItem = walker(
   ['summary', 'description'],
@@ -172,7 +177,7 @@ const components = walker([], {
   pathItems: mapOf(pathItem),
 });
 const openapiRoot = walker(['info', 'tags', 'externalDocs'], {
-  paths: mapOf(pathItem),
+  paths: entriesOf(pathItem),
   webhooks: mapOf(pathItem),
   components,
 });

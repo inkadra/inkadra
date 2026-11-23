@@ -363,3 +363,22 @@ test('a package that drops a name breaks, one that adds a name does not', () => 
   assert.deepEqual(packageBreaks(before, after), ['package: @inkadra/shared no longer exports b']);
   assert.deepEqual(packageBreaks(before, before), []);
 });
+
+test('an extension of the paths or of the responses is data, not a path or a response', () => {
+  const doc = (meta, status) => ({
+    paths: {
+      'x-meta': { description: meta, summary: meta },
+      '/a': {
+        get: { responses: { 'x-note': { description: status }, 200: { description: 'ok' } } },
+      },
+    },
+  });
+  assert.deepEqual(openapiBreaks(doc('a', 'b'), doc('a', 'b')), []);
+  assert.deepEqual(openapiBreaks(doc('a', 'b'), doc('c', 'b')), [
+    'openapi: #/paths/x-meta/description: "a" → "c"',
+    'openapi: #/paths/x-meta/summary: "a" → "c"',
+  ]);
+  assert.deepEqual(openapiBreaks(doc('a', 'b'), doc('a', 'd')), [
+    'openapi: #/paths/~1a/get/responses/x-note/description: "b" → "d"',
+  ]);
+});
