@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import { omitFromLookup } from '../helpers/assets.ts';
 import { signIn } from './perf/seed.ts';
 
 // Exercise the browser's local RAW preview and processing→ready transition without depending
@@ -41,6 +42,8 @@ test('RAW thumbnail appears after processing without reloading', async ({ page, 
     });
   });
   await page.route(/\/api\/v1\/assets\/[^/]+$/, async (route) => {
+    // POST /assets/lookup matches too: omitFromLookup below answers it.
+    if (route.request().method() !== 'GET') return route.fallback();
     const response = await route.fetch();
     const asset = await response.json();
     await route.fulfill({
@@ -54,6 +57,8 @@ test('RAW thumbnail appears after processing without reloading', async ({ page, 
       },
     });
   });
+  // After the route above, which Playwright would otherwise run first for the lookup too.
+  await omitFromLookup(page);
   await page.goto(`/p/${project.id}?view=canvas`);
   await page.locator('input[type="file"][multiple]').setInputFiles({
     name: 'orientation-6.dng',

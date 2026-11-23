@@ -1,5 +1,6 @@
-import type { Asset } from '@inkadra/shared';
+import { ASSET_LOOKUP_MAX, type Asset, type AssetLookup, Id } from '@inkadra/shared';
 import { useCallback, useSyncExternalStore } from 'react';
+import { retryAfterMs } from '../guest/model.ts';
 import { createPoller, type Poller, type PollOutcome } from '../guest/poller.ts';
 import { api, RequestError } from '../lib/api.ts';
 
@@ -18,7 +19,90 @@ function notify(id: string) {
 }
 
 type Loader = (id: string) => Promise<Asset | null>;
-const accountLoader: Loader = (id) => api.get<Asset>(`/assets/${id}`);
+const singleLoader: Loader = (id) => api.get<Asset>(`/assets/${id}`);
+
+/**
+ * Whether the server answers `POST /assets/lookup` (capability `asset-lookup`). The session
+ * sets it from `GET /instance/version` before any board mounts; older servers keep it false.
+ */
+let lookupAvailable = false;
+export function setAssetLookup(available: boolean) {
+  lookupAvailable = available;
+}
+
+// Cards mounted together (a board opening with hundreds of files) ask within a few ms: their
+// requests go out as one lookup per ASSET_LOOKUP_MAX ids instead of one request per card.
+const BATCH_MS = 8;
+type Waiter = {
+  id: string;
+  resolve: (asset: Asset | null) => void;
+  reject: (err: unknown) => void;
+};
+let queue: Waiter[] = [];
+let timer: ReturnType<typeof setTimeout> | undefined;
+
+async function lookup(waiters: Waiter[]) {
+  const at = generation;
+  const ids = [...new Set(waiters.map((w) => w.id))];
+  let found: Map<string, Asset> | null = null;
+  let failure: unknown;
+  try {
+    const { items } = await api.post<AssetLookup>('/assets/lookup', { ids });
+    found = new Map(items.map((a) => [a.id.toLowerCase(), a]));
+  } catch (err) {
+    failure = err;
+  }
+  // The cache was reset meanwhile (a guest page took over): no account request from here on.
+  if (at !== generation) {
+    for (const w of waiters) w.reject(new Error('Asset cache reset'));
+    return;
+  }
+  const status = failure instanceof RequestError ? failure.status : 0;
+  // An older server without the route asks each file alone from now on; a refused body
+  // (400, 413) asks these files alone this time. Other errors (network, 429, 5xx) leave the
+  // cards unknown, and their pollers retry with backoff and ask together again.
+  if (status === 404) lookupAvailable = false;
+  else if (failure && status !== 400 && status !== 413) {
+    for (const w of waiters) w.reject(failure);
+    return;
+  }
+  for (const w of waiters) {
+    const asset = found?.get(w.id.toLowerCase());
+    // A file left out is asked alone, so it gets the single route's 404 or 403 as before.
+    if (asset) w.resolve(asset);
+    else singleLoader(w.id).then(w.resolve, w.reject);
+  }
+}
+
+function flush() {
+  timer = undefined;
+  const waiters = queue;
+  queue = [];
+  // fetchOnce already shares one request per id, so a chunk of waiters is a chunk of ids.
+  for (let i = 0; i < waiters.length; i += ASSET_LOOKUP_MAX)
+    void lookup(waiters.slice(i, i + ASSET_LOOKUP_MAX));
+}
+
+/** Drops the files waiting for a lookup, for resetAssetCache. */
+function dropQueue() {
+  clearTimeout(timer);
+  timer = undefined;
+  const waiters = queue;
+  queue = [];
+  for (const w of waiters) w.reject(new Error('Asset cache reset'));
+}
+
+const accountLoader: Loader = (id) => {
+  // Files already known (polled while processed, asked again after a notice) keep the
+  // single route, as the lookup's contract says: only the first load of a card is batched.
+  // Board documents accept any string as an asset id, and one id that is not a UUID would
+  // make the server refuse the whole lookup: those go alone too.
+  if (!lookupAvailable || cache.has(id) || !Id.safeParse(id).success) return singleLoader(id);
+  return new Promise((resolve, reject) => {
+    timer ??= setTimeout(flush, BATCH_MS);
+    queue.push({ id, resolve, reject });
+  });
+};
 let loader = accountLoader;
 
 /**
@@ -38,6 +122,7 @@ let generation = 0;
  */
 export function resetAssetCache() {
   generation += 1;
+  dropQueue();
   cache.clear();
   inflight.clear();
   for (const poller of pollers.values()) poller.stop();
@@ -61,7 +146,10 @@ async function load(id: string): Promise<PollOutcome> {
     if (err instanceof RequestError && err.status === 404) {
       result = null;
     } else {
-      return { kind: at === generation ? 'retry' : 'done' };
+      if (at !== generation) return { kind: 'done' };
+      // A 429 (a lookup refused for its rate) waits as long as the server asked.
+      const after = err instanceof RequestError ? retryAfterMs(err.retryAfter) : undefined;
+      return after === undefined ? { kind: 'retry' } : { kind: 'retry', after };
     }
   }
   if (at !== generation) return { kind: 'done' };

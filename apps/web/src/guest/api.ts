@@ -30,9 +30,9 @@ export class GuestRequestError extends RequestError {
     code: string,
     message: string,
     details: unknown,
-    readonly retryAfter: string | null,
+    retryAfter: string | null,
   ) {
-    super(status, code, message, details);
+    super(status, code, message, details, retryAfter);
   }
 }
 

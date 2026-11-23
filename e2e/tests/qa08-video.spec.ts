@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
+import { omitFromLookup } from '../helpers/assets.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 test('QA video proportions, thumbnail playback and converted audio', async ({ page, baseURL }) => {
@@ -50,6 +51,7 @@ test('QA video proportions, thumbnail playback and converted audio', async ({ pa
   await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
   const card = page.locator('.card--file');
   await expect(card).toBeVisible();
+  await omitFromLookup(page, [assetId!]);
   await page.route(`**/api/v1/assets/${assetId}`, async (route) =>
     route.fulfill({
       json: { ...asset, proxy: { ...asset.proxy, status: 'processing', progress: 42 } },

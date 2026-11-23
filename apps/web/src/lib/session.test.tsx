@@ -7,6 +7,12 @@ import i18n from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 import { SessionProvider, useSession } from './session.tsx';
 
+const assets = vi.hoisted(() => ({ setAssetLookup: vi.fn() }));
+vi.mock('../board/assets.ts', async (original) => ({
+  ...(await original<typeof import('../board/assets.ts')>()),
+  setAssetLookup: assets.setAssetLookup,
+}));
+
 const instance = {} as Instance;
 const user = (locale: string | null) => ({ id: 'u1', locale }) as User;
 
@@ -244,6 +250,49 @@ it('says the server cannot be reached and loads once it answers again (#821)', a
     await act(async () => window.dispatchEvent(new Event('online')));
     expect(snapshot.loading).toBe(false);
     expect(snapshot.unreachable).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
+it('batches asset lookups only on servers that advertise them, and stops on sign-out', async () => {
+  let signedIn = true;
+  let version: () => unknown = () => ({ version: '1', capabilities: ['asset-lookup'] });
+  vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (path === '/me') {
+      if (!signedIn) throw new RequestError(401, 'unauthorized', 'Sign in');
+      return user('it');
+    }
+    if (path === '/instance/version') return version();
+    return instance;
+  });
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const last = () => assets.setAssetLookup.mock.lastCall?.[0];
+  try {
+    await act(async () =>
+      root.render(
+        <SessionProvider>
+          <Probe />
+        </SessionProvider>,
+      ),
+    );
+    expect(last()).toBe(true);
+    version = () => ({ version: '1', capabilities: ['future-feature'] });
+    await act(async () => latestRefresh());
+    expect(last()).toBe(false);
+    version = () => ({ version: '1', capabilities: ['asset-lookup'] });
+    await act(async () => latestRefresh());
+    version = () => {
+      throw new RequestError(500, 'internal', 'Down');
+    };
+    await act(async () => latestRefresh());
+    expect(last()).toBe(false);
+    version = () => ({ version: '1', capabilities: ['asset-lookup'] });
+    await act(async () => latestRefresh());
+    signedIn = false;
+    await act(async () => latestRefresh());
+    expect(last()).toBe(false);
   } finally {
     await act(async () => root.unmount());
   }
