@@ -126,6 +126,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'asset-notices',
         'board-writers',
         'plan-sheet-pdf',
+        'asset-lookup',
         'transfer-cancel',
         'server-live',
         'classification-delete',
