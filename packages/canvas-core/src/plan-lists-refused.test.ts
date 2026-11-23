@@ -49,3 +49,35 @@ describe('a client never converts or makes a plan list', () => {
     expect(mapOf(doc, setup).get('icons')).toEqual([]);
   });
 });
+
+describe('an offline client holding a board from before its lists were prepared', () => {
+  it('cannot edit the old list; once synced, it edits the server list and nothing is lost', () => {
+    const before = createBoardDoc(boardId);
+    const plan = createElement(before, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    const lamp = { id: 'lampLegacyAAA', kind: 'fresnel', color: '#FFFFFF', x: 100, y: 100 };
+    mapOf(before, plan).set('icons', [lamp]);
+    // The phone has that copy; the server prepares the list (as apps/server does on load).
+    const phone = new Y.Doc();
+    Y.applyUpdate(phone, Y.encodeStateAsUpdate(before));
+    const server = new Y.Doc();
+    Y.applyUpdate(server, Y.encodeStateAsUpdate(before));
+    server.transact(() => {
+      const list = new Y.Array<unknown>();
+      list.push([new Y.Map(Object.entries(lamp))]);
+      mapOf(server, plan).set('icons', list);
+    });
+    // Offline, the phone cannot edit the old list: nothing it could lose later.
+    expect(addPlanIcon(phone, plan, { kind: 'chair', color: '#1C1C1E', x: 1, y: 1 })).toBeNull();
+    // Synced, it edits the server's list, as does someone else: both kept.
+    Y.applyUpdate(phone, Y.encodeStateAsUpdate(server));
+    addPlanIcon(phone, plan, { kind: 'chair', color: '#1C1C1E', x: 1, y: 1 });
+    addPlanIcon(server, plan, { kind: 'sofa', color: '#1C1C1E', x: 2, y: 2 });
+    Y.applyUpdate(phone, Y.encodeStateAsUpdate(server));
+    Y.applyUpdate(server, Y.encodeStateAsUpdate(phone));
+    expect(
+      planOf(server, plan)
+        .icons?.map((i) => i.kind)
+        .sort(),
+    ).toEqual(['chair', 'fresnel', 'sofa']);
+  });
+});
