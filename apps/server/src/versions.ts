@@ -236,6 +236,8 @@ export function versionDoc(row: { state: Uint8Array }, boardId: string): Y.Doc {
   const doc = new Y.Doc();
   Y.applyUpdate(doc, row.state);
   migrateBoardDoc(doc, boardId);
+  // Its plan lists as the live board has them, so an unchanged list compares as the same.
+  preparePlanLists(doc);
   return doc;
 }
 
