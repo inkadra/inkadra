@@ -442,12 +442,16 @@ export async function runDense(opts: DenseOptions) {
           const missing = missingMarks(stored);
           const same = sameDocument(stored, converged);
           stored.destroy();
-          if (missing === 0 && same) {
+          // The comparison of a 7 MB board takes time too: past the deadline it does not count.
+          if (missing === 0 && same && left() > 0) {
             storeMs = performance.now() - started;
             detail = null;
             break;
           }
-          detail = `stored board ${same ? 'matches' : 'differs from'} the converged copy, ${missing} offline edits missing`;
+          detail =
+            missing === 0 && same
+              ? 'the stored board was confirmed only after the deadline'
+              : `stored board ${same ? 'matches' : 'differs from'} the converged copy, ${missing} offline edits missing`;
         }
       } catch (err) {
         detail = String(err);
