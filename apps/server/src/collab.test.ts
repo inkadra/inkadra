@@ -32,11 +32,18 @@ import {
 } from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { boardDoc, boardElementIndex, notification, projectMember } from './db/schema.ts';
+import {
+  boardDoc,
+  boardElementIndex,
+  notification,
+  personalToken,
+  projectMember,
+} from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import * as drawings from './image-drawing.ts';
 import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
 import { testDeps } from './test-deps.ts';
+import { issueToken } from './tokens.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
@@ -641,6 +648,29 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     });
     expect(await closed).toBe('Unauthorized');
     c.close();
+  });
+
+  it("refuses the Clipper's limited token and keeps app tokens (decision 0137)", async () => {
+    const owner = people.owner?.id ?? '';
+    /** How the sign-in ended; a timeout is neither, and fails the test. */
+    const outcome = (c: ReturnType<typeof connect>) =>
+      new Promise<'refused' | 'synced' | 'timeout'>((resolve) => {
+        c.provider.on('authenticationFailed', () => resolve('refused'));
+        c.provider.on('synced', () => resolve('synced'));
+        setTimeout(() => resolve('timeout'), 4000);
+      });
+    const clip = await issueToken(db, owner, { name: 'Clipper', client: 'clipper' });
+    const clipper = connect({ token: clip.token });
+    expect(await outcome(clipper)).toBe('refused');
+    clipper.close();
+    // A refused sign-in does not count as a use of the token.
+    const [row] = await db.select().from(personalToken).where(eq(personalToken.id, clip.row.id));
+    expect(row?.lastUsedAt).toBeNull();
+    const phone = await issueToken(db, owner, { name: 'Phone', client: 'mobile' });
+    const mobile = connect({ token: phone.token });
+    expect(await outcome(mobile)).toBe('synced');
+    expect(mobile.provider.isAuthenticated).toBe(true);
+    mobile.close();
   });
 
   it('closes the connection when the person signs out', async () => {
