@@ -3,6 +3,7 @@ import {
   createBoardDoc,
   Element,
   hiddenFromGuests,
+  readElement,
   roots,
   UNSORTED,
 } from '@inkadra/doc-schema';
@@ -14,7 +15,11 @@ import { viewOf } from './share-links.ts';
 // Counted, to tell a whole board read again from one element read again.
 vi.mock('@inkadra/doc-schema', async (original) => {
   const schema = await original<typeof import('@inkadra/doc-schema')>();
-  return { ...schema, hiddenFromGuests: vi.fn(schema.hiddenFromGuests) };
+  return {
+    ...schema,
+    hiddenFromGuests: vi.fn(schema.hiddenFromGuests),
+    readElement: vi.fn(schema.readElement),
+  };
 });
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-0000000000aa';
@@ -123,6 +128,23 @@ describe('trackGuestHiding', () => {
     });
     expect(newlyHidden()).toBe(false);
     expect(hiddenFromGuests).not.toHaveBeenCalled();
+  });
+
+  it('reads nothing again when only the rich text of a card changes', () => {
+    const { el, newlyHidden } = setup();
+    let body = el('cardAAAAAAAAA').get('body');
+    if (!(body instanceof Y.XmlFragment)) {
+      body = new Y.XmlFragment();
+      el('cardAAAAAAAAA').set('body', body);
+    }
+    newlyHidden();
+    vi.mocked(readElement).mockClear();
+    const paragraph = new Y.XmlElement('paragraph');
+    (body as Y.XmlFragment).insert(0, [paragraph]);
+    paragraph.insert(0, [new Y.XmlText('Hello')]);
+    (paragraph.get(0) as Y.XmlText).insert(5, ' there');
+    expect(newlyHidden()).toBe(false);
+    expect(readElement).not.toHaveBeenCalled();
   });
 
   it('tells when a container turns invalid, as share pages leave it out with its cards', () => {

@@ -721,6 +721,8 @@ export function createCollabServer(deps: {
     const { document, documentName } = payload;
     const entry = unsaved.get(document) ?? { attempt: 0, payload };
     unsaved.set(document, entry);
+    // The retry stores everything: no early store waits through the backoff.
+    cancelHiding(document);
     entry.attempt += 1;
     entry.payload = payload;
     clearTimeout(entry.timer);
@@ -757,7 +759,9 @@ export function createCollabServer(deps: {
     const { document, documentName } = payload;
     // One per board until it runs, so a burst of changes stores once.
     if (hidingStores.has(document) || !mayStoreSoon(document)) return;
+    let ran = false;
     const cancel = hidingTimer(() => {
+      ran = true;
       hidingStores.delete(document);
       if (!mayStoreSoon(document) || server.hocuspocus.documents.get(documentName) !== document)
         return;
@@ -767,7 +771,8 @@ export function createCollabServer(deps: {
       if ((hidingCount.get(document) ?? 0) <= (storedHiding.get(document) ?? 0)) return;
       void server.hocuspocus.storeDocumentHooks(document, payload, true);
     });
-    hidingStores.set(document, cancel);
+    // A timer that already ran leaves nothing pending.
+    if (!ran) hidingStores.set(document, cancel);
   };
   function cancelHiding(document: Y.Doc) {
     hidingStores.get(document)?.();

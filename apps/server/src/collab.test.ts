@@ -457,7 +457,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   async function hidingBoard(
     name: string,
     boardLimits?: typeof limits & { freeze?: boolean },
-    manualTimers = false,
+    timerMode: 'real' | 'manual' | 'sync' = 'real',
   ) {
     const created = await app.inject({
       method: 'POST',
@@ -475,11 +475,20 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       for (const run of due) run();
     };
     const server = createCollabServer({
-      ...(manualTimers
+      ...(timerMode === 'manual'
         ? {
             hidingTimer: (run: () => void) => {
               timers.add(run);
               return () => timers.delete(run);
+            },
+          }
+        : {}),
+      // A timer that runs before it returns its cancel.
+      ...(timerMode === 'sync'
+        ? {
+            hidingTimer: (run: () => void) => {
+              run();
+              return () => {};
             },
           }
         : {}),
@@ -539,7 +548,8 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       await server.destroy();
     };
     return {
-      ...{ control, server, stores, immediate, set, storedParent, flush, close, timers, fire },
+      ...{ control, server, stores, finished, immediate, set, storedParent, flush, close },
+      ...{ timers, fire },
       ...{ shown, hiddenA, hiddenB, cards, tucked },
     };
   }
@@ -602,7 +612,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   });
 
   it('cancels the early store once a store that ran first wrote the hiding', async () => {
-    const b = await hidingBoard('Store ran first', undefined, true);
+    const b = await hidingBoard('Store ran first', undefined, 'manual');
     try {
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
       expect(b.timers.size).toBe(1);
@@ -618,7 +628,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   });
 
   it('stores again a card hidden while a store that read the board before it was writing', async () => {
-    const b = await hidingBoard('Hidden during a store', undefined, true);
+    const b = await hidingBoard('Hidden during a store', undefined, 'manual');
     try {
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
       // The early store is still armed when another store reads the board and starts writing.
@@ -626,12 +636,15 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       b.flush();
       await expect.poll(() => b.control.waiting, { timeout: 1000 }).toBe(1);
       await b.set(b.cards[1]!.id, 'parent', b.hiddenA.id);
+      const [first] = b.timers;
       expect(b.timers.size).toBe(1);
       b.control.release();
-      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+      await expect.poll(b.finished, { timeout: 1000 }).toBe(2);
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.hiddenA.id);
       // Written without the second card: the early store is armed again (its timer expires after
       // the commit), and sends.
-      await expect.poll(() => b.timers.size, { timeout: 1000 }).toBe(1);
+      expect(b.timers.size).toBe(1);
+      expect(b.timers.has(first!)).toBe(false);
       expect(await b.storedParent(b.cards[1]!.id)).toBe(b.shown.id);
       b.fire();
       expect(b.immediate()).toBe(1);
@@ -643,7 +656,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   it('stores again a card hidden while a retried store was writing', async () => {
     const errors = storeErrors();
-    const b = await hidingBoard('Hidden during a retry', undefined, true);
+    const b = await hidingBoard('Hidden during a retry', undefined, 'manual');
     try {
       b.control.down = true;
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
@@ -671,7 +684,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   it('keeps the retry backoff, then no early store once the retry wrote the hiding', async () => {
     const errors = storeErrors();
-    const b = await hidingBoard('Hidden during the backoff', undefined, true);
+    const b = await hidingBoard('Hidden during the backoff', undefined, 'manual');
     try {
       b.control.down = true;
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
@@ -696,7 +709,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   });
 
   it('sends no early store while a store that already read the hiding is writing', async () => {
-    const b = await hidingBoard('Early store during a store', undefined, true);
+    const b = await hidingBoard('Early store during a store', undefined, 'manual');
     try {
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
       expect(b.timers.size).toBe(1);
@@ -707,8 +720,8 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       b.fire();
       expect(b.immediate()).toBe(0);
       b.control.release();
-      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
-      await settle();
+      await expect.poll(b.finished, { timeout: 1000 }).toBe(2);
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.hiddenA.id);
       expect(b.stores()).toBe(2);
       expect(b.immediate()).toBe(0);
       expect(b.timers.size).toBe(0);
@@ -718,7 +731,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   });
 
   it('sends the early store once the store in flight wrote an older state', async () => {
-    const b = await hidingBoard('Early store after a store', undefined, true);
+    const b = await hidingBoard('Early store after a store', undefined, 'manual');
     try {
       b.control.hold();
       await b.set(b.shown.id, 'title', 'Renamed');
@@ -742,7 +755,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   it('leaves a failed store to its retry, without an early store ahead of the backoff', async () => {
     const errors = storeErrors();
-    const b = await hidingBoard('Early store and a failed store', undefined, true);
+    const b = await hidingBoard('Early store and a failed store', undefined, 'manual');
     try {
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
       b.control.hold();
@@ -767,7 +780,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   });
 
   it('drops a pending early store once the last person left and the server shut down', async () => {
-    const b = await hidingBoard('Early store at shutdown', undefined, true);
+    const b = await hidingBoard('Early store at shutdown', undefined, 'manual');
     try {
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
       const [pending] = b.timers;
@@ -783,17 +796,69 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     }
   });
 
+  it('drops a pending early store at shutdown while a connection is still open', async () => {
+    const b = await hidingBoard('Shutdown with a connection open', undefined, 'manual');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      const [pending] = b.timers;
+      await b.server.destroy();
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.hiddenA.id);
+      expect(b.timers.size).toBe(0);
+      const after = b.immediate();
+      pending?.();
+      expect(b.immediate()).toBe(after);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('keeps no early store armed while a failed store waits for its retry', async () => {
+    const errors = storeErrors();
+    const b = await hidingBoard('Early store during the backoff', undefined, 'manual');
+    try {
+      b.control.down = true;
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(1);
+      b.flush();
+      await expect.poll(() => errors.mock.calls.length > 0, { timeout: 1000 }).toBe(true);
+      expect(b.timers.size).toBe(0);
+      b.control.down = false;
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 3000 }).toBe(b.hiddenA.id);
+    } finally {
+      errors.mockRestore();
+      await b.close();
+    }
+  });
+
+  it('arms the early store again after a timer that ran at once during a store', async () => {
+    const b = await hidingBoard('Synchronous early-store timer', undefined, 'sync');
+    try {
+      b.control.hold();
+      await b.set(b.shown.id, 'title', 'Renamed');
+      b.flush();
+      await expect.poll(() => b.control.waiting, { timeout: 1000 }).toBe(1);
+      // Its timer runs at once, while the store is in flight: nothing is sent yet.
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.immediate()).toBe(0);
+      b.control.release();
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+      expect(b.immediate()).toBe(1);
+    } finally {
+      await b.close();
+    }
+  });
+
   it('does not store a frozen board early', async () => {
     const capped = { ...limits, freeze: true };
-    const b = await hidingBoard('Frozen board', capped);
+    const b = await hidingBoard('Frozen board', capped, 'manual');
     try {
       // The next store finds the board past the cap and freezes it.
       capped.stateBytes = 1;
       await b.set(b.shown.id, 'title', 'Renamed');
       b.flush();
-      await expect.poll(b.stores, { timeout: 1000 }).toBe(2);
+      await expect.poll(b.finished, { timeout: 1000 }).toBe(2);
       await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
-      await settle();
+      expect(b.timers.size).toBe(0);
       expect(b.immediate()).toBe(0);
     } finally {
       await b.close();

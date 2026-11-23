@@ -129,9 +129,12 @@ export function trackGuestHiding(doc: Y.Doc): () => boolean {
         for (const id of (event as Y.YMapEvent<unknown>).keysChanged) touched.add(id);
         continue;
       }
-      if (event.target instanceof Y.XmlFragment || event.target instanceof Y.XmlText) continue;
-      const id = event.path[0];
-      if (typeof id === 'string') touched.add(id);
+      const [id, field] = event.path;
+      if (typeof id !== 'string') continue;
+      // Rich text, which readElement skips, never decides validity.
+      if (typeof field === 'string' && elements.get(id)?.get(field) instanceof Y.XmlFragment)
+        continue;
+      touched.add(id);
     }
   });
   return () => {
