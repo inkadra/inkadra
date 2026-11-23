@@ -227,4 +227,17 @@ describe('the response contract gate', () => {
     await app.close();
     expect(takeMismatches()).toEqual([expect.stringContaining('/api/v1/instance/version → 200')]);
   });
+
+  it('matches a wildcard route with the parameters Fastify decoded', async () => {
+    const app = Fastify();
+    app.get('/api/v1/assets/:assetId/hls/*', async (_req, reply) =>
+      reply.type('video/mp4').send(Buffer.from('init')),
+    );
+    const res = await app.inject({
+      url: `/api/v1/assets/${crypto.randomUUID()}/hls/live/%34%38%30/init.mp4`,
+    });
+    await app.close();
+    expect(res.statusCode).toBe(200);
+    expect(takeMismatches()).toEqual([]);
+  });
 });

@@ -213,6 +213,17 @@ const isUnchecked = (app: object, route: string) => {
   return routes === true || routes?.has(route) === true;
 };
 
+/**
+ * The path asked, from the route pattern and the parameters Fastify already decoded, so that
+ * `/hls/live/%34%38%30/init.mp4` is matched as rung 480, as its handler reads it.
+ */
+const decodedPath = (route: string, params: unknown) => {
+  const values = (params ?? {}) as Record<string, unknown>;
+  return route
+    .replace(/:([A-Za-z0-9_]+)/g, (_, name: string) => String(values[name] ?? ''))
+    .replace('*', String(values['*'] ?? ''));
+};
+
 const printed = (error: unknown) => {
   try {
     return String(error);
@@ -258,7 +269,7 @@ export function checkResponses(app: FastifyInstance, check = contractMismatch) {
           reply.statusCode,
           String(reply.getHeader('content-type') ?? ''),
           body,
-          req.url.split('?')[0],
+          decodedPath(route, req.params),
         );
       } catch (error) {
         problem = `${req.method} ${route} → ${reply.statusCode}: the check threw: ${printed(error)}`;
