@@ -14,6 +14,7 @@ import {
   type PresenceState,
   type PresenceUser,
   parseBoardDocName,
+  preparePlanLists,
   validateBoardDoc,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared';
@@ -30,7 +31,6 @@ import { prepareImageDrawings } from './image-drawing.ts';
 import { boardProblem, recordProblem } from './monitor/problems.ts';
 import { DocSizes, StoreRecorder } from './monitor/sampler.ts';
 import type { MonitorStore, PresenceBoard } from './monitor/store.ts';
-import { preparePlanLists } from './plan-lists.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import {
@@ -934,18 +934,24 @@ export function createCollabServer(deps: {
         // Set plans' lists made or converted here, before any client syncs (decision of 23 Nov),
         // and stored at once: Hocuspocus stores only after a change once the board is open, and
         // a board opened and left without an edit would serve another list at the next load.
-        // Merged into the row as it is now, so a write that landed meanwhile is kept.
+        // The row as it is now goes into the document first, so a write that landed meanwhile is kept.
         const lists = preparePlanLists(document);
         if (lists > 0 && row) {
-          const state = Y.encodeStateAsUpdate(document);
           await db.transaction(async (tx) => {
             const [now] = await tx
               .select({ state: boardDoc.state })
               .from(boardDoc)
               .where(eq(boardDoc.boardId, boardId))
               .for('update');
-            const merged = now ? Y.mergeUpdates([now.state, state]) : state;
-            return storeIfBoardExists(tx, boardId, merged, getSchemaVersion(document));
+            // A write that landed during the load goes into the document too, not only into the
+            // row: the next store writes the document, and would otherwise lose it.
+            if (now) Y.applyUpdate(document, now.state);
+            return storeIfBoardExists(
+              tx,
+              boardId,
+              Y.encodeStateAsUpdate(document),
+              getSchemaVersion(document),
+            );
           });
           log.info({ boardId, lists }, 'set plan lists prepared and stored');
         }

@@ -7,6 +7,7 @@ import {
   getSchemaVersion,
   hiddenFromGuests,
   migrateBoardDoc,
+  preparePlanLists,
   roots,
   SchemaTooNewError,
 } from '@inkadra/doc-schema';
@@ -18,7 +19,6 @@ import type { CollabLimits, CollabServer } from './collab.ts';
 import type { Database } from './db/client.ts';
 import { boardDoc, boardRestore, boardVersion } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
-import { preparePlanLists } from './plan-lists.ts';
 
 /**
  * Saved states of board documents (decision 0013): automatic versions taken while a board is
