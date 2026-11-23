@@ -97,6 +97,8 @@ const ALLOWED: Record<string, readonly string[]> = {
   ],
   POST: [
     '/demo/sandbox',
+    // Reads the metadata of many files at once, as GET /assets/:assetId does one by one.
+    '/assets/lookup',
     '/projects/:projectId/boards',
     '/projects/:projectId/crew',
     '/projects/:projectId/crew/bulk',

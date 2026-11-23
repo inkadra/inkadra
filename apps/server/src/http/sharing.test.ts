@@ -1327,8 +1327,10 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(issued.status).toBe(200);
     expect(issued.body.user.id).toBe(as.editor.id);
     expect((await exchange(code)).status).toBe(400);
-    const me = await call({ bearer: issued.body.token }, 'GET', '/api/v1/me');
-    expect(me.body.email).toBe(as.editor.email);
+    // A Clipper token only clips (decision 0137): its own routes work, the rest is refused.
+    const clipBoards = await call({ bearer: issued.body.token }, 'GET', '/api/v1/me/clip-boards');
+    expect(clipBoards.status).toBe(200);
+    expect((await call({ bearer: issued.body.token }, 'GET', '/api/v1/me')).status).toBe(403);
     const tokens = await call('editor', 'GET', '/api/v1/me/tokens');
     expect(tokens.body.items).toEqual([
       expect.objectContaining({ name: 'Chrome su MacBook', client: 'clipper' }),

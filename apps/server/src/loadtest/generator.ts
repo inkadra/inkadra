@@ -63,26 +63,29 @@ const PNG = Buffer.from(
 /** Edit round trips of the last this many ms count for the live p95 and the guard. */
 const RECENT_MS = 30_000;
 
-export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
-  const { preset } = opts;
+/** Where and as whom the load clients connect. */
+export interface ClientTarget {
+  baseUrl: string;
+  collabUrl?: string;
+  origin?: string;
+  auth: { cookie: string } | { token: string };
+}
+
+/**
+ * Hocuspocus connections and boards, the way the web app makes them: shared by the presets and
+ * the dense scenario (dense.ts). `error` records what goes wrong; `pause` is a sleep that the
+ * caller's stop cuts short.
+ */
+export function collabClients(
+  opts: ClientTarget,
+  error: (what: string) => void,
+  pause: (ms: number) => Promise<void>,
+) {
   const origin = opts.origin ?? new URL(opts.baseUrl).origin;
   const collabUrl = new URL('/collab', opts.collabUrl ?? opts.baseUrl);
   collabUrl.protocol =
     collabUrl.protocol === 'https:' || collabUrl.protocol === 'wss:' ? 'wss:' : 'ws:';
   collabUrl.search = `schemaVersion=${CURRENT_SCHEMA_VERSION}`;
-  const log = opts.log ?? (() => {});
-  // The caller's signal, or the guard: either ends every loop below.
-  const stop = new AbortController();
-  let aborted: string | null = null;
-  const onStop = () => stop.abort();
-  opts.signal.addEventListener('abort', onStop);
-  if (opts.signal.aborted) stop.abort();
-  const pause = (ms: number) => sleep(ms, undefined, { signal: stop.signal }).catch(() => {});
-
-  const errors: string[] = [];
-  const error = (what: string) => {
-    if (!stop.signal.aborted) errors.push(what);
-  };
   const authHeaders: Record<string, string> =
     'cookie' in opts.auth
       ? { cookie: opts.auth.cookie }
@@ -93,9 +96,12 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
     path: string,
     body?: unknown,
     headers: Record<string, string> = {},
+    /** A hung server must not hold the run, its stop or its cleanup. */
+    timeoutMs = 60_000,
   ) {
     const res = await fetch(new URL(path, opts.baseUrl), {
       method,
+      signal: AbortSignal.timeout(Math.max(1, Math.floor(timeoutMs))),
       headers: {
         origin,
         ...authHeaders,
@@ -129,7 +135,7 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
     });
   }
 
-  function open(socket: HocuspocusProviderWebsocket, boardId: string) {
+  function open(socket: HocuspocusProviderWebsocket, boardId: string, syncMs = 20_000) {
     const doc = new Y.Doc();
     const provider = new HocuspocusProvider({
       websocketProvider: socket,
@@ -150,7 +156,7 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
       provider,
       synced: Promise.race([
         synced,
-        pause(20_000).then(() => Promise.reject(new Error(`board ${boardId} did not sync`))),
+        pause(syncMs).then(() => Promise.reject(new Error(`board ${boardId} did not sync`))),
       ]),
       close() {
         provider.destroy();
@@ -158,6 +164,27 @@ export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
       },
     };
   }
+
+  return { api, connect, open };
+}
+
+export async function runLoad(opts: LoadOptions): Promise<LoadOutcome> {
+  const { preset } = opts;
+  const origin = opts.origin ?? new URL(opts.baseUrl).origin;
+  const log = opts.log ?? (() => {});
+  // The caller's signal, or the guard: either ends every loop below.
+  const stop = new AbortController();
+  let aborted: string | null = null;
+  const onStop = () => stop.abort();
+  opts.signal.addEventListener('abort', onStop);
+  if (opts.signal.aborted) stop.abort();
+  const pause = (ms: number) => sleep(ms, undefined, { signal: stop.signal }).catch(() => {});
+
+  const errors: string[] = [];
+  const error = (what: string) => {
+    if (!stop.signal.aborted) errors.push(what);
+  };
+  const { api, connect, open } = collabClients(opts, error, pause);
 
   const note = (id: string, x: number, y: number) => ({
     id,

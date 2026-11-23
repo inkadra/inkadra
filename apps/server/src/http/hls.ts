@@ -7,7 +7,7 @@ import {
   type VideoRung,
   type VideoSettings,
 } from '@inkadra/shared';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Database } from '../db/client.ts';
 import { type asset, assetRendition } from '../db/schema.ts';
@@ -26,13 +26,31 @@ import type { ProxySettings } from '../media/video.ts';
 import type { Storage } from '../storage.ts';
 
 export type RenditionRow = typeof assetRendition.$inferSelect;
+/**
+ * A rung as the metadata of an asset needs it: whether its playlist is stored, never the
+ * playlist itself, which only the HLS route reads (one per rung, a long video's can be large).
+ */
+export type RenditionMeta = Omit<RenditionRow, 'playlist'> & { hasPlaylist: boolean };
+/** A whole row (the HLS route) or its metadata (everything that builds an `Asset`). */
+type Rung = RenditionRow | RenditionMeta;
 
-/** The rungs of these assets, smallest first. */
-export const renditionsOf = (db: Pick<Database, 'select'>, assetIds: string[]) =>
+const { playlist: _playlist, ...metaColumns } = getTableColumns(assetRendition);
+
+/**
+ * The rungs of these assets without their playlists, by asset. The one projection of every
+ * route that answers an `Asset` (one, many, guests), so they cannot drift apart.
+ */
+export const renditionsOf = (
+  db: Pick<Database, 'select'>,
+  assetIds: string[],
+): Promise<RenditionMeta[]> =>
   assetIds.length === 0
-    ? Promise.resolve([] as RenditionRow[])
+    ? Promise.resolve([])
     : db
-        .select()
+        .select({
+          ...metaColumns,
+          hasPlaylist: sql<boolean>`coalesce(${assetRendition.playlist}, '') <> ''`,
+        })
         .from(assetRendition)
         .where(inArray(assetRendition.assetId, assetIds))
         .orderBy(asc(assetRendition.assetId));
@@ -47,14 +65,15 @@ export async function renditionFiles(tx: Pick<Database, 'select'>, assetIds: str
   return rows.flatMap((r) => (r.key ? [r.key] : []));
 }
 
-const order = (a: RenditionRow, b: RenditionRow) =>
-  VIDEO_RUNGS.indexOf(a.name) - VIDEO_RUNGS.indexOf(b.name);
+const order = (a: Rung, b: Rung) => VIDEO_RUNGS.indexOf(a.name) - VIDEO_RUNGS.indexOf(b.name);
 
-const isReady = (r: RenditionRow) =>
-  r.status === 'ready' && Boolean(r.storageKey) && Boolean(r.playlist);
+const isReady = (r: Rung) =>
+  r.status === 'ready' &&
+  Boolean(r.storageKey) &&
+  ('hasPlaylist' in r ? r.hasPlaylist : Boolean(r.playlist));
 
 /** A short tag of the ready files: the master playlist changes address when they change. */
-const version = (rows: RenditionRow[]) =>
+const version = (rows: Rung[]) =>
   createHash('sha256')
     .update(
       rows
@@ -70,7 +89,7 @@ const version = (rows: RenditionRow[]) =>
  * (`/api/v1/assets/{id}/hls`, or the guest path); null when it has none.
  */
 export function toPlayback(
-  rows: RenditionRow[],
+  rows: Rung[],
   base: string,
   original: boolean,
   /** Rungs offered live (decision 0128): playable at once, before or instead of a file. */
@@ -127,7 +146,7 @@ type LiveEntry = ReturnType<typeof liveVariant>;
  * The HLS master playlist of the ready rungs and of those offered live, smallest first, with
  * relative URIs. Live rungs keep the same two-second keyframes, so hls.js switches between them.
  */
-export function masterPlaylist(rows: RenditionRow[], live: LiveEntry[] = []) {
+export function masterPlaylist(rows: Rung[], live: LiveEntry[] = []) {
   const lines = ['#EXTM3U', '#EXT-X-VERSION:7', '#EXT-X-INDEPENDENT-SEGMENTS'];
   const stored = [...rows].sort(order).filter(isReady);
   const entries = [
@@ -158,7 +177,7 @@ export function masterPlaylist(rows: RenditionRow[], live: LiveEntry[] = []) {
 }
 
 /** The ready rung `Asset.proxy` plays: the largest up to 1080, else the smallest. */
-export function proxyRendition(rows: RenditionRow[]) {
+export function proxyRendition<R extends Rung>(rows: R[]) {
   const ready = [...rows].sort(order).filter(isReady);
   return ready.filter((r) => Number(r.name) <= 1080).at(-1) ?? ready[0] ?? null;
 }
@@ -285,7 +304,7 @@ export interface LiveContext {
 export async function offeredLive(
   context: LiveContext,
   row: typeof asset.$inferSelect,
-  rows: RenditionRow[],
+  rows: Rung[],
 ) {
   const settings = await context.settings();
   const ready = rows.filter(isReady).map((r) => r.name);

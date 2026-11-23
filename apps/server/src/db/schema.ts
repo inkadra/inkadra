@@ -158,6 +158,10 @@ export const personalToken = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     client: text('client', { enum: ['clipper', 'mobile'] }),
+    /** What the token may call (decision 0137): `full`, or `clip` for the Clipper's routes only. */
+    scope: text('scope', { enum: ['full', 'clip'] })
+      .notNull()
+      .default('full'),
     tokenHash: text('token_hash').notNull().unique(),
     prefix: text('prefix').notNull(),
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),

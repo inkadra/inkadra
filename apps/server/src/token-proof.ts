@@ -102,8 +102,8 @@ export function proofOf(key: string, instance: string, keyId: string, nonce: str
 }
 
 /**
- * The proof over a nonce, or null for an unknown key, a token revoked or expired, a deactivated
- * account, or a key that no longer opens. Unauthenticated: it only reads.
+ * The proof over a nonce, or null for an unknown key, a token revoked or expired, a limited
+ * token, a deactivated account, or a key that no longer opens. Unauthenticated: it only reads.
  */
 export async function proveNonce(
   db: Database,
@@ -119,6 +119,8 @@ export async function proveNonce(
     .where(
       and(
         eq(personalToken.proofKeyId, keyId),
+        // A Clipper token (decision 0137) has no use for a proof, even with a key from before.
+        eq(personalToken.scope, 'full'),
         isNull(user.deactivatedAt),
         or(isNull(personalToken.expiresAt), gt(personalToken.expiresAt, new Date())),
       ),

@@ -60,6 +60,7 @@ import { nextOwnPosition } from '../project-order.ts';
 import { addressBucket, hourlyRetryAfter, RateLimiter } from '../rate-limits.ts';
 import { requestOrigin } from '../request-origin.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
+import { tokenScope } from '../token-scope.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { toBoard } from './boards-routes.ts';
@@ -485,6 +486,10 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get(v1('/shared-boards'), async (req) => {
     const actor = await requireActor(auth, req, db);
+    // A Clipper token does not list projects it cannot clip to (decision 0137): a board it can
+    // edit there through a grant is offered here instead, as a shared board.
+    const listedProjects =
+      tokenScope(req) === 'clip' ? sql`and pm.role in ('owner', 'editor')` : sql``;
     const rows = await db
       .select({ board })
       .from(boardGrant)
@@ -494,7 +499,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
           eq(boardGrant.userId, actor.id),
           isNull(board.deletedAt),
           activeGrant(),
-          sql`not exists (select 1 from ${projectMember} pm where pm.project_id = ${board.projectId} and pm.user_id = ${actor.id} and (pm.expires_at is null or pm.expires_at > now()))`,
+          sql`not exists (select 1 from ${projectMember} pm where pm.project_id = ${board.projectId} and pm.user_id = ${actor.id} and (pm.expires_at is null or pm.expires_at > now()) ${listedProjects})`,
         ),
       )
       .orderBy(asc(board.title));

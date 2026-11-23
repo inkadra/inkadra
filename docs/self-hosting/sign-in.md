@@ -110,8 +110,9 @@ someone else yet: keep the backup codes.
 ## The browser clipper and the mobile app
 
 They sign in through the browser (`/authorize`) and get a token that shows in **Settings →
-Connected apps**, where it can be revoked. Self-built clippers need their
-extension id in `CLIPPER_EXTENSION_IDS`.
+Connected apps**, where it can be revoked. The clipper's token only lists and searches boards
+and adds cards ([decision 0137](../decisions/0137-clipper-token-scope.md)). Self-built clippers
+need their extension id in `CLIPPER_EXTENSION_IDS`.
 
 A clipper built from source or loaded unpacked has its own extension id, shown in its
 settings page under **Extension you built yourself**. Add it, comma-separated if there are

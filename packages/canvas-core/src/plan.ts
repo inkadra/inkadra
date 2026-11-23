@@ -1355,7 +1355,12 @@ export function allowedWrites<T extends { id: string }>(
   stored: ReadonlyArray<{ id: string }>,
   written: readonly T[],
 ): T[] {
-  const byId = new Map(stored.map((i) => [i.id, i as unknown as Record<string, unknown>]));
+  // A stored entry that is no object (a null an older writer left) is no item: skipped.
+  const byId = new Map(
+    stored
+      .filter((i) => typeof i === 'object' && i !== null)
+      .map((i) => [i.id, i as unknown as Record<string, unknown>]),
+  );
   const changed = new Map(
     written.map((n) => {
       const s = byId.get(n.id);

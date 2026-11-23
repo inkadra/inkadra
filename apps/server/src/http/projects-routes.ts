@@ -64,6 +64,7 @@ import { isOrderKey, nextOwnPosition, ownPosition } from '../project-order.ts';
 import { removeFilesLater } from '../queues.ts';
 import { animatedVariantKey, type Storage } from '../storage.ts';
 import { storageUsage } from '../storage-usage.ts';
+import { tokenScope } from '../token-scope.ts';
 import { iso } from './api-routes.ts';
 import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -307,6 +308,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       .from(projectGroupItem)
       .where(eq(projectGroupItem.userId, actor.id));
     const after = query.cursor ? decodeTextCursor(query.cursor) : null;
+    // A Clipper token pages its destinations only (decision 0137): active projects it can edit,
+    // filtered here so pages are full and a cursor never names another project.
+    const clip = tokenScope(req) === 'clip';
     // The caller's own order (decision 0134).
     const rows = await db
       .select({ project, position: ownPosition, role: projectMember.role, rootBoardId: board.id })
@@ -318,6 +322,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
           eq(projectMember.userId, actor.id),
           activeMember(),
           query.archived === 'true' ? isNotNull(project.archivedAt) : isNull(project.archivedAt),
+          clip
+            ? and(isNull(project.archivedAt), inArray(projectMember.role, ['owner', 'editor']))
+            : undefined,
           after
             ? or(
                 gt(ownPosition, after[0]),

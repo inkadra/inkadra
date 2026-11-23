@@ -9,6 +9,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   newElementId,
 } from '@inkadra/doc-schema';
+import { ASSET_LOOKUP_CAPABILITY } from '@inkadra/shared';
 import { eq, inArray, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -224,6 +225,7 @@ describe('the demo allowlist', () => {
     for (const [method, route] of [
       ['GET', '/projects/:projectId'],
       ['HEAD', '/assets/:assetId/file'],
+      ['POST', '/assets/lookup'],
       ['POST', '/boards/:boardId/comments'],
       ['GET', '/boards/:boardId/share-links'],
       ['GET', '/share-links/:linkId/picks'],
@@ -650,6 +652,26 @@ describe.skipIf(!url)('the public demo (needs DATABASE_URL)', () => {
     expect(own.map((p) => p.id)).not.toContain(a.projectId);
     const [mine] = await db.select().from(project).where(eq(project.id, a.projectId));
     expect(mine?.name).toBe('Last Train');
+  });
+
+  it('opens a sample board with one lookup of its files, and only its own', async () => {
+    const files = await db
+      .select({ id: asset.id })
+      .from(asset)
+      .where(eq(asset.projectId, a.projectId))
+      .limit(200);
+    expect(files.length).toBeGreaterThan(1);
+    const ids = files.map((f) => f.id);
+    const version = (await call(a.cookie, 'GET', '/api/v1/instance/version')).json();
+    expect(version.capabilities).toContain(ASSET_LOOKUP_CAPABILITY);
+    const mine = await call(a.cookie, 'POST', '/api/v1/assets/lookup', { ids });
+    expect(mine.status).toBe(200);
+    const seen = mine.json().items.map((f: { id: string }) => f.id);
+    expect(seen.sort()).toEqual([...ids].sort());
+    // Another sandbox learns nothing about them.
+    const theirs = await call(b.cookie, 'POST', '/api/v1/assets/lookup', { ids });
+    expect(theirs.status).toBe(200);
+    expect(theirs.json().items).toEqual([]);
   });
 
   it('gives each sandbox the Troupe and day calls of the samples, to edit as its own', async () => {

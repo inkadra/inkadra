@@ -70,8 +70,9 @@ your own build; see Chrome's documentation on keeping a consistent extension id.
    and allow access. The extension receives an app token (OAuth 2.0 code flow with PKCE
    S256) and keeps it in `chrome.storage.local`.
 
-The token appears in **Settings → Connected apps** on the web, where it can be
-revoked. **Disconnect** in the extension revokes it on the server and forgets it. When the
+The token only works for what the extension does: listing and searching boards and adding
+cards ([decision 0137](../../docs/decisions/0137-clipper-token-scope.md)). It appears in
+**Settings → Connected apps** on the web, where it can be revoked. **Disconnect** in the extension revokes it on the server and forgets it. When the
 server answers 401 (token revoked or expired), the extension asks to reconnect.
 
 ## Self-built extensions and CLIPPER_EXTENSION_IDS
