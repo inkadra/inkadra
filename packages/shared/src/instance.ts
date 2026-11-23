@@ -97,11 +97,15 @@ export const Instance = z
   .openapi('Instance');
 export type Instance = z.infer<typeof Instance>;
 
+/** Servers that run the `proxy_trust_narrow` check list this in `GET /instance/version`. */
+export const DIAGNOSTIC_PROXY_TRUST_CAPABILITY = 'diagnostic-proxy-trust';
+
 export const DiagnosticId = z
   .enum([
     'public_url_https',
     'public_url_matches_request',
     'proxy_trusted',
+    'proxy_trust_narrow',
     'database',
     'queue',
     'data_dir_writable',
@@ -113,7 +117,10 @@ export const DiagnosticId = z
       '`public_url_https`: PUBLIC_URL uses HTTPS (warning otherwise, except on localhost). ' +
       '`public_url_matches_request`: the scheme and host the server sees, after the proxy ' +
       'headers, match PUBLIC_URL (error otherwise: secure cookies break). `proxy_trusted`: a ' +
-      'request carrying X-Forwarded-For comes from a peer that TRUST_PROXY accepts. `database`, ' +
+      'request carrying X-Forwarded-For comes from a peer that TRUST_PROXY accepts. ' +
+      '`proxy_trust_narrow`: TRUST_PROXY trusts only the proxy (warning when it is `true`, or ' +
+      'when the request came straight from a trusted address other than loopback without ' +
+      'X-Forwarded-For; servers with the `diagnostic-proxy-trust` capability). `database`, ' +
       '`queue`: as in Health. `data_dir_writable`: DATA_DIR accepts writes. `storage`: a test ' +
       'file can be written to and removed from the configured storage. `video_encoding`: the ' +
       'encoder of playable video copies the last worker to start chose (`actual`), a warning ' +
