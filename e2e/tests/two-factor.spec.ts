@@ -41,6 +41,13 @@ async function signInWithPassword(page: Page) {
 
 const home = (page: Page) => expect(page.getByRole('heading', { name: /Tea$/ })).toBeVisible();
 
+
+/** A refused code shows the error and grants no session. */
+async function refused(page: Page) {
+  await expect(page.getByRole('alert')).toHaveText('Codice non valido. Riprova.');
+  await expect(page).toHaveURL(/\/login/);
+  expect((await page.request.get('/api/v1/me')).status()).toBe(401);
+}
 test('two-factor authentication: turn on, sign in with a code and a backup code, turn off', async ({
   page,
   baseURL,
@@ -87,7 +94,7 @@ test('two-factor authentication: turn on, sign in with a code and a backup code,
   const wrong = ['000000', '111111', '222222', '333333'].find((c) => !valid.includes(c)) ?? '';
   await page.getByLabel('Codice', { exact: true }).fill(wrong);
   await page.getByRole('button', { name: 'Verifica' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Codice non valido. Riprova.');
+  await refused(page);
   await page.getByLabel('Codice', { exact: true }).fill(totp(secret));
   await page.getByRole('button', { name: 'Verifica' }).click();
   await home(page);
@@ -100,7 +107,7 @@ test('two-factor authentication: turn on, sign in with a code and a backup code,
     await page.getByLabel('Codice di riserva').fill(backupCodes[0] ?? '');
     await page.getByRole('button', { name: 'Verifica' }).click();
     if (accepted) await home(page);
-    else await expect(page.getByRole('alert')).toHaveText('Codice non valido. Riprova.');
+    else await refused(page);
   }
   await page.getByRole('button', { name: 'Usa l’app di autenticazione' }).click();
   await page.getByLabel('Codice', { exact: true }).fill(totp(secret));
