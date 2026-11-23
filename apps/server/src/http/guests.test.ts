@@ -2047,6 +2047,15 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(stream.headers.get('content-type')).toBe('audio/mp4');
     const wave = await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${A}/waveform`));
     expect(wave.body).toEqual({ peaks: [0, 100] });
+    // Revalidated: 304 without a body, which the contract gate checks like any answer.
+    const again = await call(
+      { cookie: o.cookie },
+      'GET',
+      g(link, `/assets/${A}/waveform`),
+      undefined,
+      { 'if-none-match': wave.headers.get('etag') ?? undefined },
+    );
+    expect(again.status).toBe(304);
     expect((await call(null, 'GET', g(link, `/assets/${A}/waveform`))).status).toBe(401);
     expect(
       (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/waveform`))).status,

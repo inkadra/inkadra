@@ -130,6 +130,16 @@ describe('review and sharing contracts', () => {
     expect(put?.responses).toHaveProperty('403');
   });
 
+  it('says a guest is redirected to the bucket only for a stored MP4 of a downloadable link', () => {
+    const get =
+      buildOpenApiDocument().paths?.['/api/v1/guest/links/{linkId}/assets/{assetId}/hls/{file}']
+        ?.get;
+    const redirect = get?.responses?.['302'] as { description: string; headers?: object };
+    expect(redirect.description).toContain('`{name}.mp4`');
+    expect(redirect.description).toContain('`allowDownload: false` the guest gets the file');
+    expect(redirect.headers).toHaveProperty('Location');
+  });
+
   it('makes view-only links without expiry, downloads or proofing by default', () => {
     expect(CreateShareLink.parse({})).toEqual({
       role: 'guest_view',

@@ -2,10 +2,13 @@ import { Readable } from 'node:stream';
 import { gunzipSync } from 'node:zlib';
 import Fastify from 'fastify';
 import { expect, it } from 'vitest';
+import { uncheckedResponses } from '../test-response-contract.ts';
 import { registerCompression } from './compression.ts';
 
 it('negotiates gzip for JSON and static text, preserving downloads and streams', async () => {
   const app = Fastify();
+  // Stand-in routes: what they answer is not the server's.
+  uncheckedResponses(app);
   registerCompression(app);
   const body = 'x'.repeat(2048);
   app.get('/api/v1/test', () => ({ body }));

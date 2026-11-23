@@ -1,0 +1,278 @@
+import Fastify from 'fastify';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  checkResponses,
+  contractMismatch,
+  currentOwner,
+  EXCEPTIONS,
+  type Owner,
+  setOwner,
+  settled,
+  takeMismatches,
+  uncheckedResponses,
+} from './test-response-contract.ts';
+
+describe('the response contract gate', () => {
+  it('reports an answer whose body breaks the schema of its route and status', async () => {
+    const app = Fastify();
+    // The contract describes GET /instance/version 200 as InstanceVersion.
+    app.get('/api/v1/instance/version', async () => ({ version: 7 }));
+    const res = await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.close();
+    expect(res.statusCode).toBe(200);
+    const found = takeMismatches();
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain('GET /api/v1/instance/version → 200');
+    expect(found[0]).toContain('at version:');
+  });
+
+  it('reports a route or a status the contract does not describe', async () => {
+    const app = Fastify();
+    app.get('/api/v1/not-in-the-contract', async () => ({}));
+    app.get('/api/v1/instance/version', async (_req, reply) => reply.code(418).send({}));
+    await app.inject({ method: 'GET', url: '/api/v1/not-in-the-contract' });
+    await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.close();
+    expect(takeMismatches()).toEqual([
+      'GET /api/v1/not-in-the-contract → 200: the contract has no such operation',
+      'GET /api/v1/instance/version → 418: the contract does not describe this status',
+    ]);
+  });
+
+  it('matches parameters whatever their name and accepts an answer that fits', () => {
+    const error = JSON.stringify({ error: { code: 'not_found', message: 'Not found.' } });
+    expect(
+      contractMismatch('GET', '/api/v1/boards/:id', 404, 'application/json', error),
+    ).toBeNull();
+    const hls = `/api/v1/assets/${crypto.randomUUID()}/hls/master.m3u8`;
+    expect(
+      contractMismatch('GET', '/api/v1/assets/:assetId/hls/*', 200, 'text/plain', '', hls),
+    ).toBeNull();
+  });
+
+  it('takes an unexpected failure anywhere, only with the error shape', () => {
+    const internal = JSON.stringify({ error: { code: 'internal', message: 'Failed.' } });
+    expect(contractMismatch('GET', '/api/v1/me', 500, 'application/json', internal)).toBeNull();
+    expect(contractMismatch('GET', '/api/v1/me', 500, 'application/json', '{}')).toContain(
+      'at error:',
+    );
+  });
+
+  it('needs the JSON body a status declares: no other media type, no empty answer', async () => {
+    const app = Fastify();
+    app.get('/api/v1/instance/version', async (req, reply) =>
+      req.headers['x-case'] === 'text'
+        ? reply.type('text/plain').send('ok')
+        : req.headers['x-case'] === 'json'
+          ? reply.type('application/json').send()
+          : reply.send(),
+    );
+    await app.inject({
+      method: 'GET',
+      url: '/api/v1/instance/version',
+      headers: { 'x-case': 'text' },
+    });
+    await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.inject({
+      method: 'GET',
+      url: '/api/v1/instance/version',
+      headers: { 'x-case': 'json' },
+    });
+    await app.close();
+    expect(takeMismatches()).toEqual([
+      'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has text/plain',
+      'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has no body',
+      'GET /api/v1/instance/version → 200: the contract declares a JSON body, the answer has none',
+    ]);
+    expect(contractMismatch('GET', '/api/v1/me', 500, 'text/html', '<h1>Error</h1>')).toBe(
+      'GET /api/v1/me → 500: the contract declares a JSON body, the answer has text/html',
+    );
+    expect(contractMismatch('GET', '/api/v1/me', 500, '', null)).toContain('has no body');
+  });
+
+  it('leaves files to their route and still reads the JSON errors of a file route', () => {
+    const file = '/api/v1/assets/:assetId/file';
+    expect(contractMismatch('GET', file, 200, 'image/png', null)).toBeNull();
+    expect(contractMismatch('GET', file, 206, 'image/png', null)).toBeNull();
+    const missing = JSON.stringify({ error: { code: 'not_found', message: 'Not found.' } });
+    expect(contractMismatch('GET', file, 404, 'application/json', missing)).toBeNull();
+    expect(contractMismatch('GET', file, 404, 'text/html', 'Not found')).toContain(
+      'declares a JSON body',
+    );
+  });
+
+  it('matches the live HLS files and answers the names a wildcard route does not serve', () => {
+    const member = '/api/v1/assets/:assetId/hls/*';
+    const guest = '/api/v1/guest/links/:linkId/assets/:assetId/hls/*';
+    const asset = `/api/v1/assets/${crypto.randomUUID()}/hls`;
+    const shared = `/api/v1/guest/links/${crypto.randomUUID()}/assets/${crypto.randomUUID()}/hls`;
+    const at = (route: string, path: string, status: number, type: string, body: string | null) =>
+      contractMismatch('GET', route, status, type, body, path);
+    expect(at(member, `${asset}/live/480/init.mp4`, 200, 'video/mp4', null)).toBeNull();
+    expect(
+      at(member, `${asset}/live/720.m3u8`, 200, 'application/vnd.apple.mpegurl', ''),
+    ).toBeNull();
+    expect(at(guest, `${shared}/live/480/seg-12.m4s`, 200, 'video/iso.segment', null)).toBeNull();
+    const missing = JSON.stringify({ error: { code: 'not_found', message: 'No such copy.' } });
+    expect(at(member, `${asset}/poster.jpg`, 404, 'application/json', missing)).toBeNull();
+    expect(at(member, `${asset}/poster.jpg`, 404, 'text/plain', 'no')).toContain('JSON body');
+    expect(at(member, `${asset}/poster.jpg`, 200, 'image/jpeg', null)).toContain(
+      'no such operation',
+    );
+    // The live 503 has its legacy body in the contract (LiveSegmentNotReady), and only that.
+    const odd = JSON.stringify({ code: 'unavailable', message: 'Not ready yet.' });
+    const init = `${asset}/live/480/init.mp4`;
+    expect(EXCEPTIONS).toEqual([]);
+    expect(at(member, init, 503, 'application/json', odd)).toBeNull();
+    expect(at(guest, `${shared}/live/480/seg-3.m4s`, 503, 'application/json', odd)).toBeNull();
+    expect(at(member, init, 503, 'text/html', '<h1>Busy</h1>')).toContain('declares a JSON body');
+    expect(at(member, init, 503, 'application/json', '')).toContain('has none');
+    expect(at(member, init, 503, 'application/json', '{code')).toContain('is not JSON');
+    const other = JSON.stringify({ code: 'internal', message: 'No.' });
+    expect(at(member, init, 503, 'application/json', other)).toContain('does not match');
+    expect(at(member, `${asset}/master.m3u8`, 503, 'application/json', odd)).toContain(
+      'does not match',
+    );
+    // Parameters the server refuses match no operation.
+    expect(at(member, `${asset}/live/999/init.mp4`, 200, 'video/mp4', null)).toContain(
+      'no such operation',
+    );
+    expect(
+      at(member, `${asset}/live/480/seg-1234567.m4s`, 200, 'video/iso.segment', null),
+    ).toContain('no such operation');
+  });
+
+  it('only observes: a check that throws is reported and the answer leaves untouched', async () => {
+    const app = Fastify();
+    checkResponses(app, () => {
+      throw new Error('a refinement threw');
+    });
+    app.get('/api/v1/instance/version', async () => ({ version: '1.0.0' }));
+    const res = await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.close();
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ version: '1.0.0' });
+    expect(takeMismatches()).toEqual([
+      'GET /api/v1/instance/version → 200: the check threw: Error: a refinement threw',
+    ]);
+  });
+
+  it('says so when even printing what the check threw fails, and still answers', async () => {
+    const app = Fastify();
+    checkResponses(app, () => {
+      throw {
+        toString() {
+          throw new Error('cannot print');
+        },
+      };
+    });
+    app.get('/api/v1/instance/version', async () => ({ version: '1.0.0' }));
+    const res = await app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+    await app.close();
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ version: '1.0.0' });
+    expect(takeMismatches()).toEqual([
+      'GET /api/v1/instance/version → 200: the check threw: an error that cannot be printed',
+    ]);
+  });
+
+  it('blames the attempt that sent an answer, and leaves suite answers to the file', async () => {
+    const self = currentOwner();
+    // Two attempts of cases with the same name are two owners.
+    const first: Owner = { id: 'same#1', label: '"same" (attempt 1)' };
+    const second: Owner = { id: 'same#2', label: '"same" (attempt 2)' };
+    const app = Fastify();
+    let reached!: () => void;
+    let release!: () => void;
+    const atHandler = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    app.get('/api/v1/instance/version', async () => {
+      reached();
+      await held;
+      return { version: 7 };
+    });
+    const answer = async (sender: Owner | null, during: Owner | null) => {
+      setOwner(sender);
+      const pending = app.inject({ method: 'GET', url: '/api/v1/instance/version' });
+      await atHandler;
+      setOwner(during);
+      release();
+      await pending;
+    };
+    try {
+      await answer(first, second);
+      await answer(null, null);
+    } finally {
+      setOwner(self);
+      await app.close();
+    }
+    expect(takeMismatches(second)).toEqual([]);
+    expect(takeMismatches(self)).toEqual([]);
+    expect(takeMismatches(first)).toEqual([
+      expect.stringContaining('(sent by "same" (attempt 1), answered during "same" (attempt 2)'),
+    ]);
+    expect(takeMismatches()).toEqual([expect.stringContaining('(in the suite hooks')]);
+  });
+
+  it('leaves out one stand-in route of a real app and checks the others', async () => {
+    const app = Fastify();
+    uncheckedResponses(app, '/api/v1/stand-in');
+    app.get('/api/v1/stand-in', async () => ({ ok: true }));
+    app.get('/api/v1/instance/version', async () => ({ version: 7 }));
+    await app.inject({ url: '/api/v1/stand-in' });
+    await app.inject({ url: '/api/v1/instance/version' });
+    await app.close();
+    expect(takeMismatches()).toEqual([expect.stringContaining('/api/v1/instance/version → 200')]);
+  });
+
+  it('matches a wildcard route with the parameters Fastify decoded', async () => {
+    const app = Fastify();
+    app.get('/api/v1/assets/:assetId/hls/*', async (_req, reply) =>
+      reply.type('video/mp4').send(Buffer.from('init')),
+    );
+    const res = await app.inject({
+      url: `/api/v1/assets/${crypto.randomUUID()}/hls/live/%34%38%30/init.mp4`,
+    });
+    await app.close();
+    expect(res.statusCode).toBe(200);
+    expect(takeMismatches()).toEqual([]);
+  });
+
+  it('waits for answers still pending with real time, even under fake timers', async () => {
+    const app = Fastify();
+    let reached!: () => void;
+    let release!: () => void;
+    const atHandler = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    app.get('/api/v1/instance/version', async () => {
+      reached();
+      await held;
+      return { version: '1.0.0' };
+    });
+    const pending = app.inject({ url: '/api/v1/instance/version' });
+    await atHandler;
+    const now = process.hrtime.bigint;
+    vi.useFakeTimers();
+    const start = now();
+    try {
+      await settled(200);
+    } finally {
+      vi.useRealTimers();
+    }
+    const waitedMs = Number(now() - start) / 1e6;
+    expect(waitedMs).toBeGreaterThanOrEqual(150);
+    expect(waitedMs).toBeLessThan(2000);
+    release();
+    expect((await pending).statusCode).toBe(200);
+    await settled(200);
+    await app.close();
+  });
+});

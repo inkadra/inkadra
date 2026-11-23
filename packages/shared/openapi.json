@@ -12759,6 +12759,25 @@
           "sent"
         ]
       },
+      "LiveSegmentNotReady": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "unavailable"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "description": "Legacy body of the 503 of a live HLS file not ready in time: `{ code, message }` without the `error` wrapper of ApiError. Players read the status and `Retry-After`."
+      },
       "GuestCommentThread": {
         "allOf": [
           {
@@ -13866,7 +13885,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -13955,7 +13974,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -13966,6 +13985,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The destination of reports changed meanwhile",
             "content": {
               "application/json": {
                 "schema": {
@@ -14074,7 +14103,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14170,7 +14199,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14271,7 +14300,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14282,6 +14311,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The destination of reports changed meanwhile",
             "content": {
               "application/json": {
                 "schema": {
@@ -14400,7 +14439,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14484,7 +14523,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14570,7 +14609,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14659,7 +14698,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14748,7 +14787,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14830,7 +14869,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -14954,7 +14993,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15063,7 +15102,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15172,7 +15211,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15183,6 +15222,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Over the crew rows a demo project may hold, or a character already played by another member",
             "content": {
               "application/json": {
                 "schema": {
@@ -15281,7 +15330,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15401,7 +15450,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15521,7 +15570,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15621,7 +15670,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15691,7 +15740,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15759,7 +15808,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -15874,6 +15923,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -15936,7 +15995,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16045,7 +16104,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16174,7 +16233,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16275,7 +16334,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16367,7 +16426,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16477,7 +16536,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16586,7 +16645,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16706,7 +16765,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16817,6 +16876,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -16867,7 +16936,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -16996,7 +17065,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17007,6 +17076,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -17072,7 +17151,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17141,7 +17220,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17219,7 +17298,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17305,7 +17384,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17383,7 +17462,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17461,7 +17540,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17582,7 +17661,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17694,7 +17773,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -17774,7 +17853,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18142,7 +18221,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18226,7 +18305,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18237,6 +18316,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A value in use (details.reason `classification_in_use`), or the configuration changed meanwhile",
             "content": {
               "application/json": {
                 "schema": {
@@ -18284,6 +18373,16 @@
           },
           "401": {
             "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18347,7 +18446,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18423,7 +18522,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18444,6 +18543,16 @@
           },
           "409": {
             "description": "Sole owner of shared projects (details: DeleteMeBlocked), or last active instance administrator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -18516,7 +18625,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18588,7 +18697,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18687,7 +18796,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18763,7 +18872,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18823,7 +18932,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -18951,7 +19060,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19034,7 +19143,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19228,7 +19337,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19313,7 +19422,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19457,7 +19566,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19522,7 +19631,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19600,7 +19709,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19687,7 +19796,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19765,7 +19874,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19852,7 +19961,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -19931,7 +20040,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20020,7 +20129,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20096,7 +20205,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20187,7 +20296,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20265,7 +20374,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20343,7 +20452,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20429,7 +20538,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20527,7 +20636,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20538,6 +20647,26 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Another export of this project is still running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -20639,7 +20768,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20757,7 +20886,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20847,7 +20976,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -20937,7 +21066,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21018,7 +21147,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21109,7 +21238,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21219,7 +21348,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21307,7 +21436,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21383,7 +21512,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21481,7 +21610,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21559,7 +21688,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21645,7 +21774,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21745,7 +21874,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -21910,7 +22039,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22046,7 +22175,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22141,7 +22270,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22236,7 +22365,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22324,7 +22453,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22407,7 +22536,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22478,7 +22607,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22561,7 +22690,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22649,7 +22778,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22748,7 +22877,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22848,7 +22977,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -22937,7 +23066,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23023,7 +23152,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23122,7 +23251,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23203,7 +23332,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23294,7 +23423,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23392,7 +23521,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23512,6 +23641,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -23584,7 +23723,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23595,6 +23734,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency-Key used with a different request",
             "content": {
               "application/json": {
                 "schema": {
@@ -23673,7 +23822,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23769,7 +23918,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23850,7 +23999,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -23980,7 +24129,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24090,7 +24239,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24101,6 +24250,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A project needs at least one owner",
             "content": {
               "application/json": {
                 "schema": {
@@ -24180,7 +24339,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24191,6 +24350,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A project needs at least one owner",
             "content": {
               "application/json": {
                 "schema": {
@@ -24291,7 +24460,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24399,7 +24568,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24410,6 +24579,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The project already has a Production board",
             "content": {
               "application/json": {
                 "schema": {
@@ -24489,7 +24668,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24585,7 +24764,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24666,7 +24845,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24758,7 +24937,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24841,7 +25020,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -24920,7 +25099,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25025,6 +25204,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -25077,6 +25266,16 @@
           },
           "401": {
             "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25147,7 +25346,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25238,7 +25437,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25348,7 +25547,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25439,7 +25638,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25550,7 +25749,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25646,7 +25845,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25657,6 +25856,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already a member, already has an account, or an invitation for this email is pending",
             "content": {
               "application/json": {
                 "schema": {
@@ -25736,7 +25945,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25757,6 +25966,16 @@
           },
           "409": {
             "description": "Cannot be sent again: not an unused email invitation, the access it offers has ended, its inviter can no longer give it, the instance cannot send email, or the invitation changed while it was being sent (the earlier link then stays).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -25829,7 +26048,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -25905,6 +26124,16 @@
           },
           "429": {
             "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -26013,7 +26242,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26116,7 +26345,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26131,6 +26360,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The clientAssetId names an upload that was deleted (ApiError, details.reason `client_asset_deleted`: send it with a new clientAssetId), or one used for another file (plain text).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -26209,7 +26453,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26290,7 +26534,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26371,7 +26615,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26460,7 +26704,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26549,7 +26793,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26744,7 +26988,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26821,6 +27065,20 @@
           "206": {
             "description": "Part of the file"
           },
+          "302": {
+            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -26842,7 +27100,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26860,6 +27118,9 @@
                 }
               }
             }
+          },
+          "416": {
+            "description": "Range not satisfiable"
           },
           "503": {
             "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
@@ -26946,7 +27207,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -26957,6 +27218,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -27037,7 +27308,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27141,7 +27412,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27228,6 +27499,20 @@
           "206": {
             "description": "Part of the file"
           },
+          "302": {
+            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27249,7 +27534,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27327,6 +27612,20 @@
           "206": {
             "description": "Part of the file"
           },
+          "302": {
+            "description": "With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a short-lived signed URL of the bucket. Clients with a token always get the bytes.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27348,7 +27647,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27418,6 +27717,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27439,7 +27741,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27536,6 +27838,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27557,7 +27862,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27645,7 +27950,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27733,7 +28038,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27821,7 +28126,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27946,7 +28251,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28084,7 +28389,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28187,7 +28492,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28198,6 +28503,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -28290,7 +28605,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28301,6 +28616,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -28392,7 +28717,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28607,6 +28932,16 @@
               }
             }
           },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No role on the board, no such plan, or not a set plan",
             "content": {
@@ -28783,7 +29118,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28893,7 +29228,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -28994,7 +29329,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29127,7 +29462,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29227,7 +29562,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29238,6 +29573,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -29309,7 +29654,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29399,7 +29744,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29489,7 +29834,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29573,7 +29918,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29656,7 +30001,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29755,7 +30100,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29852,7 +30197,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -29943,7 +30288,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30054,7 +30399,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30163,7 +30508,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30254,7 +30599,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30366,7 +30711,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30377,6 +30722,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -30510,7 +30865,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30627,8 +30982,28 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30668,6 +31043,16 @@
           },
           "401": {
             "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30729,7 +31114,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30811,7 +31196,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30897,7 +31282,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -30962,6 +31347,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -31018,7 +31413,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31084,6 +31479,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -31140,7 +31545,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31241,7 +31646,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31339,7 +31744,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31448,7 +31853,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31459,6 +31864,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A revoked link cannot be changed",
             "content": {
               "application/json": {
                 "schema": {
@@ -31529,7 +31944,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31620,7 +32035,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -31681,6 +32096,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShareLinkPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -32324,6 +32749,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -32536,6 +32964,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
@@ -32960,6 +33391,9 @@
           "206": {
             "description": "Part of the file"
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -32999,6 +33433,9 @@
                 }
               }
             }
+          },
+          "416": {
+            "description": "Range not satisfiable"
           }
         }
       }
@@ -33052,6 +33489,20 @@
           "206": {
             "description": "Part of the video"
           },
+          "302": {
+            "description": "Only for a stored `{name}.mp4` and only when the link allows downloads, with signed bucket links on (`S3_PUBLIC_REDIRECT`): the file at a short-lived signed URL. With `allowDownload: false` the guest gets the file from the server; playlists never redirect.",
+            "headers": {
+              "Location": {
+                "description": "Signed URL of the file in the bucket",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -33088,6 +33539,691 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/hls/live/{name}.m3u8": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Media playlist of a rung encoded while watched (`video-live`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Playlist; `Cache-Control: private, no-store`",
+            "content": {
+              "application/vnd.apple.mpegurl": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/hls/live/{name}/init.mp4": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Initialization segment of a rung encoded while watched.",
+        "description": "Past the viewing limits or not encoded in time: 503 with `Retry-After`, the player retries, then keeps to the stored rungs.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MP4 header",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready yet (LiveSegmentNotReady, a legacy body that is not ApiError), or the database is unavailable (ApiError); retry after `Retry-After` seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveSegmentNotReady"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/hls/live/{name}/seg-{segment}.m4s": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One media segment of a rung encoded while watched.",
+        "description": "Past the viewing limits or not encoded in time: 503 with `Retry-After`, the player retries, then keeps to the stored rungs.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
+            },
+            "required": true,
+            "name": "segment",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media segment",
+            "content": {
+              "video/iso.segment": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready yet (LiveSegmentNotReady, a legacy body that is not ApiError), or the database is unavailable (ApiError); retry after `Retry-After` seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveSegmentNotReady"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/assets/{assetId}/hls/live/{name}.m3u8": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "Media playlist of a rung encoded while watched (`video-live`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Playlist; `Cache-Control: private, no-store`",
+            "content": {
+              "application/vnd.apple.mpegurl": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/assets/{assetId}/hls/live/{name}/init.mp4": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "Initialization segment of a rung encoded while watched.",
+        "description": "Past the viewing limits or not encoded in time: 503 with `Retry-After`, the player retries, then keeps to the stored rungs.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MP4 header",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready yet (LiveSegmentNotReady, a legacy body that is not ApiError), or the database is unavailable (ApiError); retry after `Retry-After` seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveSegmentNotReady"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/assets/{assetId}/hls/live/{name}/seg-{segment}.m4s": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "One media segment of a rung encoded while watched.",
+        "description": "Past the viewing limits or not encoded in time: 503 with `Retry-After`, the player retries, then keeps to the stored rungs.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "480",
+                "720",
+                "1080",
+                "2160"
+              ]
+            },
+            "required": true,
+            "name": "name",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
+            },
+            "required": true,
+            "name": "segment",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media segment",
+            "content": {
+              "video/iso.segment": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready yet (LiveSegmentNotReady, a legacy body that is not ApiError), or the database is unavailable (ApiError); retry after `Retry-After` seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveSegmentNotReady"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    }
+                  ]
                 }
               }
             }
@@ -33222,6 +34358,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
@@ -34428,7 +35567,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -34526,7 +35665,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -34656,7 +35795,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -34764,7 +35903,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -34866,7 +36005,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -34968,7 +36107,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35079,7 +36218,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35213,7 +36352,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35314,7 +36453,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35466,7 +36605,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35596,7 +36735,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35696,7 +36835,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -35765,6 +36904,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -35786,7 +36928,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {

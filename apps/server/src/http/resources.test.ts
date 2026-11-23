@@ -27,6 +27,7 @@ import {
 import { purgeUploads } from '../queues.ts';
 import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
+import { contractMismatch } from '../test-response-contract.ts';
 import { createApp } from './app.ts';
 
 const url = process.env.DATABASE_URL;
@@ -711,6 +712,16 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       expect(JSON.parse(gone.rawPayload.toString())).toMatchObject({
         error: { details: { reason: 'client_asset_deleted' } },
       });
+      // tus answers on the raw socket, where the contract gate cannot see it.
+      expect(
+        contractMismatch(
+          'POST',
+          '/api/v1/uploads',
+          gone.statusCode,
+          String(gone.headers['content-type']),
+          gone.rawPayload.toString(),
+        ),
+      ).toBeNull();
       expect(await db.select().from(asset).where(eq(asset.id, id))).toEqual([]);
       expect(processed).toBe(0);
     } finally {
@@ -997,6 +1008,35 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect(file.headers['content-type']).toBe('application/octet-stream');
     expect(file.headers['content-disposition']).toMatch(/^attachment; filename="evil.html"/);
     expect(file.headers['content-security-policy']).toContain('sandbox');
+  });
+
+  it('redirects a browser to a signed bucket link, as the contract describes', async () => {
+    const text = Buffer.from('signed');
+    const created = await call('owner', 'POST', '/api/v1/uploads', text, {
+      ...tus,
+      'upload-length': String(text.length),
+      'upload-metadata': metadata('notes.txt', 'text/plain'),
+      'content-type': 'application/offset+octet-stream',
+    });
+    expect(created.statusCode).toBe(201);
+    await deps.jobs.idle();
+    // S3_PUBLIC_REDIRECT on a bucket: the local driver has no signed links of its own.
+    const { signedUrl } = deps.storage;
+    deps.storage.signedUrl = async () =>
+      'https://bucket.example.test/originals/a?X-Amz-Signature=s';
+    try {
+      // Through app.inject, so the contract gate checks the real route's 302.
+      const res = await app.inject({
+        url: `/api/v1/assets/${created.headers['inkadra-asset-id']}/file`,
+        headers: { cookie: as.owner.cookie },
+      });
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe(
+        'https://bucket.example.test/originals/a?X-Amz-Signature=s',
+      );
+    } finally {
+      deps.storage.signedUrl = signedUrl;
+    }
   });
 
   it('refuses uploads from viewers, without metadata or over the limit', async () => {

@@ -1,10 +1,13 @@
 import Fastify from 'fastify';
 import { afterAll, describe, expect, it } from 'vitest';
+import { uncheckedResponses } from '../test-response-contract.ts';
 import { checkSameOrigin, registerCsrfCheck } from './csrf.ts';
 
 const publicUrl = 'https://boards.example.test/';
 const origin = 'https://boards.example.test';
 const app = Fastify();
+// Stand-in routes: what they answer is not the server's.
+uncheckedResponses(app);
 registerCsrfCheck(app, publicUrl);
 app.route({
   method: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'TRACE'],
@@ -138,6 +141,7 @@ describe('same-origin writes', () => {
 
   it('protects case/trailing-slash aliases when the router enables them', async () => {
     const aliases = Fastify({ routerOptions: { caseSensitive: false, ignoreTrailingSlash: true } });
+    uncheckedResponses(aliases);
     registerCsrfCheck(aliases, publicUrl);
     aliases.post('/api/v1/write', () => ({ ok: true }));
     aliases.post('/api/v1/guest/links/:id/session', () => ({ ok: true }));

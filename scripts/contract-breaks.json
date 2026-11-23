@@ -460,6 +460,301 @@
       "break": "openapi: #/paths/~1api~1v1~1assets~1lookup: (absent) → {\"post\":{\"requestBody\":{\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/AssetLookupQuery\"}}},\"requ…#5b6259522624c4738a7573cd72646d7b0216e6e36af48a90f62dc8bb6e85c3ee",
       "pr": 986,
       "why": "New endpoint (additive): the metadata of many assets in one request, for clients that see the capability asset-lookup in /instance/version. The existing template /api/v1/assets/{assetId} only has GET and the new operation is POST on the fixed path /assets/lookup: the methods differ, and the router gives a static path precedence over a parametric one whatever the order of registration; no existing request changes its answer."
+    },
+    {
+      "break": "openapi: #/components/schemas/LiveSegmentNotReady: (absent) → {\"properties\":{\"code\":{\"enum\":[\"unavailable\"],\"type\":\"string\"},\"message\":{\"type\":\"string\"}},\"required\":[\"code\",\"message\"…#cffaad322fc2fed760a5f9137b2dee35d3d6d0276752e37aa491cab267635002",
+      "pr": 989,
+      "why": "New component LiveSegmentNotReady: the legacy body { code, message } that the live HLS 503 has always sent, now declared on those operations instead of ApiError; the handler is unchanged."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1file/get/responses/302: (absent) → {\"headers\":{\"Location\":{\"schema\":{\"type\":\"string\"}}}}",
+      "pr": 989,
+      "why": "302 with Location to a signed bucket URL, sent as before when signed links are on (S3_PUBLIC_REDIRECT) to browsers without a bearer token; clients with a token keep getting the bytes."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1file/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1file/get/responses/416: (absent) → {}",
+      "pr": 989,
+      "why": "416 with Content-Range and no body, as the server has always answered a Range it cannot satisfy on the original file; only a client that asks for such a range sees it."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1frame/get/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1live~1{name}.m3u8: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"assetId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"p…#7ac560d5a98d09bb3a6366eed84776903a8770850f8faa9b502242eb2f9309bc",
+      "pr": 989,
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1live~1{name}~1init.mp4: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"assetId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"p…#8d3013fa0a29f59dfc49cab811915a4c50c17aef0d62535d48f30c7259f2391d",
+      "pr": 989,
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1live~1{name}~1seg-{segment}.m4s: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"assetId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"p…#785cca456ce45ef3b9ff0fc983212630e47bebe7a1d6f33846c55d276641b8bd",
+      "pr": 989,
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1{name}.mp4/get/responses/302: (absent) → {\"headers\":{\"Location\":{\"schema\":{\"type\":\"string\"}}}}",
+      "pr": 989,
+      "why": "302 with Location to a signed bucket URL, sent as before when signed links are on (S3_PUBLIC_REDIRECT) to browsers without a bearer token; clients with a token keep getting the bytes."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1hls~1{name}.mp4/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1proxy/get/responses/302: (absent) → {\"headers\":{\"Location\":{\"schema\":{\"type\":\"string\"}}}}",
+      "pr": 989,
+      "why": "302 with Location to a signed bucket URL, sent as before when signed links are on (S3_PUBLIC_REDIRECT) to browsers without a bearer token; clients with a token keep getting the bytes."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1proxy/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1variants~1{size}/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1{assetId}~1waveform/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1boards~1{boardId}~1elements~1{elementId}~1review/put/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1boards~1{boardId}~1plans~1{planId}~1sheet/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1boards~1{boardId}~1preview/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1comments~1{commentId}/patch/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1demo~1sandbox/post/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1feedback/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1by-token~1{token}/get/responses/400: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1file/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1file/get/responses/416: (absent) → {}",
+      "pr": 989,
+      "why": "416 with Content-Range and no body, as the server has always answered a Range it cannot satisfy on the original file; only a client that asks for such a range sees it."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1live~1{name}.m3u8: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"linkId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"pa…#c98fa200eb0653523fef6772d6455cecee8ff072129cc31879a7c7d4f7c4f4a5",
+      "pr": 989,
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1live~1{name}~1init.mp4: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"linkId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"pa…#c364b0ded999df18dcf3b23aa3786792061f4e392a6721978a780627441a44e0",
+      "pr": 989,
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1live~1{name}~1seg-{segment}.m4s: (absent) → {\"get\":{\"parameters\":[{\"in\":\"path\",\"name\":\"linkId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}},{\"in\":\"pa…#f441032e796eb568cafa36fcc1850503353df5029e9a8a1ef7fa8166172b8564",
+      "pr": 989,
+      "why": "Newly documented path: v0.10.1 already served it through the member or guest /hls/* wildcard route (live video, decision 0128). No v0.10.1 OpenAPI template covered the nested live/... path, because a path parameter does not span `/`; nothing changes for existing requests."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1{file}/get/responses/302: (absent) → {\"headers\":{\"Location\":{\"schema\":{\"type\":\"string\"}}}}",
+      "pr": 989,
+      "why": "302 with Location to a signed bucket URL, sent as before when signed links are on (S3_PUBLIC_REDIRECT), only for a stored MP4, only when the link allows downloads and the request has no Authorization header; otherwise the guest gets the bytes from the server."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1hls~1{file}/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1variants~1{size}/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1assets~1{assetId}~1waveform/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1boards~1{boardId}~1versions~1{versionId}~1assets~1{assetId}~1variants~1{size}/get/responses/304: (absent) → {}",
+      "pr": 989,
+      "why": "304 without a body on a route that revalidates an ETag: the server has always answered it to If-None-Match with its ETag; only clients that send that header see it, as before."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1guest~1links~1{linkId}~1feedback/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1instance~1classifications/put/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1invitations/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1invitations~1by-token~1{token}/get/responses/503: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1invitations~1{invitationId}~1resend/post/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me/delete/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor to a token whose scope does not cover it (decision 0137); an administrator who has not set up two-factor yet still reaches it, since enrolment starts here. Same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1notification-preferences/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1notifications/get/responses/400: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1notifications/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1notifications~1unread-count/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1preferences/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1recent-boards/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1shooting-days/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1me~1tasks/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor: to a token whose scope does not cover it (decision 0137) or to an administrator who must set up two-factor first; same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor to an administrator who must set up two-factor first; the limited token scope (clip, decision 0137) includes this operation. Same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1boards/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1cast-appearances/get/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1crew~1bulk/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1exports/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1exports/post/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1members~1{userId}/delete/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1members~1{userId}/put/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1plan-kit/get/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1share-links~1{linkId}/patch/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1shared-boards/get/responses/403: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 989,
+      "why": "403 forbidden that this operation already answers through requireActor to an administrator who must set up two-factor first; the limited token scope (clip, decision 0137) includes this operation. Same ApiError as elsewhere."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1uploads/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}},\"text/plain\":{\"schema\":{\"type\":\"strin…#8779fd1cebad23a4a1de47d1d1bdd7bae8685755700f3eac917aa9d3e656d00f",
+      "pr": 989,
+      "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
     }
   ]
 }

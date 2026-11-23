@@ -265,7 +265,12 @@ const errors = {
     description: 'Not signed in (for a recognised bearer token, details: InvalidToken)',
     ...json(ApiError),
   },
-  403: { description: 'Not allowed', ...json(ApiError) },
+  403: {
+    description:
+      'Not allowed; also a token whose scope does not cover this route (decision 0137) or an ' +
+      'administrator who must set up two-factor first',
+    ...json(ApiError),
+  },
   404: { description: 'Not found', ...json(ApiError) },
   503: {
     description:
@@ -329,6 +334,7 @@ for (const prefix of ['/feedback', '/guest/links/{linkId}/feedback']) {
     responses: {
       201: { description: 'Durably accepted', ...json(FeedbackReceipt) },
       ...errors,
+      409: { description: 'The destination of reports changed meanwhile', ...json(ApiError) },
       413: { description: 'Size limit exceeded' },
       429: { description: 'Rate limited' },
     },
@@ -459,7 +465,15 @@ registry.registerPath({
   path: `${crewPath}/bulk`,
   summary: 'Add crew from a sheet atomically',
   request: { params: idParam('projectId'), body: json(BulkCreateCrew) },
-  responses: { 201: { description: 'Created', ...json(Crew) }, ...errors },
+  responses: {
+    201: { description: 'Created', ...json(Crew) },
+    ...errors,
+    409: {
+      description:
+        'Over the crew rows a demo project may hold, or a character already played by another member',
+      ...json(ApiError),
+    },
+  },
 });
 registry.registerPath({
   security: secured,
@@ -561,7 +575,11 @@ registry.registerPath({
   security: secured,
   summary:
     'Open to-do items assigned to you in active projects and readable boards, ordered by due date.',
-  responses: { 200: { description: 'My tasks', ...json(MyTasks) }, 401: errors[401] },
+  responses: {
+    200: { description: 'My tasks', ...json(MyTasks) },
+    401: errors[401],
+    403: errors[403],
+  },
 });
 
 /** Days belong to the Production board once a project has one (decision 0123). */
@@ -702,6 +720,7 @@ registry.registerPath({
     200: { description: 'Shooting days', ...json(MySchedule) },
     400: errors[400],
     401: errors[401],
+    403: errors[403],
   },
 });
 
@@ -743,7 +762,11 @@ registry.registerPath({
     'Demo only: makes a sandbox with the sample project and signs the visitor in (cookie). ' +
     'Refusals carry `details.reason` (DemoRefusalReason).',
   request: { body: json(CreateDemoSandbox) },
-  responses: { 201: { description: 'Sandbox', ...json(DemoSandbox) }, ...errors },
+  responses: {
+    201: { description: 'Sandbox', ...json(DemoSandbox) },
+    ...errors,
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'get',
@@ -988,6 +1011,11 @@ registry.registerPath({
       ...json(ClassificationCatalogs),
     },
     ...errors,
+    409: {
+      description:
+        'A value in use (details.reason `classification_in_use`), or the configuration changed meanwhile',
+      ...json(ApiError),
+    },
   },
 });
 
@@ -998,7 +1026,11 @@ registry.registerPath({
   path: v1('/me'),
   tags: ['Users'],
   security: secured,
-  responses: { 200: { description: 'Signed-in user', ...json(User) }, 401: errors[401] },
+  responses: {
+    200: { description: 'Signed-in user', ...json(User) },
+    401: errors[401],
+    403: errors[403],
+  },
 });
 registry.registerPath({
   method: 'patch',
@@ -1057,6 +1089,7 @@ registry.registerPath({
         'Sole owner of shared projects (details: DeleteMeBlocked), or last active instance administrator.',
       ...json(ApiError),
     },
+    429: { description: 'Too many requests', ...json(ApiError) },
   },
 });
 registry.register('DeleteMeBlocked', DeleteMeBlocked);
@@ -1356,6 +1389,8 @@ registry.registerPath({
   responses: {
     202: { description: 'Export queued', headers: transferLocation, ...json(ProjectTransfer) },
     ...errors,
+    409: { description: 'Another export of this project is still running', ...json(ApiError) },
+    429: { description: 'Too many requests', ...json(ApiError) },
   },
 });
 registry.registerPath({
@@ -1769,6 +1804,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Projects the user can see', ...json(page(Project)) },
     401: errors[401],
+    403: errors[403],
   },
 });
 registry.registerPath({
@@ -1781,7 +1817,11 @@ registry.registerPath({
     'Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects ' +
     '(User.canCreateProjects).',
   request: { headers: idempotencyKeyHeader, body: json(CreateProject) },
-  responses: { 201: { description: 'Created', ...json(Project) }, ...errors },
+  responses: {
+    201: { description: 'Created', ...json(Project) },
+    ...errors,
+    409: { description: 'Idempotency-Key used with a different request', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'get',
@@ -1833,7 +1873,11 @@ registry.registerPath({
     'member, setting or changing `expiresAt`, and anything about owners, is for owners. A ' +
     'project always keeps one owner, so owners never have an end date.',
   request: { params: z.object({ projectId: Id, userId: Id }), body: json(SetProjectMember) },
-  responses: { 200: { description: 'Member added or changed', ...json(ProjectMember) }, ...errors },
+  responses: {
+    200: { description: 'Member added or changed', ...json(ProjectMember) },
+    ...errors,
+    409: { description: 'A project needs at least one owner', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'delete',
@@ -1841,7 +1885,11 @@ registry.registerPath({
   tags: ['Projects'],
   security: secured,
   request: { params: z.object({ projectId: Id, userId: Id }) },
-  responses: { 204: { description: 'Removed' }, ...errors },
+  responses: {
+    204: { description: 'Removed' },
+    ...errors,
+    409: { description: 'A project needs at least one owner', ...json(ApiError) },
+  },
 });
 
 // Boards ---------------------------------------------------------------------
@@ -1871,7 +1919,11 @@ registry.registerPath({
     params: idParam('projectId'),
     body: json(CreateBoard),
   },
-  responses: { 201: { description: 'Created', ...json(Board) }, ...errors },
+  responses: {
+    201: { description: 'Created', ...json(Board) },
+    ...errors,
+    409: { description: 'The project already has a Production board', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'get',
@@ -1949,6 +2001,7 @@ registry.registerPath({
     },
     400: errors[400],
     401: errors[401],
+    403: errors[403],
   },
 });
 
@@ -1965,6 +2018,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Boards', ...json(page(Board)) },
     401: errors[401],
+    403: errors[403],
   },
 });
 
@@ -2045,6 +2099,11 @@ registry.registerPath({
     200: { description: 'Existing account: role given', ...json(InvitationResult) },
     201: { description: 'Invitation created', ...json(InvitationResult) },
     ...errors,
+    409: {
+      description:
+        'Already a member, already has an account, or an invitation for this email is pending',
+      ...json(ApiError),
+    },
   },
 });
 registry.registerPath({
@@ -2066,6 +2125,7 @@ registry.registerPath({
         'changed while it was being sent (the earlier link then stays).',
       ...json(ApiError),
     },
+    429: { description: 'Too many requests', ...json(ApiError) },
   },
 });
 registry.registerPath({
@@ -2089,6 +2149,7 @@ registry.registerPath({
     200: { description: 'Preview', ...json(InvitationPreview) },
     404: errors[404],
     429: { description: 'Too many requests', ...json(ApiError) },
+    503: errors[503],
   },
 });
 registry.registerPath({
@@ -2115,6 +2176,21 @@ registry.registerPath({
 
 // Assets and uploads ----------------------------------------------------------
 
+/** sendRanged: with S3_PUBLIC_REDIRECT, a browser (no bearer token) gets the bucket's link. */
+const bucketRedirect = {
+  302: {
+    description:
+      'With signed bucket links on (`S3_PUBLIC_REDIRECT`) and no bearer token: the file at a ' +
+      'short-lived signed URL of the bucket. Clients with a token always get the bytes.',
+    headers: {
+      Location: {
+        description: 'Signed URL of the file in the bucket',
+        schema: { type: 'string' as const },
+      },
+    },
+  },
+};
+
 registry.registerPath({
   method: 'post',
   path: v1('/uploads'),
@@ -2137,6 +2213,16 @@ registry.registerPath({
   responses: {
     201: { description: 'Upload created; Location header points to it' },
     ...errors,
+    409: {
+      description:
+        'The clientAssetId names an upload that was deleted (ApiError, details.reason ' +
+        '`client_asset_deleted`: send it with a new clientAssetId), or one used for another ' +
+        'file (plain text).',
+      content: {
+        'application/json': { schema: ApiError },
+        'text/plain': { schema: z.string() },
+      },
+    },
     413: {
       description:
         'Larger than UPLOAD_MAX_SIZE (plain text), or no space left for it: the body is then ' +
@@ -2247,6 +2333,9 @@ registry.registerPath({
     200: { description: 'File' },
     206: { description: 'Part of the file' },
     ...errors,
+    416: { description: 'Range not satisfiable' },
+    ...bucketRedirect,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2262,6 +2351,7 @@ registry.registerPath({
       content: { 'image/png': { schema: z.string().openapi({ format: 'binary' }) } },
     },
     ...errors,
+    429: { description: 'Too many requests', ...json(ApiError) },
   },
 });
 registry.registerPath({
@@ -2312,6 +2402,8 @@ registry.registerPath({
     200: { description: 'MP4 video', content: { 'video/mp4': { schema: z.string() } } },
     206: { description: 'Part of the file' },
     ...errors,
+    ...bucketRedirect,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2336,6 +2428,8 @@ registry.registerPath({
     },
     206: { description: 'Part of the file' },
     ...errors,
+    ...bucketRedirect,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2351,6 +2445,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Peaks', ...json(AudioWaveform) },
     ...errors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2366,6 +2461,7 @@ registry.registerPath({
   responses: {
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
     ...errors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2474,7 +2570,11 @@ registry.registerPath({
     'Counts frames and lists scene numbers per name, from the boards the caller can read, for ' +
     'the scenes of a character card. Names are compared without case.',
   request: { params: z.object({ projectId: Id }), query: CastAppearancesQuery },
-  responses: { 200: { description: 'Names and scenes', ...json(CastAppearances) }, ...errors },
+  responses: {
+    200: { description: 'Names and scenes', ...json(CastAppearances) },
+    ...errors,
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'get',
@@ -2486,7 +2586,11 @@ registry.registerPath({
     'Derived on each request from the plans of the boards the caller can read: each light with ' +
     'a make, power, gel, stand, colour temperature or modifiers, and each named camera, once.',
   request: { params: z.object({ projectId: Id }), query: PlanKitQuery },
-  responses: { 200: { description: 'Lights and cameras', ...json(PlanKit) }, ...errors },
+  responses: {
+    200: { description: 'Lights and cameras', ...json(PlanKit) },
+    ...errors,
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'get',
@@ -2567,6 +2671,7 @@ registry.registerPath({
       ...json(ApiError),
     },
     ...planSheetTooMany,
+    403: errors[403],
   },
 });
 
@@ -2637,7 +2742,11 @@ registry.registerPath({
   summary: 'Edit your own comment.',
   description: 'Newly mentioned people are notified; people already mentioned are not.',
   request: { params: commentParams, body: json(UpdateComment) },
-  responses: { 200: { description: 'Updated', ...json(CommentSchema) }, ...errors },
+  responses: {
+    200: { description: 'Updated', ...json(CommentSchema) },
+    ...errors,
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'delete',
@@ -2781,7 +2890,11 @@ registry.registerPath({
     'review are notified. The card must exist in the stored board document.' +
     ' Open boards are told with the stateless collab message `{"type":"review"}`.',
   request: { params: elementParams, body: json(SetElementReview) },
-  responses: { 200: { description: 'Set', ...json(ElementReview) }, ...errors },
+  responses: {
+    200: { description: 'Set', ...json(ElementReview) },
+    ...errors,
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'get',
@@ -2810,6 +2923,8 @@ registry.registerPath({
   responses: {
     200: { description: 'Notifications', ...json(page(Notification)) },
     401: errors[401],
+    400: errors[400],
+    403: errors[403],
   },
 });
 registry.registerPath({
@@ -2819,7 +2934,11 @@ registry.registerPath({
   security: secured,
   summary: 'Number for the badge. Cheap enough to poll every minute.',
   description: 'Counts only what the list would show: the same access filter applies.',
-  responses: { 200: { description: 'Count', ...json(UnreadCount) }, 401: errors[401] },
+  responses: {
+    200: { description: 'Count', ...json(UnreadCount) },
+    401: errors[401],
+    403: errors[403],
+  },
 });
 registry.registerPath({
   method: 'post',
@@ -2853,6 +2972,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Preferences', ...json(NotificationPreferences) },
     401: errors[401],
+    403: errors[403],
   },
 });
 registry.registerPath({
@@ -2872,6 +2992,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Preferences', ...json(UserPreferences) },
     401: errors[401],
+    403: errors[403],
   },
 });
 registry.registerPath({
@@ -2923,7 +3044,11 @@ registry.registerPath({
   security: secured,
   summary: 'Change a link. Needs editor on its board; takes effect for open guest pages at once.',
   request: { params: linkParams, body: json(UpdateShareLink) },
-  responses: { 200: { description: 'Updated', ...json(ShareLink) }, ...errors },
+  responses: {
+    200: { description: 'Updated', ...json(ShareLink) },
+    ...errors,
+    409: { description: 'A revoked link cannot be changed', ...json(ApiError) },
+  },
 });
 registry.registerPath({
   method: 'delete',
@@ -2999,6 +3124,7 @@ registry.registerPath({
     403: { description: 'Link expired, revoked or suspended (GuestDenied)', ...json(ApiError) },
     404: errors[404],
     ...tooMany,
+    400: errors[400],
   },
 });
 registry.registerPath({
@@ -3105,6 +3231,7 @@ registry.registerPath({
   responses: {
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
     ...guestErrors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -3141,6 +3268,7 @@ registry.registerPath({
   responses: {
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
     ...guestErrors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -3205,6 +3333,8 @@ registry.registerPath({
     200: { description: 'File' },
     206: { description: 'Part of the file' },
     ...guestErrors,
+    416: { description: 'Range not satisfiable' },
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -3223,8 +3353,93 @@ registry.registerPath({
     200: { description: 'Playlist or video' },
     206: { description: 'Part of the video' },
     ...guestErrors,
+    302: {
+      ...bucketRedirect[302],
+      description:
+        'Only for a stored `{name}.mp4` and only when the link allows downloads, with signed ' +
+        'bucket links on (`S3_PUBLIC_REDIRECT`): the file at a short-lived signed URL. With ' +
+        '`allowDownload: false` the guest gets the file from the server; playlists never redirect.',
+    },
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
+// Rungs encoded while watched (decision 0128), for members and for the guests of a link.
+const LiveSegmentNotReady = z
+  .object({ code: z.literal('unavailable'), message: z.string() })
+  .openapi('LiveSegmentNotReady', {
+    description:
+      'Legacy body of the 503 of a live HLS file not ready in time: `{ code, message }` ' +
+      'without the `error` wrapper of ApiError. Players read the status and `Retry-After`.',
+  });
+for (const prefix of ['/assets/{assetId}', '/guest/links/{linkId}/assets/{assetId}']) {
+  const forGuests = prefix.startsWith('/guest/');
+  const shared = {
+    tags: [forGuests ? 'Guests' : 'Assets'],
+    security: forGuests ? guest : secured,
+    request: {
+      params: z.object({
+        ...(forGuests ? { linkId: Id } : {}),
+        assetId: Id,
+        name: VideoRung,
+      }),
+    },
+  };
+  const failures = forGuests ? guestErrors : errors;
+  const notReady =
+    'Past the viewing limits or not encoded in time: 503 with `Retry-After`, the player ' +
+    'retries, then keeps to the stored rungs.';
+  const segmentFailures = {
+    ...failures,
+    503: {
+      description:
+        'Not ready yet (LiveSegmentNotReady, a legacy body that is not ApiError), or the ' +
+        'database is unavailable (ApiError); retry after `Retry-After` seconds',
+      ...json(z.union([LiveSegmentNotReady, ApiError])),
+    },
+  };
+  registry.registerPath({
+    ...shared,
+    method: 'get',
+    path: v1(`${prefix}/hls/live/{name}.m3u8`),
+    summary: 'Media playlist of a rung encoded while watched (`video-live`).',
+    responses: {
+      200: {
+        description: 'Playlist; `Cache-Control: private, no-store`',
+        content: { 'application/vnd.apple.mpegurl': { schema: z.string() } },
+      },
+      ...failures,
+    },
+  });
+  registry.registerPath({
+    ...shared,
+    method: 'get',
+    path: v1(`${prefix}/hls/live/{name}/init.mp4`),
+    summary: 'Initialization segment of a rung encoded while watched.',
+    description: notReady,
+    responses: {
+      200: { description: 'MP4 header', content: { 'video/mp4': { schema: z.string() } } },
+      ...segmentFailures,
+    },
+  });
+  registry.registerPath({
+    ...shared,
+    method: 'get',
+    path: v1(`${prefix}/hls/live/{name}/seg-{segment}.m4s`),
+    summary: 'One media segment of a rung encoded while watched.',
+    description: notReady,
+    request: {
+      params: shared.request.params.extend({ segment: z.string().regex(/^\d{1,6}$/) }),
+    },
+    responses: {
+      200: {
+        description: 'Media segment',
+        content: { 'video/iso.segment': { schema: z.string() } },
+      },
+      ...segmentFailures,
+    },
+  });
+}
+
 registry.registerPath({
   method: 'get',
   path: v1('/guest/links/{linkId}/assets/{assetId}/stream'),
@@ -3253,6 +3468,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Peaks', ...json(AudioWaveform) },
     ...guestErrors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -3583,6 +3799,11 @@ registry.registerPath({
   },
 });
 
+/** The registered operations with their Zod schemas: server tests check every answer against them. */
+export function apiOperations() {
+  return registry.definitions.flatMap((d) => (d.type === 'route' ? [d.route] : []));
+}
+
 export function buildOpenApiDocument() {
   return new OpenApiGeneratorV31(registry.definitions).generateDocument({
     openapi: '3.1.0',
@@ -3647,5 +3868,9 @@ registry.registerPath({
   security: secured,
   summary: 'Authorized compact preview of the last persisted board; excludes full document data.',
   request: { params: z.object({ boardId: Id }) },
-  responses: { 200: { description: 'Board preview', ...json(BoardPreview) }, ...errors },
+  responses: {
+    200: { description: 'Board preview', ...json(BoardPreview) },
+    ...errors,
+    304: { description: 'Not changed since If-None-Match' },
+  },
 });

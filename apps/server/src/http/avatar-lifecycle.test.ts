@@ -29,6 +29,7 @@ function setup() {
     image: null as string | null,
     role: 'member',
     locale: 'en',
+    twoFactorEnabled: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     emailVerified: true,
