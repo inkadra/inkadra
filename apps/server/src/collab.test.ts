@@ -450,6 +450,421 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     }
   });
 
+  /**
+   * A new board on a collab server of its own, with one shown and two hidden columns, its stores
+   * counted, its board writes able to fail or wait on demand, and its setup already stored.
+   */
+  async function hidingBoard(
+    name: string,
+    boardLimits?: typeof limits & { freeze?: boolean },
+    timerMode: 'real' | 'manual' | 'sync' = 'real',
+  ) {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name },
+    });
+    const id: string = created.json().rootBoardId;
+    const control = controlledWrites(db);
+    /** Early-store timers waiting, when the test fires them by hand. */
+    const timers = new Set<() => void>();
+    const fire = () => {
+      const due = [...timers];
+      timers.clear();
+      for (const run of due) run();
+    };
+    const server = createCollabServer({
+      ...(timerMode === 'manual'
+        ? {
+            hidingTimer: (run: () => void) => {
+              timers.add(run);
+              return () => timers.delete(run);
+            },
+          }
+        : {}),
+      // A timer that runs before it returns its cancel.
+      ...(timerMode === 'sync'
+        ? {
+            hidingTimer: (run: () => void) => {
+              run();
+              return () => {};
+            },
+          }
+        : {}),
+      db: control.db,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      ...(boardLimits ? { limits: boardLimits } : {}),
+    });
+    const hooks = vi.spyOn(server.hocuspocus, 'hooks');
+    const storeCalls = vi.spyOn(server.hocuspocus, 'storeDocumentHooks');
+    /** Stores begun, failed ones included. */
+    const stores = () => hooks.mock.calls.filter(([hook]) => hook === 'onStoreDocument').length;
+    /** Stores asked to run at once: early stores, retries and the last person leaving. */
+    const immediate = () => storeCalls.mock.calls.filter(([, , now]) => now === true).length;
+    const shown = column('Shown');
+    const hiddenA = { ...column('Hidden A'), guestHidden: true };
+    const hiddenB = { ...column('Hidden B'), guestHidden: true };
+    const card = (parent: string) => ({
+      id: newElementId(),
+      type: 'note' as const,
+      x: 0,
+      y: 0,
+      w: 200,
+      z: 'a1',
+      parent,
+      createdBy: null,
+      createdAt: Date.now(),
+    });
+    const cards = [card(shown.id), card(shown.id), card(shown.id)];
+    const tucked = card(hiddenA.id);
+    const conn = await server.hocuspocus.openDirectConnection(boardDocName(id));
+    await conn.transact((doc) => {
+      for (const el of [shown, hiddenA, hiddenB, ...cards, tucked]) addElement(doc, el);
+    });
+    const set = (elementId: string, key: string, value: unknown) =>
+      conn.transact((doc) => roots(doc).elements.get(elementId)?.set(key, value));
+    /** The parent of an element in the stored document. */
+    const storedParent = async (elementId: string) => {
+      const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, id));
+      const doc = new Y.Doc();
+      if (row) Y.applyUpdate(doc, row.state);
+      return roots(doc).elements.get(elementId)?.get('parent');
+    };
+    const flush = () => server.hocuspocus.flushPendingStores();
+    flush();
+    // Stored, and the store finished (it still indexes the board after the write).
+    const finished = () =>
+      hooks.mock.calls.filter(([hook]) => hook === 'afterStoreDocument').length;
+    await expect.poll(finished, { timeout: 5000 }).toBe(1);
+    expect(await storedParent(tucked.id)).toBe(hiddenA.id);
+    expect(stores()).toBe(1);
+    const close = async () => {
+      control.down = false;
+      control.release();
+      await conn.disconnect().catch(() => {});
+      await server.destroy();
+    };
+    return {
+      ...{ control, server, stores, finished, immediate, set, storedParent, flush, close },
+      ...{ timers, fire },
+      ...{ shown, hiddenA, hiddenB, cards, tucked },
+    };
+  }
+  /** Well past GUEST_HIDING_STORE_MS (300 ms) and well before the usual store debounce (2 s). */
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 800));
+  const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  /** Silences and counts the errors a failed store logs. */
+  const storeErrors = () => vi.spyOn(console, 'error').mockImplementation(() => {});
+
+  it('stores a board at once when a card guests saw is hidden through its container', async () => {
+    const b = await hidingBoard('Hidden through a column');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 800 }).toBe(b.hiddenA.id);
+      expect(b.stores()).toBe(2);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('stores a burst of cards hidden from guests once', async () => {
+    const b = await hidingBoard('Hidden in a burst');
+    try {
+      for (const c of b.cards) await b.set(c.id, 'parent', b.hiddenA.id);
+      await settle();
+      expect(b.stores()).toBe(2);
+      expect(b.immediate()).toBe(1);
+      for (const c of b.cards) expect(await b.storedParent(c.id)).toBe(b.hiddenA.id);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('does not store early when a card moves between two containers already hidden', async () => {
+    const b = await hidingBoard('Between hidden columns');
+    try {
+      await b.set(b.tucked.id, 'parent', b.hiddenB.id);
+      await b.set(b.tucked.id, 'parent', b.hiddenA.id);
+      await b.set(b.tucked.id, 'parent', b.hiddenB.id);
+      await settle();
+      expect(b.stores()).toBe(1);
+      expect(b.immediate()).toBe(0);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('does not store early on edits that hide nothing guests saw', async () => {
+    const b = await hidingBoard('Unrelated edits');
+    try {
+      await b.set(b.shown.id, 'title', 'Renamed');
+      await b.set(b.cards[0]!.id, 'x', 40);
+      await b.set(b.hiddenB.id, 'guestHidden', false);
+      await settle();
+      expect(b.stores()).toBe(1);
+      expect(b.immediate()).toBe(0);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('cancels the early store once a store that ran first wrote the hiding', async () => {
+    const b = await hidingBoard('Store ran first', undefined, 'manual');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(1);
+      // A store that runs first (the last person leaving, a shutdown) writes the hiding too.
+      b.flush();
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+      await expect.poll(() => b.timers.size, { timeout: 1000 }).toBe(0);
+      expect(b.stores()).toBe(2);
+      expect(b.immediate()).toBe(0);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('stores again a card hidden while a store that read the board before it was writing', async () => {
+    const b = await hidingBoard('Hidden during a store', undefined, 'manual');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      // The early store is still armed when another store reads the board and starts writing.
+      b.control.hold();
+      b.flush();
+      await expect.poll(() => b.control.waiting, { timeout: 1000 }).toBe(1);
+      await b.set(b.cards[1]!.id, 'parent', b.hiddenA.id);
+      const [first] = b.timers;
+      expect(b.timers.size).toBe(1);
+      b.control.release();
+      await expect.poll(b.finished, { timeout: 1000 }).toBe(2);
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.hiddenA.id);
+      // Written without the second card: the early store is armed again (its timer expires after
+      // the commit), and sends.
+      expect(b.timers.size).toBe(1);
+      expect(b.timers.has(first!)).toBe(false);
+      expect(await b.storedParent(b.cards[1]!.id)).toBe(b.shown.id);
+      b.fire();
+      expect(b.immediate()).toBe(1);
+      await expect.poll(() => b.storedParent(b.cards[1]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('stores again a card hidden while a retried store was writing', async () => {
+    const errors = storeErrors();
+    const b = await hidingBoard('Hidden during a retry', undefined, 'manual');
+    try {
+      b.control.down = true;
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      b.fire();
+      await expect.poll(() => errors.mock.calls.length > 0, { timeout: 1000 }).toBe(true);
+      expect(b.stores()).toBe(2);
+      // The retry (1 s later) reads the board, then waits on the write.
+      b.control.hold();
+      b.control.down = false;
+      await expect.poll(() => b.control.waiting, { timeout: 3000 }).toBe(1);
+      await b.set(b.cards[1]!.id, 'parent', b.hiddenA.id);
+      // A board waiting for its retry arms no early store.
+      expect(b.timers.size).toBe(0);
+      b.control.release();
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+      await expect.poll(() => b.timers.size, { timeout: 1000 }).toBe(1);
+      b.fire();
+      await expect.poll(() => b.storedParent(b.cards[1]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+      expect(b.stores()).toBe(4);
+    } finally {
+      errors.mockRestore();
+      await b.close();
+    }
+  });
+
+  it('keeps the retry backoff, then no early store once the retry wrote the hiding', async () => {
+    const errors = storeErrors();
+    const b = await hidingBoard('Hidden during the backoff', undefined, 'manual');
+    try {
+      b.control.down = true;
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      b.fire();
+      await expect.poll(() => errors.mock.calls.length > 0, { timeout: 1000 }).toBe(true);
+      expect(b.stores()).toBe(2);
+      // Hidden while the board waits for its retry (1 s): the retry stores it, not an early store.
+      await b.set(b.cards[1]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(0);
+      expect(b.stores()).toBe(2);
+      b.control.down = false;
+      await expect.poll(() => b.storedParent(b.cards[1]!.id), { timeout: 3000 }).toBe(b.hiddenA.id);
+      expect(b.stores()).toBe(3);
+      expect(b.timers.size).toBe(0);
+      // Later edits that hide nothing arm nothing.
+      await b.set(b.shown.id, 'title', 'Renamed');
+      expect(b.timers.size).toBe(0);
+    } finally {
+      errors.mockRestore();
+      await b.close();
+    }
+  });
+
+  it('sends no early store while a store that already read the hiding is writing', async () => {
+    const b = await hidingBoard('Early store during a store', undefined, 'manual');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(1);
+      // An ordinary store reads the hidden card, then waits on the write; the timer runs then.
+      b.control.hold();
+      b.flush();
+      await expect.poll(() => b.control.waiting, { timeout: 1000 }).toBe(1);
+      b.fire();
+      expect(b.immediate()).toBe(0);
+      b.control.release();
+      await expect.poll(b.finished, { timeout: 1000 }).toBe(2);
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.hiddenA.id);
+      expect(b.stores()).toBe(2);
+      expect(b.immediate()).toBe(0);
+      expect(b.timers.size).toBe(0);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('sends the early store once the store in flight wrote an older state', async () => {
+    const b = await hidingBoard('Early store after a store', undefined, 'manual');
+    try {
+      b.control.hold();
+      await b.set(b.shown.id, 'title', 'Renamed');
+      b.flush();
+      await expect.poll(() => b.control.waiting, { timeout: 1000 }).toBe(1);
+      // Hidden after that store read the board: the timer runs before it commits.
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      b.fire();
+      expect(b.immediate()).toBe(0);
+      b.control.release();
+      await expect.poll(() => b.timers.size, { timeout: 1000 }).toBe(1);
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.shown.id);
+      b.fire();
+      expect(b.immediate()).toBe(1);
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+      expect(b.stores()).toBe(3);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('leaves a failed store to its retry, without an early store ahead of the backoff', async () => {
+    const errors = storeErrors();
+    const b = await hidingBoard('Early store and a failed store', undefined, 'manual');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      b.control.hold();
+      b.control.down = true;
+      b.flush();
+      await expect.poll(() => b.control.waiting, { timeout: 1000 }).toBe(1);
+      b.fire();
+      b.control.release();
+      await expect.poll(() => errors.mock.calls.length > 0, { timeout: 1000 }).toBe(true);
+      // The retry comes after its backoff (1 s), and nothing else in between.
+      await pause(500);
+      expect(b.stores()).toBe(2);
+      expect(b.immediate()).toBe(0);
+      expect(b.timers.size).toBe(0);
+      b.control.down = false;
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 3000 }).toBe(b.hiddenA.id);
+      expect(b.stores()).toBe(3);
+    } finally {
+      errors.mockRestore();
+      await b.close();
+    }
+  });
+
+  it('drops a pending early store once the last person left and the server shut down', async () => {
+    const b = await hidingBoard('Early store at shutdown', undefined, 'manual');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      const [pending] = b.timers;
+      // Leaving stores the board at once; the shutdown then cancels what was left.
+      await b.close();
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.hiddenA.id);
+      expect(b.timers.size).toBe(0);
+      const after = b.immediate();
+      pending?.();
+      expect(b.immediate()).toBe(after);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('drops a pending early store at shutdown while a connection is still open', async () => {
+    const b = await hidingBoard('Shutdown with a connection open', undefined, 'manual');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      const [pending] = b.timers;
+      await b.server.destroy();
+      expect(await b.storedParent(b.cards[0]!.id)).toBe(b.hiddenA.id);
+      expect(b.timers.size).toBe(0);
+      const after = b.immediate();
+      pending?.();
+      expect(b.immediate()).toBe(after);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('keeps no early store armed while a failed store waits for its retry', async () => {
+    const errors = storeErrors();
+    const b = await hidingBoard('Early store during the backoff', undefined, 'manual');
+    try {
+      b.control.down = true;
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(1);
+      b.flush();
+      await expect.poll(() => errors.mock.calls.length > 0, { timeout: 1000 }).toBe(true);
+      expect(b.timers.size).toBe(0);
+      b.control.down = false;
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 3000 }).toBe(b.hiddenA.id);
+    } finally {
+      errors.mockRestore();
+      await b.close();
+    }
+  });
+
+  it('arms the early store again after a timer that ran at once during a store', async () => {
+    const b = await hidingBoard('Synchronous early-store timer', undefined, 'sync');
+    try {
+      b.control.hold();
+      await b.set(b.shown.id, 'title', 'Renamed');
+      b.flush();
+      await expect.poll(() => b.control.waiting, { timeout: 1000 }).toBe(1);
+      // Its timer runs at once, while the store is in flight: nothing is sent yet.
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.immediate()).toBe(0);
+      b.control.release();
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1000 }).toBe(b.hiddenA.id);
+      expect(b.immediate()).toBe(1);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('does not store a frozen board early', async () => {
+    const capped = { ...limits, freeze: true };
+    const b = await hidingBoard('Frozen board', capped, 'manual');
+    try {
+      // The next store finds the board past the cap and freezes it.
+      capped.stateBytes = 1;
+      await b.set(b.shown.id, 'title', 'Renamed');
+      b.flush();
+      await expect.poll(b.finished, { timeout: 1000 }).toBe(2);
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(0);
+      expect(b.immediate()).toBe(0);
+    } finally {
+      await b.close();
+    }
+  });
+
   it('keeps a board on disk when its store hangs at shutdown', async () => {
     const created = await app.inject({
       method: 'POST',
@@ -1421,4 +1836,49 @@ function failingInserts<T extends object>(target: T, down: () => boolean, inTx =
       return typeof value === 'function' ? value.bind(t) : value;
     },
   });
+}
+
+/** A database whose board writes (in transactions) fail while `down` and wait while held. */
+function controlledWrites<T extends object>(target: T) {
+  let held: Promise<void> | null = null;
+  let open = () => {};
+  const control = {
+    db: target,
+    down: false,
+    /** Writes that waited on a hold. */
+    waiting: 0,
+    hold() {
+      held = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+    },
+    release() {
+      held = null;
+      open();
+    },
+  };
+  const wrap = <U extends object>(t: U, inTx: boolean): U =>
+    new Proxy(t, {
+      get(o, key) {
+        if (key === 'transaction')
+          return (fn: (tx: object) => unknown, ...rest: unknown[]) =>
+            (o as { transaction: (...a: unknown[]) => unknown }).transaction(
+              (tx: object) => fn(wrap(tx, true)),
+              ...rest,
+            );
+        if (inTx && key === 'execute')
+          return async (...args: unknown[]) => {
+            if (held) {
+              control.waiting += 1;
+              await held;
+            }
+            if (control.down) throw new Error('database down');
+            return (o as { execute: (...a: unknown[]) => unknown }).execute(...args);
+          };
+        const value = Reflect.get(o, key);
+        return typeof value === 'function' ? value.bind(o) : value;
+      },
+    });
+  control.db = wrap(target, false);
+  return control;
 }

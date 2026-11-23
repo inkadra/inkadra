@@ -66,20 +66,93 @@ export async function visibleBoardCard(
     for (const [id, el] of elements) {
       if (!(el instanceof Y.Map)) continue;
       if (el.get('type') !== 'board' || el.get('boardId') !== childId) continue;
-      const hidden = hiddenFromGuests(id, (key) => {
-        const node = elements.get(key);
-        if (!(node instanceof Y.Map)) return undefined;
-        const parent = node.get('parent');
-        // Invalid containers are hidden, never treated as the canvas.
-        if (parent !== null && typeof parent !== 'string') return undefined;
-        return { parent, guestHidden: node.get('guestHidden') === true };
-      });
-      if (!hidden) return true;
+      if (!hiddenFromGuests(id, guestLookup(elements))) return true;
     }
     return false;
   } finally {
     doc.destroy();
   }
+}
+
+/** What hiddenFromGuests reads of the elements of a board document. */
+function guestLookup(elements: Y.Map<Y.Map<unknown>>) {
+  return (key: string) => {
+    const node = elements.get(key);
+    if (!(node instanceof Y.Map)) return undefined;
+    const parent = node.get('parent');
+    // Invalid containers are hidden, never treated as the canvas.
+    if (parent !== null && typeof parent !== 'string') return undefined;
+    return { parent, guestHidden: node.get('guestHidden') === true };
+  };
+}
+
+/** What the guest projection (`viewOf` in share-links.ts) reads of an element: null if invalid. */
+type GuestInfo = { parent: string | null; guestHidden: boolean } | null;
+
+function guestInfo(elements: Y.Map<Y.Map<unknown>>, id: string): GuestInfo {
+  const map = elements.get(id);
+  if (!(map instanceof Y.Map)) return null;
+  const el = readElement(map);
+  return el?.id === id ? { parent: el.parent, guestHidden: el.guestHidden === true } : null;
+}
+
+const sameInfo = (a: GuestInfo | undefined, b: GuestInfo | undefined) =>
+  a === b || (!!a && !!b && a.parent === b.parent && a.guestHidden === b.guestHidden);
+
+/**
+ * Tells, on each call, whether an element guests could see at the previous call is now hidden
+ * from them, as share pages decide it (`viewOf`): by its own flag, through a container, or by
+ * becoming invalid itself or in a container (a container deleted counts: what stays inside is
+ * hidden). Elements added hidden or moved between containers that were already hidden don't
+ * count: guests never saw them. A deleted element doesn't count either, on purpose: guests see
+ * it go with the usual store, like any other edit.
+ *
+ * Only the elements a change touches are read again (rich text is skipped: it never decides
+ * validity), and the whole board only when one of them changed its parent, its flag or its
+ * validity, or was added or deleted; reordering inside a container rewrites the same parent.
+ */
+export function trackGuestHiding(doc: Y.Doc): () => boolean {
+  const { elements } = roots(doc);
+  const info = new Map<string, GuestInfo>();
+  for (const id of elements.keys()) info.set(id, guestInfo(elements, id));
+  const lookup = (id: string) => info.get(id) ?? undefined;
+  const visibleIds = () => {
+    const visible = new Set<string>();
+    for (const id of info.keys()) if (!hiddenFromGuests(id, lookup)) visible.add(id);
+    return visible;
+  };
+  let visible = visibleIds();
+  const touched = new Set<string>();
+  elements.observeDeep((events) => {
+    for (const event of events) {
+      if (event.target === elements) {
+        for (const id of (event as Y.YMapEvent<unknown>).keysChanged) touched.add(id);
+        continue;
+      }
+      const [id, field] = event.path;
+      if (typeof id !== 'string') continue;
+      // Rich text, which readElement skips, never decides validity.
+      if (typeof field === 'string' && elements.get(id)?.get(field) instanceof Y.XmlFragment)
+        continue;
+      touched.add(id);
+    }
+  });
+  return () => {
+    let stale = false;
+    for (const id of touched) {
+      const before = info.get(id);
+      const now = elements.has(id) ? guestInfo(elements, id) : undefined;
+      if (now === undefined) info.delete(id);
+      else info.set(id, now);
+      if (!sameInfo(before, now)) stale = true;
+    }
+    touched.clear();
+    if (!stale) return false;
+    const before = visible;
+    visible = visibleIds();
+    for (const id of before) if (!visible.has(id) && elements.has(id)) return true;
+    return false;
+  };
 }
 
 /** The columns of a board document, left to right and then top to bottom. */
