@@ -842,9 +842,12 @@ export function createCollabServer(deps: {
       timer.unref();
       return () => clearTimeout(timer);
     });
-  /** No early store can be due: frozen boards and a shutdown don't store, and a retry will. */
+  /**
+   * No early store can be due: frozen boards, a shutdown and a superseded process (F-24) don't
+   * store, and a retry will.
+   */
   const mayStoreSoon = (document: Y.Doc) =>
-    !closing && !frozen.has(document) && !unsaved.has(document);
+    !closing && !superseded && !frozen.has(document) && !unsaved.has(document);
   const storeSoon = (payload: StorePayload) => {
     const { document, documentName } = payload;
     // One per board until it runs, so a burst of changes stores once.
@@ -877,6 +880,9 @@ export function createCollabServer(deps: {
   const supersede = (err: StaleCollabEpochError) => {
     if (superseded) return;
     superseded = true;
+    // Nothing it writes is stored any more: no early store stays armed.
+    for (const cancel of hidingStores.values()) cancel();
+    hidingStores.clear();
     log.error(
       { err: err.message },
       'another collab process took over the boards: this one stops, its clients reconnect',
@@ -979,10 +985,13 @@ export function createCollabServer(deps: {
             // The demo never stores a board past its caps: merging would only freeze it.
             if (limits?.freeze) {
               const merged = new Y.Doc();
-              Y.applyUpdate(merged, Y.encodeStateAsUpdate(doc));
-              Y.applyUpdate(merged, update);
-              capped = frozen.has(doc) || overDemoCaps(limits, merged);
-              merged.destroy();
+              try {
+                Y.applyUpdate(merged, Y.encodeStateAsUpdate(doc));
+                Y.applyUpdate(merged, update);
+                capped = frozen.has(doc) || overDemoCaps(limits, merged);
+              } finally {
+                merged.destroy();
+              }
               if (capped) return;
             }
             Y.applyUpdate(doc, update);

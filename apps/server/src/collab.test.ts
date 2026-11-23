@@ -469,6 +469,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     name: string,
     boardLimits?: typeof limits & { freeze?: boolean },
     timerMode: 'real' | 'manual' | 'sync' = 'real',
+    fence?: { epoch: number; onStale: () => void },
   ) {
     const created = await app.inject({
       method: 'POST',
@@ -508,6 +509,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       log,
       publicUrl: config.PUBLIC_URL,
       ...(boardLimits ? { limits: boardLimits } : {}),
+      ...(fence ? { fence } : {}),
     });
     const hooks = vi.spyOn(server.hocuspocus, 'hooks');
     const storeCalls = vi.spyOn(server.hocuspocus, 'storeDocumentHooks');
@@ -577,6 +579,64 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 800 }).toBe(b.hiddenA.id);
       expect(b.stores()).toBe(2);
     } finally {
+      await b.close();
+    }
+  });
+
+  it('cancels its early stores once superseded and arms none after (F-24)', async () => {
+    const stale = vi.fn();
+    const b = await hidingBoard('Superseded early store', undefined, 'manual', {
+      epoch: await takeCollabEpoch(db),
+      onStale: stale,
+    });
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(1);
+      // A newer process took over; the next store is refused.
+      await takeCollabEpoch(db);
+      b.flush();
+      await vi.waitFor(() => expect(stale).toHaveBeenCalledOnce());
+      expect(b.timers.size).toBe(0);
+      await b.set(b.cards[1]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(0);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('arms no early store after a store whose index write meets a newer process (F-24)', async () => {
+    const stale = vi.fn();
+    const b = await hidingBoard('Superseded at the index', undefined, 'manual', {
+      epoch: await takeCollabEpoch(db),
+      onStale: stale,
+    });
+    const transaction = db.transaction.bind(db);
+    let armed = false;
+    const writes = vi.spyOn(db, 'transaction').mockImplementation((async (
+      ...args: Parameters<typeof db.transaction>
+    ) => {
+      // The takeover lands after the store's write, before the next transaction of the store.
+      if (armed) {
+        armed = false;
+        await takeCollabEpoch({ transaction } as never);
+      }
+      return transaction(...args);
+    }) as typeof db.transaction);
+    try {
+      // The store reads the board, then a card is hidden while its write waits.
+      await b.set(b.cards[2]!.id, 'x', 40);
+      b.control.hold();
+      b.flush();
+      await vi.waitFor(() => expect(b.control.waiting).toBeGreaterThan(0));
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      armed = true;
+      b.control.release();
+      await vi.waitFor(() => expect(stale).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(b.finished()).toBe(2));
+      // The store wrote an older state, but this process stores nothing more: nothing is armed.
+      expect(b.timers.size).toBe(0);
+    } finally {
+      writes.mockRestore();
       await b.close();
     }
   });
