@@ -359,6 +359,17 @@ export function placePlanIcon(
     const stored = list instanceof Y.Array ? list.length : 0;
     if (stored + n > MAX_PLAN_ICONS) return null;
   }
+  // Attaching writes items again (writePlanItems) on the plan and its base, strokes, shapes and
+  // icons: none of those lists may be plain JSON either, or the attachment would replace it.
+  if (opts.on || opts.modifiers?.length) {
+    for (const plan of [edit.plan.id, edit.base?.id]) {
+      const map = plan ? roots(doc).elements.get(plan) : undefined;
+      for (const key of ['strokes', 'shapes', 'icons'] as const) {
+        const list = map?.get(key);
+        if (list !== undefined && !(list instanceof Y.Array)) return null;
+      }
+    }
+  }
   const icons = edit.drawn.icons ?? [];
   let id: string | null = null;
   doc.transact(() => {

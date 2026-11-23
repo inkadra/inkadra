@@ -112,3 +112,39 @@ describe('placing an icon on a plan whose icons are plain JSON', () => {
     expect(baseMap.get('icons')).toEqual([old]);
   });
 });
+
+describe('placing a kit on a plan whose shapes are plain JSON', () => {
+  it('refuses before writing anything: the attachment would write the shapes too', () => {
+    const doc = createBoardDoc(boardId);
+    const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    const map = roots(doc).elements.get(plan) as Y.Map<unknown>;
+    const old = {
+      id: 'old-text-0001',
+      kind: 'text',
+      color: '#1C1C1E',
+      width: 2,
+      x0: 1,
+      y0: 1,
+      x1: 9,
+      y1: 9,
+      text: 'Exit',
+    };
+    map.set('shapes', [old]);
+    let changes = 0;
+    doc.on('afterTransaction', () => changes++);
+    const id = placePlanIcon(
+      doc,
+      planEdit(planOf(doc, plan)),
+      'fresnel',
+      { x: 0.5, y: 0.5 },
+      {
+        ...white,
+        modifiers: ['softbox'],
+      },
+    );
+    expect(id).toBeNull();
+    expect(changes).toBe(0);
+    expect((map.get('icons') as Y.Array<unknown>).length).toBe(0);
+    expect(map.get('shapes')).toEqual([old]);
+  });
+});
