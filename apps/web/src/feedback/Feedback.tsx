@@ -204,18 +204,40 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     name,
     url: URL.createObjectURL(blob),
   });
-  const drop = (item: LocalAttachment | null) => {
-    if (item) URL.revokeObjectURL(item.url);
+  /** Object URLs already released: the same attachment can be in two places (video, review). */
+  const released = useRef(new Set<string>());
+  const drop = useCallback((item: LocalAttachment | null) => {
+    if (!item || released.current.has(item.url)) return;
+    released.current.add(item.url);
+    URL.revokeObjectURL(item.url);
+  }, []);
+  /** The attachments as last rendered, kept current by the replacements below. */
+  const held = useRef({ shot, video, candidate, files });
+  held.current = { shot, video, candidate, files };
+  // Made outside the state updaters, which StrictMode runs twice.
+  const replaceShot = (item: LocalAttachment) => {
+    drop(held.current.shot);
+    held.current.shot = item;
+    setShot(item);
   };
+  /** A new video under review; the one it replaces goes unless it is the attached one. */
+  const replaceCandidate = (item: LocalAttachment) => {
+    const old = held.current.candidate;
+    if (old !== item && old !== held.current.video) drop(old);
+    held.current.candidate = item;
+    setCandidate(item);
+  };
+  /** False once the launcher went away: a late recording or screen share is dropped. */
+  const mounted = useRef(true);
   // What is still attached when the launcher goes away (another page, signing out) is released.
-  const held = useRef<Array<LocalAttachment | null>>([]);
-  held.current = [shot, video, candidate, ...files];
-  useEffect(
-    () => () => {
-      for (const item of held.current) if (item) URL.revokeObjectURL(item.url);
-    },
-    [],
-  );
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      const { shot, video, candidate, files } = held.current;
+      for (const item of [shot, video, candidate, ...files]) drop(item);
+    };
+  }, [drop]);
 
   const refresh = useCallback(() => {
     void api
@@ -342,10 +364,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       ]);
       if (run !== captureRun.current) return;
       if (!blob) throw new Error('Capture failed');
-      setShot((old) => {
-        drop(old);
-        return local(blob, 'screenshot', 'screenshot.png');
-      });
+      replaceShot(local(blob, 'screenshot', 'screenshot.png'));
       setShotAutomatic(true);
       setShotIncluded(true);
       setCapturing('idle');
@@ -443,6 +462,10 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       setPermission(true);
       return;
     }
+    if (!mounted.current) {
+      for (const track of media.getTracks()) track.stop();
+      return;
+    }
     stream.current = media;
     for (const track of media.getAudioTracks()) {
       track.stop();
@@ -465,6 +488,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     discardRecording.current = false;
     rec.onstop = () => {
       for (const track of media.getTracks()) track.stop();
+      if (!mounted.current) return;
       setRecording(false);
       if (discardRecording.current || !chunks.length) {
         setPhase('compose');
@@ -479,7 +503,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       );
       item.seconds = Math.min(RECORD_SECONDS, Math.round((Date.now() - started) / 1000));
       item.recorded = true;
-      setCandidate(item);
+      replaceCandidate(item);
       setPhase('videoReview');
       setOpen(true);
     };
@@ -498,10 +522,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         setCapturing('error');
         return;
       }
-      setShot((old) => {
-        drop(old);
-        return local(file, 'screenshot', file.name);
-      });
+      replaceShot(local(file, 'screenshot', file.name));
       setShotAutomatic(false);
       setShotIncluded(true);
       setCapturing('idle');
@@ -530,7 +551,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       if (isVideo && !item.error) {
         reviewed = true;
         setWholeScreen(false);
-        setCandidate(item);
+        replaceCandidate(item);
         setPhase('videoReview');
       } else {
         if (!item.error) count++;
@@ -897,7 +918,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
                 icon="check"
                 aria-pressed
                 onClick={() => {
-                  setCandidate(video);
+                  replaceCandidate(video);
                   setPhase('videoReview');
                 }}
               >
@@ -1253,8 +1274,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           onSave={(blob, areas) => {
             const item = local(blob, 'screenshot', 'screenshot.png');
             item.redactedAreas = redactedAreas + areas;
-            drop(shot);
-            setShot(item);
+            replaceShot(item);
             setEditing(null);
           }}
         />
