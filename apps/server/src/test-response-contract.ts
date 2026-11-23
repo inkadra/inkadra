@@ -13,6 +13,7 @@
 // file in the setup's last afterAll, which first waits up to 2 s for requests still answering.
 // Guaranteed only with serial cases (no it.concurrent: one owner at a time) and awaited
 // requests; an answer arriving after that last afterAll is not seen at all.
+import { setTimeout as sleep } from 'node:timers/promises';
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { apiOperations } from '@inkadra/shared/openapi';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -188,11 +189,17 @@ export function takeMismatches(owner?: Owner): string[] {
 }
 
 let inFlight = 0;
-/** Waits, within a short bound, for the requests still being answered. */
+/**
+ * Waits, within a short bound, for the requests still being answered. Real timers and a
+ * monotonic clock: a test left with fake timers cannot stall it.
+ */
 export async function settled(boundMs = 2000) {
-  for (let waited = 0; inFlight > 0 && waited < boundMs; waited += 50)
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  const deadline = monotonic() + BigInt(boundMs) * 1_000_000n;
+  while (inFlight > 0 && monotonic() < deadline) await pause(50);
 }
+// Taken when the module loads, before a test can install fake timers over them.
+const monotonic = process.hrtime.bigint;
+const pause = sleep;
 
 /** Apps whose answers are not checked: all of them (true), or those of some routes. */
 const unchecked = new WeakMap<object, true | Set<string>>();

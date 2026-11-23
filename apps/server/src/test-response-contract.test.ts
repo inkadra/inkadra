@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   checkResponses,
   contractMismatch,
@@ -7,6 +7,7 @@ import {
   EXCEPTIONS,
   type Owner,
   setOwner,
+  settled,
   takeMismatches,
   uncheckedResponses,
 } from './test-response-contract.ts';
@@ -239,5 +240,39 @@ describe('the response contract gate', () => {
     await app.close();
     expect(res.statusCode).toBe(200);
     expect(takeMismatches()).toEqual([]);
+  });
+
+  it('waits for answers still pending with real time, even under fake timers', async () => {
+    const app = Fastify();
+    let reached!: () => void;
+    let release!: () => void;
+    const atHandler = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    app.get('/api/v1/instance/version', async () => {
+      reached();
+      await held;
+      return { version: '1.0.0' };
+    });
+    const pending = app.inject({ url: '/api/v1/instance/version' });
+    await atHandler;
+    const now = process.hrtime.bigint;
+    vi.useFakeTimers();
+    const start = now();
+    try {
+      await settled(200);
+    } finally {
+      vi.useRealTimers();
+    }
+    const waitedMs = Number(now() - start) / 1e6;
+    expect(waitedMs).toBeGreaterThanOrEqual(150);
+    expect(waitedMs).toBeLessThan(2000);
+    release();
+    expect((await pending).statusCode).toBe(200);
+    await settled(200);
+    await app.close();
   });
 });
