@@ -2335,6 +2335,7 @@ registry.registerPath({
     ...errors,
     416: { description: 'Range not satisfiable' },
     ...bucketRedirect,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2402,6 +2403,7 @@ registry.registerPath({
     206: { description: 'Part of the file' },
     ...errors,
     ...bucketRedirect,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2427,6 +2429,7 @@ registry.registerPath({
     206: { description: 'Part of the file' },
     ...errors,
     ...bucketRedirect,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -2442,6 +2445,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Peaks', ...json(AudioWaveform) },
     ...errors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -3227,6 +3231,7 @@ registry.registerPath({
   responses: {
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
     ...guestErrors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -3329,6 +3334,7 @@ registry.registerPath({
     206: { description: 'Part of the file' },
     ...guestErrors,
     416: { description: 'Range not satisfiable' },
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({
@@ -3348,6 +3354,7 @@ registry.registerPath({
     206: { description: 'Part of the video' },
     ...guestErrors,
     ...bucketRedirect,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 // Rungs encoded while watched (decision 0128), for members and for the guests of a link.
@@ -3455,6 +3462,7 @@ registry.registerPath({
   responses: {
     200: { description: 'Peaks', ...json(AudioWaveform) },
     ...guestErrors,
+    304: { description: 'Not changed since If-None-Match' },
   },
 });
 registry.registerPath({

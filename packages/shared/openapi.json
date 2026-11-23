@@ -26793,7 +26793,7 @@
             }
           },
           "403": {
-            "description": "Not allowed",
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
             "content": {
               "application/json": {
                 "schema": {
@@ -27075,6 +27075,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
@@ -27507,6 +27510,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27617,6 +27623,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -27707,6 +27716,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
@@ -32737,6 +32749,9 @@
               }
             }
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -33376,6 +33391,9 @@
           "206": {
             "description": "Part of the file"
           },
+          "304": {
+            "description": "Not changed since If-None-Match"
+          },
           "400": {
             "description": "Invalid request",
             "content": {
@@ -33481,6 +33499,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
@@ -34337,6 +34358,9 @@
                 }
               }
             }
+          },
+          "304": {
+            "description": "Not changed since If-None-Match"
           },
           "400": {
             "description": "Invalid request",
