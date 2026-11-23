@@ -445,6 +445,21 @@
       "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1crew/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
       "pr": 970,
       "why": "New answer: linking a character card a crew row already plays now gives 409 ApiError (code conflict, details.reason character_taken, details.member) instead of a second row, for every client; servers that do so advertise crew-one-row-per-character in /instance/version. An earlier client shows a generic error and the link is not made."
+    },
+    {
+      "break": "openapi: #/components/schemas/AssetLookup: (absent) → {\"properties\":{\"items\":{\"items\":{\"$ref\":\"#/components/schemas/Asset\"},\"type\":\"array\"}},\"required\":[\"items\"],\"type\":\"obje…#953bdcc5c2a8dc25ad201fd76ad75772b1f8c0922195e51d5f6e032dca0b00b3",
+      "pr": 986,
+      "why": "New component, used only by the new POST /api/v1/assets/lookup."
+    },
+    {
+      "break": "openapi: #/components/schemas/AssetLookupQuery: (absent) → {\"properties\":{\"ids\":{\"items\":{\"format\":\"uuid\",\"type\":\"string\"},\"maxItems\":200,\"minItems\":1,\"type\":\"array\"}},\"required\":…#17e78fa8bcd1a77be3943dfd96d9c4e94cc9de00e3683045ee394c3d780f6525",
+      "pr": 986,
+      "why": "New component, used only by the new POST /api/v1/assets/lookup."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1assets~1lookup: (absent) → {\"post\":{\"requestBody\":{\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/AssetLookupQuery\"}}},\"requ…#5b6259522624c4738a7573cd72646d7b0216e6e36af48a90f62dc8bb6e85c3ee",
+      "pr": 986,
+      "why": "New endpoint (additive): the metadata of many assets in one request, for clients that see the capability asset-lookup in /instance/version. The existing template /api/v1/assets/{assetId} only has GET and the new operation is POST on the fixed path /assets/lookup, which the router matches before the parametric one; no existing request changes its answer."
     }
   ]
 }
