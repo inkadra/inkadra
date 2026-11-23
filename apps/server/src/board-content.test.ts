@@ -1,7 +1,7 @@
 import { addElement, createBoardDoc, Element, roots } from '@inkadra/doc-schema';
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { scheduleSource } from './board-content.ts';
+import { scheduleSource, trackGuestHiding } from './board-content.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-0000000000aa';
 
@@ -38,4 +38,59 @@ it('reads a stored document migrated, as the live one reads (#826)', () => {
   // Version 26 moved this note: unmigrated, the call sheet would show it as the item's own.
   expect(read.icons?.[0]).toMatchObject({ stepNote: 'Sits down' });
   expect(read.icons?.[0]).not.toHaveProperty('note');
+});
+
+describe('trackGuestHiding', () => {
+  const base = { w: 280, z: 'a0', createdBy: null, createdAt: 0, x: 0, y: 0 };
+  const column = (id: string, guestHidden = false) =>
+    ({ ...base, id, type: 'column', title: id, parent: null, guestHidden }) as const;
+  const note = (id: string, parent: string | null) =>
+    ({ ...base, id, type: 'note', parent }) as const;
+  const setup = () => {
+    const doc = createBoardDoc(boardId);
+    for (const el of [
+      column('shownAAAAAAAA'),
+      column('hiddenAAAAAAA', true),
+      column('hiddenBBBBBBB', true),
+      note('cardAAAAAAAAA', 'shownAAAAAAAA'),
+      note('cardBBBBBBBBB', 'hiddenAAAAAAA'),
+    ])
+      addElement(doc, Element.parse(el));
+    const el = (id: string) => roots(doc).elements.get(id)!;
+    return { doc, el, newlyHidden: trackGuestHiding(doc) };
+  };
+
+  it('tells when a card guests saw is hidden through its container', () => {
+    const { el, newlyHidden } = setup();
+    el('cardAAAAAAAAA').set('parent', 'hiddenAAAAAAA');
+    expect(newlyHidden()).toBe(true);
+    // Said once: the next call compares with what guests see now.
+    expect(newlyHidden()).toBe(false);
+  });
+
+  it('tells when a container or a card is hidden by its own flag', () => {
+    const { el, newlyHidden } = setup();
+    el('shownAAAAAAAA').set('guestHidden', true);
+    expect(newlyHidden()).toBe(true);
+  });
+
+  it('ignores a card moved between two containers that were both hidden', () => {
+    const { el, newlyHidden } = setup();
+    el('cardBBBBBBBBB').set('parent', 'hiddenBBBBBBB');
+    expect(newlyHidden()).toBe(false);
+  });
+
+  it('ignores edits that hide nothing guests saw', () => {
+    const { doc, el, newlyHidden } = setup();
+    el('cardAAAAAAAAA').set('x', 40);
+    el('shownAAAAAAAA').set('title', 'Renamed');
+    expect(newlyHidden()).toBe(false);
+    // A card added hidden was never visible.
+    addElement(doc, Element.parse(note('cardCCCCCCCCC', 'hiddenAAAAAAA')));
+    expect(newlyHidden()).toBe(false);
+    // Nor is a card shown again, or one deleted.
+    el('hiddenBBBBBBB').set('guestHidden', false);
+    roots(doc).elements.delete('cardAAAAAAAAA');
+    expect(newlyHidden()).toBe(false);
+  });
 });

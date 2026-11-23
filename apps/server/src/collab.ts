@@ -23,6 +23,7 @@ import * as Y from 'yjs';
 import { type Actor, atLeast, boardRole } from './access.ts';
 import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
+import { trackGuestHiding } from './board-content.ts';
 import { noteWriter, type PendingWriters, storeWriters } from './board-writers.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
@@ -185,6 +186,12 @@ export const DEMO_COLLAB_LIMITS: CollabLimits = {
 const STORE_RETRY_FIRST_MS = 1000;
 const STORE_RETRY_MAX_MS = 60_000;
 const UNSAVED_SUFFIX = '.yupdate';
+/**
+ * A board where a card guests could see became hidden from them is stored this soon, instead of
+ * after the usual debounce: share pages read the stored document. Short, so a burst of moves
+ * still stores once.
+ */
+const GUEST_HIDING_STORE_MS = 300;
 /** A board store that takes longer fails and is retried (#795). */
 const STORE_TIMEOUT_MS = 15_000;
 /**
@@ -721,6 +728,29 @@ export function createCollabServer(deps: {
     entry.timer.unref();
     return delay;
   };
+  /** Each open board's watch for cards newly hidden from guests (trackGuestHiding). */
+  const guestHiding = new WeakMap<Y.Doc, () => boolean>();
+  /** The pending early store of each board with a card newly hidden from guests. */
+  const hidingStores = new Map<Y.Doc, NodeJS.Timeout>();
+  const storeSoon = (payload: StorePayload) => {
+    const { document, documentName } = payload;
+    // One per board until it runs; a board waiting for a retry is stored by that retry.
+    if (hidingStores.has(document) || unsaved.has(document) || frozen.has(document)) return;
+    const timer = setTimeout(() => {
+      hidingStores.delete(document);
+      if (unsaved.has(document) || server.hocuspocus.documents.get(documentName) !== document)
+        return;
+      void server.hocuspocus.storeDocumentHooks(document, payload, true);
+    }, GUEST_HIDING_STORE_MS);
+    timer.unref();
+    hidingStores.set(document, timer);
+  };
+  /** A store that wrote the state read while `timer` was pending makes that early store moot. */
+  const hidingStored = (document: Y.Doc, timer: NodeJS.Timeout | undefined) => {
+    if (!timer || hidingStores.get(document) !== timer) return;
+    clearTimeout(timer);
+    hidingStores.delete(document);
+  };
   /** At shutdown, after one last failed store: keep the board on disk for the next start. */
   async function spill(boardId: string, document: Y.Doc) {
     if (!deps.unsavedDir) {
@@ -935,6 +965,7 @@ export function createCollabServer(deps: {
         const track = trackAssignments(document);
         assignedNow.set(document, track);
         assignments.set(document, track());
+        guestHiding.set(document, trackGuestHiding(document));
         openedAt.set(document, Date.now());
         return document;
       } catch (err) {
@@ -985,7 +1016,17 @@ export function createCollabServer(deps: {
           noteWriter(writersOf(document), client, context.actor.id, clock);
     },
 
-    async onChange({ connection: from, document, context, update }) {
+    async onChange(payload) {
+      const { connection: from, document, context, update } = payload;
+      if (guestHiding.get(document)?.())
+        storeSoon({
+          document,
+          documentName: payload.documentName,
+          instance: payload.instance,
+          clientsCount: payload.clientsCount,
+          lastContext: context,
+          lastTransactionOrigin: payload.transactionOrigin,
+        });
       // The server's own writes (restores, clips, migrations) go under the document's id.
       if (!from) {
         let to: number | undefined;
@@ -1053,6 +1094,7 @@ export function createCollabServer(deps: {
       }
       if (frozen.has(document)) return stored(document);
       const pending = new Map(pendingAssignments.get(document));
+      const hiding = hidingStores.get(document);
       const state = Y.encodeStateAsUpdate(document);
       sizes.measured(document, state.byteLength);
       if (limits?.freeze && state.byteLength > limits.stateBytes) {
@@ -1076,6 +1118,7 @@ export function createCollabServer(deps: {
           log.info({ boardId }, 'board deleted while open: document not stored');
           return stored(document);
         }
+        hidingStored(document, hiding);
       } catch (err) {
         // Deleted between the check and the write: there is nothing to keep it for either.
         // Returning lets Hocuspocus unload the document.
@@ -1160,6 +1203,8 @@ export function createCollabServer(deps: {
     // Hocuspocus runs onDestroy only once every board unloaded: a hung store never gets there.
     clearInterval(timer);
     clearInterval(keepalive);
+    for (const pending of hidingStores.values()) clearTimeout(pending);
+    hidingStores.clear();
     for (const [document, { timer, payload }] of unsaved) {
       clearTimeout(timer);
       if (hocuspocus.documents.get(payload.documentName) === document)

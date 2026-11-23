@@ -66,20 +66,69 @@ export async function visibleBoardCard(
     for (const [id, el] of elements) {
       if (!(el instanceof Y.Map)) continue;
       if (el.get('type') !== 'board' || el.get('boardId') !== childId) continue;
-      const hidden = hiddenFromGuests(id, (key) => {
-        const node = elements.get(key);
-        if (!(node instanceof Y.Map)) return undefined;
-        const parent = node.get('parent');
-        // Invalid containers are hidden, never treated as the canvas.
-        if (parent !== null && typeof parent !== 'string') return undefined;
-        return { parent, guestHidden: node.get('guestHidden') === true };
-      });
-      if (!hidden) return true;
+      if (!hiddenFromGuests(id, guestLookup(elements))) return true;
     }
     return false;
   } finally {
     doc.destroy();
   }
+}
+
+/** What hiddenFromGuests reads of the elements of a board document. */
+function guestLookup(elements: Y.Map<Y.Map<unknown>>) {
+  return (key: string) => {
+    const node = elements.get(key);
+    if (!(node instanceof Y.Map)) return undefined;
+    const parent = node.get('parent');
+    // Invalid containers are hidden, never treated as the canvas.
+    if (parent !== null && typeof parent !== 'string') return undefined;
+    return { parent, guestHidden: node.get('guestHidden') === true };
+  };
+}
+
+/** The ids of the elements of a board document that guests of share links can see. */
+function guestVisibleIds(doc: Y.Doc): Set<string> {
+  const { elements } = roots(doc);
+  const lookup = guestLookup(elements);
+  const visible = new Set<string>();
+  for (const id of elements.keys()) if (!hiddenFromGuests(id, lookup)) visible.add(id);
+  return visible;
+}
+
+/**
+ * Whether a transaction can change what guests see: an element added or removed, or a
+ * `guestHidden` or `parent` written on one.
+ */
+function changesGuestHiding(transaction: Y.Transaction): boolean {
+  const { elements } = roots(transaction.doc);
+  for (const [type, keys] of transaction.changed) {
+    if ((type as unknown) === elements) return true;
+    if (keys.has('guestHidden') || keys.has('parent')) return true;
+  }
+  return false;
+}
+
+/**
+ * Tells, on each call, whether an element guests could see at the previous call is now hidden
+ * from them, by its own flag or through a container. Elements added hidden, moved between
+ * containers that were already hidden, or deleted don't count: guests never saw them, or still
+ * don't. The board is read again only after a transaction that can change it.
+ */
+export function trackGuestHiding(doc: Y.Doc): () => boolean {
+  let visible = guestVisibleIds(doc);
+  let stale = false;
+  doc.on('afterTransaction', (transaction: Y.Transaction) => {
+    if (!stale && changesGuestHiding(transaction)) stale = true;
+  });
+  return () => {
+    if (!stale) return false;
+    stale = false;
+    const before = visible;
+    visible = guestVisibleIds(doc);
+    const { elements } = roots(doc);
+    for (const id of before) if (!visible.has(id) && elements.has(id)) return true;
+    return false;
+  };
 }
 
 /** The columns of a board document, left to right and then top to bottom. */

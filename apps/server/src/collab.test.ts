@@ -450,6 +450,145 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     }
   });
 
+  /**
+   * A new board on a collab server of its own, with one shown and two hidden columns, its stores
+   * counted, and its setup already stored.
+   */
+  async function hidingBoard(name: string, database = db) {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name },
+    });
+    const id: string = created.json().rootBoardId;
+    const server = createCollabServer({ db: database, auth, log, publicUrl: config.PUBLIC_URL });
+    const hooks = vi.spyOn(server.hocuspocus, 'hooks');
+    const stores = () => hooks.mock.calls.filter(([hook]) => hook === 'onStoreDocument').length;
+    const shown = column('Shown');
+    const hiddenA = { ...column('Hidden A'), guestHidden: true };
+    const hiddenB = { ...column('Hidden B'), guestHidden: true };
+    const card = (parent: string) => ({
+      id: newElementId(),
+      type: 'note' as const,
+      x: 0,
+      y: 0,
+      w: 200,
+      z: 'a1',
+      parent,
+      createdBy: null,
+      createdAt: Date.now(),
+    });
+    const cards = [card(shown.id), card(shown.id), card(shown.id)];
+    const tucked = card(hiddenA.id);
+    const conn = await server.hocuspocus.openDirectConnection(boardDocName(id));
+    await conn.transact((doc) => {
+      for (const el of [shown, hiddenA, hiddenB, ...cards, tucked]) addElement(doc, el);
+    });
+    server.hocuspocus.flushPendingStores();
+    await expect.poll(stores, { timeout: 5000 }).toBe(1);
+    const set = (elementId: string, key: string, value: unknown) =>
+      conn.transact((doc) => roots(doc).elements.get(elementId)?.set(key, value));
+    /** The parent of an element in the stored document. */
+    const storedParent = async (elementId: string) => {
+      const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, id));
+      const doc = new Y.Doc();
+      if (row) Y.applyUpdate(doc, row.state);
+      return roots(doc).elements.get(elementId)?.get('parent');
+    };
+    const close = async () => {
+      await conn.disconnect();
+      await server.destroy();
+    };
+    const flush = () => server.hocuspocus.flushPendingStores();
+    return { stores, set, storedParent, flush, close, shown, hiddenA, hiddenB, cards, tucked };
+  }
+  /** Shorter than the usual store debounce (2 s), well past GUEST_HIDING_STORE_MS. */
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 1500));
+
+  it('stores a board at once when a card guests saw is hidden through its container', async () => {
+    const b = await hidingBoard('Hidden through a column');
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 1500 }).toBe(b.hiddenA.id);
+      expect(b.stores()).toBe(2);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('stores a burst of cards hidden from guests once', async () => {
+    const b = await hidingBoard('Hidden in a burst');
+    try {
+      for (const c of b.cards) await b.set(c.id, 'parent', b.hiddenA.id);
+      await settle();
+      expect(b.stores()).toBe(2);
+      for (const c of b.cards) expect(await b.storedParent(c.id)).toBe(b.hiddenA.id);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('does not store early when a card moves between two containers already hidden', async () => {
+    const b = await hidingBoard('Between hidden columns');
+    try {
+      await b.set(b.tucked.id, 'parent', b.hiddenB.id);
+      await b.set(b.tucked.id, 'parent', b.hiddenA.id);
+      await b.set(b.tucked.id, 'parent', b.hiddenB.id);
+      await settle();
+      expect(b.stores()).toBe(1);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('does not store early on edits that hide nothing guests saw', async () => {
+    const b = await hidingBoard('Unrelated edits');
+    try {
+      await b.set(b.shown.id, 'title', 'Renamed');
+      await b.set(b.cards[0]!.id, 'x', 40);
+      await b.set(b.hiddenB.id, 'guestHidden', false);
+      await settle();
+      expect(b.stores()).toBe(1);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('keeps no early store pending once a store or a retry wrote the hiding', async () => {
+    let down = false;
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const b = await hidingBoard(
+      'Early store already done',
+      failingInserts(db, () => down),
+    );
+    try {
+      // A store that runs first (the last person leaving, a shutdown) writes the hiding too.
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      b.flush();
+      await expect.poll(b.stores, { timeout: 1500 }).toBe(2);
+      await settle();
+      expect(b.stores()).toBe(2);
+
+      // The early store fails and its retry writes the hiding.
+      down = true;
+      await b.set(b.cards[1]!.id, 'parent', b.hiddenA.id);
+      await expect.poll(b.stores, { timeout: 1500 }).toBe(3);
+      down = false;
+      await expect.poll(() => b.storedParent(b.cards[1]!.id), { timeout: 5000 }).toBe(b.hiddenA.id);
+      const after = b.stores();
+      // Later edits that hide nothing wait for the usual debounce again.
+      await b.set(b.shown.id, 'title', 'Renamed');
+      await settle();
+      expect(b.stores()).toBe(after);
+    } finally {
+      down = false;
+      errors.mockRestore();
+      await b.close();
+    }
+  });
+
   it('keeps a board on disk when its store hangs at shutdown', async () => {
     const created = await app.inject({
       method: 'POST',
