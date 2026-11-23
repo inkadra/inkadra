@@ -17,7 +17,7 @@ function* eachTodoItem(doc: Y.Doc) {
       if (item instanceof Y.Map) {
         const elementId = String(map.get('id'));
         const itemId = String(item.get('id'));
-        yield { key: `${elementId}:${itemId}`, elementId, itemId, item };
+        yield { key: `${elementId}:${itemId}`, elementId, itemId, item, card: map };
       }
   }
 }
@@ -317,12 +317,39 @@ export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
     };
     const touches = (place: Place) =>
       !place || (place.key !== null && TASK_KEYS.has(place.key)) || heldInValue(place.parent);
+    // Ids are not unique on every board, and by key the last of the items that share one is the
+    // one shown: removing it, or the card that holds it, shows another's assignee. The items and
+    // cards concerned, read only when an update removes or replaces a card or an item.
+    let sharing: Set<unknown> | undefined;
+    const showsAnother = (item: Y.Item | undefined) => {
+      if (!(item?.content instanceof Y.ContentType)) return false;
+      if (!sharing) {
+        sharing = new Set();
+        const byKey = new Map<string, Array<{ item: Y.Map<unknown>; card: Y.Map<unknown> }>>();
+        for (const entry of eachTodoItem(document)) {
+          const list = byKey.get(entry.key);
+          if (list) list.push(entry);
+          else byKey.set(entry.key, [entry]);
+        }
+        for (const list of byKey.values())
+          if (list.length > 1) for (const { item, card } of list) sharing.add(item).add(card);
+      }
+      return sharing.has(item.content.type);
+    };
+    const elements = roots(document).elements;
+    /** A card that a new value of its key in `elements` replaces. */
+    const replaced = (place: Place) =>
+      place?.parent === null && place.key !== null ? elements._map.get(place.key) : undefined;
 
     // Structs past a sender's gap are held back with the rest, and read when those are released.
     const integrated = releases
       ? [...structs, ...held]
       : structs.filter((s) => s.id.clock < reach(s.id.client));
-    for (const s of integrated) if (s instanceof Y.Item && touches(placeOf(s))) return true;
+    for (const s of integrated) {
+      if (!(s instanceof Y.Item)) continue;
+      const place = placeOf(s);
+      if (touches(place) || showsAnother(replaced(place))) return true;
+    }
 
     // Deletions of items the document holds, with those Yjs holds back (applied with every update).
     // Those of items it doesn't have yet apply to the structs read above, in the place read there.
@@ -346,7 +373,7 @@ export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
     for (const item of removed) {
       const parent = (item.parent as Y.AbstractType<unknown>)._item;
       if (parent && (parent.deleted || removed.has(parent))) continue;
-      if (touches(placeOf(item))) return true;
+      if (touches(placeOf(item)) || showsAnother(item)) return true;
     }
     return false;
   } catch {

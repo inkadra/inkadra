@@ -1,16 +1,23 @@
 import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
+import { boardRole } from './access.ts';
 import { openTasks } from './board-preview.ts';
 import type { Database } from './db/client.ts';
 import {
+  assignedItems,
   changesTasks,
   mayTouchTasks,
   tasksInDoc,
   trackAssignments,
   validateTaskUpdate,
 } from './tasks.ts';
+
+vi.mock('./access.ts', async (original) => ({
+  ...(await original<typeof import('./access.ts')>()),
+  boardRole: vi.fn(),
+}));
 
 it('returns only open items assigned to this person with their card link and date', () => {
   const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
@@ -410,4 +417,155 @@ it('reads a deletion held back for the server’s own write when it applies', ()
       at(client, () => card(client, todo).set('x', 40)),
     ),
   ).toBe(true);
+});
+
+it('checks a deletion that shows another assignee for a shared id at least as main did', async () => {
+  const a = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
+  const b = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a12';
+  const db = {} as Database;
+  const who = { guest: undefined, viewer: 'viewer', editor: 'editor' } as const;
+  vi.mocked(boardRole).mockImplementation(async (_db, actor) => ({
+    role: actor.id as 'viewer' | 'editor',
+    projectId: a,
+  }));
+  /** Two items with one id: by key, the later one's assignee is the one shown. */
+  const setup = (pending: boolean) => {
+    const doc = createBoardDoc(a);
+    const todo = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+    const card = doc.getMap('elements').get(todo) as Y.Map<unknown>;
+    const items = card.get('items') as Y.Array<Y.Map<unknown>>;
+    for (const assigneeId of [a, b])
+      items.push([
+        new Y.Map<unknown>([
+          ['id', 'dup'],
+          ['text', 'Permit'],
+          ['assigneeId', assigneeId],
+        ]),
+      ]);
+    const server = new Y.Doc();
+    Y.applyUpdate(server, Y.encodeStateAsUpdate(doc));
+    if (pending) {
+      const gapped = new Y.Doc();
+      Y.applyUpdate(gapped, Y.encodeStateAsUpdate(server));
+      gapped.getMap('meta').set('a', 1);
+      const sv = Y.encodeStateVector(gapped);
+      gapped.getMap('meta').set('b', 1);
+      Y.applyUpdate(server, Y.encodeStateAsUpdate(gapped, sv));
+      expect(server.store.pendingStructs).not.toBeNull();
+    }
+    const sv = Y.encodeStateVector(doc);
+    return { doc, server, items, todo, sent: () => Y.encodeStateAsUpdate(doc, sv) };
+  };
+  /**
+   * What main decided for a deletion: with structs held back, the full check by key; without,
+   * none (its quick test passed every update without structs).
+   */
+  const mainRefuses = (server: Y.Doc, update: Uint8Array, actor: string | undefined) => {
+    expect(Y.decodeUpdate(update).structs).toEqual([]);
+    if (!server.store.pendingStructs) return false;
+    const candidate = new Y.Doc();
+    Y.applyUpdate(candidate, Y.encodeStateAsUpdate(server));
+    Y.applyUpdate(candidate, update);
+    const shown = assignedItems(server);
+    const assigns = [...assignedItems(candidate)].some(
+      ([key, item]) => shown.get(key)?.assigneeId !== item.assigneeId,
+    );
+    return assigns && actor !== 'editor';
+  };
+  const deletions = {
+    'the item shown': (s: ReturnType<typeof setup>) => s.items.delete(1),
+    'the assignee shown': (s: ReturnType<typeof setup>) => s.items.get(1).delete('assigneeId'),
+    'the item hidden': (s: ReturnType<typeof setup>) => s.items.delete(0),
+    'the whole card': (s: ReturnType<typeof setup>) => s.doc.getMap('elements').delete(s.todo),
+  };
+  const refused: string[] = [];
+  for (const pending of [false, true])
+    for (const [name, remove] of Object.entries(deletions))
+      for (const [role, actor] of Object.entries(who)) {
+        const s = setup(pending);
+        remove(s);
+        const update = s.sent();
+        const main = mainRefuses(s.server, update, actor);
+        const pr = await validateTaskUpdate(db, a, actor, s.server, update).then(
+          () => false,
+          () => true,
+        );
+        // Never more permissive than main.
+        if (main) expect(pr, `${name}, ${role}, pending ${pending}`).toBe(true);
+        if (pr) refused.push(`${name}, ${role}, pending ${pending}`);
+      }
+  // Only deleting the item shown makes another assignee show, with or without held-back structs.
+  expect(refused).toEqual([
+    'the item shown, guest, pending false',
+    'the item shown, viewer, pending false',
+    'the item shown, guest, pending true',
+    'the item shown, viewer, pending true',
+  ]);
+});
+
+it('checks removing or replacing a card that shares its id with another', async () => {
+  const a = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
+  const b = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a12';
+  const db = {} as Database;
+  const refused: string[] = [];
+  for (const pending of [false, true])
+    for (const action of ['remove', 'replace', 'concurrent'] as const) {
+      const doc = createBoardDoc(a);
+      const elements = doc.getMap('elements');
+      const cards: string[] = [];
+      // Two cards with one id and one item id: by key, the later card's item is the one shown.
+      for (const assigneeId of [a, b]) {
+        const key = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+        const card = elements.get(key) as Y.Map<unknown>;
+        card.set('id', 'shared');
+        (card.get('items') as Y.Array<Y.Map<unknown>>).push([
+          new Y.Map<unknown>([
+            ['id', 'one'],
+            ['text', 'Permit'],
+            ['assigneeId', assigneeId],
+          ]),
+        ]);
+        cards.push(key);
+      }
+      const server = new Y.Doc();
+      Y.applyUpdate(server, Y.encodeStateAsUpdate(doc));
+      if (pending) {
+        const gapped = new Y.Doc();
+        gapped.getMap('meta').set('a', 1);
+        const sv = Y.encodeStateVector(gapped);
+        gapped.getMap('meta').set('b', 1);
+        Y.applyUpdate(server, Y.encodeStateAsUpdate(gapped, sv));
+      }
+      expect([...assignedItems(server).values()].map((i) => i.assigneeId)).toEqual([b]);
+      const sv = Y.encodeStateVector(doc);
+      if (action === 'remove') elements.delete(cards[1]!);
+      else if (action === 'replace') elements.set(cards[1]!, new Y.Map());
+      // A client that never saw the card writes its key: it wins by client id, implicitly
+      // replacing the card, with no deletion in the update.
+      const writer = new Y.Doc();
+      writer.clientID = 0xfffffff0;
+      if (action === 'concurrent') writer.getMap('elements').set(cards[1]!, new Y.Map());
+      const update =
+        action === 'concurrent' ? Y.encodeStateAsUpdate(writer) : Y.encodeStateAsUpdate(doc, sv);
+      if (action === 'concurrent') expect(Y.decodeUpdate(update).ds.clients.size).toBe(0);
+      // Main ran its full check, by key, on every update while structs were held back.
+      const candidate = new Y.Doc();
+      Y.applyUpdate(candidate, Y.encodeStateAsUpdate(server));
+      Y.applyUpdate(candidate, update);
+      expect([...assignedItems(candidate).values()].map((i) => i.assigneeId)).toEqual([a]);
+      const pr = await validateTaskUpdate(db, a, undefined, server, update).then(
+        () => false,
+        () => true,
+      );
+      if (pr) refused.push(`${action}, pending ${pending}`);
+    }
+  // Another assignee shows for the shared id: refused for a guest, as main did with held-back structs.
+  expect(refused).toEqual([
+    'remove, pending false',
+    'replace, pending false',
+    'concurrent, pending false',
+    'remove, pending true',
+    'replace, pending true',
+    'concurrent, pending true',
+  ]);
 });
