@@ -898,10 +898,13 @@ jobs:
           jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS"
           test "$(jq '[.[] | select(.result != "success")] | length' <<< "$NEEDS")" = 0
 
-  # A red main or a red night opens an issue, or adds to the open one (#842).
+  # A red main or a red night opens an issue, or adds to the open one (#842). The first attempt is
+  # retried once by main-retry.yml (flaky tests, a stuck mirror): only a red retry is reported.
   red-main:
     name: Report a red main
-    if: failure() && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+    if: >-
+      failure() && github.run_attempt > 1 && github.ref == 'refs/heads/main'
+      && (github.event_name == 'push' || github.event_name == 'schedule')
     needs: all
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -918,6 +921,26 @@ jobs:
           number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
           if [ -n "$number" ]; then gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
           else gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"; fi
+
+  # A green main closes the open report, so the issue only stays open while main is red.
+  green-main:
+    name: Close the red-main report
+    if: success() && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
+    needs: all
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="CI is red on main"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue close "$number" --repo "$GITHUB_REPOSITORY" --comment "Green again at $GITHUB_SHA: $RUN"
+          fi
 
   publish:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})

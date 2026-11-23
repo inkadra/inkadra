@@ -1,0 +1,29 @@
+name: Retry a red main
+
+# A red first attempt of CI on main (a push or the nightly run) runs its failed jobs once more
+# before ci.yml reports it: a flaky test or a stuck package mirror should not open an issue.
+# It checks out nothing and runs no code from the run it retries.
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] reads only the run id; no checkout, no artifacts
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  retry:
+    name: Retry the failed jobs once
+    if: >-
+      github.event.workflow_run.conclusion != 'success'
+      && github.event.workflow_run.run_attempt == 1
+      && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'schedule')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: gh run rerun "$RUN_ID" --failed --repo "$GITHUB_REPOSITORY"
