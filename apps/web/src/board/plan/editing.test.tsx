@@ -13,7 +13,7 @@ import {
   updatePlanCircuits,
   variantView,
 } from '@inkadra/canvas-core';
-import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
+import { createBoardDoc, MAX_PLAN_ICONS, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -373,4 +373,20 @@ it('neither links nor unlinks an actor or a camera locked on its own (decision 0
     m.ed.write({ ...icon(camera), frameId: 'frameAAAAAAAA' });
   });
   expect([icon(actor), icon(camera)]).toEqual(before);
+});
+
+it('places a Set sofa from a full setup: it goes to the base, which has room', async () => {
+  const doc = createBoardDoc(boardId);
+  const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+  const setup = addVariant(doc, planOf(doc, base.id), 'Sera', { userId: null });
+  for (let i = 0; i < MAX_PLAN_ICONS; i++)
+    addPlanIcon(doc, setup, { ...at, kind: 'fresnel', x: 10 + i, y: 10 });
+  const m = await mount(doc, setup, base.id);
+  let id: string | null = null;
+  await act(async () => {
+    id = m.ed.placeIcon('sofa', { x: 0.5, y: 0.5 });
+  });
+  expect(id).not.toBeNull();
+  expect(planOf(doc, base.id).icons?.map((i) => i.id)).toContain(id);
+  expect(planOf(doc, setup).icons).toHaveLength(MAX_PLAN_ICONS);
 });

@@ -22,7 +22,6 @@ import {
   placePlanIcon,
   planDropTarget,
   planEdit,
-  planIconsFull,
   planItem,
   planItemOwner,
   planLayerOwner,
@@ -411,7 +410,7 @@ export function usePlanEditing(props: PlanEditorProps) {
       modifiers?: readonly PlanIconKind[];
     } = {},
   ): string | null => {
-    if (planIconsFull(editing)) return null;
+    // The core counts the room on each plan the icons go to (a full setup still takes a Set sofa).
     let id: string | null = null;
     change(() => {
       id = placePlanIcon(

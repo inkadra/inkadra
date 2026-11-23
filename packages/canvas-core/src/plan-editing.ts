@@ -6,8 +6,9 @@ import {
   type PlanLayer,
   type PlanShape,
   type PlanStroke,
+  roots,
 } from '@inkadra/doc-schema';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { updateElement } from './board.ts';
 import type { Point } from './geometry.ts';
 import {
@@ -324,9 +325,11 @@ export function freshPlanIcon(
 }
 
 /**
- * Places an icon at `p` (0 to 1 of the drawing), in the plan its layer belongs to. `on` attaches
- * it to that icon; `modifiers` are placed on its front, in order (a light of the project kit).
- * One transaction (decision 0104). Returns its id; null when the plan is full.
+ * Places an icon at `p` (0 to 1 of the drawing), in the plan its layer belongs to (its layer in
+ * `fields` first, then `opts.layer`, then its kind's). `on` attaches it to that icon; `modifiers`
+ * are placed on its front, in order (a light of the project kit). One transaction (decision
+ * 0104), all or nothing: null, with nothing written, when a plan an icon goes to has no room for
+ * it and the others going there.
  */
 export function placePlanIcon(
   doc: Y.Doc,
@@ -340,7 +343,36 @@ export function placePlanIcon(
   },
   origin?: unknown,
 ): string | null {
-  if (planIconsFull(edit)) return null;
+  const mainStyle = { ...opts, layer: opts.fields?.layer ?? opts.layer };
+  // Room on each plan the icons go to, counted on the lists as stored: never part of a kit.
+  const going = new Map<string, number>();
+  for (const [i, k] of [kind, ...(opts.modifiers ?? [])].entries()) {
+    const owner = planLayerOwner(edit, freshPlanIcon(edit, k, p, i === 0 ? mainStyle : opts).layer);
+    going.set(owner, (going.get(owner) ?? 0) + 1);
+  }
+  for (const [owner, n] of going) {
+    // Every destination is a plan here now (a PlanEdit can outlive a setup deleted since).
+    if (roots(doc).elements.get(owner)?.get('type') !== 'plan') return null;
+    const list = roots(doc).elements.get(owner)?.get('icons');
+    // A list an older writer left as plain JSON is never written to (it would be replaced).
+    if (list !== undefined && !(list instanceof Y.Array)) return null;
+    const stored = list instanceof Y.Array ? list.length : 0;
+    if (stored + n > MAX_PLAN_ICONS) return null;
+  }
+  // Attaching writes items again (writePlanItems) where they live: the plans the new icons go to,
+  // and the plan of the icon `on` points at. Strokes, shapes and icons of those plans: none may be
+  // plain JSON, or the attachment would replace it.
+  if (opts.on || opts.modifiers?.length) {
+    const writes = new Set(going.keys());
+    if (opts.on) writes.add(planItemOwner(edit, opts.on));
+    for (const plan of writes) {
+      const map = roots(doc).elements.get(plan);
+      for (const key of ['strokes', 'shapes', 'icons'] as const) {
+        const list = map?.get(key);
+        if (list !== undefined && !(list instanceof Y.Array)) return null;
+      }
+    }
+  }
   const icons = edit.drawn.icons ?? [];
   let id: string | null = null;
   doc.transact(() => {
@@ -349,11 +381,13 @@ export function placePlanIcon(
       owners: new Map(),
     };
     const add = (k: PlanIconKind, fields?: Partial<PlanIcon>): PlanIcon | null => {
-      const { layer, icon } = freshPlanIcon(edit, k, p, opts);
+      const { layer, icon } = freshPlanIcon(edit, k, p, fields ? mainStyle : opts);
       const target = planLayerOwner(edit, layer);
-      const newId = addPlanIcon(doc, target, { ...icon, ...fields }, origin);
+      // The layer chose the plan above and is on `icon` when not its kind's: never cleared here.
+      const { layer: _layer, ...rest } = fields ?? {};
+      const newId = addPlanIcon(doc, target, { ...icon, ...rest }, origin);
       if (!newId) return null;
-      const added = { ...icon, ...fields, id: newId } as PlanIcon;
+      const added = { ...icon, ...rest, id: newId } as PlanIcon;
       placed.icons.push(added);
       placed.owners.set(newId, target);
       return added;
