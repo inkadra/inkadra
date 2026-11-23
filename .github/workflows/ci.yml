@@ -954,10 +954,11 @@ jobs:
             --search "\"$title\" in:title" --json number,title \
             --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           [ -n "$number" ] || exit 0
-          # A red night runs checks a push skips: only a green night closes it.
-          last=$(gh issue view "$number" --repo "$GITHUB_REPOSITORY" --json body,comments \
-            --jq '([.body] + [.comments[].body])[-1]')
-          if [ "$EVENT" = push ] && [[ $last == "The schedule run"* ]]; then exit 0; fi
+          # A red night runs checks a push skips: once a night was reported, only a green night
+          # closes the report. Only the reports count, not what people wrote on the issue.
+          night=$(gh issue view "$number" --repo "$GITHUB_REPOSITORY" --json body,comments \
+            --jq '[.body, (.comments[] | select(.author.login == "github-actions" or .author.login == "app/github-actions") | .body)] | any(startswith("The schedule run"))')
+          if [ "$EVENT" = push ] && [ "$night" = true ]; then exit 0; fi
           gh issue close "$number" --repo "$GITHUB_REPOSITORY" --comment "Green again at $GITHUB_SHA: $RUN"
 
   publish:
