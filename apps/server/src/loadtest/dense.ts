@@ -279,6 +279,8 @@ export async function runDense(opts: DenseOptions) {
     pending(): number;
     /** Edits made while its connection was closed (the burst's). */
     offline(): number;
+    /** Not closed since its last open (AckClock's view). */
+    connected(): boolean;
     /** The card it adds while offline in the burst, and its label. */
     marker: string;
     label: string;
@@ -297,6 +299,7 @@ export async function runDense(opts: DenseOptions) {
       value: 0,
       pending: () => 0,
       offline: () => 0,
+      connected: () => true,
       marker: newId(),
       label: `offline ${index} ${opts.seed}`,
     };
@@ -323,6 +326,7 @@ export async function runDense(opts: DenseOptions) {
     board.provider.on('open', () => clock.open());
     me.pending = () => clock.unconfirmed();
     me.offline = () => clock.offlineEdits();
+    me.connected = () => clock.online;
     // Its own stream of the run's seed: the same seed gives each editor the same moves.
     const random = seeded(opts.seed + index * 7919);
     const cursor = { x: random() * 4000, y: random() * 3000 };
@@ -567,8 +571,13 @@ export async function runDense(opts: DenseOptions) {
       pendingEdits = editors.reduce((n, e) => n + e.pending(), 0);
       measuring = false;
       for (const socket of sockets) socket.disconnect();
+      // The close comes asynchronously: the offline edits wait for every connection to be closed.
+      const closing = performance.now();
+      while (editors.some((e) => e.connected()) && performance.now() - closing < 10_000)
+        await pause(20);
+      if (editors.some((e) => e.connected())) error('a connection did not close for the burst');
       // Offline, each editor moves its note and adds a marker card above everything else on the
-      // board, where the stored preview lists the first texts.
+      // board.
       for (const [i, e] of editors.entries()) {
         e.value = ++counter;
         e.board.doc.transact(() => roots(e.board.doc).elements.get(e.note)?.set('x', e.value));
