@@ -231,6 +231,23 @@ it.each([
   revoked.mockRestore();
 });
 
+it('forgets the preview of a cancelled upload a card had shown', async () => {
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+  const revoked = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  const file = new File(['x'], 'shot.png', { type: 'image/png' });
+  const key = startUpload({ file, projectId: 'p', boardId: 'b', onAsset: vi.fn() });
+  await flush();
+  const upload = FakeUpload.all.at(-1)!;
+  upload.options.onAfterResponse!({} as never, { getHeader: () => 'asset-1' } as never);
+  expect(localPreview('asset-1')).toBe('blob:preview');
+  cancelUpload(key);
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(revoked).toHaveBeenCalledWith('blob:preview');
+  // Released, so no card gets it any more.
+  expect(localPreview('asset-1')).toBeNull();
+  vi.restoreAllMocks();
+});
+
 it('rejects requests and ignores late responses after cancellation', async () => {
   const onAsset = vi.fn();
   const key = startUpload({

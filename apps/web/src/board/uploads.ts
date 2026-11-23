@@ -344,7 +344,10 @@ function dismiss(key: string) {
   // frees it with the page; any other preview can no longer be reached once the item is gone.
   const shown =
     item?.state === 'done' && item.assetId && previews.get(item.assetId) === item.preview;
-  if (item?.preview && !shown) URL.revokeObjectURL(item.preview);
+  if (item?.preview && !shown) {
+    URL.revokeObjectURL(item.preview);
+    if (item.assetId && previews.get(item.assetId) === item.preview) previews.delete(item.assetId);
+  }
   items = items.filter((i) => i.key !== key);
   changed();
 }

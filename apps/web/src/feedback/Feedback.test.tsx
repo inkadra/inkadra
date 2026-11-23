@@ -28,12 +28,14 @@ vi.mock('../lib/session.tsx', () => ({
   useSession: () => ({ user: { id: 'me', name: 'Mia Rossi', image: null }, version: '1.0.0' }),
 }));
 // The automatic screenshot taken when the form opens.
-vi.mock('html-to-image', () => ({ toBlob: async () => new Blob(['png']) }));
+const { toBlob } = vi.hoisted(() => ({ toBlob: vi.fn(async () => new Blob(['png'])) }));
+vi.mock('html-to-image', () => ({ toBlob }));
 
 /** Every object URL made and released, each one distinct. */
 let created: string[] = [];
 let revoked: string[] = [];
 beforeEach(() => {
+  toBlob.mockClear();
   created = [];
   revoked = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
@@ -45,16 +47,49 @@ beforeEach(() => {
     revoked.push(url);
   });
 });
+/** Roots still mounted when a test ends early, so they don't answer the next test's events. */
+const mounted: Array<ReturnType<typeof createRoot>> = [];
 afterEach(() => {
+  for (const root of mounted.splice(0)) act(() => root.unmount());
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
 });
 
+/** A screenshot capture that ends when the test says so. */
+function pendingCapture() {
+  let finish: (blob: Blob) => void = () => {};
+  toBlob.mockImplementationOnce(
+    () =>
+      new Promise<Blob>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  return (blob = new Blob(['png'])) => act(async () => finish(blob));
+}
+
+async function render() {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  mounted.push(root);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FeedbackLauncher />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => openFeedback());
+  await vi.waitFor(() => expect(toBlob).toHaveBeenCalled());
+  return root;
+}
+
 async function mount(strict = false) {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
+  mounted.push(root);
   const tree = (
     <MemoryRouter>
       <FeedbackLauncher />
@@ -126,9 +161,16 @@ it('releases the screenshot it still holds when it goes away', async () => {
 });
 
 it('releases every screenshot URL it made under StrictMode', async () => {
+  // StrictMode's extra effect run closes the dialog once, which resets the form (development
+  // only). Kept open here, so the screenshot lands while StrictMode runs updaters twice.
+  vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.removeAttribute('open');
+  });
   const root = await mount(true);
   act(() => root.unmount());
-  expect(new Set(revoked)).toEqual(new Set(created));
+  expect(revoked.toSorted()).toEqual(created.toSorted());
 });
 
 it('makes no video once it went away while recording, and releases what it held', async () => {
@@ -182,4 +224,27 @@ it('releases a video under review replaced by another one, and each URL once', a
   await click('feedback.videoAttached');
   act(() => root.unmount());
   expect(revoked.toSorted()).toEqual(created.toSorted());
+});
+
+it('makes no screenshot when it went away while the capture was running', async () => {
+  const finish = pendingCapture();
+  const root = await render();
+  act(() => root.unmount());
+  await finish();
+  expect(created).toEqual([]);
+  expect(document.documentElement.dataset.feedbackCapturing).toBeUndefined();
+});
+
+it('makes no screenshot when the form closed while the capture was running', async () => {
+  const finish = pendingCapture();
+  const root = await render();
+  await act(async () => document.querySelector('dialog')!.dispatchEvent(new Event('close')));
+  await finish();
+  expect(created).toEqual([]);
+  expect(document.documentElement.dataset.feedbackCapturing).toBeUndefined();
+  // Opened again, it takes a new screenshot.
+  await act(async () => openFeedback());
+  await vi.waitFor(() => expect(created).toHaveLength(1));
+  act(() => root.unmount());
+  expect(revoked).toEqual(created);
 });

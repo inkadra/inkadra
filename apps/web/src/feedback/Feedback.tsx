@@ -341,7 +341,15 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     setPhase('compose');
     setRecordHint(false);
     setPermission(false);
+    cancelCapture();
+    setCapturing('idle');
     requestId.current = crypto.randomUUID();
+  }
+
+  /** A capture still running ends without a screenshot. */
+  function cancelCapture() {
+    captureRun.current++;
+    delete document.documentElement.dataset.feedbackCapturing;
   }
 
   async function capture() {
@@ -362,14 +370,14 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         }),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), CAPTURE_TIMEOUT_MS)),
       ]);
-      if (run !== captureRun.current) return;
+      if (!mounted.current || run !== captureRun.current) return;
       if (!blob) throw new Error('Capture failed');
       replaceShot(local(blob, 'screenshot', 'screenshot.png'));
       setShotAutomatic(true);
       setShotIncluded(true);
       setCapturing('idle');
     } catch {
-      if (run === captureRun.current) setCapturing('error');
+      if (mounted.current && run === captureRun.current) setCapturing('error');
     } finally {
       if (run === captureRun.current) delete document.documentElement.dataset.feedbackCapturing;
     }
