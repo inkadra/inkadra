@@ -108,7 +108,9 @@ async function metrics() {
   if (!metricsToken) return null;
   const res = await fetch(new URL('/metrics', origin), {
     headers: { authorization: `Bearer ${metricsToken}` },
-    signal: AbortSignal.timeout(10_000),
+    // Bounded, but long enough for a server busy with a burst and an export (10 s timed out on
+    // a loaded dev machine).
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`/metrics: ${res.status}`);
   return parseMetrics(await res.text());
