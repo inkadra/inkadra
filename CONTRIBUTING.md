@@ -107,9 +107,9 @@ HEAD answers and those written straight on the socket (the tus uploads). A test 
 that breaks its schema the field too: either the handler is wrong (it left out a field the
 contract promises, or sent a wrong type), so fix the handler; or the server has always answered
 like this and the contract does not say so (a status such as 409 or 429, a field, a `null`), so
-describe it additively in `src/openapi.ts` and regenerate. A difference that cannot be fixed
-either way without breaking installed clients goes in `EXCEPTIONS` in that file, with the
-reason, for the maintainers to decide.
+describe it additively in `src/openapi.ts`, regenerate and accept the lines the check prints,
+as above. A difference that cannot be fixed either way without breaking installed clients goes
+in `EXCEPTIONS` in that file, with the reason, for the maintainers to decide.
 
 **Database.** Edit `apps/server/src/db/schema.ts`, run `pnpm db:generate --name <what>` and
 commit the generated SQL in `apps/server/drizzle`. Never edit a migration that has been
