@@ -83,6 +83,16 @@ describe('batched asset lookup', () => {
     },
   );
 
+  it('waits as long as Retry-After asks after a lookup refused for its rate', async () => {
+    api.post.mockRejectedValue(new RequestError(429, 'rate_limited', 'Slow down', undefined, '60'));
+    const outcomes = await Promise.all(ids(2).map(loadAsset));
+    expect(outcomes).toEqual([
+      { kind: 'retry', after: 60_000 },
+      { kind: 'retry', after: 60_000 },
+    ]);
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
   it.each([400, 413])(
     'asks the files alone when the lookup body is refused (%i)',
     async (status) => {

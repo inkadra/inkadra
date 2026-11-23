@@ -1,5 +1,6 @@
 import { ASSET_LOOKUP_MAX, type Asset, type AssetLookup, Id } from '@inkadra/shared';
 import { useCallback, useSyncExternalStore } from 'react';
+import { retryAfterMs } from '../guest/model.ts';
 import { createPoller, type Poller, type PollOutcome } from '../guest/poller.ts';
 import { api, RequestError } from '../lib/api.ts';
 
@@ -145,7 +146,10 @@ async function load(id: string): Promise<PollOutcome> {
     if (err instanceof RequestError && err.status === 404) {
       result = null;
     } else {
-      return { kind: at === generation ? 'retry' : 'done' };
+      if (at !== generation) return { kind: 'done' };
+      // A 429 (a lookup refused for its rate) waits as long as the server asked.
+      const after = err instanceof RequestError ? retryAfterMs(err.retryAfter) : undefined;
+      return after === undefined ? { kind: 'retry' } : { kind: 'retry', after };
     }
   }
   if (at !== generation) return { kind: 'done' };

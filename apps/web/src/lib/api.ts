@@ -7,6 +7,8 @@ export class RequestError extends Error {
     readonly code: string,
     message: string,
     readonly details?: unknown,
+    /** The server's `Retry-After` header, when it sent one. */
+    readonly retryAfter?: string | null,
   ) {
     super(message);
   }
@@ -52,6 +54,7 @@ async function request<T>(path: string, init: RequestInit = {}, binary = false):
       err?.code ?? 'unknown',
       err?.message ?? res.statusText,
       (body as ApiError | null)?.error?.details,
+      res.headers.get('retry-after'),
     );
   }
   return body as T;
