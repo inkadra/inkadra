@@ -148,3 +148,56 @@ describe('placing a kit on a plan whose shapes are plain JSON', () => {
     expect(map.get('shapes')).toEqual([old]);
   });
 });
+
+describe('placing a kit next to odd stored entries', () => {
+  it('a null entry in the shapes: the kit is placed whole, both stored shapes kept', () => {
+    const doc = createBoardDoc(boardId);
+    const plan = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    const shapes = (roots(doc).elements.get(plan) as Y.Map<unknown>).get(
+      'shapes',
+    ) as Y.Array<unknown>;
+    const box = {
+      id: 'boxAAAAAAAAAA',
+      kind: 'rect',
+      color: '#1C1C1E',
+      width: 2,
+      x0: 1,
+      y0: 1,
+      x1: 9,
+      y1: 9,
+    };
+    shapes.push([null, box]);
+    const id = placePlanIcon(
+      doc,
+      planEdit(planOf(doc, plan)),
+      'fresnel',
+      { x: 0.5, y: 0.5 },
+      {
+        ...white,
+        modifiers: ['softbox'],
+      },
+    );
+    expect(id).not.toBeNull();
+    const icons = planOf(doc, plan).icons ?? [];
+    expect(icons.find((i) => i.kind === 'softbox')?.on).toBe(id);
+    expect(shapes.toArray()).toEqual([null, box]);
+  });
+
+  it("a setup's kit is not refused for its base's legacy shapes: the attachment never writes them", () => {
+    const s = setup();
+    const baseMap = roots(s.doc).elements.get(s.base) as Y.Map<unknown>;
+    baseMap.set('shapes', []);
+    const id = placePlanIcon(
+      s.doc,
+      s.edit(),
+      'fresnel',
+      { x: 0.5, y: 0.5 },
+      {
+        ...white,
+        modifiers: ['softbox'],
+      },
+    );
+    expect(id).not.toBeNull();
+    expect(baseMap.get('shapes')).toEqual([]);
+  });
+});
