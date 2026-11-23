@@ -150,3 +150,4 @@ and accepted records are not renumbered.
 | [0135](0135-tours-start-on-their-screen.md) | A tour started from Settings opens its screen (page, board view, Inbox) first; what is missing is said in one line, with Create |
 | [0136](0136-todo-list-kinds-catalog.md) | Kinds of to-do lists are a classification catalog: defaults translated until renamed, added kinds by UUID (schema 28) |
 | [0137](0137-clipper-token-scope.md) | Tokens issued to the Clipper (and those issued before) get the `clip` scope: only the routes the Clipper calls, every other route 403 `forbidden` by default; Android and personal tokens unchanged |
+| [0138](0138-collab-fencing-epoch.md) | Every collab process takes a new epoch in PostgreSQL at start, under its lease; board writes lock it and are refused unless it is theirs, which stops the old process; the serving one merges what it kept on disk |

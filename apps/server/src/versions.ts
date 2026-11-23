@@ -14,7 +14,9 @@ import { MAX_NAMED_VERSIONS } from '@inkadra/shared';
 import { and, desc, eq, gt, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
+import { CardOutcomeUnknown } from './board-writer.ts';
 import type { CollabLimits, CollabServer } from './collab.ts';
+import { StaleCollabEpochError } from './collab-epoch.ts';
 import type { Database } from './db/client.ts';
 import { boardDoc, boardRestore, boardVersion } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
@@ -172,8 +174,10 @@ export async function insertNamedVersion(
   db: Database,
   input: SaveVersion,
   snap: VersionState,
+  fence?: Fence,
 ): Promise<SaveVersionResult> {
   return db.transaction(async (tx) => {
+    await fence?.(tx);
     await lockBoard(tx, input.boardId);
     if ((await countNamed(tx, input.boardId)) >= MAX_NAMED_VERSIONS)
       return { ok: false, reason: 'limit' } as const;
@@ -370,13 +374,25 @@ export function directVersionWriter(
 ): VersionWriter {
   return {
     async save({ boardId, name, userId, expiresAt }) {
+      // Superseded (F-24): its live copy may be older than the newer collab process's.
+      if (collab.isSuperseded()) return { ok: false, reason: 'expired' };
       // An open document is newer than what is stored; one nobody has open is not loaded
       // just to be read, which would store it again on unload.
       const live = collab.hocuspocus.documents.get(boardDocName(boardId));
       const snap = snapshot(live ?? (await storedDoc(db, boardId)));
       if (!withinLimits(limits, snap)) return { ok: false, reason: 'too_large' };
       if (expired(expiresAt)) return { ok: false, reason: 'expired' };
-      return insertNamedVersion(db, { boardId, name, userId, expiresAt }, snap);
+      try {
+        return await insertNamedVersion(
+          db,
+          { boardId, name, userId, expiresAt },
+          snap,
+          collab.fenceWrite,
+        );
+      } catch (err) {
+        if (err instanceof StaleCollabEpochError) return { ok: false, reason: 'expired' };
+        throw err;
+      }
     },
 
     async restore({ boardId, versionId, userId, expiresAt = Date.now() + RESTORE_TIMEOUT_MS }) {
@@ -390,6 +406,8 @@ export function directVersionWriter(
         .from(boardVersion)
         .where(and(eq(boardVersion.id, versionId), eq(boardVersion.boardId, boardId)));
       if (!row) return { ok: false, reason: 'missing' };
+      // Superseded (F-24): nothing it changes is stored, so it must not say the board went back.
+      if (collab.isSuperseded()) return { ok: false, reason: 'expired' };
       let old: Y.Doc;
       try {
         old = versionDoc(row, boardId);
@@ -409,15 +427,24 @@ export function directVersionWriter(
         // Saved before anything changes, so the board can always go back.
         let before = snapshot(doc);
         if (!withinLimits(limits, before)) return { ok: false, reason: 'too_large' };
-        backupId = await insertBackup(db, boardId, userId, before);
+        try {
+          backupId = await insertBackup(db, boardId, userId, before, collab.fenceWrite);
+        } catch (err) {
+          if (err instanceof StaleCollabEpochError) return { ok: false, reason: 'expired' };
+          throw err;
+        }
         for (
           let attempt = 0;
-          !written && !expired(expiresAt) && attempt < MAX_RESTORE_ATTEMPTS;
+          !written &&
+          !expired(expiresAt) &&
+          !collab.isSuperseded() &&
+          attempt < MAX_RESTORE_ATTEMPTS;
           attempt += 1
         ) {
           let changed: VersionState | null = null;
           await connection.transact((live) => {
-            if (expired(expiresAt)) return;
+            // Superseded meanwhile (F-24): nothing it writes would be stored.
+            if (expired(expiresAt) || collab.isSuperseded()) return;
             const current = snapshot(live);
             // A state vector misses deletion-only edits. Compare full updates, including
             // their delete sets, and persist every intervening edit before replacing it.
@@ -430,12 +457,26 @@ export function directVersionWriter(
           });
           if (changed) {
             before = changed;
+            const id = backupId;
+            const backup = stateColumns(before);
             const updated = await db
-              .update(boardVersion)
-              .set(stateColumns(before))
-              // Only while it is still the backup: once someone names it, it is theirs.
-              .where(and(eq(boardVersion.id, backupId), eq(boardVersion.kind, 'restore')))
-              .returning({ id: boardVersion.id });
+              .transaction(async (tx) => {
+                await collab.fenceWrite(tx);
+                return (
+                  tx
+                    .update(boardVersion)
+                    .set(backup)
+                    // Only while it is still the backup: once someone names it, it is theirs.
+                    .where(and(eq(boardVersion.id, id), eq(boardVersion.kind, 'restore')))
+                    .returning({ id: boardVersion.id })
+                );
+              })
+              .catch((err) => {
+                // Superseded meanwhile (F-24): the loop ends, and nothing was written.
+                if (err instanceof StaleCollabEpochError) return null;
+                throw err;
+              });
+            if (updated === null) break;
             if (updated.length === 0)
               throw new Error('Restore backup was deleted or named meanwhile');
           }
@@ -458,8 +499,19 @@ export function directVersionWriter(
             versionCreatedAt: row.createdAt,
           };
           try {
-            await recordRestore(db, record).catch(() => recordRestore(db, record));
+            const fence = collab.fenceWrite;
+            await recordRestore(db, record, fence).catch((err) => {
+              if (err instanceof StaleCollabEpochError) throw err;
+              return recordRestore(db, record, fence);
+            });
           } catch (err) {
+            // Superseded after it wrote (F-24): this process stores nothing more, but the
+            // people on the board hold the restored board and send it to the newer process.
+            if (err instanceof StaleCollabEpochError)
+              throw new CardOutcomeUnknown(
+                'Restore outcome unknown: another collab process took over meanwhile.',
+                { cause: err },
+              );
             log?.error({ err, boardId, count }, 'restore not recorded');
           }
         }
@@ -486,9 +538,19 @@ export function directVersionWriter(
   };
 }
 
-async function insertBackup(db: Database, boardId: string, userId: string, snap: VersionState) {
+/** First in a transaction of a collab process: refuses once a newer one took over (F-24). */
+type Fence = (tx: Tx) => Promise<void>;
+
+async function insertBackup(
+  db: Database,
+  boardId: string,
+  userId: string,
+  snap: VersionState,
+  fence: Fence,
+) {
   const now = new Date();
   return db.transaction(async (tx) => {
+    await fence(tx);
     await lockBoard(tx, boardId);
     await expireEarlierVersions(tx, boardId, 'restore', now);
     const [row] = await tx
@@ -516,8 +578,13 @@ export const MAX_RESTORE_RECORDS = 50;
  * back (decision 0109). Other records stay, whatever order they are saved in; the most recently
  * saved ones are kept.
  */
-export async function recordRestore(db: Database, values: typeof boardRestore.$inferInsert) {
+export async function recordRestore(
+  db: Database,
+  values: typeof boardRestore.$inferInsert,
+  fence?: Fence,
+) {
   await db.transaction(async (tx) => {
+    await fence?.(tx);
     await lockBoard(tx, values.boardId);
     await tx
       .insert(boardRestore)

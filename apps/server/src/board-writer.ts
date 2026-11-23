@@ -40,6 +40,13 @@ export type AddCardResult =
 /** The edit certainly did not reach the document: it could not even be opened. */
 export class BoardEditNotStarted extends Error {}
 
+/**
+ * The card (or restore) may or may not be on the board: the collaboration server never answered,
+ * or could not tell. Messages raised by a worker contain "outcome unknown", which is what crosses
+ * the queue.
+ */
+export class CardOutcomeUnknown extends Error {}
+
 export interface BoardWriter {
   addCard(input: AddCard): Promise<AddCardResult>;
 }
@@ -129,6 +136,9 @@ function fillNote(fragment: Y.XmlFragment, blocks: NoteBlock[]) {
 export function directBoardWriter(collab: CollabServer, log?: Logger): BoardWriter {
   return {
     async addCard({ boardId, ...input }) {
+      // Superseded (F-24): a newer collab process serves the board, and this one stops. An
+      // answer, not an error, so it crosses the queue: the clip's files are then discarded.
+      if (collab.isSuperseded()) return { ok: false, reason: 'expired' };
       const connection = await collab.hocuspocus
         .openDirectConnection(boardDocName(boardId))
         .catch((err) => {
@@ -137,7 +147,9 @@ export function directBoardWriter(collab: CollabServer, log?: Logger): BoardWrit
       let result: AddCardResult = { ok: false, reason: 'column' };
       try {
         await connection.transact((doc) => {
-          result = collab.hasRoom(doc) ? placeCard(doc, input) : { ok: false, reason: 'full' };
+          // Superseded while the board opened: nothing written now would be stored here.
+          if (collab.isSuperseded()) result = { ok: false, reason: 'expired' };
+          else result = collab.hasRoom(doc) ? placeCard(doc, input) : { ok: false, reason: 'full' };
         });
       } finally {
         try {

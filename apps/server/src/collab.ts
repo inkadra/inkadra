@@ -25,6 +25,7 @@ import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
 import { trackGuestHiding } from './board-content.ts';
 import { noteWriter, type PendingWriters, storeWriters } from './board-writers.ts';
+import { fenceCollabWrite, StaleCollabEpochError } from './collab-epoch.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { prepareImageDrawings } from './image-drawing.ts';
@@ -393,23 +394,100 @@ async function storeIfBoardExists(
   return rows.length > 0;
 }
 
+/** `<boardId>.yupdate`, or `<boardId>.<time>.yupdate` when the first one was unreadable. */
+function unsavedBoardId(name: string, claimed = false) {
+  const kept = name.endsWith(UNSAVED_SUFFIX) || (claimed && name.endsWith(DRAINING_SUFFIX));
+  const boardId = kept ? name.split('.')[0] : null;
+  return boardId && parseBoardDocName(boardDocName(boardId)) === boardId ? boardId : null;
+}
+
+/** Whether a file holds a Yjs update at all. */
+function decodable(update: Uint8Array) {
+  try {
+    Y.decodeUpdate(update);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** In the demo (`freeze`, decision 0084): a board past its caps, which is never stored. */
+function overDemoCaps(limits: CollabLimits | undefined, document: Y.Doc) {
+  if (!limits?.freeze) return false;
+  return (
+    document.getMap('elements').size > limits.elements ||
+    Y.encodeStateAsUpdate(document).byteLength > limits.stateBytes
+  );
+}
+
+/** A file being merged by the collab process serving the boards (F-24); replayed after a crash. */
+const DRAINING_SUFFIX = '.draining';
+/** A file whose content is not a Yjs update: left for an operator, never retried. */
+const UNREADABLE_SUFFIX = '.unreadable';
+/** Longest wait before merging again a file whose merge failed. */
+const DRAIN_RETRY_MAX_MS = 60 * 60_000;
+
+/**
+ * Whether the stored board already holds every item and deletion of `update`, those Yjs holds
+ * back included (pending structs and deletions), or the board is gone; 'no' while the store of
+ * the merged board has not happened yet. Compared as whole encoded states, which carry what is
+ * pending: a snapshot leaves out pending deletions.
+ */
+export async function storedHolds(db: Database, boardId: string, update: Uint8Array) {
+  const [row] = await db
+    .select({ state: boardDoc.state })
+    .from(boardDoc)
+    .where(eq(boardDoc.boardId, boardId));
+  if (!row) {
+    const [live] = await db.select({ id: board.id }).from(board).where(eq(board.id, boardId));
+    return live ? 'no' : 'gone';
+  }
+  const doc = new Y.Doc();
+  try {
+    Y.applyUpdate(doc, row.state);
+    const before = Y.encodeStateAsUpdate(doc);
+    Y.applyUpdate(doc, update);
+    return Buffer.from(before).equals(Y.encodeStateAsUpdate(doc)) ? 'yes' : 'no';
+  } finally {
+    doc.destroy();
+  }
+}
+
+/** How often the collab process merges boards another collab process kept on disk (F-24). */
+const DRAIN_UNSAVED_MS = 60_000;
+
 /**
  * Stores the boards a shutdown kept on disk (#795), merged into what the database has, before any
- * board opens. A file that cannot be stored stays for the next start.
+ * board opens. A file that cannot be stored stays for the next start. With the process's collab
+ * `epoch` (collab-epoch.ts), a newer collab process makes it throw `StaleCollabEpochError`.
  */
-export async function replayUnsavedBoards(db: Database, dir: string, log: Logger) {
+export async function replayUnsavedBoards(
+  db: Database,
+  dir: string,
+  log: Logger,
+  epoch?: number,
+  /** The server's caps: in the demo (`freeze`), a board they would pass is not stored. */
+  limits?: CollabLimits,
+) {
   const names = await readdir(dir).catch((err: NodeJS.ErrnoException) => {
     if (err.code !== 'ENOENT') log.error({ err, dir }, 'boards kept on disk not readable');
     return [];
   });
   for (const name of names) {
-    // `<boardId>.yupdate`, or `<boardId>.<time>.yupdate` when the first one was unreadable.
-    const boardId = name.endsWith(UNSAVED_SUFFIX) ? name.split('.')[0] : null;
-    if (!boardId || parseBoardDocName(boardDocName(boardId)) !== boardId) continue;
+    // A `.draining` file too: one the last run was merging when it stopped.
+    const boardId = unsavedBoardId(name, true);
+    if (!boardId) continue;
     const file = join(dir, name);
     try {
       const kept = await readFile(file);
+      if (!decodable(kept)) {
+        const parked = join(dir, `${boardId}.${randomUUID()}${UNREADABLE_SUFFIX}`);
+        await rename(file, parked);
+        log.error({ boardId, file: parked }, 'board kept on disk is not readable: left');
+        continue;
+      }
       const written = await db.transaction(async (tx) => {
+        await fenceCollabWrite(tx, epoch);
         const [row] = await tx
           .select({ state: boardDoc.state })
           .from(boardDoc)
@@ -418,17 +496,22 @@ export async function replayUnsavedBoards(db: Database, dir: string, log: Logger
         const document = new Y.Doc();
         if (row) Y.applyUpdate(document, row.state);
         Y.applyUpdate(document, kept);
+        if (overDemoCaps(limits, document)) return 'capped';
         const state = Y.encodeStateAsUpdate(document);
         return storeIfBoardExists(tx, boardId, state, getSchemaVersion(document));
       });
       await rm(file, { force: true });
       log.info(
         { boardId },
-        written
-          ? 'board kept on disk at the last shutdown: stored'
-          : 'board kept on disk at the last shutdown was deleted: dropped',
+        written === 'capped'
+          ? 'board kept on disk at the last shutdown is over the demo caps: dropped'
+          : written
+            ? 'board kept on disk at the last shutdown: stored'
+            : 'board kept on disk at the last shutdown was deleted: dropped',
       );
     } catch (err) {
+      // The file stays for whoever starts here next; this process must not serve boards.
+      if (err instanceof StaleCollabEpochError) throw err;
       if (boardGone(err)) {
         await rm(file, { force: true });
         log.info({ boardId }, 'board kept on disk at the last shutdown was deleted: dropped');
@@ -461,6 +544,13 @@ export function createCollabServer(deps: {
   hidingTimer?: (run: () => void) => () => void;
   /** Where a board that cannot be saved or opened goes for the Server page (#514). */
   monitor?: { store: MonitorStore; role: 'collab' | 'all' };
+  /** How often boards kept in `unsavedDir` by another process are merged; tests shorten it. */
+  drainMs?: number;
+  /**
+   * This process's collab epoch (collab-epoch.ts): board writes are refused once a newer collab
+   * process took over, and `onStale` then runs once (this process must stop, as on a lost lease).
+   */
+  fence?: { epoch: number; onStale: () => void };
 }) {
   const { db, auth, log, limits } = deps;
   const minWriterSchema = deps.minWriterSchema ?? MIN_WRITER_SCHEMA;
@@ -778,6 +868,171 @@ export function createCollabServer(deps: {
     hidingStores.get(document)?.();
     hidingStores.delete(document);
   }
+  /**
+   * A newer collab process took over (F-24): its clients reconnect to it once this process stops,
+   * and it has the stored state. Boards this one still holds are not unloaded but kept on disk at
+   * shutdown (`spill`), whose replay merges them into the stored state, so nothing is lost.
+   */
+  let superseded = false;
+  const supersede = (err: StaleCollabEpochError) => {
+    if (superseded) return;
+    superseded = true;
+    log.error(
+      { err: err.message },
+      'another collab process took over the boards: this one stops, its clients reconnect',
+    );
+    deps.fence?.onStale();
+  };
+  /** A store of a superseded process: no database round trip; on disk at shutdown. */
+  const keepSuperseded = (boardId: string, document: Y.Doc, payload: StorePayload) => {
+    if (closing) {
+      stored(document);
+      return spill(boardId, document);
+    }
+    // Kept in memory without a retry: the shutdown keeps it on disk.
+    clearTimeout(unsaved.get(document)?.timer);
+    unsaved.set(document, { attempt: 0, payload });
+  };
+  /**
+   * For collab-owned writes outside the store (versions): first in their transaction, refused
+   * once a newer collab process took over, which also stops this one.
+   */
+  async function fenceWrite(tx: Pick<Database, 'execute'>) {
+    if (superseded) throw new StaleCollabEpochError('a newer collab process took over');
+    try {
+      await fenceCollabWrite(tx, deps.fence?.epoch);
+    } catch (err) {
+      if (err instanceof StaleCollabEpochError) supersede(err);
+      throw err;
+    }
+  }
+  /**
+   * Boards a superseded collab process kept on disk while this one serves (F-24): each file is
+   * taken (renamed, so a process still writing one starts a new file), merged into the live board
+   * through a direct connection, and then stored like any edit, retried or kept on disk on
+   * failure. Waiting for a restart would merge week-old edits, deletions included, much later.
+   * shortcut: only files in this process's own `unsavedDir`; a superseded process on another
+   * data volume leaves its files for its own next start, and logs where they are.
+   */
+  /** Files merged into a live board, removed once its stored state holds them. */
+  const merged = new Map<string, { boardId: string; update: Uint8Array }>();
+  /** Boards whose file failed to merge: when to try again, with backoff. */
+  const retryDrain = new Map<string, { attempt: number; at: number }>();
+  let drainRun: Promise<void> | undefined;
+  const drainMs = deps.drainMs ?? DRAIN_UNSAVED_MS;
+  /** Renames a file, logging a failure: the file then stays where it is, under its old name. */
+  const move = (from: string, to: string) =>
+    rename(from, to).then(
+      () => true,
+      (err: unknown) => {
+        log.error({ err, from, to }, 'board kept on disk could not be renamed');
+        return false;
+      },
+    );
+  async function drainOnce(dir: string) {
+    // Merged files go once the board's store holds them; never while stopping or superseded,
+    // when that store may not happen (the file is replayed at the next start).
+    for (const [file, { boardId, update }] of merged) {
+      if (closing || superseded) return;
+      // A demo board frozen since: never stored, so nothing would ever hold the file.
+      const live = server.hocuspocus.documents.get(boardDocName(boardId));
+      if (live && frozen.has(live)) {
+        await rm(file, { force: true });
+        merged.delete(file);
+        log.warn({ boardId }, 'board kept on disk is over the demo caps: dropped');
+        continue;
+      }
+      try {
+        const held = await storedHolds(db, boardId, update);
+        if (held === 'no') continue;
+        await rm(file, { force: true });
+        merged.delete(file);
+      } catch (err) {
+        log.warn({ err, boardId }, 'board merged from disk not checked yet: checked again later');
+      }
+    }
+    const names = await readdir(dir).catch(() => [] as string[]);
+    for (const name of names) {
+      if (closing || superseded) return;
+      const boardId = unsavedBoardId(name);
+      if (!boardId || (retryDrain.get(boardId)?.at ?? 0) > Date.now()) continue;
+      const taken = join(dir, `${boardId}.${randomUUID()}${DRAINING_SUFFIX}`);
+      if (!(await move(join(dir, name), taken))) continue;
+      let update: Uint8Array;
+      try {
+        update = await readFile(taken);
+      } catch (err) {
+        await failedDrain(dir, boardId, taken, err);
+        continue;
+      }
+      if (!decodable(update)) {
+        const parked = join(dir, `${boardId}.${randomUUID()}${UNREADABLE_SUFFIX}`);
+        await move(taken, parked);
+        log.error({ boardId, file: parked }, 'board kept on disk is not readable: left');
+        continue;
+      }
+      let capped = false;
+      try {
+        const connection = await server.hocuspocus.openDirectConnection(boardDocName(boardId));
+        try {
+          await connection.transact((doc) => {
+            // The demo never stores a board past its caps: merging would only freeze it.
+            if (limits?.freeze) {
+              const merged = new Y.Doc();
+              Y.applyUpdate(merged, Y.encodeStateAsUpdate(doc));
+              Y.applyUpdate(merged, update);
+              capped = frozen.has(doc) || overDemoCaps(limits, merged);
+              merged.destroy();
+              if (capped) return;
+            }
+            Y.applyUpdate(doc, update);
+          });
+        } finally {
+          await connection.disconnect({ unloadImmediately: false });
+        }
+      } catch (err) {
+        await failedDrain(dir, boardId, taken, err);
+        continue;
+      }
+      if (capped) {
+        await rm(taken, { force: true });
+        log.warn({ boardId }, 'board kept on disk is over the demo caps: dropped');
+        continue;
+      }
+      retryDrain.delete(boardId);
+      merged.set(taken, { boardId, update });
+      log.warn({ boardId }, 'board kept on disk by another collab process: merged');
+    }
+  }
+  /** Gives a file that failed to merge back its place, to be tried again with backoff. */
+  async function failedDrain(dir: string, boardId: string, taken: string, err: unknown) {
+    const attempt = (retryDrain.get(boardId)?.attempt ?? 0) + 1;
+    const delay = Math.min(DRAIN_RETRY_MAX_MS, drainMs * 2 ** (attempt - 1));
+    retryDrain.set(boardId, { attempt, at: Date.now() + delay });
+    const back = join(dir, `${boardId}.${randomUUID()}${UNSAVED_SUFFIX}`);
+    await move(taken, back);
+    log.error({ err, boardId, file: back, retryInMs: delay }, 'board kept on disk not merged');
+  }
+  /**
+   * Boards a superseded collab process kept on disk while this one serves (F-24): each file is
+   * taken (renamed, so a process still writing one starts a new file), merged into the live board
+   * through a direct connection, stored like any edit (retried or kept on disk on failure), and
+   * removed only once the stored board holds it. Waiting for a restart would merge week-old
+   * edits, deletions included, much later. A file of the last run still `.draining` is replayed
+   * at the next start.
+   * shortcut: only files in this process's own `unsavedDir`; a superseded process on another
+   * data volume leaves its files for its own next start, and logs where they are.
+   */
+  function drainUnsaved() {
+    const dir = deps.unsavedDir;
+    if (!dir || drainRun || closing || superseded) return drainRun;
+    drainRun = drainOnce(dir).finally(() => {
+      drainRun = undefined;
+    });
+    return drainRun;
+  }
+  let drainTimer: NodeJS.Timeout | undefined;
+
   /** At shutdown, after one last failed store: keep the board on disk for the next start. */
   async function spill(boardId: string, document: Y.Doc) {
     if (!deps.unsavedDir) {
@@ -835,14 +1090,25 @@ export function createCollabServer(deps: {
       timer.unref();
       keepalive = setInterval(keepAlive, deps.keepaliveMs ?? KEEPALIVE_MS);
       keepalive.unref();
+      if (deps.unsavedDir) {
+        drainTimer = setInterval(() => void drainUnsaved(), drainMs);
+        drainTimer.unref();
+      }
     },
 
     async onDestroy() {
       if (timer) clearInterval(timer);
       if (keepalive) clearInterval(keepalive);
+      if (drainTimer) clearInterval(drainTimer);
     },
 
     async onUpgrade({ request, socket }) {
+      // Superseded: a newer collab process serves the boards, which the client reaches by
+      // reconnecting (an upgrade that fails is retried, unlike a refused authentication).
+      if (superseded) {
+        socket.destroy();
+        return Promise.reject();
+      }
       let own: string;
       try {
         own = rawOrigin(request, deps.trustProxy ?? false);
@@ -1127,6 +1393,7 @@ export function createCollabServer(deps: {
               log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
           }
           if (frozen.has(document)) return stored(document);
+          if (superseded) return keepSuperseded(boardId, document, payload);
           const pending = new Map(pendingAssignments.get(document));
           const hiding = hidingCount.get(document);
           const state = Y.encodeStateAsUpdate(document);
@@ -1144,6 +1411,7 @@ export function createCollabServer(deps: {
               began = performance.now();
               // A database that stopped answering fails the store (retried) instead of holding it.
               await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
+              await fenceCollabWrite(tx, deps.fence?.epoch);
               return storeIfBoardExists(tx, boardId, state, schemaVersion);
             });
             const written = await (closing ? within(write, SHUTDOWN_STORE_MS) : write);
@@ -1153,6 +1421,10 @@ export function createCollabServer(deps: {
               return stored(document);
             }
           } catch (err) {
+            if (err instanceof StaleCollabEpochError) {
+              supersede(err);
+              return keepSuperseded(boardId, document, payload);
+            }
             // Deleted between the check and the write: there is nothing to keep it for either.
             // Returning lets Hocuspocus unload the document.
             if (boardGone(err)) {
@@ -1199,6 +1471,7 @@ export function createCollabServer(deps: {
           // (indexed_at stays older than updated_at).
           try {
             await db.transaction(async (tx) => {
+              await fenceCollabWrite(tx, deps.fence?.epoch);
               await writeBoardIndex(tx, boardId, document);
               await tx
                 .update(board)
@@ -1206,6 +1479,10 @@ export function createCollabServer(deps: {
                 .where(eq(board.id, boardId));
             });
           } catch (err) {
+            if (err instanceof StaleCollabEpochError) {
+              supersede(err);
+              return;
+            }
             log.error({ err, boardId }, 'board search index not updated');
           }
           // Decision 0013: an automatic version when the last one is more than an hour old.
@@ -1249,6 +1526,9 @@ export function createCollabServer(deps: {
     clearInterval(keepalive);
     for (const cancel of hidingStores.values()) cancel();
     hidingStores.clear();
+    clearInterval(drainTimer);
+    // A merge in flight finishes first: its board is then stored (or kept on disk) below.
+    if (drainRun) await within(drainRun, SHUTDOWN_STORE_MS).catch(() => undefined);
     for (const [document, { timer, payload }] of unsaved) {
       clearTimeout(timer);
       if (hocuspocus.documents.get(payload.documentName) === document)
@@ -1312,6 +1592,8 @@ export function createCollabServer(deps: {
     boardBytes,
     hasRoom,
     stores: storeTimes,
+    fenceWrite,
+    isSuperseded: () => superseded,
   });
 }
 

@@ -299,10 +299,15 @@ volume and live video sessions in memory, so two of either would lose edits or u
 [#819](https://github.com/inkadra/inkadra/issues/819)). Each of these processes holds a lease
 in Valkey while it runs, and a second one with the same role refuses to start with
 "Another inkadra process with the … role is running" after waiting 35 seconds. A clean stop
-releases the lease. After a crash, or a start that failed or was stopped before it ended, the
-lease ends by itself within 30 seconds, and the next process,
+releases the lease, and so does a start that fails. After a crash, or a start that was stopped
+before it ended, the lease ends by itself within 30 seconds, and the next process,
 the same container restarting included, waits for it: web or collab start up to 30 seconds
-later. On an orchestrator,
+later. A collab process that lost its lease without noticing (cut off from Valkey, or paused)
+can no longer write boards once a newer one started: the database refuses its writes, it stops
+and its people reconnect to the newer one. What it still held goes to its data volume's
+`unsaved-boards` folder, which the collab process serving that volume merges within a minute;
+on another volume, at the next collab start there
+([decision 0138](../decisions/0138-collab-fencing-epoch.md)). On an orchestrator,
 update by recreating (stop the old process, then start the new one), not by a rolling update.
 Only `worker` can run as several replicas.
 

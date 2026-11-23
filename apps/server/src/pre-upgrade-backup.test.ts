@@ -103,6 +103,12 @@ it('answers alive, not ready, while the server starts', async () => {
     expect(await ready.json()).toEqual({ status: 'starting', reason: 'migrations' });
     expect((await at('/api/v1/health')).status).toBe(503);
     expect((await at('/')).status).toBe(503);
+    // It says what the start waits for now.
+    starting.setReason('boards kept on disk');
+    expect(await (await at('/readyz')).json()).toEqual({
+      status: 'starting',
+      reason: 'boards kept on disk',
+    });
   } finally {
     await starting.close();
   }

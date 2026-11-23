@@ -13,6 +13,11 @@ type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
  * may skip any, and never takes an earlier one after a later one; no advisory lock after its first
  * row lock, except the storage lock:
  *
+ * 0. `collab-epoch` (10892, 7), before anything else (collab-epoch.ts, F-24): shared first in
+ *    each board write of a collab process (a store, a replay, a version, a restore's backup and
+ *    record), exclusive for a collab start taking its epoch, which holds nothing else. A
+ *    heavyweight lock, unlike a row lock: a start waiting for it is queued, so writes that keep
+ *    coming never starve it (`lockCollabEpoch`).
  * 1. `classification-uses`, shared or exclusive: `lockUses` in classifications.ts (0126).
  * 2. `classifications` (10892, 1): the catalog and its removed values (`lockCatalog`).
  * 3. `account-deletions` (10892, 6): taken only by an account deletion, so two never run
@@ -33,7 +38,7 @@ type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 const CLASS = { instance: 10892, account: 10894 } as const;
 
 const lock = (
-  tx: Tx | Database,
+  tx: Pick<Database, 'execute'>,
   key1: number,
   key2: number | SQL,
   mode: 'shared' | 'exclusive' = 'exclusive',
@@ -43,6 +48,10 @@ const lock = (
       ? sql`select pg_advisory_xact_lock_shared(${key1}::int, ${key2}::int)`
       : sql`select pg_advisory_xact_lock(${key1}::int, ${key2}::int)`,
   );
+
+/** The collab epoch (level 0): shared to write a board, exclusive to take a new epoch. */
+export const lockCollabEpoch = (tx: Pick<Database, 'execute'>, mode: 'shared' | 'exclusive') =>
+  lock(tx, CLASS.instance, 7, mode);
 
 /** The `classifications` and `classifications_deleted` settings rows (decision 0126). */
 export const lockCatalog = (tx: Tx | Database) => lock(tx, CLASS.instance, 1);

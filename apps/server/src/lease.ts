@@ -40,6 +40,8 @@ export class LeaseTakenError extends Error {}
 
 export interface Lease {
   release(): Promise<void>;
+  /** Renews the lease now: false when another process holds it. */
+  confirm(): Promise<boolean>;
 }
 
 /** How long an unreachable Valkey is retried at startup (a host reboot starts it late). */
@@ -57,8 +59,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * a whole TTL (this one must stop). A foreign value seen once is not enough: after a Valkey crash
  * an append-only file can bring back the key of a holder long gone, which expires on its own.
  * A Valkey outage only logs: the lease is renewed again once it is back.
- * shortcut: a process cut off from Valkey keeps serving until it sees another holder, which may
- * have taken the lease meanwhile; excluding that needs a fencing token checked by the writes.
+ * A process cut off from Valkey keeps serving until it sees another holder, which may have taken
+ * the lease meanwhile: for collab, the epoch of collab-epoch.ts fences its board writes.
  */
 export async function acquireLease(
   redis: Redis,
@@ -130,6 +132,9 @@ export async function acquireLease(
   }, opts.renewMs ?? LEASE_RENEW_MS);
   timer.unref();
   return {
+    async confirm() {
+      return (await redis.eval(RENEW, 1, key, me, ttl)) === 1;
+    },
     async release() {
       clearInterval(timer);
       // Never fatal: the lease then ends with its TTL.

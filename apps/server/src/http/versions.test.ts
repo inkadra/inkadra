@@ -1189,9 +1189,17 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         );
         return connection;
       });
-      const updating = vi.spyOn(db, 'update').mockImplementationOnce(() => {
-        throw new Error('Backup write failed');
-      });
+      // The second transaction of the restore persists the concurrent edit in its backup (the
+      // first wrote the backup).
+      const transaction = db.transaction.bind(db);
+      let calls = 0;
+      const updating = vi.spyOn(db, 'transaction').mockImplementation(((
+        ...args: Parameters<typeof db.transaction>
+      ) => {
+        calls += 1;
+        if (calls === 2) return Promise.reject(new Error('Backup write failed'));
+        return transaction(...args);
+      }) as typeof db.transaction);
       try {
         await expect(
           versions.restore({ boardId, versionId: version.id, userId: people.editor?.id ?? '' }),

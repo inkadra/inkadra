@@ -134,6 +134,8 @@ const SKIPPED_TABLES = new Set<string>([
   'asset_rendition',
   // Copies of deleted files parked for one statement (migration 0052): empty between them.
   'storage_total_gone',
+  // The running collab process's fencing token (collab-epoch.ts): the first start takes a new one.
+  'collab_epoch',
   ...BACKUP_REBUILT_TABLES,
 ]);
 const NAME = /^[a-z_][a-z0-9_]{0,62}$/;
