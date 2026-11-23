@@ -201,3 +201,28 @@ describe('placing a kit next to odd stored entries', () => {
     expect(baseMap.get('shapes')).toEqual([]);
   });
 });
+
+describe('placing a kit when a plan it goes to has no icons list', () => {
+  it("writes nothing: the list is the server's to make", () => {
+    const s = setup();
+    const setupMap = roots(s.doc).elements.get(s.sera) as Y.Map<unknown>;
+    setupMap.delete('icons');
+    let changes = 0;
+    s.doc.on('afterTransaction', () => changes++);
+    // The light on Set goes to the base; its softbox, on Lights, to the setup without icons.
+    const id = placePlanIcon(
+      s.doc,
+      s.edit(),
+      'fresnel',
+      { x: 0.5, y: 0.5 },
+      {
+        ...white,
+        fields: { layer: 'set' },
+        modifiers: ['softbox'],
+      },
+    );
+    expect(id).toBeNull();
+    expect(changes).toBe(0);
+    expect(setupMap.has('icons')).toBe(false);
+  });
+});
