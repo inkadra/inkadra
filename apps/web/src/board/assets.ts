@@ -1,4 +1,4 @@
-import type { Asset } from '@inkadra/shared';
+import { ASSET_LOOKUP_MAX, type Asset, type AssetLookup } from '@inkadra/shared';
 import { useCallback, useSyncExternalStore } from 'react';
 import { createPoller, type Poller, type PollOutcome } from '../guest/poller.ts';
 import { api, RequestError } from '../lib/api.ts';
@@ -18,7 +18,68 @@ function notify(id: string) {
 }
 
 type Loader = (id: string) => Promise<Asset | null>;
-const accountLoader: Loader = (id) => api.get<Asset>(`/assets/${id}`);
+const singleLoader: Loader = (id) => api.get<Asset>(`/assets/${id}`);
+
+/**
+ * Whether the server answers `POST /assets/lookup` (capability `asset-lookup`). The session
+ * sets it from `GET /instance/version` before any board mounts; older servers keep it false.
+ */
+let lookupAvailable = false;
+export function setAssetLookup(available: boolean) {
+  lookupAvailable = available;
+}
+
+// Cards mounted together (a board opening with hundreds of files) ask within a few ms: their
+// requests go out as one lookup per ASSET_LOOKUP_MAX ids instead of one request per card.
+const BATCH_MS = 8;
+type Waiter = {
+  id: string;
+  resolve: (asset: Asset | null) => void;
+  reject: (err: unknown) => void;
+};
+let queue: Waiter[] = [];
+
+async function lookup(waiters: Waiter[]) {
+  const ids = [...new Set(waiters.map((w) => w.id))];
+  let found: Map<string, Asset>;
+  try {
+    const { items } = await api.post<AssetLookup>('/assets/lookup', { ids });
+    found = new Map(items.map((a) => [a.id.toLowerCase(), a]));
+  } catch (err) {
+    // An older server without the route: ask each file alone from now on. Over the lookup
+    // limit: ask these files alone this time.
+    if (err instanceof RequestError && err.status === 404) lookupAvailable = false;
+    else if (!(err instanceof RequestError && err.status === 429)) {
+      for (const w of waiters) w.reject(err);
+      return;
+    }
+    found = new Map();
+  }
+  for (const w of waiters) {
+    const asset = found.get(w.id.toLowerCase());
+    // A file left out is asked alone, so it gets the single route's 404 or 403 as before.
+    if (asset) w.resolve(asset);
+    else singleLoader(w.id).then(w.resolve, w.reject);
+  }
+}
+
+function flush() {
+  const waiters = queue;
+  queue = [];
+  // fetchOnce already shares one request per id, so a chunk of waiters is a chunk of ids.
+  for (let i = 0; i < waiters.length; i += ASSET_LOOKUP_MAX)
+    void lookup(waiters.slice(i, i + ASSET_LOOKUP_MAX));
+}
+
+const accountLoader: Loader = (id) => {
+  // Files already known (polled while processed, asked again after a notice) keep the
+  // single route, as the lookup's contract says: only the first load of a card is batched.
+  if (!lookupAvailable || cache.has(id)) return singleLoader(id);
+  return new Promise((resolve, reject) => {
+    if (queue.length === 0) setTimeout(flush, BATCH_MS);
+    queue.push({ id, resolve, reject });
+  });
+};
 let loader = accountLoader;
 
 /**

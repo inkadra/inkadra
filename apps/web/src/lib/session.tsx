@@ -1,5 +1,11 @@
-import type { Instance, User } from '@inkadra/shared';
+import {
+  ASSET_LOOKUP_CAPABILITY,
+  type Instance,
+  type InstanceVersion,
+  type User,
+} from '@inkadra/shared';
 import { type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { setAssetLookup } from '../board/assets.ts';
 import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 import { setSignedInId } from './me.ts';
@@ -42,7 +48,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // metadata must not prevent startup; only the explicit policy denial gates the workspace.
     let required = false;
     const identity = me
-      ? await api.get<{ version: string }>('/instance/version').catch((err) => {
+      ? await api.get<InstanceVersion>('/instance/version').catch((err) => {
           required =
             err instanceof RequestError &&
             err.status === 403 &&
@@ -54,6 +60,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (call !== latest.current) return;
     setEnrollmentRequired(required);
     setVersion(identity?.version);
+    setAssetLookup(identity?.capabilities?.includes(ASSET_LOOKUP_CAPABILITY) ?? false);
     setInstance(inst);
     setUser(me);
     setSignedInId(me?.id ?? null);
