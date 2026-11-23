@@ -132,6 +132,7 @@ export function PlanViewer({
   scope,
   onSwitch,
   onClose,
+  notice,
 }: {
   plan: PlanElement;
   base?: PlanElement | undefined;
@@ -144,6 +145,8 @@ export function PlanViewer({
   scope?: ExportEnv['scope'];
   onSwitch?: (id: string) => void;
   onClose: () => void;
+  /** Why it opened read-only for someone who may edit it (its lists, canvas-core planListsReason). */
+  notice?: string | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const setupTabsId = useId();
@@ -242,6 +245,11 @@ export function PlanViewer({
           </Button>
         </div>
       </header>
+      {notice && (
+        <p className="plan-float plan-canvas__toast" role="status">
+          {notice}
+        </p>
+      )}
       <div className="plan-view__body">
         {/* biome-ignore lint/a11y/noStaticElementInteractions: dragging pans; the keys and the bar do it too. */}
         <div

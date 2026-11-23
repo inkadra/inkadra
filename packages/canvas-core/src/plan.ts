@@ -17,6 +17,7 @@ import {
   type PlanShape,
   type PlanStroke,
   planItemLayer,
+  planListsState,
   roots,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
@@ -1259,21 +1260,23 @@ function listOf(doc: Y.Doc, planId: string, kind: PlanItemKind): Y.Array<unknown
 }
 
 /**
- * Whether a client may edit this plan: every list of it, and of its base for a setup, is a
- * Y.Array (listOf). Otherwise the editor opens it read-only and says why: the board was served by
- * a server older than the one that prepares plan lists, or from an old copy.
+ * Why a client may not edit this plan now, or null when it may: `pending` when a list of it (or
+ * of its base, for a setup) is missing or plain JSON, which the server prepares when it loads the
+ * board; `stuck` when one cannot become a Yjs list at all (doc-schema planListsState). The editor
+ * then opens it read-only and says which.
  */
-export function planListsReady(doc: Y.Doc, planId: string): boolean {
+export function planListsReason(doc: Y.Doc, planId: string): 'pending' | 'stuck' | null {
   const map = roots(doc).elements.get(planId);
-  if (map?.get('type') !== 'plan') return false;
+  if (map?.get('type') !== 'plan') return 'stuck';
   const base = map.get('variantOf');
-  const ids = typeof base === 'string' && roots(doc).elements.has(base) ? [planId, base] : [planId];
-  return ids.every((id) =>
-    (['strokes', 'shapes', 'icons', 'walls', 'openings', 'circuits'] as const).every(
-      (key) => roots(doc).elements.get(id)?.get(key) instanceof Y.Array,
-    ),
-  );
+  const baseMap = typeof base === 'string' ? roots(doc).elements.get(base) : undefined;
+  const states = [map, ...(baseMap?.get('type') === 'plan' ? [baseMap] : [])].map(planListsState);
+  return states.includes('stuck') ? 'stuck' : states.includes('pending') ? 'pending' : null;
 }
+
+/** Whether a client may edit this plan: planListsReason is null. */
+export const planListsReady = (doc: Y.Doc, planId: string): boolean =>
+  planListsReason(doc, planId) === null;
 
 /** The lists of these plans a client may not write: not Y.Arrays (see listOf). */
 const unready = (doc: Y.Doc, planIds: readonly string[]) =>

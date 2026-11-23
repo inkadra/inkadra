@@ -2,7 +2,14 @@
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { createElement, deleteElements, listElements } from './board.ts';
+import {
+  basesThatStay,
+  copyElements,
+  createElement,
+  deleteElements,
+  listElements,
+  pasteElements,
+} from './board.ts';
 import { addShape, addStroke } from './film.ts';
 import { addPlanIcon, addVariant, type PlanElement, planListsReady } from './plan.ts';
 
@@ -37,16 +44,52 @@ describe('a client never converts or makes a plan list', () => {
     expect(planOf(doc, setup).icons?.map((i) => i.kind)).toEqual(['sofa']);
   });
 
-  it('keeps a base whose setup holds a list it may not write, and says so', () => {
+  it('deletes nothing when a base whose setup holds a list it may not write would go', () => {
     const doc = createBoardDoc(boardId);
-    const base = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    const column = createElement(
+      doc,
+      'column',
+      { x: 0, y: 0 },
+      { title: 'Sets' },
+      { userId: null },
+    ).id;
+    const base = createElement(
+      doc,
+      'plan',
+      { x: 0, y: 0 },
+      { parent: column },
+      { userId: null },
+    ).id;
+    const note = createElement(doc, 'note', { x: 900, y: 0 }, {}, { userId: null }).id;
     addPlanIcon(doc, base, { kind: 'sofa', color: '#1C1C1E', x: 100, y: 100 });
     const setup = addVariant(doc, planOf(doc, base), 'Sera', { userId: null });
+    // The setup stays on the canvas, out of the column that goes.
+    mapOf(doc, setup).set('parent', null);
     mapOf(doc, setup).set('icons', []);
-    expect(deleteElements(doc, [base])).toEqual([base]);
-    expect(roots(doc).elements.has(base)).toBe(true);
+    // The base's column and another card in the same delete: none goes, the base is said.
+    expect(basesThatStay(doc, [column, note])).toEqual([base]);
+    expect(deleteElements(doc, [column, note])).toEqual([base]);
+    for (const id of [column, base, note]) expect(roots(doc).elements.has(id)).toBe(true);
+    expect(mapOf(doc, base).get('parent')).toBe(column);
     expect(mapOf(doc, setup).get('variantOf')).toBe(base);
-    expect(mapOf(doc, setup).get('icons')).toEqual([]);
+  });
+
+  it('a plan pasted from a copy whose lists were plain JSON gets its lists made', () => {
+    const source = createBoardDoc(boardId);
+    const plan = createElement(source, 'plan', { x: 0, y: 0 }, {}, { userId: null }).id;
+    mapOf(source, plan).set('icons', [
+      { id: 'lampLegacyAAA', kind: 'fresnel', color: '#FFFFFF', x: 100, y: 100 },
+    ]);
+    const target = createBoardDoc(boardId);
+    const { ids } = pasteElements(
+      target,
+      copyElements(source, [plan]),
+      { x: 0, y: 0 },
+      { userId: null },
+    );
+    expect(ids).toHaveLength(1);
+    expect(planListsReady(target, ids[0]!)).toBe(true);
+    expect(planOf(target, ids[0]!).icons?.map((i) => i.kind)).toEqual(['fresnel']);
   });
 });
 

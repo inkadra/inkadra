@@ -8,6 +8,7 @@ import {
   arrowBox,
   arrowEnds,
   arrowGeometry,
+  basesThatStay,
   boundsOf,
   boundViewport,
   bringToFront,
@@ -50,7 +51,7 @@ import {
   pasteElements,
   pinchViewport,
   placeProductionCard,
-  planListsReady,
+  planListsReason,
   type Rect,
   type ResizeCorner,
   type ResizeOptions,
@@ -1470,11 +1471,15 @@ export function Canvas({
     store.undo.stopCapturing();
     const stayed = deleteElements(doc, selection, LOCAL);
     store.undo.stopCapturing();
+    // A set plan whose setup keeps a list this client may not write: nothing was deleted at all
+    // (canvas-core), the selection stays, and the toast says why.
+    if (stayed.length) {
+      notify(t('board.planBaseKept'));
+      return;
+    }
     setSelection(EMPTY_SET);
-    // A set plan whose setup keeps a list this client may not write stays (canvas-core).
-    if (stayed.length) setToast({ text: t('board.planBaseKept'), undo: false, ok: true });
-    else setToast({ text: t('board.deleted', { count }), undo: true });
-  }, [readOnly, selection, store, doc, t]);
+    setToast({ text: t('board.deleted', { count }), undo: true });
+  }, [readOnly, selection, store, doc, t, notify]);
 
   const duplicate = useCallback(() => {
     if (readOnly || selection.size === 0) return;
@@ -2825,11 +2830,17 @@ export function Canvas({
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
       if (selection.size === 0) return;
+      // A cut that could not delete (a set plan whose setup keeps a list this client may not
+      // write) copies nothing either: no second copy of that plan on a paste.
+      if (e.type === 'cut' && !readOnly && basesThatStay(doc, selection).length) {
+        e.preventDefault();
+        notify(t('board.planBaseKept'));
+        return;
+      }
       const data = copyElements(doc, [...selection], { instance: window.location.origin });
       encodeClipboard(e.clipboardData, data);
       e.preventDefault();
-      if (e.type === 'cut' && !readOnly && deleteElements(doc, selection, LOCAL).length)
-        notify(t('board.planBaseKept'));
+      if (e.type === 'cut' && !readOnly) deleteElements(doc, selection, LOCAL);
       return;
     }
     if (readOnly) return;
@@ -2975,14 +2986,14 @@ export function Canvas({
   // A set plan whose lists the server has not prepared opens read-only, saying why (canvas-core
   // planListsReady): a client never converts or makes them.
   const planNotReady =
-    editedEl?.type === 'plan' && !readOnly && !planListsReady(doc, editedEl.id) ? editedEl : null;
+    editedEl?.type === 'plan' && !readOnly ? planListsReason(doc, editedEl.id) : null;
   const editedPlan = editedEl?.type === 'plan' && !readOnly && !planNotReady ? editedEl : null;
   useEffect(() => {
-    if (!planNotReady) return;
+    if (!planNotReady || !editedEl) return;
     setEditing(null);
-    setViewedPlanId(planNotReady.id);
-    notify(t('board.planListsNotReady'));
-  }, [planNotReady, setEditing, notify, t]);
+    setViewedPlanId(editedEl.id);
+    notify(t(planNotReady === 'stuck' ? 'board.planListsStuck' : 'board.planListsNotReady'));
+  }, [planNotReady, editedEl, setEditing, notify, t]);
   const isPhone = useIsPhone();
   const { openScene } = usePlanNav();
   const boardScenes = useMemo(

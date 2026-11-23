@@ -6,6 +6,7 @@ import {
   linkedLocation,
   linkedScenes,
   linkedShot,
+  planListsReady,
   storyboardOf,
   unlinkCharacter,
   updateElement,
@@ -726,6 +727,8 @@ export function useSunDayRepair(ed: Ed) {
         ? locationCoords([location.mapUrl, location.address].filter(Boolean).join(' '))
         : null;
     for (const p of family?.length ? family : [plan]) {
+      // A setup whose lists the server has not prepared is not written to (canvas-core).
+      if (!planListsReady(doc, p.id)) continue;
       const sun = p.sun;
       const day = sun?.day ? all.find((d) => d.id === sun.day) : undefined;
       if (!sun || !day || day.date === sun.date) continue;
