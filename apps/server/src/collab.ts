@@ -42,6 +42,7 @@ import {
   validateTaskUpdate,
 } from './tasks.ts';
 import { actorFromToken, isToken, recordTokenUse } from './tokens.ts';
+import { malformedUpdate, stillWritable } from './update-shape.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
 interface Context {
@@ -1310,7 +1311,24 @@ export function createCollabServer(deps: {
         );
         return;
       }
+      // A shape no Yjs client writes, which would wedge the board (decision 0139): refused before
+      // anything else reads it.
+      const malformed = malformedUpdate(document, payload);
+      if (malformed) throw new Error(`Malformed update: ${malformed}`);
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
+      // Hocuspocus applies the update once this returns: anything may have changed during the
+      // await (the role, a freeze, the socket, the board unloaded). The role check and a freeze
+      // make the connection read-only; a closed socket or an unloaded board must too.
+      if (
+        !stillWritable({
+          readOnly: connection.readOnly,
+          socketState: connection.webSocket.readyState,
+          documentDestroyed: document.isDestroyed,
+        })
+      ) {
+        connection.readOnly = true;
+        return;
+      }
       // Decision 0120: the ids this socket delivers new items under, read from what it sent.
       // onChange sees the whole transaction, which can also integrate items another socket sent
       // earlier that were waiting for theirs: those must not go on this account.
