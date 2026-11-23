@@ -1,7 +1,7 @@
 import type { DiagnosticCheck, Diagnostics as DiagnosticsBody } from '@inkadra/shared';
 import { Button, Logo } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
@@ -129,7 +129,12 @@ export function Diagnostics() {
                       </span>
                     </p>
                     {row.status !== 'ok' && (
-                      <p className="diagnostics__hint">{t(`diagnostics.checks.${row.id}.fix`)}</p>
+                      <p className="diagnostics__hint">
+                        <Trans
+                          i18nKey={`diagnostics.checks.${row.id}.fix`}
+                          components={{ code: <code /> }}
+                        />
+                      </p>
                     )}
                     {(row.expected || row.actual) && (
                       <dl className="diagnostics__values">

@@ -285,6 +285,10 @@
         "title": "Proxy riconosciuto",
         "fix": "Aggiungi a TRUST_PROXY l’indirizzo da cui arriva il proxy (l’indirizzo del peer)."
       },
+      "proxy_trust_narrow": {
+        "title": "Solo il proxy può indicare l’indirizzo dei client",
+        "fix": "TRUST_PROXY si fida di più del solo reverse proxy, quindi chiunque può fingere un altro indirizzo: i limiti di accesso si aggirano e nei log compaiono indirizzi inventati. Imposta <code>TRUST_PROXY</code> sull’indirizzo del proxy."
+      },
       "database": {
         "title": "Database",
         "fix": "Controlla DATABASE_URL e che Postgres sia avviato."
@@ -5909,7 +5913,7 @@
           },
           "3": {
             "title": "I problemi",
-            "text": "Riprova, segna come visto o invia agli sviluppatori."
+            "text": "Riprova, segna come visto o invia agli sviluppatori. Una configurazione da sistemare porta alla sua guida."
           },
           "4": {
             "title": "Gli avvisi",
@@ -6336,6 +6340,7 @@
       },
       "technicalIn": "Dettagli tecnici in Avanzata",
       "technicalInNamed": "Dettagli tecnici in Avanzata: {{title}}",
+      "docs": "Come impostare TRUST_PROXY",
       "retryNamed": "Riprova: {{title}}",
       "seenNamed": "Segna come visto: {{title}}"
     },

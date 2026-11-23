@@ -300,8 +300,10 @@
   align-items: center;
   gap: 6px;
 }
-.server-problem__more {
-  align-self: flex-start;
+.server-problem__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin-top: 4px;
 }
 .server-problem__actions {

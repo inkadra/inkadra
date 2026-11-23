@@ -285,6 +285,10 @@
         "title": "Proxy trusted",
         "fix": "Add the address the proxy connects from (the peer address) to TRUST_PROXY."
       },
+      "proxy_trust_narrow": {
+        "title": "Only your proxy can tell client addresses",
+        "fix": "TRUST_PROXY trusts more than your reverse proxy, so anyone can claim another address: sign-in limits can be dodged and the logs show made-up addresses. Set <code>TRUST_PROXY</code> to the proxy’s own address."
+      },
       "database": {
         "title": "Database",
         "fix": "Check DATABASE_URL and that Postgres is running."
@@ -5909,7 +5913,7 @@
           },
           "3": {
             "title": "Problems",
-            "text": "Retry, mark as seen or send to the developers."
+            "text": "Retry, mark as seen or send to the developers. A configuration to fix links to its guide."
           },
           "4": {
             "title": "Alerts",
@@ -6336,6 +6340,7 @@
       },
       "technicalIn": "Technical details in Advanced",
       "technicalInNamed": "Technical details in Advanced: {{title}}",
+      "docs": "How to set TRUST_PROXY",
       "retryNamed": "Retry: {{title}}",
       "seenNamed": "Mark as seen: {{title}}"
     },
