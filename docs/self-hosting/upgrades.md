@@ -139,6 +139,13 @@ restored with 0.10.1 (see [Going back to an older version](#going-back-to-an-old
 - **Project order per member.** Migration 0056 copies each project's shared order to every member,
   who then keeps their own. A list of projects paged across the upgrade may repeat or skip one
   project once.
+- **The Clipper's token only clips.** Migration 0057 limits the tokens of the browser
+  extension, those already issued too, to the routes it calls
+  ([decision 0137](../decisions/0137-clipper-token-scope.md)); the extension needs no update and
+  the Android app's tokens are not affected. The limit holds once every web and collaboration
+  process runs 0.11: one still on 0.10 serves those tokens as before until it is restarted.
+  Restoring the backup taken before the upgrade brings them back with their earlier reach, so
+  revoke again, in Settings → Connected apps, any Clipper token you believe was copied.
 - **A guessable `AUTH_SECRET` stops the start.** With `NODE_ENV=production` (the image's
   default), 0.11 refuses an `AUTH_SECRET` that is an example value from the documentation or the
   tests, contains `change-me`, or has fewer than 8 different characters. The server exits at start

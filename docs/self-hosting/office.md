@@ -132,7 +132,25 @@ the worker alone:
 Uncomment the matching line in `deploy/compose.office.yaml`. Both were checked on such a host, together, with `cap_drop: [ALL]` and `no-new-privileges`. They
 take protections off that container, which holds your database credentials, while the converter
 inside stays sandboxed: if you prefer, write an AppArmor profile that allows only these calls.
-Ubuntu 23.10+ also restricts unprivileged user namespaces. Rootless Docker and Podman need
+
+**`bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`.** The host restricts
+unprivileged user namespaces for unconfined processes (Ubuntu 23.10+), and no AppArmor profile
+lets bubblewrap use them: it gets its namespaces but no capabilities inside, so it cannot set up
+the sandbox's network. With `apparmor=unconfined` the worker is such a process. Check on the
+host: `sysctl kernel.apparmor_restrict_unprivileged_userns` says `1`, and `sudo aa-status | grep
+bwrap` shows nothing. Ubuntu 24.10 and later ship the profile that allows it (`bwrap-userns-restrict`,
+in the `apparmor` package); a loaded one also applies to the worker's `/usr/bin/bwrap`. Two ways out:
+
+- **Load Ubuntu's `bwrap-userns-restrict` profile** (recommended): `scripts/bwrap-apparmor.sh`
+  does it with `sudo`, and on Ubuntu 24.04, which does not ship it, takes it from Ubuntu
+  25.04's `apparmor` package, checked by checksum, and installs it in `/etc/apparmor.d/`, so it
+  is loaded again after a reboot; CI does the same. The host keeps its restriction: only
+  `/usr/bin/bwrap` may use user namespaces with capabilities, and what it starts has none.
+- **Set `kernel.apparmor_restrict_unprivileged_userns=0`**: this re-opens unprivileged user
+  namespaces to every process of the host, a protection Ubuntu turned on against kernel
+  exploits. Only if you cannot load the profile.
+
+Rootless Docker and Podman need
 `kernel.unprivileged_userns_clone`/`user.max_user_namespaces` above zero; those were not tested.
 Do not enable privileged mode or remove sandboxing to make it work.
 Without `bubblewrap`, `prlimit`, LibreOffice, a permitted namespace or a supported architecture

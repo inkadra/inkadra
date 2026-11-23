@@ -8,6 +8,7 @@ import {
 import { type Element, type ElementType, readElement, roots } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
+  atLeast,
   type BoardKind,
   CastAppearancesQuery,
   classificationOption,
@@ -36,6 +37,7 @@ import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { board, boardDoc, boardElementIndex, boardGrant, projectMember } from '../db/schema.ts';
 import { RateLimiter } from '../rate-limits.ts';
+import { tokenScope } from '../token-scope.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -188,6 +190,16 @@ function kitOf<P extends Part>(state: Uint8Array, part: P): BoardKit[P] {
   } finally {
     doc.destroy();
   }
+}
+
+/** Only the boards a clip may go to, with the rule of `POST /clip`: editor or owner. */
+function clipDestinations(readable: Readable): Readable {
+  const can = (id: string) => atLeast(readable.roles.get(id) ?? null, 'editor');
+  return {
+    ...readable,
+    boardIds: readable.boardIds.filter(can),
+    projectIds: readable.projectIds.filter(can),
+  };
 }
 
 /**
@@ -408,8 +420,17 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   app.get(v1('/search'), async (req) => {
     const actor = await requireActor(auth, req, db);
     await searches.require(actor.id, 'Too many searches. Try again in a minute.');
-    const query = SearchQuery.parse(req.query ?? {});
-    const readable = await readableBoards(db, actor, query.projectId);
+    // A Clipper token (decision 0137) looks for a destination: words only, in the boards it can
+    // clip to. Its other filters are dropped before the usual checks, so without words it gets
+    // the 400 of a search without parameters. Its answer is narrowed to board data by its scope
+    // (token-scope.ts).
+    const clip = tokenScope(req) === 'clip';
+    const raw = (req.query ?? {}) as Record<string, unknown>;
+    const words = { q: raw.q, ...(raw.limit === undefined ? {} : { limit: raw.limit }) };
+    const query = SearchQuery.parse(clip ? words : raw);
+    const readable = clip
+      ? clipDestinations(await readableBoards(db, actor))
+      : await readableBoards(db, actor, query.projectId);
     if (readable.boardIds.length === 0) return { items: [] };
     const boardIn = uuids(readable.boardIds);
     const q = query.q && query.q.length > 0 ? query.q : undefined;

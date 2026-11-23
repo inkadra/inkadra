@@ -4,9 +4,9 @@ import type { Actor } from './access.ts';
 import type { Database } from './db/client.ts';
 import { personalToken, revokedToken, user } from './db/schema.ts';
 import { newSecret, sha256 } from './secrets.ts';
+import { scopeFor, type TokenScope } from './token-scope.ts';
 
 type RevokedToken = typeof revokedToken.$inferSelect;
-
 export const TOKEN_PREFIX = 'ink_';
 
 export function isToken(value: string): boolean {
@@ -37,6 +37,7 @@ export async function issueToken(
       userId,
       name: input.name,
       client: input.client ?? null,
+      scope: scopeFor(input.client),
       tokenHash: sha256(token),
       prefix: token.slice(0, TOKEN_PREFIX.length + 6),
       expiresAt: input.expiresAt ?? null,
@@ -46,11 +47,14 @@ export async function issueToken(
   return { token, row };
 }
 
-/** The person a bearer token belongs to, or null for unknown, expired or revoked tokens. */
+/**
+ * The person a bearer token belongs to, or null for unknown, expired or revoked tokens. Only
+ * reads: the caller records the use with `recordTokenUse` once it accepts the request.
+ */
 export async function actorFromToken(
   db: Database,
   token: string,
-): Promise<(Actor & { twoFactorEnabled: boolean | null }) | null> {
+): Promise<(Actor & { twoFactorEnabled: boolean | null; scope: TokenScope }) | null> {
   if (!isToken(token)) return null;
   const now = new Date();
   const [row] = await db
@@ -59,6 +63,7 @@ export async function actorFromToken(
       userId: user.id,
       role: user.role,
       twoFactorEnabled: user.twoFactorEnabled,
+      scope: personalToken.scope,
     })
     .from(personalToken)
     .innerJoin(user, eq(user.id, personalToken.userId))
@@ -70,25 +75,30 @@ export async function actorFromToken(
       ),
     );
   if (!row) return null;
-  // Record the use, at most every five minutes per token.
+  return {
+    id: row.userId,
+    role: row.role === 'admin' ? 'admin' : 'member',
+    tokenId: row.id,
+    twoFactorEnabled: row.twoFactorEnabled,
+    scope: row.scope,
+  };
+}
+
+/** Records that a token was used for an accepted request, at most every five minutes. */
+export async function recordTokenUse(db: Pick<Database, 'update'>, tokenId: string) {
+  const now = new Date();
   await db
     .update(personalToken)
     .set({ lastUsedAt: now })
     .where(
       and(
-        eq(personalToken.id, row.id),
+        eq(personalToken.id, tokenId),
         or(
           isNull(personalToken.lastUsedAt),
           lt(personalToken.lastUsedAt, new Date(now.getTime() - 5 * 60_000)),
         ),
       ),
     );
-  return {
-    id: row.userId,
-    role: row.role === 'admin' ? 'admin' : 'member',
-    tokenId: row.id,
-    twoFactorEnabled: row.twoFactorEnabled,
-  };
 }
 
 export function bearerToken(authorization: string | undefined): string | null {

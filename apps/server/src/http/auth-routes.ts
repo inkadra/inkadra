@@ -7,7 +7,8 @@ import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
 import { allowedOrigin, ORIGIN_HEADER, requestOrigin } from '../request-origin.ts';
-import { actorFromToken, bearerToken, invalidTokenReason } from '../tokens.ts';
+import { admitToken, registerScopeNarrowing } from '../token-scope.ts';
+import { actorFromToken, bearerToken, invalidTokenReason, recordTokenUse } from '../tokens.ts';
 import { HttpError, sendError } from './errors.ts';
 
 export function toHeaders(req: FastifyRequest): Headers {
@@ -29,6 +30,8 @@ export function toHeaders(req: FastifyRequest): Headers {
 
 /** Mounts Better Auth under /api/auth by translating Fastify requests to Fetch requests. */
 export function registerAuthRoutes(app: FastifyInstance, auth: Auth, publicUrl: string) {
+  // Answers to limited tokens carry only what their client reads (decision 0137).
+  registerScopeNarrowing(app);
   app.route({
     method: ['GET', 'POST'],
     url: `${AUTH_PREFIX}/*`,
@@ -63,7 +66,8 @@ export function registerAuthRoutes(app: FastifyInstance, auth: Auth, publicUrl: 
 
 /**
  * The signed-in person: a bearer token (`Authorization: Bearer ink_…`) or the session cookie.
- * Better Auth's own endpoints only accept the cookie.
+ * Better Auth's own endpoints only accept the cookie. A token with a limited scope gets 403 on
+ * every route its scope does not list (decision 0137).
  */
 export async function requireActor(
   auth: Auth,
@@ -82,6 +86,9 @@ export async function requireActor(
         reason ? { reason } : undefined,
       );
     }
+    if (!actor.tokenId || !admitToken(req, actor.scope, actor.tokenId))
+      throw new HttpError('forbidden', 'Not available with this app. Sign in on the web.');
+    await recordTokenUse(db, actor.tokenId);
     if (!enrollment) await enforceAdminTwoFactor(db, actor);
     return actor;
   }

@@ -47,6 +47,10 @@ before PostgreSQL 18: see [Upgrades](upgrades.md#upgrading-to-postgresql-18).
 errors. On 0.9.0 use `0.9.0-media`. Existing videos can have missing copies regenerated from
 **Settings → Video** on current `main`; this does not regenerate PDF thumbnails.
 
+**Office documents show an icon card.** The worker log says `Office conversion unavailable` with
+the reason: [Office previews](office.md#turn-it-on) lists the sandbox errors and their fix, among
+them `bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted` on Ubuntu hosts.
+
 **The report icon is missing, or a report waits.** Without a destination, reports are off and the
 icon is hidden: see [What leaves your server](README.md#what-leaves-your-server). **Settings → Reports** shows what is waiting and why: a waiting report reads _Waiting to be sent_, and its
 expanded row has **Try again**.

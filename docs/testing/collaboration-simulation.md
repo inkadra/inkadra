@@ -9,7 +9,9 @@ In CI the test fails instead of skipping when either is missing, and the nightly
 `ci.yml` simulates five minutes instead of thirty seconds. Its log line `peakRssMiB` is the
 process's peak memory: one board, ten editors, server and clients in one process. It proves
 convergence, not capacity: many boards, the split `collab` and `web` roles under load and
-memory per open board are measured by the load test ([Capacity](../self-hosting/capacity.md)).
+memory per open board are measured by the load test ([Capacity](../self-hosting/capacity.md)),
+and many editors with moving cursors on one heavy board, with a reconnect burst, by its `dense`
+scenario.
 
 For a 30-minute soak on a machine with Postgres and Valkey:
 

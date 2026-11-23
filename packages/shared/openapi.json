@@ -9375,6 +9375,40 @@
           "limit"
         ]
       },
+      "AssetLookup": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            },
+            "description": "Each asked asset the caller may read, as `GET /assets/{assetId}` answers it, in no particular order. Ids that do not exist or that the caller cannot read are left out."
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AssetLookupQuery": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "minItems": 1,
+            "maxItems": 200,
+            "description": "1 to 200 asset ids; repeated ids count once."
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
       "AudioWaveform": {
         "type": "object",
         "properties": {
@@ -26437,6 +26471,115 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/lookup": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The metadata of many assets at once, as `GET /assets/{assetId}` answers each.",
+        "description": "For a client opening a board with many files: one request instead of one per file. Each id is answered with the same rule as `GET /assets/{assetId}` (a role on the project or a grant on one of its boards); ids that do not exist or that the caller cannot read are left out, never an error. One exception: the files of a project where the caller holds a role this server does not recognise (written outside the app) are left out, although the single route may answer some of them. Files still being processed are polled with `GET /assets/{assetId}` as before. Servers that answer advertise `asset-lookup` on `GET /instance/version`; an older server answers 404 `not_found`. At most 120 requests a minute per account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetLookupQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The readable assets among those asked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetLookup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request: 0 or more than 200 ids, or an id that is not a UUID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body over 16 KiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many lookups: wait a minute",
             "content": {
               "application/json": {
                 "schema": {

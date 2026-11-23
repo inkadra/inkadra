@@ -1,6 +1,7 @@
 import { CURRENT_SCHEMA_VERSION, MIN_WRITER_SCHEMA } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
+  ASSET_LOOKUP_CAPABILITY,
   AUDIT_CAPABILITY,
   AUDIT_CSV_CAPABILITY,
   BACKUP_TARGETS_CAPABILITY,
@@ -170,6 +171,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'asset-notices',
         BOARD_WRITERS_CAPABILITY,
         PLAN_SHEET_PDF_CAPABILITY,
+        // POST /assets/lookup: the metadata of many assets in one request.
+        ASSET_LOOKUP_CAPABILITY,
         TRANSFER_CANCEL_CAPABILITY,
         SERVER_LIVE_CAPABILITY,
         CLASSIFICATION_DELETE_CAPABILITY,

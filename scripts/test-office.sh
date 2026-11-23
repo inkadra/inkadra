@@ -59,6 +59,13 @@ if docker info --format '{{json .SecurityOptions}}' | grep -q 'name=apparmor'; t
   echo "Docker applies AppArmor here: apparmor=unconfined and systempaths=unconfined, as office.md says"
 fi
 
+# Ubuntu 23.10+ takes every capability away inside the user namespaces of unconfined processes
+# when this is 1, unless an AppArmor profile allows them: Ubuntu's bwrap-userns-restrict profile
+# does, for /usr/bin/bwrap, also in this container. Without it bubblewrap stops at
+# "loopback: Failed RTM_NEWADDR: Operation not permitted". Shown for the log.
+echo "kernel.apparmor_restrict_unprivileged_userns=$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo absent)," \
+  "/etc/apparmor.d/bwrap-userns-restrict $([ -e /etc/apparmor.d/bwrap-userns-restrict ] && echo present || echo absent)"
+
 docker run --rm \
   --user 1000:1000 --cap-drop ALL \
   --security-opt no-new-privileges:true \

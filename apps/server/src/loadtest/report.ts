@@ -252,8 +252,11 @@ export interface Result {
   server: ServerSummary | null;
 }
 
+/** A result of a preset or of a CLI scenario (dense.ts). */
+type AnyResult = Omit<Result, 'preset'> & { preset: string };
+
 /** Every limit the run exceeded, as one line each; empty when it passed. */
-export function evaluate(r: Result, limits: Limits): string[] {
+export function evaluate(r: AnyResult, limits: Limits): string[] {
   const out: string[] = [];
   const over = (what: string, value: number | null, limit: number, unit: string) => {
     if (value !== null && value > limit)
@@ -285,7 +288,7 @@ const round = (v: number) => (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10
 const show = (v: number | null, unit = '') => (v === null ? '–' : `${round(v)}${unit}`);
 
 /** The short report printed at the end and kept by CI. */
-export function formatReport(r: Result, limits: Limits, failures: string[]): string {
+export function formatReport(r: AnyResult, limits: Limits, failures: string[]): string {
   const ms = (values: number[]) =>
     `p50 ${show(percentile(values, 50), ' ms')} · p95 ${show(percentile(values, 95), ' ms')} · p99 ${show(percentile(values, 99), ' ms')} (${values.length} samples)`;
   const lines = [

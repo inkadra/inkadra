@@ -40,7 +40,7 @@ import {
   trackAssignments,
   validateTaskUpdate,
 } from './tasks.ts';
-import { actorFromToken, isToken } from './tokens.ts';
+import { actorFromToken, isToken, recordTokenUse } from './tokens.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
 interface Context {
@@ -549,9 +549,11 @@ export function createCollabServer(deps: {
     // Native apps and the clipper send their token; browsers send the session cookie.
     if (isToken(token)) {
       const actor = await actorFromToken(db, token);
-      return actor && !(await adminEnrollmentRequired(db, actor))
-        ? { actor, sessionId: null }
-        : null;
+      // A limited token (the Clipper's, decision 0137) never opens a board.
+      if (!actor?.tokenId || actor.scope !== 'full' || (await adminEnrollmentRequired(db, actor)))
+        return null;
+      await recordTokenUse(db, actor.tokenId);
+      return { actor, sessionId: null };
     }
     const session = await auth.api.getSession({ headers });
     if (!session) return null;
