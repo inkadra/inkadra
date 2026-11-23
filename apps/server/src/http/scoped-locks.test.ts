@@ -802,7 +802,7 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
         expect(n).toBe(0);
       } else {
         expect(removal.statusCode).toBe(409);
-        expect(removal.json().details.reason).toBe('classification_in_use');
+        expect(removal.json().error.details.reason).toBe('classification_in_use');
         expect([200, 201]).toContain(used.statusCode);
         expect(n).toBe(1);
       }
