@@ -707,7 +707,12 @@ it('costs about the same with every card a priority card', { timeout: 60_000 }, 
   // Whether every priority card is read is a counter: thousands of them stay linear.
   const doc = new Y.Doc();
   doc.transact(() => {
-    for (let i = 0; i < 4000; i++) createElement(doc, 'note', { x: i, y: 0 }, {}, opts);
+    // Not createElement in the loop: it reads every card to place the next one (quadratic),
+    // which took most of the timeout on a loaded runner.
+    const note = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+    const z = core.keysAt([note], 1, 3999);
+    for (let i = 1; i < 4000; i++)
+      addElement(doc, { ...note, id: schema.newElementId(), x: i, z: z[i - 1]! });
   }, LOCAL);
   const keys = [...roots(doc).elements.keys()];
   const time = async (options: Parameters<typeof BoardStore.hydrate>[1]) => {
@@ -748,16 +753,19 @@ it('opens from a validated snapshot without validating the cards it holds', {
   // The store's own reads: whole cards (synchronous) and step by step (hydration).
   const { readElement, readElementSteps } = schema;
   let reads = 0;
+  // Only this document's cards: a store another test left running must not count.
+  let current: Y.Doc | null = null;
   vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
-    reads++;
+    if (map.doc === current) reads++;
     return readElementSteps(map, cooperative);
   });
   vi.spyOn(schema, 'readElement').mockImplementation((map) => {
-    reads++;
+    if (map.doc === current) reads++;
     return readElement(map);
   });
   let opened = 0;
   const open = async (doc: Y.Doc, text: string, hydrate: boolean, build = BUILD) => {
+    current = doc;
     reads = 0;
     const store = hydrate
       ? BoardStore.hydrate(doc, {
