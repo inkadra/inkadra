@@ -1,7 +1,12 @@
-import { addElement, createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
+import {
+  addElement,
+  createBoardDoc,
+  preparePlanLists,
+  readElement,
+  roots,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { preparePlanLists } from './plan-lists.ts';
 import { writeVersionOver } from './versions.ts';
 
 const BOARD = 'boardAAAAAAAA';
