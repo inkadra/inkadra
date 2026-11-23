@@ -578,6 +578,67 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     future.close();
   });
 
+  it('stores the set plan lists it prepared at load, so an unedited board serves the same list again', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Legacy plan lists' },
+    });
+    const id = created.json().rootBoardId as string;
+    const saved = new Y.Doc();
+    roots(saved).meta.set('schemaVersion', CURRENT_SCHEMA_VERSION);
+    const planId = 'planLegacyAAAA';
+    addElement(saved, {
+      id: planId,
+      type: 'plan',
+      x: 0,
+      y: 0,
+      w: 480,
+      z: 'a0',
+      parent: null,
+      createdAt: 0,
+      createdBy: null,
+    });
+    const lamp = { id: 'lampLegacyAAA', kind: 'fresnel', color: '#FFFFFF', x: 100, y: 100 };
+    roots(saved).elements.get(planId)!.set('icons', [lamp]);
+    const state = Y.encodeStateAsUpdate(saved);
+    await db.insert(boardDoc).values({
+      boardId: id,
+      state,
+      size: state.byteLength,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+    });
+    try {
+      // Opened, synced and left without an edit.
+      const first = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+      await first.synced;
+      const served = roots(first.doc).elements.get(planId)!.get('icons');
+      expect(served).toBeInstanceOf(Y.Array);
+      first.close();
+      await vi.waitFor(() => expect(collab.hocuspocus.documents.has(boardDocName(id))).toBe(false));
+      // An edit made against the list served first (as an offline client would) still merges.
+      const offline = new Y.Doc();
+      Y.applyUpdate(offline, Y.encodeStateAsUpdate(first.doc));
+      const chair = new Y.Map<unknown>(
+        Object.entries({ id: 'chairOfflineAA', kind: 'chair', color: '#1C1C1E', x: 1, y: 1 }),
+      );
+      (roots(offline).elements.get(planId)!.get('icons') as Y.Array<unknown>).push([chair]);
+      const again = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+      await again.synced;
+      Y.applyUpdate(again.doc, Y.encodeStateAsUpdate(offline));
+      const ids = () =>
+        (roots(again.doc).elements.get(planId)!.get('icons') as Y.Array<Y.Map<unknown>>)
+          .toArray()
+          .map((m) => m.get('id'));
+      await vi.waitFor(() => expect(ids().sort()).toEqual(['chairOfflineAA', 'lampLegacyAAA']));
+      again.close();
+      offline.destroy();
+    } finally {
+      saved.destroy();
+    }
+  });
+
   it('prepares drawings on load but never rescans them for card updates', async () => {
     const editor = connect(as('owner'));
     const peer = connect(as('owner'));

@@ -1,7 +1,8 @@
-import { addElement, createBoardDoc, roots } from '@inkadra/doc-schema';
+import { addElement, createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { preparePlanLists } from './plan-lists.ts';
+import { writeVersionOver } from './versions.ts';
 
 const BOARD = 'boardAAAAAAAA';
 const PLAN = 'planAAAAAAAAA';
@@ -114,5 +115,78 @@ describe('preparePlanLists', () => {
         .map((m) => m.get('id'));
     expect(ids(a).sort()).toEqual(['chairAAAAAAAA', 'chairBBBBBBBB', 'lampAAAAAAAAA']);
     expect(ids(b)).toEqual(ids(a));
+  });
+
+  it('drops nothing: odd entries stay, a list that cannot be promoted stays as it is', () => {
+    const doc = createBoardDoc(BOARD);
+    const map = plan(doc);
+    // Strokes: an entry that does not read stays where it is, in the new Y.Array.
+    const strokes = [legacy.strokes[0], null, 7, [1, 2]];
+    map.set('strokes', strokes);
+    // Icons: an entry that is no object cannot become a Y.Map: the list is left as it is.
+    const icons = [legacy.icons[0], null];
+    map.set('icons', icons);
+    const before = Y.encodeStateAsUpdate(doc);
+    expect(preparePlanLists(doc)).toBe(1);
+    expect((map.get('strokes') as Y.Array<unknown>).toJSON()).toEqual(strokes);
+    expect(map.get('icons')).toEqual(icons);
+    // What a client reads of the plan is the same, through an encoded round trip.
+    const read = (update: Uint8Array) => {
+      const d = new Y.Doc();
+      Y.applyUpdate(d, update);
+      return readElement(roots(d).elements.get(PLAN)!);
+    };
+    expect(read(Y.encodeStateAsUpdate(doc))).toEqual(read(before));
+  });
+
+  it('a value Yjs would refuse in a Y.Map leaves that list as it is, the board still served', () => {
+    const doc = createBoardDoc(BOARD);
+    const map = plan(doc);
+    // A value Yjs cannot put in a Y.Map (here a function: the scratch try in preparePlanLists).
+    const odd = { ...legacy.icons[0], hook: () => 1 };
+    map.set('icons', [odd]);
+    expect(() => preparePlanLists(doc)).not.toThrow();
+    expect(Array.isArray(map.get('icons'))).toBe(true);
+  });
+
+  it('an identical version restored over the prepared board changes nothing', () => {
+    const live = createBoardDoc(BOARD);
+    plan(live).set('icons', legacy.icons);
+    const saved = Y.encodeStateAsUpdate(live);
+    preparePlanLists(live);
+    const icons = roots(live).elements.get(PLAN)!.get('icons');
+    const version = new Y.Doc();
+    Y.applyUpdate(version, saved);
+    preparePlanLists(version);
+    expect(writeVersionOver(live, version)).toBeNull();
+    expect(roots(live).elements.get(PLAN)!.get('icons')).toBe(icons);
+  });
+
+  it('a large plan: bounded growth and time', () => {
+    const doc = createBoardDoc(BOARD);
+    const map = plan(doc);
+    map.set(
+      'icons',
+      Array.from({ length: 300 }, (_, i) => ({
+        ...legacy.icons[0],
+        id: `lamp${String(i).padStart(9, 'A')}`,
+      })),
+    );
+    map.set(
+      'strokes',
+      Array.from({ length: 2000 }, (_, i) => ({
+        ...legacy.strokes[0],
+        id: `line${String(i).padStart(9, 'A')}`,
+      })),
+    );
+    const before = Y.encodeStateAsUpdate(doc).byteLength;
+    const started = performance.now();
+    preparePlanLists(doc);
+    const took = performance.now() - started;
+    const after = Y.encodeStateAsUpdate(doc).byteLength;
+    // The converted lists are written next to the old values Yjs keeps as deleted: at most about
+    // twice the plan's lists. Measured here so a change in that cost is seen.
+    expect(after).toBeLessThan(before * 2.5);
+    expect(took).toBeLessThan(2000);
   });
 });
