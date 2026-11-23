@@ -75,8 +75,7 @@ pnpm loadtest --preset dense --url https://inkadra-test.example.com --yes-i-know
   is the converged one: an export reads `board_doc.state` from PostgreSQL, never the document in
   memory (`apps/server/src/transfers/export.ts`), and puts it in the archive, so the stored board
   must have the same state vector and delete set as the converged copy, each editor's note at its
-  offline position and each marker card with its label. The archive stays on the instance until
-  exports expire. A client that opens the board afterwards must also get the same document; that
+  offline position and each marker card with its label. The test deletes every export it made, archive included, at the end (also when stopped). A client that opens the board afterwards must also get the same document; that
   is a secondary check, since the server may serve it from memory.
 - **What it cannot see.** Whether the server really closed the board and read it back from the
   database before the clients came back: `inkadra_collab_open_boards` counts authenticated

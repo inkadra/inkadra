@@ -60,6 +60,8 @@ const PERSIST_MS = 120_000;
 const REOPEN_MS = 60_000;
 /** The offline markers sit above every other card (the reference board ends at -20,000). */
 const MARKER_Y = -50_000;
+/** Each cleanup request (deleting an export) waits at most this long. */
+const CLEANUP_MS = 30_000;
 /** How long after the end of the edits their acknowledgements may come. */
 const ACK_WAIT_MS = 30_000;
 /** Share of the expected edits (one a second per editor) that must come back timed. */
@@ -366,6 +368,20 @@ export async function runDense(opts: DenseOptions) {
     while (Date.now() < end && !stop.signal.aborted) await pause(250);
   }
 
+  /** The exports the persistence check made; their archives are deleted at the end. */
+  const transfers: string[] = [];
+  /**
+   * Deletes the exports: a finished one goes with its archive; a DELETE on one still running only
+   * cancels it, so each gets a second DELETE. A 404 means it is gone already.
+   */
+  async function deleteExports() {
+    for (const id of transfers)
+      for (let attempt = 0; attempt < 2; attempt++)
+        await api('DELETE', `/api/v1/transfers/${id}`, undefined, {}, CLEANUP_MS).catch((err) => {
+          if (!String(err).includes(': 404 ')) error(`export ${id} not deleted: ${err}`);
+        });
+  }
+
   /** Offline edits of the burst this replica lacks: a note not moved, a marker or its label. */
   const missingMarks = (doc: Y.Doc) =>
     editors.filter(
@@ -385,6 +401,8 @@ export async function runDense(opts: DenseOptions) {
     let transfer = (await (
       await api('POST', exportsPath, undefined, {}, left())
     ).json()) as Transfer;
+    // Every export is deleted at the end, also the attempts that came too early.
+    if (!transfers.includes(transfer.id)) transfers.push(transfer.id);
     while (transfer.status === 'queued' || transfer.status === 'running') {
       if (left() <= 0) return null;
       await pause(500);
@@ -627,6 +645,8 @@ export async function runDense(opts: DenseOptions) {
     for (const board of boards) board.close();
     for (const socket of sockets) socket.destroy();
     for (const close of others) close();
+    // Before the stop: an archive left on the instance is an error of the run.
+    await deleteExports();
     // The last saves happen as the connections close (see runLoad).
     if (projectId) await sleep(3000);
     opts.signal.removeEventListener('abort', onStop);
