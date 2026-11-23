@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
+import { singleAssetRoute } from '../helpers/assets.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 for (const codec of ['ac3', 'eac3', 'dca', 'flac', 'libopus', 'aac']) {
@@ -71,6 +72,7 @@ for (const codec of ['ac3', 'eac3', 'dca', 'flac', 'libopus', 'aac']) {
       return result;
     }, asset.url);
     const states: unknown[] = [];
+    await singleAssetRoute(page);
     for (const status of ['queued', 'processing', 'skipped', 'failed']) {
       await page.route(`**/api/v1/assets/${assetId}`, (route) =>
         route.fulfill({

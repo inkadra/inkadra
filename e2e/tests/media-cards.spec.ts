@@ -8,6 +8,7 @@ import { createElement } from '@inkadra/canvas-core';
 import { initBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
+import { singleAssetRoute } from '../helpers/assets.ts';
 import { addFromBar } from '../helpers/phone-board.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -243,6 +244,7 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
 
   // The "Preparing preview" state of a long camera file, shown on the second video.
   const preparing = ids[1] as string;
+  await singleAssetRoute(page);
   await page.route(`**/api/v1/assets/${preparing}`, async (route) => {
     const response = await route.fetch();
     const asset = await response.json();
