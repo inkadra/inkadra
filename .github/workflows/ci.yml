@@ -917,8 +917,15 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           title="CI is red on main"
+          # A push that main has moved past is no news: its successor reports for itself.
+          if [ "$EVENT" = push ]; then
+            head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+            [ "$head" = "$GITHUB_SHA" ] || exit 0
+          fi
           body="The $EVENT run of $GITHUB_SHA failed: $RUN"
-          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --author app/github-actions \
+            --search "\"$title\" in:title" --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           if [ -n "$number" ]; then gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
           else gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"; fi
 
@@ -935,12 +942,21 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
         run: |
           title="CI is red on main"
-          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
-          if [ -n "$number" ]; then
-            gh issue close "$number" --repo "$GITHUB_REPOSITORY" --comment "Green again at $GITHUB_SHA: $RUN"
-          fi
+          # Only main's head speaks for main: an older commit's green retry closes nothing.
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          [ "$head" = "$GITHUB_SHA" ] || exit 0
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --author app/github-actions \
+            --search "\"$title\" in:title" --json number,title \
+            --jq "[.[] | select(.title == \"$title\")][0].number // empty")
+          [ -n "$number" ] || exit 0
+          # A red night runs checks a push skips: only a green night closes it.
+          last=$(gh issue view "$number" --repo "$GITHUB_REPOSITORY" --json body,comments \
+            --jq '([.body] + [.comments[].body])[-1]')
+          if [ "$EVENT" = push ] && [[ $last == "The schedule run"* ]]; then exit 0; fi
+          gh issue close "$number" --repo "$GITHUB_REPOSITORY" --comment "Green again at $GITHUB_SHA: $RUN"
 
   publish:
     name: Publish image (${{ matrix.variant }}, ${{ matrix.arch }})
@@ -1158,6 +1174,14 @@ jobs:
           pattern: digest-${{ matrix.variant }}-*
           merge-multiple: true
           path: ${{ runner.temp }}/digests
+      # A retried older commit may finish after a newer one: `edge` moves only for main's head.
+      - id: head
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          echo "is_head=$([ "$head" = "$GITHUB_SHA" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
@@ -1172,7 +1196,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref, '-') }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
             type=raw,value=next,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=edge,branch=main
+            type=edge,branch=main,enable=${{ steps.head.outputs.is_head == 'true' }}
             type=sha,format=short
           flavor: suffix=${{ matrix.variant != 'standard' && format('-{0}', matrix.variant) || '' }},onlatest=true
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
