@@ -556,7 +556,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     }
   }, 60_000);
 
-  it('leaves the playable copies of videos out, as they can be made again', async () => {
+  it('leaves the playable copies of videos and the collab epoch out, as they are made again', async () => {
     const fresh = await freshDatabase(config.DATABASE_URL, 'proxies');
     await runMigrations(fresh, migrations);
     const admin = postgres(fresh, { max: 1, onnotice: () => {} });
@@ -569,6 +569,8 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     await admin`insert into asset_variant (asset_id, size, width, height, storage_key) values
       (${a?.id}, '256', 256, 144, ${`variants/${a?.id}/256.webp`}),
       (${a?.id}, 'proxy', 1920, 1080, ${`variants/${a?.id}/proxy.mp4`})`;
+    // The running collab process's fencing token: a restored instance takes a new one (F-24).
+    await admin`insert into collab_epoch (id, epoch) values (1, 7)`;
     const client = postgres(fresh, { max: 2, onnotice: () => {} });
     const other = drizzle(client, { schema, casing: 'snake_case' });
     const target = await freshDatabase(config.DATABASE_URL, 'proxies_restore');
@@ -593,6 +595,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       expect(sizes.map((v) => v.size)).toEqual(['256']);
       const [back] = await restored`select proxy_status, proxy_progress from asset`;
       expect(back).toEqual({ proxy_status: 'skipped', proxy_progress: null });
+      expect(await restored`select epoch from collab_epoch`).toHaveLength(0);
       // The storage totals are built once from the restored files, with the triggers on again.
       const totals = await restored`select user_id, bytes::int, pending_bytes::int
         from storage_total`;

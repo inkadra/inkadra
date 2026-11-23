@@ -488,6 +488,19 @@ export const boardDoc = pgTable(
 );
 
 /**
+ * Fencing token of the collab lease (collab-epoch.ts): one row, the epoch of the newest collab
+ * process. A board document is written only by a process whose epoch is not older.
+ */
+export const collabEpoch = pgTable(
+  'collab_epoch',
+  {
+    id: integer('id').primaryKey(),
+    epoch: integer('epoch').notNull(),
+  },
+  (t) => [check('collab_epoch_single_row', sql`${t.id} = 1`)],
+);
+
+/**
  * Searchable view of the elements of each board, rebuilt from the Yjs document whenever it is
  * stored (docs/decisions/0012). Never edited directly: the document is the source.
  */

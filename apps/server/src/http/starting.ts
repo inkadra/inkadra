@@ -13,6 +13,7 @@ export async function startingListener(opts: {
   reason: string;
   live: string[];
 }) {
+  let reason = opts.reason;
   const server = createServer((req, res) => {
     const path = (req.url ?? '/').split('?')[0] ?? '/';
     const live = opts.live.includes(path);
@@ -21,7 +22,7 @@ export async function startingListener(opts: {
       'cache-control': 'no-store',
       ...(live ? {} : { 'retry-after': '30' }),
     });
-    res.end(JSON.stringify(live ? { status: 'ok' } : { status: 'starting', reason: opts.reason }));
+    res.end(JSON.stringify(live ? { status: 'ok' } : { status: 'starting', reason }));
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -29,6 +30,10 @@ export async function startingListener(opts: {
   });
   return {
     port: (server.address() as AddressInfo).port,
+    /** What the start waits for now. */
+    setReason(next: string) {
+      reason = next;
+    },
     close: () =>
       new Promise<void>((resolve) => {
         server.closeAllConnections();

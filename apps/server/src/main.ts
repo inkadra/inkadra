@@ -31,6 +31,7 @@ import {
   replayUnsavedBoards,
   unsavedBoardsDir,
 } from './collab.ts';
+import { CollabLeaseLostError, takeCollabEpoch } from './collab-epoch.ts';
 import { type Config, loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations, waitForMigrations } from './db/client.ts';
 import { startSandboxSweep } from './demo.ts';
@@ -90,6 +91,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const WORKER_HEARTBEAT = '/tmp/inkadra-worker-heartbeat';
 // In the image the bundle sits in dist/ next to drizzle/; in development main.ts is in src/.
 const migrationsFolder = process.env.MIGRATIONS_DIR || join(here, '..', 'drizzle');
+/**
+ * Releases the leases of a start that failed, so the next start need not wait for them to expire
+ * (a process killed while starting leaves them for their TTL). Cleared once started.
+ */
+let releaseOnFailedStart: (() => Promise<void>) | undefined;
 
 async function main() {
   const command = (process.argv[2] ?? 'all') as Command;
@@ -163,6 +169,9 @@ async function main() {
   // One process per role (#790, #819), taken before migrations so a second web never runs them.
   const leases: Lease[] = [];
   let leaseRedis: IORedis | undefined;
+  let collabLease: Lease | undefined;
+  // A lease lost while starting ends the start before it serves anything (stop waits until then).
+  let leaseLost = false;
   const leaseRoles: LeaseRole[] =
     command === 'all'
       ? ['web', 'collab']
@@ -173,17 +182,26 @@ async function main() {
     leaseRedis = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: 3, lazyConnect: false });
     leaseRedis.on('error', () => undefined);
     try {
-      for (const role of leaseRoles)
-        leases.push(
-          await acquireLease(leaseRedis, role, log, {
-            onLost: () => stop.request('lease lost'),
-          }),
-        );
+      for (const role of leaseRoles) {
+        const lease = await acquireLease(leaseRedis, role, log, {
+          onLost: () => {
+            leaseLost = true;
+            stop.request('lease lost');
+          },
+        });
+        leases.push(lease);
+        if (role === 'collab') collabLease = lease;
+      }
     } catch (err) {
       await Promise.all(leases.map((l) => l.release()));
       leaseRedis.disconnect();
       throw err;
     }
+    const held = leaseRedis;
+    releaseOnFailedStart = async () => {
+      await Promise.all(leases.map((l) => l.release()));
+      held.disconnect();
+    };
   } else if (leaseRoles.length > 0)
     log.warn('REDIS_URL is not set: run only one inkadra process for this instance');
 
@@ -192,6 +210,11 @@ async function main() {
   if (['migrate', 'web', 'all', 'worker'].includes(command))
     await checkBackupDir(backupDirOf(config));
 
+  // `collab` and `all` answer as starting until their boards can open: after the collab epoch,
+  // which may wait for the writes of a previous process, and the replay below.
+  let startingUntilBoards:
+    | { close(): Promise<unknown>; setReason(reason: string): void }
+    | undefined;
   if (command === 'migrate' || command === 'web' || command === 'all') {
     // Alive, not ready, while the backup before an upgrade and the migrations run (#805): a
     // long backup must not get the container marked unhealthy and restarted.
@@ -213,9 +236,12 @@ async function main() {
           { skip: config.SKIP_PRE_MIGRATION_BACKUP },
         ),
       });
-    } finally {
+    } catch (err) {
       await starting?.close();
+      throw err;
     }
+    if (command === 'all') startingUntilBoards = starting;
+    else await starting?.close();
     log.info('database migrations applied');
     if (command === 'migrate') return;
   } else if (command === 'collab' || command === 'worker') {
@@ -236,11 +262,20 @@ async function main() {
     const heartbeat = command === 'worker' ? setInterval(beat, 10_000) : undefined;
     if (heartbeat) beat();
     try {
-      await waitForMigrations(config.DATABASE_URL, migrationsFolder, log);
+      await waitForMigrations(
+        config.DATABASE_URL,
+        migrationsFolder,
+        log,
+        undefined,
+        () => leaseLost,
+      );
+    } catch (err) {
+      await starting?.close();
+      throw err;
     } finally {
       clearInterval(heartbeat);
-      await starting?.close();
     }
+    startingUntilBoards = starting;
   }
 
   const timeouts = {
@@ -370,6 +405,18 @@ async function main() {
         ? createDatabase(config.DATABASE_URL, config.DATABASE_COLLAB_POOL_MAX, timeouts)
         : undefined;
     if (own) closers.push(() => own.sql.end({ timeout: 5 }));
+    // The fencing token of the collab lease (F-24): taken after the lease, before any board
+    // write, so a collab process that kept running after losing the lease writes nothing more.
+    if (leaseLost) throw new CollabLeaseLostError('The collab lease was lost while starting.');
+    startingUntilBoards?.setReason(
+      'waiting for the board writes of the previous collab process, then the boards kept on disk',
+    );
+    const epoch = await takeCollabEpoch(db, { lease: collabLease, log });
+    log.info({ epoch }, 'collab epoch taken');
+    // Before any board opens, and before the server merges files of that folder on its own: what
+    // the last shutdown could not store (#795).
+    await replayUnsavedBoards(db, unsavedBoardsDir(config.DATA_DIR), log, epoch, limits);
+    await startingUntilBoards?.close();
     collab = createCollabServer({
       db: own?.db ?? db,
       auth,
@@ -379,13 +426,10 @@ async function main() {
       monitor: { store: monitor, role: command },
       ...(limits ? { limits } : {}),
       unsavedDir: unsavedBoardsDir(config.DATA_DIR),
+      fence: { epoch, onStale: () => stop.request('newer collab process') },
     });
-    // Before any board opens: what the last shutdown could not store (#795).
-    await replayUnsavedBoards(db, unsavedBoardsDir(config.DATA_DIR), log);
     const server = collab;
     if (command === 'all') workerNotices = directBoardNotifier(server);
-    // With the web role the HTTP server carries the WebSockets: both close together (below).
-    if (command === 'collab') closers.unshift(() => server.destroy());
     const backfill = startIndexBackfill(db, log);
     closers.unshift(async () => backfill.stop());
     if (command === 'collab') {
@@ -403,6 +447,10 @@ async function main() {
         );
         closers.unshift(() => boardWorker.close());
       } else log.warn('REDIS_URL is not set: clips from a separate web role cannot reach boards');
+      // First of all: open boards are stored (or kept on disk) and sockets close before anything
+      // that may wait on Valkey. With the web role the HTTP server carries the WebSockets: both
+      // close together (below).
+      closers.unshift(() => server.destroy());
       await server.listen(config.COLLAB_PORT);
       log.info({ port: config.COLLAB_PORT }, 'collab listening');
     }
@@ -578,6 +626,7 @@ async function main() {
   // `on`, not `once`: a second signal while boards are stored must not kill the process.
   process.on('SIGTERM', () => stop.request('SIGTERM'));
   process.on('SIGINT', () => stop.request('SIGINT'));
+  releaseOnFailedStart = undefined;
   stop.ready();
 }
 
@@ -736,5 +785,7 @@ main().catch((err) => {
   // exist yet (a config error), so this one is standalone.
   const log = pino({ base: { service: process.argv[2] ?? 'all' } });
   log.fatal({ err }, 'inkadra failed to start');
-  process.exit(1);
+  void settledWithin(releaseOnFailedStart?.() ?? Promise.resolve(), 3000).then(() =>
+    process.exit(1),
+  );
 });

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,32 +19,42 @@ import {
 import { Queue, QueueEvents } from 'bullmq';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from './auth.ts';
 import { directBoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
-import { directBoardWriter } from './board-writer.ts';
+import { CardOutcomeUnknown, directBoardWriter } from './board-writer.ts';
 import {
   attachCollab,
   createCollabServer,
   replayUnsavedBoards,
   SHUTDOWN_STORE_MS,
+  storedHolds,
 } from './collab.ts';
+import { StaleCollabEpochError, takeCollabEpoch } from './collab-epoch.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import {
   boardDoc,
   boardElementIndex,
+  boardVersion,
   notification,
   personalToken,
   projectMember,
 } from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import * as drawings from './image-drawing.ts';
-import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
+import {
+  createRedis,
+  QUEUES,
+  queuedBoardNotifier,
+  queuedBoardWriter,
+  startBoardWorker,
+} from './queues.ts';
 import { testDeps } from './test-deps.ts';
 import { issueToken } from './tokens.ts';
+import { directVersionWriter } from './versions.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
@@ -458,6 +469,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     name: string,
     boardLimits?: typeof limits & { freeze?: boolean },
     timerMode: 'real' | 'manual' | 'sync' = 'real',
+    fence?: { epoch: number; onStale: () => void },
   ) {
     const created = await app.inject({
       method: 'POST',
@@ -497,6 +509,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       log,
       publicUrl: config.PUBLIC_URL,
       ...(boardLimits ? { limits: boardLimits } : {}),
+      ...(fence ? { fence } : {}),
     });
     const hooks = vi.spyOn(server.hocuspocus, 'hooks');
     const storeCalls = vi.spyOn(server.hocuspocus, 'storeDocumentHooks');
@@ -566,6 +579,64 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       await expect.poll(() => b.storedParent(b.cards[0]!.id), { timeout: 800 }).toBe(b.hiddenA.id);
       expect(b.stores()).toBe(2);
     } finally {
+      await b.close();
+    }
+  });
+
+  it('cancels its early stores once superseded and arms none after (F-24)', async () => {
+    const stale = vi.fn();
+    const b = await hidingBoard('Superseded early store', undefined, 'manual', {
+      epoch: await takeCollabEpoch(db),
+      onStale: stale,
+    });
+    try {
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(1);
+      // A newer process took over; the next store is refused.
+      await takeCollabEpoch(db);
+      b.flush();
+      await vi.waitFor(() => expect(stale).toHaveBeenCalledOnce());
+      expect(b.timers.size).toBe(0);
+      await b.set(b.cards[1]!.id, 'parent', b.hiddenA.id);
+      expect(b.timers.size).toBe(0);
+    } finally {
+      await b.close();
+    }
+  });
+
+  it('arms no early store after a store whose index write meets a newer process (F-24)', async () => {
+    const stale = vi.fn();
+    const b = await hidingBoard('Superseded at the index', undefined, 'manual', {
+      epoch: await takeCollabEpoch(db),
+      onStale: stale,
+    });
+    const transaction = db.transaction.bind(db);
+    let armed = false;
+    const writes = vi.spyOn(db, 'transaction').mockImplementation((async (
+      ...args: Parameters<typeof db.transaction>
+    ) => {
+      // The takeover lands after the store's write, before the next transaction of the store.
+      if (armed) {
+        armed = false;
+        await takeCollabEpoch({ transaction } as never);
+      }
+      return transaction(...args);
+    }) as typeof db.transaction);
+    try {
+      // The store reads the board, then a card is hidden while its write waits.
+      await b.set(b.cards[2]!.id, 'x', 40);
+      b.control.hold();
+      b.flush();
+      await vi.waitFor(() => expect(b.control.waiting).toBeGreaterThan(0));
+      await b.set(b.cards[0]!.id, 'parent', b.hiddenA.id);
+      armed = true;
+      b.control.release();
+      await vi.waitFor(() => expect(stale).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(b.finished()).toBe(2));
+      // The store wrote an older state, but this process stores nothing more: nothing is armed.
+      expect(b.timers.size).toBe(0);
+    } finally {
+      writes.mockRestore();
       await b.close();
     }
   });
@@ -863,6 +934,483 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     } finally {
       await b.close();
     }
+  });
+
+  /** A board of its own and the ids of the cards its stored document holds. */
+  async function freshBoard(name: string) {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name },
+    });
+    const id: string = created.json().rootBoardId;
+    const storedIds = async () => {
+      const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, id));
+      const doc = new Y.Doc();
+      if (row) Y.applyUpdate(doc, row.state);
+      return [...doc.getMap('elements').keys()];
+    };
+    const edit = async (server: typeof collab, title: string) => {
+      const el = column(title);
+      const connection = await server.hocuspocus.openDirectConnection(boardDocName(id));
+      await connection.transact((doc) => addElement(doc, el));
+      await connection.disconnect();
+      return el.id;
+    };
+    return { id, name: boardDocName(id), storedIds, edit };
+  }
+
+  it('refuses the stores of a collab process a newer one took over from, stops it, and merges what it kept (F-24)', async () => {
+    const board = await freshBoard('Two holders');
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const newerStopped = vi.fn();
+    const logged = vi.spyOn(log, 'error');
+    let stopping: Promise<void> | undefined;
+    const old: typeof collab = createCollabServer({
+      db,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      unsavedDir: dir,
+      // As main.ts: the process shuts down, which stores (or keeps on disk) what it holds.
+      fence: {
+        epoch: await takeCollabEpoch(db),
+        onStale: () => {
+          stopping = old.destroy();
+        },
+      },
+    });
+    let newer: typeof collab | undefined;
+    try {
+      // The only holder stores as before.
+      const first = await board.edit(old, 'Before the takeover');
+      await expect.poll(board.storedIds, { timeout: 5000 }).toContain(first);
+      // Cut off from Valkey, it keeps running while a newer process takes the lease. Both use
+      // one data folder, as a container started again on its volume.
+      newer = createCollabServer({
+        db,
+        auth,
+        log,
+        publicUrl: config.PUBLIC_URL,
+        unsavedDir: dir,
+        drainMs: 200,
+        fence: { epoch: await takeCollabEpoch(db), onStale: newerStopped },
+      });
+      const kept = await board.edit(newer, 'Written by the new holder');
+      await expect.poll(board.storedIds, { timeout: 5000 }).toContain(kept);
+      const lost = await board.edit(old, 'Written by the old holder');
+      // Refused, logged once, and the old process stops: its board goes to disk.
+      await vi.waitFor(() => expect(stopping).toBeDefined(), { timeout: 5000 });
+      await stopping;
+      expect(
+        logged.mock.calls.filter(([, msg]) => String(msg).includes('another collab process took')),
+      ).toHaveLength(1);
+      expect(old.hocuspocus.documents.size).toBe(0);
+      // The newer process merges it into the board it serves, without a restart.
+      await expect
+        .poll(board.storedIds, { timeout: 5000 })
+        .toEqual(expect.arrayContaining([first, kept, lost]));
+      await expect.poll(() => readdirSync(dir), { timeout: 5000 }).toEqual([]);
+      expect(newerStopped).not.toHaveBeenCalled();
+    } finally {
+      logged.mockRestore();
+      await old.destroy();
+      await newer?.destroy();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses connections, edits and versions once superseded, without asking the database (F-24)', async () => {
+    const board = await freshBoard('Superseded');
+    const stale = vi.fn();
+    const old = createCollabServer({
+      db,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      fence: { epoch: await takeCollabEpoch(db), onStale: stale },
+    });
+    const saved = await directVersionWriter(collab, db, log).save({
+      boardId: board.id,
+      name: 'Before',
+      userId: people.owner?.id ?? '',
+    });
+    if (!saved.ok) throw new Error('version not saved');
+    const writes = vi.spyOn(db, 'transaction');
+    const http = createServer();
+    try {
+      // Served under /collab by an HTTP server of its own, as in the all-in-one mode.
+      attachCollab(http, old);
+      await new Promise<void>((resolve) => http.listen(0, '127.0.0.1', resolve));
+      await takeCollabEpoch(db);
+      const lost = await board.edit(old, 'Refused');
+      await vi.waitFor(() => expect(stale).toHaveBeenCalledOnce());
+      expect(old.isSuperseded()).toBe(true);
+      expect(old.hocuspocus.documents.has(board.name)).toBe(true);
+      // Later stores do not reach the database.
+      writes.mockClear();
+      await board.edit(old, 'Refused again');
+      await new Promise((r) => setTimeout(r, 300));
+      expect(writes).not.toHaveBeenCalled();
+      expect(await board.storedIds()).not.toContain(lost);
+      // A new socket is refused at the upgrade, so its client reconnects (to the newer one).
+      const socket = new WebSocket(`ws://127.0.0.1:${(http.address() as AddressInfo).port}/collab`);
+      await new Promise<void>((resolve) => {
+        socket.on('error', () => resolve());
+        socket.on('close', () => resolve());
+      });
+      expect(socket.readyState).not.toBe(WebSocket.OPEN);
+      // Clips and restores say they did not happen.
+      expect(
+        await directBoardWriter(old).addCard({
+          boardId: board.id,
+          userId: people.owner?.id ?? '',
+          card: { type: 'note', fields: {} },
+        }),
+      ).toEqual({ ok: false, reason: 'expired' });
+      const versions = directVersionWriter(old, db, log);
+      expect(
+        await versions.save({ boardId: board.id, name: 'v', userId: people.owner?.id ?? '' }),
+      ).toEqual({
+        ok: false,
+        reason: 'expired',
+      });
+      expect(
+        await versions.restore({
+          boardId: board.id,
+          versionId: saved.versionId,
+          userId: people.owner?.id ?? '',
+        }),
+      ).toEqual({ ok: false, reason: 'expired' });
+    } finally {
+      writes.mockRestore();
+      http.close();
+      await old.destroy();
+    }
+  });
+
+  it('refuses the index write of a store when a newer process took over in between (F-24)', async () => {
+    const board = await freshBoard('Index in between');
+    const stale = vi.fn();
+    const logged = vi.spyOn(log, 'error');
+    // The takeover lands between the store's transaction and the index's.
+    let stores = 0;
+    const between = new Proxy(db, {
+      get(target, key) {
+        if (key === 'transaction')
+          return async (fn: (tx: unknown) => unknown, ...rest: unknown[]) => {
+            stores += 1;
+            if (stores === 2) await takeCollabEpoch(db);
+            return (target.transaction as (...a: unknown[]) => unknown)(fn, ...rest);
+          };
+        const value = Reflect.get(target, key);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+    const old = createCollabServer({
+      db: between,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      fence: { epoch: await takeCollabEpoch(db), onStale: stale },
+    });
+    try {
+      const id = await board.edit(old, 'Stored, not indexed');
+      await vi.waitFor(() => expect(stale).toHaveBeenCalledOnce());
+      expect(await board.storedIds()).toContain(id);
+      const indexed = await db
+        .select()
+        .from(boardElementIndex)
+        .where(eq(boardElementIndex.boardId, board.id));
+      expect(indexed.map((r) => r.elementId)).not.toContain(id);
+      expect(logged).not.toHaveBeenCalledWith(expect.anything(), 'board search index not updated');
+    } finally {
+      logged.mockRestore();
+      await old.destroy();
+    }
+  });
+
+  it('refuses to replay boards kept on disk for a process a newer one took over from', async () => {
+    const board = await freshBoard('Replay refused');
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    try {
+      const doc = new Y.Doc();
+      addElement(doc, column('Kept'));
+      writeFileSync(join(dir, `${board.id}.yupdate`), Y.encodeStateAsUpdate(doc));
+      const current = await takeCollabEpoch(db);
+      await expect(replayUnsavedBoards(db, dir, log, current - 1)).rejects.toThrow(
+        StaleCollabEpochError,
+      );
+      expect(readdirSync(dir)).toEqual([`${board.id}.yupdate`]);
+      await replayUnsavedBoards(db, dir, log, current);
+      expect(readdirSync(dir)).toEqual([]);
+      expect(await board.storedIds()).toHaveLength(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a version or a restore whose first write meets a newer process (F-24)', async () => {
+    const board = await freshBoard('Versions in between');
+    const userId = people.owner?.id ?? '';
+    const saved = await directVersionWriter(collab, db, log).save({
+      boardId: board.id,
+      name: 'Before',
+      userId,
+    });
+    if (!saved.ok) throw new Error('version not saved');
+    const versionsOf = async (kind: 'named' | 'restore') =>
+      (await db.select().from(boardVersion).where(eq(boardVersion.boardId, board.id))).filter(
+        (v) => v.kind === kind,
+      ).length;
+    const named = await versionsOf('named');
+    for (const op of ['save', 'restore'] as const) {
+      const stale = vi.fn();
+      const old = createCollabServer({
+        db,
+        auth,
+        log,
+        publicUrl: config.PUBLIC_URL,
+        fence: { epoch: await takeCollabEpoch(db), onStale: stale },
+      });
+      try {
+        // A newer process took over; this one has not seen it yet.
+        await takeCollabEpoch(db);
+        expect(old.isSuperseded()).toBe(false);
+        const versions = directVersionWriter(old, db, log);
+        const result =
+          op === 'save'
+            ? await versions.save({ boardId: board.id, name: 'Stale', userId })
+            : await versions.restore({ boardId: board.id, versionId: saved.versionId, userId });
+        expect(result).toEqual({ ok: false, reason: 'expired' });
+        expect(stale).toHaveBeenCalledOnce();
+        expect(await versionsOf('named')).toBe(named);
+        expect(await versionsOf('restore')).toBe(0);
+      } finally {
+        await old.destroy();
+      }
+    }
+  });
+
+  for (const mode of ['direct', 'split'] as const)
+    it.skipIf(mode === 'split' && !process.env.REDIS_URL)(
+      `says a restore refused only at its record has an unknown outcome, in ${mode} mode (F-24)`,
+      async () => {
+        const board = await freshBoard(`Restore record refused ${mode}`);
+        const userId = people.owner?.id ?? '';
+        const saved = await directVersionWriter(collab, db, log).save({
+          boardId: board.id,
+          name: 'Before',
+          userId,
+        });
+        if (!saved.ok) throw new Error('version not saved');
+        await board.edit(collab, 'After the version');
+        const old = createCollabServer({
+          db,
+          auth,
+          log,
+          publicUrl: config.PUBLIC_URL,
+          fence: { epoch: await takeCollabEpoch(db), onStale: vi.fn() },
+        });
+        // The takeover lands after the restore's backup, before its record.
+        let writes = 0;
+        const between = new Proxy(db, {
+          get(target, key) {
+            if (key === 'transaction')
+              return async (fn: (tx: unknown) => unknown, ...rest: unknown[]) => {
+                writes += 1;
+                if (writes === 2) await takeCollabEpoch(db);
+                return (target.transaction as (...a: unknown[]) => unknown)(fn, ...rest);
+              };
+            const value = Reflect.get(target, key);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+        const versions = directVersionWriter(old, between, log);
+        const redisUrl = process.env.REDIS_URL ?? '';
+        const prefix = `inkadra-restore-unknown-${randomUUID()}`;
+        const worker =
+          mode === 'split'
+            ? startBoardWorker(redisUrl, directBoardWriter(old), log, { prefix, versions })
+            : undefined;
+        const queued = mode === 'split' ? queuedBoardWriter(redisUrl, { prefix }) : undefined;
+        try {
+          const restoring = (queued?.versions ?? versions).restore({
+            boardId: board.id,
+            versionId: saved.versionId,
+            userId,
+          });
+          await expect(restoring).rejects.toThrow(CardOutcomeUnknown);
+          expect(old.isSuperseded()).toBe(true);
+        } finally {
+          await queued?.close();
+          await worker?.close();
+          await old.destroy();
+        }
+      },
+    );
+
+  it.skipIf(!process.env.REDIS_URL)(
+    'answers a clip through the queue as expired once superseded, so its files go (F-24)',
+    async () => {
+      const board = await freshBoard('Clip to a superseded process');
+      const old = createCollabServer({
+        db,
+        auth,
+        log,
+        publicUrl: config.PUBLIC_URL,
+        fence: { epoch: await takeCollabEpoch(db), onStale: vi.fn() },
+      });
+      const redisUrl = process.env.REDIS_URL ?? '';
+      const prefix = `inkadra-superseded-${randomUUID()}`;
+      const worker = startBoardWorker(redisUrl, directBoardWriter(old), log, { prefix });
+      const queued = queuedBoardWriter(redisUrl, { prefix });
+      try {
+        await takeCollabEpoch(db);
+        await board.edit(old, 'Refused');
+        await vi.waitFor(() => expect(old.isSuperseded()).toBe(true));
+        expect(
+          await queued.writer.addCard({
+            boardId: board.id,
+            userId: people.owner?.id ?? '',
+            card: { type: 'note', fields: {} },
+          }),
+        ).toEqual({ ok: false, reason: 'expired' });
+      } finally {
+        await queued.close();
+        await worker.close();
+        await old.destroy();
+      }
+    },
+  );
+
+  describe('boards kept on disk by another collab process (F-24)', () => {
+    let dir = '';
+    let server: typeof collab | undefined;
+    afterEach(async () => {
+      await server?.destroy();
+      server = undefined;
+      rmSync(dir, { recursive: true, force: true });
+    });
+    // The demo's caps, small: one card at most.
+    const demo = { freeze: true, maxPayload: 1024 * 1024, elements: 1, stateBytes: 1024 * 1024 };
+    const serve = (opts: { db?: typeof db; limits?: typeof demo } = {}) => {
+      dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+      server = createCollabServer({
+        db: opts.db ?? db,
+        auth,
+        log,
+        publicUrl: config.PUBLIC_URL,
+        unsavedDir: dir,
+        drainMs: 100,
+        ...(opts.limits ? { limits: opts.limits } : {}),
+      });
+      return server;
+    };
+    const kept = (title: string) => {
+      const doc = new Y.Doc();
+      const el = column(title);
+      addElement(doc, el);
+      return { id: el.id, update: Y.encodeStateAsUpdate(doc) };
+    };
+
+    it('removes a merged file only once the stored board holds it', async () => {
+      const board = await freshBoard('Merged after the store');
+      let down = true;
+      serve({ db: failingInserts(db, () => down) });
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        const card = kept('Kept by the old process');
+        writeFileSync(join(dir, `${board.id}.yupdate`), card.update);
+        // Merged into the live board, whose store fails: the file stays, being merged.
+        await vi.waitFor(
+          () => expect(readdirSync(dir)).toEqual([expect.stringMatching(/\.draining$/)]),
+          { timeout: 5000 },
+        );
+        await new Promise((r) => setTimeout(r, 2500));
+        expect(readdirSync(dir)).toEqual([expect.stringMatching(/\.draining$/)]);
+        expect(await board.storedIds()).not.toContain(card.id);
+        down = false;
+        await expect.poll(board.storedIds, { timeout: 10_000 }).toContain(card.id);
+        await expect.poll(() => readdirSync(dir), { timeout: 5000 }).toEqual([]);
+      } finally {
+        down = false;
+        errors.mockRestore();
+      }
+    });
+
+    it('drops the file of a deleted board, and leaves a file that is not an update', async () => {
+      serve();
+      const gone = randomUUID();
+      const other = randomUUID();
+      writeFileSync(join(dir, `${gone}.yupdate`), kept('Of a deleted board').update);
+      writeFileSync(join(dir, `${other}.yupdate`), Buffer.from('not a Yjs update'));
+      await expect
+        .poll(() => readdirSync(dir), { timeout: 10_000 })
+        .toEqual([expect.stringMatching(new RegExp(`^${other}\\..*\\.unreadable$`))]);
+    });
+
+    it('tells a stored board that holds a merged file, deletions and items held back included', async () => {
+      const board = await freshBoard('Held back');
+      const store = (state: Uint8Array) =>
+        db
+          .insert(boardDoc)
+          .values({ boardId: board.id, state, schemaVersion: 1, size: state.byteLength })
+          .onConflictDoUpdate({ target: boardDoc.boardId, set: { state, size: state.byteLength } });
+      const doc = (...updates: Uint8Array[]) => {
+        const d = new Y.Doc();
+        for (const u of updates) Y.applyUpdate(d, u);
+        return d;
+      };
+      const base = Y.encodeStateAsUpdate(doc(kept('Stored').update));
+      await store(base);
+      // A deletion of an item the stored board lacks: Yjs holds it back (a pending deletion).
+      const other = new Y.Doc();
+      addElement(other, column('Elsewhere'));
+      other.getMap('elements').clear();
+      const deletion = Y.encodeStateAsUpdate(other, Y.encodeStateVector(other));
+      expect(await storedHolds(db, board.id, deletion)).toBe('no');
+      await store(Y.encodeStateAsUpdate(doc(base, deletion)));
+      expect(await storedHolds(db, board.id, deletion)).toBe('yes');
+      // A stored board that already holds items back (they wait for one never received).
+      const writer = new Y.Doc();
+      addElement(writer, column('First'));
+      const first = Y.encodeStateVector(writer);
+      addElement(writer, column('Second'));
+      const waiting = Y.encodeStateAsUpdate(doc(base, Y.encodeStateAsUpdate(writer, first)));
+      await store(waiting);
+      expect(await storedHolds(db, board.id, waiting)).toBe('yes');
+      expect(await storedHolds(db, board.id, Y.encodeStateAsUpdate(writer))).toBe('no');
+    });
+
+    it('drops, in the demo, a file that would take its board past the caps', async () => {
+      const board = await freshBoard('Demo caps');
+      serve({ limits: demo });
+      const doc = new Y.Doc();
+      addElement(doc, column('One'));
+      addElement(doc, column('Two'));
+      writeFileSync(join(dir, `${board.id}.yupdate`), Y.encodeStateAsUpdate(doc));
+      await expect.poll(() => readdirSync(dir), { timeout: 5000 }).toEqual([]);
+      expect(await board.storedIds()).toHaveLength(0);
+      // The replay at a start respects them too, and leaves a file that is not an update.
+      const again = join(dir, `${board.id}.${randomUUID()}.draining`);
+      writeFileSync(again, Y.encodeStateAsUpdate(doc));
+      writeFileSync(join(dir, `${board.id}.yupdate`), Buffer.from('not a Yjs update'));
+      await replayUnsavedBoards(db, dir, log, undefined, demo);
+      expect(readdirSync(dir)).toEqual([expect.stringMatching(/\.unreadable$/)]);
+      expect(await board.storedIds()).toHaveLength(0);
+    });
+
+    it('replays at the next start a file the last run was merging when it stopped', async () => {
+      const board = await freshBoard('Merging at the crash');
+      dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+      const card = kept('Being merged');
+      writeFileSync(join(dir, `${board.id}.${randomUUID()}.draining`), card.update);
+      await replayUnsavedBoards(db, dir, log);
+      expect(await board.storedIds()).toContain(card.id);
+      expect(readdirSync(dir)).toEqual([]);
+    });
   });
 
   it('keeps a board on disk when its store hangs at shutdown', async () => {

@@ -25,6 +25,7 @@ import {
   type AddCardResult,
   BoardEditNotStarted,
   type BoardWriter,
+  CardOutcomeUnknown,
 } from './board-writer.ts';
 import { pruneWriters } from './board-writers.ts';
 import { VERSION } from './config.ts';
@@ -45,6 +46,7 @@ import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifica
 import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { withRequestId } from './request-context.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
+import { settledWithin } from './shutdown.ts';
 import { lockUpload, type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import { reconcileStorageTotals, type StorageEnv } from './storage-limits.ts';
 import { purgeRevokedTokens } from './tokens.ts';
@@ -824,15 +826,18 @@ const ADD_CARD_TIMEOUT_MS = 10_000;
 const ADD_CARD_GRACE_MS = 5_000;
 /** Queued cards carry what the person wrote: keep failed ones only long enough to debug. */
 const ADD_CARD_KEEP = { removeOnComplete: { age: 3600 }, removeOnFail: { age: 3600 } };
+/** How long the board worker's close waits at shutdown (within SHUTDOWN_DEADLINE_MS). */
+const BOARD_WORKER_CLOSE_MS = 5_000;
 
-/** The card may or may not be on the board: the collaboration server never answered. */
-export class CardOutcomeUnknown extends Error {}
+export { CardOutcomeUnknown };
 
 const WAITING = new Set(['waiting', 'wait', 'delayed', 'prioritized']);
 const timedOut = (err: unknown) => err instanceof Error && /timed out/.test(err.message);
 /** A job that stalled may have written its card before its worker stopped answering. */
+// A job error crosses the queue as its message only: a stalled job, or an outcome the worker
+// could not tell (`CardOutcomeUnknown`, whose messages say so).
 const unknownIfStalled = (err: unknown) =>
-  err instanceof Error && /stalled/i.test(err.message)
+  err instanceof Error && /stalled|outcome unknown/i.test(err.message)
     ? new CardOutcomeUnknown('The collaboration server stopped while making the change.')
     : err;
 
@@ -1006,6 +1011,8 @@ export function startBoardWorker(
     versions?: VersionWriter;
     notices?: BoardNotifier;
     reader?: BoardReader;
+    /** How long `close` waits for running jobs and Valkey before forcing it. */
+    closeMs?: number;
   } = {},
 ) {
   const connection = createRedis(url);
@@ -1052,8 +1059,16 @@ export function startBoardWorker(
   );
   worker.on('error', queueErrors(log)(worker.name));
   return {
+    /**
+     * Bounded: a Valkey that stopped answering (a network partition) keeps BullMQ's close
+     * waiting for ever, and the shutdown would then end at its deadline before the boards are
+     * stored. A job cut short this way runs again or ends as `outcome_unknown` for its sender.
+     */
     async close() {
-      await worker.close();
+      if (!(await settledWithin(worker.close(), opts.closeMs ?? BOARD_WORKER_CLOSE_MS))) {
+        log.warn({ queue: worker.name }, 'board worker not closed in time: forced');
+        void worker.close(true).catch(() => undefined);
+      }
       connection.disconnect();
     },
   };

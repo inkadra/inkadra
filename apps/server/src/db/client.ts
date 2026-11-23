@@ -128,6 +128,8 @@ export async function waitForMigrations(
   migrationsFolder: string,
   log: { info: (obj: object, msg: string) => void },
   intervalMs = 5000,
+  /** Ends the wait with an error, as when this process lost its lease meanwhile. */
+  stopped?: () => boolean,
 ) {
   const sql = postgres(databaseUrl, { max: 1, onnotice: () => {} });
   try {
@@ -135,6 +137,7 @@ export async function waitForMigrations(
     for (;;) {
       const state = await pendingMigrations(sql, migrationsFolder);
       if (state.pending === 0) return;
+      if (stopped?.()) throw new Error('stopped while waiting for the database migrations');
       // shortcut: no timeout, a backup before a large upgrade may take hours and a role that
       // gave up would restart in a loop; an operator sees this line and the web role's log.
       if (Date.now() - toldAt >= 60_000) {

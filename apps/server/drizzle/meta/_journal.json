@@ -407,6 +407,13 @@
       "when": 1795356452815,
       "tag": "0057_token_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795434995071,
+      "tag": "0058_collab_epoch",
+      "breakpoints": true
     }
   ]
 }
