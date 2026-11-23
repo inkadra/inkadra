@@ -1,7 +1,7 @@
 import type { DiagnosticCheck, ServerProblem, ServerStatus } from '@inkadra/shared';
 import { Avatar, Button, Icon, Select, Switch } from '@inkadra/ui';
 import { Fragment, type ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { updatePreferences } from '../../lib/preferences.ts';
 import { useSession } from '../../lib/session.tsx';
@@ -494,6 +494,12 @@ const KINDS = new Set([
   'config_check',
 ]);
 
+/** The guide section that explains how to fix a configuration check, where there is one. */
+const CHECK_DOCS: Record<string, string | undefined> = {
+  proxy_trust_narrow:
+    'https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/configuration.md#trust_proxy',
+};
+
 function Problems({ status, checks, actions }: Props) {
   const { t } = useTranslation();
   const open = sortedProblems(status.problems, healthOf(status, checks));
@@ -523,6 +529,8 @@ function Problems({ status, checks, actions }: Props) {
           <ul className="settings-list">
             {open.map((p) => {
               const text = problemText(t, p);
+              const check = p.kind === 'config_check' ? p.checkId : null;
+              const docs = check ? CHECK_DOCS[check] : undefined;
               return (
                 <li key={p.id} className="server-problem">
                   <span className="server-problem__icon" aria-hidden="true">
@@ -531,6 +539,11 @@ function Problems({ status, checks, actions }: Props) {
                   <div className="settings-list__text">
                     <span className="settings-row__label">
                       {text.title}
+                      {check && (
+                        <span className="settings-badge settings-badge--warn">
+                          {t(`diagnostics.checks.${check}.title`)}
+                        </span>
+                      )}
                       {p.count > 1 && (
                         <span className="settings-badge">
                           {t('server.problems.times', { count: p.count })}
@@ -538,16 +551,39 @@ function Problems({ status, checks, actions }: Props) {
                       )}
                     </span>
                     <span className="settings-row__help">
-                      {[text.where, text.text].filter(Boolean).join(' ')}
+                      {check ? (
+                        <Trans
+                          i18nKey={`diagnostics.checks.${check}.fix`}
+                          components={{ code: <code /> }}
+                        />
+                      ) : (
+                        [text.where, text.text].filter(Boolean).join(' ')
+                      )}
                     </span>
-                    <button
-                      type="button"
-                      className="server-link server-problem__more"
-                      aria-label={t('server.problems.technicalInNamed', { title: text.title })}
-                      onClick={() => peekProblem(p.id)}
-                    >
-                      {t('server.problems.technicalIn')}
-                    </button>
+                    <span className="server-problem__links">
+                      {docs && (
+                        <a
+                          className="server-link"
+                          href={docs}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {t('server.problems.docs')}
+                          <span aria-hidden="true"> ↗</span>
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        className="server-link"
+                        aria-label={t('server.problems.technicalInNamed', {
+                          // Two failing checks share the row title: name the check instead.
+                          title: check ? t(`diagnostics.checks.${check}.title`) : text.title,
+                        })}
+                        onClick={() => peekProblem(p.id)}
+                      >
+                        {t('server.problems.technicalIn')}
+                      </button>
+                    </span>
                   </div>
                   {p.kind !== 'config_check' && (
                     <span className="server-problem__actions">

@@ -285,6 +285,10 @@
         "title": "Proxy reconhecido",
         "fix": "Adicione a TRUST_PROXY o endereço de onde o proxy se conecta (o endereço do peer)."
       },
+      "proxy_trust_narrow": {
+        "title": "Só o seu proxy pode indicar o endereço dos clientes",
+        "fix": "TRUST_PROXY confia em mais do que o seu proxy reverso, então qualquer pessoa pode fingir outro endereço: os limites de início de sessão podem ser contornados e os registos mostram endereços inventados. Defina <code>TRUST_PROXY</code> com o endereço do próprio proxy."
+      },
       "database": {
         "title": "Banco de dados",
         "fix": "Verifique DATABASE_URL e se o Postgres está em execução."
@@ -5909,7 +5913,7 @@
           },
           "3": {
             "title": "Os problemas",
-            "text": "Tente de novo, marque como visto ou envie aos desenvolvedores."
+            "text": "Tente de novo, marque como visto ou envie aos desenvolvedores. Uma configuração a corrigir leva ao seu guia."
           },
           "4": {
             "title": "Os alertas",
@@ -6336,6 +6340,7 @@
       },
       "technicalIn": "Detalhes técnicos em Avançada",
       "technicalInNamed": "Detalhes técnicos em Avançada: {{title}}",
+      "docs": "Como definir TRUST_PROXY",
       "retryNamed": "Tentar de novo: {{title}}",
       "seenNamed": "Marcar como visto: {{title}}"
     },

@@ -285,6 +285,10 @@
         "title": "Proxy vertrauenswürdig",
         "fix": "Trage in TRUST_PROXY die Adresse ein, von der sich der Proxy verbindet (die Peer-Adresse)."
       },
+      "proxy_trust_narrow": {
+        "title": "Nur dein Proxy darf Client-Adressen angeben",
+        "fix": "TRUST_PROXY vertraut mehr als nur deinem Reverse Proxy, daher kann jeder eine andere Adresse vorgeben: Anmeldelimits lassen sich umgehen und die Logs zeigen erfundene Adressen. Setze <code>TRUST_PROXY</code> auf die Adresse des Proxys."
+      },
       "database": {
         "title": "Datenbank",
         "fix": "Prüfe DATABASE_URL und ob Postgres läuft."
@@ -5909,7 +5913,7 @@
           },
           "3": {
             "title": "Probleme",
-            "text": "Wiederholen, als gesehen markieren oder an die Entwickler senden."
+            "text": "Wiederholen, als gesehen markieren oder an die Entwickler senden. Eine zu korrigierende Konfiguration verlinkt ihre Anleitung."
           },
           "4": {
             "title": "Warnungen",
@@ -6336,6 +6340,7 @@
       },
       "technicalIn": "Technische Details unter Erweitert",
       "technicalInNamed": "Technische Details unter Erweitert: {{title}}",
+      "docs": "So setzt du TRUST_PROXY",
       "retryNamed": "Wiederholen: {{title}}",
       "seenNamed": "Als gesehen markieren: {{title}}"
     },

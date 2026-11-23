@@ -755,6 +755,41 @@
       "break": "openapi: #/paths/~1api~1v1~1uploads/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}},\"text/plain\":{\"schema\":{\"type\":\"strin…#8779fd1cebad23a4a1de47d1d1bdd7bae8685755700f3eac917aa9d3e656d00f",
       "pr": 989,
       "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
+    },
+    {
+      "break": "openapi: #/components/schemas/DiagnosticCheck/properties/id/enum/2: \"proxy_trusted\" → \"proxy_trust_narrow\"",
+      "pr": 1007,
+      "why": "Additive: DiagnosticCheck.id gains proxy_trust_narrow; the enum is sorted, so the values after it move by one. Servers that send it advertise diagnostic-proxy-trust; the Android app does not read diagnostics."
+    },
+    {
+      "break": "openapi: #/components/schemas/DiagnosticCheck/properties/id/enum/3: \"public_url_https\" → \"proxy_trusted\"",
+      "pr": 1007,
+      "why": "Additive: DiagnosticCheck.id gains proxy_trust_narrow; the enum is sorted, so the values after it move by one. Servers that send it advertise diagnostic-proxy-trust; the Android app does not read diagnostics."
+    },
+    {
+      "break": "openapi: #/components/schemas/DiagnosticCheck/properties/id/enum/4: \"public_url_matches_request\" → \"public_url_https\"",
+      "pr": 1007,
+      "why": "Additive: DiagnosticCheck.id gains proxy_trust_narrow; the enum is sorted, so the values after it move by one. Servers that send it advertise diagnostic-proxy-trust; the Android app does not read diagnostics."
+    },
+    {
+      "break": "openapi: #/components/schemas/DiagnosticCheck/properties/id/enum/5: \"queue\" → \"public_url_matches_request\"",
+      "pr": 1007,
+      "why": "Additive: DiagnosticCheck.id gains proxy_trust_narrow; the enum is sorted, so the values after it move by one. Servers that send it advertise diagnostic-proxy-trust; the Android app does not read diagnostics."
+    },
+    {
+      "break": "openapi: #/components/schemas/DiagnosticCheck/properties/id/enum/6: \"storage\" → \"queue\"",
+      "pr": 1007,
+      "why": "Additive: DiagnosticCheck.id gains proxy_trust_narrow; the enum is sorted, so the values after it move by one. Servers that send it advertise diagnostic-proxy-trust; the Android app does not read diagnostics."
+    },
+    {
+      "break": "openapi: #/components/schemas/DiagnosticCheck/properties/id/enum/7: \"video_encoding\" → \"storage\"",
+      "pr": 1007,
+      "why": "Additive: DiagnosticCheck.id gains proxy_trust_narrow; the enum is sorted, so the values after it move by one. Servers that send it advertise diagnostic-proxy-trust; the Android app does not read diagnostics."
+    },
+    {
+      "break": "openapi: #/components/schemas/DiagnosticCheck/properties/id/enum/8: (absent) → \"video_encoding\"",
+      "pr": 1007,
+      "why": "Additive: DiagnosticCheck.id gains proxy_trust_narrow; the enum is sorted, so the values after it move by one. Servers that send it advertise diagnostic-proxy-trust; the Android app does not read diagnostics."
     }
   ]
 }

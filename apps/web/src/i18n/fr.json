@@ -285,6 +285,10 @@
         "title": "Proxy reconnu",
         "fix": "Ajoutez à TRUST_PROXY l’adresse depuis laquelle le proxy se connecte (l’adresse du pair)."
       },
+      "proxy_trust_narrow": {
+        "title": "Seul votre proxy peut indiquer l’adresse des clients",
+        "fix": "TRUST_PROXY fait confiance à plus que votre proxy inverse, donc n’importe qui peut prétendre avoir une autre adresse : les limites de connexion se contournent et les journaux montrent des adresses inventées. Réglez <code>TRUST_PROXY</code> sur l’adresse du proxy."
+      },
       "database": {
         "title": "Base de données",
         "fix": "Vérifiez DATABASE_URL et que Postgres est démarré."
@@ -5909,7 +5913,7 @@
           },
           "3": {
             "title": "Les problèmes",
-            "text": "Réessayez, marquez comme vu ou envoyez aux développeurs."
+            "text": "Réessayez, marquez comme vu ou envoyez aux développeurs. Une configuration à corriger renvoie vers son guide."
           },
           "4": {
             "title": "Les alertes",
@@ -6336,6 +6340,7 @@
       },
       "technicalIn": "Détails techniques dans Avancé",
       "technicalInNamed": "Détails techniques dans Avancé : {{title}}",
+      "docs": "Comment régler TRUST_PROXY",
       "retryNamed": "Réessayer : {{title}}",
       "seenNamed": "Marquer comme vu : {{title}}"
     },

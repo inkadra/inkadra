@@ -21,6 +21,7 @@ vi.mock('react-i18next', () => ({
       values && 'count' in values ? `${key}:${values.count}` : key,
     i18n: { language: 'en' },
   }),
+  Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
 }));
 vi.mock('../../lib/api.ts', async (load) => ({
   ...(await load<typeof import('../../lib/api.ts')>()),
@@ -233,6 +234,90 @@ it('turns orange for a failed backup and puts it on top of the problems', async 
   expect(host.querySelector('.server-verdict--warn')?.textContent).toBe(
     'server.meters.backup.failed',
   );
+});
+
+it('names a failing configuration check and links its guide', async () => {
+  const s = status();
+  const check = {
+    id: 'proxy_trust_narrow' as const,
+    status: 'warning' as const,
+    expected: 'TRUST_PROXY lists only the proxy’s address',
+    actual: 'TRUST_PROXY=true trusts every address',
+  };
+  vi.mocked(api.get).mockResolvedValue({
+    ...s,
+    checks: [...s.checks, check],
+    problems: [
+      {
+        ...(s.problems[0] as ServerStatus['problems'][number]),
+        id: 'check:proxy_trust_narrow',
+        kind: 'config_check',
+        severity: 'warning',
+        role: 'web',
+        count: 1,
+        retry: false,
+        technical: 'proxy_trust_narrow',
+        checkId: 'proxy_trust_narrow',
+        service: 'configuration',
+        file: null,
+        board: null,
+      },
+    ],
+  });
+  await render();
+  expect(host.querySelector('.settings-summary--warn')).not.toBeNull();
+  expect(host.textContent).toContain('server.health.reasons.check');
+  const row = host.querySelector('.server-problem') as HTMLElement;
+  expect(row.querySelector('.settings-row__label')?.firstChild?.textContent).toBe(
+    'server.problems.kinds.config_check.title',
+  );
+  expect(row.querySelector('.settings-badge--warn')?.textContent).toBe(
+    'diagnostics.checks.proxy_trust_narrow.title',
+  );
+  expect(row.querySelector('.settings-row__help')?.textContent).toBe(
+    'diagnostics.checks.proxy_trust_narrow.fix',
+  );
+  const docs = row.querySelector('a.server-link') as HTMLAnchorElement;
+  expect(docs.textContent).toBe('server.problems.docs ↗');
+  expect(docs.href).toBe(
+    'https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/configuration.md#trust_proxy',
+  );
+  expect(docs.target).toBe('_blank');
+  expect(row.querySelector('button.server-link')?.textContent).toBe('server.problems.technicalIn');
+  // Configuration is fixed, not retried or marked as seen.
+  expect(row.querySelector('.server-problem__actions')).toBeNull();
+});
+
+it('names a failing check without a guide but links nothing', async () => {
+  const s = status();
+  vi.mocked(api.get).mockResolvedValue({
+    ...s,
+    checks: [
+      ...s.checks,
+      { id: 'public_url_https', status: 'warning', expected: 'https:', actual: 'http:' },
+    ],
+    problems: [
+      {
+        ...(s.problems[0] as ServerStatus['problems'][number]),
+        id: 'check:public_url_https',
+        kind: 'config_check',
+        severity: 'warning',
+        count: 1,
+        retry: false,
+        checkId: 'public_url_https',
+        service: 'configuration',
+        file: null,
+        board: null,
+      },
+    ],
+  });
+  await render();
+  const row = host.querySelector('.server-problem') as HTMLElement;
+  expect(row.querySelector('.settings-badge--warn')?.textContent).toBe(
+    'diagnostics.checks.public_url_https.title',
+  );
+  expect(row.querySelector('a.server-link')).toBeNull();
+  expect(row.querySelector('button.server-link')).not.toBeNull();
 });
 
 it('leaves out the last successful backup when the server does not send it', async () => {
