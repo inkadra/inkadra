@@ -43,3 +43,11 @@ release candidate (`X.Y.Z-rc.N`) and recorded in the issue or discussion of the 
 
 Write down in the release issue or discussion which candidate each step ran on and what was
 found. A step skipped is written down as skipped, with the reason.
+
+## After a stable release tag
+
+1. **Accepted contract lines**: the first work on `main` is the pruning pull request, which removes
+   from `scripts/contract-breaks.json` the lines CI reports as STALE (the new release is now the
+   base and no longer produces them). Until it merges, CI on `main` and on every pull request is
+   red, including the `edge` publish of the next push. CI on the tag itself compares with the
+   release before it.

@@ -70,12 +70,35 @@ Useful commands:
 
 **API.** Edit the Zod schemas in `packages/shared/src`, register new paths in
 `src/openapi.ts`, run `pnpm openapi` and commit `openapi.json`. CI fails if it is stale.
-Endpoints live under `/api/v1`. Additive changes (new endpoint, new optional field) are fine
-within v1; removing or renaming anything needs a new version or a deprecation period, because
-installed mobile apps and extensions talk to servers of different ages. CI compares
-`openapi.json` with the last release, and the names each `packages/*` entry point exports with
-the commit the change builds on (`scripts/contract-check.mjs`); a break decided on purpose is
-listed in `scripts/contract-breaks.json` with its pull request.
+Endpoints live under `/api/v1`. Removing or renaming anything needs a new version or a
+deprecation period, because installed mobile apps and extensions talk to servers of different
+ages. CI diffs `openapi.json` with the last stable release (`scripts/contract-check.mjs`) and
+judges nothing on its own:
+
+- Ignored: `info`, `tags` and `externalDocs` at the root; `summary`, `description` and `tags` of
+  operations; `summary` and `description` of path items and references; `description`, `example`
+  and `examples` of parameters and headers; `description` of request bodies and responses;
+  `example` and `examples` of media types; `description`, `title`, `example` and `examples` of
+  schemas. The order of object keys, of `required` and `type`, and of `enum` members.
+- Everything else, including a new endpoint, status, component, property or enum value, prints a
+  line that goes in `scripts/contract-breaks.json` in the same pull request, with `pr` and a
+  `why` that says what an installed client sees, or `BREAKING` and the note for the app
+  (AGENTS.md). For example:
+
+  ```json
+  {
+    "break": "openapi: #/paths/~1api~1v1~1projects/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+    "pr": 123,
+    "why": "New 409 ApiError when the name is taken; clients show the error."
+  }
+  ```
+
+- A new path that an existing template would also match (`/assets/lookup` next to
+  `/assets/{assetId}`): the `why` states the methods of both and that the router gives the
+  fixed path precedence over the parametric one.
+- Lines are removed once a release containing them is the base: CI reports them as STALE.
+
+The names each `packages/*` entry point exports are compared with the commit the change builds on.
 
 **Database.** Edit `apps/server/src/db/schema.ts`, run `pnpm db:generate --name <what>` and
 commit the generated SQL in `apps/server/drizzle`. Never edit a migration that has been

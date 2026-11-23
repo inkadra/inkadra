@@ -53,8 +53,15 @@ jobs:
         run: pnpm --filter @inkadra/shared openapi:check
       # Installed apps and API clients (#845): accepted breaks are listed in scripts/contract-breaks.json.
       - name: The API keeps the contract of the last release
+        # bash with pipefail: listing the tags must not fail silently and skip the comparison.
+        shell: bash
         run: |
-          tag=$(git ls-remote --tags --refs origin 'v*' | sed 's|.*refs/tags/||' | grep -v -- - | sort -V | tail -n1)
+          # On a stable release tag, the release before it: its accepted lines are not stale yet.
+          tag=$(git ls-remote --tags --refs origin 'v*' | sed 's|.*refs/tags/||' | node scripts/contract-check.mjs base-tag "$GITHUB_REF")
+          if [ -z "$tag" ]; then
+            node scripts/contract-check.mjs openapi none packages/shared/openapi.json
+            exit 0
+          fi
           echo "Comparing with $tag"
           git fetch --no-tags --depth=1 origin "refs/tags/$tag:refs/tags/$tag"
           git show "$tag:packages/shared/openapi.json" > "$RUNNER_TEMP/released-openapi.json"
