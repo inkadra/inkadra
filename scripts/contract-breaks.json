@@ -1,27 +1,450 @@
 {
-  "comment": "Breaking changes to /api/v1 or to what packages/* export, accepted on purpose. scripts/contract-check.mjs fails CI on any other one. Each entry names the PR that decided it; remove entries once the release they shipped in is the baseline.",
+  "comment": "Changes to /api/v1 since the base release, and to what packages/* export since the parent commit, each accepted on purpose as the exact line scripts/contract-check.mjs prints, with the PR that made it and why installed clients are safe (or BREAKING). CI fails on any other line, and on an openapi line it no longer prints: remove those once a release containing them is the base.",
   "accepted": [
-    { "break": "openapi: ExportPreferences.preset removed", "pr": 550 },
-    { "break": "openapi: ExportPreferences.kickoffSummary removed", "pr": 550 },
-    { "break": "openapi: UpdateExportSettings.preset removed", "pr": 550 },
-    { "break": "openapi: UpdateExportSettings.kickoffSummary removed", "pr": 550 },
-    { "break": "openapi: UpdateCrewMember.name now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.role now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.department now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.phone now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.email now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.pickup now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.notes now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.userId now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.character now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.onSetContact now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.position now required", "pr": 990 },
-    { "break": "openapi: UpdateCrewMember.revision now required", "pr": 990 },
-    { "break": "openapi: Board.icon.shape removed", "pr": 990 },
-    { "break": "openapi: Board.icon.color removed", "pr": 990 },
-    { "break": "openapi: Board.icon.emoji removed", "pr": 990 },
-    { "break": "openapi: Notification.subject.id removed", "pr": 990 },
-    { "break": "openapi: Notification.subject.name removed", "pr": 990 },
-    { "break": "openapi: Notification.subject.image removed", "pr": 990 }
+    {
+      "break": "openapi: #/components/schemas/Asset/properties/proxy/$ref: \"#/components/schemas/AssetProxy\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Asset/properties/proxy/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/AssetProxy\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Asset/properties/track/$ref: \"#/components/schemas/AssetTrack\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Asset/properties/track/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/AssetTrack\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Asset/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/AssetProxy/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/AssetTrack/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/Board/properties/icon/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/ProjectIcon\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Board/properties/icon/properties: {\"color\":{\"enum\":[\"blue\",\"green\",\"neutral\",\"orange\",\"pink\",\"purple\",\"red\",\"teal\",\"yellow\"],\"type\":\"string\"},\"emoji\":{\"ma…#6181dbee9a768ecfa9d778f69b09e4b68e83c2150c085cd97c8653e118ed9af9 → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Board/properties/icon/required: [\"color\",\"shape\"] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Board/properties/icon/type: [\"null\",\"object\"] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/BoardRestore/properties/restoredBy/allOf: [{\"$ref\":\"#/components/schemas/UserSummary\"},{}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/BoardRestore/properties/restoredBy/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/UserSummary\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/BoardVersion/properties/createdBy/allOf: [{\"$ref\":\"#/components/schemas/UserSummary\"},{}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/BoardVersion/properties/createdBy/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/UserSummary\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/BoardWriter/properties/user/allOf: [{\"$ref\":\"#/components/schemas/UserSummary\"},{}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/BoardWriter/properties/user/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/UserSummary\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/ClassificationCatalogs/properties/todoLists: (absent) → {\"default\":[{\"archived\":false,\"id\":\"wardrobe\",\"label\":\"Wardrobe\"},{\"archived\":false,\"id\":\"props\",\"label\":\"Props\"},{\"arch…#ce188fe314b1c2e8b2f10263ccb146d56d99458ba9e8233738405ac8faac5c36",
+      "pr": 975,
+      "why": "New optional field (decision 0136): sent in the GET answer, where clients that do not know it ignore it, and read in the PUT body, where a save that leaves it out keeps the existing catalogue (capability todo-list-catalog)."
+    },
+    {
+      "break": "openapi: #/components/schemas/Comment/properties/pin/$ref: \"#/components/schemas/CommentPin\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Comment/properties/pin/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/CommentPin\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/CommentPin/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/CommentThread/allOf/1/properties/resolvedBy/$ref: \"#/components/schemas/Author\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/CommentThread/allOf/1/properties/resolvedBy/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/Author\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/CrewMember/additionalProperties: (absent) → false",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/CrewMember/allOf: [{\"$ref\":\"#/components/schemas/CrewMemberInput\"},{\"additionalProperties\":false,\"properties\":{\"account\":{\"$ref\":\"#/compon…#2b680a1d59dd1d7d93471cf62bba132dec150c5ce204f873c927f2e6fb420208 → (absent)",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/CrewMember/properties: (absent) → {\"account\":{\"anyOf\":[{\"$ref\":\"#/components/schemas/UserSummary\"},{\"type\":\"null\"}]},\"character\":{\"additionalProperties\":f…#9978dd733d3ebcf8cdd0d31169f449d8208386b58816a0a676097546f69e8243",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/CrewMember/required: (absent) → [\"character\",\"createdAt\",\"department\",\"email\",\"id\",\"name\",\"notes\",\"onSetContact\",\"phone\",\"pickup\",\"position\",\"projectId\"…#dc6d6c43e67db74819eb0b0b648bbeee9e8afca4b3d449242625189b13e31c2a",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/CrewMember/type: (absent) → \"object\"",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/EditSchedule/properties/changes/items/properties/input/allOf: [{\"$ref\":\"#/components/schemas/ShootingDayInput\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/EditSchedule/properties/changes/items/properties/input/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/ShootingDayInput\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/ExportSettings/allOf/1/properties/logo/$ref: \"#/components/schemas/Asset\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/ExportSettings/allOf/1/properties/logo/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/Asset\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/FeedbackSettings/additionalProperties: (absent) → false",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/FeedbackSettings/allOf: [{\"$ref\":\"#/components/schemas/FeedbackSettingsInput\"},{\"additionalProperties\":false,\"properties\":{\"tokenConfigured\":{\"t…#861bf3480f64eb6eb7df83797cf9cb1add557d3b4114cf1e69036e4cb59f1da9 → (absent)",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/FeedbackSettings/properties: (absent) → {\"destination\":{\"enum\":[\"github\",\"inbox\",\"off\",\"relay\"],\"type\":\"string\"},\"guests\":{\"type\":\"boolean\"},\"repository\":{\"patt…#e18f78aeb7e1354ee5ebaecd34b650374c0b85a464ff9e9da676ce47449f0b8f",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/FeedbackSettings/required: (absent) → [\"destination\",\"guests\",\"repository\",\"tokenConfigured\"]",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/FeedbackSettings/type: (absent) → \"object\"",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/GuestAsset/properties/track/allOf: [{\"$ref\":\"#/components/schemas/AssetTrack\"},{}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/GuestAsset/properties/track/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/AssetTrack\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/GuestComment/properties/pin/$ref: \"#/components/schemas/CommentPin\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/GuestComment/properties/pin/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/CommentPin\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/GuestCommentThread/allOf/1/properties/resolvedBy/allOf: [{\"$ref\":\"#/components/schemas/GuestAuthor\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/GuestCommentThread/allOf/1/properties/resolvedBy/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/GuestAuthor\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/GuestSession/properties/shotCatalogs/properties/todoLists: (absent) → {\"default\":[{\"archived\":false,\"id\":\"wardrobe\",\"label\":\"Wardrobe\"},{\"archived\":false,\"id\":\"props\",\"label\":\"Props\"},{\"arch…#ce188fe314b1c2e8b2f10263ccb146d56d99458ba9e8233738405ac8faac5c36",
+      "pr": 975,
+      "why": "New optional field of a guest answer (decision 0136); clients that do not know it ignore it."
+    },
+    {
+      "break": "openapi: #/components/schemas/InstanceRelease/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/InstanceUpdates/properties/available/$ref: \"#/components/schemas/InstanceRelease\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/InstanceUpdates/properties/available/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/InstanceRelease\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Invitation/properties/invitedBy/$ref: \"#/components/schemas/UserSummary\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Invitation/properties/invitedBy/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/UserSummary\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/LoadTestProgress/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/LoadTestReport/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/LoadTestRun/properties/progress/$ref: \"#/components/schemas/LoadTestProgress\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/LoadTestRun/properties/progress/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/LoadTestProgress\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/LoadTestRun/properties/report/$ref: \"#/components/schemas/LoadTestReport\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/LoadTestRun/properties/report/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/LoadTestReport\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Notification/properties/actor/allOf: [{\"$ref\":\"#/components/schemas/Author\"},{}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Notification/properties/actor/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/Author\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Notification/properties/subject/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/UserSummary\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Notification/properties/subject/properties: {\"id\":{\"format\":\"uuid\",\"type\":\"string\"},\"image\":{\"format\":\"uri\",\"type\":[\"null\",\"string\"]},\"name\":{\"maxLength\":120,\"minLe…#548db5568429463cbfb16350806bae0a29c7b1a8b5d2a3bfb0fce4627d904080 → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Notification/properties/subject/required: [\"id\",\"image\",\"name\"] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/Notification/properties/subject/type: [\"null\",\"object\"] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/ProjectTransfer/properties/summary/$ref: \"#/components/schemas/TransferSummary\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/ProjectTransfer/properties/summary/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/TransferSummary\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/ShareLink/properties/createdBy/$ref: \"#/components/schemas/UserSummary\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/ShareLink/properties/createdBy/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/UserSummary\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/TransferSummary/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateBoard/properties/icon/allOf: [{\"$ref\":\"#/components/schemas/ProjectIcon\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateBoard/properties/icon/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/ProjectIcon\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateCrewMember/additionalProperties: (absent) → false",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateCrewMember/allOf: [{\"$ref\":\"#/components/schemas/CrewMemberInput\"},{\"additionalProperties\":false,\"properties\":{\"revision\":{\"minimum\":1,\"ty…#0ed880ba6d019d40f86388b818000e0f7d05b40924082da24d3a5da2796b8397 → (absent)",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateCrewMember/properties: (absent) → {\"character\":{\"additionalProperties\":false,\"properties\":{\"boardId\":{\"format\":\"uuid\",\"type\":\"string\"},\"elementId\":{\"patte…#ca7682b2b952111b5161460ca80f859983e6f58ee63a6852184e3feb31b5267f",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateCrewMember/required: (absent) → [\"character\",\"department\",\"email\",\"name\",\"notes\",\"onSetContact\",\"phone\",\"pickup\",\"position\",\"revision\",\"role\",\"userId\"]",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateCrewMember/type: (absent) → \"object\"",
+      "pr": 990,
+      "why": "Document correction: an allOf of two strict halves, which admitted no object, is written as the one strict object the Zod schema is; same fields, same server behaviour."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/1080/allOf: [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/1080/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/2160/allOf: [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/2160/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/480/allOf: [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/480/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/720/allOf: [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UpdateVideoSettings/properties/custom/properties/720/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/VideoRungCustom\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/UserSummary/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/VideoBackfill/type: [\"null\",\"object\"] → \"object\"",
+      "pr": 990,
+      "why": "Document correction: the component was nullable only because the generator met a nullable use first; the Zod schema never was and the server never sends null there."
+    },
+    {
+      "break": "openapi: #/components/schemas/VideoSettingsView/properties/backfill/$ref: \"#/components/schemas/VideoBackfill\" → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/components/schemas/VideoSettingsView/properties/backfill/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/VideoBackfill\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1auth~1get-session/get/responses/200/content/application~1json/schema/allOf: [{\"$ref\":\"#/components/schemas/Session\"},{\"type\":[\"null\",\"object\"]}] → (absent)",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1auth~1get-session/get/responses/200/content/application~1json/schema/anyOf: (absent) → [{\"$ref\":\"#/components/schemas/Session\"},{\"type\":\"null\"}]",
+      "pr": 990,
+      "why": "Document correction: a nullable use of a component is written as anyOf [$ref, null]; the Zod schema and what the server accepts and sends are unchanged."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1invitations~1{invitationId}~1resend/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 976,
+      "why": "Documents an existing answer: v0.10.1 already answered 409 (ApiError) to a resend of a used invitation or without email; #976 adds the conflict of an invitation whose access has ended. Clients show the error."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1projects~1{projectId}~1crew/post/responses/409: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 970,
+      "why": "New answer: linking a character card a crew row already plays now gives 409 ApiError (code conflict, details.reason character_taken, details.member) instead of a second row, for every client; servers that do so advertise crew-one-row-per-character in /instance/version. An earlier client shows a generic error and the link is not made."
+    }
   ]
 }
