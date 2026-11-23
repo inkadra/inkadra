@@ -30,6 +30,7 @@ import { prepareImageDrawings } from './image-drawing.ts';
 import { boardProblem, recordProblem } from './monitor/problems.ts';
 import { DocSizes, StoreRecorder } from './monitor/sampler.ts';
 import type { MonitorStore, PresenceBoard } from './monitor/store.ts';
+import { preparePlanLists } from './plan-lists.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import {
@@ -930,6 +931,9 @@ export function createCollabServer(deps: {
         const steps = migrateBoardDoc(document, boardId);
         if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
         prepareImageDrawings(document);
+        // Set plans' lists made or converted here, before any client syncs (decision of 23 Nov).
+        const lists = preparePlanLists(document);
+        if (lists > 0) log.info({ boardId, lists }, 'set plan lists prepared');
         const track = trackAssignments(document);
         assignedNow.set(document, track);
         assignments.set(document, track());
