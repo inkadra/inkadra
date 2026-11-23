@@ -976,6 +976,7 @@ export function createCollabServer(deps: {
         );
         return;
       }
+      // Also refuses an update no Yjs client writes, before it reaches the board.
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
       // Decision 0120: the ids this socket delivers new items under, read from what it sent.
       // onChange sees the whole transaction, which can also integrate items another socket sent

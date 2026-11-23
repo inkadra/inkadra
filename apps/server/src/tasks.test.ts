@@ -8,7 +8,9 @@ import type { Database } from './db/client.ts';
 import {
   assignedItems,
   changesTasks,
+  checkUpdateShape,
   mayTouchTasks,
+  placesAsStored,
   tasksInDoc,
   trackAssignments,
   validateTaskUpdate,
@@ -587,6 +589,7 @@ type SkipSpec = { skip: number; info: number };
  */
 function encodeUpdate(
   blocks: Array<{ client: number; clock: number; structs: Array<ItemSpec | SkipSpec> }>,
+  deletions: Array<{ client: number; clock: number; len: number }> = [],
 ) {
   const bytes: number[] = [];
   const varUint = (n: number) => {
@@ -644,7 +647,9 @@ function encodeUpdate(
       } else string(item.content.text);
     }
   }
-  varUint(0);
+  varUint(deletions.length);
+  for (const { client, clock, len } of deletions)
+    for (const n of [client, 1, clock, len]) varUint(n);
   return new Uint8Array(bytes);
 }
 
@@ -666,7 +671,7 @@ it('checks an item with no content, which Yjs integrates at the end of what it h
     expect(mayTouchTasks(server, update)).toBe(true);
     if (key === 'id')
       await expect(validateTaskUpdate(db, id, undefined, server, update)).rejects.toThrow(
-        'Guests cannot assign tasks',
+        'Malformed update',
       );
   }
 });
@@ -772,8 +777,8 @@ it('refuses held-back structs that overlap stored clocks once they are released'
   const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
   const db = {} as Database;
   vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: victim });
-  // Waiting for a map another client writes later, overlapping what the guest wrote: nothing is
-  // placed on arrival; refused when the map comes.
+  // Waiting for a map another client writes later, overlapping what the guest wrote: refused on
+  // arrival. Held anyway (say, from before this check), it is refused when the map comes.
   {
     const b = boardWithTask();
     const guest = b.other();
@@ -786,7 +791,9 @@ it('refuses held-back structs that overlap stored clocks once they are released'
       key: 'x',
       content: { any: [null, victim] },
     });
-    await validateTaskUpdate(db, b.id, undefined, b.server, forged);
+    await expect(validateTaskUpdate(db, b.id, undefined, b.server, forged)).rejects.toThrow(
+      'places items elsewhere than it stores them',
+    );
     Y.applyUpdate(b.server, forged);
     expect(b.server.store.pendingStructs).not.toBeNull();
     const later = new Y.Doc();
@@ -841,7 +848,7 @@ async function afterLegalWrite() {
   return b;
 }
 
-it('runs the full check when the update cannot be read as Yjs applies it', async () => {
+it('refuses an update that cannot be read as Yjs applies it', async () => {
   const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
   const db = {} as Database;
   const forged: ItemSpec = { parent: 'decoy', key: 'x', content: { any: [null, victim] } };
@@ -878,8 +885,9 @@ it('runs the full check when the update cannot be read as Yjs applies it', async
     const { memory, stored } = heldAndStoredAfter(b.server, update);
     expect(stored, name).not.toEqual(memory);
     expect(mayTouchTasks(b.server, update), name).toBe(true);
-    await expect(validateTaskUpdate(db, b.id, undefined, b.server, update), name).rejects.toThrow(
-      'places items elsewhere than it stores them',
+    // Neither shape comes from a Yjs client: refused before anything else is read.
+    await expect(validateTaskUpdate(db, b.id, 'editor', b.server, update), name).rejects.toThrow(
+      'Malformed update',
     );
   }
 });
@@ -1024,4 +1032,241 @@ it('reads nothing in removing what an earlier deletion removed with its card', (
       b.at(stale, () => b.items(stale).get(0).delete('assigneeId')),
     ),
   ).toBe(false);
+});
+
+/** A board copy encoded and read back: what the server stores and sends. */
+const storedCopy = (doc: Y.Doc) => {
+  const stored = new Y.Doc();
+  Y.applyUpdate(stored, Y.encodeStateAsUpdate(doc));
+  return stored;
+};
+
+it('refuses an item of no length after one the board holds, which breaks encoding the board', async () => {
+  const b = boardWithTask();
+  const update = encodeUpdate([
+    {
+      client: 555,
+      clock: 0,
+      structs: [
+        { parent: 'decoy', key: 'x', content: { any: ['a'] } },
+        { origin: Y.createID(555, 0), content: { any: [] } },
+      ],
+    },
+  ]);
+  // Applied, Yjs fails halfway through, and no later encoding of the board succeeds.
+  const copy = storedCopy(b.server);
+  expect(() => Y.applyUpdate(copy, update)).toThrow();
+  expect(() => Y.encodeStateAsUpdate(copy)).toThrow();
+  await expect(
+    validateTaskUpdate({} as Database, b.id, 'editor', b.server, update),
+  ).rejects.toThrow('Malformed update');
+});
+
+it('refuses an overlapping item that would hide a card type until the board is stored', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: victim });
+  const b = boardWithTask();
+  const guest = b.other();
+  guest.clientID = 555;
+  // A legal first write in the note.
+  const legal = b.at(guest, () => b.card(guest, b.note).set('label', 'a'));
+  Y.applyUpdate(b.server, legal);
+  const card = b.server.getMap('elements')._map.get(b.todo)!;
+  const item = b.items(b.server).get(0)._item!;
+  // One item of two values naming the to-do card's type, the note deleted (so the first value is
+  // collected), and new task fields on the item.
+  const update = encodeUpdate(
+    [
+      {
+        client: 555,
+        clock: 0,
+        structs: [{ parent: card.id, key: 'type', content: { any: [null, 'note'] } }],
+      },
+      {
+        client: 556,
+        clock: 0,
+        structs: [
+          { parent: item.id, key: 'assigneeId', content: { any: [victim] } },
+          { parent: item.id, key: 'dueDate', content: { any: ['soon'] } },
+        ],
+      },
+    ],
+    [{ ...b.server.getMap('elements')._map.get(b.note)!.id, len: 1 }],
+  );
+  const held = storedCopy(b.server);
+  Y.applyUpdate(held, update);
+  const stored = storedCopy(held);
+  expect((held.getMap('elements').get(b.todo) as Y.Map<unknown>).get('type')).toBe('note');
+  expect((stored.getMap('elements').get(b.todo) as Y.Map<unknown>).get('type')).toBe('todo');
+  await expect(
+    validateTaskUpdate({} as Database, b.id, 'editor', b.server, update),
+  ).rejects.toThrow('places items elsewhere than it stores them');
+});
+
+it('refuses an overlapping item that Yjs would merge into the value before it', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: victim });
+  const b = await afterLegalWrite();
+  const update = itemUpdate({ client: 555, parent: 'decoy', content: { any: [null, victim] } });
+  const held = storedCopy(b.server);
+  // The assignment changes without a write the board's observers see under its key.
+  const seen: boolean[] = [];
+  held.on('afterTransaction', (tr: Y.Transaction) => seen.push(changesTasks(tr)));
+  Y.applyUpdate(held, update);
+  expect(b.items(held).get(0).get('assigneeId')).toBe(victim);
+  expect(seen).toEqual([false]);
+  await expect(
+    validateTaskUpdate({} as Database, b.id, 'editor', b.server, update),
+  ).rejects.toThrow('places items elsewhere than it stores them');
+});
+
+it('refuses held-back structs that the server’s own write lets overlap', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: victim });
+  const b = boardWithTask();
+  const own = b.server.clientID;
+  const at = Y.getState(b.server.store, own);
+  // Under the server's own client id, waiting for a map another client writes later.
+  const forged = itemUpdate({
+    client: own,
+    clock: at,
+    parent: Y.createID(888, 1),
+    key: 'x',
+    content: { any: [null, victim] },
+  });
+  await validateTaskUpdate({} as Database, b.id, 'editor', b.server, forged);
+  Y.applyUpdate(b.server, forged);
+  expect(b.server.store.pendingStructs).not.toBeNull();
+  // The server writes its own next value on the item, which the held struct now overlaps.
+  b.items(b.server).get(0).set('assigneeId', b.id);
+  const later = new Y.Doc();
+  later.clientID = 888;
+  later.getMap('meta').set('pad', 1);
+  later.getMap('meta').set('map', new Y.Map());
+  const release = Y.encodeStateAsUpdate(later);
+  await expect(
+    validateTaskUpdate({} as Database, b.id, 'editor', b.server, release),
+  ).rejects.toThrow('places items elsewhere than it stores them');
+  Y.applyUpdate(b.server, release);
+  expect(heldAndStored(b.server).stored).not.toEqual(heldAndStored(b.server).memory);
+});
+
+it('refuses held-back structs that only the server’s own write lets in, overlapping', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: victim });
+  const b = await afterLegalWrite();
+  const own = b.server.clientID;
+  // Overlapping the guest's write, inside a map the server has not written yet.
+  const forged = itemUpdate({
+    client: 555,
+    parent: Y.createID(own, Y.getState(b.server.store, own)),
+    key: 'x',
+    content: { any: [null, victim] },
+  });
+  await expect(
+    validateTaskUpdate({} as Database, b.id, 'editor', b.server, forged),
+  ).rejects.toThrow('places items elsewhere than it stores them');
+  // Held anyway (say, from before this check): the server writes that map, and the next update,
+  // whatever it holds, lets the struct in.
+  Y.applyUpdate(b.server, forged);
+  expect(b.server.store.pendingStructs).not.toBeNull();
+  b.server.getMap('meta').set('map', new Y.Map());
+  const client = b.other();
+  const move = b.at(client, () => b.card(client, b.note).set('x', 40));
+  await expect(validateTaskUpdate({} as Database, b.id, 'editor', b.server, move)).rejects.toThrow(
+    'places items elsewhere than it stores them',
+  );
+  Y.applyUpdate(b.server, move);
+  const { memory, stored } = heldAndStored(b.server);
+  expect(stored).not.toEqual(memory);
+});
+
+it('lets an offline session through, sent again from an older state', async () => {
+  vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: 'p' });
+  const b = boardWithLabel();
+  const sv = Y.encodeStateVector(b.doc);
+  // Typed offline in several steps, assigned a task, deleted the note; part of it reached the
+  // server before the connection dropped.
+  const first = b.at(b.doc, () => b.label.insert(0, 'Hel'));
+  for (const letter of 'lo there') b.label.insert(b.label.length, letter);
+  updateTodoItem(b.doc, b.todo, b.item, { dueDate: '2026-12-01' });
+  Y.applyUpdate(b.server, first);
+  b.doc.getMap('elements').delete(b.note);
+  const all = Y.encodeStateAsUpdate(b.doc, sv);
+  await validateTaskUpdate({} as Database, b.id, 'editor', b.server, all);
+  Y.applyUpdate(b.server, all);
+  expect(heldAndStored(b.server).stored).toEqual(heldAndStored(b.server).memory);
+  expect(todoView(b.server)).toEqual(todoView(b.doc));
+});
+
+it('keeps each layer of the placement check on its own', async () => {
+  const victim = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13';
+  // Applied to a copy, the check after the transaction (before Yjs collects or merges) sees a
+  // value merged into the one before it, and one placed next to an item it then collects.
+  {
+    const b = await afterLegalWrite();
+    expect(
+      placesAsStored(
+        b.server,
+        itemUpdate({ client: 555, parent: 'decoy', content: { any: [null, victim] } }),
+      ),
+    ).toBe(false);
+  }
+  {
+    const b = boardWithTask();
+    const guest = b.other();
+    guest.clientID = 555;
+    Y.applyUpdate(
+      b.server,
+      b.at(guest, () => b.card(guest, b.note).set('label', 'a')),
+    );
+    const card = b.server.getMap('elements')._map.get(b.todo)!;
+    const update = encodeUpdate(
+      [
+        {
+          client: 555,
+          clock: 0,
+          structs: [{ parent: card.id, key: 'type', content: { any: [null, 'note'] } }],
+        },
+      ],
+      [{ ...b.server.getMap('elements')._map.get(b.note)!.id, len: 1 }],
+    );
+    expect(placesAsStored(b.server, update)).toBe(false);
+    // The note already deleted and collected: Yjs fails halfway through applying an item that
+    // names a live parent after a collected one. The shape check refuses it first.
+    Y.applyUpdate(
+      b.server,
+      b.at(b.doc, () => b.doc.getMap('elements').delete(b.note)),
+    );
+    expect(Y.getItem(b.server.store, Y.createID(555, 0))).toBeInstanceOf(Y.GC);
+    const after = itemUpdate({
+      client: 555,
+      parent: card.id,
+      key: 'type',
+      content: { any: [null, 'note'] },
+    });
+    expect(() => placesAsStored(b.server, after)).toThrow();
+    expect(() => checkUpdateShape(b.server, after)).toThrow('places items elsewhere');
+  }
+  // The copy holds back what the board holds back, and lets it in as the board does: after the
+  // update, when the server's own write released it.
+  {
+    const b = await afterLegalWrite();
+    const own = b.server.clientID;
+    Y.applyUpdate(
+      b.server,
+      itemUpdate({
+        client: 555,
+        parent: Y.createID(own, Y.getState(b.server.store, own)),
+        key: 'x',
+        content: { any: [null, victim] },
+      }),
+    );
+    b.server.getMap('meta').set('map', new Y.Map());
+    const client = b.other();
+    const move = b.at(client, () => b.card(client, b.note).set('x', 40));
+    expect(placesAsStored(b.server, move)).toBe(false);
+    // The shape check reads the same release on its own.
+    expect(() => checkUpdateShape(b.server, move)).toThrow('places items elsewhere');
+  }
 });
