@@ -6,6 +6,7 @@ type Uploads = typeof import('./uploads.ts');
 let isBusy: Busy['isBusy'];
 let whenIdle: Busy['whenIdle'];
 let cancelUpload: Uploads['cancelUpload'];
+let localPreview: Uploads['localPreview'];
 let retryUpload: Uploads['retryUpload'];
 let startUpload: Uploads['startUpload'];
 let useUploads: Uploads['useUploads'];
@@ -74,7 +75,9 @@ beforeEach(async () => {
   vi.resetModules();
   FakeUpload.all = [];
   ({ isBusy, whenIdle } = await import('../pwa/busy.ts'));
-  ({ cancelUpload, retryUpload, startUpload, useUploads } = await import('./uploads.ts'));
+  ({ cancelUpload, localPreview, retryUpload, startUpload, useUploads } = await import(
+    './uploads.ts'
+  ));
 });
 afterEach(() => vi.useRealTimers());
 
@@ -205,6 +208,44 @@ describe('the reload guard and tus uploads', () => {
     expect(isBusy()).toBe(false);
     expect(release).toHaveBeenCalledTimes(1);
   });
+});
+
+it.each([
+  ['releases the preview of a finished upload that no card showed', false],
+  ['keeps the preview of a finished upload a card shows', true],
+])('%s', async (_name, shown) => {
+  const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+  const revoked = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  const file = new File(['x'], 'shot.png', { type: 'image/png' });
+  startUpload({ file, projectId: 'p', boardId: 'b', onAsset: vi.fn() });
+  await flush();
+  const upload = FakeUpload.all.at(-1)!;
+  upload.options.onAfterResponse!({} as never, { getHeader: () => 'asset-1' } as never);
+  if (shown) expect(localPreview('asset-1')).toBe('blob:preview');
+  upload.options.onSuccess!({} as never);
+  // The finished upload leaves the panel after a few seconds.
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(localPreview('asset-1')).toBe(shown ? 'blob:preview' : null);
+  expect(revoked).toHaveBeenCalledTimes(shown ? 0 : 1);
+  created.mockRestore();
+  revoked.mockRestore();
+});
+
+it('forgets the preview of a cancelled upload a card had shown', async () => {
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+  const revoked = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  const file = new File(['x'], 'shot.png', { type: 'image/png' });
+  const key = startUpload({ file, projectId: 'p', boardId: 'b', onAsset: vi.fn() });
+  await flush();
+  const upload = FakeUpload.all.at(-1)!;
+  upload.options.onAfterResponse!({} as never, { getHeader: () => 'asset-1' } as never);
+  expect(localPreview('asset-1')).toBe('blob:preview');
+  cancelUpload(key);
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(revoked).toHaveBeenCalledWith('blob:preview');
+  // Released, so no card gets it any more.
+  expect(localPreview('asset-1')).toBeNull();
+  vi.restoreAllMocks();
 });
 
 it('rejects requests and ignores late responses after cancellation', async () => {
