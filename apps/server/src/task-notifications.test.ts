@@ -1,4 +1,4 @@
-import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
+import { addTodoItem, createElement, removeTodoItem, updateTodoItem } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
@@ -8,6 +8,7 @@ import {
   assignedItems,
   dropRemovedAssignees,
   notifyAssignment,
+  taskWrites,
   validateTaskUpdate,
 } from './tasks.ts';
 
@@ -58,6 +59,8 @@ it('rejects guest and viewer CRDT assignments before changing the live document'
   Y.applyUpdate(next, Y.encodeStateAsUpdate(doc));
   updateTodoItem(next, todo.id, item, { assigneeId: id });
   const update = Y.encodeStateAsUpdate(next, Y.encodeStateVector(doc));
+  // Read from the update alone, without a copy of the board.
+  expect(taskWrites(doc, update)).not.toBe('full');
   await expect(validateTaskUpdate(db, id, undefined, doc, update)).rejects.toThrow('Guests');
   vi.mocked(boardRole).mockResolvedValueOnce({ role: 'viewer', projectId: id });
   await expect(validateTaskUpdate(db, id, 'actor', doc, update)).rejects.toThrow('editor');
@@ -83,6 +86,129 @@ it('lets nobody be blocked by a stored item that no longer fits the schema', asy
   await expect(validateTaskUpdate(db, id, 'actor', doc, invalid)).rejects.toThrow();
   next.destroy();
   doc.destroy();
+});
+/** A board on the server and a client in sync with it; `send` returns what the client sends. */
+function boardWithItem() {
+  const server = createBoardDoc(id);
+  const todo = createElement(server, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+  const item = addTodoItem(server, todo, 'Permit')!;
+  const client = new Y.Doc();
+  Y.applyUpdate(client, Y.encodeStateAsUpdate(server));
+  const send = (change: () => void) => {
+    const before = Y.encodeStateVector(client);
+    change();
+    return Y.encodeStateAsUpdate(client, before);
+  };
+  return { server, client, todo, item, send };
+}
+it('refuses a due date or an assignee of the wrong format', async () => {
+  const second = boardWithItem();
+  const assignee = second.send(() =>
+    updateTodoItem(second.client, second.todo, second.item, { assigneeId: 'someone' }),
+  );
+  expect(taskWrites(second.server, assignee)).not.toBe('full');
+  await expect(validateTaskUpdate(db, id, 'actor', second.server, assignee)).rejects.toThrow();
+  second.client.destroy();
+  second.server.destroy();
+  const { server, client, todo, item, send } = boardWithItem();
+  const valid = send(() => updateTodoItem(client, todo, item, { dueDate: '2026-11-30' }));
+  expect(taskWrites(server, valid)).not.toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, valid)).resolves.toBeUndefined();
+  Y.applyUpdate(server, valid);
+  const invalid = send(() => updateTodoItem(client, todo, item, { dueDate: 'soon' }));
+  await expect(validateTaskUpdate(db, id, undefined, server, invalid)).rejects.toThrow();
+  client.destroy();
+  server.destroy();
+});
+it('checks an assignment delivered before the update it follows, when it gets in', async () => {
+  const { server, client, todo, item, send } = boardWithItem();
+  const card = client.getMap('elements').get(todo) as Y.Map<unknown>;
+  const move = send(() => card.set('x', 40));
+  const assign = send(() => updateTodoItem(client, todo, item, { assigneeId: id }));
+  // An editor's assignment arrives first: held back, then let in by the move.
+  await expect(validateTaskUpdate(db, id, 'actor', server, assign)).resolves.toBeUndefined();
+  Y.applyUpdate(server, assign);
+  expect(server.store.pendingStructs).not.toBeNull();
+  vi.mocked(boardRole).mockClear();
+  await expect(validateTaskUpdate(db, id, 'actor', server, move)).resolves.toBeUndefined();
+  expect(boardRole).toHaveBeenCalledOnce();
+  Y.applyUpdate(server, move);
+  expect(assignedItems(server).get(`${todo}:${item}`)?.assigneeId).toBe(id);
+  client.destroy();
+  server.destroy();
+});
+it('reads nothing new in an offline session sent again', async () => {
+  const { server, client, todo, item, send } = boardWithItem();
+  const offline = send(() => {
+    updateTodoItem(client, todo, item, { assigneeId: other, dueDate: '2026-12-01' });
+    updateTodoItem(client, todo, item, { assigneeId: id });
+    addTodoItem(client, todo, 'Call the location');
+  });
+  expect(taskWrites(server, offline)).not.toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, offline)).rejects.toThrow('Guests');
+  await expect(validateTaskUpdate(db, id, 'actor', server, offline)).resolves.toBeUndefined();
+  Y.applyUpdate(server, offline);
+  // The connection dropped before the acknowledgement: the client sends it all again.
+  vi.mocked(boardRole).mockClear();
+  expect(taskWrites(server, offline)).toEqual(new Map());
+  await expect(validateTaskUpdate(db, id, undefined, server, offline)).resolves.toBeUndefined();
+  expect(boardRole).not.toHaveBeenCalled();
+  client.destroy();
+  server.destroy();
+});
+it('checks an undone and a redone assignment like any other', async () => {
+  const { server, client, todo, item, send } = boardWithItem();
+  const undo = new Y.UndoManager(client.getMap('elements'));
+  const sendApplied = async (change: () => void, actor?: string) => {
+    const update = send(change);
+    expect(taskWrites(server, update)).not.toBe('full');
+    await validateTaskUpdate(db, id, actor, server, update);
+    Y.applyUpdate(server, update);
+    return update;
+  };
+  await sendApplied(() => updateTodoItem(client, todo, item, { assigneeId: other }), 'actor');
+  undo.stopCapturing();
+  await sendApplied(() => updateTodoItem(client, todo, item, { assigneeId: id }), 'actor');
+  // Back to the first assignee: an assignment, which a guest may not make.
+  const back = send(() => undo.undo());
+  expect(taskWrites(server, back)).not.toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, back)).rejects.toThrow('Guests');
+  await validateTaskUpdate(db, id, 'actor', server, back);
+  Y.applyUpdate(server, back);
+  expect(assignedItems(server).get(`${todo}:${item}`)?.assigneeId).toBe(other);
+  // Undoing the first assignment too assigns nobody.
+  await sendApplied(() => undo.undo());
+  expect(assignedItems(server).size).toBe(0);
+  const redo = send(() => undo.redo());
+  await expect(validateTaskUpdate(db, id, undefined, server, redo)).rejects.toThrow('Guests');
+  vi.mocked(boardRole).mockResolvedValueOnce({ role: 'viewer', projectId: id });
+  await expect(validateTaskUpdate(db, id, 'actor', server, redo)).rejects.toThrow('editor');
+  await validateTaskUpdate(db, id, 'actor', server, redo);
+  Y.applyUpdate(server, redo);
+  expect(assignedItems(server).get(`${todo}:${item}`)?.assigneeId).toBe(other);
+  undo.destroy();
+  client.destroy();
+  server.destroy();
+});
+it('checks an assigned item brought back by undo on a copy of the board', async () => {
+  const { server, client, todo, item, send } = boardWithItem();
+  const undo = new Y.UndoManager(client.getMap('elements'));
+  Y.applyUpdate(
+    server,
+    send(() => updateTodoItem(client, todo, item, { assigneeId: id })),
+  );
+  undo.clear();
+  Y.applyUpdate(
+    server,
+    send(() => removeTodoItem(client, todo, item)),
+  );
+  const restore = send(() => undo.undo());
+  expect(taskWrites(server, restore)).toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, restore)).rejects.toThrow('Guests');
+  await expect(validateTaskUpdate(db, id, 'actor', server, restore)).resolves.toBeUndefined();
+  undo.destroy();
+  client.destroy();
+  server.destroy();
 });
 it('clears an assignee who left instead of restoring one who left too', async () => {
   const doc = createBoardDoc(id);

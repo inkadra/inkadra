@@ -8,6 +8,7 @@ import {
   changesTasks,
   mayTouchTasks,
   tasksInDoc,
+  taskWrites,
   trackAssignments,
   validateTaskUpdate,
 } from './tasks.ts';
@@ -33,7 +34,7 @@ it('returns only open items assigned to this person with their card link and dat
   doc.destroy();
 });
 
-it('runs the full task check only for updates that can assign a task or set a due date', () => {
+it('reads only the task fields an update writes, and copies the board only when it must', () => {
   const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
   const doc = createBoardDoc(id);
   const server = new Y.Doc();
@@ -43,65 +44,144 @@ it('runs the full task check only for updates that can assign a task or set a du
     change();
     return Y.encodeStateAsUpdate(doc, before);
   };
+  /** The new fields of each item written, or 'full' for the check on a copy of the board. */
+  const read = (update: Uint8Array) => {
+    const writes = taskWrites(server, update);
+    return writes === 'full' ? writes : [...writes.values()];
+  };
   let todo = '';
-  // A new todo card (with its first item) is checked.
+  // A new todo card (with its first item) has no task fields yet.
   expect(
-    mayTouchTasks(
-      server,
+    read(
       sent(() => {
         todo = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
       }),
     ),
-  ).toBe(true);
+  ).toEqual([]);
   const item = addTodoItem(doc, todo, 'Permit')!;
   const card = doc.getMap('elements').get(todo) as Y.Map<unknown>;
-  // Moving the card or ticking the item is not.
-  expect(
-    mayTouchTasks(
-      server,
-      sent(() => card.set('x', 40)),
-    ),
-  ).toBe(false);
-  expect(
-    mayTouchTasks(
-      server,
-      sent(() => updateTodoItem(doc, todo, item, { done: true })),
-    ),
-  ).toBe(false);
+  // Moving the card or ticking the item is not read.
+  expect(read(sent(() => card.set('x', 40)))).toEqual([]);
+  expect(read(sent(() => updateTodoItem(doc, todo, item, { done: true })))).toEqual([]);
   // A first assignee, then a new one: the second write names only the value it replaces.
-  expect(
-    mayTouchTasks(
-      server,
-      sent(() => updateTodoItem(doc, todo, item, { assigneeId: id })),
-    ),
-  ).toBe(true);
-  expect(
-    mayTouchTasks(
-      server,
-      sent(() => updateTodoItem(doc, todo, item, { assigneeId: 'other' })),
-    ),
-  ).toBe(true);
-  expect(
-    mayTouchTasks(
-      server,
-      sent(() => updateTodoItem(doc, todo, item, { dueDate: '2026-11-20' })),
-    ),
-  ).toBe(true);
-  // Edits made offline arrive merged: a later assignee replaces one in the same update.
+  expect(read(sent(() => updateTodoItem(doc, todo, item, { assigneeId: id })))).toEqual([
+    { assigneeId: id, dueDate: undefined },
+  ]);
+  expect(read(sent(() => updateTodoItem(doc, todo, item, { assigneeId: 'other' })))).toEqual([
+    { assigneeId: 'other', dueDate: undefined },
+  ]);
+  expect(read(sent(() => updateTodoItem(doc, todo, item, { dueDate: '2026-11-20' })))).toEqual([
+    { assigneeId: 'other', dueDate: '2026-11-20' },
+  ]);
+  // Edits made offline arrive merged: a later assignee replaces one in the same update, and a
+  // cleared due date is read from the deletions.
   Y.applyUpdate(server, Y.encodeStateAsUpdate(doc));
   const offline = Y.encodeStateVector(doc);
   card.set('x', 80);
   updateTodoItem(doc, todo, item, { assigneeId: id });
-  updateTodoItem(doc, todo, item, { assigneeId: 'third' });
+  updateTodoItem(doc, todo, item, { assigneeId: 'third', dueDate: null });
   const merged = Y.encodeStateAsUpdate(doc, offline);
+  expect(read(merged)).toEqual([{ assigneeId: 'third', dueDate: undefined }]);
   expect(mayTouchTasks(server, merged)).toBe(true);
+  // Sent again once applied: nothing new.
+  Y.applyUpdate(server, merged);
+  expect(read(merged)).toEqual([]);
   const moves = sent(() => {
     card.set('x', 1);
     card.set('x', 2);
   });
   expect(mayTouchTasks(server, moves)).toBe(false);
+  // A card that comes with assignees (a paste, a restore) is checked on a copy.
+  const pasted = new Y.Doc();
+  Y.applyUpdate(pasted, Y.encodeStateAsUpdate(doc));
+  const before = Y.encodeStateVector(pasted);
+  pasted.transact(() => {
+    const copy = new Y.Map<unknown>([
+      ['id', 'pasted'],
+      ['type', 'todo'],
+      [
+        'items',
+        Y.Array.from([
+          new Y.Map<unknown>([
+            ['id', 'i'],
+            ['assigneeId', id],
+          ]),
+        ]),
+      ],
+    ]);
+    pasted.getMap('elements').set('pasted', copy);
+  });
+  expect(read(Y.encodeStateAsUpdate(pasted, before))).toBe('full');
+  pasted.destroy();
   doc.destroy();
   server.destroy();
+});
+
+it('copies the board for what the update alone cannot settle', async () => {
+  const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+  const server = createBoardDoc(id);
+  const todo = createElement(server, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+  const item = addTodoItem(server, todo, 'Permit')!;
+  const note = createElement(server, 'note', { x: 0, y: 0 }, {}, { userId: null }).id;
+  const tab = () => {
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(server));
+    return doc;
+  };
+  const diff = (doc: Y.Doc, change: () => void) => {
+    const before = Y.encodeStateVector(doc);
+    change();
+    return Y.encodeStateAsUpdate(doc, before);
+  };
+  const db = {} as Database;
+  // Two tabs assign the same item offline; their edits come back merged: Yjs breaks the tie.
+  const a = tab();
+  const b = tab();
+  const merged = Y.mergeUpdates([
+    diff(a, () => updateTodoItem(a, todo, item, { assigneeId: id })),
+    diff(b, () => updateTodoItem(b, todo, item, { dueDate: '2026-12-01', assigneeId: 'other' })),
+  ]);
+  expect(taskWrites(server, merged)).toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, merged)).rejects.toThrow();
+  // A field named like a task field on another card is not one: read on the copy, ignored.
+  const c = tab();
+  const onNote = diff(c, () =>
+    (c.getMap('elements').get(note) as Y.Map<unknown>).set('assigneeId', id),
+  );
+  expect(taskWrites(server, onNote)).toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, onNote)).resolves.toBeUndefined();
+  // A gap inside an update (a Skip): what follows is held back.
+  const d = tab();
+  const card = d.getMap('elements').get(todo) as Y.Map<unknown>;
+  const first = diff(d, () => card.set('x', 1));
+  diff(d, () => card.set('x', 2));
+  const third = diff(d, () => updateTodoItem(d, todo, item, { dueDate: '2026-12-02' }));
+  expect(taskWrites(server, Y.mergeUpdates([first, third]))).toBe('full');
+  // Another tab's new item, not delivered yet, which this tab writes into: held back.
+  const e = tab();
+  const added = diff(e, () => addTodoItem(e, todo, 'Call the location'));
+  const f = tab();
+  Y.applyUpdate(f, added);
+  const items = (f.getMap('elements').get(todo) as Y.Map<unknown>).get('items') as Y.Array<
+    Y.Map<unknown>
+  >;
+  const early = diff(f, () => {
+    items.get(1).set('note', 'later');
+    updateTodoItem(f, todo, item, { assigneeId: id });
+  });
+  expect(taskWrites(server, early)).toBe('full');
+  // Deletions held back on the board.
+  const g = tab();
+  const own = g.getMap('elements').get(todo) as Y.Map<unknown>;
+  diff(g, () => own.set('x', 3));
+  Y.applyUpdate(
+    server,
+    diff(g, () => own.delete('x')),
+  );
+  expect(server.store.pendingDs).not.toBeNull();
+  const move = diff(c, () => (c.getMap('elements').get(note) as Y.Map<unknown>).set('y', 1));
+  expect(taskWrites(server, move)).toBe('full');
+  for (const doc of [a, b, c, d, e, f, g, server]) doc.destroy();
 });
 
 it('checks an update that fills a gap, which integrates an assignment held back before', async () => {
