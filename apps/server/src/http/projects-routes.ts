@@ -652,6 +652,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       await recordDeletions(tx, files);
       return files;
     });
+    // Its open boards are told and closed now, not at the next periodic check (#951).
+    notices.recheckAccess();
     // Files go after the rows: a failure leaves orphan files, never rows without files.
     await removeFilesLater({ db, jobs, storage }, keys, req.log);
     return reply.status(204).send();

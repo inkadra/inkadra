@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 import { type Connection, type Document, OutgoingMessage, Server } from '@hocuspocus/server';
 import {
+  type BoardNotice,
   boardDocName,
   CURRENT_SCHEMA_VERSION,
   getSchemaVersion,
@@ -57,6 +58,9 @@ interface Context {
   boardId: string;
   user: PresenceUser;
 }
+
+/** Sent to a client just before its board closes because the board was deleted or trashed. */
+type BoardGoneNotice = Extract<BoardNotice, { type: 'boardGone' }>;
 
 /** Sent to a client when its role on an open board changes between editing and reading. */
 export interface AccessMessage {
@@ -690,6 +694,15 @@ export function createCollabServer(deps: {
     return !!row;
   }
 
+  /** Why a board nobody can open is gone: in the trash, or deleted (no row). */
+  async function goneReason(boardId: string): Promise<BoardGoneNotice['reason'] | null> {
+    const [row] = await db
+      .select({ deletedAt: board.deletedAt })
+      .from(board)
+      .where(eq(board.id, boardId));
+    return !row ? 'deleted' : row.deletedAt ? 'trash' : null;
+  }
+
   /**
    * Closes connections whose token or session ended (4401) or that lost their role (4403), and
    * updates read-only on the others. Each person, sign-in and (person, board) pair is read once
@@ -710,6 +723,7 @@ export function createCollabServer(deps: {
     const people = new Map<string, Promise<typeof user.$inferSelect | null>>();
     const signIns = new Map<string, Promise<boolean>>();
     const roles = new Map<string, ReturnType<typeof boardRole>>();
+    const gone = new Map<string, Promise<BoardGoneNotice['reason'] | null>>();
     for (const document of server.hocuspocus.documents.values()) {
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         const ctx = connection.context;
@@ -733,7 +747,21 @@ export function createCollabServer(deps: {
             boardRole(db, ctx.actor, ctx.boardId),
           );
           if (!access?.role) {
-            log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
+            // No board to have a role on: it was deleted or moved to the trash (#951). Said
+            // first, so the client tells the person that rather than "no access".
+            const reason = access
+              ? null
+              : await once(gone, ctx.boardId, () => goneReason(ctx.boardId));
+            if (reason)
+              connection.sendStateless(
+                JSON.stringify({ type: 'boardGone', reason } satisfies BoardGoneNotice),
+              );
+            log.info(
+              { boardId: ctx.boardId, reason },
+              reason
+                ? 'collab connection closed: board gone'
+                : 'collab connection closed: access removed',
+            );
             connection.close({ code: 4403, reason: 'Forbidden' });
           } else {
             ctx.canEdit = atLeast(access.role, 'editor');

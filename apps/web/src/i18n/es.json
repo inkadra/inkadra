@@ -753,7 +753,9 @@
       "offline": "Sin conexión · guardado en el dispositivo",
       "denied": "Acceso denegado",
       "readOnly": "Solo lectura",
-      "signedOut": "Sesión cerrada"
+      "signedOut": "Sesión cerrada",
+      "gone": "Tablero eliminado",
+      "trashed": "Tablero en la papelera"
     },
     "denied": {
       "title": "No puedes abrir este tablero",
@@ -761,6 +763,14 @@
       "copy": "Copiar enlace del tablero",
       "copied": "Enlace copiado",
       "hint": "Envía el enlace copiado a quien gestiona el proyecto: puede darte acceso."
+    },
+    "gone": {
+      "deletedTitle": "Este tablero se ha eliminado",
+      "deletedBody": "El tablero o su proyecto se eliminó mientras estaba abierto.",
+      "trashTitle": "Este tablero está en la papelera",
+      "trashBody": "Se movió a la papelera mientras estaba abierto. Quienes gestionan el proyecto pueden restaurarlo.",
+      "kept": "Los cambios hechos aquí que aún no se guardaron se conservan en este dispositivo.",
+      "back": "Volver a los proyectos"
     },
     "errors": {
       "boardCreate": "No se pudo crear el tablero.",

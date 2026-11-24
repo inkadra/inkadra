@@ -53,8 +53,26 @@
   .ink-header__group {
     display: contents;
   }
-  .ink-header__group > :not(.ink-header__crumbs, .board-header-menu, .ink-btn) {
+  .ink-header__group > :not(.ink-header__crumbs, .board-header-menu, .ink-btn, .sync--gone) {
     display: none;
+  }
+  /* A board that went (#951): its red dot at the end, the words for screen readers only. The
+     name stops before the dot (it spans to the end when the view picker is not there). */
+  .ink-header:has(.sync--gone) .ink-header__crumbs {
+    grid-column: 2 / 5;
+  }
+  .ink-header__group > .sync--gone {
+    grid-area: 1 / 5;
+    justify-self: center;
+    width: 44px;
+    justify-content: center;
+  }
+  .ink-header__group > .sync--gone .sync__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
   .shell-header-content .ink-header__crumbs {
     grid-area: 1 / 2 / 2 / -1;

@@ -753,7 +753,9 @@
       "offline": "Offline · saved on this device",
       "denied": "Access denied",
       "readOnly": "Read only",
-      "signedOut": "Signed out"
+      "signedOut": "Signed out",
+      "gone": "Board deleted",
+      "trashed": "Board in the trash"
     },
     "denied": {
       "title": "You cannot open this board",
@@ -761,6 +763,14 @@
       "copy": "Copy board link",
       "copied": "Link copied",
       "hint": "Send the copied link to whoever manages the project: they can give you access."
+    },
+    "gone": {
+      "deletedTitle": "This board was deleted",
+      "deletedBody": "The board or its project was deleted while it was open.",
+      "trashTitle": "This board is in the trash",
+      "trashBody": "It was moved to the trash while it was open. The project’s managers can restore it.",
+      "kept": "Changes made here that were not saved yet are kept on this device.",
+      "back": "Back to projects"
     },
     "errors": {
       "boardCreate": "The board could not be created.",

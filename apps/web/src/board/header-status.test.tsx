@@ -187,6 +187,21 @@ describe('header status', () => {
     expect(html).not.toContain('board.status.online');
   });
 
+  it('says the board was deleted or trashed, in red, rather than access denied (#951)', () => {
+    for (const [gone, key] of [
+      ['deleted', 'board.status.gone'],
+      ['trash', 'board.status.trashed'],
+    ] as const) {
+      const html = renderToStaticMarkup(
+        <SyncStatus status="denied" readOnly saves={storeOf(0, null)} online={1} gone={gone} />,
+      );
+      expect(html).toContain('sync sync--denied');
+      expect(html).toContain(`title="${key}"`);
+      expect(html).not.toContain('board.status.denied');
+      expect(html).not.toContain('board.status.readOnly');
+    }
+  });
+
   it('names the card someone has open, and counts the others', () => {
     const editors = [
       { id: 'a', name: 'Giulia', label: 'Logline', color: 'var(--ink-tag-blue)' },

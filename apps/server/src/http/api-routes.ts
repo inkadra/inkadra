@@ -170,6 +170,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         'token-proof',
         // Board notice `asset`: a file's copies are being made again (#787).
         'asset-notices',
+        // Board notice `boardGone` before a board deleted or trashed while open closes (#951).
+        'board-gone-notice',
         BOARD_WRITERS_CAPABILITY,
         PLAN_SHEET_PDF_CAPABILITY,
         // POST /assets/lookup: the metadata of many assets in one request.

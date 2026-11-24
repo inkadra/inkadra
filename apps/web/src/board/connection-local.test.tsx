@@ -32,8 +32,15 @@ type Options = {
   onDisconnect: () => void;
   onAuthenticationFailed: (event: { reason: string }) => void;
   onStateless: (event: { payload: string }) => void;
+  onClose: (event: { event: { code: number; reason: string } }) => void;
 };
-type Provider = Options & { emit: (event: string, payload: unknown) => void };
+type Provider = Options & {
+  emit: (event: string, payload: unknown) => void;
+  /** The provider itself: updates it applies are the server's. */
+  self: unknown;
+  /** Whether its socket still listed it when it was destroyed, so it told the server. */
+  closeSent: () => boolean | undefined;
+};
 const person = vi.hoisted(() => ({ id: 'person-a' }));
 const providers = vi.hoisted(() => [] as Provider[]);
 const me = vi.hoisted(() => ({ get: vi.fn(async () => ({})) }));
@@ -58,11 +65,18 @@ vi.mock('@hocuspocus/provider', () => ({
     listeners = new Map<string, (payload: unknown) => void>();
     // What the provider says after sending an edit: the server has not confirmed it yet.
     hasUnsyncedChanges = true;
+    effectiveName = 'board';
+    closeSent: boolean | undefined;
+    configuration = {
+      websocketProvider: { configuration: { providerMap: new Map([['board', this]]) } },
+    };
     constructor(options: Options) {
       this.document = options.document;
       providers.push({
         ...options,
         emit: (event, payload) => this.listeners.get(event)?.(payload),
+        self: this,
+        closeSent: () => this.closeSent,
       });
     }
     on(event: string, listener: (payload: unknown) => void) {
@@ -70,7 +84,10 @@ vi.mock('@hocuspocus/provider', () => ({
     }
     off() {}
     attach() {}
-    destroy() {}
+    destroy() {
+      // Hocuspocus sends a close for the document only while its socket lists it.
+      this.closeSent = this.configuration.websocketProvider.configuration.providerMap.has('board');
+    }
   },
   HocuspocusProviderWebsocket: class {
     destroy() {}
@@ -409,4 +426,86 @@ it('stops waiting for a merge the server never answers, and keeps the edits (#89
   expect((error as RestoreError).reason).toBe('refused');
   expect(await keptBoards(person.id)).toContain('silent');
   expect(connection?.kept).toBeTruthy();
+});
+
+/** An edit on a synced board that the server has not confirmed yet. */
+async function editSynced(id: string, text: string) {
+  const provider = await open(id);
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'read-write' });
+    provider.onSynced();
+    connection!.store.doc.getMap('meta').set('title', text);
+    provider.emit('unsyncedChanges', { number: 1 });
+  });
+  await settle();
+  return provider;
+}
+
+it('says a board went to the trash while open and sets its unsaved edits aside (#951)', async () => {
+  const provider = await editSynced('trashed', 'Typed as it went');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'boardGone', reason: 'trash' }) }),
+  );
+  await settle();
+  expect(connection?.status).toBe('denied');
+  expect(connection?.gone).toBe('trash');
+  expect(connection?.kept).toBeTruthy();
+  // The close that follows changes nothing.
+  await act(async () => provider.onClose({ event: { code: 1000, reason: 'Forbidden' } }));
+  expect(connection?.gone).toBe('trash');
+});
+
+/** A board as the server has it, with a title. */
+async function openFromServer(id: string, serverTitle: string) {
+  const server = new Y.Doc();
+  server.getMap('meta').set('title', serverTitle);
+  const state = Y.encodeStateAsUpdate(server);
+  const provider = await open(id);
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'read-write' });
+    Y.applyUpdate(provider.document, state, provider.self);
+    provider.onSynced();
+  });
+  await settle();
+  return { provider, state };
+}
+
+it('stays gone when the socket of a deleted board syncs again (#951)', async () => {
+  const { provider } = await openFromServer('gone-sync', 'Gone');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'boardGone', reason: 'deleted' }) }),
+  );
+  await act(async () => provider.onSynced());
+  expect(connection?.status).toBe('denied');
+  expect(connection?.gone).toBe('deleted');
+});
+
+it('keeps saying a board went whatever the connection says after (#951)', async () => {
+  const { provider } = await openFromServer('gone-after', 'Gone');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'boardGone', reason: 'trash' }) }),
+  );
+  await act(async () => provider.onAuthenticationFailed({ reason: 'Unauthorized' }));
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'access', readOnly: true }) }),
+  );
+  expect(connection?.status).toBe('denied');
+  expect(connection?.gone).toBe('trash');
+});
+
+it('tells the server nothing more about a board it closed, so a later visit is not closed (#951)', async () => {
+  const { provider } = await openFromServer('closed-by-server', 'Closed');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'boardGone', reason: 'trash' }) }),
+  );
+  await act(async () => provider.onClose({ event: { code: 1000, reason: 'Forbidden' } }));
+  await close();
+  // A close the server queues for a document it no longer has is replayed on the next sign-in
+  // of that board on a shared socket, and closes it.
+  expect(provider.closeSent()).toBe(false);
+
+  // A board still open on the server is told it is left, as before.
+  const open = await openFromServer('left-by-us', 'Open');
+  await close();
+  expect(open.provider.closeSent()).toBe(true);
 });

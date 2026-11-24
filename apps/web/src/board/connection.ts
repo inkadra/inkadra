@@ -61,6 +61,8 @@ export interface BoardConnection {
   sizeLimited?: boolean;
   /** Edits of this board the server would not take are set aside on this device (#791). */
   kept?: KeptChanges | null;
+  /** The board was deleted or moved to the trash while open (#951); `status` is `denied`. */
+  gone?: 'deleted' | 'trash' | null;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
@@ -295,6 +297,7 @@ export function useBoardConnection(
       readOnly: cached?.readOnly ?? false,
       schemaTooNew: false,
       accessChangedAt: null,
+      gone: null,
     };
     const saves = createSaveStore();
     // Changes the server has not confirmed yet: a reload for a new version waits for them.
@@ -435,6 +438,8 @@ export function useBoardConnection(
       name: boardDocName(boardId),
       document: doc,
       onSynced: () => {
+        // A board that went stays gone, even if its socket syncs again (restored meanwhile).
+        if (state.gone) return;
         if (deletions) {
           Y.applyUpdate(doc, deletions);
           // Deletions of the refused additions name items the server never got: drop them,
@@ -465,9 +470,16 @@ export function useBoardConnection(
           }
         }
         if (msg?.type === 'asset') refetchAsset(msg.assetId);
+        // The board went (#951): the `Forbidden` close follows; this says why.
+        if (msg?.type === 'boardGone') {
+          drop();
+          update({ status: 'denied', gone: msg.reason });
+        }
         if (msg?.type === 'access') update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
       },
       onClose: ({ event }) => {
+        // The server's close of this document (a socket's close carries the socket's code).
+        if (event.code === 1000) closedByServer = true;
         const status = CLOSE_REASONS[event.reason];
         if (status === 'denied') drop();
         if (status) update({ status });
@@ -478,9 +490,11 @@ export function useBoardConnection(
         // server's periodic check may not have told us before the socket dropped.
         const changed = authenticated && readOnly !== roleReadOnly;
         authenticated = true;
+        closedByServer = false;
         update(changed ? { readOnly, accessChangedAt: Date.now() } : { readOnly });
       },
       onAuthenticationFailed: ({ reason }) => {
+        closedByServer = true;
         const status = CLOSE_REASONS[reason];
         if (status === 'denied') drop();
         if (status) update({ status });
@@ -502,12 +516,17 @@ export function useBoardConnection(
     if (socket) provider.attach();
     let roleReadOnly = cached?.readOnly ?? false;
     let authenticated = false;
+    // The server no longer has this document open: telling it the document is left would be
+    // queued and replayed on the next sign-in of this board on a shared socket, closing it.
+    let closedByServer = false;
     let docTooNew = false;
     let copyTooNew = false;
     function update(patch: Partial<typeof state>) {
       if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
       const was = state.status;
       state = { ...state, ...patch };
+      // A board that went stays so, whatever the connection says after (#951).
+      if (state.gone) state.status = 'denied';
       state.schemaTooNew = docTooNew || copyTooNew;
       state.readOnly = roleReadOnly || state.schemaTooNew;
       if (state.status === 'denied') settleMerge(new RestoreError('refused'));
@@ -554,6 +573,10 @@ export function useBoardConnection(
       stopSchema();
       stopSaves();
       setBusy(busy, false);
+      if (closedByServer)
+        provider.configuration.websocketProvider.configuration.providerMap.delete(
+          provider.effectiveName,
+        );
       // Destroying flushes what is still buffered: the shared socket closes only after that.
       provider.destroy();
       if (socket) releaseSharedSocket(socket, boardDocName(boardId));

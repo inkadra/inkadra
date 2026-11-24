@@ -4,7 +4,13 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
-import { BOARDS_STALE_MS, childBoards, useProjectBoards } from './boards.ts';
+import {
+  BOARDS_STALE_MS,
+  childBoards,
+  refreshSharedBoards,
+  useProjectBoards,
+  useSharedBoards,
+} from './boards.ts';
 
 const board = (id: string, parentBoardId: string | null, kind: Board['kind'] = 'board') =>
   ({ id, parentBoardId, kind, title: id, position: id }) as Board;
@@ -35,6 +41,27 @@ it('reads a project’s board list again once it is a minute old (#824)', async 
   } finally {
     await act(async () => root.unmount());
     vi.useRealTimers();
+    vi.restoreAllMocks();
+  }
+});
+
+function SharedReader() {
+  useSharedBoards(true);
+  return null;
+}
+
+it('reads the boards shared with you again when asked, as when one of them went (#951)', async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [] });
+  const root = createRoot(document.createElement('div'));
+  try {
+    await act(async () => root.render(<SharedReader />));
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => refreshSharedBoards());
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(get).toHaveBeenLastCalledWith('/shared-boards');
+  } finally {
+    await act(async () => root.unmount());
     vi.restoreAllMocks();
   }
 });

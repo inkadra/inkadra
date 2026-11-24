@@ -209,9 +209,24 @@ export function treeOrder(items: readonly Board[]): Board[] {
   return out;
 }
 
+const sharedReaders = new Set<() => void>();
+/** Has every reader of the boards shared with you read them again (one went, #951). */
+export function refreshSharedBoards() {
+  for (const read of sharedReaders) read();
+}
+
 /** Top boards of the subtrees shared with you in projects you are not a member of. */
 export function useSharedBoards(enabled: boolean): Board[] | null {
   const [items, setItems] = useState<Board[] | null>(null);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    const read = () => setVersion((v) => v + 1);
+    sharedReaders.add(read);
+    return () => {
+      sharedReaders.delete(read);
+    };
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` asks for the list again.
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
@@ -222,6 +237,6 @@ export function useSharedBoards(enabled: boolean): Board[] | null {
     return () => {
       alive = false;
     };
-  }, [enabled]);
+  }, [enabled, version]);
   return items;
 }

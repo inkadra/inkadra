@@ -2206,6 +2206,90 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     );
   }
 
+  it('tells open boards they were trashed or deleted and closes them at once (#951)', async () => {
+    // The default re-check (30 s): only the delete routes can make this quick.
+    const slow = createCollabServer({ limits, db, auth, log, publicUrl: config.PUBLIC_URL });
+    const web = await createApp({
+      config,
+      db,
+      auth,
+      log,
+      ...testDeps(db, log),
+      notices: directBoardNotifier(slow),
+    });
+    attachCollab(web.server, slow);
+    await web.listen({ host: '127.0.0.1', port: 0 });
+    const shared = base;
+    base = `127.0.0.1:${(web.server.address() as AddressInfo).port}`;
+    const opened: Array<ReturnType<typeof connect>> = [];
+    try {
+      const created = await web.inject({
+        method: 'POST',
+        url: '/api/v1/projects',
+        headers: as('owner'),
+        payload: { name: 'Gone' },
+      });
+      const { id: goneProject, rootBoardId } = created.json() as {
+        id: string;
+        rootBoardId: string;
+      };
+      const addBoard = async (parentBoardId: string) =>
+        (
+          await web.inject({
+            method: 'POST',
+            url: `/api/v1/projects/${goneProject}/boards`,
+            headers: as('owner'),
+            payload: { title: 'Below', parentBoardId },
+          })
+        ).json().id as string;
+      const child = await addBoard(rootBoardId);
+      const grandchild = await addBoard(child);
+      /** What a board's connection was told, and why it closed. */
+      const watch = async (id: string) => {
+        const c = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+        opened.push(c);
+        await c.synced;
+        const told: unknown[] = [];
+        c.provider.on('stateless', ({ payload }: { payload: string }) =>
+          told.push(JSON.parse(payload)),
+        );
+        return { told, closed: () => closedWith(c) };
+      };
+      const [root, below, belowThat] = await Promise.all(
+        [rootBoardId, child, grandchild].map(watch),
+      );
+
+      // To the trash: the board and the one below it, told first, closed well within 4 s.
+      const closings = [below, belowThat].map((board) => board?.closed());
+      const trashed = await web.inject({
+        method: 'DELETE',
+        url: `/api/v1/boards/${child}`,
+        headers: as('owner'),
+      });
+      expect(trashed.statusCode).toBe(204);
+      expect(await Promise.all(closings)).toEqual(['Forbidden', 'Forbidden']);
+      for (const board of [below, belowThat])
+        expect(board?.told).toEqual([{ type: 'boardGone', reason: 'trash' }]);
+      expect(root?.told).toEqual([]);
+
+      // The project deleted: its root board says deleted.
+      const rootClosed = root?.closed();
+      const deleted = await web.inject({
+        method: 'DELETE',
+        url: `/api/v1/projects/${goneProject}`,
+        headers: as('owner'),
+      });
+      expect(deleted.statusCode).toBe(204);
+      expect(await rootClosed).toBe('Forbidden');
+      expect(root?.told).toEqual([{ type: 'boardGone', reason: 'deleted' }]);
+    } finally {
+      for (const c of opened) c.close();
+      base = shared;
+      await slow.destroy();
+      await web.close();
+    }
+  });
+
   describe('an assignee who is not a project member', () => {
     let runs = 0;
     /** Its own project, so the other tests' role changes don't reach it. */

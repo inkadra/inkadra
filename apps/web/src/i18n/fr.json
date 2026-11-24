@@ -753,7 +753,9 @@
       "offline": "Hors ligne · enregistré sur l’appareil",
       "denied": "Accès refusé",
       "readOnly": "Lecture seule",
-      "signedOut": "Déconnecté"
+      "signedOut": "Déconnecté",
+      "gone": "Tableau supprimé",
+      "trashed": "Tableau dans la corbeille"
     },
     "denied": {
       "title": "Vous ne pouvez pas ouvrir ce tableau",
@@ -761,6 +763,14 @@
       "copy": "Copier le lien du tableau",
       "copied": "Lien copié",
       "hint": "Envoyez le lien copié à la personne qui gère le projet : elle pourra vous donner accès."
+    },
+    "gone": {
+      "deletedTitle": "Ce tableau a été supprimé",
+      "deletedBody": "Le tableau ou son projet a été supprimé pendant qu’il était ouvert.",
+      "trashTitle": "Ce tableau est dans la corbeille",
+      "trashBody": "Il a été mis à la corbeille pendant qu’il était ouvert. Les responsables du projet peuvent le restaurer.",
+      "kept": "Les modifications faites ici et pas encore enregistrées restent sur cet appareil.",
+      "back": "Retour aux projets"
     },
     "errors": {
       "boardCreate": "Impossible de créer le tableau.",
