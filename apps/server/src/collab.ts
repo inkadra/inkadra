@@ -15,6 +15,7 @@ import {
   type PresenceState,
   type PresenceUser,
   parseBoardDocName,
+  preparePlanLists,
   validateBoardDoc,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared';
@@ -1294,6 +1295,30 @@ export function createCollabServer(deps: {
         const steps = migrateBoardDoc(document, boardId);
         if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
         prepareImageDrawings(document);
+        // Set plans' lists made or converted here, before any client syncs (decision of 23 Nov),
+        // and stored at once: Hocuspocus stores only after a change once the board is open, and
+        // a board opened and left without an edit would serve another list at the next load.
+        // The row as it is now goes into the document first, so a write that landed meanwhile is kept.
+        const lists = preparePlanLists(document);
+        if (lists > 0 && row) {
+          await db.transaction(async (tx) => {
+            const [now] = await tx
+              .select({ state: boardDoc.state })
+              .from(boardDoc)
+              .where(eq(boardDoc.boardId, boardId))
+              .for('update');
+            // A write that landed during the load goes into the document too, not only into the
+            // row: the next store writes the document, and would otherwise lose it.
+            if (now) Y.applyUpdate(document, now.state);
+            return storeIfBoardExists(
+              tx,
+              boardId,
+              Y.encodeStateAsUpdate(document),
+              getSchemaVersion(document),
+            );
+          });
+          log.info({ boardId, lists }, 'set plan lists prepared and stored');
+        }
         const track = trackAssignments(document);
         assignedNow.set(document, track);
         assignments.set(document, track());

@@ -7,6 +7,7 @@ import {
   getSchemaVersion,
   hiddenFromGuests,
   migrateBoardDoc,
+  preparePlanLists,
   roots,
   SchemaTooNewError,
 } from '@inkadra/doc-schema';
@@ -239,6 +240,8 @@ export function versionDoc(row: { state: Uint8Array }, boardId: string): Y.Doc {
   const doc = new Y.Doc();
   Y.applyUpdate(doc, row.state);
   migrateBoardDoc(doc, boardId);
+  // Its plan lists as the live board has them, so an unchanged list compares as the same.
+  preparePlanLists(doc);
   return doc;
 }
 
@@ -300,6 +303,8 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): number | null {
     for (const id of hidden)
       if (!hiddenFromGuests(id, lookup)) now.elements.get(id)?.set(GUEST_HIDDEN, true);
     prepareImageDrawings(live);
+    // A version saved before the lists were prepared brings them back as they were then.
+    preparePlanLists(live);
     // The storyboard's aspect and animatic sound track come back with the frames.
     for (const key of ['aspect', 'animaticAudio']) {
       const value = then.meta.get(key);
