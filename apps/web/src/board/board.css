@@ -3366,6 +3366,16 @@ button.crumb--editable:focus-visible {
   width: 100%;
   background: var(--ink-bg-panel);
 }
+/* A board that went while open (#951): its reasons, and two actions that wrap on a phone. */
+.board-state .ink-muted p {
+  margin: 0 0 6px;
+}
+.board-state .ink-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .canvas__ghost {
@@ -4246,6 +4256,13 @@ button.crumb--editable:focus-visible {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+  /* A board that went (#951) has nothing else in its header: the words stay. */
+  .sync--gone .sync__text {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
   }
 }
 

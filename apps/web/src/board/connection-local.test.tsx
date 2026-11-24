@@ -13,6 +13,9 @@ import {
   type BoardConnection,
   cachedBoards,
   MERGE_TIMEOUT_MS,
+  RESET_LIMIT,
+  RESET_REASON,
+  RESET_WINDOW_MS,
   refusalStatus,
   useBoardConnection,
 } from './connection.ts';
@@ -32,8 +35,13 @@ type Options = {
   onDisconnect: () => void;
   onAuthenticationFailed: (event: { reason: string }) => void;
   onStateless: (event: { payload: string }) => void;
+  onClose: (event: { event: { code: number; reason: string } }) => void;
 };
-type Provider = Options & { emit: (event: string, payload: unknown) => void };
+type Provider = Options & {
+  emit: (event: string, payload: unknown) => void;
+  /** How often it signed in again over its socket. */
+  reattached: () => number;
+};
 const person = vi.hoisted(() => ({ id: 'person-a' }));
 const providers = vi.hoisted(() => [] as Provider[]);
 const me = vi.hoisted(() => ({ get: vi.fn(async () => ({})) }));
@@ -58,11 +66,14 @@ vi.mock('@hocuspocus/provider', () => ({
     listeners = new Map<string, (payload: unknown) => void>();
     // What the provider says after sending an edit: the server has not confirmed it yet.
     hasUnsyncedChanges = true;
+    attached = 0;
+    configuration = { websocketProvider: { attach: () => this.attached++ } };
     constructor(options: Options) {
       this.document = options.document;
       providers.push({
         ...options,
         emit: (event, payload) => this.listeners.get(event)?.(payload),
+        reattached: () => this.attached,
       });
     }
     on(event: string, listener: (payload: unknown) => void) {
@@ -409,4 +420,80 @@ it('stops waiting for a merge the server never answers, and keeps the edits (#89
   expect((error as RestoreError).reason).toBe('refused');
   expect(await keptBoards(person.id)).toContain('silent');
   expect(connection?.kept).toBeTruthy();
+});
+
+/** An edit on a synced board that the server has not confirmed yet. */
+async function editSynced(id: string, text: string) {
+  const provider = await open(id);
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'read-write' });
+    provider.onSynced();
+    connection!.store.doc.getMap('meta').set('title', text);
+    provider.emit('unsyncedChanges', { number: 1 });
+  });
+  await settle();
+  return provider;
+}
+const resetBy = (provider: Provider, code = 1000) =>
+  act(async () => provider.onClose({ event: { code, reason: RESET_REASON } }));
+
+it('says a board went to the trash while open and sets its unsaved edits aside (#951)', async () => {
+  const provider = await editSynced('trashed', 'Typed as it went');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'boardGone', reason: 'trash' }) }),
+  );
+  await settle();
+  expect(connection?.status).toBe('denied');
+  expect(connection?.gone).toBe('trash');
+  expect(connection?.kept).toBeTruthy();
+  // The close that follows changes nothing.
+  await act(async () => provider.onClose({ event: { code: 1000, reason: 'Forbidden' } }));
+  expect(connection?.gone).toBe('trash');
+});
+
+it('syncs again after a reset, and sets the edits aside once resets repeat', async () => {
+  const now = vi.spyOn(Date, 'now');
+  let clock = 1_000_000;
+  now.mockImplementation(() => clock);
+  const provider = await editSynced('reset', 'Refused each time');
+  // A socket closing with the same reason reconnects on its own: not a refusal.
+  await resetBy(provider, 4205);
+  expect(provider.reattached()).toBe(0);
+  for (let attempt = 1; attempt < RESET_LIMIT; attempt++) {
+    await resetBy(provider);
+    expect(provider.reattached()).toBe(attempt);
+    expect(connection?.status).toBe('connecting');
+    expect(connection?.retrying).toBe(true);
+    // The handshake counts back to zero before the server refuses the edit again.
+    await act(async () => {
+      provider.onSynced();
+      provider.emit('unsyncedChanges', { number: 0 });
+    });
+    clock += 1000;
+  }
+  expect(connection?.status).toBe('synced');
+  expect(connection?.retrying).toBe(false);
+  expect(providers.at(-1)).toBe(provider);
+  await resetBy(provider);
+  await settle();
+  // Reopened from the server, the edits set aside with the notice for them.
+  expect(providers.at(-1)).not.toBe(provider);
+  expect(title()).toBeUndefined();
+  expect(connection?.kept).toBeTruthy();
+  expect(connection?.updateRefused).toBe(true);
+  await act(async () => connection!.kept!.discard());
+  expect(connection?.updateRefused).toBe(false);
+});
+
+it('counts only the resets of the last minute', async () => {
+  const now = vi.spyOn(Date, 'now');
+  let clock = 5_000_000;
+  now.mockImplementation(() => clock);
+  const provider = await editSynced('slow-resets', 'Now and then');
+  for (let i = 0; i < RESET_LIMIT + 1; i++) {
+    await resetBy(provider);
+    clock += RESET_WINDOW_MS / 2 + 1;
+  }
+  expect(providers.at(-1)).toBe(provider);
+  expect(provider.reattached()).toBe(RESET_LIMIT + 1);
 });

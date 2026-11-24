@@ -48,6 +48,17 @@ export const WriteRefusedNotice = z.object({
  */
 export const AssetNotice = z.object({ type: z.literal('asset'), assetId: z.uuid() });
 
+/**
+ * The board went while it was open (#951): `deleted` with its project or for good, `trash` moved to
+ * the trash, where the project's managers can restore it. Sent just before the connection is
+ * closed with `Forbidden`, so the client can say why instead of "no access". Servers send it
+ * only with the `board-gone-notice` capability; older clients ignore it.
+ */
+export const BoardGoneNotice = z.object({
+  type: z.literal('boardGone'),
+  reason: z.enum(['deleted', 'trash']),
+});
+
 export const BoardNotice = z.discriminatedUnion('type', [
   AccessNotice,
   WriteRefusedNotice,
@@ -56,6 +67,7 @@ export const BoardNotice = z.discriminatedUnion('type', [
   RestoredNotice,
   VersionsNotice,
   AssetNotice,
+  BoardGoneNotice,
 ]);
 export type BoardNotice = z.infer<typeof BoardNotice>;
 

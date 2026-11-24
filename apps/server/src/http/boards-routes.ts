@@ -42,6 +42,7 @@ import {
   scheduleSource,
   storedColumns,
 } from '../board-content.ts';
+import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import { boardCounts, projectBoard, unsortedOf } from '../board-preview.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -75,6 +76,7 @@ interface Deps {
   /** Reads the live document; without it, the stored one is read. */
   boardReader?: BoardReader;
   config?: Pick<Config, 'DEMO_MODE'>;
+  notices?: BoardNotifier;
 }
 
 /**
@@ -821,6 +823,8 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
         .set({ deletedAt: new Date() })
         .where(and(inArray(board.id, ids), isNull(board.deletedAt)));
     });
+    // Its open boards, and those below it, are told and closed now (#951).
+    (deps.notices ?? noNotices).recheckAccess();
     return reply.status(204).send();
   });
 }

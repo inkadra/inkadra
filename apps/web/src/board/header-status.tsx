@@ -139,14 +139,25 @@ export function SyncStatus({
   readOnly,
   saves,
   online,
-}: Omit<SyncInputs, 'pending' | 'savedAt'> & { saves: SaveStore; online: number }) {
+  gone,
+  retrying,
+}: Omit<SyncInputs, 'pending' | 'savedAt'> & {
+  saves: SaveStore;
+  online: number;
+  /** Syncing again after the server reset the board: phones show the dot too. */
+  retrying?: boolean | undefined;
+  /** The board was deleted or trashed while open (#951): said instead of "access denied". */
+  gone?: 'deleted' | 'trash' | null | undefined;
+}) {
   const { t } = useTranslation();
+  const goneText = gone ? t(gone === 'trash' ? 'board.status.trashed' : 'board.status.gone') : '';
   const { pending, savedAt } = useSyncExternalStore(saves.subscribe, saves.get, saves.get);
   const ticking = status === 'synced' && !readOnly && pending === 0 && savedAt !== null;
   const now = useNow(ticking);
   const summary = syncSummary({ status, readOnly, pending, savedAt }, now);
-  const state =
-    summary.kind === 'saved'
+  const state = goneText
+    ? goneText
+    : summary.kind === 'saved'
       ? summary.seconds === null || summary.seconds < FRESH_SAVE_S
         ? t('board.status.saved')
         : t('board.status.savedAgo', { count: summary.seconds })
@@ -158,13 +169,17 @@ export function SyncStatus({
   const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
     if (last.current === status) return;
-    setAnnouncement(connectionAnnouncement(last.current, status, t));
+    setAnnouncement(goneText || connectionAnnouncement(last.current, status, t));
     last.current = status;
-  }, [status, t]);
+  }, [status, t, goneText]);
   return (
     <>
       <span
-        className={`sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`}
+        className={
+          gone
+            ? 'sync sync--denied sync--gone'
+            : `sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}${retrying ? ' sync--retrying' : ''}`
+        }
         data-status={status}
         // Where the header is short only the dot shows; the words stay in the tooltip.
         title={

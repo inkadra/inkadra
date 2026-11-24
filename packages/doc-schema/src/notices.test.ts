@@ -26,6 +26,10 @@ describe('board notices', () => {
     expect(readBoardNotice('{"type":"writeRefused","reason":"schema","schemaVersion":22}')).toEqual(
       { type: 'writeRefused', reason: 'schema', schemaVersion: 22 },
     );
+    expect(readBoardNotice('{"type":"boardGone","reason":"trash"}')).toEqual({
+      type: 'boardGone',
+      reason: 'trash',
+    });
   });
 
   it('ignores malformed and unknown messages', () => {
@@ -34,5 +38,6 @@ describe('board notices', () => {
     expect(readBoardNotice('{"type":"restored","versionId":"nope"}')).toBeNull();
     expect(readBoardNotice('{"type":"versions"}')).toBeNull();
     expect(readBoardNotice('{"type":"asset","assetId":"nope"}')).toBeNull();
+    expect(readBoardNotice('{"type":"boardGone","reason":"archived"}')).toBeNull();
   });
 });

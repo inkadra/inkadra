@@ -753,7 +753,9 @@
       "offline": "Offline · salvato sul dispositivo",
       "denied": "Accesso negato",
       "readOnly": "Sola lettura",
-      "signedOut": "Disconnesso"
+      "signedOut": "Disconnesso",
+      "gone": "Board eliminata",
+      "trashed": "Board nel cestino"
     },
     "denied": {
       "title": "Non puoi aprire questa board",
@@ -761,6 +763,14 @@
       "copy": "Copia il link della board",
       "copied": "Link copiato",
       "hint": "Invia il link copiato a chi gestisce il progetto: può darti l’accesso."
+    },
+    "gone": {
+      "deletedTitle": "Questa board è stata eliminata",
+      "deletedBody": "La board o il suo progetto è stato eliminato mentre era aperta.",
+      "trashTitle": "Questa board è nel cestino",
+      "trashBody": "È stata spostata nel cestino mentre era aperta. Chi gestisce il progetto può ripristinarla.",
+      "kept": "Le modifiche fatte qui e non ancora salvate restano su questo dispositivo.",
+      "back": "Torna ai progetti"
     },
     "errors": {
       "boardCreate": "Non è stato possibile creare la board.",
@@ -1954,6 +1964,7 @@
       "sizeLimit": "La board ha raggiunto il limite di dimensione. Le aggiunte non sono state salvate; la board è stata ricaricata. Puoi eliminare contenuti per liberare spazio.",
       "sizeLimitKept": "Questa board ha raggiunto il limite di dimensione. Le modifiche fatte su questo dispositivo non sono state salvate: restano su questo dispositivo e la board è stata ricaricata. Elimina contenuti per fare spazio e ripristinale, scaricale per tenerne una copia, oppure scartale.",
       "kept": "Le modifiche a questa board che il server non ha accettato restano su questo dispositivo. Non sono nella board: ripristinale quando la board può accettarle, scaricale per tenerne una copia, oppure scartale.",
+      "keptRefused": "Le ultime modifiche non sono state salvate: il server non le ha accettate. Restano su questo dispositivo e la board è stata ricaricata. Ripristinale, scaricale per tenerne una copia, oppure scartale.",
       "keptDownload": "Scarica le modifiche",
       "keptDiscard": "Scarta",
       "keptRestore": "Ripristina nella board",

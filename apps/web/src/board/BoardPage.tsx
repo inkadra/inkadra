@@ -52,7 +52,7 @@ import { useProjects } from '../routes/AppLayout.tsx';
 import { addBoard } from '../routes/add-storyboard.ts';
 import { NotFound } from '../routes/NotFound.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
-import { renameProject } from '../routes/projects.ts';
+import { refreshProjects, renameProject } from '../routes/projects.ts';
 import { BOARD_CARD_SIZE } from './BoardCardPreview.tsx';
 import { useBoardPreview } from './board-previews.ts';
 import {
@@ -61,6 +61,7 @@ import {
   createBoard,
   fetchBoard,
   productionOf,
+  refreshBoards,
   renameBoard,
   setBoardIcon,
   setBoardViews,
@@ -70,7 +71,7 @@ import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu, type MenuItem } from './chrome.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
-import { DeniedState } from './DeniedState.tsx';
+import { DeniedState, GoneState } from './DeniedState.tsx';
 import type { ExportWhat } from './export/engine.ts';
 import type { ExportSource } from './export/settings.ts';
 import { useDaysPointingAt } from './film/production-days.ts';
@@ -186,13 +187,20 @@ export function BoardPage() {
   const { projectId, boardId: param } = useParams();
   const { projects, shared } = useProjects();
   const project = projects?.find((p) => p.id === projectId);
+  // A project deleted while its root board is open leaves the list: the board stays, to say so
+  // (#951). Only while the address stays the project's.
+  const openRoot = useRef<{ projectId: string; boardId: string } | null>(null);
+  if (project && !param) openRoot.current = { projectId: project.id, boardId: project.rootBoardId };
+  const root = openRoot.current;
+  const goneRoot =
+    !project && !param && root && root.projectId === projectId ? root.boardId : undefined;
   if (!projectId || !projects) return null;
-  const landing = param ? null : projectLanding(projectId, projects, shared);
+  const landing = param || goneRoot ? null : projectLanding(projectId, projects, shared);
   if (landing?.kind === 'loading') return null;
   if (landing?.kind === 'notFound') return <NotFound />;
   if (landing?.kind === 'shared')
     return <Navigate to={boardPath(projectId, landing.boardId)} replace />;
-  const boardId = param ?? project?.rootBoardId;
+  const boardId = param ?? project?.rootBoardId ?? goneRoot;
   if (!boardId) return null;
   // People with access to some boards only are not project members: their breadcrumb starts at
   // the top board shared with them.
@@ -608,7 +616,7 @@ function BoardScreen({
     },
     [previewStore],
   );
-  const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
+  const editable = !!conn && !conn.readOnly && !conn.gone && canEdit(detail?.myRole ?? projectRole);
   // The Production board's document holds nothing: no versions to offer (decision 0123).
   const versionable = editable && kind !== 'production';
   // Every view is one of the open board's: choosing one changes the address of this board only.
@@ -858,7 +866,16 @@ function BoardScreen({
   const importable = kind === 'storyboard' && !preview;
 
   const missing =
-    conn?.status === 'denied' && missingOwnedBoard(projectRole, boards, boardsError, boardId);
+    conn?.status === 'denied' &&
+    !conn.gone &&
+    missingOwnedBoard(projectRole, boards, boardsError, boardId);
+  const gone = conn?.gone ?? null;
+  // The board went while open (#951): the sidebar reads the projects and boards again.
+  useEffect(() => {
+    if (!gone) return;
+    void refreshProjects().catch(() => {});
+    void refreshBoards(projectId);
+  }, [gone, projectId]);
   const productionLink = kind === 'storyboard' && !!production && (pointing ?? 0) > 0;
   const addProduction = useCallback(() => {
     if (!rootBoardId) return;
@@ -912,7 +929,7 @@ function BoardScreen({
               </Fragment>
             ))}
           </nav>
-          {tabs.length > 1 && (
+          {!gone && tabs.length > 1 && (
             <ViewTabs id={tabsId} kind={kind} tabs={tabs} view={view} onChoose={chooseView} />
           )}
           {(editable || outside > 0 || productionLink || productionMissing) && (
@@ -1074,7 +1091,7 @@ function BoardScreen({
       end: (
         <>
           {conn && !missing && <BoardPresence conn={conn} selfId={selfId} />}
-          {editable && (
+          {!gone && editable && (
             <>
               {versionable && (
                 <IconButton
@@ -1100,9 +1117,11 @@ function BoardScreen({
               )}
             </>
           )}
-          {(editable || detail) && <span className="ink-header__divider" aria-hidden="true" />}
-          <CommentsButton />
-          {detail && (
+          {!gone && (editable || detail) && (
+            <span className="ink-header__divider" aria-hidden="true" />
+          )}
+          {!gone && <CommentsButton />}
+          {!gone && detail && (
             <Button
               variant={
                 detail.myRole === 'owner' || detail.myRole === 'editor' ? 'primary' : 'secondary'
@@ -1122,6 +1141,7 @@ function BoardScreen({
     [
       crumbs,
       missing,
+      gone,
       t,
       projectId,
       rootBoardId,
@@ -1179,6 +1199,7 @@ function BoardScreen({
       onClose={() => setSharing(false)}
     />
   );
+  if (conn.gone) return <GoneState reason={conn.gone} kept={conn.kept} />;
   if (conn.status === 'denied') {
     // Only owners have a complete list, including restricted boards. Outsiders keep the
     // same denial for missing and inaccessible boards; no existence probe is added.
@@ -1351,7 +1372,9 @@ function BoardScreen({
           <div role="alert" className="board-update-notice">
             {t(
               !conn.sizeLimited
-                ? 'board.contextual.kept'
+                ? conn.updateRefused
+                  ? 'board.contextual.keptRefused'
+                  : 'board.contextual.kept'
                 : conn.readOnly
                   ? 'board.contextual.sizeLimitReadOnly'
                   : conn.kept
@@ -1611,6 +1634,8 @@ export function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId:
         readOnly={conn.readOnly}
         saves={conn.saves}
         online={online}
+        gone={conn.gone}
+        retrying={conn.retrying}
       />
       {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
     </>
