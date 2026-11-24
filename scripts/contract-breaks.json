@@ -642,6 +642,11 @@
       "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
     },
     {
+      "break": "openapi: #/paths/~1api~1v1~1invitations/post/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
+      "pr": 1027,
+      "why": "An answer the server already sent on this endpoint (rate_limited, ApiError body, Retry-After), now also sent when the hourly invitation mail budget is used up; clients already handle it by status and error code."
+    },
+    {
       "break": "openapi: #/paths/~1api~1v1~1me/delete/responses/429: (absent) → {\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/ApiError\"}}}}",
       "pr": 989,
       "why": "A status the server already sent and the document did not list: the answer, its body (ApiError, or plain text where declared) and when it happens are unchanged; clients already handle it by status and error code."
