@@ -833,7 +833,7 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       url: `/api/v1/assets/${assetId}/file`,
     });
     expect(ready.variants.map((v: { size: string; url: string }) => [v.size, v.url])).toEqual(
-      ['256', '512', '1024'].map((s) => [s, `/api/v1/assets/${assetId}/variants/${s}`]),
+      ['256', '512', '1024', '2048'].map((s) => [s, `/api/v1/assets/${assetId}/variants/${s}`]),
     );
 
     const thumb = await call('viewer', 'GET', ready.variants[0].url);
