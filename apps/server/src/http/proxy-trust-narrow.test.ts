@@ -60,6 +60,23 @@ describe('proxy_trust_narrow', () => {
     expect(proxyTrustNarrow(DEFAULT, direct('::ffff:127.0.0.1')).status).toBe('ok');
   });
 
+  // compose.yaml publishes the port on 127.0.0.1 by default: Docker hands the request over from
+  // its network gateway, a private address, but only this machine could have sent it.
+  it('leaves out a port that only this machine can reach (INKADRA_BIND)', () => {
+    const gateway = direct('172.18.0.1');
+    expect(proxyTrustNarrow(DEFAULT, gateway, '127.0.0.1')).toMatchObject({
+      status: 'ok',
+      actual: `TRUST_PROXY=${DEFAULT}`,
+    });
+    expect(proxyTrustNarrow(DEFAULT, gateway, '[::1]').status).toBe('ok');
+    expect(proxyTrustNarrow(DEFAULT, direct('fd00::1'), '::1').status).toBe('ok');
+    // Published on the LAN, or no word from compose: as before.
+    expect(proxyTrustNarrow(DEFAULT, gateway, '0.0.0.0').status).toBe('warning');
+    expect(proxyTrustNarrow(DEFAULT, gateway, '192.168.1.5').status).toBe('warning');
+    expect(proxyTrustNarrow(DEFAULT, gateway, undefined).status).toBe('warning');
+    expect(proxyTrustNarrow(true, gateway, '127.0.0.1').status).toBe('warning');
+  });
+
   it('does not flag a proxy that sends X-Forwarded-For', () => {
     expect(proxyTrustNarrow(DEFAULT, viaProxy('172.18.0.10')).status).toBe('ok');
   });

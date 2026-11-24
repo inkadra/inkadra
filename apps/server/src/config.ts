@@ -228,6 +228,11 @@ const Env = z.object({
     .string()
     .default('loopback,linklocal,uniquelocal')
     .transform((v): boolean | string => (v === 'true' || v === 'false' ? v === 'true' : v)),
+  /**
+   * Host address compose.yaml publishes the ports on, handed in by compose. A loopback address
+   * means only this machine reaches them, which the Server page's TRUST_PROXY check uses.
+   */
+  INKADRA_BIND: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   /** Client addresses in request logs: personal data, so off unless asked for (#837). */
   LOG_CLIENT_IP: bool('false'),

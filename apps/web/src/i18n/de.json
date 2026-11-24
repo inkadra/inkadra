@@ -287,7 +287,7 @@
       },
       "proxy_trust_narrow": {
         "title": "Nur dein Proxy darf Client-Adressen angeben",
-        "fix": "TRUST_PROXY vertraut mehr als nur deinem Reverse Proxy, daher kann jeder eine andere Adresse vorgeben: Anmeldelimits lassen sich umgehen und die Logs zeigen erfundene Adressen. Setze <code>TRUST_PROXY</code> auf die Adresse des Proxys."
+        "fix": "TRUST_PROXY vertraut mehr als nur deinem Reverse Proxy, daher kann jeder eine andere Adresse vorgeben: Anmeldelimits lassen sich umgehen und die Logs zeigen erfundene Adressen. Setze <code>TRUST_PROXY</code> auf die Adresse des Proxys oder auf <code>false</code>, wenn kein Proxy vor Inkadra steht."
       },
       "database": {
         "title": "Datenbank",

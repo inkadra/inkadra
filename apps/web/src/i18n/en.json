@@ -287,7 +287,7 @@
       },
       "proxy_trust_narrow": {
         "title": "Only your proxy can tell client addresses",
-        "fix": "TRUST_PROXY trusts more than your reverse proxy, so anyone can claim another address: sign-in limits can be dodged and the logs show made-up addresses. Set <code>TRUST_PROXY</code> to the proxy’s own address."
+        "fix": "TRUST_PROXY trusts more than your reverse proxy, so anyone can claim another address: sign-in limits can be dodged and the logs show made-up addresses. Set <code>TRUST_PROXY</code> to the proxy’s own address, or to <code>false</code> when no proxy sits in front of Inkadra."
       },
       "database": {
         "title": "Database",

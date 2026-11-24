@@ -287,7 +287,7 @@
       },
       "proxy_trust_narrow": {
         "title": "Seul votre proxy peut indiquer l’adresse des clients",
-        "fix": "TRUST_PROXY fait confiance à plus que votre proxy inverse, donc n’importe qui peut prétendre avoir une autre adresse : les limites de connexion se contournent et les journaux montrent des adresses inventées. Réglez <code>TRUST_PROXY</code> sur l’adresse du proxy."
+        "fix": "TRUST_PROXY fait confiance à plus que votre proxy inverse, donc n’importe qui peut prétendre avoir une autre adresse : les limites de connexion se contournent et les journaux montrent des adresses inventées. Réglez <code>TRUST_PROXY</code> sur l’adresse du proxy, ou sur <code>false</code> si aucun proxy ne se trouve devant Inkadra."
       },
       "database": {
         "title": "Base de données",

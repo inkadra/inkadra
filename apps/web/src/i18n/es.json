@@ -287,7 +287,7 @@
       },
       "proxy_trust_narrow": {
         "title": "Solo tu proxy puede indicar la dirección de los clientes",
-        "fix": "TRUST_PROXY confía en algo más que tu proxy inverso, así que cualquiera puede fingir otra dirección: los límites de inicio de sesión se pueden esquivar y los registros muestran direcciones inventadas. Pon en <code>TRUST_PROXY</code> la dirección del propio proxy."
+        "fix": "TRUST_PROXY confía en algo más que tu proxy inverso, así que cualquiera puede fingir otra dirección: los límites de inicio de sesión se pueden esquivar y los registros muestran direcciones inventadas. Pon en <code>TRUST_PROXY</code> la dirección del propio proxy, o <code>false</code> si no hay ningún proxy delante de Inkadra."
       },
       "database": {
         "title": "Base de datos",
