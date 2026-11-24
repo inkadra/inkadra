@@ -28,3 +28,27 @@ it('takes the focus from the board it replaces and is named by its title (#951)'
     host.remove();
   }
 });
+
+it('leaves the focus where the person put it, outside the board (#951)', async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const search = document.createElement('input');
+  document.body.append(search);
+  search.focus();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <GoneState reason="deleted" kept={null} />
+        </MemoryRouter>,
+      ),
+    );
+    expect(document.activeElement).toBe(search);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    search.remove();
+  }
+});

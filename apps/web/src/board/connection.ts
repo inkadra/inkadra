@@ -61,6 +61,10 @@ const CLOSE_REASONS: Record<string, ConnectionStatus> = {
 export const RESET_REASON = 'Reset Connection';
 export const RESET_LIMIT = 3;
 export const RESET_WINDOW_MS = 60_000;
+/** The wait before the nth retry of a reset document: n times this. */
+export const RESET_BACKOFF_MS = 250;
+/** After RESET_LIMIT resets without our edits, how long the board waits offline to try again. */
+export const RESET_PAUSE_MS = 30_000;
 /** When each board (`cacheKey`) was last reset by the server, kept across its reopenings. */
 const resets = new Map<string, number[]>();
 
@@ -469,9 +473,12 @@ export function useBoardConnection(
           doc.store.pendingDs = null;
           deletions = undefined;
         }
-        update({ status: 'synced', retrying: false });
+        stopRetry();
+        update({ status: 'synced' });
       },
       onDisconnect: () => {
+        // The socket reconnects on its own, and its handshake signs this document in again.
+        stopRetry();
         if (state.status !== 'denied' && state.status !== 'signedOut')
           update({ status: 'offline' });
       },
@@ -525,34 +532,61 @@ export function useBoardConnection(
           });
       },
     });
-    // Edits the server reset the document for, not confirmed since: the handshake of the next
-    // attempt may count back to zero before the server refuses them again.
+    // Edits the server reset the document for in this run of resets, not confirmed since: the
+    // handshake of the next attempt may count back to zero before the server refuses them again.
     let resetEdits = false;
+    // The next attempt after a reset, and whether the board waits offline for it.
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let paused = false;
+    const stopRetry = () => {
+      clearTimeout(retryTimer);
+      retryTimer = undefined;
+      paused = false;
+    };
+    /** Signs in and syncs again over the same socket, which stayed open. */
+    const retry = () => {
+      stopRetry();
+      if (!alive || refused || dropped || state.gone) return;
+      update({ status: 'connecting', retrying: true });
+      provider.configuration.websocketProvider.attach(provider);
+    };
+    // Waiting offline: the network coming back, or the tab shown again, tries at once.
+    const retryNow = () => {
+      if (paused && document.visibilityState !== 'hidden') retry();
+    };
+    window.addEventListener('online', retryNow);
+    document.addEventListener('visibilitychange', retryNow);
     /** The server closed the document over an update (`RESET_REASON`). */
     const resetByServer = () => {
       if (!alive || refused || dropped || state.status === 'denied') return;
-      resetEdits ||= edited;
+      if (state.status === 'signedOut') return;
       // A merge in flight is what the server refused, whatever the retry's handshake counts.
       settleMerge(new RestoreError('refused'));
       const now = Date.now();
       const recent = (resets.get(cacheKey) ?? []).filter((at) => now - at < RESET_WINDOW_MS);
+      // A new run of resets: edits of an earlier one were saved since, or set aside.
+      if (recent.length === 0) resetEdits = false;
+      resetEdits ||= edited;
       recent.push(now);
       resets.set(cacheKey, recent);
+      stopRetry();
       if (recent.length < RESET_LIMIT) {
         update({ status: 'connecting', retrying: true });
-        // Signs in and syncs again over the same socket, which stayed open.
-        provider.configuration.websocketProvider.attach(provider);
+        // Not at once: a blip of a few milliseconds would use up every attempt.
+        retryTimer = setTimeout(retry, RESET_BACKOFF_MS * recent.length);
         return;
       }
+      resets.delete(cacheKey);
       if (!(resetEdits || edited)) {
         // Nothing of ours to set aside: the server refuses the board itself. It waits offline
-        // until the socket connects again, rather than retry or reload in a loop.
-        update({ status: 'offline', retrying: false });
+        // and tries again later, rather than retry or reload in a loop.
+        update({ status: 'offline' });
+        paused = true;
+        retryTimer = setTimeout(retry, RESET_PAUSE_MS);
         return;
       }
       // Our edits refused every time: set aside, and reopened from what the server confirmed.
       // The reopened board holds none of them, so it reloads at most once per run of resets.
-      resets.delete(cacheKey);
       refused = true;
       setRefusedBoard(boardId);
       setAside(local?.close(), true);
@@ -577,6 +611,10 @@ export function useBoardConnection(
       if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
       const was = state.status;
       state = { ...state, ...patch };
+      // A board that went stays so, whatever the connection says after (#951).
+      if (state.gone) state.status = 'denied';
+      // Retrying is a kind of connecting only.
+      if (state.status !== 'connecting') state.retrying = false;
       state.schemaTooNew = docTooNew || copyTooNew;
       state.readOnly = roleReadOnly || state.schemaTooNew;
       if (state.status === 'denied') settleMerge(new RestoreError('refused'));
@@ -603,6 +641,9 @@ export function useBoardConnection(
     update({});
     return () => {
       alive = false;
+      stopRetry();
+      window.removeEventListener('online', retryNow);
+      document.removeEventListener('visibilitychange', retryNow);
       settleMerge(new RestoreError('notWritable'));
       if (merger.current === merge) merger.current = undefined;
       // Kept: another view may have it open. Once all is confirmed, `sweepLocalBoards` deletes it.

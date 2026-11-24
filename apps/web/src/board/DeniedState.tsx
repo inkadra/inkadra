@@ -56,7 +56,11 @@ export function GoneState({
   const title = t(reason === 'trash' ? 'board.gone.trashTitle' : 'board.gone.deletedTitle');
   // The board under the focus is gone: the focus comes here, where the way back is.
   const box = useRef<HTMLElement>(null);
-  useEffect(() => box.current?.focus(), []);
+  useEffect(() => {
+    // Only the focus the board had: one in the sidebar or a dialog stays where it is.
+    const active = document.activeElement;
+    if (!active || active === document.body) box.current?.focus();
+  }, []);
   return (
     <section ref={box} className="board-state" tabIndex={-1} aria-label={title}>
       <EmptyState

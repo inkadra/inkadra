@@ -13,7 +13,9 @@ import {
   type BoardConnection,
   cachedBoards,
   MERGE_TIMEOUT_MS,
+  RESET_BACKOFF_MS,
   RESET_LIMIT,
+  RESET_PAUSE_MS,
   RESET_REASON,
   RESET_WINDOW_MS,
   refusalStatus,
@@ -439,6 +441,9 @@ async function editSynced(id: string, text: string) {
 }
 const resetBy = (provider: Provider, code = 1000) =>
   act(async () => provider.onClose({ event: { code, reason: RESET_REASON } }));
+/** Past the wait before the `attempt`th retry. */
+const retryWait = (attempt: number) =>
+  act(() => new Promise((resolve) => setTimeout(resolve, RESET_BACKOFF_MS * attempt + 30)));
 
 it('says a board went to the trash while open and sets its unsaved edits aside (#951)', async () => {
   const provider = await editSynced('trashed', 'Typed as it went');
@@ -464,9 +469,12 @@ it('syncs again after a reset, and sets the edits aside once resets repeat', asy
   expect(provider.reattached()).toBe(0);
   for (let attempt = 1; attempt < RESET_LIMIT; attempt++) {
     await resetBy(provider);
-    expect(provider.reattached()).toBe(attempt);
+    // Not at once: a short blip would use up every attempt.
+    expect(provider.reattached()).toBe(attempt - 1);
     expect(connection?.status).toBe('connecting');
     expect(connection?.retrying).toBe(true);
+    await retryWait(attempt);
+    expect(provider.reattached()).toBe(attempt);
     // The handshake counts back to zero before the server refuses the edit again.
     await act(async () => {
       provider.onSynced();
@@ -495,6 +503,8 @@ it('counts only the resets of the last minute', async () => {
   const provider = await editSynced('slow-resets', 'Now and then');
   for (let i = 0; i < RESET_LIMIT + 1; i++) {
     await resetBy(provider);
+    // Two in the window at most: the second attempt's wait.
+    await retryWait(2);
     clock += RESET_WINDOW_MS / 2 + 1;
   }
   expect(providers.at(-1)).toBe(provider);
@@ -537,7 +547,10 @@ it('reloads a board reset again and again from the server with its values intact
   expect(connection?.kept).toBeTruthy();
 
   // Reset again with nothing unconfirmed: no reload loop, the board waits offline.
-  for (let i = 0; i < RESET_LIMIT + 2; i++) await resetBy(reopened);
+  for (let i = 1; i <= RESET_LIMIT; i++) {
+    await resetBy(reopened);
+    if (i < RESET_LIMIT) await retryWait(i);
+  }
   await settle();
   expect(providers.at(-1)).toBe(reopened);
   expect(reopened.reattached()).toBe(RESET_LIMIT - 1);
@@ -560,7 +573,10 @@ it('counts a merge of set-aside edits refused when the server resets the board',
   const { provider } = await openFromServer('reset-merge', 'Merged into');
   const other = new Y.Doc();
   other.getMap('meta').set('subtitle', 'From the device');
-  const merging = connection!.merge!(Y.encodeStateAsUpdate(other));
+  let merging!: Promise<void>;
+  await act(async () => {
+    merging = connection!.merge!(Y.encodeStateAsUpdate(other));
+  });
   const outcome = merging.then(
     () => 'resolved',
     (err: { reason?: string }) => err.reason,
@@ -582,4 +598,100 @@ it('stays gone when the socket of a deleted board syncs again (#951)', async () 
   await act(async () => provider.onSynced());
   expect(connection?.status).toBe('denied');
   expect(connection?.gone).toBe('deleted');
+});
+
+it('waits offline after resets without edits, then tries again on its own or when back online', async () => {
+  const { provider } = await openFromServer('reset-pause', 'Paused');
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const run = async () => {
+      for (let i = 1; i <= RESET_LIMIT; i++) {
+        await resetBy(provider);
+        if (i < RESET_LIMIT) await act(async () => vi.advanceTimersByTime(RESET_BACKOFF_MS * i));
+      }
+    };
+    await run();
+    expect(connection?.status).toBe('offline');
+    const before = provider.reattached();
+    // The socket stays open, so nothing else would bring the board back.
+    await act(async () => vi.advanceTimersByTime(RESET_PAUSE_MS));
+    expect(provider.reattached()).toBe(before + 1);
+    expect(connection?.status).toBe('connecting');
+    // A fresh count: the next reset is retried, not the end of the run.
+    await resetBy(provider);
+    expect(connection?.retrying).toBe(true);
+    await act(async () => vi.advanceTimersByTime(RESET_BACKOFF_MS));
+    await act(async () => {
+      provider.onSynced();
+    });
+    // A minute later, a new run of resets.
+    await act(async () => vi.advanceTimersByTime(RESET_WINDOW_MS));
+    await run();
+    expect(connection?.status).toBe('offline');
+    const paused = provider.reattached();
+    await act(async () => window.dispatchEvent(new Event('online')));
+    expect(provider.reattached()).toBe(paused + 1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('forgets an edit reset long ago once it was saved', async () => {
+  const now = vi.spyOn(Date, 'now');
+  let clock = 9_000_000;
+  now.mockImplementation(() => clock);
+  const { provider } = await openFromServer('reset-latch', 'Saved long ago');
+  await act(async () => {
+    connection!.store.doc.getMap('meta').set('title', 'Edited once');
+    provider.emit('unsyncedChanges', { number: 1 });
+  });
+  await resetBy(provider);
+  await retryWait(1);
+  // The retry took it: saved.
+  await act(async () => {
+    provider.onSynced();
+    provider.emit('unsyncedChanges', { number: 0 });
+  });
+  clock += RESET_WINDOW_MS * 60;
+  for (let i = 1; i <= RESET_LIMIT; i++) {
+    await resetBy(provider);
+    if (i < RESET_LIMIT) await retryWait(i);
+  }
+  await settle();
+  expect(providers.at(-1)).toBe(provider);
+  expect(connection?.kept).toBeFalsy();
+  expect(connection?.status).toBe('offline');
+});
+
+it('stays signed out when a reset follows the end of the session', async () => {
+  const { provider } = await openFromServer('reset-signed-out', 'Signed out');
+  await act(async () => provider.onClose({ event: { code: 1000, reason: 'Unauthorized' } }));
+  for (let i = 0; i < RESET_LIMIT; i++) await resetBy(provider);
+  expect(connection?.status).toBe('signedOut');
+  expect(provider.reattached()).toBe(0);
+});
+
+it('stops retrying as soon as the connection is no longer connecting', async () => {
+  const { provider } = await openFromServer('reset-drop', 'Dropped');
+  await resetBy(provider);
+  expect(connection?.retrying).toBe(true);
+  await act(async () => provider.onDisconnect());
+  expect(connection?.status).toBe('offline');
+  expect(connection?.retrying).toBe(false);
+  // The dropped socket reconnects on its own: the pending retry does not attach as well.
+  await retryWait(1);
+  expect(provider.reattached()).toBe(0);
+});
+
+it('keeps saying a board went whatever the connection says after (#951)', async () => {
+  const { provider } = await openFromServer('gone-after', 'Gone');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'boardGone', reason: 'trash' }) }),
+  );
+  await act(async () => provider.onAuthenticationFailed({ reason: 'Unauthorized' }));
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'access', readOnly: true }) }),
+  );
+  expect(connection?.status).toBe('denied');
+  expect(connection?.gone).toBe('trash');
 });
