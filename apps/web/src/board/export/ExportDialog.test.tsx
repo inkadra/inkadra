@@ -364,6 +364,18 @@ describe('ExportDialog options', () => {
     // The use comes from a key without a colon, which i18next would read as a namespace.
     expect(host.textContent).toContain('Storia e video verticale · 1080 × 1920 px');
   });
+
+  it('keeps Export enabled while the image preview redraws after an option change', async () => {
+    await renderImage(new Set(['a', 'b']));
+    const submit = () => host.querySelector<HTMLButtonElement>('.export__submit');
+    expect(submit()?.disabled).toBe(false);
+    await act(async () => radio('JPEG')?.click());
+    expect(submit()?.disabled).toBe(false);
+    await act(async () => radio('1:1')?.click());
+    expect(submit()?.disabled).toBe(false);
+    await act(async () => radio('Contieni')?.click());
+    expect(submit()?.disabled).toBe(false);
+  });
 });
 
 describe('ExportDialog scene sheets', () => {

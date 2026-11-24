@@ -327,7 +327,6 @@ export function ExportDialog(props: ExportDialogProps) {
   const several = req.what === 'selection' && props.selection.size > 1;
   const single = req.what === 'selection' && props.selection.size === 1;
   const each = several && manyMode(image) === 'each';
-  const imageReady = imageState.status === 'ready' || imageState.status === 'error';
   const changeImage = (patch: Partial<ImageOptions>) => {
     setChanged(true);
     setImage((current) => ({ ...current, ...patch }));
@@ -386,8 +385,12 @@ export function ExportDialog(props: ExportDialogProps) {
         if (Object.keys(patch).length) await saveExportSettings(projectId, patch).catch(() => {});
       }
       onClose();
-    } catch {
-      if (!controller.signal.aborted) setFailed(true);
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        if (err instanceof Error && err.name === 'EmptyExportError')
+          setImageState({ status: 'empty', count: 0, notReady: 0 });
+        else setFailed(true);
+      }
     } finally {
       if (running.current === controller) running.current = null;
       if (!controller.signal.aborted) {
@@ -1042,7 +1045,8 @@ export function ExportDialog(props: ExportDialogProps) {
                 icon="download"
                 className="export__submit"
                 disabled={
-                  !settingsLoaded || (fileMode ? fileCount === 0 || tooBig : asImage && !imageReady)
+                  !settingsLoaded ||
+                  (fileMode ? fileCount === 0 || tooBig : asImage && imageState.status === 'empty')
                 }
                 busy={busy}
                 onClick={() => void submit()}

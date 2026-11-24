@@ -873,6 +873,14 @@ export function exportBaseName(env: Pick<ExportEnv, 'boardTitle' | 'projectName'
   return (env.boardTitle || env.projectName || 'inkadra').replace(/[\\/:*?"<>|]/g, '_').trim();
 }
 
+/** Raised when an image export has nothing visible to draw (e.g. every card hidden from clients). */
+export class EmptyExportError extends Error {
+  override name = 'EmptyExportError';
+  constructor() {
+    super('Nothing to export');
+  }
+}
+
 /** The finished file and the name to download it under. */
 export async function exportFile(
   req: ExportRequest,
@@ -886,6 +894,7 @@ export async function exportFile(
     onProgress?.({ phase: 'pages', done, total: pages.length });
   try {
     if (req.format !== 'pdf') {
+      if (pages.length === 0) throw new EmptyExportError();
       const out = imagePages(pages, req.image ?? ORIGINAL_IMAGE);
       // One image per page: stacking them squeezed a long storyboard into an unreadable strip.
       const blobs = await renderImages(out.pages, out.scales, images, {
