@@ -153,7 +153,8 @@ restored with 0.10.1 (see [Going back to an older version](#going-back-to-an-old
   written by 0.11 does not go back to 0.10.1.
 - **`TRUST_PROXY` on the Server page.** A new check warns when `TRUST_PROXY` trusts more than
   your reverse proxy: `TRUST_PROXY=true`, or a request that reached Inkadra from a trusted address
-  without passing through a proxy, typically with `INKADRA_BIND=0.0.0.0` and the default value.
+  without passing through a proxy, typically with `INKADRA_BIND=0.0.0.0` and the default value
+  (with the default `INKADRA_BIND=127.0.0.1`, only this machine reaches the port: no warning).
   Set it to the proxy's own address, or to `false` when nothing sits in front of Inkadra (see
   [TRUST_PROXY](configuration.md#trust_proxy)).
 - **Caddy or Nginx in split mode.** Add `deploy/proxy/<proxy>/compose.split.yaml` after the

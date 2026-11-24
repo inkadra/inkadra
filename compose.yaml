@@ -46,6 +46,8 @@ services:
       DATABASE_URL: postgres://inkadra:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/inkadra
       # With VALKEY_PASSWORD set (recommended, hex only: `openssl rand -hex 32`), Valkey asks for it.
       REDIS_URL: redis://${VALKEY_PASSWORD:+:${VALKEY_PASSWORD}@}valkey:6379
+      # Where the ports are published: on loopback, the Server page knows no LAN client reaches them.
+      INKADRA_BIND: ${INKADRA_BIND:-127.0.0.1}
     volumes:
       # A named volume by default. Set INKADRA_DATA to a host folder to keep uploads on a disk
       # or dataset of your choice: at startup it is given to uid 1000, the user Inkadra runs as.

@@ -453,6 +453,13 @@ could claim any client address. Set it to **the proxy's own address**:
 
 Never use `true`: it trusts everyone, so any client could choose its address.
 
+**Settings → Server status** checks it: it warns when `TRUST_PROXY` is `true`, or when a request
+reached Inkadra from an address `TRUST_PROXY` trusts but without `X-Forwarded-For`, so straight
+from a client. Requests to a port only this machine can reach are left out: the default
+`INKADRA_BIND=127.0.0.1` of `compose.yaml` (which hands `INKADRA_BIND` to the container), so
+trying Inkadra at `http://127.0.0.1:3000` without a proxy gives no warning. With
+`INKADRA_BIND=0.0.0.0` and no proxy in front, set `TRUST_PROXY=false`.
+
 ## Sign-in limits
 
 Inkadra limits sign-in, sign-up, password reset, email links and two-factor attempts per

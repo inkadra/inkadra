@@ -114,7 +114,7 @@ export async function runChecks(
     );
   }
 
-  const narrow = proxyTrustNarrow(config.TRUST_PROXY, request);
+  const narrow = proxyTrustNarrow(config.TRUST_PROXY, request, config.INKADRA_BIND);
   add('proxy_trust_narrow', narrow.status, narrow.expected, narrow.actual);
 
   try {
@@ -179,14 +179,21 @@ export async function runChecks(
  * any address. It fails when TRUST_PROXY is `true`, or when this request reached the server
  * from an address TRUST_PROXY trusts but without X-Forwarded-For, so straight from a client.
  * Loopback is left out: a proxy, a health check or a shell on the same machine is no client.
+ * So is a port compose publishes on loopback (`bind`, INKADRA_BIND): Docker hands those
+ * requests over from its network gateway, a private address, but only this machine sent them.
+ * shortcut: trusts compose's word for how the port is published; a host that also routes LAN
+ * traffic straight to the container's address is not caught.
  */
 export function proxyTrustNarrow(
   trustProxy: boolean | string,
   request: Pick<Diagnostics['request'], 'peerAddress' | 'forwardedFor'>,
+  bind?: string,
 ): Pick<DiagnosticCheck, 'status' | 'expected' | 'actual'> {
   const peer = request.peerAddress;
+  const hostOnly = bind !== undefined && trustsPeer('loopback', bind.replace(/^\[(.*)\]$/, '$1'));
   const direct =
     trustProxy !== true &&
+    !hostOnly &&
     // An empty X-Forwarded-For names no client: as good as none.
     !request.forwardedFor?.split(',').some((hop) => hop.trim()) &&
     peer !== '' &&

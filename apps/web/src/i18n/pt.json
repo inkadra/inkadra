@@ -287,7 +287,7 @@
       },
       "proxy_trust_narrow": {
         "title": "Só o seu proxy pode indicar o endereço dos clientes",
-        "fix": "TRUST_PROXY confia em mais do que o seu proxy reverso, então qualquer pessoa pode fingir outro endereço: os limites de início de sessão podem ser contornados e os registos mostram endereços inventados. Defina <code>TRUST_PROXY</code> com o endereço do próprio proxy."
+        "fix": "TRUST_PROXY confia em mais do que o seu proxy reverso, então qualquer pessoa pode fingir outro endereço: os limites de início de sessão podem ser contornados e os registos mostram endereços inventados. Defina <code>TRUST_PROXY</code> com o endereço do próprio proxy, ou com <code>false</code> se não houver nenhum proxy à frente do Inkadra."
       },
       "database": {
         "title": "Banco de dados",
