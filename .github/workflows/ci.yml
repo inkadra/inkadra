@@ -423,6 +423,11 @@ jobs:
           - project: managed-limits
             browsers: chromium
             storage-limit: 50GB
+          # Password reset by email and OIDC sign-in, with a local mail sink and OpenID
+          # provider (scripts in e2e/scripts) that only this job starts (audit F-20).
+          - project: auth-providers
+            browsers: chromium
+            auth-providers: '1'
     services:
       postgres:
         image: postgres:18-alpine
@@ -479,6 +484,7 @@ jobs:
           PROJECT: ${{ matrix.project }}
           STORAGE_LIMIT: ${{ matrix.storage-limit }}
           STORAGE_LIMIT_PER_USER: ${{ matrix.storage-limit && '10GB' || '' }}
+          E2E_AUTH_PROVIDERS: ${{ matrix.auth-providers }}
         run: pnpm --filter @inkadra/e2e exec playwright test "--project=$PROJECT"
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

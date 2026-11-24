@@ -20,6 +20,24 @@ const baseURL = `http://localhost:${port}`;
 // demo.spec.ts: a second server in demo mode (decision 0084).
 const demoPort = Number(process.env.E2E_DEMO_PORT ?? 3110);
 process.env.E2E_DEMO_URL = `http://localhost:${demoPort}`;
+// password-reset.spec.ts and oidc-sign-in.spec.ts (audit F-20): with E2E_AUTH_PROVIDERS=1 the
+// server sends mail to a local sink and offers sign-in with a local OpenID provider. Off by
+// default: mail switches the sign-in page to links by email, which the other specs don't expect.
+const authProviders = process.env.E2E_AUTH_PROVIDERS === '1';
+const smtpPort = Number(process.env.E2E_SMTP_PORT ?? 3125);
+const mailPort = Number(process.env.E2E_MAIL_PORT ?? 3126);
+const oidcPort = Number(process.env.E2E_OIDC_PORT ?? 3127);
+process.env.E2E_MAIL_URL = `http://127.0.0.1:${mailPort}`;
+const authProviderEnv: Record<string, string> = authProviders
+  ? {
+      SMTP_URL: `smtp://127.0.0.1:${smtpPort}`,
+      MAIL_FROM: 'Inkadra <inkadra@example.com>',
+      OIDC_NAME: 'E2E SSO',
+      OIDC_DISCOVERY_URL: `http://127.0.0.1:${oidcPort}/.well-known/openid-configuration`,
+      OIDC_CLIENT_ID: 'inkadra-e2e',
+      OIDC_CLIENT_SECRET: 'inkadra-e2e-secret',
+    }
+  : {};
 const databaseUrl =
   process.env.DATABASE_URL ?? 'postgres://inkadra:inkadra@localhost:5432/inkadra_e2e';
 const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
@@ -33,6 +51,7 @@ if (!process.env.TEST_WORKER_INDEX && existsSync(builtWeb)) {
   cpSync(builtWeb, webDist, { recursive: true });
 }
 
+const authProviderSpecs = ['password-reset.spec.ts', 'oidc-sign-in.spec.ts'];
 const smokeSpecs = [
   'home.spec.ts',
   'storyboard.spec.ts',
@@ -80,7 +99,7 @@ export default defineConfig({
     },
     {
       name: 'chromium',
-      testIgnore: ['**/perf/**', '**/first-run.spec.ts'],
+      testIgnore: ['**/perf/**', '**/first-run.spec.ts', ...authProviderSpecs],
       dependencies: ['first-run'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
@@ -126,6 +145,13 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
+      // Audit F-20: password reset by email and OIDC sign-in, with E2E_AUTH_PROVIDERS=1.
+      name: 'auth-providers',
+      testMatch: authProviderSpecs,
+      dependencies: ['first-run'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    {
       // Load tests, run on their own with `pnpm test:perf`.
       name: 'perf',
       testDir: './tests/perf',
@@ -145,6 +171,23 @@ export default defineConfig({
       url: `http://127.0.0.1:${vitePort}`,
       timeout: 60_000,
     },
+    // Before the server: it reads the provider's discovery document at start.
+    ...(authProviders
+      ? [
+          {
+            command: 'node scripts/mail-sink.mjs',
+            url: `http://127.0.0.1:${mailPort}/messages`,
+            env: { E2E_SMTP_PORT: String(smtpPort), E2E_MAIL_PORT: String(mailPort) },
+            timeout: 10_000,
+          },
+          {
+            command: 'node scripts/oidc-provider.mjs',
+            url: `http://127.0.0.1:${oidcPort}/.well-known/openid-configuration`,
+            env: { E2E_OIDC_PORT: String(oidcPort) },
+            timeout: 10_000,
+          },
+        ]
+      : []),
     {
       command: 'node ../apps/server/dist/main.js all',
       url: `${baseURL}/api/v1/health`,
@@ -173,6 +216,7 @@ export default defineConfig({
         // storage-limits-locked.spec.ts: the limits of a managed server (decision 0081).
         STORAGE_LIMIT: process.env.STORAGE_LIMIT ?? '',
         STORAGE_LIMIT_PER_USER: process.env.STORAGE_LIMIT_PER_USER ?? '',
+        ...authProviderEnv,
       },
     },
     {
