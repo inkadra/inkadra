@@ -17,13 +17,25 @@ complex for what it protects (#1001, #1009).
 
 ## Decision
 
-- Before a collaborator's update reaches the board, the server refuses it when, read from the
-  decoded update and the board's clocks alone, it cannot be decoded the way Yjs applies it, holds
-  a struct or a deletion of no length, holds a struct naming a clock of its own client at or after
-  its own, or writes new structs or deletes clocks not yet written under the board's own client
-  id. Refusing closes the sender's sync as any refused write does.
-- After every await in that path, and before Hocuspocus applies the update, the connection must
-  still be writable: not read-only, its socket open, the board still loaded.
+- Before a collaborator's update reaches the board, and before any other check reads it, the
+  server refuses it when, read from the decoded update and the board's clocks alone:
+  - it cannot be decoded the way Yjs applies it;
+  - it holds a struct or a deletion of no length, or one past the safe integers;
+  - a struct names a clock of its own client at or after its own (as origin, right origin or
+    parent);
+  - a struct overlaps clocks the board holds right after a collected one, unless the parent it
+    names is gone too (as in a real resend after its card was deleted);
+  - a subdocument's guid is not a string;
+  - a client's deletions are out of order or overlap;
+  - it writes new structs, or deletes clocks not yet written, under the board's own client id.
+
+  Such a refusal ends the sender's connection to the board (Hocuspocus closes it with "Reset
+  Connection"), unlike a read-only refusal, which only tells the client (`writeRefused`) and keeps
+  the connection.
+- A message still queued from a connection that was closed (access removed) writes nothing. After
+  every await in that path, and before Hocuspocus applies the update, the connection must still be
+  writable: not read-only, still one of the board's connections (closing one takes it off, the
+  socket may stay open for other boards), its socket open, the board still loaded.
 - The to-do checks (who can be assigned, due dates, guests and viewers) stay as they were.
 - Beyond that, editors are trusted with the board's content: a crafted update from someone with
   edit rights can damage that board, or make memory and storage differ until the board is

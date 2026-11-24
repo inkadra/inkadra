@@ -45,7 +45,10 @@ type ItemSpec = {
   rightOrigin?: Y.ID;
   parent?: string | Y.ID;
   key?: string;
-  content: { any: Array<string | null> } | { skip: number; info: number };
+  content:
+    | { any: Array<string | null> }
+    | { skip: number; info: number }
+    | { doc: string; guid: number | null };
 };
 
 /**
@@ -59,8 +62,8 @@ function encodeUpdate(
   const bytes: number[] = [];
   const varUint = (n: number) => {
     while (n > 0x7f) {
-      bytes.push((n & 0x7f) | 0x80);
-      n >>>= 7;
+      bytes.push((n % 0x80) | 0x80);
+      n = Math.floor(n / 0x80);
     }
     bytes.push(n);
   };
@@ -80,7 +83,7 @@ function encodeUpdate(
       }
       const hasParent = !item.origin && !item.rightOrigin;
       bytes.push(
-        8 |
+        ('doc' in item.content ? 9 : 8) |
           (item.origin ? 0x80 : 0) |
           (item.rightOrigin ? 0x40 : 0) |
           (hasParent && item.key ? 0x20 : 0),
@@ -99,6 +102,16 @@ function encodeUpdate(
         varUint(item.parent.clock);
       }
       if (hasParent && item.key) string(item.key);
+      if ('doc' in item.content) {
+        // A subdocument: its guid, then options (lib0's writeAny object: 118, one key, 125 int).
+        string(item.content.doc);
+        bytes.push(118);
+        varUint(1);
+        string('guid');
+        if (item.content.guid === null) bytes.push(126);
+        else bytes.push(125, item.content.guid);
+        continue;
+      }
       varUint(item.content.any.length);
       // lib0's writeAny: 126 for null, 119 then the string.
       for (const v of item.content.any)
@@ -184,6 +197,63 @@ describe('updates refused before they reach the board', () => {
         encodeUpdate([], [{ client: own, clock: next, len: 1 }]),
         'server client id',
       ],
+      'an item naming a later clock of its own client as right origin': [
+        encodeUpdate([
+          {
+            client: 777,
+            clock: 0,
+            structs: [
+              { rightOrigin: Y.createID(777, 1), content: { any: ['a'] } },
+              { parent: 'decoy', key: 'x', content: { any: ['b'] } },
+            ],
+          },
+        ]),
+        'self reference',
+      ],
+      'a subdocument whose guid is not a string': [
+        encodeUpdate([
+          {
+            client: 555,
+            clock: 0,
+            structs: [{ parent: 'decoy', key: 'x', content: { doc: 'sub', guid: 5 } }],
+          },
+        ]),
+        'subdocument guid',
+      ],
+      'a deletion past the safe integers': [
+        encodeUpdate([], [{ client: 555, clock: 2 ** 53, len: 1 }]),
+        'unsafe clock',
+      ],
+      'a struct past the safe integers': [
+        encodeUpdate([
+          {
+            client: 555,
+            clock: 2 ** 53,
+            structs: [{ parent: 'decoy', key: 'x', content: { any: ['a'] } }],
+          },
+        ]),
+        'unsafe clock',
+      ],
+      'deletions of one client out of order': [
+        encodeUpdate(
+          [],
+          [
+            { client: 555, clock: 5, len: 1 },
+            { client: 555, clock: 2, len: 1 },
+          ],
+        ),
+        'unsorted deletions',
+      ],
+      'deletions of one client that overlap': [
+        encodeUpdate(
+          [],
+          [
+            { client: 555, clock: 2, len: 3 },
+            { client: 555, clock: 3, len: 1 },
+          ],
+        ),
+        'unsorted deletions',
+      ],
     };
     for (const [name, [update, reason]] of Object.entries(cases)) {
       const before = content(b.server);
@@ -191,6 +261,34 @@ describe('updates refused before they reach the board', () => {
       expect(content(b.server), name).toBe(before);
       expect(() => Y.encodeStateAsUpdate(b.server), name).not.toThrow();
     }
+  });
+
+  it('refuses an item overlapping held clocks after a collected one, unless its parent is gone too', () => {
+    const b = board();
+    const typist = b.other();
+    typist.clientID = 555;
+    // The guest's first letter, then the note deleted: Yjs collects the letter.
+    const first = b.at(typist, () => b.labelOf(typist).insert(0, 'a'));
+    b.labelOf(typist).insert(1, 'b');
+    const both = Y.encodeStateAsUpdate(typist, Y.encodeStateVector(b.server));
+    expect(b.send(first)).toBeNull();
+    expect(b.send(b.at(b.doc, () => b.doc.getMap('elements').delete(b.note)))).toBeNull();
+    expect(Y.getItem(b.server.store, Y.createID(555, 0))).toBeInstanceOf(Y.GC);
+    // One naming a live parent: Yjs fails halfway through applying it.
+    const forged = encodeUpdate([
+      {
+        client: 555,
+        clock: 0,
+        structs: [{ parent: 'decoy', key: 'x', content: { any: [null, 'b'] } }],
+      },
+    ]);
+    const copy = new Y.Doc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(b.server));
+    expect(() => Y.applyUpdate(copy, forged)).toThrow();
+    expect(b.send(forged)).toBe('overlaps a collected struct');
+    // A real resend of both letters names the text, which is gone too: Yjs collects the rest.
+    expect(b.send(both)).toBeNull();
+    expect(() => Y.encodeStateAsUpdate(b.server)).not.toThrow();
   });
 
   it('shows why: applied, these break the board', () => {
@@ -212,6 +310,24 @@ describe('updates refused before they reach the board', () => {
       );
     } catch {}
     expect(() => Y.encodeStateAsUpdate(empty)).toThrow();
+    // A subdocument whose guid is not a string (null here): no later encoding succeeds.
+    const sub = new Y.Doc();
+    Y.applyUpdate(
+      sub,
+      encodeUpdate([
+        {
+          client: 555,
+          clock: 0,
+          structs: [{ parent: 'decoy', key: 'x', content: { doc: 'sub', guid: null } }],
+        },
+      ]),
+    );
+    expect(() => Y.encodeStateAsUpdate(sub)).toThrow();
+    // A deletion past the safe integers: applying fails halfway through.
+    const far = new Y.Doc();
+    expect(() =>
+      Y.applyUpdate(far, encodeUpdate([], [{ client: 555, clock: 2 ** 53, len: 1 }])),
+    ).toThrow();
     // A later clock of its own client: applying fails halfway through.
     const selfRef = new Y.Doc();
     expect(() =>
@@ -306,9 +422,10 @@ describe('what real clients send', () => {
 
 describe('after an await', () => {
   it('lets a connection write only if it is still writable, open and on a loaded board', () => {
-    const open = { readOnly: false, socketState: 1, documentDestroyed: false };
+    const open = { readOnly: false, connected: true, socketState: 1, documentDestroyed: false };
     expect(stillWritable(open)).toBe(true);
     expect(stillWritable({ ...open, readOnly: true })).toBe(false);
+    expect(stillWritable({ ...open, connected: false })).toBe(false);
     expect(stillWritable({ ...open, socketState: 2 })).toBe(false);
     expect(stillWritable({ ...open, socketState: 3 })).toBe(false);
     expect(stillWritable({ ...open, documentDestroyed: true })).toBe(false);
