@@ -58,7 +58,8 @@ in without cookies; and people editing the same board need to see each other.
   clicks "Allow". The page always shows the app and device asking. The code is stored for
   2 minutes in `verification`. Tokens cannot delete the account or create other tokens.
 - **Finding people.** `GET /users/search` is for people who can share (editor or owner
-  somewhere) and is rate limited: an exact email match tells that an account exists.
+  somewhere) and is rate limited: an exact email match tells that an account exists. Only
+  a verified address is found by exact match.
 - **Account deletion.** `DELETE /me` asks for the password, or a sign-in in the last 15
   minutes for accounts without one. It is refused while the person is the only owner of a
   project shared with others, members or people with a grant on one of its boards; projects

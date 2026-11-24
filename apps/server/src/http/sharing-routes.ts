@@ -543,7 +543,9 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
           ne(user.id, actor.id),
           notTestAccount,
           or(
-            eq(user.email, q.toLowerCase()),
+            // Only a verified address is found by exact match: rights given through it reach
+            // the person who owns the mailbox (decision 0011).
+            and(eq(user.email, q.toLowerCase()), eq(user.emailVerified, true)),
             and(
               or(ilike(user.name, like), ilike(user.email, like)),
               sql`exists (

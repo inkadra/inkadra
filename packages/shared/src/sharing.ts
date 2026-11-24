@@ -139,8 +139,9 @@ export const CreateInvitation = z
 export type CreateInvitation = z.infer<typeof CreateInvitation>;
 
 /**
- * POST /invitations with the address of someone who already has an account gives them the
- * role straight away (`added`) instead of sending an invitation.
+ * POST /invitations with the verified address of someone who already has an account gives
+ * them the role straight away (`added`) instead of sending an invitation. An account whose
+ * address is not verified gets an invitation (`invited`) like anyone else.
  */
 export const InvitationResult = z
   .discriminatedUnion('status', [
