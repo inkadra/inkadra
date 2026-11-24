@@ -163,6 +163,10 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
           headers: credentials.cookie ? { cookie: credentials.cookie } : {},
           ...(origin ? { origin } : {}),
         });
+        // Closing a socket still connecting (e.g. a refused connection reconnecting at teardown)
+        // emits `error` after Hocuspocus strips its own handlers; without a listener it throws out
+        // of the worker (#971).
+        this.on('error', () => {});
       }
     }
     const doc = new Y.Doc();
@@ -178,12 +182,15 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     });
     provider.attach();
     const synced = new Promise<void>((resolve) => provider.on('synced', () => resolve()));
+    let closed = false;
     const conn = {
       doc,
       provider,
       websocketProvider,
       synced,
       close() {
+        if (closed) return;
+        closed = true;
         provider.destroy();
         websocketProvider.destroy();
       },
@@ -1592,11 +1599,18 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   });
 
   it('tells a client that asks a lost access and a signed-out session apart (#791)', async () => {
-    const reasonOf = (c: ReturnType<typeof connect>) =>
-      new Promise<string | null>((resolve) => {
-        c.provider.on('authenticationFailed', ({ reason }: { reason: string }) => resolve(reason));
-        setTimeout(() => resolve(null), 4000);
-      });
+    const reasonOf = async (c: ReturnType<typeof connect>) => {
+      try {
+        return await new Promise<string | null>((resolve) => {
+          c.provider.on('authenticationFailed', ({ reason }: { reason: string }) =>
+            resolve(reason),
+          );
+          setTimeout(() => resolve(null), 4000);
+        });
+      } finally {
+        c.close();
+      }
+    };
     await signUp('outsider');
     const asks = (credentials: { cookie?: string }) =>
       connect(credentials, undefined, CURRENT_SCHEMA_VERSION, boardId, '&reasons=1');
