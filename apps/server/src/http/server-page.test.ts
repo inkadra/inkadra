@@ -375,6 +375,33 @@ describe.skipIf(!url)('Server page (needs DATABASE_URL)', () => {
     expect(status.queues).toEqual([]);
   }, 10_000);
 
+  it('answers without charts when a read of the monitor store times out', async () => {
+    const timeout = () => Promise.reject(new Error('Command timed out'));
+    const slow = {
+      ...memoryStore(),
+      beats: timeout,
+      points: timeout,
+      problems: timeout,
+      events: timeout,
+    };
+    const status = ServerStatus.parse(
+      await serverStatus(
+        {
+          config,
+          db,
+          store: slow,
+          jobs: testDeps(db, log).jobs,
+          redis: { info: timeout } as never,
+        },
+        people.admin?.id as string,
+        '7d',
+        [],
+      ),
+    );
+    expect(status.services.find((s) => s.id === 'queue')?.status).toBe('down');
+    expect(status.processes).toEqual([]);
+  });
+
   it('lists the programs a process runs now under it, not those of a stopped one', async () => {
     const now = Date.now();
     const own = memoryStore();

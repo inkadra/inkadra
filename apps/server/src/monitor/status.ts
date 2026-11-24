@@ -183,7 +183,7 @@ export function combine(
 async function chartEvents(deps: ServerDeps, from: number, now: number): Promise<ServerEvent[]> {
   const slice = (now - from) / 6;
   const videos = new Map<number, number>();
-  for (const e of await deps.store.events(from))
+  for (const e of await deps.store.events(from).catch(() => []))
     if (e.kind === 'video_ready') {
       const b = from + Math.min(5, Math.floor((e.t - from) / slice)) * slice + slice / 2;
       videos.set(b, (videos.get(b) ?? 0) + 1);
@@ -306,7 +306,7 @@ async function transcodes(
   });
   const midnight = new Date(now);
   midnight.setHours(0, 0, 0, 0);
-  const today = await deps.store.events(midnight.getTime());
+  const today = await deps.store.events(midnight.getTime()).catch(() => []);
   const ready = today.filter((e) => e.kind === 'video_ready');
   return {
     active,
@@ -587,11 +587,16 @@ export async function serverLive(
   // sample fell there still counts in the first (as `combine` does in the full history).
   const from = Math.floor((now - 2 * stepMs) / stepMs) * stepMs;
   const rawFrom = now - 5 * 60_000;
-  const beats = await store.beats();
+  const none = () => new Map<string, Point[]>();
+  const beats = await store.beats().catch(() => []);
   const alive = (since: number) => beats.filter((b) => b.at >= since).map(processKey);
-  const raw = await store.points('raw', alive(rawFrom), Math.min(rawFrom, from - stepMs));
+  const raw = await store
+    .points('raw', alive(rawFrom), Math.min(rawFrom, from - stepMs))
+    .catch(none);
   const points =
-    tier === 'raw' ? raw : await store.points(tier, alive(from - stepMs), from - stepMs);
+    tier === 'raw'
+      ? raw
+      : await store.points(tier, alive(from - stepMs), from - stepMs).catch(none);
   return {
     checkedAt: iso(now),
     range,
@@ -614,18 +619,22 @@ export async function serverStatus(
   const from = now - window * 1000;
   const midnight = new Date(now);
   midnight.setHours(0, 0, 0, 0);
-  const beats = await store.beats();
+  // A store read that times out (Valkey busy) leaves its part empty instead of failing the page.
+  const none = () => new Map<string, Point[]>();
+  const beats = await store.beats().catch(() => []);
   // Only processes heard from since `since`: one stopped days ago has no samples to show.
   const alive = (since: number) => beats.filter((b) => b.at >= since).map(processKey);
   const [points, today, raw, visible, stored] = await Promise.all([
-    store.points(tier, alive(from), from),
+    store.points(tier, alive(from), from).catch(none),
     // Today's traffic: the minute averages since midnight, already read for 24 h.
     tier === 'm1' && from <= midnight.getTime()
       ? null
-      : store.points('m1', alive(midnight.getTime()), midnight.getTime()),
-    tier === 'raw' ? Promise.resolve(null) : store.points('raw', alive(now - 3_600_000)),
+      : store.points('m1', alive(midnight.getTime()), midnight.getTime()).catch(none),
+    tier === 'raw'
+      ? Promise.resolve(null)
+      : store.points('raw', alive(now - 3_600_000)).catch(none),
     memberProjects(db, adminId),
-    store.problems(),
+    store.problems().catch(() => []),
   ]);
   const history = combine(points, from, step);
   const hour = combine(raw ?? points, now - 3_600_000, 3600);
