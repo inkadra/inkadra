@@ -1964,6 +1964,7 @@
       "sizeLimit": "Dieses Board hat seine Größenbegrenzung erreicht. Ergänzungen wurden nicht gespeichert; das Board wurde neu geladen. Du kannst Inhalte löschen, um Platz zu schaffen.",
       "sizeLimitKept": "Dieses Board hat seine Größenbegrenzung erreicht. Auf diesem Gerät gemachte Änderungen wurden nicht gespeichert: Sie bleiben auf diesem Gerät, und das Board wurde neu geladen. Lösche Inhalte, um Platz zu schaffen, und stelle sie wieder her, lade sie herunter, um eine Kopie zu behalten, oder verwirf sie.",
       "kept": "Änderungen an diesem Board, die der Server nicht angenommen hat, bleiben auf diesem Gerät. Sie sind nicht im Board: Stelle sie wieder her, sobald das Board sie annehmen kann, lade sie herunter, um eine Kopie zu behalten, oder verwirf sie.",
+      "keptRefused": "Deine letzten Änderungen wurden nicht gespeichert: Der Server hat sie nicht angenommen. Sie bleiben auf diesem Gerät, und das Board wurde neu geladen. Stelle sie wieder her, lade sie als Kopie herunter oder verwirf sie.",
       "keptDownload": "Änderungen herunterladen",
       "keptDiscard": "Verwerfen",
       "keptRestore": "Im Board wiederherstellen",

@@ -42,6 +42,7 @@ vi.mock('@hocuspocus/provider', () => ({
     on() {}
     off() {}
     attach() {}
+    detach() {}
     destroy() {
       destroyed.push('provider');
     }

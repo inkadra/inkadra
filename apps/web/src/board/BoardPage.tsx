@@ -1374,7 +1374,9 @@ function BoardScreen({
           <div role="alert" className="board-update-notice">
             {t(
               !conn.sizeLimited
-                ? 'board.contextual.kept'
+                ? conn.updateRefused
+                  ? 'board.contextual.keptRefused'
+                  : 'board.contextual.kept'
                 : conn.readOnly
                   ? 'board.contextual.sizeLimitReadOnly'
                   : conn.kept
@@ -1635,6 +1637,7 @@ export function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId:
         saves={conn.saves}
         online={online}
         gone={conn.gone}
+        retrying={conn.retrying}
       />
       {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
     </>

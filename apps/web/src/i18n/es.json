@@ -1964,6 +1964,7 @@
       "sizeLimit": "Este tablero ha alcanzado su límite de tamaño. Las adiciones no se guardaron; el tablero se ha recargado. Puedes eliminar contenido para liberar espacio.",
       "sizeLimitKept": "Este tablero ha alcanzado su límite de tamaño. Los cambios hechos en este dispositivo no se guardaron: se conservan en este dispositivo y el tablero se ha recargado. Elimina contenido para hacer espacio y restáuralos, descárgalos para conservar una copia, o descártalos.",
       "kept": "Los cambios de este tablero que el servidor no aceptó se conservan en este dispositivo. No están en el tablero: restáuralos cuando el tablero pueda aceptarlos, descárgalos para conservar una copia, o descártalos.",
+      "keptRefused": "Tus últimos cambios no se guardaron: el servidor no los aceptó. Se conservan en este dispositivo y el tablero se ha vuelto a cargar. Restáuralos, descárgalos para guardar una copia o descártalos.",
       "keptDownload": "Descargar los cambios",
       "keptDiscard": "Descartar",
       "keptRestore": "Restaurar en el tablero",
