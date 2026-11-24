@@ -65,8 +65,8 @@ class MemoryRateLimiter {
     for (const t of this.hits.get(key) ?? []) if (now - t < this.windowMs) n++;
     return n;
   }
-  protected isBlocked(key: string) {
-    return this.count(key) >= this.max;
+  protected isBlocked(key: string, now = Date.now()) {
+    return this.count(key, now) >= this.max;
   }
   /** Moves a key to the most recently used end of the table. */
   protected store(key: string, times: number[]) {
@@ -88,7 +88,7 @@ class MemoryRateLimiter {
         this.hits.delete(k);
         continue;
       }
-      if (this.isBlocked(k)) blocked ??= k;
+      if (this.isBlocked(k, now)) blocked ??= k;
       else {
         unblocked = k;
         break;
@@ -136,8 +136,8 @@ class MemoryFailures extends MemoryRateLimiter {
   protected override inFlight(key: string) {
     return this.pending.has(key);
   }
-  protected override isBlocked(key: string) {
-    return this.count(key) + (this.pending.get(key) ?? 0) >= this.max;
+  protected override isBlocked(key: string, now = Date.now()) {
+    return this.count(key, now) + (this.pending.get(key) ?? 0) >= this.max;
   }
   blocked(key: string) {
     return this.isBlocked(key) || !this.room(key);
@@ -226,6 +226,7 @@ export class RateLimiter {
     return shared ? (this.retry.get(key) ?? 1) : this.memory.retryAfterSeconds(key);
   }
   async take(key: string) {
+    if (!shared) return this.memory.take(key);
     return this.budget(key, 'take', randomUUID(), {
       allowed: () => this.memory.take(key),
       retryAfterSeconds: (k) => this.memory.retryAfterSeconds(k),
