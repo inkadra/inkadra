@@ -1,4 +1,4 @@
-import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
+import { addTodoItem, createElement, removeTodoItem, updateTodoItem } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
@@ -186,6 +186,26 @@ it('checks an undone and a redone assignment like any other', async () => {
   await validateTaskUpdate(db, id, 'actor', server, redo);
   Y.applyUpdate(server, redo);
   expect(assignedItems(server).get(`${todo}:${item}`)?.assigneeId).toBe(other);
+  undo.destroy();
+  client.destroy();
+  server.destroy();
+});
+it('checks an assigned item brought back by undo on a copy of the board', async () => {
+  const { server, client, todo, item, send } = boardWithItem();
+  const undo = new Y.UndoManager(client.getMap('elements'));
+  Y.applyUpdate(
+    server,
+    send(() => updateTodoItem(client, todo, item, { assigneeId: id })),
+  );
+  undo.clear();
+  Y.applyUpdate(
+    server,
+    send(() => removeTodoItem(client, todo, item)),
+  );
+  const restore = send(() => undo.undo());
+  expect(taskWrites(server, restore)).toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, restore)).rejects.toThrow('Guests');
+  await expect(validateTaskUpdate(db, id, 'actor', server, restore)).resolves.toBeUndefined();
   undo.destroy();
   client.destroy();
   server.destroy();

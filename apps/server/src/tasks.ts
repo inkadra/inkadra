@@ -209,7 +209,7 @@ function isTodoItem(
     card.get('items') !== list
   )
     return false;
-  return [map._item, list._item, card._item].every(
+  return [map._item, list._item, card._item, card._map.get('type')].every(
     (i) => i && !i.deleted && !Y.isDeleted(ds, i.id),
   );
 }
@@ -267,7 +267,7 @@ export function taskWrites(
       }
       return undefined;
     };
-    /** The type a decoded item names as parent: one of the board, or 'new' when the update adds it. */
+    /** The type a decoded item names as parent: one of the board, or 'new' when the update adds it (a missing one was refused above). */
     const parentType = (parent: unknown): unknown => {
       if (typeof parent === 'string') return document.share.get(parent);
       if (!(parent instanceof Y.ID)) return undefined;
@@ -341,6 +341,10 @@ export function taskWrites(
         s.id.clock + s.length <= Y.getState(document.store, s.id.client)
       )
         continue;
+      // An origin or parent neither on the board nor in the update: Yjs holds this struct, and
+      // what follows it, back until another update brings it.
+      for (const id of [s.origin, s.rightOrigin, s.parent])
+        if (id instanceof Y.ID && !inDocument(id) && !sent(id)) return 'full';
       const { key, parent } = placeOf(s);
       if (key === undefined) return 'full';
       if (key === null || !TASK_KEYS.has(key)) continue;
@@ -355,7 +359,9 @@ export function taskWrites(
         return 'full';
       const keys = written.get(parent) ?? new Map<string, Y.Item[]>();
       written.set(parent, keys);
-      keys.set(key, [...(keys.get(key) ?? []), s]);
+      const chain = keys.get(key);
+      if (chain) chain.push(s);
+      else keys.set(key, [s]);
     }
     const values = new Map<Y.Map<unknown>, TaskValues>();
     for (const [map, keys] of written) {

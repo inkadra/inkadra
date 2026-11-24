@@ -117,6 +117,73 @@ it('reads only the task fields an update writes, and copies the board only when 
   server.destroy();
 });
 
+it('copies the board for what the update alone cannot settle', async () => {
+  const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+  const server = createBoardDoc(id);
+  const todo = createElement(server, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+  const item = addTodoItem(server, todo, 'Permit')!;
+  const note = createElement(server, 'note', { x: 0, y: 0 }, {}, { userId: null }).id;
+  const tab = () => {
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(server));
+    return doc;
+  };
+  const diff = (doc: Y.Doc, change: () => void) => {
+    const before = Y.encodeStateVector(doc);
+    change();
+    return Y.encodeStateAsUpdate(doc, before);
+  };
+  const db = {} as Database;
+  // Two tabs assign the same item offline; their edits come back merged: Yjs breaks the tie.
+  const a = tab();
+  const b = tab();
+  const merged = Y.mergeUpdates([
+    diff(a, () => updateTodoItem(a, todo, item, { assigneeId: id })),
+    diff(b, () => updateTodoItem(b, todo, item, { dueDate: '2026-12-01', assigneeId: 'other' })),
+  ]);
+  expect(taskWrites(server, merged)).toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, merged)).rejects.toThrow();
+  // A field named like a task field on another card is not one: read on the copy, ignored.
+  const c = tab();
+  const onNote = diff(c, () =>
+    (c.getMap('elements').get(note) as Y.Map<unknown>).set('assigneeId', id),
+  );
+  expect(taskWrites(server, onNote)).toBe('full');
+  await expect(validateTaskUpdate(db, id, undefined, server, onNote)).resolves.toBeUndefined();
+  // A gap inside an update (a Skip): what follows is held back.
+  const d = tab();
+  const card = d.getMap('elements').get(todo) as Y.Map<unknown>;
+  const first = diff(d, () => card.set('x', 1));
+  diff(d, () => card.set('x', 2));
+  const third = diff(d, () => updateTodoItem(d, todo, item, { dueDate: '2026-12-02' }));
+  expect(taskWrites(server, Y.mergeUpdates([first, third]))).toBe('full');
+  // Another tab's new item, not delivered yet, which this tab writes into: held back.
+  const e = tab();
+  const added = diff(e, () => addTodoItem(e, todo, 'Call the location'));
+  const f = tab();
+  Y.applyUpdate(f, added);
+  const items = (f.getMap('elements').get(todo) as Y.Map<unknown>).get('items') as Y.Array<
+    Y.Map<unknown>
+  >;
+  const early = diff(f, () => {
+    items.get(1).set('note', 'later');
+    updateTodoItem(f, todo, item, { assigneeId: id });
+  });
+  expect(taskWrites(server, early)).toBe('full');
+  // Deletions held back on the board.
+  const g = tab();
+  const own = g.getMap('elements').get(todo) as Y.Map<unknown>;
+  diff(g, () => own.set('x', 3));
+  Y.applyUpdate(
+    server,
+    diff(g, () => own.delete('x')),
+  );
+  expect(server.store.pendingDs).not.toBeNull();
+  const move = diff(c, () => (c.getMap('elements').get(note) as Y.Map<unknown>).set('y', 1));
+  expect(taskWrites(server, move)).toBe('full');
+  for (const doc of [a, b, c, d, e, f, g, server]) doc.destroy();
+});
+
 it('checks an update that fills a gap, which integrates an assignment held back before', async () => {
   const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
   const doc = createBoardDoc(id);
