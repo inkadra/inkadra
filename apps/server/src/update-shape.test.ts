@@ -622,3 +622,147 @@ describe('after an await', () => {
     expect(stillWritable({ ...open, documentDestroyed: true })).toBe(false);
   });
 });
+
+describe('values kept for undo', () => {
+  /**
+   * With an UndoManager (the web app's BoardStore has one) or without garbage collection, Yjs
+   * keeps the values a key replaced and merges them into one item of several clocks, removed.
+   */
+  it('lets through the values a key replaced, merged, live and resent', () => {
+    for (const gc of [true, false]) {
+      const b = board();
+      const client = new Y.Doc({ gc });
+      Y.applyUpdate(client, Y.encodeStateAsUpdate(b.server));
+      const map = b.card(client, b.note);
+      new Y.UndoManager(map);
+      const sv = Y.encodeStateVector(client);
+      const sent: Array<Uint8Array> = [];
+      client.on('update', (u: Uint8Array) => sent.push(u));
+      // In one transaction, then one by one, then removing the key.
+      client.transact(() => {
+        map.set('k', 'a');
+        map.set('k', 'b');
+        map.set('k', 'c');
+      });
+      map.set('k', 'd');
+      map.set('k', 'e');
+      map.delete('k');
+      // Attributes of a paragraph.
+      const body = new Y.XmlFragment();
+      map.set('body', body);
+      const paragraph = new Y.XmlElement('paragraph');
+      body.insert(0, [paragraph]);
+      client.transact(() => {
+        paragraph.setAttribute('align', 'left');
+        paragraph.setAttribute('align', 'right');
+      });
+      const merged = Y.decodeUpdate(Y.encodeStateAsUpdate(client, sv)).structs;
+      expect(merged.some((s) => s.length > 1 && s instanceof Y.Item && s.parentSub === 'k')).toBe(
+        true,
+      );
+      for (const update of sent) expect(b.send(update), `live, gc ${gc}`).toBeNull();
+      // Offline, sent again from the older state.
+      const c = board();
+      expect(c.send(Y.encodeStateAsUpdate(client, sv)), `resend, gc ${gc}`).toBeNull();
+    }
+  });
+
+  it('still refuses a live map entry of several clocks, and leaves a removed one harmless', () => {
+    const b = board();
+    const entry = (deleted: number) =>
+      encodeUpdate(
+        [
+          {
+            client: 555,
+            clock: 0,
+            structs: [
+              { parent: 'elements', key: 'c1', content: { map: true } },
+              { parent: Y.createID(555, 0), key: 'k', content: { any: ['a', 'b'] } },
+              { origin: Y.createID(555, 1), content: { any: ['c'] } },
+            ],
+          },
+        ],
+        [{ client: 555, clock: 0, len: deleted }],
+      );
+    // Only the map removed: the entry stays live, and Yjs fails while cleaning up.
+    expect(b.send(entry(1))).toBe('map entry of several clocks');
+    // Removed with it: let through, and the board goes on emitting its updates.
+    expect(b.send(entry(4))).toBeNull();
+    const emitted: unknown[] = [];
+    b.server.on('update', (u: unknown) => emitted.push(u));
+    b.server.getMap('meta').set('x', 1);
+    expect(emitted).toHaveLength(1);
+    expect(() => Y.encodeStateAsUpdate(b.server)).not.toThrow();
+    // Sent again without its deletions: the board already holds it removed.
+    const again = encodeUpdate([
+      {
+        client: 555,
+        clock: 1,
+        structs: [{ parent: Y.createID(555, 0), key: 'k', content: { any: ['a', 'b'] } }],
+      },
+    ]);
+    expect(b.send(again)).toBeNull();
+  });
+
+  it('refuses nothing real clients send (seeded runs with undo, no garbage collection, resends)', () => {
+    let refused = 0;
+    let checked = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      let state = seed;
+      const random = () => {
+        state = (state * 1103515245 + 12345) % 2 ** 31;
+        return state / 2 ** 31;
+      };
+      const pick = <T>(list: T[]) => list[Math.floor(random() * list.length)] as T;
+      const b = board();
+      const clients = [0, 1, 2].map((i) => {
+        const doc = new Y.Doc({ gc: i !== 1 });
+        Y.applyUpdate(doc, Y.encodeStateAsUpdate(b.server));
+        const card = b.card(doc, b.note);
+        const items = doc.getArray('list');
+        return {
+          doc,
+          card,
+          items,
+          undo: new Y.UndoManager([card, items]),
+          sv: Y.encodeStateVector(doc),
+        };
+      });
+      const send = (update: Uint8Array) => {
+        checked++;
+        const reason = b.send(update);
+        if (reason) refused++;
+        expect(reason, `seed ${seed}`).toBeNull();
+      };
+      for (let step = 0; step < 120; step++) {
+        const c = pick(clients);
+        const op = Math.floor(random() * 9);
+        const before = Y.encodeStateVector(c.doc);
+        if (op === 0) c.card.set(pick(['k', 'j', 'x']), pick(['a', 'b', 1, null]));
+        else if (op === 1) c.card.delete(pick(['k', 'j']));
+        else if (op === 2) c.undo.undo();
+        else if (op === 3) c.undo.redo();
+        else if (op === 4)
+          b.labelOf(c.doc).insert(
+            Math.floor(random() * (b.labelOf(c.doc).length + 1)),
+            pick(['a', 'bc', 'def']),
+          );
+        else if (op === 5 && b.labelOf(c.doc).length > 0) b.labelOf(c.doc).delete(0, 1);
+        else if (op === 6) c.items.push([pick(['p', 'q']), pick([1, 2])]);
+        else if (op === 7 && c.items.length > 0) c.items.delete(0, 1);
+        else c.undo.stopCapturing();
+        // Most edits are sent as they happen; now and then a client resends from an older state.
+        if (random() < 0.15) {
+          send(Y.encodeStateAsUpdate(c.doc, c.sv));
+          c.sv = Y.encodeStateVector(c.doc);
+        } else if (random() < 0.8) send(Y.encodeStateAsUpdate(c.doc, before));
+        // And hears from the board.
+        if (random() < 0.5)
+          Y.applyUpdate(c.doc, Y.encodeStateAsUpdate(b.server, Y.encodeStateVector(c.doc)));
+      }
+      for (const c of clients) send(Y.encodeStateAsUpdate(c.doc));
+    }
+    expect(checked).toBeGreaterThan(1000);
+    expect(refused).toBe(0);
+  });
+});

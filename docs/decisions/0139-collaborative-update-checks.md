@@ -24,7 +24,8 @@ complex for what it protects (#1001, #1009).
     names as origin, right origin or parent) past the safe integers;
   - a struct names a clock of its own client at or after its own (as origin, right origin or
     parent);
-  - a map entry spans several clocks without being removed content;
+  - a live map entry spans several clocks (removed values, which Yjs merges, kept for undo or
+    without garbage collection, are fine when the whole range is deleted);
   - a struct overlaps clocks the board holds right after a collected one, unless the parent it
     names is gone too, as Yjs reads it (a real resend after its card or text was deleted), or
     right after a live one under another map key;

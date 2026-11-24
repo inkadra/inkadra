@@ -8,7 +8,7 @@ import * as Y from 'yjs';
  * - a struct or a deletion of no length, or a subdocument whose guid is not a string (the board
  *   could no longer be encoded, so it would never be stored again);
  * - ids past the safe integers (held back, they can't be encoded again);
- * - a struct naming a clock of its own client at or after its own, a map entry of several clocks,
+ * - a struct naming a clock of its own client at or after its own, a live map entry of several clocks,
  *   or one overlapping held clocks after a collected struct or under another key than the live one
  *   before them (applyUpdate fails halfway through, after changing the board, or while cleaning
  *   up, after which the board emits nothing more);
@@ -87,14 +87,32 @@ export function malformedUpdate(board: Y.Doc, update: Uint8Array): string | null
   };
   /** Whether Yjs collects the item instead of placing it: the parent it names is gone (getMissing). */
   const parentGone = (s: Y.Item) => {
-    if (s.origin) return held(s.origin) instanceof Y.GC;
-    if (s.rightOrigin) return held(s.rightOrigin) instanceof Y.GC;
+    if (s.origin || s.rightOrigin)
+      return [s.origin, s.rightOrigin].some((id) => id && held(id) instanceof Y.GC);
     if (!(s.parent instanceof Y.ID)) return false;
     const parent = held(s.parent);
     return (
       parent instanceof Y.GC ||
       (parent instanceof Y.Item && !(parent.content instanceof Y.ContentType))
     );
+  };
+  /**
+   * Whether every clock of a range is deleted: by this update, or already on the board. Read
+   * before the deletions are checked for order, so each client's are looked through in full.
+   */
+  const deleted = (client: number, from: number, to: number) => {
+    const ranges = decoded.ds.clients.get(client) ?? [];
+    for (let clock = from; clock < to; ) {
+      const inUpdate = ranges.find((r) => r.clock <= clock && clock < r.clock + r.len);
+      if (inUpdate) {
+        clock = inUpdate.clock + inUpdate.len;
+        continue;
+      }
+      const struct = held(Y.createID(client, clock));
+      if (!struct || (struct instanceof Y.Item && !struct.deleted)) return false;
+      clock = struct.id.clock + struct.length;
+    }
+    return true;
   };
   for (const s of decoded.structs) {
     if (s.length <= 0) return 'empty struct';
@@ -110,10 +128,16 @@ export function malformedUpdate(board: Y.Doc, update: Uint8Array): string | null
     }
     if (s.content instanceof Y.ContentDoc && typeof s.content.doc.guid !== 'string')
       return 'subdocument guid';
-    // A map entry spans one clock, unless removed (merged removed values): Yjs fails while
-    // cleaning up a deleted map with a longer one, and the board emits nothing more.
+    // A live map entry spans one clock: Yjs fails while cleaning up a deleted map with a longer
+    // one, and the board emits nothing more. Removed values merge into longer ones (also kept,
+    // for undo or without garbage collection, with their content): deleted throughout, harmless.
     const key = keyOf(s);
-    if (s.length > 1 && typeof key === 'string' && !(s.content instanceof Y.ContentDeleted))
+    if (
+      s.length > 1 &&
+      typeof key === 'string' &&
+      !(s.content instanceof Y.ContentDeleted) &&
+      !deleted(s.id.client, s.id.clock, s.id.clock + s.length)
+    )
       return 'map entry of several clocks';
     // Overlapping clocks the board holds, Yjs integrates the rest after the struct before them.
     // When that one was collected, it only manages if the struct's parent is gone too (a real
