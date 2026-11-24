@@ -427,7 +427,7 @@ jobs:
           # provider (scripts in e2e/scripts) that only this job starts (audit F-20).
           - project: auth-providers
             browsers: chromium
-            auth-providers: '1'
+            auth-providers: "1"
     services:
       postgres:
         image: postgres:18-alpine
