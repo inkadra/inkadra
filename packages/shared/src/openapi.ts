@@ -2091,12 +2091,13 @@ registry.registerPath({
   security: secured,
   summary: 'Invite someone to a project or a board, or (admins) to the instance.',
   description:
-    'With the address of an existing account the role is given straight away. Otherwise an ' +
-    'invitation is created and, when SMTP is configured, emailed. Signing up through an ' +
+    'With the verified address of an existing account the role is given straight away. ' +
+    'Otherwise, an unverified account included, an invitation is created and, when SMTP is ' +
+    'configured, emailed; accepting it verifies the address. Signing up through an ' +
     'invitation works even when registration is `invite`.',
   request: { body: json(CreateInvitation) },
   responses: {
-    200: { description: 'Existing account: role given', ...json(InvitationResult) },
+    200: { description: 'Existing verified account: role given', ...json(InvitationResult) },
     201: { description: 'Invitation created', ...json(InvitationResult) },
     ...errors,
     409: {

@@ -650,7 +650,9 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       const [existing] = await db.select().from(user).where(eq(user.email, email));
       if (existing && !projectId)
         throw new HttpError('conflict', 'This person already has an account.');
-      if (existing && projectId && role) {
+      // Only an account whose address is verified gets the role at once. Any other gets an
+      // email invitation like a new person: accepting it proves the address (decision 0011).
+      if (existing?.emailVerified && projectId && role) {
         const target = boardId ?? (await rootBoardId(db, projectId));
         // One transaction, both people first, then the project row, before any other row: a
         // deletion of either, or of the project, comes first or waits (decision 0134).

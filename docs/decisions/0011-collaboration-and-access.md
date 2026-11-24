@@ -31,8 +31,9 @@ in without cookies; and people editing the same board need to see each other.
   `{"type":"access","readOnly":true|false}`, so the editor follows without a reload.
 - **Invitations.** `invitation` rows target a project, a board or (administrators) the
   instance alone. `email` invitations are single use, `link` invitations work until they
-  expire (1 to 90 days) or are revoked. Inviting the address of an existing account gives the
-  role at once. Tokens are looked up by SHA-256. Link tokens are also kept sealed (AES-256-GCM,
+  expire (1 to 90 days) or are revoked. Inviting the verified address of an existing account
+  gives the role at once; an account whose address is not verified gets an email invitation
+  like a new person, and accepting it verifies the address. Tokens are looked up by SHA-256. Link tokens are also kept sealed (AES-256-GCM,
   key derived from `AUTH_SECRET`) so managers can copy the link again; email invitations get
   a new token each time they are sent, so the old email stops working. Each person can create
   50 invitations an hour. Opening a link sets a short-lived

@@ -601,13 +601,24 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call('outsider', 'POST', forwarded)).status).toBe(404);
   });
 
-  it('gives the role straight away to people who have an account', async () => {
-    const res = await call('editor', 'POST', '/api/v1/invitations', {
-      kind: 'email',
-      email: as.outsider.email,
-      boardId: mood,
-      role: 'viewer',
+  it('gives the role straight away only to accounts with a verified address', async () => {
+    const invite = { kind: 'email', email: as.outsider.email, boardId: mood, role: 'viewer' };
+    // Signed up with a password and never verified: an invitation like for anyone else.
+    const pending = await call('editor', 'POST', '/api/v1/invitations', invite);
+    expect(pending.status).toBe(201);
+    expect(pending.body).toMatchObject({
+      status: 'invited',
+      invitation: { kind: 'email', email: as.outsider.email, boardId: mood, role: 'viewer' },
     });
+    expect((await call('outsider', 'GET', '/api/v1/shared-boards')).body.items).toEqual([]);
+    const listed = await call('editor', 'GET', `/api/v1/invitations?boardId=${mood}`);
+    expect(listed.body.items.map((i: { id: string }) => i.id)).toContain(
+      pending.body.invitation.id,
+    );
+    await call('editor', 'DELETE', `/api/v1/invitations/${pending.body.invitation.id}`);
+
+    await db.update(user).set({ emailVerified: true }).where(eq(user.id, as.outsider.id));
+    const res = await call('editor', 'POST', '/api/v1/invitations', invite);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ status: 'added', entry: { role: 'viewer' } });
     const shared = await call('outsider', 'GET', '/api/v1/shared-boards');
