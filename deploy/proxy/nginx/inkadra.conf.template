@@ -8,6 +8,11 @@ map $http_upgrade $connection_upgrade {
     ''      '';
 }
 
+# Request paths can carry sign-in, password-reset and invitation links: the access log keeps the
+# method and status, not the URL. Inkadra logs each request itself, with those parts removed.
+log_format inkadra '$remote_addr [$time_local] "$request_method" $status $body_bytes_sent '
+                   '$request_time "$http_user_agent"';
+
 upstream inkadra {
     server ${INKADRA_UPSTREAM};
     keepalive 16;
@@ -21,6 +26,7 @@ upstream inkadra_collab {
 server {
     listen 80;
     server_name ${INKADRA_DOMAIN};
+    access_log /var/log/nginx/access.log inkadra;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -35,6 +41,7 @@ server {
     listen 443 ssl;
     http2 on;
     server_name ${INKADRA_DOMAIN};
+    access_log /var/log/nginx/access.log inkadra;
 
     ssl_certificate     /etc/nginx/certs/fullchain.pem;
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
