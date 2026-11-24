@@ -160,9 +160,15 @@ jobs:
           echo "The cache lacks some packages: updating the index."
           for attempt in 1 2 3; do
             # A failed or slow update keeps the old index; the install decides.
-            sudo timeout 90 apt-get update -qq || echo "apt-get update failed (attempt $attempt)."
-            sudo timeout 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils && exit 0
-            sleep 15
+            rc=0
+            sudo timeout -k 15 90 apt-get update -qq || echo "apt-get update failed (attempt $attempt, exit $?)."
+            sudo timeout -k 15 180 apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils || rc=$?
+            if [ "$rc" -eq 0 ]; then exit 0; fi
+            echo "Media tools did not install (attempt $attempt, exit $rc)."
+            if [ "$attempt" -lt 3 ]; then
+              sudo timeout -k 15 120 dpkg --configure -a || true
+              sleep 15
+            fi
           done
           exit 1
       # The bucket suites (storage contract, resumable uploads, backups) against RustFS, the S3
@@ -366,9 +372,14 @@ jobs:
           # timeout (#971). Run as root, timeout stops apt-get with it, and the next try goes on.
           playwright="$PWD/e2e/node_modules/.bin/playwright"
           for attempt in 1 2 3; do
-            sudo env "PATH=$PATH" timeout 240 "$playwright" install-deps "${list[@]}" && exit 0
-            echo "The browsers' system packages did not install (attempt $attempt)."
-            sleep 15
+            rc=0
+            sudo env "PATH=$PATH" timeout -k 15 240 "$playwright" install-deps "${list[@]}" || rc=$?
+            if [ "$rc" -eq 0 ]; then exit 0; fi
+            echo "The browsers' system packages did not install (attempt $attempt, exit $rc)."
+            if [ "$attempt" -lt 3 ]; then
+              sudo timeout -k 15 120 dpkg --configure -a || true
+              sleep 15
+            fi
           done
           exit 1
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.

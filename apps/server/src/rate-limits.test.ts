@@ -44,7 +44,8 @@ describe('per-process rate limits', () => {
   });
 
   it('bounds the work per request when a flood fills the table', async () => {
-    vi.spyOn(Date, 'now').mockReturnValue(100_000);
+    // Use the real clock (a 60 s window does not expire during the loop): spying on Date.now
+    // allocates a Vitest call record on every lookup and dominates the measurement.
     const limiter = new RateLimiter(1, 60_000);
     for (let i = 0; i < 10_000; i++) await limiter.take(String(i));
     const started = performance.now();

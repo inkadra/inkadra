@@ -145,6 +145,9 @@ export function Team() {
       (status === 'all' || (status === 'inactive') === !!m.deactivatedAt) &&
       `${m.name} ${m.email}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
   );
+  // Disambiguate people who share a display name so every row's controls keep a distinct name.
+  const nameCounts = new Map<string, number>();
+  for (const m of filtered ?? []) nameCounts.set(m.name, (nameCounts.get(m.name) ?? 0) + 1);
   const date = (value: string) =>
     formatDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -236,6 +239,8 @@ export function Team() {
               <tbody>
                 {filtered.map((m) => {
                   const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
+                  const labelName =
+                    (nameCounts.get(m.name) ?? 0) > 1 ? `${m.name} (${m.email})` : m.name;
                   const meta = [
                     m.email,
                     t('settingsUi.members.projects', { count: m.projectsCount }),
@@ -285,7 +290,7 @@ export function Team() {
                         <Select
                           variant="quiet"
                           className="team-role"
-                          aria-label={t('admin.roleFor', { name: m.name })}
+                          aria-label={t('admin.roleFor', { name: labelName })}
                           value={m.role}
                           disabled={busy || last}
                           data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
@@ -304,7 +309,7 @@ export function Team() {
                           <Select
                             variant="quiet"
                             className="team-role team-create"
-                            aria-label={t('projectCreation.for', { name: m.name })}
+                            aria-label={t('projectCreation.for', { name: labelName })}
                             value={projectCreationValue(m.canCreateProjectsOverride)}
                             options={projectCreationOptions(
                               t,
@@ -322,6 +327,7 @@ export function Team() {
                       <td className="team-col--actions">
                         <MemberMenu
                           member={m}
+                          labelName={labelName}
                           disabled={busy}
                           last={last}
                           onSpace={() => setSpaceOf(m)}
@@ -598,6 +604,7 @@ function MemberSpace({ member, warnPercent }: { member: InstanceMember; warnPerc
 /** The ⋯ menu of a member: space, files, then deactivation set apart. */
 function MemberMenu({
   member,
+  labelName,
   disabled,
   last,
   onSpace,
@@ -605,6 +612,7 @@ function MemberMenu({
   onActive,
 }: {
   member: InstanceMember;
+  labelName: string;
   disabled: boolean;
   last: boolean;
   onSpace: () => void;
@@ -612,7 +620,7 @@ function MemberMenu({
   onActive: () => void;
 }) {
   const { t } = useTranslation();
-  const label = t('storageSpace.actionsFor', { name: member.name });
+  const label = t('storageSpace.actionsFor', { name: labelName });
   const menu = useMenu(label, [
     { label: t('storageSpace.changeLimit'), action: onSpace },
     { label: t('storageSpace.seeFiles'), action: onFiles },
