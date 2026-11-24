@@ -228,6 +228,9 @@ function createAuthInstance(
   // Invitations whose use the user-create hook counted, by the endpoint context it shares with
   // the after hook.
   const reservedInvitations = new WeakMap<object, string>();
+  // Magic links that proved the address of an unverified account, by the endpoint context the
+  // user-update hooks share.
+  const provenAddresses = new WeakSet<object>();
   const auth = betterAuth({
     // Scope availability failures to credential entry, never session lookup/sign-out.
     rateLimit: { enabled: false },
@@ -717,6 +720,19 @@ function createAuthInstance(
               // The account exists either way; the invitation page can be opened again.
               deps.log?.warn({ err }, 'invitation not accepted at sign-up');
             }
+          },
+        },
+        // A magic link to an account whose address was not verified makes Better Auth remove
+        // its password, links and sessions, then mark the address verified. Tokens and app
+        // authorizations made before the address was proven go too.
+        update: {
+          before: async (data, ctx) => {
+            if (ctx?.path === '/magic-link/verify' && data.emailVerified === true)
+              provenAddresses.add(ctx);
+          },
+          after: async (user, ctx) => {
+            if (!ctx || !provenAddresses.delete(ctx)) return;
+            await revokeStoredTokens(db, eq(schema.personalToken.userId, user.id), 'token_revoked');
           },
         },
       },

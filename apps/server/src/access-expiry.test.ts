@@ -12,6 +12,7 @@ import {
   invitation as invitationTable,
   notification,
   projectMember,
+  user,
 } from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import { testDeps } from './test-deps.ts';
@@ -115,6 +116,8 @@ describe.skipIf(!url)('expiring access and project creation (needs DATABASE_URL)
     app = await createApp({ config, db, auth, log, ...testDeps(db, log) });
     // The first account is the administrator.
     for (const name of ['admin', 'owner', 'anna', 'bruno', 'carla']) await signUp(name);
+    // Inviting a verified address gives the role at once, which these tests rely on.
+    await db.update(user).set({ emailVerified: true });
     const created = await call('owner', 'POST', '/projects', { name: 'Last Train' });
     expect(created.statusCode).toBe(201);
     projectId = created.json().id;
@@ -314,6 +317,29 @@ describe.skipIf(!url)('expiring access and project creation (needs DATABASE_URL)
     expect(owner.statusCode).toBe(400);
   });
 
+  it('invites an unverified account by link when the instance has no email', async () => {
+    await signUp('dora');
+    const res = await call('owner', 'POST', '/invitations', {
+      kind: 'email',
+      email: 'dora@example.com',
+      projectId,
+      role: 'viewer',
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    const { invitation } = res.json();
+    expect(res.json().status).toBe('invited');
+    expect(invitation).toMatchObject({ email: 'dora@example.com', emailSent: false });
+    expect(invitation.url).toContain('/join/');
+    const members = await db
+      .select()
+      .from(projectMember)
+      .where(eq(projectMember.userId, id('dora')));
+    expect(members).toEqual([]);
+    const pending = (await call('owner', 'GET', `/invitations?projectId=${projectId}`)).json();
+    expect(pending.items.map((i: { id: string }) => i.id)).toContain(invitation.id);
+    await call('owner', 'DELETE', `/invitations/${invitation.id}`);
+  });
+
   it('lets only the people allowed create or import projects', async () => {
     const off = await call('admin', 'PATCH', '/instance/settings', {
       membersCanCreateProjects: false,
@@ -410,6 +436,10 @@ describe.skipIf(!url)('expiring access and project creation (needs DATABASE_URL)
 
   it('never replaces a permanent role with a temporary one, nor extends an end', async () => {
     await signUp('elena');
+    await db
+      .update(user)
+      .set({ emailVerified: true })
+      .where(eq(user.id, id('elena')));
     // Permanent viewer on the board; a temporary editor invitation keeps it as it is.
     await call('owner', 'PUT', `/boards/${child}/grants/${id('elena')}`, { role: 'viewer' });
     const direct = await call('owner', 'POST', '/invitations', {

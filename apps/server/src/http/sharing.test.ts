@@ -23,6 +23,7 @@ import { lockAccount } from '../locks.ts';
 import { memoryMailer } from '../mailer.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
+import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
 
 const url = process.env.DATABASE_URL;
@@ -601,13 +602,34 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call('outsider', 'POST', forwarded)).status).toBe(404);
   });
 
-  it('gives the role straight away to people who have an account', async () => {
-    const res = await call('editor', 'POST', '/api/v1/invitations', {
-      kind: 'email',
-      email: as.outsider.email,
-      boardId: mood,
-      role: 'viewer',
+  it('gives the role straight away only to accounts with a verified address', async () => {
+    const invite = { kind: 'email', email: as.outsider.email, boardId: mood, role: 'viewer' };
+    // Signed up with a password and never verified: an invitation like for anyone else.
+    const pending = await call('editor', 'POST', '/api/v1/invitations', invite);
+    expect(pending.status).toBe(201);
+    expect(pending.body).toMatchObject({
+      status: 'invited',
+      invitation: { kind: 'email', email: as.outsider.email, boardId: mood, role: 'viewer' },
     });
+    expect((await call('outsider', 'GET', '/api/v1/shared-boards')).body.items).toEqual([]);
+    const listed = await call('editor', 'GET', `/api/v1/invitations?boardId=${mood}`);
+    expect(listed.body.items.map((i: { id: string }) => i.id)).toContain(
+      pending.body.invitation.id,
+    );
+    // Accepting the email invitation proves the address and gives the role.
+    const token = pending.body.invitation.url.split('/join/')[1];
+    const accepted = await call('outsider', 'POST', `/api/v1/invitations/by-token/${token}/accept`);
+    expect(accepted.status).toBe(200);
+    const [me] = await db.select().from(user).where(eq(user.id, as.outsider.id));
+    expect(me?.emailVerified).toBe(true);
+    expect(
+      (await call('outsider', 'GET', '/api/v1/shared-boards')).body.items.map(
+        (b: { id: string }) => b.id,
+      ),
+    ).toEqual([mood]);
+
+    // Now verified, the next invitation gives the role at once.
+    const res = await call('editor', 'POST', '/api/v1/invitations', invite);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ status: 'added', entry: { role: 'viewer' } });
     const shared = await call('outsider', 'GET', '/api/v1/shared-boards');
@@ -1085,6 +1107,18 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call('viewer', 'GET', '/api/v1/users/search?q=out')).status).toBe(403);
     const found = await call('editor', 'GET', '/api/v1/users/search?q=out');
     expect(found.body.items.map((p: { email: string }) => p.email)).toEqual([as.outsider.email]);
+    // Someone who shares no project is found only by a verified exact address.
+    const [stranger] = await db
+      .insert(user)
+      .values({ name: 'Stranger', email: 'stranger-search@example.com' })
+      .returning();
+    const exact = '/api/v1/users/search?q=Stranger-Search@example.com';
+    expect((await call('editor', 'GET', exact)).body.items).toEqual([]);
+    await db.update(user).set({ emailVerified: true }).where(eq(user.id, stranger!.id));
+    expect(
+      (await call('editor', 'GET', exact)).body.items.map((p: { id: string }) => p.id),
+    ).toEqual([stranger!.id]);
+    await db.delete(user).where(eq(user.id, stranger!.id));
   });
 
   it('signs in with personal tokens, which cannot manage the account', async () => {
@@ -1366,6 +1400,41 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     // Removing callbackURL selects Better Auth's page-readable JSON response.
     link.searchParams.delete('callbackURL');
     await expectSessionCookie(await call(null, 'GET', `${link.pathname}${link.search}`));
+  });
+
+  it('revokes the tokens of an unverified account when a magic link proves its address', async () => {
+    const [unproven] = await db
+      .insert(user)
+      .values({ name: 'Unproven', email: 'unproven@example.com' })
+      .returning();
+    const id = unproven!.id;
+    await issueToken(db, id, { name: 'Script' });
+    const { token } = await issueToken(db, id, { name: 'Phone', client: 'mobile' });
+    const signIn = async () => {
+      mailer.sent.length = 0;
+      const ask = await call(
+        null,
+        'POST',
+        '/api/auth/sign-in/magic-link',
+        { email: 'unproven@example.com' },
+        '192.0.2.201',
+      );
+      expect(ask.status).toBe(200);
+      await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
+      const link = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
+      link.searchParams.delete('callbackURL');
+      expect((await call(null, 'GET', `${link.pathname}${link.search}`)).status).toBe(200);
+    };
+    await signIn();
+    expect(await db.select().from(personalToken).where(eq(personalToken.userId, id))).toEqual([]);
+    const refused = await call({ bearer: token }, 'GET', '/api/v1/me');
+    expect(refused.status).toBe(401);
+    expect(refused.body.error.details).toEqual({ reason: 'token_revoked' });
+    // Once verified, signing in with a magic link leaves tokens alone.
+    const later = await issueToken(db, id, { name: 'Later' });
+    await signIn();
+    expect((await call({ bearer: later.token }, 'GET', '/api/v1/me')).body.id).toBe(id);
+    await db.delete(user).where(eq(user.id, id));
   });
 
   it('shares the recipient email budget across magic links and password resets', async () => {

@@ -1231,8 +1231,8 @@ registry.registerPath({
   summary: 'People to share with: those who share a project with you, or an exact email.',
   description:
     'Only for people who can share (editor or owner of at least one project or board). An ' +
-    'exact email match confirms that the account exists, so the endpoint is rate limited ' +
-    '(30 searches a minute).',
+    'exact email match finds only accounts whose address is verified, and confirms that the ' +
+    'account exists, so the endpoint is rate limited (30 searches a minute).',
   request: { query: UserSearchQuery },
   responses: {
     200: { description: 'At most 10 people', ...json(z.object({ items: z.array(Person) })) },
@@ -2091,12 +2091,13 @@ registry.registerPath({
   security: secured,
   summary: 'Invite someone to a project or a board, or (admins) to the instance.',
   description:
-    'With the address of an existing account the role is given straight away. Otherwise an ' +
-    'invitation is created and, when SMTP is configured, emailed. Signing up through an ' +
+    'With the verified address of an existing account the role is given straight away. ' +
+    'Otherwise, an unverified account included, an invitation is created and, when SMTP is ' +
+    'configured, emailed; accepting it verifies the address. Signing up through an ' +
     'invitation works even when registration is `invite`.',
   request: { body: json(CreateInvitation) },
   responses: {
-    200: { description: 'Existing account: role given', ...json(InvitationResult) },
+    200: { description: 'Existing verified account: role given', ...json(InvitationResult) },
     201: { description: 'Invitation created', ...json(InvitationResult) },
     ...errors,
     409: {

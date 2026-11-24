@@ -71,6 +71,8 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
       payload: { name, email: `${name}@example.com`, password: PASSWORD },
     });
     expect(res.statusCode).toBe(200);
+    // A verified address, so inviting it gives the role at once.
+    await db.update(user).set({ emailVerified: true }).where(eq(user.id, res.json().user.id));
     people.set(name, {
       id: res.json().user.id,
       cookie: String(res.headers['set-cookie']).split(';')[0] ?? '',

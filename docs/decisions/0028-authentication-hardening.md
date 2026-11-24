@@ -54,6 +54,7 @@ Google requires its hosted-domain claim even for linked accounts; generic OIDC r
 Require recent cookie sessions for PAT/app authorization issuance; admin operations reject
 PATs. Default personal tokens to 90 days while preserving the existing explicit maximum.
 Password reset revokes browser sessions; reset revokes all tokens including app-bound tokens; password changes revoke non-app tokens.
+A magic link that first proves the address of an unverified account revokes all its tokens, app-bound ones included, as Better Auth removes its password, links and sessions.
 Send localized notifications for token creation, password changes and disabling two-factor.
 
 Start CSP in report-only mode with an explicit enforcement switch. Externalize the theme
