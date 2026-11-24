@@ -3367,6 +3367,10 @@ button.crumb--editable:focus-visible {
   background: var(--ink-bg-panel);
 }
 /* A board that went while open (#951): its reasons, and two actions that wrap on a phone. */
+.board-state:focus {
+  /* Focused for screen readers and the next Tab when the board went (#951), not a control. */
+  outline: none;
+}
 .board-state .ink-muted p {
   margin: 0 0 6px;
 }

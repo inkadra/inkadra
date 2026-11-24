@@ -41,6 +41,8 @@ type Provider = Options & {
   emit: (event: string, payload: unknown) => void;
   /** How often it signed in again over its socket. */
   reattached: () => number;
+  /** The provider itself: updates it applies are the server's. */
+  self: unknown;
 };
 const person = vi.hoisted(() => ({ id: 'person-a' }));
 const providers = vi.hoisted(() => [] as Provider[]);
@@ -74,6 +76,7 @@ vi.mock('@hocuspocus/provider', () => ({
         ...options,
         emit: (event, payload) => this.listeners.get(event)?.(payload),
         reattached: () => this.attached,
+        self: this,
       });
     }
     on(event: string, listener: (payload: unknown) => void) {
@@ -496,4 +499,87 @@ it('counts only the resets of the last minute', async () => {
   }
   expect(providers.at(-1)).toBe(provider);
   expect(provider.reattached()).toBe(RESET_LIMIT + 1);
+});
+
+/** A board as the server has it, with a title. */
+async function openFromServer(id: string, serverTitle: string) {
+  const server = new Y.Doc();
+  server.getMap('meta').set('title', serverTitle);
+  const state = Y.encodeStateAsUpdate(server);
+  const provider = await open(id);
+  await act(async () => {
+    provider.onAuthenticated({ scope: 'read-write' });
+    Y.applyUpdate(provider.document, state, provider.self);
+    provider.onSynced();
+  });
+  await settle();
+  return { provider, state };
+}
+
+it('reloads a board reset again and again from the server with its values intact', async () => {
+  const { provider, state } = await openFromServer('reset-key', 'Original');
+  await act(async () => {
+    connection!.store.doc.getMap('meta').set('title', 'Changed here');
+    provider.emit('unsyncedChanges', { number: 1 });
+  });
+  for (let i = 0; i < RESET_LIMIT; i++) await resetBy(provider);
+  await settle();
+  const reopened = providers.at(-1)!;
+  expect(reopened).not.toBe(provider);
+  await act(async () => {
+    reopened.onAuthenticated({ scope: 'read-write' });
+    Y.applyUpdate(reopened.document, state, reopened.self);
+    reopened.onSynced();
+  });
+  await settle();
+  // The refused change of the title is set aside; the server's title stays.
+  expect(title()).toBe('Original');
+  expect(connection?.kept).toBeTruthy();
+
+  // Reset again with nothing unconfirmed: no reload loop, the board waits offline.
+  for (let i = 0; i < RESET_LIMIT + 2; i++) await resetBy(reopened);
+  await settle();
+  expect(providers.at(-1)).toBe(reopened);
+  expect(reopened.reattached()).toBe(RESET_LIMIT - 1);
+  expect(connection?.status).toBe('offline');
+  expect(connection?.retrying).toBe(false);
+});
+
+it('does not reload a board reset again and again without unconfirmed edits', async () => {
+  const { provider } = await openFromServer('reset-clean', 'Server title');
+  for (let i = 0; i < RESET_LIMIT; i++) await resetBy(provider);
+  await settle();
+  expect(providers.at(-1)).toBe(provider);
+  expect(connection?.status).toBe('offline');
+  expect(connection?.kept).toBeFalsy();
+  expect(connection?.updateRefused).toBeFalsy();
+  expect(title()).toBe('Server title');
+});
+
+it('counts a merge of set-aside edits refused when the server resets the board', async () => {
+  const { provider } = await openFromServer('reset-merge', 'Merged into');
+  const other = new Y.Doc();
+  other.getMap('meta').set('subtitle', 'From the device');
+  const merging = connection!.merge!(Y.encodeStateAsUpdate(other));
+  const outcome = merging.then(
+    () => 'resolved',
+    (err: { reason?: string }) => err.reason,
+  );
+  await resetBy(provider);
+  // The retry's handshake counts back to zero: that is not the server taking the merge.
+  await act(async () => {
+    provider.onSynced();
+    provider.emit('unsyncedChanges', { number: 0 });
+  });
+  expect(await outcome).toBe('refused');
+});
+
+it('stays gone when the socket of a deleted board syncs again (#951)', async () => {
+  const { provider } = await openFromServer('gone-sync', 'Gone');
+  await act(async () =>
+    provider.onStateless({ payload: JSON.stringify({ type: 'boardGone', reason: 'deleted' }) }),
+  );
+  await act(async () => provider.onSynced());
+  expect(connection?.status).toBe('denied');
+  expect(connection?.gone).toBe('deleted');
 });

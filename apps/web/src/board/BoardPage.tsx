@@ -62,6 +62,7 @@ import {
   fetchBoard,
   productionOf,
   refreshBoards,
+  refreshSharedBoards,
   renameBoard,
   setBoardIcon,
   setBoardViews,
@@ -875,6 +876,7 @@ function BoardScreen({
     if (!gone) return;
     void refreshProjects().catch(() => {});
     void refreshBoards(projectId);
+    refreshSharedBoards();
   }, [gone, projectId]);
   const productionLink = kind === 'storyboard' && !!production && (pointing ?? 0) > 0;
   const addProduction = useCallback(() => {
@@ -932,7 +934,7 @@ function BoardScreen({
           {!gone && tabs.length > 1 && (
             <ViewTabs id={tabsId} kind={kind} tabs={tabs} view={view} onChoose={chooseView} />
           )}
-          {(editable || outside > 0 || productionLink || productionMissing) && (
+          {!gone && (editable || outside > 0 || productionLink || productionMissing) && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
                 id="board-header-menu"

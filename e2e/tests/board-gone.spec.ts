@@ -75,6 +75,9 @@ test('a board whose project is deleted says so, keeps unsaved edits and leads ba
   // Nothing to edit any more, and the project is gone from the sidebar.
   await expect(page.locator('.canvas')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Condividi' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Menu della board' })).toHaveCount(0);
+  // The focus moves from the board that went to what replaced it.
+  await expect(state).toBeFocused();
   await expect(sidebar(page).getByText(project.name)).toHaveCount(0);
 
   const download = page.waitForEvent('download');

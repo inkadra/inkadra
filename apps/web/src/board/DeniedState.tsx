@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { Button, EmptyState } from '@inkadra/ui';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import type { KeptChanges } from './connection.ts';
@@ -53,11 +53,15 @@ export function GoneState({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const title = t(reason === 'trash' ? 'board.gone.trashTitle' : 'board.gone.deletedTitle');
+  // The board under the focus is gone: the focus comes here, where the way back is.
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => box.current?.focus(), []);
   return (
-    <div className="board-state">
+    <section ref={box} className="board-state" tabIndex={-1} aria-label={title}>
       <EmptyState
         icon="trash"
-        title={t(reason === 'trash' ? 'board.gone.trashTitle' : 'board.gone.deletedTitle')}
+        title={title}
         actions={
           <>
             <Button variant="primary" onClick={() => navigate('/projects')}>
@@ -74,6 +78,6 @@ export function GoneState({
         <p>{t(reason === 'trash' ? 'board.gone.trashBody' : 'board.gone.deletedBody')}</p>
         {kept && <p>{t('board.gone.kept')}</p>}
       </EmptyState>
-    </div>
+    </section>
   );
 }

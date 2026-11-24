@@ -302,6 +302,10 @@ export function useBoardConnection(
   // biome-ignore lint/correctness/useExhaustiveDependencies: A refusal must reopen the document even though its board id is unchanged.
   useEffect(() => {
     let refused = false;
+    // A refusal at the size limit carries the deletions over to the reopened board; a reset does
+    // not: a Y.Map key set again is a deletion and an insert, and the deletion alone would wipe
+    // the server's value.
+    let carryDeletions = false;
     const cacheKey = `${userId}:${boardId}`;
     const cached = cachedBoards.get(cacheKey);
     let deletions = refusedDeletions.get(cacheKey);
@@ -456,6 +460,8 @@ export function useBoardConnection(
       name: boardDocName(boardId),
       document: doc,
       onSynced: () => {
+        // A board that went stays gone, even if its socket syncs again (restored meanwhile).
+        if (state.gone) return;
         if (deletions) {
           Y.applyUpdate(doc, deletions);
           // Deletions of the refused additions name items the server never got: drop them,
@@ -479,6 +485,7 @@ export function useBoardConnection(
           // sending further edits; never cache the unaccepted additions.
           if (!roleReadOnly && !refused) {
             refused = true;
+            carryDeletions = true;
             // The refused edits stay on the device, set aside, and the person is told.
             setAside(local?.close(), edited);
             local = null;
@@ -525,22 +532,30 @@ export function useBoardConnection(
     const resetByServer = () => {
       if (!alive || refused || dropped || state.status === 'denied') return;
       resetEdits ||= edited;
+      // A merge in flight is what the server refused, whatever the retry's handshake counts.
+      settleMerge(new RestoreError('refused'));
       const now = Date.now();
       const recent = (resets.get(cacheKey) ?? []).filter((at) => now - at < RESET_WINDOW_MS);
       recent.push(now);
+      resets.set(cacheKey, recent);
       if (recent.length < RESET_LIMIT) {
-        resets.set(cacheKey, recent);
         update({ status: 'connecting', retrying: true });
         // Signs in and syncs again over the same socket, which stayed open.
         provider.configuration.websocketProvider.attach(provider);
         return;
       }
-      // Refused every time: set aside, and reopened from what the server confirmed.
+      if (!(resetEdits || edited)) {
+        // Nothing of ours to set aside: the server refuses the board itself. It waits offline
+        // until the socket connects again, rather than retry or reload in a loop.
+        update({ status: 'offline', retrying: false });
+        return;
+      }
+      // Our edits refused every time: set aside, and reopened from what the server confirmed.
+      // The reopened board holds none of them, so it reloads at most once per run of resets.
       resets.delete(cacheKey);
-      settleMerge(new RestoreError('refused'));
       refused = true;
       setRefusedBoard(boardId);
-      setAside(local?.close(), resetEdits || edited);
+      setAside(local?.close(), true);
       local = null;
       setReload((value) => value + 1);
     };
@@ -594,7 +609,7 @@ export function useBoardConnection(
       mark();
       void local?.close();
       // Only the deletions: an update from the document's own state vector holds no items.
-      if (refused)
+      if (carryDeletions)
         refusedDeletions.set(cacheKey, Y.encodeStateAsUpdate(doc, Y.encodeStateVector(doc)));
       // Signed out keeps the edits: the same person signing in again in this tab gets them back.
       if (refused || state.status === 'denied') cachedBoards.delete(cacheKey);
