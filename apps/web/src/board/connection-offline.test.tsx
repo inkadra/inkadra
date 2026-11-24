@@ -33,6 +33,8 @@ vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: person }) }));
 vi.mock('@hocuspocus/provider', () => ({
   HocuspocusProvider: class {
     document: Y.Doc;
+    effectiveName = 'board';
+    configuration = { websocketProvider: { configuration: { providerMap: new Map() } } };
     constructor(options: Options) {
       this.document = options.document;
       sockets.push(options);

@@ -1964,7 +1964,6 @@
       "sizeLimit": "Este quadro atingiu o limite de tamanho. As adições não foram salvas; o quadro foi recarregado. Você pode excluir conteúdo para liberar espaço.",
       "sizeLimitKept": "Este quadro atingiu o limite de tamanho. As alterações feitas neste dispositivo não foram salvas: ficam neste dispositivo e o quadro foi recarregado. Exclua conteúdo para liberar espaço e restaure-as, baixe-as para guardar uma cópia ou descarte-as.",
       "kept": "As alterações a este quadro que o servidor não aceitou ficam neste dispositivo. Não estão no quadro: restaure-as quando o quadro puder aceitá-las, baixe-as para guardar uma cópia ou descarte-as.",
-      "keptRefused": "Suas últimas alterações não foram salvas: o servidor não as aceitou. Elas ficam neste dispositivo e o quadro foi recarregado. Restaure-as, baixe-as para guardar uma cópia ou descarte-as.",
       "keptDownload": "Baixar as alterações",
       "keptDiscard": "Descartar",
       "keptRestore": "Restaurar no quadro",

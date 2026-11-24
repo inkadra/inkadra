@@ -1964,7 +1964,6 @@
       "sizeLimit": "Ce tableau a atteint sa limite de taille. Les ajouts n’ont pas été enregistrés ; le tableau a été rechargé. Vous pouvez supprimer du contenu pour libérer de la place.",
       "sizeLimitKept": "Ce tableau a atteint sa taille maximale. Les modifications faites sur cet appareil n’ont pas été enregistrées : elles sont conservées sur cet appareil, et le tableau a été rechargé. Supprimez du contenu pour faire de la place et restaurez-les, téléchargez-les pour en garder une copie, ou supprimez-les.",
       "kept": "Les modifications de ce tableau que le serveur n’a pas acceptées sont conservées sur cet appareil. Elles ne sont pas dans le tableau : restaurez-les quand le tableau peut les accepter, téléchargez-les pour en garder une copie, ou supprimez-les.",
-      "keptRefused": "Vos dernières modifications n’ont pas été enregistrées : le serveur ne les a pas acceptées. Elles restent sur cet appareil et le tableau a été rechargé. Restaurez-les, téléchargez-les pour en garder une copie, ou supprimez-les.",
       "keptDownload": "Télécharger les modifications",
       "keptDiscard": "Supprimer",
       "keptRestore": "Restaurer dans le tableau",

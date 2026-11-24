@@ -52,22 +52,6 @@ const CLOSE_REASONS: Record<string, ConnectionStatus> = {
   Forbidden: 'denied',
 };
 
-/**
- * Hocuspocus closes a document, not the socket, with this reason when handling an update failed:
- * the server refused it (a check on the update), or failed for a moment. The document signs in
- * and syncs again on its own; refused that often within the window, the unconfirmed edits are set
- * aside and the board is reopened from what the server has, as for a board at its size limit.
- */
-export const RESET_REASON = 'Reset Connection';
-export const RESET_LIMIT = 3;
-export const RESET_WINDOW_MS = 60_000;
-/** The wait before the nth retry of a reset document: n times this. */
-export const RESET_BACKOFF_MS = 250;
-/** After RESET_LIMIT resets without our edits, how long the board waits offline to try again. */
-export const RESET_PAUSE_MS = 30_000;
-/** When each board (`cacheKey`) was last reset by the server, kept across its reopenings. */
-const resets = new Map<string, number[]>();
-
 export interface BoardConnection {
   store: BoardStore;
   provider: HocuspocusProvider;
@@ -77,12 +61,8 @@ export interface BoardConnection {
   sizeLimited?: boolean;
   /** Edits of this board the server would not take are set aside on this device (#791). */
   kept?: KeptChanges | null;
-  /** The edits were set aside because the server refused them again and again. */
-  updateRefused?: boolean;
   /** The board was deleted or moved to the trash while open (#951); `status` is `denied`. */
   gone?: 'deleted' | 'trash' | null;
-  /** Signing in again after the server reset the document (`RESET_REASON`), until synced. */
-  retrying?: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
@@ -300,16 +280,11 @@ export function useBoardConnection(
   const [reload, setReload] = useState(0);
   const [limitedBoard, setLimitedBoard] = useState<string | null>(null);
   const [keptBoard, setKeptBoard] = useState<string | null>(null);
-  const [refusedBoard, setRefusedBoard] = useState<string | null>(null);
   const merger = useRef<BoardConnection['merge']>(undefined);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: A refusal must reopen the document even though its board id is unchanged.
   useEffect(() => {
     let refused = false;
-    // A refusal at the size limit carries the deletions over to the reopened board; a reset does
-    // not: a Y.Map key set again is a deletion and an insert, and the deletion alone would wipe
-    // the server's value.
-    let carryDeletions = false;
     const cacheKey = `${userId}:${boardId}`;
     const cached = cachedBoards.get(cacheKey);
     let deletions = refusedDeletions.get(cacheKey);
@@ -323,7 +298,6 @@ export function useBoardConnection(
       schemaTooNew: false,
       accessChangedAt: null,
       gone: null,
-      retrying: false,
     };
     const saves = createSaveStore();
     // Changes the server has not confirmed yet: a reload for a new version waits for them.
@@ -473,12 +447,9 @@ export function useBoardConnection(
           doc.store.pendingDs = null;
           deletions = undefined;
         }
-        stopRetry();
         update({ status: 'synced' });
       },
       onDisconnect: () => {
-        // The socket reconnects on its own, and its handshake signs this document in again.
-        stopRetry();
         if (state.status !== 'denied' && state.status !== 'signedOut')
           update({ status: 'offline' });
       },
@@ -492,7 +463,6 @@ export function useBoardConnection(
           // sending further edits; never cache the unaccepted additions.
           if (!roleReadOnly && !refused) {
             refused = true;
-            carryDeletions = true;
             // The refused edits stay on the device, set aside, and the person is told.
             setAside(local?.close(), edited);
             local = null;
@@ -508,11 +478,11 @@ export function useBoardConnection(
         if (msg?.type === 'access') update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
       },
       onClose: ({ event }) => {
+        // The server's close of this document (a socket's close carries the socket's code).
+        if (event.code === 1000) closedByServer = true;
         const status = CLOSE_REASONS[event.reason];
         if (status === 'denied') drop();
         if (status) update({ status });
-        // Only the document's close: a socket closing with this reason reconnects on its own.
-        else if (event.reason === RESET_REASON && event.code === 1000) resetByServer();
       },
       onAuthenticated: ({ scope }) => {
         const readOnly = scope === 'readonly';
@@ -520,9 +490,11 @@ export function useBoardConnection(
         // server's periodic check may not have told us before the socket dropped.
         const changed = authenticated && readOnly !== roleReadOnly;
         authenticated = true;
+        closedByServer = false;
         update(changed ? { readOnly, accessChangedAt: Date.now() } : { readOnly });
       },
       onAuthenticationFailed: ({ reason }) => {
+        closedByServer = true;
         const status = CLOSE_REASONS[reason];
         if (status === 'denied') drop();
         if (status) update({ status });
@@ -532,67 +504,6 @@ export function useBoardConnection(
           });
       },
     });
-    // Edits the server reset the document for in this run of resets, not confirmed since: the
-    // handshake of the next attempt may count back to zero before the server refuses them again.
-    let resetEdits = false;
-    // The next attempt after a reset, and whether the board waits offline for it.
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    let paused = false;
-    const stopRetry = () => {
-      clearTimeout(retryTimer);
-      retryTimer = undefined;
-      paused = false;
-    };
-    /** Signs in and syncs again over the same socket, which stayed open. */
-    const retry = () => {
-      stopRetry();
-      if (!alive || refused || dropped || state.gone) return;
-      update({ status: 'connecting', retrying: true });
-      provider.configuration.websocketProvider.attach(provider);
-    };
-    // Waiting offline: the network coming back, or the tab shown again, tries at once.
-    const retryNow = () => {
-      if (paused && document.visibilityState !== 'hidden') retry();
-    };
-    window.addEventListener('online', retryNow);
-    document.addEventListener('visibilitychange', retryNow);
-    /** The server closed the document over an update (`RESET_REASON`). */
-    const resetByServer = () => {
-      if (!alive || refused || dropped || state.status === 'denied') return;
-      if (state.status === 'signedOut') return;
-      // A merge in flight is what the server refused, whatever the retry's handshake counts.
-      settleMerge(new RestoreError('refused'));
-      const now = Date.now();
-      const recent = (resets.get(cacheKey) ?? []).filter((at) => now - at < RESET_WINDOW_MS);
-      // A new run of resets: edits of an earlier one were saved since, or set aside.
-      if (recent.length === 0) resetEdits = false;
-      resetEdits ||= edited;
-      recent.push(now);
-      resets.set(cacheKey, recent);
-      stopRetry();
-      if (recent.length < RESET_LIMIT) {
-        update({ status: 'connecting', retrying: true });
-        // Not at once: a blip of a few milliseconds would use up every attempt.
-        retryTimer = setTimeout(retry, RESET_BACKOFF_MS * recent.length);
-        return;
-      }
-      resets.delete(cacheKey);
-      if (!(resetEdits || edited)) {
-        // Nothing of ours to set aside: the server refuses the board itself. It waits offline
-        // and tries again later, rather than retry or reload in a loop.
-        update({ status: 'offline' });
-        paused = true;
-        retryTimer = setTimeout(retry, RESET_PAUSE_MS);
-        return;
-      }
-      // Our edits refused every time: set aside, and reopened from what the server confirmed.
-      // The reopened board holds none of them, so it reloads at most once per run of resets.
-      refused = true;
-      setRefusedBoard(boardId);
-      setAside(local?.close(), true);
-      local = null;
-      setReload((value) => value + 1);
-    };
     const onEdit = (_update: Uint8Array, origin: unknown) => {
       // The copy on the device loading is not an edit: its own flag says if it holds some.
       if (origin === provider || origin === LOCAL_ORIGIN || edited) return;
@@ -605,6 +516,9 @@ export function useBoardConnection(
     if (socket) provider.attach();
     let roleReadOnly = cached?.readOnly ?? false;
     let authenticated = false;
+    // The server no longer has this document open: telling it the document is left would be
+    // queued and replayed on the next sign-in of this board on a shared socket, closing it.
+    let closedByServer = false;
     let docTooNew = false;
     let copyTooNew = false;
     function update(patch: Partial<typeof state>) {
@@ -613,8 +527,6 @@ export function useBoardConnection(
       state = { ...state, ...patch };
       // A board that went stays so, whatever the connection says after (#951).
       if (state.gone) state.status = 'denied';
-      // Retrying is a kind of connecting only.
-      if (state.status !== 'connecting') state.retrying = false;
       state.schemaTooNew = docTooNew || copyTooNew;
       state.readOnly = roleReadOnly || state.schemaTooNew;
       if (state.status === 'denied') settleMerge(new RestoreError('refused'));
@@ -641,16 +553,13 @@ export function useBoardConnection(
     update({});
     return () => {
       alive = false;
-      stopRetry();
-      window.removeEventListener('online', retryNow);
-      document.removeEventListener('visibilitychange', retryNow);
       settleMerge(new RestoreError('notWritable'));
       if (merger.current === merge) merger.current = undefined;
       // Kept: another view may have it open. Once all is confirmed, `sweepLocalBoards` deletes it.
       mark();
       void local?.close();
       // Only the deletions: an update from the document's own state vector holds no items.
-      if (carryDeletions)
+      if (refused)
         refusedDeletions.set(cacheKey, Y.encodeStateAsUpdate(doc, Y.encodeStateVector(doc)));
       // Signed out keeps the edits: the same person signing in again in this tab gets them back.
       if (refused || state.status === 'denied') cachedBoards.delete(cacheKey);
@@ -664,6 +573,10 @@ export function useBoardConnection(
       stopSchema();
       stopSaves();
       setBusy(busy, false);
+      if (closedByServer)
+        provider.configuration.websocketProvider.configuration.providerMap.delete(
+          provider.effectiveName,
+        );
       // Destroying flushes what is still buffered: the shared socket closes only after that.
       provider.destroy();
       if (socket) releaseSharedSocket(socket, boardDocName(boardId));
@@ -685,30 +598,24 @@ export function useBoardConnection(
     };
   }, [userId, boardId]);
   const sizeLimited = limitedBoard === boardId;
-  // Said with the edits it set aside; once they are dealt with, the next notice is the usual one.
-  const updateRefused = refusedBoard === boardId && keptBoard === boardId;
-  const kept = useMemo<KeptChanges | null>(() => {
-    if (keptBoard !== boardId || !userId) return null;
-    const settled = () => {
-      setKeptBoard(null);
-      setRefusedBoard(null);
-    };
-    return {
-      // Deleted only once the server has them: refused, they stay set aside.
-      restore: async (asNew?: string[]) => {
-        const update = await keptUpdate(userId, boardId);
-        if (!merger.current) throw new RestoreError('notWritable');
-        await merger.current(update, asNew);
-        await discardKept(userId, boardId);
-        settled();
-      },
-      download: () => downloadKept(userId, boardId).then(settled),
-      discard: () => discardKept(userId, boardId).then(settled),
-    };
-  }, [keptBoard, boardId, userId]);
-  // The same object until something changes: the board page's effects depend on it.
-  return useMemo(
-    () => (conn ? { ...conn, sizeLimited, kept, updateRefused } : null),
-    [conn, sizeLimited, kept, updateRefused],
+  const kept = useMemo<KeptChanges | null>(
+    () =>
+      keptBoard === boardId && userId
+        ? {
+            // Deleted only once the server has them: refused, they stay set aside.
+            restore: async (asNew?: string[]) => {
+              const update = await keptUpdate(userId, boardId);
+              if (!merger.current) throw new RestoreError('notWritable');
+              await merger.current(update, asNew);
+              await discardKept(userId, boardId);
+              setKeptBoard(null);
+            },
+            download: () => downloadKept(userId, boardId).then(() => setKeptBoard(null)),
+            discard: () => discardKept(userId, boardId).then(() => setKeptBoard(null)),
+          }
+        : null,
+    [keptBoard, boardId, userId],
   );
+  // The same object until something changes: the board page's effects depend on it.
+  return useMemo(() => (conn ? { ...conn, sizeLimited, kept } : null), [conn, sizeLimited, kept]);
 }

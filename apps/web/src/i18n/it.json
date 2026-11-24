@@ -1964,7 +1964,6 @@
       "sizeLimit": "La board ha raggiunto il limite di dimensione. Le aggiunte non sono state salvate; la board è stata ricaricata. Puoi eliminare contenuti per liberare spazio.",
       "sizeLimitKept": "Questa board ha raggiunto il limite di dimensione. Le modifiche fatte su questo dispositivo non sono state salvate: restano su questo dispositivo e la board è stata ricaricata. Elimina contenuti per fare spazio e ripristinale, scaricale per tenerne una copia, oppure scartale.",
       "kept": "Le modifiche a questa board che il server non ha accettato restano su questo dispositivo. Non sono nella board: ripristinale quando la board può accettarle, scaricale per tenerne una copia, oppure scartale.",
-      "keptRefused": "Le ultime modifiche non sono state salvate: il server non le ha accettate. Restano su questo dispositivo e la board è stata ricaricata. Ripristinale, scaricale per tenerne una copia, oppure scartale.",
       "keptDownload": "Scarica le modifiche",
       "keptDiscard": "Scarta",
       "keptRestore": "Ripristina nella board",

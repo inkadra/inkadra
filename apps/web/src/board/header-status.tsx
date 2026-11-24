@@ -140,12 +140,9 @@ export function SyncStatus({
   saves,
   online,
   gone,
-  retrying,
 }: Omit<SyncInputs, 'pending' | 'savedAt'> & {
   saves: SaveStore;
   online: number;
-  /** Syncing again after the server reset the board: phones show the dot too. */
-  retrying?: boolean | undefined;
   /** The board was deleted or trashed while open (#951): said instead of "access denied". */
   gone?: 'deleted' | 'trash' | null | undefined;
 }) {
@@ -178,7 +175,7 @@ export function SyncStatus({
         className={
           gone
             ? 'sync sync--denied sync--gone'
-            : `sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}${retrying ? ' sync--retrying' : ''}`
+            : `sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`
         }
         data-status={status}
         // Where the header is short only the dot shows; the words stay in the tooltip.
