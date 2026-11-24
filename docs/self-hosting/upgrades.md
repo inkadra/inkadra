@@ -136,6 +136,29 @@ restored with 0.10.1 (see [Going back to an older version](#going-back-to-an-old
 - **A start after a crash waits for the lease.** The web and collab processes no longer take back
   at once a lease their own container left in Valkey: after a crash or an interrupted start (not
   a clean stop, which releases it) they start up to 30 seconds later, when it expires.
+- **Stop the old collab process before starting the new one.** Migration 0058 adds the
+  `collab_epoch` table: each collab process takes a new epoch at start, and the database refuses
+  the board writes of an older one, which then stops; its people reconnect to the newer one
+  ([decision 0138](../decisions/0138-collab-fencing-epoch.md)). What it still held goes to the
+  `unsaved-boards` folder of its data volume, which the collab process serving that volume
+  merges within a minute (on another volume, at the next collab start there). On an
+  orchestrator, update by recreating, not by a rolling update, as in
+  [Compose variants](README.md#compose-variants). The table is left out of backups: the first
+  start after a restore takes epoch 1.
+- **Board documents move from schema 27 to 28.** A to-do card's list may now name a kind added
+  in Settings → Classifications ([decision 0136](../decisions/0136-todo-list-kinds-catalog.md)).
+  Nothing to run by hand. Browser tabs open from before the upgrade, and a mobile app that does
+  not know schema 28 yet, stay read-only on boards until they reload or are updated
+  ([decision 0102](../decisions/0102-min-writer-schema.md)). A board, backup or project archive
+  written by 0.11 does not go back to 0.10.1.
+- **`TRUST_PROXY` on the Server page.** A new check warns when `TRUST_PROXY` trusts more than
+  your reverse proxy: `TRUST_PROXY=true`, or a request that reached Inkadra from a trusted address
+  without passing through a proxy, typically with `INKADRA_BIND=0.0.0.0` and the default value.
+  Set it to the proxy's own address, or to `false` when nothing sits in front of Inkadra (see
+  [TRUST_PROXY](configuration.md#trust_proxy)).
+- **Caddy or Nginx in split mode.** Add `deploy/proxy/<proxy>/compose.split.yaml` after the
+  proxy's `compose.yaml` instead of setting `INKADRA_COLLAB_UPSTREAM=collab:3001`: it also keeps
+  `collab` off the host's ports (see [Compose variants](README.md#compose-variants)).
 - **Project order per member.** Migration 0056 copies each project's shared order to every member,
   who then keeps their own. A list of projects paged across the upgrade may repeat or skip one
   project once.
