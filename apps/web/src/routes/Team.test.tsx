@@ -9,7 +9,9 @@ import { useSession } from '../lib/session.tsx';
 import { chooseSelect } from '../test/select.ts';
 import { projectCreationOptions, projectCreationValue, Team } from './Team.tsx';
 
-const { t } = vi.hoisted(() => ({ t: (key: string) => key }));
+const { t } = vi.hoisted(() => ({
+  t: vi.fn((key: string, _vars?: Record<string, unknown>) => key),
+}));
 vi.mock('../lib/session.tsx', () => ({ useSession: vi.fn() }));
 vi.mock('../lib/api.ts', () => ({
   api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() },
@@ -346,4 +348,56 @@ it('shows «Creates projects» as a short value; the menu explains each choice',
     'settingsUi.members.actions',
   ]);
   expect(host.querySelectorAll('table tbody tr.team-member')).toHaveLength(2);
+});
+
+it('disambiguates control labels with email when two members share a name', async () => {
+  const duplicatePeople: InstanceMember[] = [
+    people[0]!,
+    {
+      id: 'luca-1',
+      name: 'Luca Regista',
+      email: 'luca-1@example.com',
+      role: 'member',
+      lastActiveAt: null,
+      projectsCount: 1,
+      deactivatedAt: null,
+    },
+    {
+      id: 'luca-2',
+      name: 'Luca Regista',
+      email: 'luca-2@example.com',
+      role: 'member',
+      lastActiveAt: null,
+      projectsCount: 1,
+      deactivatedAt: null,
+    },
+  ];
+  vi.mocked(api.get).mockImplementation(async (path: string) =>
+    path === '/instance/members'
+      ? { items: duplicatePeople }
+      : path === '/invitations'
+        ? { items: [] }
+        : path === '/instance/settings'
+          ? { name: 'Inkadra', registration: 'invite' }
+          : { originalBytes: 0, byType: [], byProject: [] },
+  );
+  t.mockImplementation((key: string, vars?: Record<string, unknown>) =>
+    vars?.name ? `${key}:${String(vars.name)}` : key,
+  );
+  try {
+    await render();
+    const labels = [...host.querySelectorAll<HTMLElement>('table tbody [aria-label]')].map(
+      (el) => el.getAttribute('aria-label') ?? '',
+    );
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels).toContain('admin.roleFor:Ada');
+    expect(labels).toContain('admin.roleFor:Luca Regista (luca-1@example.com)');
+    expect(labels).toContain('admin.roleFor:Luca Regista (luca-2@example.com)');
+    expect(labels).toContain('projectCreation.for:Luca Regista (luca-1@example.com)');
+    expect(labels).toContain('projectCreation.for:Luca Regista (luca-2@example.com)');
+    expect(labels).toContain('storageSpace.actionsFor:Luca Regista (luca-1@example.com)');
+    expect(labels).toContain('storageSpace.actionsFor:Luca Regista (luca-2@example.com)');
+  } finally {
+    t.mockImplementation((key: string) => key);
+  }
 });
