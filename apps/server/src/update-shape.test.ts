@@ -48,7 +48,9 @@ type ItemSpec = {
   content:
     | { any: Array<string | null> }
     | { skip: number; info: number }
-    | { doc: string; guid: number | null };
+    | { doc: string; guid: number | null }
+    | { map: true }
+    | { deleted: number };
 };
 
 /**
@@ -83,7 +85,13 @@ function encodeUpdate(
       }
       const hasParent = !item.origin && !item.rightOrigin;
       bytes.push(
-        ('doc' in item.content ? 9 : 8) |
+        ('doc' in item.content
+          ? 9
+          : 'map' in item.content
+            ? 7
+            : 'deleted' in item.content
+              ? 1
+              : 8) |
           (item.origin ? 0x80 : 0) |
           (item.rightOrigin ? 0x40 : 0) |
           (hasParent && item.key ? 0x20 : 0),
@@ -102,6 +110,15 @@ function encodeUpdate(
         varUint(item.parent.clock);
       }
       if (hasParent && item.key) string(item.key);
+      // A shared map (ContentType, type ref 1), or removed content of some length.
+      if ('map' in item.content) {
+        varUint(1);
+        continue;
+      }
+      if ('deleted' in item.content) {
+        varUint(item.content.deleted);
+        continue;
+      }
       if ('doc' in item.content) {
         // A subdocument: its guid, then options (lib0's writeAny object: 118, one key, 125 int).
         string(item.content.doc);
@@ -244,6 +261,69 @@ describe('updates refused before they reach the board', () => {
         ),
         'unsorted deletions',
       ],
+      'an origin past the safe integers': [
+        encodeUpdate([
+          {
+            client: 555,
+            clock: 0,
+            structs: [{ origin: Y.createID(999, 2 ** 54 + 2 ** 53), content: { any: ['a'] } }],
+          },
+        ]),
+        'unsafe id',
+      ],
+      'a right origin past the safe integers': [
+        encodeUpdate([
+          {
+            client: 555,
+            clock: 0,
+            structs: [{ rightOrigin: Y.createID(2 ** 54 + 2 ** 53, 0), content: { any: ['a'] } }],
+          },
+        ]),
+        'unsafe id',
+      ],
+      'a parent past the safe integers': [
+        encodeUpdate([
+          {
+            client: 555,
+            clock: 0,
+            structs: [
+              { parent: Y.createID(999, 2 ** 54 + 2 ** 53), key: 'x', content: { any: ['a'] } },
+            ],
+          },
+        ]),
+        'unsafe id',
+      ],
+      'a client id past the safe integers': [
+        encodeUpdate([
+          {
+            client: 2 ** 55 + 2 ** 54,
+            clock: 0,
+            structs: [{ parent: 'decoy', key: 'x', content: { any: ['a'] } }],
+          },
+        ]),
+        'unsafe id',
+      ],
+      'a deletion under a client id past the safe integers': [
+        encodeUpdate([], [{ client: 2 ** 55 + 2 ** 54, clock: 0, len: 1 }]),
+        'unsafe id',
+      ],
+      'a map entry of several clocks': [
+        encodeUpdate(
+          [
+            {
+              client: 555,
+              clock: 0,
+              structs: [
+                { parent: 'elements', key: 'c1', content: { map: true } },
+                { parent: Y.createID(555, 0), key: 'k', content: { any: ['a', 'b'] } },
+                { origin: Y.createID(555, 1), content: { any: ['c'] } },
+              ],
+            },
+          ],
+          [{ client: 555, clock: 0, len: 1 }],
+        ),
+        'map entry of several clocks',
+      ],
       'deletions of one client that overlap': [
         encodeUpdate(
           [],
@@ -279,7 +359,7 @@ describe('updates refused before they reach the board', () => {
       {
         client: 555,
         clock: 0,
-        structs: [{ parent: 'decoy', key: 'x', content: { any: [null, 'b'] } }],
+        structs: [{ parent: 'decoy', content: { any: [null, 'b'] } }],
       },
     ]);
     const copy = new Y.Doc();
@@ -289,6 +369,78 @@ describe('updates refused before they reach the board', () => {
     // A real resend of both letters names the text, which is gone too: Yjs collects the rest.
     expect(b.send(both)).toBeNull();
     expect(() => Y.encodeStateAsUpdate(b.server)).not.toThrow();
+  });
+
+  it('refuses an item overlapping a live one under another key, and lets a real resend through', () => {
+    const b = board();
+    const typist = b.other();
+    typist.clientID = 555;
+    // The client's first value under a key, then two more: Yjs merges the two it replaced.
+    const map = b.card(typist, b.note);
+    const first = b.at(typist, () => map.set('k', 'a'));
+    map.set('k', 'b');
+    map.set('k', 'c');
+    expect(b.send(first)).toBeNull();
+    // Removed content of two clocks, named under another key, over the live first value.
+    expect(
+      b.send(
+        encodeUpdate([
+          {
+            client: 555,
+            clock: 0,
+            structs: [{ parent: 'decoy', key: 'x', content: { deleted: 2 } }],
+          },
+        ]),
+      ),
+    ).toBe('overlaps under another key');
+    // The real resend: the values it replaced, merged, over the first one under the same key.
+    // A client resyncing everything it has.
+    const resend = Y.encodeStateAsUpdate(typist);
+    expect(Y.decodeUpdate(resend).structs.some((st) => st.length > 1)).toBe(true);
+    expect(b.send(resend)).toBeNull();
+    expect(b.card(b.server, b.note).get('k')).toBe('c');
+  });
+
+  it('lets a resend through after its text was removed from a live card or paragraph', () => {
+    // The text removed from the card: its letters are collected, the text itself is not.
+    const b = board();
+    const typist = b.other();
+    typist.clientID = 555;
+    const first = b.at(typist, () => b.labelOf(typist).insert(0, 'a'));
+    b.labelOf(typist).insert(1, 'b');
+    const both = Y.encodeStateAsUpdate(typist, Y.encodeStateVector(b.server));
+    expect(b.send(first)).toBeNull();
+    expect(b.send(b.at(b.doc, () => b.card(b.doc, b.note).delete('label')))).toBeNull();
+    expect(Y.getItem(b.server.store, Y.createID(555, 0))).toBeInstanceOf(Y.GC);
+    expect(b.send(both)).toBeNull();
+    expect(() => Y.encodeStateAsUpdate(b.server)).not.toThrow();
+    // A text removed from a paragraph that stays.
+    const c = board();
+    const paragraph = new Y.XmlElement('paragraph');
+    const text = new Y.XmlText();
+    expect(
+      c.send(
+        c.at(c.doc, () => {
+          const body = new Y.XmlFragment();
+          c.card(c.doc, c.note).set('body', body);
+          body.insert(0, [paragraph]);
+          paragraph.insert(0, [text]);
+        }),
+      ),
+    ).toBeNull();
+    const writer = c.other();
+    writer.clientID = 556;
+    const xml = ((c.card(writer, c.note).get('body') as Y.XmlFragment).get(0) as Y.XmlElement).get(
+      0,
+    ) as Y.XmlText;
+    const one = c.at(writer, () => xml.insert(0, 'a'));
+    xml.insert(1, 'b');
+    const two = Y.encodeStateAsUpdate(writer, Y.encodeStateVector(c.server));
+    expect(c.send(one)).toBeNull();
+    expect(c.send(c.at(c.doc, () => paragraph.delete(0, 1)))).toBeNull();
+    expect(Y.getItem(c.server.store, Y.createID(556, 0))).toBeInstanceOf(Y.GC);
+    expect(c.send(two)).toBeNull();
+    expect(() => Y.encodeStateAsUpdate(c.server)).not.toThrow();
   });
 
   it('shows why: applied, these break the board', () => {
@@ -323,6 +475,45 @@ describe('updates refused before they reach the board', () => {
       ]),
     );
     expect(() => Y.encodeStateAsUpdate(sub)).toThrow();
+    // An origin past the safe integers, held back: no later encoding succeeds.
+    const held = new Y.Doc();
+    Y.applyUpdate(
+      held,
+      encodeUpdate([
+        {
+          client: 555,
+          clock: 0,
+          structs: [{ origin: Y.createID(999, 2 ** 54 + 2 ** 53), content: { any: ['a'] } }],
+        },
+      ]),
+    );
+    expect(() => Y.encodeStateAsUpdate(held)).toThrow();
+    // A map entry of several clocks, its map deleted: Yjs fails while cleaning up, and the board
+    // never emits an update again.
+    const wedged = new Y.Doc();
+    expect(() =>
+      Y.applyUpdate(
+        wedged,
+        encodeUpdate(
+          [
+            {
+              client: 555,
+              clock: 0,
+              structs: [
+                { parent: 'elements', key: 'c1', content: { map: true } },
+                { parent: Y.createID(555, 0), key: 'k', content: { any: ['a', 'b'] } },
+                { origin: Y.createID(555, 1), content: { any: ['c'] } },
+              ],
+            },
+          ],
+          [{ client: 555, clock: 0, len: 1 }],
+        ),
+      ),
+    ).toThrow();
+    const emitted: unknown[] = [];
+    wedged.on('update', (u: unknown) => emitted.push(u));
+    wedged.getMap('meta').set('x', 1);
+    expect(emitted).toEqual([]);
     // A deletion past the safe integers: applying fails halfway through.
     const far = new Y.Doc();
     expect(() =>

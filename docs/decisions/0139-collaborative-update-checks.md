@@ -20,11 +20,14 @@ complex for what it protects (#1001, #1009).
 - Before a collaborator's update reaches the board, and before any other check reads it, the
   server refuses it when, read from the decoded update and the board's clocks alone:
   - it cannot be decoded the way Yjs applies it;
-  - it holds a struct or a deletion of no length, or one past the safe integers;
+  - it holds a struct or a deletion of no length, or a clock or client id (its own, or one it
+    names as origin, right origin or parent) past the safe integers;
   - a struct names a clock of its own client at or after its own (as origin, right origin or
     parent);
+  - a map entry spans several clocks without being removed content;
   - a struct overlaps clocks the board holds right after a collected one, unless the parent it
-    names is gone too (as in a real resend after its card was deleted);
+    names is gone too, as Yjs reads it (a real resend after its card or text was deleted), or
+    right after a live one under another map key;
   - a subdocument's guid is not a string;
   - a client's deletions are out of order or overlap;
   - it writes new structs, or deletes clocks not yet written, under the board's own client id.
@@ -36,6 +39,8 @@ complex for what it protects (#1001, #1009).
   every await in that path, and before Hocuspocus applies the update, the connection must still be
   writable: not read-only, still one of the board's connections (closing one takes it off, the
   socket may stay open for other boards), its socket open, the board still loaded.
+- Known limit: a struct held back because its origin is not on the board yet is read once, on
+  arrival; when a later update lets it in, it is not read again.
 - The to-do checks (who can be assigned, due dates, guests and viewers) stay as they were.
 - Beyond that, editors are trusted with the board's content: a crafted update from someone with
   edit rights can damage that board, or make memory and storage differ until the board is
