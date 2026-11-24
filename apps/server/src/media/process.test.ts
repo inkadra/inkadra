@@ -718,7 +718,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         width: 1448,
         height: 2048,
       });
-      expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024']);
+      expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024', '2048']);
       // Red on the top half, blue on the bottom one.
       const thumb = await sharp(await readAll(await storage.read(variants[0]?.storageKey ?? '')))
         .raw()
