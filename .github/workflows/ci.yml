@@ -1265,7 +1265,11 @@ jobs:
 
   release:
     name: GitHub release
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Not the implicit success(): office-scope is skipped on a tag, and a skipped job upstream
+    # would skip this one too, leaving the release a draft (0.11.0-rc.3).
+    if: >-
+      !cancelled() && needs.manifest.result == 'success'
+      && startsWith(github.ref, 'refs/tags/v')
     needs: manifest
     runs-on: ubuntu-24.04
     timeout-minutes: 5
