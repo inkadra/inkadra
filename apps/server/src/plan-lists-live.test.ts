@@ -25,7 +25,9 @@ function board() {
 
 it('prepares a plan list that arrives as plain JSON while the board is open', async () => {
   const doc = board();
-  const stop = preparePlanListsOnChange(doc);
+  const stop = preparePlanListsOnChange(doc, (err) => {
+    throw err;
+  });
   // An older client's edit, arriving as an update.
   const client = new Y.Doc();
   Y.applyUpdate(client, Y.encodeStateAsUpdate(doc));
@@ -40,7 +42,9 @@ it('prepares a plan list that arrives as plain JSON while the board is open', as
 
 it('prepares a plan pasted with its lists missing, and leaves other changes alone', async () => {
   const doc = board();
-  const stop = preparePlanListsOnChange(doc);
+  const stop = preparePlanListsOnChange(doc, (err) => {
+    throw err;
+  });
   let transactions = 0;
   doc.on('afterTransaction', () => transactions++);
   // An unrelated change: nothing to prepare, no extra transaction.
@@ -54,5 +58,21 @@ it('prepares a plan pasted with its lists missing, and leaves other changes alon
   });
   await flush();
   expect(roots(doc).elements.get('pastedAAAAAAA')!.get('strokes')).toBeInstanceOf(Y.Array);
+  stop();
+});
+
+it('prepares the convertible lists of a plan that holds one that cannot be, and reports a failure', async () => {
+  const doc = board();
+  const errors: unknown[] = [];
+  const stop = preparePlanListsOnChange(doc, (err) => errors.push(err));
+  doc.transact(() => {
+    const map = roots(doc).elements.get(PLAN)!;
+    map.set('walls', 'from a newer build');
+    map.set('icons', [lamp]);
+  });
+  await flush();
+  expect(roots(doc).elements.get(PLAN)!.get('icons')).toBeInstanceOf(Y.Array);
+  expect(roots(doc).elements.get(PLAN)!.get('walls')).toBe('from a newer build');
+  expect(errors).toEqual([]);
   stop();
 });

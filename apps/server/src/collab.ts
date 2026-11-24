@@ -1302,8 +1302,10 @@ export function createCollabServer(deps: {
         // The row as it is now goes into the document first, so a write that landed meanwhile is kept.
         const lists = preparePlanLists(document);
         if (lists > 0 && row) {
-          await db.transaction(async (tx) => {
-            // As the normal store: a database that stopped answering fails the load (retried).
+          const written = await db.transaction(async (tx) => {
+            // As the normal store: refused once a newer collab process took over (F-24: the load
+            // fails), and a database that stopped answering fails the load (retried).
+            await fenceWrite(tx);
             await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
             const [now] = await tx
               .select({ state: boardDoc.state })
@@ -1327,11 +1329,11 @@ export function createCollabServer(deps: {
             }
             return storeIfBoardExists(tx, boardId, state, getSchemaVersion(document));
           });
-          log.info({ boardId, lists }, 'set plan lists prepared and stored');
+          if (written) log.info({ boardId, lists }, 'set plan lists prepared and stored');
         }
         // And while it stays open (an older client's paste or edit): prepared right after. The
         // watch goes with the document when it unloads.
-        preparePlanListsOnChange(document);
+        preparePlanListsOnChange(document, (err) => reportBoard('board_save_failed', boardId, err));
         const track = trackAssignments(document);
         assignedNow.set(document, track);
         assignments.set(document, track());
@@ -1356,6 +1358,9 @@ export function createCollabServer(deps: {
       if (!limits?.freeze)
         connection.readOnly =
           !context.canEdit || context.supportedSchemaVersion < requiredSchema(context, document);
+      // Frozen at load (the plan lists' store crossed the byte cap) before this connection was
+      // there: read-only too, so the refusal below tells why.
+      if (frozen.has(document)) connection.readOnly = true;
       // A shape no Yjs client writes, which would wedge the board (decision 0139): refused before
       // anything else reads it.
       if (!connection.readOnly) {

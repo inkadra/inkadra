@@ -2018,7 +2018,7 @@
       "pinFor": "Colocar {{name}} na barra"
     },
     "planListsNotReady": "Esta planta do set está à espera de que o servidor atualize as suas listas: recarregue o quadro para a editar.",
-    "planBaseKept": "Nada foi apagado: uma planta do set tem um setup à espera de que o servidor atualize as suas listas. Recarregue o quadro e tente de novo.",
+    "planBaseKept": "Nada foi apagado: uma planta do set tem um setup à espera de que o servidor atualize as suas listas. Tente de novo daqui a pouco.",
     "planListsStuck": "Esta planta do set contém dados que esta versão não consegue editar: pode vê-la aqui, mas não alterá-la."
   },
   "tags": {

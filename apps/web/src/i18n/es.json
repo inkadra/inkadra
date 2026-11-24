@@ -2018,7 +2018,7 @@
       "pinFor": "Poner {{name}} en la barra"
     },
     "planListsNotReady": "Esta planta del set espera a que el servidor actualice sus listas: vuelve a cargar el tablero para editarla.",
-    "planBaseKept": "No se ha borrado nada: una planta del set tiene un setup que espera a que el servidor actualice sus listas. Vuelve a cargar el tablero e inténtalo de nuevo.",
+    "planBaseKept": "No se ha borrado nada: una planta del set tiene un setup que espera a que el servidor actualice sus listas. Inténtalo de nuevo en un momento.",
     "planListsStuck": "Esta planta del set contiene datos que esta versión no puede editar: puedes verla aquí, no cambiarla."
   },
   "tags": {

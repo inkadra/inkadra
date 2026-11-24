@@ -2018,7 +2018,7 @@
       "pinFor": "Metti {{name}} nella barra"
     },
     "planListsNotReady": "Questa pianta del set aspetta che il server aggiorni le sue liste: ricarica la board per modificarla.",
-    "planBaseKept": "Niente è stato cancellato: una delle piante del set ha un setup che aspetta che il server aggiorni le sue liste. Ricarica la board e riprova.",
+    "planBaseKept": "Niente è stato cancellato: una delle piante del set ha un setup che aspetta che il server aggiorni le sue liste. Riprova tra poco.",
     "planListsStuck": "Questa pianta del set contiene dati che questa versione non sa modificare: si può guardare, non modificare qui."
   },
   "tags": {

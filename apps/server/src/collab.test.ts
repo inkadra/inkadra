@@ -1735,6 +1735,109 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     }
   });
 
+  /** A stored board with a set plan whose icons an older writer left as plain JSON. */
+  async function legacyPlanBoard(name: string, icons = 1) {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name },
+    });
+    const id = created.json().rootBoardId as string;
+    const saved = new Y.Doc();
+    roots(saved).meta.set('schemaVersion', CURRENT_SCHEMA_VERSION);
+    const planId = 'planLegacyBBBB';
+    addElement(saved, {
+      id: planId,
+      type: 'plan',
+      x: 0,
+      y: 0,
+      w: 480,
+      z: 'a0',
+      parent: null,
+      createdAt: 0,
+      createdBy: null,
+    });
+    const lamps = Array.from({ length: icons }, (_, i) => ({
+      id: `lampLegacy${String(i).padStart(4, 'A')}`,
+      kind: 'fresnel',
+      color: '#FFFFFF',
+      x: 100 + i,
+      y: 100,
+    }));
+    roots(saved).elements.get(planId)!.set('icons', lamps);
+    const state = Y.encodeStateAsUpdate(saved);
+    saved.destroy();
+    await db.insert(boardDoc).values({
+      boardId: id,
+      state,
+      size: state.byteLength,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+    });
+    return { id, planId, lamps, bytes: state.byteLength };
+  }
+
+  it('refuses the writes of a connection opened while the plan lists stored at load froze the board', async () => {
+    const board = await legacyPlanBoard('Frozen at load', 40);
+    const capped = limits as typeof limits & { freeze?: boolean };
+    const before = limits.stateBytes;
+    // The conversion takes the board past the cap: frozen at load, before any client syncs.
+    capped.freeze = true;
+    limits.stateBytes = board.bytes + 1;
+    const writer = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, board.id);
+    try {
+      const notices: string[] = [];
+      writer.provider.on('stateless', ({ payload }: { payload: string }) => notices.push(payload));
+      await writer.synced;
+      addElement(writer.doc, column('Refused while frozen'));
+      await vi.waitFor(() =>
+        expect(notices).toContain(JSON.stringify({ type: 'writeRefused', reason: 'frozen' })),
+      );
+      const live = collab.hocuspocus.documents.get(boardDocName(board.id))!;
+      expect(roots(live).elements.size).toBe(1);
+    } finally {
+      delete capped.freeze;
+      limits.stateBytes = before;
+      writer.close();
+    }
+  });
+
+  it('prepares a plan list that arrives as plain JSON while the board is open, sends and stores it', async () => {
+    const board = await legacyPlanBoard('Prepared while open');
+    const first = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, board.id);
+    const second = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, board.id);
+    try {
+      await Promise.all([first.synced, second.synced]);
+      // An older client's edit: the plan's strokes replaced by a plain list.
+      const line = {
+        id: 'lineLegacyAAA',
+        tool: 'pencil',
+        color: '#1C1C1E',
+        width: 4,
+        points: [1, 1, 9, 9],
+      };
+      roots(first.doc).elements.get(board.planId)!.set('strokes', [line]);
+      // The other client receives the list the server made, once, with its one stroke.
+      const strokes = () => roots(second.doc).elements.get(board.planId)!.get('strokes');
+      await vi.waitFor(() => {
+        expect(strokes()).toBeInstanceOf(Y.Array);
+        expect((strokes() as Y.Array<unknown>).toJSON()).toEqual([line]);
+      });
+      // And the server stores it.
+      collab.hocuspocus.flushPendingStores();
+      await vi.waitFor(async () => {
+        const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, board.id));
+        const persisted = new Y.Doc();
+        Y.applyUpdate(persisted, row!.state);
+        expect(roots(persisted).elements.get(board.planId)!.get('strokes')).toBeInstanceOf(Y.Array);
+        persisted.destroy();
+      });
+    } finally {
+      first.close();
+      second.close();
+    }
+  });
+
   it('prepares drawings on load but never rescans them for card updates', async () => {
     const editor = connect(as('owner'));
     const peer = connect(as('owner'));

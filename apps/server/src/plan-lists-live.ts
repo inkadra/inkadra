@@ -12,10 +12,12 @@ const LIST_KEYS: ReadonlySet<string> = new Set([...PLAN_MAP_LISTS, ...PLAN_PLAIN
  * While a board stays open, a set plan list that arrives missing or as plain JSON (a paste or an
  * edit from a client older than the rule that clients never make plan lists) is prepared by the
  * server right after, as at load (doc-schema preparePlanListsOf), so "reload the board" is never
- * needed while someone keeps it open. Only the plans a transaction touched are looked at. Returns
- * the function that stops watching.
+ * needed while someone keeps it open. Only the plans a transaction touched are looked at; as at
+ * load, a plan's convertible lists are prepared even when another of its lists cannot be. A
+ * failure is handed to `onError` (the board's problem report), never thrown into Yjs. Returns the
+ * function that stops watching.
  */
-export function preparePlanListsOnChange(doc: Y.Doc): () => void {
+export function preparePlanListsOnChange(doc: Y.Doc, onError: (err: unknown) => void): () => void {
   const elements = doc.getMap<Y.Map<unknown>>('elements');
   const watch = (tr: Y.Transaction) => {
     const touched = new Set<Y.Map<unknown>>();
@@ -27,19 +29,25 @@ export function preparePlanListsOnChange(doc: Y.Doc): () => void {
         }
       } else if (
         type instanceof Y.Map &&
+        type.parent === elements &&
         type.get('type') === 'plan' &&
         [...keys].some((k) => k !== null && LIST_KEYS.has(k))
       )
         touched.add(type as Y.Map<unknown>);
     }
-    const due = [...touched].filter((map) => planListsState(map) === 'pending');
+    // Pending, or stuck with other lists still to prepare (preparePlanListsOf skips what cannot be).
+    const due = [...touched].filter((map) => planListsState(map) !== 'ready');
     // After this transaction, as one of the server's own (its observers have all run).
     if (due.length)
-      queueMicrotask(() =>
-        doc.transact(() => {
-          for (const map of due) if (map.doc === doc) preparePlanListsOf(map);
-        }),
-      );
+      queueMicrotask(() => {
+        try {
+          doc.transact(() => {
+            for (const map of due) if (map.doc === doc) preparePlanListsOf(map);
+          });
+        } catch (err) {
+          onError(err);
+        }
+      });
   };
   doc.on('afterTransaction', watch);
   return () => doc.off('afterTransaction', watch);

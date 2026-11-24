@@ -2018,7 +2018,7 @@
       "pinFor": "Mettre {{name}} dans la barre"
     },
     "planListsNotReady": "Ce plan au sol attend que le serveur mette à jour ses listes : rechargez le tableau pour le modifier.",
-    "planBaseKept": "Rien n’a été supprimé : un plan au sol a un setup qui attend que le serveur mette à jour ses listes. Rechargez le tableau et réessayez.",
+    "planBaseKept": "Rien n’a été supprimé : un plan au sol a un setup qui attend que le serveur mette à jour ses listes. Réessayez dans un instant.",
     "planListsStuck": "Ce plan au sol contient des données que cette version ne peut pas modifier : vous pouvez le voir ici, pas le changer."
   },
   "tags": {
