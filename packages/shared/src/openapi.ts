@@ -2104,6 +2104,12 @@ registry.registerPath({
         'Already a member, already has an account, or an invitation for this email is pending',
       ...json(ApiError),
     },
+    429: {
+      description:
+        'Too many invitations or invitation emails in the last hour, from this person or to ' +
+        'this address; `Retry-After` says when to try again.',
+      ...json(ApiError),
+    },
   },
 });
 registry.registerPath({
@@ -2112,8 +2118,9 @@ registry.registerPath({
   tags: ['Sharing'],
   security: secured,
   summary:
-    'Send an email invitation again and push its expiry back. When the email cannot be sent ' +
-    '(503 `unavailable`), the earlier link keeps working.',
+    'Send an email invitation again and push its expiry back. Each resend counts in the ' +
+    'hourly invitation email budgets of the sender and of the address (429). When the email ' +
+    'cannot be sent (503 `unavailable`), the earlier link keeps working.',
   request: { params: idParam('invitationId') },
   responses: {
     200: { description: 'Sent', ...json(Invitation) },

@@ -79,8 +79,13 @@ const GrantParams = z.object({ boardId: Id, userId: Id });
 const InvitationParams = z.object({ invitationId: Id });
 const TokenParams = z.object({ token: z.string().min(16).max(128) });
 
-/** Invitations a person may create in an hour, so an account cannot be used to send spam. */
+/**
+ * Invitations a person may create in an hour, and invitation emails (resends included) they may
+ * send in an hour, so an account cannot be used to send spam.
+ */
 const INVITATIONS_PER_HOUR = 50;
+/** Invitation emails one address may get in an hour from everyone, like sign-in emails. */
+const INVITATION_MAILS_PER_ADDRESS = 10;
 /** How long an invitation request waits for SMTP before answering without the email. */
 const MAIL_TIMEOUT_MS = 15_000;
 /**
@@ -204,6 +209,30 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   const seal = sealer(config.AUTH_SECRET, 'invitation', config.AUTH_SECRET_PREVIOUS);
   const previewLimiter = new RateLimiter(30, 60_000, 'sharing-routes:previewLimiter');
   const searchLimiter = new RateLimiter(30, 60_000, 'sharing-routes:searchLimiter');
+  const mailsByInviter = new RateLimiter(
+    INVITATIONS_PER_HOUR,
+    3_600_000,
+    'sharing-routes:invitationMailsByInviter',
+  );
+  const mailsToAddress = new RateLimiter(
+    INVITATION_MAILS_PER_ADDRESS,
+    3_600_000,
+    'sharing-routes:invitationMailsToAddress',
+  );
+
+  /**
+   * Takes one invitation email from the hourly budgets of whoever sends it and of the address it
+   * goes to, or answers 429. Called before an email invitation is created and before each resend.
+   * shortcut: a slot taken by the inviter stays taken when the address then refuses; upgrade to
+   * refunds if that ever bothers real use.
+   */
+  async function requireMailBudget(inviterId: string, address: string) {
+    await mailsByInviter.require(inviterId, 'Too many invitations in the last hour.');
+    await mailsToAddress.require(
+      address.toLowerCase(),
+      'Too many invitation emails to this address in the last hour.',
+    );
+  }
   const joinUrl = (token: string) => `${config.PUBLIC_URL}/join/${token}`;
 
   /** `fresh`: the token just made, for the answer that creates or resends an invitation. */
@@ -806,6 +835,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
             throw new HttpError('conflict', 'An invitation for this email is already pending.');
         }
       }
+      // Last, once nothing else refuses the request: only an email that will go out counts.
+      if (email && mailer.enabled) await requireMailBudget(actor.id, email);
       const rows = await tx
         .insert(invitation)
         .values({
@@ -883,6 +914,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         undefined,
         Math.max(1, Math.ceil((row.lastSentAt.getTime() + 60_000 - Date.now()) / 1000)),
       );
+    if (row.email) await requireMailBudget(actor.id, row.email);
     // A new token: the link of the previous email stops working, but only once the new one went
     // out, so a failed send leaves the earlier link usable.
     const token = newSecret('', 24);

@@ -35,7 +35,8 @@ in without cookies; and people editing the same board need to see each other.
   role at once. Tokens are looked up by SHA-256. Link tokens are also kept sealed (AES-256-GCM,
   key derived from `AUTH_SECRET`) so managers can copy the link again; email invitations get
   a new token each time they are sent, so the old email stops working. Each person can create
-  50 invitations an hour. Opening a link sets a short-lived
+  50 invitations and send 50 invitation emails (resends included) an hour, and one address gets
+  at most 10 invitation emails an hour from everyone. Opening a link sets a short-lived
   cookie (`claim`); a sign-up with any method while it is set is allowed in `invite` mode and
   accepts the invitation once the account exists. An `email` invitation works only for its
   address: sign-ups with the cookie must use it, and only an account with that address can
