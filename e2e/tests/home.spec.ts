@@ -91,10 +91,14 @@ test('home shows today’s shooting day and creates empty projects and boards', 
   const dialog = page.getByRole('dialog', { name: 'Nuovo progetto' });
   await expect(dialog.locator('[name="projectTemplate"]')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+  await expect(dialog).toBeHidden();
   // Home has no New board button: boards start from a project, or from the search.
   await expect(main.getByRole('button', { name: 'Nuova board', exact: true })).toHaveCount(0);
   await page.keyboard.press('ControlOrMeta+k');
-  await page.getByRole('combobox').fill('Nuova board');
+  await page
+    .getByRole('dialog', { name: 'Cerca' })
+    .getByRole('combobox', { name: 'Cerca' })
+    .fill('Nuova board');
   await page.getByRole('option', { name: /^Nuova board/ }).click();
   const board = page.getByRole('dialog', { name: 'Nuova board' });
   await chooseSelect(board.getByLabel('Progetto', { exact: true }), { label: projectName });
