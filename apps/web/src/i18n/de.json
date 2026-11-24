@@ -2018,7 +2018,7 @@
       "pinFor": "{{name}} in die Leiste legen"
     },
     "planListsNotReady": "Dieser Setplan wartet darauf, dass der Server seine Listen aktualisiert: Lade das Board neu, um ihn zu bearbeiten.",
-    "planBaseKept": "Nichts wurde gelöscht: Ein Setplan hat ein Setup, das darauf wartet, dass der Server seine Listen aktualisiert. Lade das Board neu und versuche es noch einmal.",
+    "planBaseKept": "Nichts wurde gelöscht: Ein Setplan hat ein Setup, das darauf wartet, dass der Server seine Listen aktualisiert. Versuche es gleich noch einmal.",
     "planListsStuck": "Dieser Setplan enthält Daten, die diese Version nicht bearbeiten kann: Du kannst ihn hier ansehen, aber nicht ändern."
   },
   "tags": {

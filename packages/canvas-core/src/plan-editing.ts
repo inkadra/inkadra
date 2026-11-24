@@ -357,8 +357,7 @@ export function placePlanIcon(
     // Only a Y.Array is written to: a list missing or left as plain JSON is the server's to
     // prepare (doc-schema preparePlanLists); writing would refuse half of a kit.
     if (!(list instanceof Y.Array)) return null;
-    const stored = list instanceof Y.Array ? list.length : 0;
-    if (stored + n > MAX_PLAN_ICONS) return null;
+    if (list.length + n > MAX_PLAN_ICONS) return null;
   }
   // Attaching writes items again (writePlanItems) where they live: the plans the new icons go to,
   // and the plan of the icon `on` points at. Strokes, shapes and icons of those plans: none may be

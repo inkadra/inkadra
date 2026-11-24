@@ -1248,8 +1248,8 @@ export function addVariant(
 
 /**
  * The plan's list, or null when it is not a Y.Array (plain JSON an older writer left, or missing):
- * a client never converts or makes a plan list. The server prepares them when it loads a board
- * (apps/server plan-lists.ts, decision of 23 Nov); two clients doing it at once would each keep a
+ * a client never converts or makes a plan list. The server prepares them when it loads a board and
+ * while it stays open (doc-schema preparePlanLists, decision of 23 Nov); two clients doing it at once would each keep a
  * list of their own and one would lose the other's items. A write needing such a list is refused.
  */
 function listOf(doc: Y.Doc, planId: string, kind: PlanItemKind): Y.Array<unknown> | null {

@@ -34,6 +34,7 @@ import { prepareImageDrawings } from './image-drawing.ts';
 import { boardProblem, recordProblem } from './monitor/problems.ts';
 import { DocSizes, StoreRecorder } from './monitor/sampler.ts';
 import type { MonitorStore, PresenceBoard } from './monitor/store.ts';
+import { preparePlanListsOnChange } from './plan-lists-live.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import {
@@ -1301,24 +1302,38 @@ export function createCollabServer(deps: {
         // The row as it is now goes into the document first, so a write that landed meanwhile is kept.
         const lists = preparePlanLists(document);
         if (lists > 0 && row) {
-          await db.transaction(async (tx) => {
+          const written = await db.transaction(async (tx) => {
+            // As the normal store: refused once a newer collab process took over (F-24: the load
+            // fails), and a database that stopped answering fails the load (retried).
+            await fenceWrite(tx);
+            await tx.execute(sql.raw(`set local statement_timeout = ${STORE_TIMEOUT_MS}`));
             const [now] = await tx
               .select({ state: boardDoc.state })
               .from(boardDoc)
               .where(eq(boardDoc.boardId, boardId))
               .for('update');
             // A write that landed during the load goes into the document too, not only into the
-            // row: the next store writes the document, and would otherwise lose it.
-            if (now) Y.applyUpdate(document, now.state);
-            return storeIfBoardExists(
-              tx,
-              boardId,
-              Y.encodeStateAsUpdate(document),
-              getSchemaVersion(document),
-            );
+            // row: the next store writes the document, and would otherwise lose it. Its lists are
+            // prepared too.
+            if (now) {
+              Y.applyUpdate(document, now.state);
+              preparePlanLists(document);
+            }
+            const state = Y.encodeStateAsUpdate(document);
+            sizes.measured(document, state.byteLength);
+            if (limits?.freeze) grown.set(document, { bytes: state.byteLength, exact: true });
+            // Over the byte cap, as the normal store: read-only and not stored (decision 0084).
+            if (limits?.freeze && state.byteLength > limits.stateBytes) {
+              freeze(document, boardId);
+              return false;
+            }
+            return storeIfBoardExists(tx, boardId, state, getSchemaVersion(document));
           });
-          log.info({ boardId, lists }, 'set plan lists prepared and stored');
+          if (written) log.info({ boardId, lists }, 'set plan lists prepared and stored');
         }
+        // And while it stays open (an older client's paste or edit): prepared right after. The
+        // watch goes with the document when it unloads.
+        preparePlanListsOnChange(document, (err) => reportBoard('board_save_failed', boardId, err));
         const track = trackAssignments(document);
         assignedNow.set(document, track);
         assignments.set(document, track());
@@ -1343,6 +1358,9 @@ export function createCollabServer(deps: {
       if (!limits?.freeze)
         connection.readOnly =
           !context.canEdit || context.supportedSchemaVersion < requiredSchema(context, document);
+      // Frozen at load (the plan lists' store crossed the byte cap) before this connection was
+      // there: read-only too, so the refusal below tells why.
+      if (frozen.has(document)) connection.readOnly = true;
       // A shape no Yjs client writes, which would wedge the board (decision 0139): refused before
       // anything else reads it.
       if (!connection.readOnly) {

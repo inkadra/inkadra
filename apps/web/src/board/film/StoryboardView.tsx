@@ -463,6 +463,7 @@ export function StoryboardView({
               userId={userId}
               onAddFrame={() => newFrame(g.scene?.id ?? null)}
               onDelete={deleteScene}
+              onRefused={() => setToast(t('board.planBaseKept'))}
             >
               {g.frames.map((f, i) => (
                 <FrameTile
@@ -664,6 +665,7 @@ function SceneSection({
   userId,
   onAddFrame,
   onDelete,
+  onRefused,
   children,
 }: {
   group: SceneGroup;
@@ -675,6 +677,8 @@ function SceneSection({
   onAddFrame: () => void;
   /** Deletes an omitted scene and its frames, saving a version first. */
   onDelete: (scene: SceneElement) => void;
+  /** A delete that kept a set plan (canvas-core deleteElements): the board says why. */
+  onRefused: () => void;
   children: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -879,7 +883,9 @@ function SceneSection({
               label={t('film.scene.delete')}
               onClick={() => {
                 store.undo.stopCapturing();
-                deleteElements(store.doc, [scene.id], LOCAL);
+                // A set plan in the scene whose setup keeps a list this client may not write:
+                // nothing goes, and the board says why.
+                if (deleteElements(store.doc, [scene.id], LOCAL).length) onRefused();
               }}
             />
           </>
