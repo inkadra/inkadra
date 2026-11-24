@@ -247,7 +247,13 @@ test('keys typed while the new note is not focused still land in it', async ({ p
 async function signIn(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(admin.email);
+  // With mail on (the auth-providers project), the page offers a link by email first.
+  const usePassword = page.getByRole('button', { name: 'Usa la password' });
+  if (process.env.E2E_AUTH_PROVIDERS === '1') {
+    await expect(page.getByLabel('Password')).toHaveCount(0);
+    await usePassword.click();
+  } else await expect(usePassword).toHaveCount(0);
   await page.getByLabel('Password').fill(admin.password);
-  await page.getByRole('button', { name: 'Accedi' }).click();
+  await page.getByRole('button', { name: 'Accedi', exact: true }).click();
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
 }

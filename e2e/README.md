@@ -23,6 +23,17 @@ data fails there.
 runs each on its own database. Independent shell and upload regressions
 live in `shell-and-uploads.spec.ts` and run once.
 
+**Password reset and OIDC.** `password-reset.spec.ts` and `oidc-sign-in.spec.ts` run in the
+`auth-providers` project, which CI runs on its own database. With `E2E_AUTH_PROVIDERS=1` the
+config starts two local stand-ins, both plain Node with no container: `scripts/mail-sink.mjs`
+(SMTP on `E2E_SMTP_PORT`, 3125; the mail as JSON at `E2E_MAIL_PORT`, 3126, `/messages?to=`) and
+`scripts/oidc-provider.mjs` (an OpenID provider on `E2E_OIDC_PORT`, 3127, whose sign-in page
+asks who you are), and gives the server `SMTP_URL` and `OIDC_*` for them. Run it locally on an
+empty database:
+`E2E_AUTH_PROVIDERS=1 pnpm --filter @inkadra/e2e exec playwright test --project=auth-providers`.
+Without the variable the specs are skipped: mail turns the sign-in page to links by email first,
+which the other specs don't expect.
+
 **Service worker network events.** `playwright.config.ts` sets
 `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS=1` for every Chromium test, so that
 `setOffline()` and `route()` also reach the requests of the service worker and of its script,
