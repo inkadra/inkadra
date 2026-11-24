@@ -28,14 +28,15 @@ const smtpPort = Number(process.env.E2E_SMTP_PORT ?? 3125);
 const mailPort = Number(process.env.E2E_MAIL_PORT ?? 3126);
 const oidcPort = Number(process.env.E2E_OIDC_PORT ?? 3127);
 process.env.E2E_MAIL_URL = `http://127.0.0.1:${mailPort}`;
+const oidcClient = { id: 'inkadra-e2e', secret: 'inkadra-e2e-secret' };
 const authProviderEnv: Record<string, string> = authProviders
   ? {
       SMTP_URL: `smtp://127.0.0.1:${smtpPort}`,
       MAIL_FROM: 'Inkadra <inkadra@example.com>',
       OIDC_NAME: 'E2E SSO',
       OIDC_DISCOVERY_URL: `http://127.0.0.1:${oidcPort}/.well-known/openid-configuration`,
-      OIDC_CLIENT_ID: 'inkadra-e2e',
-      OIDC_CLIENT_SECRET: 'inkadra-e2e-secret',
+      OIDC_CLIENT_ID: oidcClient.id,
+      OIDC_CLIENT_SECRET: oidcClient.secret,
     }
   : {};
 const databaseUrl =
@@ -183,7 +184,12 @@ export default defineConfig({
           {
             command: 'node scripts/oidc-provider.mjs',
             url: `http://127.0.0.1:${oidcPort}/.well-known/openid-configuration`,
-            env: { E2E_OIDC_PORT: String(oidcPort) },
+            env: {
+              E2E_OIDC_PORT: String(oidcPort),
+              E2E_OIDC_CLIENT_ID: oidcClient.id,
+              E2E_OIDC_CLIENT_SECRET: oidcClient.secret,
+              E2E_OIDC_REDIRECT_URI: `${baseURL}/api/auth/callback/oidc`,
+            },
             timeout: 10_000,
           },
         ]

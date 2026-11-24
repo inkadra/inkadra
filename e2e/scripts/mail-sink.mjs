@@ -27,6 +27,7 @@ function decodePart(headers, body) {
 /** The decoded text of every leaf part, joined: what a test searches for a link. */
 function decode(raw) {
   const split = raw.indexOf('\r\n\r\n');
+  if (split < 0) return raw;
   const headers = raw.slice(0, split);
   const body = raw.slice(split + 4);
   const boundary = /boundary="?([^";\r\n]+)"?/i.exec(headers)?.[1];
@@ -67,7 +68,10 @@ createTcp((socket) => {
       const verb = line.slice(0, 4).toUpperCase();
       if (verb === 'EHLO') reply('250-inkadra-e2e-mail\r\n250 8BITMIME');
       else if (verb === 'HELO') reply('250 inkadra-e2e-mail');
-      else if (verb === 'RCPT') {
+      else if (verb === 'MAIL') {
+        envelope = { to: [] };
+        reply('250 ok');
+      } else if (verb === 'RCPT') {
         envelope.to.push((/<([^>]*)>/.exec(line)?.[1] ?? '').toLowerCase());
         reply('250 ok');
       } else if (verb === 'DATA') {
@@ -80,7 +84,8 @@ createTcp((socket) => {
         reply('221 bye');
         socket.end();
         return;
-      } else reply('250 ok'); // MAIL, NOOP and the rest
+      } else if (verb === 'NOOP') reply('250 ok');
+      else reply('502 command not implemented');
     }
   });
 }).listen(smtpPort, '127.0.0.1');

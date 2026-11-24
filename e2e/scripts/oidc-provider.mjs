@@ -3,7 +3,8 @@
 // discovery, a sign-in form at /authorize (the test types who it is), the code exchange with
 // PKCE and the client secret, ID tokens signed with a key made at start (RS256, JWKS), and
 // userinfo. Only node: modules, so the e2e run needs no container. One client, from
-// E2E_OIDC_CLIENT_ID / E2E_OIDC_CLIENT_SECRET.
+// E2E_OIDC_CLIENT_ID / E2E_OIDC_CLIENT_SECRET, with one redirect URI, E2E_OIDC_REDIRECT_URI.
+// As strict as a real provider about what the server sends, so the tests prove the server.
 import { createHash, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import { createServer } from 'node:http';
 
@@ -11,6 +12,8 @@ const port = Number(process.env.E2E_OIDC_PORT ?? 3127);
 const issuer = `http://127.0.0.1:${port}`;
 const clientId = process.env.E2E_OIDC_CLIENT_ID ?? 'inkadra-e2e';
 const clientSecret = process.env.E2E_OIDC_CLIENT_SECRET ?? 'inkadra-e2e-secret';
+const redirectUri =
+  process.env.E2E_OIDC_REDIRECT_URI ?? 'http://localhost:3100/api/auth/callback/oidc';
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const kid = 'e2e';
 const codes = new Map();
@@ -38,16 +41,34 @@ function form(params) {
 <button>Sign in to the provider</button></form>`;
 }
 
+/** Why an authorization request is refused, or null when it is one the client may make. */
+function refusal(p) {
+  if (p.get('client_id') !== clientId) return 'unauthorized_client';
+  if (p.get('redirect_uri') !== redirectUri) return 'invalid_redirect_uri';
+  if (p.get('response_type') !== 'code') return 'unsupported_response_type';
+  if (!(p.get('scope') ?? '').split(' ').includes('openid')) return 'invalid_scope';
+  if (p.get('code_challenge_method') !== 'S256' || !p.get('code_challenge') || !p.get('state'))
+    return 'invalid_request';
+  return null;
+}
+
 async function body(req) {
   let text = '';
   for await (const chunk of req) text += chunk;
   return new URLSearchParams(text);
 }
 
-createServer(async (req, res) => {
-  const url = new URL(req.url, issuer);
+createServer((req, res) => {
   const json = (status, value) =>
     res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(value));
+  handle(req, res, json).catch((err) => {
+    console.error(err);
+    if (!res.headersSent) json(500, { error: 'server_error' });
+  });
+}).listen(port, '127.0.0.1');
+
+async function handle(req, res, json) {
+  const url = new URL(req.url, issuer);
   if (url.pathname === '/.well-known/openid-configuration')
     return json(200, {
       issuer,
@@ -66,12 +87,14 @@ createServer(async (req, res) => {
       keys: [{ ...publicKey.export({ format: 'jwk' }), kid, alg: 'RS256', use: 'sig' }],
     });
   if (url.pathname === '/authorize' && req.method === 'GET') {
-    if (url.searchParams.get('client_id') !== clientId)
-      return json(400, { error: 'unauthorized_client' });
+    const error = refusal(url.searchParams);
+    if (error) return json(400, { error });
     return res.writeHead(200, { 'content-type': 'text/html' }).end(form(url.searchParams));
   }
   if (url.pathname === '/authorize' && req.method === 'POST') {
     const p = await body(req);
+    const error = refusal(p);
+    if (error) return json(400, { error });
     const code = randomBytes(16).toString('hex');
     codes.set(code, {
       redirectUri: p.get('redirect_uri'),
@@ -84,17 +107,21 @@ createServer(async (req, res) => {
         ...(p.get('nonce') ? { nonce: p.get('nonce') } : {}),
       },
     });
-    const back = new URL(p.get('redirect_uri') ?? '');
+    const back = new URL(redirectUri);
     back.searchParams.set('code', code);
-    if (p.get('state')) back.searchParams.set('state', p.get('state'));
+    back.searchParams.set('state', p.get('state'));
     back.searchParams.set('iss', issuer);
     return res.writeHead(302, { location: back.toString() }).end();
   }
   if (url.pathname === '/token' && req.method === 'POST') {
     const p = await body(req);
+    if (p.get('grant_type') !== 'authorization_code')
+      return json(400, { error: 'unsupported_grant_type' });
     const basic = /^Basic (.+)$/.exec(req.headers.authorization ?? '')?.[1];
+    const pair = basic ? Buffer.from(basic, 'base64').toString() : '';
+    const colon = pair.indexOf(':');
     const [id, secret] = basic
-      ? Buffer.from(basic, 'base64').toString().split(':').map(decodeURIComponent)
+      ? [pair.slice(0, colon), pair.slice(colon + 1)].map(decodeURIComponent)
       : [p.get('client_id'), p.get('client_secret')];
     if (id !== clientId || secret !== clientSecret) return json(401, { error: 'invalid_client' });
     const grant = codes.get(p.get('code') ?? '');
@@ -121,4 +148,4 @@ createServer(async (req, res) => {
     return profile ? json(200, profile) : json(401, { error: 'invalid_token' });
   }
   json(404, { error: 'not_found' });
-}).listen(port, '127.0.0.1');
+}

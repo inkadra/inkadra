@@ -13,7 +13,8 @@ interface SentMail {
  * The server sends mail detached from the request, so it may arrive a moment later.
  */
 export async function linkInMail(to: string, path: string, count = 1): Promise<string> {
-  const pattern = new RegExp(`https?://[^\\s"'<>]*${path}[^\\s"'<>]*`);
+  const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`https?://[^\\s"'<>]*${escaped}[^\\s"'<>]*`);
   let links: string[] = [];
   await expect
     .poll(
@@ -21,6 +22,7 @@ export async function linkInMail(to: string, path: string, count = 1): Promise<s
         const res = await fetch(
           `${process.env.E2E_MAIL_URL}/messages?to=${encodeURIComponent(to)}`,
         );
+        if (!res.ok) throw new Error(`mail sink answered ${res.status}`);
         const mails = (await res.json()) as SentMail[];
         links = mails.flatMap((m) => pattern.exec(m.text)?.[0] ?? []);
         return links.length;
@@ -28,5 +30,5 @@ export async function linkInMail(to: string, path: string, count = 1): Promise<s
       { message: `mail to ${to} with a link to ${path}`, timeout: 15_000 },
     )
     .toBeGreaterThanOrEqual(count);
-  return (links[count - 1] as string).replaceAll('&amp;', '&');
+  return (links[count - 1] as string).replaceAll('&amp;', '&').replaceAll('&#38;', '&');
 }
