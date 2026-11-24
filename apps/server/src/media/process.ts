@@ -140,10 +140,14 @@ const SHARP_MIME: Record<string, string> = {
   heif: 'image/avif',
 };
 
-/** Widths to render for an image `width` pixels wide: no upscaling, at least one. */
+/**
+ * Widths to render for an image `width` pixels wide, never upscaled: every size below it, and the
+ * next one up, which holds the picture at its own width. Without it a 320 px picture stopped at
+ * its 256 thumbnail, and so did whatever shows or exports it.
+ */
 export function variantWidths(width: number): number[] {
-  const fit = SIZES.filter((s) => s <= width);
-  return fit.length > 0 ? fit : SIZES.slice(0, 1);
+  const next = SIZES.find((s) => s >= width);
+  return [...SIZES.filter((s) => s < width), ...(next ? [next] : [])];
 }
 
 /** Every moving variant an asset could have, whatever sizes the posters ended up at. */

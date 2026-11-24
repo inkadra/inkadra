@@ -129,9 +129,11 @@ describe('fitsAnimatedCaps', () => {
 });
 
 describe('variantWidths', () => {
-  it('never upscales and always gives one thumbnail', () => {
+  it('never upscales and keeps the picture at its own width up to the largest size', () => {
     expect(variantWidths(6000)).toEqual([256, 512, 1024, 2048]);
-    expect(variantWidths(800)).toEqual([256, 512]);
+    // 1024 holds the 800 pixels: exports and the viewer get the whole picture.
+    expect(variantWidths(800)).toEqual([256, 512, 1024]);
+    expect(variantWidths(2047)).toEqual([256, 512, 1024, 2048]);
     // A picture exactly as wide as a size keeps that size: a map would stop at half its pixels.
     expect(variantWidths(1024)).toEqual([256, 512, 1024]);
     expect(variantWidths(120)).toEqual([256]);
@@ -311,6 +313,15 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     }
   });
 
+  it('keeps an SVG at the size of its viewBox in the largest thumbnail', async () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#0a0"/></svg>`;
+    const id = await upload(Buffer.from(svg), 'image/svg+xml', 'plan.svg');
+    await processAsset(deps, id);
+    const { row, variants } = await load(id);
+    expect(row).toMatchObject({ width: 400, height: 300 });
+    expect(variants.at(-1)).toMatchObject({ size: '512', width: 400, height: 300 });
+  });
+
   it('keeps an SVG past the size cap ready, without thumbnails, old ones included', async () => {
     const small =
       '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>';
@@ -383,6 +394,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       ['256', 256, 171],
       ['512', 512, 341],
       ['1024', 1024, 683],
+      ['2048', 1200, 800],
     ]);
     const thumb = await readAll(await storage.read(variants[0]?.storageKey ?? ''));
     const meta = await sharp(thumb).metadata();
@@ -516,7 +528,11 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     await processAsset(deps, id);
     const { row, variants } = await load(id);
     expect(row).toMatchObject({ status: 'ready', mime: 'image/heic', width: 320, height: 240 });
-    expect(variants.map((v) => v.size)).toEqual(['256']);
+    // The largest thumbnail keeps the decoded size: an export stops at it.
+    expect(variants.map((v) => [v.size, v.width, v.height])).toEqual([
+      ['256', 256, 192],
+      ['512', 320, 240],
+    ]);
     expect(row?.palette?.length).toBeGreaterThan(1);
   });
 
@@ -540,7 +556,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
 
     // Processed once with thumbnails, then again once the file is past the cap: none are left.
     const long = await upload(fixture('gradient.heic'), 'image/heic', 'IMG_4324.HEIC');
-    expect(await processAsset(deps, long)).toMatchObject({ variants: 1 });
+    expect(await processAsset(deps, long)).toMatchObject({ variants: 2 });
     await truncate(join(root, 'files', originalKey(long)), HEIC_MAX_BYTES + 1);
     expect(await processAsset(deps, long)).toMatchObject({ variants: 0 });
     const { row, variants } = await load(long);
@@ -702,7 +718,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         width: 1448,
         height: 2048,
       });
-      expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024']);
+      expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024', '2048']);
       // Red on the top half, blue on the bottom one.
       const thumb = await sharp(await readAll(await storage.read(variants[0]?.storageKey ?? '')))
         .raw()
@@ -796,7 +812,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       expect([row?.width, row?.height]).toEqual([640, 360]);
       expect(row?.durationMs).toBeGreaterThan(1900);
       expect(row?.durationMs).toBeLessThan(2200);
-      expect(variants.map((v) => v.size)).toEqual(['256', '512']);
+      expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024']);
       expect(row?.palette?.[0]).toMatch(/^#[EF][0-9A-F]/);
     });
 
