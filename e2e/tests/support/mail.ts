@@ -30,5 +30,6 @@ export async function linkInMail(to: string, path: string, count = 1): Promise<s
       { message: `mail to ${to} with a link to ${path}`, timeout: 15_000 },
     )
     .toBeGreaterThanOrEqual(count);
-  return (links[count - 1] as string).replaceAll('&amp;', '&').replaceAll('&#38;', '&');
+  // One pass, so an escaped `&amp;#38;` stays `&#38;`.
+  return (links[count - 1] as string).replace(/&(?:amp|#38);/g, '&');
 }
