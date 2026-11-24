@@ -292,22 +292,6 @@ export function SearchDialog({
           />
         </div>
         <div className="search__list">
-          {showingSuggestions && suggestions.length === 0 && (
-            <p className="ink-muted search__note">{t('search.noTags')}</p>
-          )}
-          {!showingSuggestions && (
-            <>
-              {!hits && state !== 'error' && (
-                <p className="ink-muted search__note">
-                  {state === 'loading' ? t('search.loading') : t('search.hint')}
-                </p>
-              )}
-              {state === 'error' && <p className="ink-muted search__note">{t('search.error')}</p>}
-              {hits?.length === 0 && shownActions.length === 0 && state !== 'loading' && (
-                <p className="ink-muted search__note">{t('search.none', { q: input.trim() })}</p>
-              )}
-            </>
-          )}
           <div id="search-results" role="listbox" aria-label={t('search.title')}>
             {showingSuggestions ? (
               suggestions.map((s, i) => (
@@ -397,6 +381,24 @@ export function SearchDialog({
               </>
             )}
           </div>
+          {/* Below the rows: a note that comes and goes while the search runs never moves the
+              actions already listed under the pointer. */}
+          {showingSuggestions && suggestions.length === 0 && (
+            <p className="ink-muted search__note">{t('search.noTags')}</p>
+          )}
+          {!showingSuggestions && (
+            <>
+              {!hits && state !== 'error' && (
+                <p className="ink-muted search__note">
+                  {state === 'loading' ? t('search.loading') : t('search.hint')}
+                </p>
+              )}
+              {state === 'error' && <p className="ink-muted search__note">{t('search.error')}</p>}
+              {hits?.length === 0 && shownActions.length === 0 && state !== 'loading' && (
+                <p className="ink-muted search__note">{t('search.none', { q: input.trim() })}</p>
+              )}
+            </>
+          )}
         </div>
       </dialog>
     </div>

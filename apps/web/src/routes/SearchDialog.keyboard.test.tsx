@@ -103,6 +103,22 @@ it('does nothing on Enter when the search finds nothing, even if actions match',
   expect(close).not.toHaveBeenCalled();
 });
 
+it('keeps the matching actions in place while the search runs', async () => {
+  // The search never answers: its "loading" note stays up.
+  vi.mocked(api.get).mockImplementation((path: string) =>
+    path.startsWith('/search') ? new Promise(() => {}) : Promise.resolve(DEFAULT_CLASSIFICATIONS),
+  );
+  await render([{ id: 'new', label: 'New project', run: vi.fn() }]);
+  await type('new');
+  const action = host.querySelector('[role="option"]');
+  const note = [...host.querySelectorAll('.search__note')].find(
+    (n) => n.textContent === 'search.loading',
+  );
+  expect(action?.textContent).toContain('New project');
+  // Below the actions, so the note going away cannot move them under a click (#971).
+  expect(note && action?.compareDocumentPosition(note)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+});
+
 it('lists search results before actions and selects the first result', async () => {
   vi.mocked(api.get).mockResolvedValue({ items: [hit] });
   const create = vi.fn();

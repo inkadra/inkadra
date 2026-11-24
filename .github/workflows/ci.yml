@@ -356,7 +356,21 @@ jobs:
         run: &apt-timeouts |
           printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' \
             | sudo tee /etc/apt/apt.conf.d/80-ci-timeouts
-      - run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
+      - name: Browsers and their system packages
+        env:
+          BROWSERS: chromium
+        run: &playwright-install |
+          read -ra list <<< "$BROWSERS"
+          pnpm --filter @inkadra/e2e exec playwright install "${list[@]}"
+          # Playwright's own apt-get has no time limit: a stalled mirror held jobs until their
+          # timeout (#971). Run as root, timeout stops apt-get with it, and the next try goes on.
+          playwright="$PWD/e2e/node_modules/.bin/playwright"
+          for attempt in 1 2 3; do
+            sudo env "PATH=$PATH" timeout 240 "$playwright" install-deps "${list[@]}" && exit 0
+            echo "The browsers' system packages did not install (attempt $attempt)."
+            sleep 15
+          done
+          exit 1
       # media-cards.spec.ts checks page counts, codecs and playable copies made by these.
       - name: Media tools of the standard image
         run: *media-tools
@@ -455,11 +469,10 @@ jobs:
             apt-e2e-ubuntu-24.04-
       - name: Make apt give up on a stalled mirror
         run: *apt-timeouts
-      - env:
+      - name: Browsers and their system packages
+        env:
           BROWSERS: ${{ matrix.browsers }}
-        run: |
-          read -ra list <<< "$BROWSERS"
-          pnpm --filter @inkadra/e2e exec playwright install --with-deps "${list[@]}"
+        run: *playwright-install
       - name: Media tools of the standard image
         run: *media-tools
       - env:
@@ -526,7 +539,10 @@ jobs:
         name: Make apt give up on a stalled mirror
         run: *apt-timeouts
       - if: steps.suite.outputs.present
-        run: pnpm --filter @inkadra/e2e exec playwright install --with-deps chromium
+        name: Browsers and their system packages
+        env:
+          BROWSERS: chromium
+        run: *playwright-install
       - if: steps.suite.outputs.present
         run: pnpm test:perf
       - if: always() && steps.suite.outputs.present
