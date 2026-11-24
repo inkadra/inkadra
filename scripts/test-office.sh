@@ -61,16 +61,25 @@ fi
 
 # Ubuntu 23.10+ takes every capability away inside the user namespaces of unconfined processes
 # when this is 1, unless an AppArmor profile allows them: Ubuntu's bwrap-userns-restrict profile
-# does, for /usr/bin/bwrap, also in this container. Without it bubblewrap stops at
+# does, for the /usr/bin/bwrap a program of this container starts (not for one Docker starts as
+# the entrypoint). Without it bubblewrap stops at
 # "loopback: Failed RTM_NEWADDR: Operation not permitted". Shown for the log.
 echo "kernel.apparmor_restrict_unprivileged_userns=$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo absent)," \
   "/etc/apparmor.d/bwrap-userns-restrict $([ -e /etc/apparmor.d/bwrap-userns-restrict ] && echo present || echo absent)"
 
-docker run --rm \
-  --user 1000:1000 --cap-drop ALL \
-  --security-opt no-new-privileges:true \
-  --security-opt "seccomp=$root/deploy/office-seccomp.json" "${apparmor[@]}" \
-  --read-only --tmpfs /tmp --tmpfs /data:uid=1000,gid=1000 \
+worker=(--user 1000:1000 --cap-drop ALL
+  --security-opt no-new-privileges:true
+  --security-opt "seccomp=$root/deploy/office-seccomp.json" "${apparmor[@]}"
+  --read-only --tmpfs /tmp --tmpfs /data:uid=1000,gid=1000)
+
+# office.md's sandbox check, with the same bwrap command.
+docker run --rm "${worker[@]}" --entrypoint sh "$image" -c \
+  'bwrap --unshare-all --unshare-user \
+    --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 \
+    --proc /proc --dev /dev /usr/bin/true'
+echo "ok   office.md's sandbox check"
+
+docker run --rm "${worker[@]}" \
   -e OFFICE_PREVIEWS=true \
   -v "$work/office.mjs:/app/check/office.mjs:ro" \
   -v "$work/check.docx:/fixture/check.docx:ro" \
