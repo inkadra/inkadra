@@ -1,6 +1,8 @@
 import {
   HocuspocusProvider,
   HocuspocusProviderWebsocket,
+  MessageType,
+  type onMessageParameters,
   type onUnsyncedChangesParameters,
 } from '@hocuspocus/provider';
 import {
@@ -69,10 +71,12 @@ export const RESET_BACKOFF_MS = 250;
  * the board waits offline to try again: this, up to twice this (`spread`).
  */
 export const RESET_PAUSE_MS = 30_000;
+/** How long that wait lasts at least before the network or the tab coming back cuts it short. */
+export const RESET_RESUME_MS = 5_000;
 /** A wait between `ms` and twice it: boards on a shared socket do not all try again at once. */
 const spread = (ms: number) => ms * (1 + Math.random());
-/** When each board (`cacheKey`) was last reset by the server, kept across its reopenings. */
-const resets = new Map<string, number[]>();
+/** `messageYjsSyncStep2` of y-protocols: the server's answer to a sign-in's sync step 1. */
+const SYNC_STEP_2 = 1;
 
 export interface BoardConnection {
   store: BoardStore;
@@ -355,13 +359,16 @@ export function useBoardConnection(
      * Deletes the copy, its unsaved edits set aside first (`keepAside`): the server will not
      * take them. If they cannot be set aside (a full disk), the copy stays, still unsaved.
      */
-    const setAside = (closing: Promise<void> | undefined, unsaved: boolean) => {
+    const setAside = (closing: Promise<void> | undefined, unsaved: boolean, why?: () => void) => {
       if (!localName) return;
       const kept = unsaved ? keepAside(userId, boardId, doc) : undefined;
       const settled = Promise.all([closing, kept]);
       if (kept)
         settled.then(
-          () => setKeptBoard(boardId),
+          () => {
+            setKeptBoard(boardId);
+            why?.();
+          },
           () => {},
         );
       void dropLocalBoard(localName, settled);
@@ -472,6 +479,13 @@ export function useBoardConnection(
       onSynced: () => {
         // A board that went stays gone, even if its socket syncs again (restored meanwhile).
         if (state.gone) return;
+        // Signing in again, Hocuspocus also says synced when an answer brings the count of
+        // unsynced changes to zero: the server may answer messages it got after it closed the
+        // document before its sync step 2. Not synced yet: the handshake's step 2 says it again.
+        if (state.retrying && !handshook) {
+          provider.synced = false;
+          return;
+        }
         if (deletions) {
           Y.applyUpdate(doc, deletions);
           // Deletions of the refused additions name items the server never got: drop them,
@@ -515,14 +529,15 @@ export function useBoardConnection(
         if (msg?.type === 'access') update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
       },
       onClose: ({ event }) => {
-        // Only the document's close (a socket's close carries the socket's code, and the socket
-        // reconnects on its own): the server no longer has the document open.
-        if (event.code !== 1000) return;
-        detachQuietly();
         const status = CLOSE_REASONS[event.reason];
         if (status === 'denied') drop();
         if (status) update({ status });
-        else resetByServer();
+        // Hocuspocus reports the server's close of the document as `{ code: 1000, reason }`; the
+        // socket's own close is a CloseEvent, whatever its code, and the socket reconnects.
+        if (event.code !== 1000 || 'wasClean' in event) return;
+        // The server no longer has the document open.
+        detachQuietly();
+        if (!status) resetByServer();
       },
       onAuthenticated: ({ scope }) => {
         const readOnly = scope === 'readonly';
@@ -543,16 +558,27 @@ export function useBoardConnection(
             if (!alive || !detached) return;
             update({ status: next });
             // A passing failure: the socket may stay open, so nothing else would sign in again.
-            if (next === 'offline') pause();
+            if (state.status === 'offline') pause();
           });
       },
     });
     // Edits the server reset the document for in this run of resets, not confirmed since: the
     // handshake of the next attempt may count back to zero before the server refuses them again.
     let resetEdits = false;
+    // When this view of the board was last reset by the server; each view counts its own.
+    let resets: number[] = [];
+    // The server's sync step 2 of the current sign-in arrived: synced from then on.
+    let handshook = false;
+    provider.on('message', ({ message }: onMessageParameters) => {
+      if (handshook) return;
+      message.readVarString();
+      handshook =
+        message.readVarUint() === MessageType.Sync && message.readVarUint() === SYNC_STEP_2;
+    });
     // The next attempt after a reset, and whether the board waits offline for it.
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let paused = false;
+    let pausedAt = 0;
     const stopRetry = () => {
       clearTimeout(retryTimer);
       retryTimer = undefined;
@@ -581,17 +607,24 @@ export function useBoardConnection(
       if (state.status === 'denied' || state.status === 'signedOut') return;
       update({ status: 'connecting', retrying: true });
       detached = false;
+      handshook = false;
       provider.attach();
     };
     /** Waits offline, then tries again: after a while, or when the network or the tab is back. */
     const pause = () => {
       stopRetry();
       paused = true;
+      pausedAt = Date.now();
       retryTimer = setTimeout(retry, spread(RESET_PAUSE_MS));
     };
-    // Waiting offline: the network coming back, or the tab shown again, tries at once.
+    // Waiting offline: the network coming back, or the tab shown again, tries soon, not at once:
+    // every board on a shared socket hears it. Not right after pausing either, so switching tabs
+    // does not undo the pause.
     const retryNow = () => {
-      if (paused && document.visibilityState !== 'hidden') retry();
+      if (!paused || document.visibilityState === 'hidden') return;
+      if (Date.now() - pausedAt < RESET_RESUME_MS) return;
+      stopRetry();
+      retryTimer = setTimeout(retry, spread(RESET_BACKOFF_MS));
     };
     window.addEventListener('online', retryNow);
     document.addEventListener('visibilitychange', retryNow);
@@ -602,20 +635,19 @@ export function useBoardConnection(
       // A merge in flight is what the server refused, whatever the retry's handshake counts.
       settleMerge(new RestoreError('refused'));
       const now = Date.now();
-      const recent = (resets.get(cacheKey) ?? []).filter((at) => now - at < RESET_WINDOW_MS);
+      resets = resets.filter((at) => now - at < RESET_WINDOW_MS);
       // A new run of resets: edits of an earlier one were saved since, or set aside.
-      if (recent.length === 0) resetEdits = false;
+      if (resets.length === 0) resetEdits = false;
       resetEdits ||= edited;
-      recent.push(now);
-      resets.set(cacheKey, recent);
+      resets.push(now);
       stopRetry();
-      if (recent.length < RESET_LIMIT) {
+      if (resets.length < RESET_LIMIT) {
         update({ status: 'connecting', retrying: true });
         // Not at once: a blip of a few milliseconds would use up every attempt.
-        retryTimer = setTimeout(retry, spread(RESET_BACKOFF_MS * recent.length));
+        retryTimer = setTimeout(retry, spread(RESET_BACKOFF_MS * resets.length));
         return;
       }
-      resets.delete(cacheKey);
+      resets = [];
       if (!(resetEdits || edited)) {
         // Nothing of ours to set aside: the server refuses the board itself. It waits offline
         // and tries again later, rather than retry or reload in a loop.
@@ -626,8 +658,8 @@ export function useBoardConnection(
       // Our edits refused every time: set aside, and reopened from what the server confirmed.
       // The reopened board holds none of them, so it reloads at most once per run of resets.
       refused = true;
-      setRefusedBoard(boardId);
-      setAside(local?.close(), true);
+      // Said once they are set aside: earlier edits set aside are not what the server refused.
+      setAside(local?.close(), true, () => setRefusedBoard(boardId));
       local = null;
       setReload((value) => value + 1);
     };
@@ -676,7 +708,11 @@ export function useBoardConnection(
       // document, and refuse the edits after.
       const confirmed = unsynced === 0 && !state.retrying;
       // A read-only connection is answered without its edits being applied: they stay unsaved.
-      if (confirmed && !state.readOnly) edited = false;
+      if (confirmed && !state.readOnly) {
+        edited = false;
+        // Saved: a reset later in the window is not about them.
+        resetEdits = false;
+      }
       if (confirmed) settleMerge(state.readOnly ? new RestoreError('refused') : undefined);
       mark();
       saves.set(next);

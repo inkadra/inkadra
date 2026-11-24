@@ -17,6 +17,7 @@ import {
   RESET_LIMIT,
   RESET_PAUSE_MS,
   RESET_REASON,
+  RESET_RESUME_MS,
   RESET_WINDOW_MS,
   refusalStatus,
   useBoardConnection,
@@ -37,7 +38,7 @@ type Options = {
   onDisconnect: () => void;
   onAuthenticationFailed: (event: { reason: string }) => void;
   onStateless: (event: { payload: string }) => void;
-  onClose: (event: { event: { code: number; reason: string } }) => void;
+  onClose: (event: { event: { code: number; reason: string; wasClean?: boolean } }) => void;
 };
 type Provider = Options & {
   emit: (event: string, payload: unknown) => void;
@@ -49,6 +50,14 @@ type Provider = Options & {
   sent: () => number;
   /** How often it told the server the document is left. */
   closesSent: () => number;
+  /** The server confirms the last change: as Hocuspocus 4.8 counts back to zero. */
+  confirm: () => void;
+  /** The server's sync step 2 of a sign-in's handshake. */
+  handshake: () => void;
+  /** The server closes the document, keeping the socket. */
+  closeDocument: (reason: string) => void;
+  /** The socket itself closes (it reconnects on its own). */
+  closeSocket: (code: number, reason?: string) => void;
   /** The provider itself: updates it applies are the server's. */
   self: unknown;
 };
@@ -70,63 +79,111 @@ vi.mock('./local-boards.ts', async (original) => {
   };
 });
 vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: person }) }));
-/** As Hocuspocus 4.8 does: a provider sends only while attached, and its socket's map lists it. */
-vi.mock('@hocuspocus/provider', () => ({
-  HocuspocusProvider: class {
-    document: Y.Doc;
-    listeners = new Map<string, (payload: unknown) => void>();
-    // What the provider says after sending an edit: the server has not confirmed it yet.
-    hasUnsyncedChanges = true;
-    effectiveName = 'board';
-    isAttached = true;
-    attaches = 0;
-    sent = 0;
-    closes = 0;
-    configuration = {
-      websocketProvider: {
-        configuration: { providerMap: new Map<string, unknown>([['board', this]]) },
-      },
-    };
-    constructor(options: Options) {
-      this.document = options.document;
-      this.document.on('update', (_update: Uint8Array, origin: unknown) => {
-        if (origin !== this && this.isAttached) this.sent++;
-      });
-      providers.push({
-        ...options,
-        emit: (event, payload) => this.listeners.get(event)?.(payload),
-        reattached: () => this.attaches,
-        attached: () => this.isAttached,
-        sent: () => this.sent,
-        closesSent: () => this.closes,
-        self: this,
-      });
-    }
-    on(event: string, listener: (payload: unknown) => void) {
-      this.listeners.set(event, listener);
-    }
-    off() {}
-    attach() {
-      if (this.isAttached) return;
-      this.isAttached = true;
-      this.attaches++;
-      this.configuration.websocketProvider.configuration.providerMap.set('board', this);
-    }
-    detach() {
-      // The socket tells the server the document is left while its map lists it.
-      const { providerMap } = this.configuration.websocketProvider.configuration;
-      if (providerMap.has('board')) this.closes++;
-      providerMap.delete('board');
-      this.isAttached = false;
-    }
-    destroy() {
-      this.detach();
-    }
-  },
-  HocuspocusProviderWebsocket: class {
+/**
+ * As Hocuspocus 4.8 does: a provider sends only while attached, and its socket's map lists it;
+ * `synced` emits on its change to true, and a count back to zero sets it before it is emitted.
+ */
+vi.mock('@hocuspocus/provider', () => {
+  class Socket {
+    configuration = { providerMap: new Map<string, unknown>() };
     destroy() {}
-  },
-}));
+  }
+  return {
+    HocuspocusProvider: class {
+      document: Y.Doc;
+      options: Options & { name: string };
+      listeners = new Map<string, (payload: unknown) => void>();
+      // What the provider says after sending an edit: the server has not confirmed it yet.
+      hasUnsyncedChanges = true;
+      effectiveName: string;
+      isAttached: boolean;
+      isSynced = false;
+      attaches = 0;
+      sent = 0;
+      closes = 0;
+      configuration: { websocketProvider: Socket };
+      constructor(options: Options & { name: string; websocketProvider?: Socket }) {
+        this.options = options;
+        this.document = options.document;
+        this.effectiveName = options.name;
+        // Its own socket attaches it at once; a shared one when it is told to.
+        this.isAttached = !options.websocketProvider;
+        this.configuration = { websocketProvider: options.websocketProvider ?? new Socket() };
+        if (this.isAttached) this.providerMap.set(this.effectiveName, this);
+        this.document.on('update', (_update: Uint8Array, origin: unknown) => {
+          if (origin !== this && this.isAttached) this.sent++;
+        });
+        const emit = (event: string, payload: unknown) => this.listeners.get(event)?.(payload);
+        providers.push({
+          ...options,
+          emit,
+          reattached: () => this.attaches,
+          attached: () => this.isAttached,
+          sent: () => this.sent,
+          closesSent: () => this.closes,
+          // `decrementUnsyncedChanges`: synced first, then the count.
+          confirm: () => {
+            this.synced = true;
+            emit('unsyncedChanges', { number: 0 });
+          },
+          // The server's sync step 2: the provider hears the message, then applies it.
+          handshake: () => {
+            const parts = [0, 1];
+            emit('message', {
+              message: {
+                readVarString: () => this.effectiveName,
+                readVarUint: () => parts.shift(),
+              },
+            });
+            this.synced = true;
+          },
+          closeDocument: (reason) => {
+            this.isSynced = false;
+            options.onClose({ event: { code: 1000, reason } });
+          },
+          closeSocket: (code, reason = '') => {
+            this.isSynced = false;
+            options.onDisconnect();
+            options.onClose({ event: { code, reason, wasClean: true } });
+          },
+          self: this,
+        });
+      }
+      get providerMap() {
+        return this.configuration.websocketProvider.configuration.providerMap;
+      }
+      get synced() {
+        return this.isSynced;
+      }
+      set synced(state: boolean) {
+        if (this.isSynced === state) return;
+        this.isSynced = state;
+        if (state) this.options.onSynced();
+      }
+      on(event: string, listener: (payload: unknown) => void) {
+        this.listeners.set(event, listener);
+      }
+      off() {}
+      attach() {
+        if (this.isAttached) return;
+        this.isAttached = true;
+        this.attaches++;
+        this.providerMap.set(this.effectiveName, this);
+      }
+      detach() {
+        // The socket tells the server the document is left while its map lists it.
+        if (this.providerMap.has(this.effectiveName)) this.closes++;
+        this.providerMap.delete(this.effectiveName);
+        this.isAttached = false;
+      }
+      destroy() {
+        this.detach();
+      }
+    },
+    HocuspocusProviderWebsocket: Socket,
+    MessageType: { Sync: 0 },
+  };
+});
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 installWebLocks();
 
@@ -474,8 +531,7 @@ async function editSynced(id: string, text: string) {
   await settle();
   return provider;
 }
-const resetBy = (provider: Provider, code = 1000) =>
-  act(async () => provider.onClose({ event: { code, reason: RESET_REASON } }));
+const resetBy = (provider: Provider) => act(async () => provider.closeDocument(RESET_REASON));
 /** Past the longest wait before the `attempt`th retry: up to twice its base, spread at random. */
 const retryWait = (attempt: number) =>
   act(() => new Promise((resolve) => setTimeout(resolve, 2 * RESET_BACKOFF_MS * attempt + 30)));
@@ -500,7 +556,7 @@ it('syncs again after a reset, and sets the edits aside once resets repeat', asy
   now.mockImplementation(() => clock);
   const provider = await editSynced('reset', 'Refused each time');
   // A socket closing with the same reason reconnects on its own: not a refusal.
-  await resetBy(provider, 4205);
+  await act(async () => provider.closeSocket(4205, RESET_REASON));
   expect(provider.reattached()).toBe(0);
   for (let attempt = 1; attempt < RESET_LIMIT; attempt++) {
     await resetBy(provider);
@@ -510,11 +566,8 @@ it('syncs again after a reset, and sets the edits aside once resets repeat', asy
     expect(connection?.retrying).toBe(true);
     await retryWait(attempt);
     expect(provider.reattached()).toBe(attempt);
-    // The handshake counts back to zero before the server refuses the edit again.
-    await act(async () => {
-      provider.onSynced();
-      provider.emit('unsyncedChanges', { number: 0 });
-    });
+    // Signed in again: synced, then the server refuses the edit the handshake carries.
+    await act(async () => provider.handshake());
     clock += 1000;
   }
   expect(connection?.status).toBe('synced');
@@ -657,15 +710,15 @@ it('waits offline after resets without edits, then tries again on its own or whe
     await resetBy(provider);
     expect(connection?.retrying).toBe(true);
     await act(async () => vi.advanceTimersByTime(2 * RESET_BACKOFF_MS));
-    await act(async () => {
-      provider.onSynced();
-    });
+    await act(async () => provider.handshake());
     // A minute later, a new run of resets.
     await act(async () => vi.advanceTimersByTime(RESET_WINDOW_MS));
     await run();
     expect(connection?.status).toBe('offline');
     const paused = provider.reattached();
+    await act(async () => vi.advanceTimersByTime(RESET_RESUME_MS));
     await act(async () => window.dispatchEvent(new Event('online')));
+    await act(async () => vi.advanceTimersByTime(2 * RESET_BACKOFF_MS));
     expect(provider.reattached()).toBe(paused + 1);
   } finally {
     vi.useRealTimers();
@@ -685,8 +738,8 @@ it('forgets an edit reset long ago once it was saved', async () => {
   await retryWait(1);
   // The retry took it: saved.
   await act(async () => {
-    provider.onSynced();
-    provider.emit('unsyncedChanges', { number: 0 });
+    provider.handshake();
+    provider.confirm();
   });
   clock += RESET_WINDOW_MS * 60;
   for (let i = 1; i <= RESET_LIMIT; i++) {
@@ -750,7 +803,7 @@ it('tells the server nothing about a reset board until it signs in again (B2)', 
   const again = await openFromServer('reset-back', 'Back');
   await resetBy(again.provider);
   await retryWait(1);
-  await act(async () => again.provider.onSynced());
+  await act(async () => again.provider.handshake());
   await close();
   expect(again.provider.closesSent()).toBe(1);
 });
@@ -776,8 +829,10 @@ it('sets aside edits made while signing in again, even when a late answer counts
     provider.emit('unsyncedChanges', { number: 1 });
   });
   await retryWait(1);
-  // The server answers for a message it got after closing the document, before the handshake.
-  await act(async () => provider.emit('unsyncedChanges', { number: 0 }));
+  // The server answers for a message it got after closing the document, before the handshake:
+  // Hocuspocus 4.8 says synced, then counts back to zero.
+  await act(async () => provider.confirm());
+  expect(connection?.retrying).toBe(true);
   // Then refuses the edit again, and again.
   await resetBy(provider);
   await retryWait(2);
@@ -796,6 +851,7 @@ it('stops trying again once the session ended or the access was lost (M3)', asyn
   expect(provider.reattached()).toBe(0);
   expect(connection?.status).toBe('signedOut');
 
+  await close();
   me.get.mockRejectedValueOnce(new TypeError('Failed to fetch'));
   const lost = await openFromServer('pause-lost', 'Lost');
   await act(async () => lost.provider.onAuthenticationFailed({ reason: 'permission-denied' }));
@@ -846,4 +902,157 @@ it('keeps saying a board went whatever the connection says after (#951)', async 
   );
   expect(connection?.status).toBe('denied');
   expect(connection?.gone).toBe('trash');
+});
+
+it('takes a late answer before the handshake for nothing saved, as Hocuspocus 4.8 orders it', async () => {
+  const provider = await editSynced('reset-order', 'Not saved yet');
+  await resetBy(provider);
+  await retryWait(1);
+  // Synced, then zero: the answer to a message sent before the server closed the document.
+  await act(async () => provider.confirm());
+  expect(connection?.status).toBe('connecting');
+  expect(connection?.retrying).toBe(true);
+  expect(await unsavedLocalBoards(person.id)).toContain('reset-order');
+  // The handshake's own sync step 2, then the server takes the edits it carried.
+  await act(async () => provider.handshake());
+  expect(connection?.status).toBe('synced');
+  expect(await unsavedLocalBoards(person.id)).toContain('reset-order');
+  await act(async () => provider.confirm());
+  await settle();
+  expect(await unsavedLocalBoards(person.id)).not.toContain('reset-order');
+});
+
+it('takes a socket closing normally for a socket that reconnects, not a board closed by the server', async () => {
+  const provider = await editSynced('socket-close', 'Not saved yet');
+  for (let i = 1; i <= RESET_LIMIT; i++) {
+    await act(async () => provider.closeSocket(1000));
+    await retryWait(i);
+  }
+  await settle();
+  expect(providers.at(-1)).toBe(provider);
+  expect(provider.attached()).toBe(true);
+  expect(provider.reattached()).toBe(0);
+  expect(connection?.kept).toBeFalsy();
+  expect(connection?.status).toBe('offline');
+  // A socket closed because the session ended still says so.
+  await act(async () => provider.closeSocket(4401, 'Unauthorized'));
+  expect(connection?.status).toBe('signedOut');
+});
+
+it('does not set a board aside for resets after its reset edits were saved', async () => {
+  const now = vi.spyOn(Date, 'now');
+  let clock = 7_000_000;
+  now.mockImplementation(() => clock);
+  const provider = await editSynced('reset-saved', 'Saved after a reset');
+  await resetBy(provider);
+  await retryWait(1);
+  await act(async () => {
+    provider.handshake();
+    provider.confirm();
+  });
+  // Within the minute, resets with nothing of ours unconfirmed.
+  for (let i = 2; i <= RESET_LIMIT; i++) {
+    clock += 1000;
+    await resetBy(provider);
+    if (i < RESET_LIMIT) await retryWait(i);
+  }
+  await settle();
+  expect(providers.at(-1)).toBe(provider);
+  expect(connection?.kept).toBeFalsy();
+  expect(connection?.updateRefused).toBeFalsy();
+  expect(connection?.status).toBe('offline');
+});
+
+it('waits a while before the network or the tab coming back cuts a pause short, then spreads it', async () => {
+  const { provider } = await openFromServer('resume-spread', 'Resume');
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    for (let i = 1; i <= RESET_LIMIT; i++) {
+      await resetBy(provider);
+      if (i < RESET_LIMIT) await act(async () => vi.advanceTimersByTime(2 * RESET_BACKOFF_MS * i));
+    }
+    expect(connection?.status).toBe('offline');
+    const paused = provider.reattached();
+    // Just paused: the tab shown again does not end it.
+    await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+    await act(async () => vi.advanceTimersByTime(2 * RESET_BACKOFF_MS));
+    expect(provider.reattached()).toBe(paused);
+    await act(async () => vi.advanceTimersByTime(RESET_RESUME_MS));
+    // Every board on a shared socket hears it: not all at once.
+    await act(async () => window.dispatchEvent(new Event('online')));
+    expect(provider.reattached()).toBe(paused);
+    await act(async () => vi.advanceTimersByTime(2 * RESET_BACKOFF_MS));
+    expect(provider.reattached()).toBe(paused + 1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+let views: (BoardConnection | null)[] = [];
+function TwoViews({ id }: { id: string }) {
+  views = [useBoardConnection(id, false), useBoardConnection(id, false)];
+  return null;
+}
+let shared: Record<string, BoardConnection | null> = {};
+function SharedBoards({ a, b }: { a: string; b: string }) {
+  shared = { [a]: useBoardConnection(a, false, true), [b]: useBoardConnection(b, false, true) };
+  return null;
+}
+async function mount(element: React.ReactElement) {
+  const div = document.createElement('div');
+  document.body.append(div);
+  root = createRoot(div);
+  await act(async () => root!.render(element));
+  await settle();
+  const opened = providers.slice(-2);
+  await act(async () => {
+    for (const provider of opened) {
+      provider.onAuthenticated({ scope: 'read-write' });
+      provider.onSynced();
+    }
+  });
+  return opened;
+}
+
+it('counts the resets of each view of a board on its own', async () => {
+  const [first, second] = await mount(<TwoViews id="two-views" />);
+  // The server closing both views at once is one reset for each.
+  await resetBy(first!);
+  await resetBy(second!);
+  await retryWait(1);
+  await resetBy(first!);
+  expect(views[0]?.status).toBe('connecting');
+  expect(views[0]?.retrying).toBe(true);
+});
+
+it('resets one board of a shared socket and leaves the other open on the server', async () => {
+  const [a, b] = await mount(<SharedBoards a="shared-a" b="shared-b" />);
+  expect(a!.attached()).toBe(true);
+  expect(b!.attached()).toBe(true);
+  await resetBy(a!);
+  expect(a!.attached()).toBe(false);
+  expect(b!.attached()).toBe(true);
+  expect(shared['shared-a']?.retrying).toBe(true);
+  expect(shared['shared-b']?.status).toBe('synced');
+  await close();
+  // Only the board the server still has open is told it is left.
+  expect(a!.closesSent()).toBe(0);
+  expect(b!.closesSent()).toBe(1);
+});
+
+it('says the server refused the edits only once they are set aside', async () => {
+  // Edits set aside earlier are still on the device.
+  const earlier = new Y.Doc();
+  earlier.getMap('meta').set('subtitle', 'Set aside earlier');
+  await keepAside(person.id, 'refused-full', earlier);
+  const provider = await editSynced('refused-full', 'Refused, the disk full');
+  expect(connection?.kept).toBeTruthy();
+  diskFull.on = true;
+  for (let i = 1; i <= RESET_LIMIT; i++) {
+    await resetBy(provider);
+    if (i < RESET_LIMIT) await retryWait(i);
+  }
+  await settle();
+  expect(providers.at(-1)).not.toBe(provider);
+  expect(connection?.updateRefused).toBe(false);
 });

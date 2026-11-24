@@ -20,25 +20,38 @@ function varUint(bytes: Uint8Array, pos: number): [number, number] {
 }
 
 /**
- * Routes the board's socket and spoils the next `count` edits it sends (a sync step 2 or an
- * update) into an update no Yjs client writes, which the server refuses.
+ * Routes the board's socket and spoils every edit it sends (a sync step 2 or an update) into an
+ * update no Yjs client writes, which the server refuses, until the server has reset the document
+ * `until` times. Counted in the server's closes: several edits sent before the board hears a
+ * close can end in one reset, or in one more after its next sign-in.
  */
 async function spoilEdits(page: Page) {
-  const spoil = { count: 0 };
+  const spoil = { until: 0, resets: 0 };
   await page.routeWebSocket(/\/collab/, (ws) => {
     const server = ws.connectToServer();
     ws.onMessage((message) => {
-      if (typeof message === 'string' || spoil.count === 0) return server.send(message);
+      if (typeof message === 'string' || spoil.resets >= spoil.until) return server.send(message);
       const bytes = new Uint8Array(message);
       const [nameLength, afterLength] = varUint(bytes, 0);
       const [type, afterType] = varUint(bytes, afterLength + nameLength);
       const [step, payloadAt] = varUint(bytes, afterType);
       // Sync (0) messages that carry edits: step 2 (1) and update (2).
       if (type !== 0 || (step !== 1 && step !== 2)) return server.send(message);
-      spoil.count--;
       server.send(
         Buffer.concat([bytes.subarray(0, payloadAt), Buffer.from([3, 0xff, 0xff, 0xff])]),
       );
+    });
+    server.onMessage((message) => {
+      if (typeof message !== 'string') {
+        const bytes = new Uint8Array(message);
+        const [nameLength, afterLength] = varUint(bytes, 0);
+        const [type, reasonAt] = varUint(bytes, afterLength + nameLength);
+        const [reasonLength, textAt] = varUint(bytes, reasonAt);
+        const reason = Buffer.from(bytes.subarray(textAt, textAt + reasonLength)).toString();
+        // The server's close of the document (7).
+        if (type === 7 && reason === 'Reset Connection') spoil.resets++;
+      }
+      ws.send(message);
     });
   });
   return spoil;
@@ -79,10 +92,10 @@ test('a board the server resets once signs in again and saves the edit', async (
 }) => {
   const spoil = await spoilEdits(page);
   await openNewBoard(page, baseURL as string);
-  spoil.count = 1;
+  spoil.until = 1;
   await addNote(page, 'Saved after a reset');
   const status = page.locator('.sync');
-  await expect.poll(() => spoil.count).toBe(0);
+  await expect.poll(() => spoil.resets).toBeGreaterThanOrEqual(1);
   await expect(status).toHaveAttribute('data-status', 'synced');
   await expect(status).toContainText('Sincronizzato');
   await expect(page.locator('.board-update-notice')).toHaveCount(0);
@@ -97,7 +110,7 @@ test('edits the server refuses again and again are set aside and can be restored
 }) => {
   const spoil = await spoilEdits(page);
   await openNewBoard(page, baseURL as string);
-  spoil.count = 3;
+  spoil.until = 3;
   await addNote(page, 'Refused three times');
   const notice = page.locator('.board-update-notice');
   await expect(notice).toContainText('il server non le ha accettate');
