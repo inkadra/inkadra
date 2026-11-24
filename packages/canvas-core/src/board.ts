@@ -19,6 +19,7 @@ import {
   newElementId,
   PlanElement,
   type PlanIcon,
+  preparePlanListsOf,
   readElement,
   roots,
   UNSORTED,
@@ -287,7 +288,34 @@ function writeIcon(list: Y.Array<unknown>, index: number, icon: PlanIcon): void 
 }
 
 /** Deletes elements; deleting a column or a scene deletes the cards inside it too. */
-export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unknown): void {
+/**
+ * The set plans among `ids` (with what is inside them) whose setup keeps a list a client may not
+ * write: deleting them would lose the Set copied into that setup. Empty when the delete can go.
+ */
+export function basesThatStay(doc: Y.Doc, ids: Iterable<string>): string[] {
+  const { elements } = roots(doc);
+  const doomed = new Set(ids);
+  for (const [id, map] of elements.entries()) {
+    const parent = map.get('parent');
+    if (typeof parent === 'string' && doomed.has(parent)) doomed.add(id);
+  }
+  const stay: string[] = [];
+  for (const [id, map] of elements.entries()) {
+    const base = map.get('variantOf');
+    if (map.get('type') !== 'plan' || typeof base !== 'string' || doomed.has(id)) continue;
+    const baseMap = elements.get(base);
+    if (!doomed.has(base) || baseMap?.get('type') !== 'plan') continue;
+    const set = planBaseOf(baseMap);
+    const needed = (
+      ['strokes', 'shapes', 'icons', 'walls', 'openings', 'circuits'] as const
+    ).filter((k) => ((set[k] as unknown[] | undefined) ?? []).length > 0);
+    if (!needed.every((k) => map.get(k) instanceof Y.Array) && !stay.includes(base))
+      stay.push(base);
+  }
+  return stay;
+}
+
+export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unknown): string[] {
   const { elements } = roots(doc);
   const doomed = new Set(ids);
   for (const [id, map] of elements.entries()) {
@@ -302,6 +330,11 @@ export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unkno
     const baseMap = elements.get(base);
     if (doomed.has(base) && !doomed.has(id) && baseMap) orphans.push([map, baseMap]);
   }
+  // A base whose setup keeps a list a client may not write (not a Y.Array: the server prepares
+  // them, plan.ts listOf) would lose its Set: then nothing is deleted at all (its column or scene,
+  // the rest of the selection), and the bases are returned for the caller to say why.
+  const stay = basesThatStay(doc, doomed);
+  if (stay.length) return stay;
   // Icons linked to a character or a frame that goes keep its text (decision 0104).
   const kept = keptLinks(doc, doomed);
   doc.transact(() => {
@@ -313,6 +346,7 @@ export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unkno
     }
     for (const id of doomed) elements.delete(id);
   }, origin);
+  return [];
 }
 
 /**
@@ -956,6 +990,9 @@ export function pasteElements(
     for (const write of writes) {
       if ('stored' in write) {
         roots(doc).elements.set(write.id, cloneMap(write.stored));
+        // A new card nobody else has yet: its plan lists are made here (doc-schema).
+        const added = roots(doc).elements.get(write.id);
+        if (added) preparePlanListsOf(added);
         continue;
       }
       const map = addElement(doc, write.element);

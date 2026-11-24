@@ -261,7 +261,8 @@ function drawingOf<T>(
   if (!map || (type !== 'frame' && type !== 'plan')) return null;
   const current = map.get(key);
   if (current instanceof Y.Array) return current as Y.Array<T>;
-  if (!create) return null;
+  // A plan's list is never made or replaced by a client: the server prepares it (plan.ts listOf).
+  if (!create || type === 'plan') return null;
   const fresh = new Y.Array<T>();
   map.set(key, fresh);
   return fresh;
@@ -280,8 +281,15 @@ export function addStroke(
 ): string | null {
   if (stroke.points.length < 2) return null;
   const id = newElementId();
-  doc.transact(() => strokesOf(doc, frameId, true)?.push([{ ...stroke, id }]), origin);
-  return id;
+  let added = false;
+  doc.transact(() => {
+    const strokes = strokesOf(doc, frameId, true);
+    if (!strokes) return;
+    strokes.push([{ ...stroke, id }]);
+    added = true;
+  }, origin);
+  // Null when there is nothing to draw on (a plan whose strokes the server has not prepared).
+  return added ? id : null;
 }
 
 export function removeStrokes(

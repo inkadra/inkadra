@@ -838,28 +838,15 @@ describe('review of the model (pull request 600)', () => {
     expect(planOf(doc, el.id)).toMatchObject({ walls: [], openings: [] });
   });
 
-  it('creates a missing list of a plan made before schema 23 in the undo step that fills it', () => {
+  it('never makes a missing list of a plan made before schema 23: the server prepares it', () => {
     const doc = createBoardDoc(boardId);
     const el = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
     const map = roots(doc).elements.get(el.id) as Y.Map<unknown>;
     for (const key of ['icons', 'walls', 'openings']) map.delete(key);
-    const origin = Symbol('me');
-    const undo = new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set([origin]) });
-    const wall = addPlanWall(
-      doc,
-      el.id,
-      { points: [...g(0, 0), ...g(100, 0)], thickness: 8 },
-      origin,
-    );
-    undo.stopCapturing();
-    addPlanOpening(doc, el.id, { wall: wall as string, kind: 'window', at: 50, width: 40 }, origin);
-    undo.stopCapturing();
-    addPlanIcon(doc, el.id, { kind: 'cob', color: '#EDD963', x: 900, y: 900 }, origin);
-    for (const key of ['icons', 'openings', 'walls']) {
-      expect(map.get(key)).toBeInstanceOf(Y.Array);
-      undo.undo();
-      expect(map.get(key)).toBeUndefined();
-    }
+    const wall = addPlanWall(doc, el.id, { points: [...g(0, 0), ...g(100, 0)], thickness: 8 });
+    expect(wall).toBeNull();
+    expect(addPlanIcon(doc, el.id, { kind: 'cob', color: '#EDD963', x: 900, y: 900 })).toBeNull();
+    for (const key of ['icons', 'openings', 'walls']) expect(map.get(key)).toBeUndefined();
   });
 
   it('lets a measure yield only to the icons its ends sit on', () => {
@@ -1202,7 +1189,7 @@ describe('review of the editor (pull request 602)', () => {
     expect(planOf(a, el.id).circuits?.map((c) => c.id)).toEqual([second]);
   });
 
-  it('still reads and edits circuits stored as a plain list, and cuts them at the limit', () => {
+  it('still reads circuits stored as a plain list, never converts them, and cuts them at the limit', () => {
     const doc = createBoardDoc(boardId);
     const el = createElement(doc, 'plan', { x: 0, y: 0 }, {}, { userId: null });
     const map = roots(doc).elements.get(el.id) as Y.Map<unknown>;
@@ -1213,9 +1200,9 @@ describe('review of the editor (pull request 602)', () => {
     });
     doc.transact(() => map.set('circuits', [c(1)]));
     expect(planOf(doc, el.id).circuits).toEqual([c(1)]);
+    // A client never converts it (the server prepares plan lists): the edit is refused.
     updatePlanCircuits(doc, el.id, [{ ...c(1), name: 'Main' }]);
-    expect(planOf(doc, el.id).circuits).toEqual([{ ...c(1), name: 'Main' }]);
-    expect((map.get('circuits') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    expect(map.get('circuits')).toEqual([c(1)]);
     // Two people adding at once can pass 30: the plan still reads, with the first 30.
     doc.transact(() =>
       map.set('circuits', Y.Array.from(Array.from({ length: 31 }, (_, i) => c(i)))),

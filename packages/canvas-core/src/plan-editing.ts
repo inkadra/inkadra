@@ -354,8 +354,9 @@ export function placePlanIcon(
     // Every destination is a plan here now (a PlanEdit can outlive a setup deleted since).
     if (roots(doc).elements.get(owner)?.get('type') !== 'plan') return null;
     const list = roots(doc).elements.get(owner)?.get('icons');
-    // A list an older writer left as plain JSON is never written to (it would be replaced).
-    if (list !== undefined && !(list instanceof Y.Array)) return null;
+    // Only a Y.Array is written to: a list missing or left as plain JSON is the server's to
+    // prepare (doc-schema preparePlanLists); writing would refuse half of a kit.
+    if (!(list instanceof Y.Array)) return null;
     const stored = list instanceof Y.Array ? list.length : 0;
     if (stored + n > MAX_PLAN_ICONS) return null;
   }
@@ -369,7 +370,7 @@ export function placePlanIcon(
       const map = roots(doc).elements.get(plan);
       for (const key of ['strokes', 'shapes', 'icons'] as const) {
         const list = map?.get(key);
-        if (list !== undefined && !(list instanceof Y.Array)) return null;
+        if (!(list instanceof Y.Array)) return null;
       }
     }
   }

@@ -8,6 +8,7 @@ import {
   arrowBox,
   arrowEnds,
   arrowGeometry,
+  basesThatStay,
   boundsOf,
   boundViewport,
   bringToFront,
@@ -50,6 +51,7 @@ import {
   pasteElements,
   pinchViewport,
   placeProductionCard,
+  planListsReason,
   type Rect,
   type ResizeCorner,
   type ResizeOptions,
@@ -1467,11 +1469,17 @@ export function Canvas({
     if (readOnly || selection.size === 0) return;
     const count = selection.size;
     store.undo.stopCapturing();
-    deleteElements(doc, selection, LOCAL);
+    const stayed = deleteElements(doc, selection, LOCAL);
     store.undo.stopCapturing();
+    // A set plan whose setup keeps a list this client may not write: nothing was deleted at all
+    // (canvas-core), the selection stays, and the toast says why.
+    if (stayed.length) {
+      notify(t('board.planBaseKept'));
+      return;
+    }
     setSelection(EMPTY_SET);
     setToast({ text: t('board.deleted', { count }), undo: true });
-  }, [readOnly, selection, store, doc, t]);
+  }, [readOnly, selection, store, doc, t, notify]);
 
   const duplicate = useCallback(() => {
     if (readOnly || selection.size === 0) return;
@@ -2822,6 +2830,13 @@ export function Canvas({
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
       if (selection.size === 0) return;
+      // A cut that could not delete (a set plan whose setup keeps a list this client may not
+      // write) copies nothing either: no second copy of that plan on a paste.
+      if (e.type === 'cut' && !readOnly && basesThatStay(doc, selection).length) {
+        e.preventDefault();
+        notify(t('board.planBaseKept'));
+        return;
+      }
       const data = copyElements(doc, [...selection], { instance: window.location.origin });
       encodeClipboard(e.clipboardData, data);
       e.preventDefault();
@@ -2968,7 +2983,17 @@ export function Canvas({
   // Editing a swatch opens its colour picker, with the board's other colours (#308).
   const editedEl = editing ? snap.byId.get(editing) : undefined;
   const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
-  const editedPlan = editedEl?.type === 'plan' && !readOnly ? editedEl : null;
+  // A set plan whose lists the server has not prepared opens read-only, saying why (canvas-core
+  // planListsReady): a client never converts or makes them.
+  const planNotReady =
+    editedEl?.type === 'plan' && !readOnly ? planListsReason(doc, editedEl.id) : null;
+  const editedPlan = editedEl?.type === 'plan' && !readOnly && !planNotReady ? editedEl : null;
+  useEffect(() => {
+    if (!planNotReady || !editedEl) return;
+    setEditing(null);
+    setViewedPlanId(editedEl.id);
+    notify(t(planNotReady === 'stuck' ? 'board.planListsStuck' : 'board.planListsNotReady'));
+  }, [planNotReady, editedEl, setEditing, notify, t]);
   const isPhone = useIsPhone();
   const { openScene } = usePlanNav();
   const boardScenes = useMemo(

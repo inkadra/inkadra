@@ -192,7 +192,8 @@ export function StoryboardView({
       return;
     }
     store.undo.stopCapturing();
-    deleteElements(store.doc, [scene.id], LOCAL);
+    // A set plan in the scene whose setup keeps a list this client may not write: nothing goes.
+    if (deleteElements(store.doc, [scene.id], LOCAL).length) setToast(t('board.planBaseKept'));
   };
   const newFrame = (sceneId: string | null) => {
     store.undo.stopCapturing();

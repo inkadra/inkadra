@@ -4,6 +4,7 @@ import {
   frameLabels,
   lensMillimetres,
   type PlanElement,
+  planListsReason,
   storyboardOf,
   variantFamily,
 } from '@inkadra/canvas-core';
@@ -73,9 +74,16 @@ export function ScenePlan({
   const base = baseEl && isPlan(baseEl) ? baseEl : undefined;
   const family = variantFamily(snap.byId.values(), plan);
   const close = () => setOpenId(null);
-  if (readOnly)
+  // A plan whose lists the server has not prepared, or cannot be, opens read-only (canvas-core).
+  const notReady = readOnly ? null : planListsReason(store.doc, plan.id);
+  if (readOnly || notReady)
     return (
       <PlanViewer
+        notice={
+          notReady
+            ? t(notReady === 'stuck' ? 'board.planListsStuck' : 'board.planListsNotReady')
+            : undefined
+        }
         plan={plan}
         base={base}
         family={family}

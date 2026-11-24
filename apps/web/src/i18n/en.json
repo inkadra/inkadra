@@ -2016,7 +2016,10 @@
       "pin": "Put in the bar",
       "pinned": "In the bar",
       "pinFor": "Put {{name}} in the bar"
-    }
+    },
+    "planListsNotReady": "This set plan is waiting for the server to update its lists: reload the board to edit it.",
+    "planBaseKept": "Nothing was deleted: a set plan has a setup waiting for the server to update its lists. Reload the board and try again.",
+    "planListsStuck": "This set plan holds data this version cannot edit: you can view it here, not change it."
   },
   "tags": {
     "title": "Tags",
