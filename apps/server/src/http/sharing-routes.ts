@@ -225,11 +225,13 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
    * goes to, or answers 429. Called before an email invitation is created and before each resend.
    * shortcut: a slot taken by the inviter stays taken when the address then refuses; upgrade to
    * refunds if that ever bothers real use.
+   * Without Valkey, or while it does not answer, these count per process like the other product
+   * limits, unlike the sign-in email budget of auth.ts, which then sends nothing (decision 0011).
    */
   async function requireMailBudget(inviterId: string, address: string) {
     await mailsByInviter.require(inviterId, 'Too many invitations in the last hour.');
     await mailsToAddress.require(
-      address.toLowerCase(),
+      address.trim().toLowerCase(),
       'Too many invitation emails to this address in the last hour.',
     );
   }

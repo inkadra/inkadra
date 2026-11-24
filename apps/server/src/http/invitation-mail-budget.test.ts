@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { invitation } from '../db/schema.ts';
+import { invitation, user } from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
@@ -91,6 +91,57 @@ describe.skipIf(!url)('hourly budgets of invitation emails (needs DATABASE_URL)'
     // Refused before the row was made.
     const rows = await db.select().from(invitation).where(eq(invitation.projectId, another));
     expect(rows).toEqual([]);
+  });
+
+  it('takes no email from the budget for a duplicate or when the instance sends none', async () => {
+    const projectId = await newProject('anna', 'Duplicates');
+    const first = await invite('anna', projectId, 'dora@example.com');
+    expect(first.statusCode).toBe(201);
+    for (let i = 0; i < 3; i++)
+      expect((await invite('anna', projectId, 'dora@example.com')).statusCode).toBe(409);
+    // The pending invitation took one of the ten emails; the duplicates took none.
+    const id = first.json().invitation.id;
+    for (let i = 0; i < 9; i++) expect((await resend('anna', id)).statusCode).toBe(200);
+    expect((await resend('anna', id)).statusCode).toBe(429);
+
+    // Without email, invitations are links to copy: more than ten to one address all work.
+    Object.assign(mailer, { enabled: false });
+    try {
+      for (let i = 0; i < 11; i++) {
+        const scope = await newProject('anna', `No email ${i}`);
+        const res = await invite('anna', scope, 'erin@example.com');
+        expect(res.statusCode).toBe(201);
+        expect(res.json().invitation.emailSent).toBe(false);
+      }
+    } finally {
+      Object.assign(mailer, { enabled: true });
+    }
+    const sent = await invite('anna', await newProject('anna', 'Email again'), 'erin@example.com');
+    expect(sent.statusCode).toBe(201);
+    expect(sent.json().invitation.emailSent).toBe(true);
+  });
+
+  it('charges a resend to whoever sends it, not to whoever invited', async () => {
+    await signUp('dario');
+    const [dario] = await db.select().from(user).where(eq(user.email, 'dario@example.com'));
+    const projectId = await newProject('bruno', 'Shared');
+    const member = await call('bruno', 'PUT', `/projects/${projectId}/members/${dario?.id}`, {
+      role: 'editor',
+    });
+    expect(member.statusCode).toBe(200);
+    const brunos = await invite('bruno', projectId, 'fabio@example.com');
+    expect(brunos.statusCode).toBe(201);
+    const ids: string[] = [];
+    for (let i = 0; i < 49; i++) {
+      const res = await invite('dario', projectId, `dario-guest${i}@example.com`);
+      expect(res.statusCode).toBe(201);
+      ids.push(res.json().invitation.id);
+    }
+    // Dario's fiftieth email is Bruno's invitation sent again; the next one is refused.
+    expect((await resend('dario', brunos.json().invitation.id)).statusCode).toBe(200);
+    const refused = await resend('dario', ids[0] ?? '');
+    expect(refused.statusCode).toBe(429);
+    expect(refused.json().error.code).toBe('rate_limited');
   });
 
   it('counts resends in the hourly budget of whoever sends them', async () => {
