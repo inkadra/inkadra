@@ -111,11 +111,17 @@ without the image's entrypoint, which only accepts Inkadra roles (add the same `
 for `up`):
 
 ```sh
-docker compose run --rm --no-deps --user node --entrypoint bwrap office-worker \
-  --unshare-all --unshare-user \
-  --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 \
-  --proc /proc --dev /dev /usr/bin/true && echo sandbox ok
+docker compose run --rm --no-deps --user node --entrypoint sh office-worker -c \
+  'bwrap --unshare-all --unshare-user \
+    --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib64 /lib64 \
+    --proc /proc --dev /dev /usr/bin/true' && echo sandbox ok
 ```
+
+The shell starts bubblewrap from inside the container, as the worker does. Do not make `bwrap`
+the entrypoint or run it with `docker exec`: Docker then starts it itself, and on hosts where an
+AppArmor profile lets bubblewrap use user namespaces (below) that profile does not apply to it.
+Such a check stops at `bwrap: loopback: Failed RTM_NEWADDR` even though the worker converts
+(seen on Ubuntu 26.04 with Docker 29.1.3 and runc 1.4).
 
 Then upload a DOCX: its card should show the first page. If the card only shows an icon, the
 worker log says `Office conversion unavailable` with the reason.
@@ -129,7 +135,10 @@ the worker alone:
 | `bwrap: Failed to make / slave: Permission denied`          | `apparmor=unconfined`              |
 | `bwrap: Can't mount proc on /proc: Operation not permitted` | `systempaths=unconfined`           |
 
-Uncomment the matching line in `deploy/compose.office.yaml`. Both were checked on such a host, together, with `cap_drop: [ALL]` and `no-new-privileges`. They
+Uncomment the matching line in `deploy/compose.office.yaml`. Both were checked together, with
+`cap_drop: [ALL]` and `no-new-privileges`, on Ubuntu 24.04 (CI) and on Ubuntu 26.04 with
+Docker 29.1.3, where the default worker logs the first line and the worker with
+`apparmor=unconfined` alone the second. They
 take protections off that container, which holds your database credentials, while the converter
 inside stays sandboxed: if you prefer, write an AppArmor profile that allows only these calls.
 
@@ -139,7 +148,9 @@ lets bubblewrap use them: it gets its namespaces but no capabilities inside, so 
 the sandbox's network. With `apparmor=unconfined` the worker is such a process. Check on the
 host: `sysctl kernel.apparmor_restrict_unprivileged_userns` says `1`, and `sudo aa-status | grep
 bwrap` shows nothing. Ubuntu 24.10 and later ship the profile that allows it (`bwrap-userns-restrict`,
-in the `apparmor` package); a loaded one also applies to the worker's `/usr/bin/bwrap`. Two ways out:
+in the `apparmor` package, loaded by default on Ubuntu 26.04). A loaded one also applies to the
+`/usr/bin/bwrap` that the worker starts inside its container, but not to a `bwrap` that Docker
+starts itself as the entrypoint or with `docker exec`: check with the command above. Two ways out:
 
 - **Load Ubuntu's `bwrap-userns-restrict` profile** (recommended): `scripts/bwrap-apparmor.sh`
   does it with `sudo`, and on Ubuntu 24.04, which does not ship it, takes it from Ubuntu
