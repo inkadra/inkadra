@@ -42,6 +42,7 @@ import {
   validateTaskUpdate,
 } from './tasks.ts';
 import { actorFromToken, isToken, recordTokenUse } from './tokens.ts';
+import { malformedUpdate, stillWritable } from './update-shape.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
 interface Context {
@@ -1279,11 +1280,22 @@ export function createCollabServer(deps: {
 
     async beforeSync({ connection, document, context, type, payload }) {
       if (type !== 1 && type !== 2) return;
+      // A message still queued when its connection was closed (access removed) writes nothing.
+      if (!document.hasConnection(connection)) {
+        connection.readOnly = true;
+        return;
+      }
       // A refused update only makes this message read-only. Re-evaluate on the next one,
       // so deletions can still be applied without changing the person's editing role.
       if (!limits?.freeze)
         connection.readOnly =
           !context.canEdit || context.supportedSchemaVersion < requiredSchema(context, document);
+      // A shape no Yjs client writes, which would wedge the board (decision 0139): refused before
+      // anything else reads it.
+      if (!connection.readOnly) {
+        const malformed = malformedUpdate(document, payload);
+        if (malformed) throw new Error(`Malformed update: ${malformed}`);
+      }
       if (
         !connection.readOnly &&
         limits &&
@@ -1311,6 +1323,21 @@ export function createCollabServer(deps: {
         return;
       }
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
+      // Hocuspocus applies the update once this returns: anything may have changed during the
+      // await (the role, a freeze, the connection closed, the board unloaded). The role check and
+      // a freeze make the connection read-only; a closed connection (which Hocuspocus takes off
+      // the board, leaving a shared socket open) or an unloaded board must too.
+      if (
+        !stillWritable({
+          readOnly: connection.readOnly,
+          connected: document.hasConnection(connection),
+          socketState: connection.webSocket.readyState,
+          documentDestroyed: document.isDestroyed,
+        })
+      ) {
+        connection.readOnly = true;
+        return;
+      }
       // Decision 0120: the ids this socket delivers new items under, read from what it sent.
       // onChange sees the whole transaction, which can also integrate items another socket sent
       // earlier that were waiting for theirs: those must not go on this account.

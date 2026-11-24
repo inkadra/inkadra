@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
+import type { Connection } from '@hocuspocus/server';
 import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
 import {
   addElement,
@@ -325,6 +326,110 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       .toEqual(['Location']);
   });
 
+  /** A new editor of the main board, who no other test demotes. */
+  async function freshEditor(name: string) {
+    await signUp(name);
+    await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/members/${people[name]?.id}`,
+      headers: as('owner'),
+      payload: { role: 'editor' },
+    });
+    return people[name]?.id ?? '';
+  }
+
+  it('refuses a malformed update, closing its sender, and leaves the board as it was (decision 0139)', async () => {
+    await freshEditor('malformed');
+    const c = connect(as('malformed'));
+    await c.synced;
+    const live = collab.hocuspocus.documents.get(boardDocName(boardId))!;
+    const before = Y.encodeStateVector(live);
+    // A struct of no length: applied, the board could no longer be encoded.
+    const str = (s: string) => [s.length, ...new TextEncoder().encode(s)];
+    const update = new Uint8Array([
+      ...[1, 2, 0xab, 0x04, 0],
+      ...[8 | 0x20, 1, ...str('decoy'), ...str('x'), 1, 119, ...str('a')],
+      ...[8 | 0x80, 0xab, 0x04, 0, 0],
+      0,
+    ]);
+    expect(Y.decodeUpdate(update).structs.map((s) => s.length)).toEqual([1, 0]);
+    const closed = closedWith(c);
+    // Sent as the provider sends an update, bypassing its own document.
+    (
+      c.provider as unknown as { documentUpdateHandler(u: Uint8Array, o: unknown): void }
+    ).documentUpdateHandler(update, null);
+    expect(await closed).toBe('Reset Connection');
+    expect(Y.encodeStateVector(live)).toEqual(before);
+    expect(() => Y.encodeStateAsUpdate(live)).not.toThrow();
+    c.close();
+  });
+
+  it('applies nothing from a connection closed while its update waits for the role check', async () => {
+    const actor = await freshEditor('revoked');
+    // Someone else keeps the board open.
+    const other = connect(as('owner'));
+    await other.synced;
+    const c = connect(as('revoked'));
+    await c.synced;
+    // A second board of theirs on the same socket keeps it open when this board's connection
+    // closes, as a client with several boards open has it.
+    const own = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('revoked'),
+      payload: { name: 'Elsewhere' },
+    });
+    const elsewhere = new HocuspocusProvider({
+      websocketProvider: c.websocketProvider,
+      name: boardDocName(own.json().rootBoardId),
+      document: new Y.Doc(),
+    });
+    elsewhere.attach();
+    await new Promise<void>((resolve) => elsewhere.on('synced', () => resolve()));
+    const live = collab.hocuspocus.documents.get(boardDocName(boardId))!;
+    const connection = (
+      live.getConnections() as Array<Connection<{ actor?: { id: string } }>>
+    ).find((conn) => conn.context?.actor?.id === actor)!;
+    // An assignment, which waits for the sender's role before Hocuspocus applies it.
+    const draft = new Y.Doc();
+    Y.applyUpdate(draft, Y.encodeStateAsUpdate(live));
+    const sv = Y.encodeStateVector(draft);
+    const todo = createElement(draft, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null }).id;
+    const item = addTodoItem(draft, todo, 'Permit')!;
+    updateTodoItem(draft, todo, item, { assigneeId: actor });
+    const payload = Y.encodeStateAsUpdate(draft, sv);
+    const beforeSync = collab.hocuspocus.configuration.beforeSync!;
+    const checked = beforeSync({
+      connection,
+      document: live,
+      documentName: live.name,
+      context: connection.context,
+      type: 2,
+      payload,
+    } as unknown as Parameters<typeof beforeSync>[0]);
+    // Access removed meanwhile: the connection leaves the board, its socket may stay open.
+    connection.close({ code: 4403, reason: 'Forbidden' });
+    await checked;
+    expect(connection.webSocket.readyState).toBe(1);
+    expect(live.isDestroyed).toBe(false);
+    expect(connection.readOnly).toBe(true);
+    expect(roots(live).elements.has(todo)).toBe(false);
+    // A message still queued from it is dropped before anything reads it, even a malformed one.
+    connection.readOnly = false;
+    await beforeSync({
+      connection,
+      document: live,
+      documentName: live.name,
+      context: connection.context,
+      type: 2,
+      payload: new Uint8Array([1, 1, 0xab, 0x04, 0, 8 | 0x80, 0xab, 0x04, 0, 0, 0]),
+    } as unknown as Parameters<typeof beforeSync>[0]);
+    expect(connection.readOnly).toBe(true);
+    elsewhere.destroy();
+    c.close();
+    other.close();
+  });
+
   it('drops the document of a board deleted while open, without an error, and unloads it', async () => {
     const created = await app.inject({
       method: 'POST',
@@ -343,17 +448,24 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     // database log, so no store transaction fails.
     const writes = vi.spyOn(db, 'transaction');
     try {
+      // An edit the server holds but has not stored yet when the board is deleted: it tries to
+      // store it afterwards. (An edit sent after the deletion is refused once the access check
+      // closes the connection: decision 0139.)
+      const late = column('Too late');
+      addElement(c.doc, late);
+      await expect
+        .poll(
+          () =>
+            roots(collab.hocuspocus.documents.get(boardDocName(goneBoard))!).elements.has(late.id),
+          { timeout: 5000 },
+        )
+        .toBe(true);
       const deleted = await app.inject({
         method: 'DELETE',
         url: `/api/v1/projects/${goneProject}`,
         headers: as('owner'),
       });
       expect(deleted.statusCode).toBe(204);
-      // An edit made after the deletion reaches the server, which tries to store it.
-      addElement(c.doc, column('Too late'));
-      await expect
-        .poll(() => collab.hocuspocus.documents.has(boardDocName(goneBoard)), { timeout: 5000 })
-        .toBe(true);
       c.close();
       collab.hocuspocus.flushPendingStores();
       await expect
