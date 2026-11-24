@@ -188,26 +188,69 @@ export function trackAssignments(doc: Y.Doc): () => ReturnType<typeof assignedIt
   };
 }
 
+type TaskValues = { assigneeId: unknown; dueDate: unknown };
+const TASK_FIELDS = ['assigneeId', 'dueDate'] as const;
+
+/** Whether a map of the board is a to-do item `rawTodoItems` reads, and still is after `ds`. */
+function isTodoItem(
+  document: Y.Doc,
+  map: Y.Map<unknown>,
+  ds: ReturnType<typeof Y.decodeUpdate>['ds'],
+) {
+  // First: until a root is read by its type, Yjs keeps a placeholder as the parent of its items.
+  const { elements } = roots(document);
+  const list = map._item?.parent;
+  const card = list instanceof Y.Array ? list._item?.parent : undefined;
+  if (
+    !(list instanceof Y.Array) ||
+    !(card instanceof Y.Map) ||
+    card._item?.parent !== elements ||
+    card.get('type') !== 'todo' ||
+    card.get('items') !== list
+  )
+    return false;
+  return [map._item, list._item, card._item].every(
+    (i) => i && !i.deleted && !Y.isDeleted(ds, i.id),
+  );
+}
+
 /**
- * Whether an update can assign a task or set a due date (#755). Todo items are Y.Maps, so such a
- * write is always an item under one of TASK_KEYS; the full check, which copies the whole board,
- * runs only then. A first value carries its key; a new value of a key that had one carries only
- * its origin, the value it replaces, so the key is read from that item, in the document or earlier
- * in the update. A deletion alone assigns nobody: at most it uncovers what someone already wrote
- * under the same key. Anything that can't be resolved here gets the full check.
+ * What the to-do check has to read in an update (#755). Todo items are Y.Maps, so a write that
+ * can assign a task or set a due date is always a value under one of TASK_KEYS. A first value
+ * carries its key and parent; a new value of a key that had one carries only its origin, the
+ * value it replaces, so both are read from that item, in the document or earlier in the update.
+ * A deletion alone assigns nobody.
+ *
+ * Usually the answer is the fields, once the update is applied, of the to-do items it writes
+ * `assigneeId` or `dueDate` on, each new value placed right after the board's last one for its
+ * key (so it is the value Yjs keeps, with no tie to break). An update that only adds cards or
+ * items without those fields, or changes nothing they hold, gives none. Anything else (a gap,
+ * held-back structs, a new card that comes with assignees, a changed id, type or list of items,
+ * a value concurrent with one the board holds) is 'full': only applying it to a copy of the
+ * board can tell.
+ *
+ * shortcut: reads updates the way Yjs clients write them; a crafted one is out of scope
+ * (decision 0139).
  */
-export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
+export function taskWrites(
+  document: Y.Doc,
+  update: Uint8Array,
+): 'full' | Map<Y.Map<unknown>, TaskValues> {
   // Structs or deletions held back for a missing earlier update were never checked against this
   // test (they could not be read yet): an update that fills the gap integrates them, so the full
   // check, whose candidate includes them, has to run (#880 review).
-  if (document.store.pendingStructs || document.store.pendingDs) return true;
+  if (document.store.pendingStructs || document.store.pendingDs) return 'full';
   try {
-    const { structs } = Y.decodeUpdate(update);
+    const { structs, ds } = Y.decodeUpdate(update);
+    const inDocument = (id: Y.ID) => id.clock < Y.getState(document.store, id.client);
     // The structs of each client, in clock order as an update lists them, for a binary search.
     const byClient = new Map<number, Array<(typeof structs)[number]>>();
     for (const s of structs) {
       const list = byClient.get(s.id.client);
+      // A gap, inside the update or before a client's first struct: Yjs holds back what follows.
+      if (s instanceof Y.Skip) return 'full';
       if (list) list.push(s);
+      else if (s.id.clock > Y.getState(document.store, s.id.client)) return 'full';
       else byClient.set(s.id.client, [s]);
     }
     const sent = (id: Y.ID) => {
@@ -224,60 +267,160 @@ export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
       }
       return undefined;
     };
-    // The key of each item read so far: a chain of origins is walked once, not once per item,
+    /** The type a decoded item names as parent: one of the board, or 'new' when the update adds it. */
+    const parentType = (parent: unknown): unknown => {
+      if (typeof parent === 'string') return document.share.get(parent);
+      if (!(parent instanceof Y.ID)) return undefined;
+      if (!inDocument(parent)) return 'new';
+      const holder = Y.getItem(document.store, parent);
+      return holder instanceof Y.Item && holder.content instanceof Y.ContentType
+        ? holder.content.type
+        : undefined;
+    };
+    type Place = {
+      /** The map key, null when it is not a map value, undefined when unknown. */
+      key: string | null | undefined;
+      /** The type of the board it goes in, or 'new' when the update adds that type. */
+      parent?: unknown;
+    };
+    // The place of each item read so far: a chain of origins is walked once, not once per item,
     // so a long chained update stays linear (#880 review).
-    const keys = new Map<unknown, string | null | undefined>();
-    /** The map key of an item, null when it is not a map value, undefined when unknown. */
-    const keyOf = (first: (typeof structs)[number] | undefined): string | null | undefined => {
+    const places = new Map<unknown, Place>();
+    const placeOf = (first: (typeof structs)[number] | undefined): Place => {
       const chain: unknown[] = [];
       let item = first;
-      let key: string | null | undefined;
+      let place: Place;
       for (;;) {
         if (!(item instanceof Y.Item)) {
-          key = undefined;
+          place = { key: undefined };
           break;
         }
-        if (keys.has(item)) {
-          key = keys.get(item);
+        const known = places.get(item);
+        if (known) {
+          place = known;
           break;
         }
         chain.push(item);
         if (item.parentSub !== null) {
-          key = item.parentSub;
+          place = { key: item.parentSub, parent: parentType(item.parent) };
           break;
         }
         // Read from the document: a decoded item names neither its key nor its parent.
         if (item.parent !== null && item.origin === null && item.rightOrigin === null) {
-          key = null;
+          place = { key: null };
           break;
         }
         const origin = item.origin ?? item.rightOrigin;
         if (!origin) {
-          key = null;
+          place = { key: null };
           break;
         }
-        if (origin.clock < Y.getState(document.store, origin.client)) {
+        if (inDocument(origin)) {
           const stored = Y.getItem(document.store, origin);
-          key = stored instanceof Y.Item ? stored.parentSub : undefined;
+          place =
+            stored instanceof Y.Item
+              ? { key: stored.parentSub, parent: stored.parent }
+              : { key: undefined };
           break;
         }
         item = sent(origin);
         // Longer than the update: a cycle, which only a malformed update makes.
         if (chain.length > structs.length) {
-          key = undefined;
+          place = { key: undefined };
           break;
         }
       }
-      for (const c of chain) keys.set(c, key);
-      return key;
+      for (const c of chain) places.set(c, place);
+      return place;
     };
-    return structs.some((s) => {
-      if (!(s instanceof Y.Item)) return false;
-      const key = keyOf(s);
-      return key === undefined || (key !== null && TASK_KEYS.has(key));
-    });
+    const written = new Map<Y.Map<unknown>, Map<string, Y.Item[]>>();
+    for (const s of structs) {
+      // Already on the board (a resend): Yjs skips it.
+      if (
+        !(s instanceof Y.Item) ||
+        s.id.clock + s.length <= Y.getState(document.store, s.id.client)
+      )
+        continue;
+      const { key, parent } = placeOf(s);
+      if (key === undefined) return 'full';
+      if (key === null || !TASK_KEYS.has(key)) continue;
+      // What a new card or item is made of: without assignees or due dates, nothing to check.
+      if (parent === 'new' && key !== 'assigneeId' && key !== 'dueDate') continue;
+      if (
+        (key !== 'assigneeId' && key !== 'dueDate') ||
+        !(parent instanceof Y.Map) ||
+        !isTodoItem(document, parent, ds) ||
+        s.rightOrigin
+      )
+        return 'full';
+      const keys = written.get(parent) ?? new Map<string, Y.Item[]>();
+      written.set(parent, keys);
+      keys.set(key, [...(keys.get(key) ?? []), s]);
+    }
+    const values = new Map<Y.Map<unknown>, TaskValues>();
+    for (const [map, keys] of written) {
+      const now = taskValues(map);
+      for (const field of TASK_FIELDS) {
+        const current = map._map.get(field);
+        if (current && Y.isDeleted(ds, current.id)) now[field] = undefined;
+      }
+      for (const [key, items] of keys) {
+        // Each value after the one before, starting from the board's last: a chain with no ties.
+        const after = new Map(
+          items.map((i) => [i.origin && `${i.origin.client}:${i.origin.clock}`, i]),
+        );
+        let last = map._map.get(key) ?? null;
+        for (let n = 0; n < items.length; n++) {
+          const next = after.get(last && `${last.lastId.client}:${last.lastId.clock}`);
+          if (!next) return 'full';
+          last = next;
+        }
+        now[key as keyof TaskValues] =
+          last && !Y.isDeleted(ds, last.id) ? last.content.getContent()[0] : undefined;
+      }
+      values.set(map, now);
+    }
+    return values;
   } catch {
-    return true;
+    return 'full';
+  }
+}
+
+/** Whether an update needs the task check at all. */
+export function mayTouchTasks(document: Y.Doc, update: Uint8Array): boolean {
+  const writes = taskWrites(document, update);
+  return writes === 'full' || writes.size > 0;
+}
+
+const taskValues = (item: Y.Map<unknown>): TaskValues => ({
+  assigneeId: item.get('assigneeId'),
+  dueDate: item.get('dueDate'),
+});
+
+/** Whether a to-do item's new fields assign someone; throws on a value of the wrong format. */
+function assignsTask(was: TaskValues | undefined, now: TaskValues) {
+  const newAssignee = now.assigneeId !== was?.assigneeId;
+  // What is already stored can't be helped by refusing this sender.
+  if (!newAssignee && now.dueDate === was?.dueDate) return false;
+  TaskFields.parse(now);
+  return newAssignee && !!now.assigneeId;
+}
+
+/** The task check on a copy of the whole board with the update applied. */
+function assignsOnCopy(document: Y.Doc, update: Uint8Array) {
+  const candidate = new Y.Doc();
+  try {
+    Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
+    Y.applyUpdate(candidate, update);
+    const stored = rawTodoItems(document);
+    let assigns = false;
+    for (const [key, { item }] of rawTodoItems(candidate)) {
+      const was = stored.get(key)?.item;
+      if (assignsTask(was && taskValues(was), taskValues(item))) assigns = true;
+    }
+    return assigns;
+  } finally {
+    candidate.destroy();
   }
 }
 
@@ -294,31 +437,15 @@ export async function validateTaskUpdate(
   document: Y.Doc,
   update: Uint8Array,
 ) {
-  if (!mayTouchTasks(document, update)) return;
-  const candidate = new Y.Doc();
-  try {
-    Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
-    Y.applyUpdate(candidate, update);
-    const stored = rawTodoItems(document);
-    let assigns = false;
-    for (const [key, { item }] of rawTodoItems(candidate)) {
-      const was = stored.get(key)?.item;
-      const assigneeId = item.get('assigneeId');
-      const dueDate = item.get('dueDate');
-      const newAssignee = assigneeId !== was?.get('assigneeId');
-      // What is already stored can't be helped by refusing this sender.
-      if (!newAssignee && dueDate === was?.get('dueDate')) continue;
-      TaskFields.parse({ assigneeId, dueDate });
-      if (newAssignee && assigneeId) assigns = true;
-    }
-    if (!assigns) return;
-    if (!actorId) throw new Error('Guests cannot assign tasks');
-    const access = await boardRole(db, { id: actorId }, boardId);
-    if (!access?.role || !atLeast(access.role, 'editor'))
-      throw new Error('Assignment requires editor access');
-  } finally {
-    candidate.destroy();
-  }
+  const writes = taskWrites(document, update);
+  let assigns = false;
+  if (writes === 'full') assigns = assignsOnCopy(document, update);
+  else for (const [item, now] of writes) if (assignsTask(taskValues(item), now)) assigns = true;
+  if (!assigns) return;
+  if (!actorId) throw new Error('Guests cannot assign tasks');
+  const access = await boardRole(db, { id: actorId }, boardId);
+  if (!access?.role || !atLeast(access.role, 'editor'))
+    throw new Error('Assignment requires editor access');
 }
 
 /**
