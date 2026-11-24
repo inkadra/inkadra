@@ -13,6 +13,7 @@ import itLocale from '../../i18n/it.json';
 import { setReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import { ExportDialog } from './ExportDialog.tsx';
+import { EmptyExportError } from './engine.ts';
 
 function lookup(key: string, vars?: Record<string, unknown>): string {
   const raw = key
@@ -43,6 +44,15 @@ vi.mock('../../lib/api.ts', () => ({
     get: getMock,
     patch: patchMock,
   },
+}));
+
+const exportFileMock = vi.hoisted(() => vi.fn());
+const downloadBlobMock = vi.hoisted(() => vi.fn());
+
+vi.mock('./engine.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./engine.ts')>()),
+  exportFile: exportFileMock,
+  downloadBlob: downloadBlobMock,
 }));
 
 /** A board whose frames are `frames`: only what the dialog reads from it here. */
@@ -375,6 +385,18 @@ describe('ExportDialog options', () => {
     expect(submit()?.disabled).toBe(false);
     await act(async () => radio('Contieni')?.click());
     expect(submit()?.disabled).toBe(false);
+  });
+
+  it('downloads nothing and disables Export when the image export has no pages', async () => {
+    exportFileMock.mockReset().mockRejectedValue(new EmptyExportError());
+    downloadBlobMock.mockReset();
+    await renderImage(new Set(['a', 'b']));
+    const submit = () => host.querySelector<HTMLButtonElement>('.export__submit');
+    expect(submit()?.disabled).toBe(false);
+    await act(async () => submit()?.click());
+    expect(exportFileMock).toHaveBeenCalledOnce();
+    expect(downloadBlobMock).not.toHaveBeenCalled();
+    expect(submit()?.disabled).toBe(true);
   });
 });
 

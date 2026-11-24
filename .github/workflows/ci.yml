@@ -166,7 +166,7 @@ jobs:
             if [ "$rc" -eq 0 ]; then exit 0; fi
             echo "Media tools did not install (attempt $attempt, exit $rc)."
             if [ "$attempt" -lt 3 ]; then
-              sudo dpkg --configure -a || true
+              sudo timeout -k 15 120 dpkg --configure -a || true
               sleep 15
             fi
           done
@@ -377,7 +377,7 @@ jobs:
             if [ "$rc" -eq 0 ]; then exit 0; fi
             echo "The browsers' system packages did not install (attempt $attempt, exit $rc)."
             if [ "$attempt" -lt 3 ]; then
-              sudo dpkg --configure -a || true
+              sudo timeout -k 15 120 dpkg --configure -a || true
               sleep 15
             fi
           done
