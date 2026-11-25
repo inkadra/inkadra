@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, newElementId, roots } from '@inkadra/doc-schema';
 import { and, eq, sql } from 'drizzle-orm';
@@ -1101,6 +1102,59 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     );
     expect(byRole.body.items.length).toBeGreaterThan(0);
     for (const hit of byRole.body.items) expect(hit.title).toBe('Marta');
+  });
+
+  it('lists the set plans of a project, those of no title too', async () => {
+    // A project of its own: the other tests count what the first one holds.
+    const project = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { name: 'Piante' },
+    });
+    const plansProject = project.json().id as string;
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${plansProject}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: project.json().rootBoardId, kind: 'board', title: 'Sopralluogo' },
+    });
+    const id = created.json().id as string;
+    const doc = createBoardDoc(id);
+    const bar = { ...base(), type: 'plan' as const, title: 'Bar, sala' };
+    addElement(doc, bar);
+    // A setup of it: part of its plan, never listed on its own (decision 0117).
+    addElement(doc, { ...base(), type: 'plan', variantOf: bar.id, variant: 'Sera' });
+    // As the web and the app add one: no title of its own.
+    addElement(doc, { ...base(), type: 'plan' });
+    addElement(doc, { ...base(), type: 'character', name: '' });
+    const state = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state, schemaVersion: 2, size: state.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const list = async (type: string) => {
+      const res = await get('owner', `/api/v1/search?type=${type}&projectId=${plansProject}`);
+      expect(res.status).toBe(200);
+      return res.body.items.map((h: { title: string }) => h.title).sort();
+    };
+    // The untitled plan is listed, under its board's title as any card of no title; the setup is not.
+    expect(await list('plan')).toEqual(['Bar, sala', 'Sopralluogo']);
+    // Other types still list named cards only.
+    expect(await list('character')).toEqual([]);
+    expect(
+      (await get('stranger', `/api/v1/search?type=plan&projectId=${plansProject}`)).body.items,
+    ).toEqual([]);
+    // Indexed before setups said whose they are: migration 0059 has the board indexed again.
+    await db.update(boardElementIndex).set({ data: null }).where(eq(boardElementIndex.boardId, id));
+    expect(await list('plan')).toHaveLength(3);
+    const migration = readFileSync(
+      fileURLToPath(new URL('../../drizzle/0059_reindex_plan_setups.sql', import.meta.url)),
+      'utf8',
+    );
+    await db.execute(sql.raw(migration));
+    await backfillIndex(db);
+    expect(await list('plan')).toEqual(['Bar, sala', 'Sopralluogo']);
   });
 
   it('indexes boards stored before the index existed', async () => {

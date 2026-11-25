@@ -28349,10 +28349,10 @@
             "schema": {
               "type": "string",
               "maxLength": 20,
-              "description": "Only cards of this element type, e.g. `frame` or `image`. With `projectId` and without `q` or `tag`, lists the named cards of that type the caller can read (since API 0.10.0)."
+              "description": "Only cards of this element type, e.g. `frame` or `image`. With `projectId` and without `q` or `tag`, lists the named cards of that type the caller can read (since API 0.10.0); set plans (`plan`) with no title of their own too, under the title of their board, as they are named by their place and scenes."
             },
             "required": false,
-            "description": "Only cards of this element type, e.g. `frame` or `image`. With `projectId` and without `q` or `tag`, lists the named cards of that type the caller can read (since API 0.10.0).",
+            "description": "Only cards of this element type, e.g. `frame` or `image`. With `projectId` and without `q` or `tag`, lists the named cards of that type the caller can read (since API 0.10.0); set plans (`plan`) with no title of their own too, under the title of their board, as they are named by their place and scenes.",
             "name": "type",
             "in": "query"
           },

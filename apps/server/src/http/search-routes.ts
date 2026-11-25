@@ -618,12 +618,21 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
             : sql``
         }
         ${query.type ? sql`and i.type = ${query.type}` : sql``}
-        ${listing ? sql`and i.title <> ''` : sql``}
+        ${
+          // A set plan is named by its place and scenes when it has no title of its own (as the
+          // web and the app make one): a listing of plans keeps those too, and lists the bases
+          // only, a setup being part of its base's plan (decision 0117).
+          !listing
+            ? sql``
+            : query.type === 'plan'
+              ? sql`and i.data->>'variantOf' is null`
+              : sql`and i.title <> ''`
+        }
       order by ${
         q
           ? sql`greatest(word_similarity(${q}, i.text), word_similarity(${q}, array_to_string(i.tags, ' '))) desc,`
           : sql``
-      } i.updated_at desc
+      } i.updated_at desc, i.board_id, i.element_id
       limit ${query.limit}`);
     for (const r of elements) {
       const text = r.text as string;
