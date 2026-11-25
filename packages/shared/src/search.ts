@@ -32,7 +32,8 @@ export const SearchQuery = z
         description:
           'Only cards of this element type, e.g. `frame` or `image`. With `projectId` and ' +
           'without `q` or `tag`, lists the named cards of that type the caller can read ' +
-          '(since API 0.10.0).',
+          '(since API 0.10.0); set plans (`plan`) with no title of their own too, under the ' +
+          'title of their board, as they are named by their place and scenes.',
       }),
     limit: z.coerce.number().int().min(1).max(50).default(20),
   })

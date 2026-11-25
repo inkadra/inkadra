@@ -618,7 +618,11 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
             : sql``
         }
         ${query.type ? sql`and i.type = ${query.type}` : sql``}
-        ${listing ? sql`and i.title <> ''` : sql``}
+        ${
+          // A set plan is named by its place and scenes when it has no title of its own (as the
+          // web and the app make one): a listing of plans keeps those too.
+          listing && query.type !== 'plan' ? sql`and i.title <> ''` : sql``
+        }
       order by ${
         q
           ? sql`greatest(word_similarity(${q}, i.text), word_similarity(${q}, array_to_string(i.tags, ' '))) desc,`

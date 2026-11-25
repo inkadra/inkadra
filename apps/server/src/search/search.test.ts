@@ -1103,6 +1103,46 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     for (const hit of byRole.body.items) expect(hit.title).toBe('Marta');
   });
 
+  it('lists the set plans of a project, those of no title too', async () => {
+    // A project of its own: the other tests count what the first one holds.
+    const project = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { name: 'Piante' },
+    });
+    const plansProject = project.json().id as string;
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${plansProject}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: project.json().rootBoardId, kind: 'board', title: 'Sopralluogo' },
+    });
+    const id = created.json().id as string;
+    const doc = createBoardDoc(id);
+    addElement(doc, { ...base(), type: 'plan', title: 'Bar, sala' });
+    // As the web and the app add one: no title of its own.
+    addElement(doc, { ...base(), type: 'plan' });
+    addElement(doc, { ...base(), type: 'character', name: '' });
+    const state = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: id, state, schemaVersion: 2, size: state.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, id, doc));
+    const list = async (type: string) => {
+      const res = await get('owner', `/api/v1/search?type=${type}&projectId=${plansProject}`);
+      expect(res.status).toBe(200);
+      return res.body.items.map((h: { title: string }) => h.title).sort();
+    };
+    // The untitled plan is listed, under its board's title as any card of no title.
+    expect(await list('plan')).toEqual(['Bar, sala', 'Sopralluogo']);
+    // Other types still list named cards only.
+    expect(await list('character')).toEqual([]);
+    expect(
+      (await get('stranger', `/api/v1/search?type=plan&projectId=${plansProject}`)).body.items,
+    ).toEqual([]);
+  });
+
   it('indexes boards stored before the index existed', async () => {
     await db.delete(boardElementIndex).where(eq(boardElementIndex.boardId, boardId));
     await db.update(boardDoc).set({ indexedAt: null }).where(eq(boardDoc.boardId, boardId));
