@@ -83,15 +83,17 @@ export function writePlanSun(
   if (!fields) return null;
   const turns = sunTurns(edit, rotation);
   const owners = new Set([
+    edit.plan.id,
     ...planFieldWrites(edit, fields).map((w) => w.id),
     ...turns.map((i) => planItemOwner(edit, i.id)),
   ]);
-  if (!owners.size) return [];
+  if (!Object.keys(fields).length && !turns.length) return [];
   if ([...owners].some((id) => !planListsReady(doc, id))) return null;
-  const baseline = (edit.drawn.icons ?? []).filter((i) => turns.some((t) => t.id === i.id));
   doc.transact(() => {
     if (Object.keys(fields).length) writePlanFields(doc, edit, fields, origin);
-    if (turns.length) writePlanItems(doc, edit, turns, origin, baseline);
+    // Against the plan as drawn (writePlanItems' own baseline): what sits on a sun and settles
+    // with it is written field by field too, never over a colleague's edit of it.
+    if (turns.length) writePlanItems(doc, edit, turns, origin);
   }, origin);
   return turns.map((i) => i.id);
 }

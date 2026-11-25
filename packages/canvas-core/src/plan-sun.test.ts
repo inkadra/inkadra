@@ -113,6 +113,25 @@ describe('the sun of a set plan', () => {
     expect(iconOf(s.doc, s.sera, s.sun)).toMatchObject({ label: 'Afternoon', rotation: 200 });
   });
 
+  it('a modifier on a sun settles with it, keeping a label a colleague gave it meanwhile', () => {
+    const s = setup();
+    const scrim = addPlanIcon(s.doc, s.sera, {
+      kind: 'scrim',
+      color: '#FFFFFF',
+      x: 100,
+      y: 100,
+      on: s.sun,
+    })!;
+    const edit = s.edit();
+    const before = iconOf(s.doc, s.sera, scrim)!;
+    updatePlanItems(s.doc, s.sera, [{ ...before, label: 'Half' }]);
+    writePlanSun(s.doc, edit, {}, 90);
+    const after = iconOf(s.doc, s.sera, scrim)!;
+    expect(after.label).toBe('Half');
+    expect(after.on).toBe(s.sun);
+    expect(after.rotation).toBe(90);
+  });
+
   it('S2, S3: north or a sun that does not read, or a list no client may write: nothing written', () => {
     const s = setup();
     let changes = 0;
@@ -129,6 +148,8 @@ describe('the sun of a set plan', () => {
     roots(s.doc).elements.get(s.sera)?.set('shapes', []);
     changes = 0;
     expect(writePlanSun(s.doc, edit, { sun: { time: 700 } }, 10)).toBeNull();
+    // North alone, no icon to turn: it goes to the base, but the plan edited is checked too.
+    expect(writePlanSun(s.doc, s.edit(), { north: 30 }, 90)).toBeNull();
     expect(changes).toBe(0);
   });
 
