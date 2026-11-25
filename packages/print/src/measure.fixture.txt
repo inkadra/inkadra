@@ -64,20 +64,17 @@
 {"text":"5.0 m","size":4.717,"weight":400,"width":12.591718261718748}
 {"text":"Bancone","size":4.717,"weight":500,"width":19.793895507812497}
 {"text":"Booth","size":4.717,"weight":500,"width":13.238923828125}
-{"text":"A cam · 50 mm","size":4.717,"weight":500,"width":33.663902343749996}
 {"text":"B cam","size":4.717,"weight":500,"width":13.946013183593749}
-{"text":"Key · 1K","size":4.717,"weight":500,"width":17.8730078125}
-{"text":"3200 K","size":4.324,"weight":400,"width":14.884863281249999}
 {"text":"2K","size":4.717,"weight":500,"width":6.1496044921875}
 {"text":"5600 K","size":4.324,"weight":400,"width":14.823634765625}
 {"text":"Tubo · 50 W","size":4.717,"weight":500,"width":27.5050849609375}
 {"text":"Pratica · 60 W","size":4.717,"weight":500,"width":31.673917968749997}
 {"text":"Bandiera 4×4","size":4.717,"weight":500,"width":30.589100097656246}
+{"text":"Key · 1K","size":4.717,"weight":500,"width":17.8730078125}
+{"text":"3200 K","size":4.324,"weight":400,"width":14.884863281249999}
+{"text":"A cam · 50 mm","size":4.717,"weight":500,"width":33.663902343749996}
 {"text":"Leo","size":4.717,"weight":500,"width":8.2869951171875}
 {"text":"Marta","size":4.717,"weight":500,"width":13.091517578124998}
-{"text":"A cam","size":9.75,"weight":400,"width":29.0548095703125}
-{"text":"Softbox","size":9.75,"weight":400,"width":36.038818359375}
-{"text":"Grid","size":9.75,"weight":400,"width":19.2762451171875}
 {"text":"Made with Inkadra · page 2 of 3","size":8.25,"weight":400,"width":123.613037109375}
 {"text":"Setup 3 · Dettaglio","size":18,"weight":700,"width":161.595703125}
 {"text":"2A, 2C","size":10.5,"weight":600,"width":34.453125}
@@ -108,7 +105,6 @@
 {"text":"Fatto con Inkadra · pagina 1 di 3","size":8.25,"weight":400,"width":123.790283203125}
 {"text":"7,0 m","size":4.717,"weight":400,"width":12.462737792968749}
 {"text":"5,0 m","size":4.717,"weight":400,"width":12.591718261718748}
-{"text":"Griglia","size":9.75,"weight":400,"width":29.4832763671875}
 {"text":"Fatto con Inkadra · pagina 2 di 3","size":8.25,"weight":400,"width":125.466064453125}
 {"text":"Fatto con Inkadra · pagina 3 di 3","size":8.25,"weight":400,"width":125.530517578125}
 {"text":"Uscita di sicurezza","size":9.682,"weight":500,"width":87.61075390625}
@@ -142,15 +138,15 @@
 {"text":"Bancone","size":5.764,"weight":500,"width":24.18741015625}
 {"text":"Booth","size":5.764,"weight":500,"width":16.1774765625}
 {"text":"Carrello","size":5.764,"weight":500,"width":21.730392578125002}
-{"text":"A cam · 50 mm","size":5.764,"weight":500,"width":41.136046875}
 {"text":"B cam","size":5.764,"weight":500,"width":17.041513671875002}
-{"text":"Key · 1K","size":5.764,"weight":500,"width":21.84015625}
-{"text":"3200 K","size":5.284,"weight":400,"width":18.18955078125}
 {"text":"2K","size":5.764,"weight":500,"width":7.5145898437500005}
 {"text":"5600 K","size":5.284,"weight":400,"width":18.114728515625}
 {"text":"Tubo · 50 W","size":5.764,"weight":500,"width":33.610199218750004}
 {"text":"Pratica · 60 W","size":5.764,"weight":500,"width":38.704359375}
 {"text":"Bandiera 4×4","size":5.764,"weight":500,"width":37.378751953125004}
+{"text":"Key · 1K","size":5.764,"weight":500,"width":21.84015625}
+{"text":"3200 K","size":5.284,"weight":400,"width":18.18955078125}
+{"text":"A cam · 50 mm","size":5.764,"weight":500,"width":41.136046875}
 {"text":"Leo","size":5.764,"weight":500,"width":10.12640234375}
 {"text":"Vittoria Segreta","size":5.764,"weight":500,"width":42.96544140625}
 {"text":"Marta","size":5.764,"weight":500,"width":15.9973515625}
@@ -161,15 +157,15 @@
 {"text":"Bancone","size":6.468,"weight":500,"width":27.14159765625}
 {"text":"Booth","size":6.468,"weight":500,"width":18.1533515625}
 {"text":"Carrello","size":6.468,"weight":500,"width":24.384486328125}
-{"text":"A cam · 32 mm","size":6.468,"weight":500,"width":46.125556640625}
 {"text":"B cam","size":6.468,"weight":500,"width":19.122919921875}
-{"text":"Key · 1K","size":6.468,"weight":500,"width":24.50765625}
-{"text":"3200 K","size":5.929,"weight":400,"width":20.409887695312502}
 {"text":"2K","size":6.468,"weight":500,"width":8.43240234375}
 {"text":"5600 K","size":5.929,"weight":400,"width":20.325932128906253}
 {"text":"Tubo · 50 W","size":6.468,"weight":500,"width":37.71526171875}
 {"text":"Pratica · 60 W","size":6.468,"weight":500,"width":43.431609375}
 {"text":"Bandiera 4×4","size":6.468,"weight":500,"width":41.944095703125}
+{"text":"Key · 1K","size":6.468,"weight":500,"width":24.50765625}
+{"text":"3200 K","size":5.929,"weight":400,"width":20.409887695312502}
+{"text":"A cam · 32 mm","size":6.468,"weight":500,"width":46.125556640625}
 {"text":"Leo","size":6.468,"weight":500,"width":11.36321484375}
 {"text":"Vittoria Segreta","size":6.468,"weight":500,"width":48.21312890625}
 {"text":"Marta","size":6.468,"weight":500,"width":17.9512265625}
