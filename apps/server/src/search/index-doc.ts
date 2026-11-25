@@ -153,8 +153,14 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
         ...(el.walls ?? []).map((w) => w.label),
         ...(el.openings ?? []).map((o) => o.label),
       ].filter((w): w is string => !!w);
-      // `autoLabel`: the name of the location it links to.
-      return { ...base, title: el.title ?? '', text: join(el.title, autoLabel, words) };
+      // `autoLabel`: the name of the location it links to. A setup says whose it is: a listing
+      // of plans names the bases only (a setup has no title of its own, decision 0117).
+      return {
+        ...base,
+        title: el.title ?? '',
+        text: join(el.title, autoLabel, words),
+        data: el.variantOf ? { variantOf: el.variantOf } : null,
+      };
     }
     case 'table': {
       const cells = el.rows.flatMap((r) => el.columns.map((c) => r.cells[c.id] ?? ''));

@@ -414,6 +414,13 @@
       "when": 1795434995071,
       "tag": "0058_collab_epoch",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795603627754,
+      "tag": "0059_reindex_plan_setups",
+      "breakpoints": true
     }
   ]
 }
