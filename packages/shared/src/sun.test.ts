@@ -177,6 +177,9 @@ describe("a plan's sun", () => {
     expect(sunRotation(270, 0)).toBe(0);
     expect(sunRotation(180, 90)).toBe(0);
     expect(sunRotation(-90, -45)).toBe(315);
+    // Just short of a turn: 0, never 360 (review of #1037).
+    expect(sunRotation(269.6, 0)).toBe(0);
+    expect(sunRotation(269.4, 0)).toBe(359);
   });
 
   it('says where it shines from and how high it stands', () => {

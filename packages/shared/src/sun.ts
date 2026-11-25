@@ -213,7 +213,8 @@ export function northWay(degrees: number): (typeof NORTH_WAYS)[number] {
 
 /** The rotation of a sun icon that shines from `bearing` on a plan whose north is `north`. */
 export function sunRotation(bearing: number, north: number): number {
-  return Math.round((((north + bearing + 90) % 360) + 360) % 360);
+  // Rounded first, so a bearing just short of a turn is 0, never 360 (review of #1037).
+  return ((Math.round(north + bearing + 90) % 360) + 360) % 360;
 }
 
 /** Where the sun shines from, by the nearest of eight points of the compass from the north. */
