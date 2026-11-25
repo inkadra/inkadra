@@ -1220,7 +1220,11 @@ export function addVariant(
       }
       return out;
     };
-    const icons = notSet(source.icons).map(renew);
+    // An icon on another copied icon (a softbox on its lamp, a lamp on its stand) sits on the
+    // copy; one on the base's Set (a cup on the table) stays on it, the Set being shared.
+    const icons = notSet(source.icons)
+      .map(renew)
+      .map((i) => (i.on && ids.has(i.on) ? { ...i, on: ids.get(i.on) } : i));
     const strokes = notSet(source.strokes).map(renew);
     const shapes = notSet(source.shapes)
       .map(renew)

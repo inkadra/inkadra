@@ -84,6 +84,40 @@ function setup() {
   return { doc, base, sera, table, camera, edit };
 }
 
+describe('a setup added from another', () => {
+  it('keeps what sits on a copied icon on its copy, and what sits on the Set on the Set', () => {
+    const s = setup();
+    const lamp = addPlanIcon(s.doc, s.sera, {
+      kind: 'fresnel',
+      color: '#1C1C1E',
+      ...at(300, 300),
+    }) as string;
+    const softbox = addPlanIcon(s.doc, s.sera, {
+      kind: 'softbox',
+      color: '#1C1C1E',
+      ...at(300, 300),
+      on: lamp,
+    }) as string;
+    const onTable = addPlanIcon(s.doc, s.sera, {
+      kind: 'practical',
+      color: '#1C1C1E',
+      ...at(400, 300),
+      on: s.table,
+    }) as string;
+    const copy = addVariant(s.doc, planOf(s.doc, s.sera), 'Notte', { userId: null });
+    const icons = planOf(s.doc, copy).icons ?? [];
+    const byKind = (kind: PlanIcon['kind']) => icons.find((i) => i.kind === kind) as PlanIcon;
+    expect(byKind('fresnel').id).not.toBe(lamp);
+    expect(byKind('softbox').id).not.toBe(softbox);
+    expect(byKind('softbox').on).toBe(byKind('fresnel').id);
+    expect(byKind('practical').id).not.toBe(onTable);
+    expect(byKind('practical').on).toBe(s.table);
+    // Nothing of the copy sits on an icon of the setup it came from.
+    const source = new Set((planOf(s.doc, s.sera).icons ?? []).map((i) => i.id));
+    expect(icons.some((i) => i.on && source.has(i.on))).toBe(false);
+  });
+});
+
 describe('who owns an item and where a write goes', () => {
   it('on a base, everything is the plan edited', () => {
     const p = plan();
