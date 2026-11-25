@@ -21,10 +21,11 @@ const tags = readdirSync(dir)
   .map((file) => file.slice('board-'.length, -'.ybin'.length));
 
 /** The cards as the release read them, with the changes later migrations make on purpose. */
-function migrated(elements: Record<string, Record<string, unknown>>) {
+function migrated(elements: Record<string, Record<string, unknown>>, schemaVersion: number) {
   return Object.fromEntries(
     Object.entries(elements).map(([id, card]) => {
-      if (card.type !== 'plan' || !Array.isArray(card.icons)) return [id, card];
+      if (schemaVersion >= 26 || card.type !== 'plan' || !Array.isArray(card.icons))
+        return [id, card];
       // 25 → 26: the note of an icon with blocking moves to stepNote.
       const icons = card.icons.map((icon: Record<string, unknown>) => {
         if (!Array.isArray(icon.steps) || icon.steps.length === 0 || icon.note === undefined)
@@ -38,7 +39,7 @@ function migrated(elements: Record<string, Record<string, unknown>>) {
 }
 
 it('has the fixtures of the releases', () => {
-  expect(tags).toEqual(expect.arrayContaining(['v0.7.0', 'v0.8.0', 'v0.9.0']));
+  expect(tags).toEqual(expect.arrayContaining(['v0.7.0', 'v0.8.0', 'v0.9.0', 'v0.11.0']));
 });
 
 describe.each(tags)('a board written by %s', (tag) => {
@@ -53,7 +54,7 @@ describe.each(tags)('a board written by %s', (tag) => {
     const cards = [...roots(doc).elements.entries()] as Array<[string, Y.Map<unknown>]>;
     for (const [id, map] of cards) expect(checkCard(map), id).toEqual({ status: 'known' });
     expect(Object.fromEntries(cards.map(([id, map]) => [id, readElement(map)]))).toEqual(
-      migrated(frozen.elements),
+      migrated(frozen.elements, frozen.schemaVersion),
     );
   });
 });
