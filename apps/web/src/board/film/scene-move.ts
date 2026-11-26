@@ -164,6 +164,11 @@ export interface SceneMoveResult {
   /** Comments, reviews, picks and shooting days that went with the scenes. */
   dataMoved: number;
   /**
+   * Moved scenes with comments, decisions or picks of guests whose link does not reach the
+   * storyboard: those guests no longer see them (decision 0141).
+   */
+  guestsUnreached: number;
+  /**
    * Brings the scenes back to the board, each one only while its copy in the storyboard is as
    * the move left it and holds nothing of the server's. Never deletes nor trashes a board.
    */
@@ -244,6 +249,7 @@ export async function moveScenes(opts: {
       emptyStoryboard: null,
       cardId: null,
       dataMoved: 0,
+      guestsUnreached: 0,
       undo: async () => ({ back: 0, stayed: 0, emptyStoryboard: null }),
     };
   const made = 'new' in target;
@@ -287,9 +293,12 @@ export async function moveScenes(opts: {
     ]),
   ];
   let dataMoved = 0;
+  let guests = new Set<string>();
   if (dataMoves) {
     try {
-      dataMoved = dataCount(await moveData(boardId, storyboard.id, unitIds.flat()));
+      const moved = await moveData(boardId, storyboard.id, unitIds.flat());
+      dataMoved = dataCount(moved);
+      guests = new Set(moved.guestsOutOfReach ?? []);
     } catch {
       // A lost answer may have moved it all the same: back first, then the copies go.
       const back = await moveData(storyboard.id, boardId, unitIds.flat()).then(
@@ -412,6 +421,12 @@ export async function moveScenes(opts: {
     emptyStoryboard: going.length === 0 && made && back?.empty ? storyboard.title : null,
     cardId: going.length ? cardId : null,
     dataMoved: Math.max(0, dataMoved),
+    guestsUnreached: scenesIn(
+      plan,
+      going.filter((unit) =>
+        (unitIds[plan.units.indexOf(unit)] ?? []).some((id) => guests.has(id)),
+      ),
+    ),
     undo: async () => {
       if (undone) return { back: 0, stayed: 0, emptyStoryboard: null };
       undone = true;
@@ -490,10 +505,20 @@ export async function moveScenes(opts: {
         );
       } else {
         // On the board first, then the server's data comes back with them, then the copies
-        // leave the storyboard: a failure on the way leaves the scenes in the storyboard.
+        // leave the storyboard: a failure on the way leaves the scenes in the storyboard. A copy
+        // changed there meanwhile keeps the scene, and its data, in the storyboard.
         await writeToBoard(storyboard.id, (sb) => bringBack(sb, false));
+        const unchanged = (sb: Y.Doc) =>
+          returned.filter((unit) => unitUnchanged(sb, unit, copied.copies));
+        let ready = returned;
         if (returned.length) {
-          const ids = idsOf(returned);
+          // Checked again right before the data moves.
+          ready = await writeToBoard(storyboard.id, unchanged);
+          const changed = returned.filter((unit) => !ready.includes(unit));
+          if (changed.length) deleteElements(doc, changed.flat(), MOVE);
+        }
+        if (ready.length) {
+          const ids = idsOf(ready);
           try {
             await moveData(storyboard.id, boardId, ids);
           } catch (error) {
@@ -502,20 +527,33 @@ export async function moveScenes(opts: {
               () => false,
             );
             // Otherwise both copies stay, wherever the data is: nothing is lost.
-            if (safe) deleteElements(doc, returned.flat(), MOVE);
+            if (safe) deleteElements(doc, ready.flat(), MOVE);
             throw error;
           }
         }
+        let late: string[][] = [];
         await writeToBoard(
           storyboard.id,
           (sb) => {
-            // A copy changed in the storyboard meanwhile stays there too.
-            const gone = returned.filter((unit) => unitUnchanged(sb, unit, copied.copies));
+            const gone = unchanged(sb).filter((unit) => ready.includes(unit));
+            late = ready.filter((unit) => !gone.includes(unit));
             doc.transact(() => dropCard(gone.length === going.length), MOVE);
             takeOff(sb, gone);
           },
           linger,
         );
+        // Changed in the storyboard while its data came back: the data goes there again, then
+        // the copy leaves the board. Otherwise both copies stay, the data with the board's.
+        const kept = late.length
+          ? await moveData(boardId, storyboard.id, idsOf(late)).then(
+              () => {
+                deleteElements(doc, late.flat(), MOVE);
+                return late;
+              },
+              () => [],
+            )
+          : [];
+        returned = ready.filter((unit) => !kept.includes(unit));
       }
       return {
         back: scenesIn(plan, returned),

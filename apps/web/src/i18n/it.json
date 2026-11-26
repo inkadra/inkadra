@@ -7181,6 +7181,8 @@
     "confirm": "Sposta",
     "moved": "{{scenes}} ora in «{{title}}».",
     "dataMoved": "Commenti, revisioni e giorni di ripresa sono andati con loro.",
+    "guests_one": "{{count}} scena ha commenti o scelte di ospiti il cui link attuale non raggiunge lo storyboard.",
+    "guests_other": "{{count}} scene hanno commenti o scelte di ospiti il cui link attuale non raggiunge lo storyboard.",
     "failed": "Non è stato possibile spostare le scene. Non è cambiato nulla.",
     "undoFailed": "Lo spostamento non si può annullare: le scene sono ancora in «{{title}}».",
     "newScene": "Nuova scena nello storyboard…",

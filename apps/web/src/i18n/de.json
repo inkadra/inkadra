@@ -7181,6 +7181,8 @@
     "confirm": "Verschieben",
     "moved": "{{scenes}} jetzt in „{{title}}“.",
     "dataMoved": "Ihre Kommentare, Reviews und Drehtage sind mitgekommen.",
+    "guests_one": "{{count}} Szene hat Kommentare oder Auswahlen von Gästen, deren aktueller Link das Storyboard nicht erreicht.",
+    "guests_other": "{{count}} Szenen haben Kommentare oder Auswahlen von Gästen, deren aktueller Link das Storyboard nicht erreicht.",
     "failed": "Die Szenen konnten nicht verschoben werden. Nichts wurde geändert.",
     "undoFailed": "Das Verschieben lässt sich nicht rückgängig machen: Die Szenen sind noch in „{{title}}“.",
     "newScene": "Neue Szene im Storyboard…",

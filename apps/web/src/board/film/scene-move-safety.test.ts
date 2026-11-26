@@ -50,6 +50,8 @@ type DataMove = { from: string; to: string; ids: string[] };
 const moves: DataMove[] = [];
 /** Runs on each of those calls: throws to fail it. */
 let onMove: ((call: DataMove) => void) | null = null;
+/** Cards the server says have data of guests whose link does not reach the storyboard. */
+let outOfReach: string[] = [];
 /** Cards the server keeps something about, by board. */
 const comments = new Map<string, string[]>();
 vi.mock('../../lib/api.ts', () => ({
@@ -83,6 +85,7 @@ vi.mock('../../lib/api.ts', () => ({
         picks: 0,
         notifications: 0,
         shootingDays: 0,
+        guestsOutOfReach: call.ids.filter((id) => outOfReach.includes(id)),
       };
     },
   },
@@ -103,6 +106,7 @@ function setUp() {
   deleted.length = 0;
   moves.length = 0;
   onMove = null;
+  outOfReach = [];
   meanwhile = null;
   lingering.length = 0;
   const doc = createBoardDoc(boardId);
@@ -333,6 +337,46 @@ describe('with the server moving its data along (element-data-move)', () => {
       if (call.from === storyboardId) throw new Error('offline');
     };
     await expect(result.undo()).rejects.toThrow();
+    expect(ids(story)).toContain(one.id);
+    expect(ids(doc)).not.toContain(one.id);
+  });
+
+  it('counts the scenes whose guests’ link does not reach the storyboard', async () => {
+    const { doc, a } = setUp();
+    outOfReach = [a.id];
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    expect(result.guestsUnreached).toBe(1);
+  });
+
+  it('Undo keeps in the storyboard a copy changed just before its data would come back', async () => {
+    const { doc, story, one, two, a } = setUp();
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    moves.length = 0;
+    // Runs right after the copies are back on the board, before the data is asked back.
+    meanwhile = () => updateElement(story, a.id, { action: 'Drawn meanwhile' });
+    const { back, stayed } = await result.undo();
+    expect([back, stayed]).toEqual([1, 1]);
+    expect(ids(doc)).not.toContain(one.id);
+    expect(ids(story)).toContain(one.id);
+    expect(ids(doc)).toContain(two.id);
+    // Only the unchanged scene's data came back.
+    expect(moves).toHaveLength(1);
+    expect(moves[0]?.ids).not.toContain(one.id);
+  });
+
+  it('Undo sends the data back to a copy changed while it came back, keeping the scene there', async () => {
+    const { doc, story, one, a } = setUp();
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    moves.length = 0;
+    onMove = (call) => {
+      if (call.from === storyboardId) updateElement(story, a.id, { action: 'Drawn meanwhile' });
+    };
+    const { back, stayed } = await result.undo();
+    expect([back, stayed]).toEqual([1, 1]);
+    // Its data went back to the storyboard before its copy left the board.
+    const again = moves.find((m) => m.from === boardId);
+    expect(again?.to).toBe(storyboardId);
+    expect(again?.ids).toEqual(expect.arrayContaining([one.id, a.id]));
     expect(ids(story)).toContain(one.id);
     expect(ids(doc)).not.toContain(one.id);
   });

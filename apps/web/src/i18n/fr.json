@@ -7181,6 +7181,8 @@
     "confirm": "Déplacer",
     "moved": "{{scenes}} maintenant dans « {{title}} ».",
     "dataMoved": "Leurs commentaires, révisions et jours de tournage les ont suivies.",
+    "guests_one": "{{count}} scène a des commentaires ou des choix d’invités dont le lien actuel n’atteint pas le storyboard.",
+    "guests_other": "{{count}} scènes ont des commentaires ou des choix d’invités dont le lien actuel n’atteint pas le storyboard.",
     "failed": "Impossible de déplacer les scènes. Rien n’a changé.",
     "undoFailed": "Impossible d’annuler le déplacement : les scènes sont toujours dans « {{title}} ».",
     "newScene": "Nouvelle scène dans le storyboard…",

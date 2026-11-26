@@ -1232,7 +1232,16 @@ export function Canvas({
             }),
         });
         setMoveChoice(null);
-        const { plan, storyboard, moved, changed, copiesKept, emptyStoryboard, dataMoved } = result;
+        const {
+          plan,
+          storyboard,
+          moved,
+          changed,
+          copiesKept,
+          emptyStoryboard,
+          dataMoved,
+          guestsUnreached,
+        } = result;
         // Without the server moving its data, scenes with comments stay (decision 0140).
         const tied = elementDataMoves();
         // What went, what changed on the board meanwhile, and what stays for the server's data.
@@ -1244,6 +1253,7 @@ export function Canvas({
               })
             : '',
           storyboard && dataMoved ? t('scenesMove.dataMoved') : '',
+          guestsUnreached ? t('scenesMove.guests', { count: guestsUnreached }) : '',
           changed ? t('scenesMove.changed', { count: changed }) : '',
           copiesKept ? t('scenesMove.copiesKept', { count: copiesKept }) : '',
           plan.stay.length

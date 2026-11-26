@@ -7181,6 +7181,8 @@
     "confirm": "Mover",
     "moved": "{{scenes}} ahora en «{{title}}».",
     "dataMoved": "Sus comentarios, revisiones y días de rodaje fueron con ellas.",
+    "guests_one": "{{count}} escena tiene comentarios o selecciones de invitados cuyo enlace actual no llega al storyboard.",
+    "guests_other": "{{count}} escenas tienen comentarios o selecciones de invitados cuyo enlace actual no llega al storyboard.",
     "failed": "No se pudieron mover las escenas. No ha cambiado nada.",
     "undoFailed": "No se puede deshacer el movimiento: las escenas siguen en «{{title}}».",
     "newScene": "Nueva escena en el storyboard…",

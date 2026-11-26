@@ -19,8 +19,23 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    boards of one project, and on the board of each shooting day it changes; it moves only what is
    still on the source board, so a retry is harmless, and refuses with 409, moving nothing, when
    the other board already keeps data about one of the cards. Servers advertise
-   `element-data-move` (0120, 0122).
-2. With the capability, comments, reactions, reviews, picks and shooting days no longer keep a
+   `element-data-move` (0120, 0122). Only notifications about a card or its comments (mention,
+   reply, comment, review, task assigned) follow it; a link opened or a review submitted stays
+   with the board.
+2. **Nothing lands where the card no longer is.** The move records each card as moved
+   (`element_move`); from then on a comment, reaction, review or pick about it on the old board
+   is refused as a card that is not there (404), even before the client removes the card from
+   the document. Every such write takes the board row `FOR SHARE` first, so one sent during the
+   move waits for it and is then refused, never left behind. Moving the data back lifts the
+   refusal on the board the card returns to.
+3. **Lock order.** The move takes the project's Production lock (as the adoption of days, 0123),
+   the two board rows by id, then only the shooting days it changes, found first and locked by
+   id, then the rows about the cards. Schedule saves lock only days, by id, and never wait for a
+   board row in a mode the move holds, so the two cannot deadlock.
+4. **Days of a board in the trash** are left as they are: their blocks still name the old board,
+   where the card is gone, so once restored the day shows the frame or scene by its last seen
+   label, as for any card deleted since (0123), until someone picks it again.
+5. With the capability, comments, reactions, reviews, picks and shooting days no longer keep a
    scene on the board. The order keeps everything in one place at every step: the copies reach
    the storyboard; the data follows them; only then the scenes leave the board. If the data
    cannot follow, the board keeps the scenes and their copies leave the storyboard again (after
@@ -28,20 +43,28 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    copies stay with it. A scene that changed meanwhile and stays on the board takes its data
    back. Right after the removal the move is asked once more, for a comment written on the board
    while the scenes moved.
-3. Undo is the same call the other way: the scenes are copied back onto the board, their data
+6. Undo is the same call the other way: the scenes are copied back onto the board, their data
    follows, then the copies leave the storyboard. A comment written in the storyboard after the
-   move no longer keeps a scene there; a scene changed there still does.
-4. What still keeps a scene on the board: an arrow or plan link to a card that stays, a plan
+   move no longer keeps a scene there; a scene changed there still does. The copy is checked
+   again right before its data comes back and once more when it leaves the storyboard: one
+   changed meanwhile stays in the storyboard, its data sent back there before its copy leaves
+   the board; if that fails, both copies stay, the data with the board's.
+7. What still keeps a scene on the board: an arrow or plan link to a card that stays, a plan
    whose sun follows a shooting day, a card this version does not fully understand. The notice
    names these.
-5. Guests: their comments, decisions and picks follow the card. A guest whose link does not
-   reach the storyboard no longer sees them, as they no longer see the card itself.
+8. **Guests** (the maintainer's answer, 2026-11-26): their comments, decisions and picks follow
+   the card. A guest whose active link does not reach the storyboard no longer sees them, as
+   they no longer see the card itself; the notice says so: "N scenes have comments or picks from
+   guests whose current link won't reach the storyboard" (the server names those cards in
+   `guestsOutOfReach`).
 
 ## Consequences
 
 - `packages/shared` gains `MoveElementData`, `ElementDataMoved`, `ELEMENT_DATA_MOVE_CAPABILITY`
   and `ELEMENT_DATA_MOVE_MAX`; `canvas-core` gains `withChildren` (the cards and their frames,
   as the server keys them), so the mobile app can move commented scenes the same way.
-- **Known limit**: a comment written on a scene's old card later than the second call stays on
-  the board, about a card that is no longer there, as a comment on any deleted card does.
-- No database migration: the rows only change board.
+- One new table, `element_move`, kept with the boards; the other rows only change board.
+- **Known limit**: when a scene changed on the board during the move and its copy was changed
+  in the storyboard too, both stay ("its copy stays there too") and the data goes back with the
+  board's; the storyboard's copy then refuses new comments, as a card whose data left. Delete
+  that copy, or move the scene again.
