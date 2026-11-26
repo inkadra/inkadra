@@ -444,6 +444,34 @@ function fakeClock(tick: number) {
   onTestFinished(() => clock.mockRestore());
 }
 
+/**
+ * Counts the store's reads of each card, step by step and whole, until the test ends; `slice`
+ * counts them all and the test resets it.
+ */
+function countCardReads() {
+  const byId = new Map<string, number>();
+  const counter = { slice: 0, of: (id: string) => byId.get(id) ?? 0 };
+  const count = (map: Y.Map<unknown>) => {
+    const id = map.get('id') as string;
+    byId.set(id, counter.of(id) + 1);
+    counter.slice++;
+  };
+  const { readElement, readElementSteps } = schema;
+  const steps = vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
+    count(map);
+    return readElementSteps(map, cooperative);
+  });
+  const whole = vi.spyOn(schema, 'readElement').mockImplementation((map) => {
+    count(map);
+    return readElement(map);
+  });
+  onTestFinished(() => {
+    steps.mockRestore();
+    whole.mockRestore();
+  });
+  return counter;
+}
+
 /** Everything the store shows is the current, validated read of its card. */
 function expectValidatedView(store: BoardStore, doc: Y.Doc) {
   for (const [id, el] of store.getSnapshot().byId) {
@@ -620,44 +648,67 @@ it.each([
 );
 
 it.each([
-  [true, 0],
-  [true, 2],
-  [false, 0],
-  [false, 2],
+  [true, false],
+  [true, true],
+  [false, false],
+  [false, true],
 ])(
-  'finishes hydrating when a priority card is deleted before it is shown (progressive %s, %i edits first)',
+  'finishes hydrating when a priority card is deleted before it is shown (progressive %s, edited %s)',
   {
     timeout: 30_000,
   },
-  async (progressive, edits) => {
+  async (progressive, edited) => {
     fakeClock(1);
     const doc = new Y.Doc();
-    Y.applyUpdate(doc, generateReferenceBoard('small', 3).update);
-    const all = listElements(doc);
-    const note = all.find((el) => el.type === 'note' && el.parent === null)!;
-    const table = all.find((el) => el.type === 'table')!;
+    const [a, b, c] = [0, 1, 2].map((x) => createElement(doc, 'note', { x, y: 0 }, {}, opts).id);
+    for (let x = 3; x < 9; x++) createElement(doc, 'note', { x, y: 0 }, {}, opts);
+    const reads = countCardReads();
     const scheduler = manualScheduler();
     const store = BoardStore.hydrate(doc, {
       budgetMs: 0.5,
       schedule: () => scheduler.schedule(),
-      priority: [note.id, table.id],
+      priority: [a!, b!, c!],
       progressive,
     });
     const views: number[] = [];
     store.subscribe(() => views.push(store.getSnapshot().byId.size));
-    for (let i = 0; i < 3; i++) await scheduler.step();
-    // Edited after its read, read again, then edited again: it is then read in one go.
-    for (let i = 0; i < edits; i++) {
-      updateElement(doc, note.id, { x: i }, LOCAL);
-      for (let j = 0; j < 3; j++) await scheduler.step();
+    const type = (ids: string[], x: number) => {
+      for (const id of ids) updateElement(doc, id, { x }, LOCAL);
+    };
+    if (edited) {
+      // Edited at every pause, after reads and during them: the cards are then read whole.
+      while ([a, b, c].some((id) => reads.of(id!) < 2)) {
+        type([a!, b!, c!], scheduler.calls);
+        await scheduler.step();
+      }
+      // Deleted right after its next read, in a pass the edits of the others starve: the next
+      // pass, in one go, finds it deleted.
+      const before = reads.of(a!);
+      while (reads.of(a!) === before) {
+        type([b!, c!], scheduler.calls);
+        await scheduler.step();
+      }
+    } else {
+      while (reads.of(a!) < 1) await scheduler.step();
     }
     expect(store.hydrating).toBe(true);
     expect(views).toEqual([]);
-    core.deleteElements(doc, [note.id], LOCAL);
-    while (store.hydrating && scheduler.calls < 20_000) await scheduler.step();
+    core.deleteElements(doc, [a!], LOCAL);
+    // The others are still edited until a pass reads them all in one task, the deleted one too.
+    let most = 0;
+    while (store.hydrating && scheduler.calls < 20_000) {
+      if (edited && most < 2) type([b!, c!], scheduler.calls);
+      reads.slice = 0;
+      await scheduler.step();
+      most = Math.max(most, reads.slice);
+    }
     expect(store.hydrating).toBe(false);
     await store.whenHydrated;
-    expect(store.getSnapshot().byId.has(note.id)).toBe(false);
+    if (edited) expect(most).toBeGreaterThanOrEqual(2);
+    // Progressive: the priority cards were shown, then the whole board.
+    if (progressive) expect(views.length).toBeGreaterThanOrEqual(2);
+    else expect(views).toHaveLength(1);
+    expect(store.getSnapshot().byId.has(a!)).toBe(false);
     expectSameAsFresh(store, doc);
     store.destroy();
   },
@@ -673,23 +724,7 @@ it('reads in slices again once a peer stops moving every card', { timeout: 30_00
       addElement(doc, { ...note, id: schema.newElementId(), x: i, z: z[i - 1]! });
   }, LOCAL);
   const keys = [...roots(doc).elements.keys()];
-  const reads = new Map<string, number>();
-  let slice = 0;
-  const count = (map: Y.Map<unknown>) => {
-    const id = map.get('id') as string;
-    reads.set(id, (reads.get(id) ?? 0) + 1);
-    slice++;
-  };
-  // The store's reads: step by step, and whole.
-  const { readElement, readElementSteps } = schema;
-  vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
-    count(map);
-    return readElementSteps(map, cooperative);
-  });
-  vi.spyOn(schema, 'readElement').mockImplementation((map) => {
-    count(map);
-    return readElement(map);
-  });
+  const reads = countCardReads();
   const scheduler = manualScheduler();
   const store = BoardStore.hydrate(doc, { budgetMs: 0.02, schedule: () => scheduler.schedule() });
   const move = (moved: string[], by: number) =>
@@ -697,7 +732,7 @@ it('reads in slices again once a peer stops moving every card', { timeout: 30_00
       for (const key of moved) roots(doc).elements.get(key)!.set('x', by);
     }, 'remote');
   const readAtLeast = async (some: string[], times: number) => {
-    while (some.some((key) => (reads.get(key) ?? 0) < times)) await scheduler.step();
+    while (some.some((key) => reads.of(key) < times)) await scheduler.step();
     expect(store.hydrating).toBe(true);
   };
   // Moved once read, then moved again once read again: these cards are then read whole.
@@ -708,11 +743,10 @@ it('reads in slices again once a peer stops moving every card', { timeout: 30_00
   // The peer stopped: the cards it moved are read again in slices, not all in one task.
   let most = 0;
   while (store.hydrating && scheduler.calls < 20_000) {
-    slice = 0;
+    reads.slice = 0;
     await scheduler.step();
-    most = Math.max(most, slice);
+    most = Math.max(most, reads.slice);
   }
-  vi.restoreAllMocks();
   expect(store.hydrating).toBe(false);
   expect(most).toBeLessThan(10);
   expectSameAsFresh(store, doc);
