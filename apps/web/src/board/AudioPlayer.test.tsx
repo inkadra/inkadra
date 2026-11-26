@@ -47,7 +47,7 @@ afterEach(() => {
   host.remove();
 });
 
-function mount(count = 1, peaks: number[] | null = null) {
+function mount(count = 1, peaks: number[] | null = null, durationMs: number | null = 92_000) {
   act(() =>
     root.render(
       <>
@@ -58,7 +58,7 @@ function mount(count = 1, peaks: number[] | null = null) {
               id={`file_${i}`}
               src={`/a${i}.m4a`}
               name={`nota-${i}.m4a`}
-              durationMs={92_000}
+              durationMs={durationMs}
               peaks={peaks}
               bars={4}
             />
@@ -155,6 +155,38 @@ describe('audio card player', () => {
       scrub.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     });
     expect(chip(player)).toBe('1:32 / 1:32');
+  });
+});
+
+describe('audio card length', () => {
+  it('reads the length of a recorded WebM that has none in its header (#26)', () => {
+    const [player] = mount(1, null, null);
+    if (!player) throw new Error('no player');
+    const el = audio(player);
+    let duration = Number.POSITIVE_INFINITY;
+    Object.defineProperty(el, 'duration', { configurable: true, get: () => duration });
+    act(() => {
+      el.dispatchEvent(new Event('loadedmetadata'));
+    });
+    // Seeks past the end so the browser reads the whole file, without showing that time.
+    expect(el.currentTime).toBe(Number.MAX_SAFE_INTEGER);
+    act(() => {
+      el.dispatchEvent(new Event('timeupdate'));
+    });
+    expect(chip(player)).toBe('0:00 / 0:00');
+    duration = 4.2;
+    act(() => {
+      el.dispatchEvent(new Event('durationchange'));
+    });
+    expect(el.currentTime).toBe(0);
+    expect(chip(player)).toBe('0:00 / 0:05');
+    // From here the time moves the bar.
+    el.currentTime = 2.1;
+    act(() => {
+      el.dispatchEvent(new Event('timeupdate'));
+    });
+    expect(chip(player)).toBe('0:02 / 0:05');
+    expect((player.querySelector('.fcard__scrub-fill') as HTMLElement).style.width).toBe('50%');
   });
 });
 

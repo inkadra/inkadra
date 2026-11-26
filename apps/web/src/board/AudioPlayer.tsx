@@ -89,6 +89,9 @@ export function AudioPlayer({
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(durationMs ? durationMs / 1000 : 0);
   const scrubbing = useRef(false);
+  // A voice note recorded in the browser is a WebM without its length (#26): `duration` is
+  // Infinity until the whole file is read. Seeking past the end makes the browser read it now.
+  const probing = useRef(false);
   const turn = useInlineMedia(id, audio);
 
   useEffect(() => {
@@ -154,11 +157,23 @@ export function AudioPlayer({
           setPlaying(false);
         }}
         onTimeUpdate={(e) => {
-          if (!scrubbing.current) setTime(e.currentTarget.currentTime);
+          if (!scrubbing.current && !probing.current) setTime(e.currentTarget.currentTime);
         }}
         onLoadedMetadata={(e) => {
-          const d = e.currentTarget.duration;
-          if (Number.isFinite(d) && d > 0) setDuration(d);
+          const el = e.currentTarget;
+          if (el.duration === Number.POSITIVE_INFINITY) {
+            probing.current = true;
+            el.currentTime = Number.MAX_SAFE_INTEGER;
+          } else if (Number.isFinite(el.duration) && el.duration > 0) setDuration(el.duration);
+        }}
+        onDurationChange={(e) => {
+          const el = e.currentTarget;
+          if (!Number.isFinite(el.duration) || !(el.duration > 0)) return;
+          setDuration(el.duration);
+          if (!probing.current) return;
+          probing.current = false;
+          el.currentTime = 0;
+          setTime(0);
         }}
       />
       <div

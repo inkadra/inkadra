@@ -38,6 +38,7 @@ import {
   intersects,
   isContainer,
   listElements,
+  minCardSize,
   minZoomFor,
   moveArrows,
   moveIntoParent,
@@ -67,7 +68,6 @@ import {
   snap as snapToGrid,
   stackColumns,
   storyboardOf,
-  TEXT_MIN_WIDTH,
   TIDY_GAPS,
   type TidyGap,
   tidyMosaic,
@@ -140,7 +140,7 @@ import {
   saveTidyGap,
 } from './canvas-prefs.ts';
 import { ARROW_DIRECTIONS, firstCard, nextCard } from './card-focus.ts';
-import { Card, cardLabel, NOTE_COLORS } from './cards.tsx';
+import { Card, cardLabel, NOTE_COLORS, naturalHeight } from './cards.tsx';
 import {
   type ArrangeCommand,
   BarButton,
@@ -447,9 +447,6 @@ export interface CanvasProps {
     | { attribution: string; tiles: string; satelliteAttribution?: string | undefined }
     | undefined;
 }
-
-/** A character card narrower than this leaves its name no room next to the portrait. */
-const CHARACTER_MIN_WIDTH = 160;
 
 /** Cards whose height follows their content: resizing one sets only its width. */
 function resizesWidthOnly(el: Element): boolean {
@@ -2094,9 +2091,19 @@ export function Canvas({
       )?.offsetHeight;
       const media = el.type === 'file' ? getCachedAsset(el.assetId) : null;
       const video = media && media !== 'missing' && media.kind === 'video';
+      // The smallest each type stays with its name and controls (#27): a file, map, board or
+      // location card never shorter than its player, preview and footer.
+      const min = minCardSize(el.type);
+      const fixedContent = card && el.type !== 'table' && !growsWithText(el);
       // Images keep the ratio of their picture and plans of their drawing; the header stays.
-      const options: ResizeOptions =
-        el.type === 'image' || el.type === 'frame' || el.type === 'plan' || video
+      const ratio = el.type === 'image' || el.type === 'frame' || el.type === 'plan' || video;
+      const options: ResizeOptions = {
+        minWidth: min.w,
+        minHeight:
+          fixedContent && !ratio && !resizesWidthOnly(el)
+            ? Math.max(min.h, naturalHeight(card, min.w))
+            : min.h,
+        ...(ratio
           ? {
               aspectRatio:
                 el.type === 'frame'
@@ -2106,11 +2113,8 @@ export function Canvas({
                     : rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
-          : el.type === 'character'
-            ? { widthOnly: true, minWidth: CHARACTER_MIN_WIDTH }
-            : growsWithText(el)
-              ? { minWidth: TEXT_MIN_WIDTH }
-              : { widthOnly: resizesWidthOnly(el) };
+          : { widthOnly: resizesWidthOnly(el) }),
+      };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
