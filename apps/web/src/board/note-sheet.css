@@ -134,6 +134,7 @@
   border-radius: var(--ink-radius-xs);
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
+  font-weight: 600;
   white-space: nowrap;
 }
 .note-picture {
