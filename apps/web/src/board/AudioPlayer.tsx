@@ -105,17 +105,25 @@ export function AudioPlayer({
   // The time shown, for the probe's time limit.
   const shown = useRef(0);
   shown.current = time;
-  // Where a scrub without a length asked to go, as a share of the sound: applied once known.
-  const wanted = useRef<number | null>(null);
+  // Where a scrub or a key without a length asked to go, from the length: applied once known.
+  const wanted = useRef<((length: number) => number) | null>(null);
   const turn = useInlineMedia(id, audio);
 
   useEffect(() => {
     const el = audio.current;
-    return () => {
-      window.clearTimeout(probeTimer.current);
-      el?.pause();
-    };
+    return () => el?.pause();
   }, []);
+
+  // Another file, or the card gone: the probe and a pending place belong to the old one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the source changes
+  useEffect(
+    () => () => {
+      window.clearTimeout(probeTimer.current);
+      probing.current = false;
+      wanted.current = null;
+    },
+    [src],
+  );
 
   /** Ends the probe of a WebM's length, back at `at` seconds. */
   function endProbe(el: HTMLAudioElement, at: number) {
@@ -138,14 +146,20 @@ export function AudioPlayer({
     }
   }
 
-  function seekTo(seconds: number) {
+  /**
+   * Goes to `at(length, from)` seconds, `from` being the place asked for last. Without a length
+   * yet it ends the probe where the person is and keeps the request until the length arrives.
+   */
+  function seek(at: (length: number, from: number) => number) {
     const el = audio.current;
     if (!el) return;
     if (!(duration > 0)) {
       endProbe(el, time);
+      const before = wanted.current;
+      wanted.current = (length) => at(length, before ? before(length) : time);
       return;
     }
-    const next = clamp(seconds, 0, duration);
+    const next = clamp(at(duration, time), 0, duration);
     probing.current = false;
     el.currentTime = next;
     setTime(next);
@@ -155,8 +169,7 @@ export function AudioPlayer({
     const box = e.currentTarget.getBoundingClientRect();
     if (box.width <= 0) return;
     const share = clamp((e.clientX - box.left) / box.width, 0, 1);
-    if (!(duration > 0)) wanted.current = share;
-    seekTo(share * duration);
+    seek((length) => share * length);
   }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -212,7 +225,7 @@ export function AudioPlayer({
           setDuration(el.duration);
           endProbe(el, time);
           if (wanted.current === null) return;
-          const at = wanted.current * el.duration;
+          const at = clamp(wanted.current(el.duration), 0, el.duration);
           wanted.current = null;
           el.currentTime = at;
           setTime(at);
@@ -224,9 +237,12 @@ export function AudioPlayer({
         tabIndex={0}
         aria-label={t('board.file.seek', { name })}
         aria-valuemin={0}
-        aria-valuemax={Math.round(duration)}
+        // Without a length the range ends at the time played, and the text says it is unknown.
+        aria-valuemax={Math.round(duration > 0 ? duration : time)}
         aria-valuenow={Math.round(time)}
-        aria-valuetext={total(time, duration)}
+        aria-valuetext={
+          duration > 0 ? total(time, duration) : t('board.file.seekUnknown', { time: clock(time) })
+        }
         onPointerDown={(e) => {
           e.stopPropagation();
           scrubbing.current = true;
@@ -245,10 +261,10 @@ export function AudioPlayer({
         }}
         onKeyDown={(e) => {
           const step = e.shiftKey ? 10 : 5;
-          if (e.key === 'ArrowRight') seekTo(time + step);
-          else if (e.key === 'ArrowLeft') seekTo(time - step);
-          else if (e.key === 'Home') seekTo(0);
-          else if (e.key === 'End') seekTo(duration);
+          if (e.key === 'ArrowRight') seek((_, from) => from + step);
+          else if (e.key === 'ArrowLeft') seek((_, from) => from - step);
+          else if (e.key === 'Home') seek(() => 0);
+          else if (e.key === 'End') seek((length) => length);
           else return;
           e.preventDefault();
           e.stopPropagation();

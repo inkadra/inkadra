@@ -47,7 +47,12 @@ afterEach(() => {
   host.remove();
 });
 
-function mount(count = 1, peaks: number[] | null = null, durationMs: number | null = 92_000) {
+function mount(
+  count = 1,
+  peaks: number[] | null = null,
+  durationMs: number | null = 92_000,
+  file = 'a',
+) {
   act(() =>
     root.render(
       <>
@@ -56,7 +61,7 @@ function mount(count = 1, peaks: number[] | null = null, durationMs: number | nu
           <div key={i} className="card">
             <AudioPlayer
               id={`file_${i}`}
-              src={`/a${i}.m4a`}
+              src={`/${file}${i}.m4a`}
               name={`nota-${i}.m4a`}
               durationMs={durationMs}
               peaks={peaks}
@@ -307,10 +312,101 @@ describe('audio card length probe (#26)', () => {
         el.dispatchEvent(new Event('timeupdate'));
       });
       expect(chip(player)).toBe('0:03');
-      expect(player.querySelector('[role="slider"]')?.getAttribute('aria-valuetext')).toBe('0:03');
+      const slider = player.querySelector('[role="slider"]');
+      // The range ends at the time played and the text says the length is unknown.
+      expect(slider?.getAttribute('aria-valuetext')).toBe('board.file.seekUnknown');
+      expect(slider?.getAttribute('aria-valuenow')).toBe('3');
+      expect(slider?.getAttribute('aria-valuemax')).toBe('3');
+      expect(slider?.getAttribute('aria-valuemin')).toBe('0');
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('keeps arrow keys pressed during the probe and applies them when the length arrives', () => {
+    const { player, el, state } = probing();
+    const scrub = player.querySelector<HTMLDivElement>('[role="slider"]');
+    if (!scrub) throw new Error('no bar');
+    act(() => {
+      scrub.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      scrub.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true }),
+      );
+    });
+    // The probe ended where the person was.
+    expect(el.currentTime).toBe(0);
+    state.duration = 20;
+    act(() => {
+      el.dispatchEvent(new Event('durationchange'));
+    });
+    expect(el.currentTime).toBe(15);
+    expect(chip(player)).toBe('0:15 / 0:20');
+  });
+
+  it('drops a key pressed during the probe once the person plays', () => {
+    const { player, el, state } = probing();
+    const scrub = player.querySelector<HTMLDivElement>('[role="slider"]');
+    act(() => {
+      scrub?.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    });
+    act(() => button(player).click());
+    el.currentTime = 1;
+    state.duration = 20;
+    act(() => {
+      el.dispatchEvent(new Event('durationchange'));
+    });
+    expect(el.currentTime).toBe(1);
+  });
+
+  it('is not moved by pause or ended events fired by the probe seek', () => {
+    const { player, el, state } = probing();
+    act(() => {
+      el.dispatchEvent(new Event('pause'));
+      el.dispatchEvent(new Event('ended'));
+    });
+    expect(play).not.toHaveBeenCalled();
+    expect(button(player).getAttribute('aria-pressed')).toBe('false');
+    state.duration = 4.2;
+    act(() => {
+      el.dispatchEvent(new Event('durationchange'));
+    });
+    expect(el.currentTime).toBe(0);
+    expect(chip(player)).toBe('0:00 / 0:05');
+  });
+
+  it('clears the probe timer when the file changes and when the card goes', () => {
+    vi.useFakeTimers();
+    try {
+      const { el } = probing();
+      expect(vi.getTimerCount()).toBe(1);
+      mount(1, null, null, 'b');
+      expect(vi.getTimerCount()).toBe(0);
+      // The new file plays on: the old probe's limit never sends it back.
+      el.currentTime = 5;
+      act(() => {
+        vi.advanceTimersByTime(PROBE_LIMIT_MS * 2);
+      });
+      expect(el.currentTime).toBe(5);
+
+      act(() => root.unmount());
+      root = createRoot(host);
+      probing();
+      expect(vi.getTimerCount()).toBe(1);
+      act(() => root.unmount());
+      root = createRoot(host);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives the slider its range and time once the length is known', () => {
+    const [player] = mount();
+    const slider = player?.querySelector('[role="slider"]');
+    expect(slider?.getAttribute('aria-valuemin')).toBe('0');
+    expect(slider?.getAttribute('aria-valuemax')).toBe('92');
+    expect(slider?.getAttribute('aria-valuenow')).toBe('0');
+    expect(slider?.getAttribute('aria-valuetext')).toBe('0:00 / 1:32');
   });
 
   it('does not probe when the server knows the length', () => {

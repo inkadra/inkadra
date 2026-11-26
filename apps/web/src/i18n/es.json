@@ -501,6 +501,7 @@
       "play": "Reproducir {{name}}",
       "pause": "Pausar {{name}}",
       "seek": "Posición en {{name}}",
+      "seekUnknown": "{{time}}, duración desconocida",
       "sampleText": "Texto de ejemplo",
       "glyphs_one": "{{count}} glifo",
       "glyphs_other": "{{count}} glifos",
