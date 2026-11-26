@@ -97,10 +97,17 @@ vi.mock('../../lib/api.ts', () => ({
       };
     },
   },
-  RequestError: class extends Error {},
+  RequestError: class extends Error {
+    constructor(readonly status = 500) {
+      super(`HTTP ${status}`);
+    }
+  },
 }));
 
 const { moveScenes, setElementDataMove, SceneMoveError } = await import('./scene-move.ts');
+const { RequestError } = await import('../../lib/api.ts');
+/** A refusal the server gives on purpose: the data did not move. */
+const conflict = () => new (RequestError as unknown as new (status: number) => Error)(409);
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const storyboardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
@@ -397,7 +404,7 @@ describe('with the server moving its data along (element-data-move)', () => {
     const fromBoard = (call: DataMove) => call.from === boardId;
     const fromStory = (call: DataMove) => call.from === storyboardId;
 
-    it('move: the data cannot go, the copies cannot leave: a duplicate, nothing apart', async () => {
+    it('move: the data cannot go, the copies cannot leave: said, never “nothing changed”', async () => {
       const { doc, one } = setUp();
       onMove = (call) => {
         if (fromBoard(call)) throw new Error('offline');
@@ -405,8 +412,33 @@ describe('with the server moving its data along (element-data-move)', () => {
       writesEnd.push('ok', 'before');
       const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
       expect(error).toBeInstanceOf(SceneMoveError);
-      expect(error.split).toBeNull();
+      expect(error.split).toEqual({ scenes: 2, comments: 'here' });
       expect(ids(doc)).toContain(one.id);
+    });
+
+    it('move: a refusal (4xx) asks nothing back and takes the copies back at once', async () => {
+      const { doc, story, one } = setUp();
+      onMove = () => {
+        throw conflict();
+      };
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error).toBeInstanceOf(SceneMoveError);
+      expect(error.split).toBeNull();
+      expect(moves).toHaveLength(1);
+      expect(ids(story)).toEqual([]);
+      expect(ids(doc)).toContain(one.id);
+    });
+
+    it('move: a copy changed in the storyboard during a refused move stays, counted by scene', async () => {
+      const { doc, story, one, a } = setUp();
+      onMove = () => {
+        updateElement(story, a.id, { action: 'Drawn meanwhile' });
+        throw conflict();
+      };
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error.split).toEqual({ scenes: 1, comments: 'here' });
+      expect(ids(story)).toContain(one.id);
+      expect(ids(story)).toHaveLength(2);
     });
 
     it('move: a scene changed meanwhile whose data cannot come back is said to be apart', async () => {
@@ -564,6 +596,72 @@ describe('with the server moving its data along (element-data-move)', () => {
       expect(ids(doc)).toContain(one.id);
       expect(ids(story)).toContain(one.id);
       expect(listElements(doc).some((e) => e.type === 'board')).toBe(true);
+    });
+  });
+
+  describe('Undo keeps a colleague’s edit on a board copy, and asks nothing back after a refusal', () => {
+    const moved = async () => {
+      const set = setUp();
+      const result = await move(set.doc, { id: storyboardId, title: 'Film' });
+      moves.length = 0;
+      return { ...set, result };
+    };
+
+    it('a refused data move (4xx): no reverse call, the board copies go', async () => {
+      const { doc, story, one, result } = await moved();
+      onMove = () => {
+        throw conflict();
+      };
+      const error = await result.undo().catch((e) => e);
+      expect(error).toBeInstanceOf(SceneMoveError);
+      expect(error.split).toBeNull();
+      expect(moves).toHaveLength(1);
+      expect(ids(doc)).not.toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('a board copy a colleague edits while the data moves stays, said apart', async () => {
+      const { doc, story, one, a, result } = await moved();
+      onMove = () => {
+        updateElement(doc, a.id, { action: 'Edited on the board' });
+        throw conflict();
+      };
+      const error = await result.undo().catch((e) => e);
+      expect(error.split).toEqual({ scenes: 1, comments: 'there' });
+      // The edit is kept: that copy stays on the board, the other one went.
+      expect(listElements(doc).find((e) => e.id === a.id)).toMatchObject({
+        action: 'Edited on the board',
+      });
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('a board copy edited before its data is sent back to the storyboard stays, said apart', async () => {
+      const { doc, story, one, a, result } = await moved();
+      onMove = (call) => {
+        if (call.from === storyboardId) {
+          updateElement(story, a.id, { action: 'Drawn meanwhile' });
+          updateElement(doc, a.id, { action: 'Edited on the board' });
+        }
+      };
+      const { split } = await result.undo();
+      expect(split).toEqual({ scenes: 1, comments: 'there' });
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+      // A copy stays on the board apart from its comments: the storyboard's card stays too.
+      expect(listElements(doc).some((e) => e.type === 'board')).toBe(true);
+    });
+
+    it('nothing still as the move left it: no data call, no removal', async () => {
+      const { doc, story, a, b, result } = await moved();
+      meanwhile = () => {
+        updateElement(story, a.id, { action: 'x' });
+        updateElement(story, b.id, { action: 'y' });
+      };
+      const { back } = await result.undo();
+      expect(back).toBe(0);
+      expect(moves).toEqual([]);
+      expect(ids(doc)).not.toContain(a.id);
     });
   });
 });

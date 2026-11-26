@@ -9,3 +9,24 @@ export function setElementDataMove(available: boolean) {
   dataMoves = available;
 }
 export const elementDataMoves = () => dataMoves;
+
+/**
+ * A gate for one scene move, its planning or its Undo at a time (decision 0141): `claim` is
+ * synchronous, so two clicks in the same tick cannot both pass.
+ */
+export function oneAtATime() {
+  let busy = false;
+  return {
+    claim: () => {
+      if (busy) return false;
+      busy = true;
+      return true;
+    },
+    release: () => {
+      busy = false;
+    },
+    get busy() {
+      return busy;
+    },
+  };
+}

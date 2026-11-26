@@ -33,7 +33,7 @@ import {
   type ShareLinkPicks,
 } from '@inkadra/shared';
 import type * as Y from 'yjs';
-import { api } from '../../lib/api.ts';
+import { api, RequestError } from '../../lib/api.ts';
 import { BOARD_CARD_SIZE } from '../BoardCardPreview.tsx';
 import { createBoard, refreshBoards } from '../boards.ts';
 import { elementDataMoves } from './data-moves.ts';
@@ -133,6 +133,27 @@ const moveData = (from: string, to: string, ids: readonly string[]) =>
     toBoardId: to,
     elementIds: ids,
   });
+
+/**
+ * A refusal the server gave on purpose (4xx but 408): the data did not move, so there is
+ * nothing to ask back. Anything else (no answer, 408, 5xx) may have moved it.
+ */
+const refused = (error: unknown) =>
+  error instanceof RequestError &&
+  error.status >= 400 &&
+  error.status < 500 &&
+  error.status !== 408;
+
+/** Two splits of one step in one: the comments are on both sides when they differ. */
+const joinSplits = (a: SceneSplit | null, b: SceneSplit | null): SceneSplit | null =>
+  !a
+    ? b
+    : !b
+      ? a
+      : {
+          scenes: a.scenes + b.scenes,
+          comments: a.comments === b.comments ? a.comments : 'unknown',
+        };
 
 /** How many comments, reviews, reactions, picks and shooting days a move took along. */
 const dataCount = (moved: ElementDataMoved) =>
@@ -312,7 +333,10 @@ export async function moveScenes(opts: {
     const { plan: tried, copies } = written;
     const taken = await takeBack(storyboard.id, tried.units, copies).catch(() => null);
     if (!taken) throw new SceneMoveError(null, { scenes: tried.scenes.length, comments: 'here' });
-    throw new SceneMoveError(made && taken.empty ? storyboard.title : null);
+    throw new SceneMoveError(
+      made && taken.empty ? storyboard.title : null,
+      keptSplit(tried, taken.kept),
+    );
   }
   const { plan } = copied;
 
@@ -332,17 +356,23 @@ export async function moveScenes(opts: {
       const moved = await moveData(boardId, storyboard.id, unitIds.flat());
       dataMoved = dataCount(moved);
       guests = new Set(moved.guestsOutOfReach ?? []);
-    } catch {
-      // A lost answer may have moved it all the same: back first, then the copies go.
-      const back = await moveData(storyboard.id, boardId, unitIds.flat()).then(
-        () => true,
-        () => false,
-      );
+    } catch (error) {
+      // Refused on purpose: nothing moved. Otherwise a lost answer may have moved it all the
+      // same: asked back first. Then the copies go; those that cannot stay, and it is said.
+      const back =
+        refused(error) ||
+        (await moveData(storyboard.id, boardId, unitIds.flat()).then(
+          () => true,
+          () => false,
+        ));
       if (!back)
         throw new SceneMoveError(null, { scenes: plan.scenes.length, comments: 'unknown' });
-      // Copies that cannot leave the storyboard stay there, without comments: only a duplicate.
       const taken = await takeBack(storyboard.id, plan.units, copied.copies).catch(() => null);
-      throw new SceneMoveError(made && taken?.empty ? storyboard.title : null);
+      if (!taken) throw new SceneMoveError(null, { scenes: plan.scenes.length, comments: 'here' });
+      throw new SceneMoveError(
+        made && taken.empty ? storyboard.title : null,
+        keptSplit(plan, taken.kept),
+      );
     }
   }
 
@@ -438,10 +468,10 @@ export async function moveScenes(opts: {
     ? null
     : dataBack
       ? await takeBack(storyboard.id, stale, copied.copies).catch(() => ({
-          kept: stale.length,
+          kept: [...stale],
           empty: false,
         }))
-      : { kept: 0, empty: false };
+      : { kept: [] as string[][], empty: false };
   // Their comments could not come back: the scenes stay here, their comments with the copies.
   const split: SceneSplit | null = dataBack
     ? null
@@ -454,13 +484,17 @@ export async function moveScenes(opts: {
       },
       () => {},
     );
-  if (out.refused) throw new SceneMoveError(made && back?.empty ? storyboard.title : null, split);
+  if (out.refused)
+    throw new SceneMoveError(
+      made && back?.empty ? storyboard.title : null,
+      joinSplits(split, keptSplit(plan, back?.kept ?? [])),
+    );
 
   return {
     plan,
     moved: scenesIn(plan, going),
     changed: scenesIn(plan, stale),
-    copiesKept: back?.kept ?? 0,
+    copiesKept: scenesIn(plan, back?.kept ?? []),
     storyboard: going.length ? storyboard : null,
     emptyStoryboard: going.length === 0 && made && back?.empty ? storyboard.title : null,
     cardId: going.length ? cardId : null,
@@ -526,11 +560,12 @@ export async function moveScenes(opts: {
         }, MOVE);
         brought = cardPrints(doc, ids);
       };
-      /** Off the storyboard, watched for a colleague's late change. */
+      /** Off the storyboard, watched for a colleague's late change; false when refused. */
       const takeOff = (sb: Y.Doc, units: readonly string[][]) => {
         const ids = units.flat();
+        let done = true;
         if (ids.length) {
-          watching = watchRemoval(sb, ids, UNDO, (edits, orphans) =>
+          const watch = watchRemoval(sb, ids, UNDO, (edits, orphans) =>
             late(
               edits,
               orphans,
@@ -539,9 +574,12 @@ export async function moveScenes(opts: {
               (orphanIds) => deleteElements(sb, orphanIds, UNDO),
             ),
           );
-          deleteElements(sb, ids, UNDO);
+          done = deleteElements(sb, ids, UNDO).length === 0;
+          if (done) watching = watch;
+          else watch.stop();
         }
         empty = emptyOf(made, storyboard.title, sb);
+        return done;
       };
       if (!dataMoves) {
         await writeToBoard(
@@ -555,35 +593,42 @@ export async function moveScenes(opts: {
       } else {
         // On the board first, then the server's data comes back with them, then the copies
         // leave the storyboard: a failure on the way leaves the scenes in the storyboard. A copy
-        // changed there meanwhile keeps the scene, and its data, in the storyboard.
+        // changed there meanwhile keeps the scene, and its data, in the storyboard. A board copy
+        // goes again only while as it was put there: one a colleague changed stays, and the
+        // notice says its comments are in the storyboard.
+        const apart = (units: readonly string[][], comments: SceneSplit['comments']) => {
+          if (units.length) split = joinSplits(split, { scenes: scenesIn(plan, units), comments });
+        };
+        /** The board copies go again while as put there; the others stay, said apart. */
+        const dropCopies = (units: readonly string[][]) => {
+          const put = brought as Map<string, string> | null;
+          if (!units.length || !put) return;
+          const ours = units.filter((unit) => unitUnchanged(doc, unit, put));
+          const left = ours.length && deleteElements(doc, ours.flat(), MOVE).length > 0 ? ours : [];
+          apart(
+            units.filter((unit) => !ours.includes(unit) || left.includes(unit)),
+            'there',
+          );
+        };
+        /** Stops with what is said so far: the scenes stay in the storyboard. */
+        const fail = (more: SceneSplit | null = null) =>
+          new SceneMoveError(null, joinSplits(split, more));
         try {
           await writeToBoard(storyboard.id, (sb) => bringBack(sb, false));
-        } catch (error) {
-          // The copies may already be on the board: they go again while still as put there; a
-          // copy a colleague changed meanwhile stays, apart from its comments, and it is said.
-          const put = brought as Map<string, string> | null;
-          if (!put || !returned.length) throw error;
-          const ours = returned.filter((unit) => unitUnchanged(doc, unit, put));
-          if (ours.length) deleteElements(doc, ours.flat(), MOVE);
-          const kept = returned.filter((unit) => !ours.includes(unit));
-          if (kept.length)
-            throw new SceneMoveError(null, { scenes: scenesIn(plan, kept), comments: 'there' });
-          throw error;
+        } catch {
+          dropCopies(returned);
+          throw fail();
         }
         const unchanged = (sb: Y.Doc) =>
           returned.filter((unit) => unitUnchanged(sb, unit, copied.copies));
-        /** The copies brought onto the board go again: the scenes stay in the storyboard. */
-        const dropCopies = (units: readonly string[][]) => {
-          if (units.length) deleteElements(doc, units.flat(), MOVE);
-        };
         let ready = returned;
         if (returned.length) {
           // Checked again right before the data moves.
           try {
             ready = await writeToBoard(storyboard.id, unchanged);
-          } catch (error) {
+          } catch {
             dropCopies(returned);
-            throw error;
+            throw fail();
           }
           dropCopies(returned.filter((unit) => !ready.includes(unit)));
         }
@@ -599,52 +644,57 @@ export async function moveScenes(opts: {
         if (ready.length) {
           try {
             await moveData(storyboard.id, boardId, idsOf(ready));
-          } catch {
-            // A lost answer may have moved it all the same: asked back, then the copies go.
-            if (await sendBack(ready)) throw new SceneMoveError(null);
-            throw new SceneMoveError(null, {
-              scenes: scenesIn(plan, ready),
-              comments: 'unknown',
-            });
+          } catch (error) {
+            // Refused on purpose: nothing moved, the copies go. Otherwise a lost answer may have
+            // moved it all the same: asked back, then the copies go.
+            if (refused(error)) {
+              dropCopies(ready);
+              throw fail();
+            }
+            if (await sendBack(ready)) throw fail();
+            throw fail({ scenes: scenesIn(plan, ready), comments: 'unknown' });
           }
         }
         let late: string[][] = [];
-        let gone: string[][] = [];
-        try {
-          await writeToBoard(
-            storyboard.id,
-            (sb) => {
-              gone = unchanged(sb).filter((unit) => ready.includes(unit));
-              late = ready.filter((unit) => !gone.includes(unit));
-              takeOff(sb, gone);
-            },
-            linger,
-          );
-        } catch {
-          // Not confirmed: what is still in the storyboard gets its data back there and its
-          // board copy goes; what left it is back here. If the storyboard cannot be read, or the
-          // data cannot go back, both copies stay, the comments with the board's: the notice
-          // says so.
-          const still = await writeToBoard(storyboard.id, (sb) =>
-            ready.filter((unit) => unit.every((id) => roots(sb).elements.has(id))),
-          ).catch(() => null);
-          if (!still)
-            throw new SceneMoveError(null, { scenes: scenesIn(plan, ready), comments: 'here' });
-          if (still.length && !(await sendBack(still)))
-            throw new SceneMoveError(null, { scenes: scenesIn(plan, still), comments: 'here' });
-          gone = ready.filter((unit) => !still.includes(unit));
-          late = [];
-          if (!gone.length) throw new SceneMoveError(null);
-          ready = gone;
+        if (ready.length) {
+          let gone: string[][] = [];
+          try {
+            await writeToBoard(
+              storyboard.id,
+              (sb) => {
+                const same = unchanged(sb).filter((unit) => ready.includes(unit));
+                // The storyboard may refuse to let them go (a plan's Set): then nothing went.
+                gone = takeOff(sb, same) ? same : [];
+                late = ready.filter((unit) => !gone.includes(unit));
+              },
+              linger,
+            );
+          } catch {
+            // Not confirmed: what is still in the storyboard gets its data back there and its
+            // board copy goes; what left it is back here. If the storyboard cannot be read, or
+            // the data cannot go back, both copies stay, the comments with the board's: said.
+            const still = await writeToBoard(storyboard.id, (sb) =>
+              ready.filter((unit) => unit.some((id) => roots(sb).elements.has(id))),
+            ).catch(() => null);
+            if (!still) throw fail({ scenes: scenesIn(plan, ready), comments: 'here' });
+            if (still.length && !(await sendBack(still)))
+              throw fail({ scenes: scenesIn(plan, still), comments: 'here' });
+            gone = ready.filter((unit) => !still.includes(unit));
+            late = [];
+            if (!gone.length) throw fail();
+            ready = gone;
+          }
         }
-        // Changed in the storyboard while its data came back: the data goes there again, then
-        // the copy leaves the board. Otherwise both copies stay, the comments with the board's.
-        returned = ready;
-        if (late.length) {
-          if (await sendBack(late)) returned = ready.filter((unit) => !late.includes(unit));
-          else split = { scenes: scenesIn(plan, late), comments: 'here' };
+        // Changed in the storyboard while its data came back, or refused there: the data goes
+        // there again, then the copy leaves the board. Otherwise both copies stay, the comments
+        // with the board's.
+        returned = ready.filter((unit) => !late.includes(unit));
+        if (late.length && !(await sendBack(late))) {
+          apart(late, 'here');
+          returned = ready;
         }
-        // The storyboard's card leaves the board only once all its scenes are confirmed back.
+        // The storyboard's card leaves the board only once all its scenes are confirmed back,
+        // and no copy of them stays on the board apart from its comments.
         doc.transact(() => dropCard(!split && returned.length === going.length), MOVE);
       }
       return {
@@ -665,13 +715,22 @@ async function takeBack(
   storyboardId: string,
   units: readonly string[][],
   prints: ReadonlyMap<string, string>,
-): Promise<{ kept: number; empty: boolean }> {
+): Promise<{ kept: string[][]; empty: boolean }> {
   return writeToBoard(storyboardId, (there) => {
-    const same = units.filter((unit) => unitUnchanged(there, unit, prints));
-    if (same.length) deleteElements(there, same.flat());
-    return { kept: units.length - same.length, empty: roots(there).elements.size === 0 };
+    const elements = roots(there).elements;
+    // Only what is there: a copy never written is not a copy kept.
+    const present = units.filter((unit) => unit.some((id) => elements.has(id)));
+    const same = present.filter((unit) => unitUnchanged(there, unit, prints));
+    // The storyboard may refuse to let them go (a plan's Set, 0062): then nothing went.
+    const refusedAll = same.length > 0 && deleteElements(there, same.flat()).length > 0;
+    const kept = present.filter((unit) => refusedAll || !same.includes(unit));
+    return { kept, empty: elements.size === 0 };
   });
 }
+
+/** Copies kept in the storyboard while the scenes stay here, with their comments. */
+const keptSplit = (plan: SceneMovePlan, kept: readonly string[][]): SceneSplit | null =>
+  kept.length ? { scenes: scenesIn(plan, kept), comments: 'here' } : null;
 
 /**
  * A new scene in a storyboard (decision 0140), numbered after its last one; resolves with its id

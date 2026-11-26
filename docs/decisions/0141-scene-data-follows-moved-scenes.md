@@ -58,7 +58,11 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    The storyboard's card leaves the board only once all its scenes are confirmed back. A first
    write that is not confirmed (the copies into the storyboard on a move, or back onto the board
    on Undo) is taken back while the copies are still as written; a copy someone changed
-   meanwhile stays, and the notice says where its comments are.
+   meanwhile stays, and the notice says where its comments are. A board copy brought back by
+   Undo leaves the board again only while as it was put there; a copy kept in the storyboard
+   counts by scene and is said, never "nothing changed". A refusal of the server (4xx but 408)
+   means the data did not move: nothing is asked back. One move, its planning or its Undo runs
+   at a time on a board; the ⋯ menu entry waits meanwhile.
 7. What still keeps a scene on the board: an arrow or plan link to a card that stays, a plan
    whose sun follows a shooting day, a card this version does not fully understand. The notice
    names these.

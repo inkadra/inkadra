@@ -177,6 +177,7 @@ import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
 import { isDesignFile } from './file-kinds.ts';
 import { frameRatio, useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
+import { oneAtATime } from './film/data-moves.ts';
 import { FramePanel } from './film/FramePanel.tsx';
 import { isFrameImageFile, isFrameImageType, moveImageToFrame } from './film/frame-image.ts';
 import { uploadToFrame } from './film/frame-upload.tsx';
@@ -456,6 +457,8 @@ export interface CanvasProps {
   onOpenBoard: (boardId: string, view?: string, el?: string) => void;
   /** Told how many scenes of this board could move to a storyboard (decision 0140). */
   onLooseScenes?: (count: number) => void;
+  /** A scene move, its planning or its Undo is running: the ⋯ menu entry waits (0141). */
+  onSceneMoveBusy?: (busy: boolean) => void;
   /** Told whenever the selection changes. */
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
@@ -488,6 +491,7 @@ export function Canvas({
   peers,
   onOpenBoard,
   onLooseScenes,
+  onSceneMoveBusy,
   onSelectionChange,
   onOpen,
   onExportSelection,
@@ -1191,12 +1195,38 @@ export function Canvas({
   useEffect(() => {
     onLooseScenes?.(movesScenes ? looseScenes.length : 0);
   }, [onLooseScenes, movesScenes, looseScenes.length]);
+  /**
+   * One move, its planning or its Undo at a time (decision 0141): the notice, the ⋯ menu, the
+   * dialog and Undo all check it synchronously, before any await; `moveBusy` mirrors it.
+   */
+  const moveGate = useRef(oneAtATime()).current;
+  const claimMove = useCallback(() => {
+    if (!moveGate.claim()) return false;
+    setMoveBusy(true);
+    return true;
+  }, [moveGate]);
+  const releaseMove = useCallback(() => {
+    moveGate.release();
+    setMoveBusy(false);
+  }, [moveGate]);
+  useEffect(() => onSceneMoveBusy?.(moveBusy), [onSceneMoveBusy, moveBusy]);
 
   /** Moves the scenes, then says where they went and what stayed, with Undo. */
   const runSceneMove = useCallback(
     async (target: SceneTarget, only?: ReadonlySet<string>, fromDialog = false) => {
-      setMoveBusy(true);
+      if (!claimMove()) return;
       setMoveError(null);
+      const splitText = (split: SceneSplit | null, title: string) =>
+        split
+          ? t(
+              split.comments === 'here'
+                ? 'scenesMove.splitHere'
+                : split.comments === 'there'
+                  ? 'scenesMove.splitThere'
+                  : 'scenesMove.splitUnknown',
+              { count: split.scenes, title },
+            )
+          : '';
       try {
         const result = await moveScenes({
           doc,
@@ -1233,17 +1263,6 @@ export function Canvas({
             }),
         });
         setMoveChoice(null);
-        const splitText = (split: SceneSplit | null, title: string) =>
-          split
-            ? t(
-                split.comments === 'here'
-                  ? 'scenesMove.splitHere'
-                  : split.comments === 'there'
-                    ? 'scenesMove.splitThere'
-                    : 'scenesMove.splitUnknown',
-                { count: split.scenes, title },
-              )
-            : '';
         const {
           plan,
           storyboard,
@@ -1289,7 +1308,8 @@ export function Canvas({
           text: parts.join(' '),
           ok: !!storyboard && !changed,
           undo: storyboard
-            ? () =>
+            ? () => {
+                if (!claimMove()) return;
                 void result
                   .undo()
                   .then(({ stayed, emptyStoryboard: empty, split: apart }) => {
@@ -1318,6 +1338,8 @@ export function Canvas({
                       error: true,
                     }),
                   )
+                  .finally(releaseMove);
+              }
             : false,
           ...(result.cardId ? { show: [result.cardId] } : {}),
         });
@@ -1327,23 +1349,22 @@ export function Canvas({
         const split = error instanceof SceneMoveError ? error.split : null;
         // Scenes left apart from their comments, or in both places, say where (0141).
         const text = split
-          ? t(split.comments === 'there' ? 'scenesMove.splitThere' : 'scenesMove.splitUnknown', {
-              count: split.scenes,
-              title: target.title,
-            })
+          ? splitText(split, target.title)
           : empty
             ? `${t('scenesMove.failed')} ${t('scenesMove.empty', { title: empty })}`
             : t('scenesMove.failed');
         if (fromDialog) setMoveError(text);
         else setToast({ text, undo: false, error: true });
       } finally {
-        setMoveBusy(false);
+        releaseMove();
       }
     },
-    [doc, projectId, boardId, userId, boards, t, place, store],
+    [doc, projectId, boardId, userId, boards, t, place, store, claimMove, releaseMove],
   );
   /** "Move to a storyboard": asks where only when the project has several (decision 0140). */
   const startSceneMove = useCallback(async () => {
+    const gate = moveGate;
+    if (gate.busy) return;
     answerScenesNotice();
     const elements = [...store.getSnapshot().byId.values()];
     const scenes = scenesOf(elements);
@@ -1354,7 +1375,7 @@ export function Canvas({
     const [only] = storyboards;
     if (storyboards.length < 2)
       return runSceneMove(only ? { id: only.id, title: only.title } : { title, new: true });
-    setMoveBusy(true);
+    if (!claimMove()) return;
     try {
       const plan = planSceneMove(doc, await moveHolds(boardId, boards));
       if (plan.ids.length === 0) {
@@ -1378,9 +1399,12 @@ export function Canvas({
     } catch {
       setToast({ text: t('scenesMove.failed'), undo: false, error: true });
     } finally {
-      setMoveBusy(false);
+      releaseMove();
     }
   }, [
+    moveGate,
+    claimMove,
+    releaseMove,
     answerScenesNotice,
     store,
     storyboards,

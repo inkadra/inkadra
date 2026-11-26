@@ -665,6 +665,7 @@ function BoardScreen({
   }, [kind, user, projectId, boardId]);
   /** Scenes of this board that could move to a storyboard, as the canvas counts them. */
   const [looseScenes, setLooseScenes] = useState(0);
+  const [sceneMoveBusy, setSceneMoveBusy] = useState(false);
   const moveScenesItem = useCallback(() => {
     if (view !== 'canvas') setView('canvas', beginViewSwitch(view, 'canvas'));
     setParams(
@@ -1016,6 +1017,8 @@ function BoardScreen({
                             icon: 'storyboard' as const,
                             kind: 'storyboard' as const,
                             action: moveScenesItem,
+                            // One move at a time (decision 0141).
+                            disabled: sceneMoveBusy,
                           },
                           { divider: true as const },
                         ]
@@ -1210,6 +1213,7 @@ function BoardScreen({
       outside,
       openOutside,
       looseScenes,
+      sceneMoveBusy,
       moveScenesItem,
       versionable,
       productionLink,
@@ -1328,6 +1332,7 @@ function BoardScreen({
         canEdit={canEdit(detail?.myRole ?? projectRole)}
         onOpenBoard={openBoard}
         onLooseScenes={setLooseScenes}
+        onSceneMoveBusy={setSceneMoveBusy}
       />
     );
   return (
