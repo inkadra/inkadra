@@ -23,9 +23,19 @@ vi.mock('./access.ts', async (original) => ({
 const values = vi.fn().mockResolvedValue([]);
 /** The notification preferences notify() reads: who turned which types off in the Inbox. */
 const preferences = vi.fn().mockResolvedValue([]);
+/** The board lock and the moved-card lookup notify() makes for a card (0141): nothing moved. */
+const tx = {
+  insert: () => ({ values }),
+  select: () => ({
+    from: () => ({
+      where: () => Object.assign(Promise.resolve([]), { for: () => Promise.resolve([]) }),
+    }),
+  }),
+};
 const db = {
   insert: () => ({ values }),
   select: () => ({ from: () => ({ where: preferences }) }),
+  transaction: (work: (t: typeof tx) => Promise<unknown>) => work(tx),
 } as unknown as Database;
 const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const other = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
