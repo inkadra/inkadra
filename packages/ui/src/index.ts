@@ -6,7 +6,7 @@ export * from './date-grid.ts';
 export * from './dialog.tsx';
 export * from './icons.tsx';
 export * from './kind-color.ts';
-export { swallowOutsidePress } from './layer.ts';
+export { anchorLayer, swallowOutsidePress } from './layer.ts';
 export * from './menu.tsx';
 export * from './motion.ts';
 export * from './select.tsx';

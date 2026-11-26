@@ -296,6 +296,19 @@
 .note-phone-menu__item[aria-disabled="true"] {
   color: var(--ink-text-muted);
 }
+/* On the board the same list hangs from the `@`, in the top layer (anchorLayer places it). */
+.note-mention-layer {
+  inset: auto;
+  left: var(--ink-layer-left);
+  top: var(--ink-layer-top, auto);
+  bottom: var(--ink-layer-bottom, auto);
+  width: min(260px, calc(100vw - 16px));
+  margin: 0;
+  --ink-origin: top left;
+}
+.note-mention-layer[data-side="above"] {
+  --ink-origin: bottom left;
+}
 .note-phone-menu__empty {
   margin: 8px;
   color: var(--ink-text-secondary);
