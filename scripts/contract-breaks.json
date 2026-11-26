@@ -1,4 +1,20 @@
 {
   "comment": "Changes to /api/v1 since the base release, and to what packages/* export since the parent commit, each accepted on purpose as the exact line scripts/contract-check.mjs prints, with the PR that made it and why installed clients are safe (or BREAKING). CI fails on any other line, and on an openapi line it no longer prints: remove those once a release containing them is the base.",
-  "accepted": []
+  "accepted": [
+    {
+      "break": "openapi: #/components/schemas/ElementDataMoved: (absent) → {\"properties\":{\"comments\":{\"minimum\":0,\"type\":\"integer\"},\"notifications\":{\"minimum\":0,\"type\":\"integer\"},\"picks\":{\"minimu…#c5dab4ebf8b1485b5c7f321a11ce3cc67e86538386beebfc0f7c1ba77e0ddff4",
+      "pr": 1043,
+      "why": "New response schema of the new move endpoint; installed clients never call it."
+    },
+    {
+      "break": "openapi: #/components/schemas/MoveElementData: (absent) → {\"additionalProperties\":false,\"properties\":{\"elementIds\":{\"items\":{\"pattern\":\"^[A-Za-z0-9_-]{8,64}$\",\"type\":\"string\"},\"m…#f4b47d6898d6d8a96d5644c99df071195648a479c6794abfe868c8de5f1282c4",
+      "pr": 1043,
+      "why": "New request schema of the new move endpoint; installed clients never call it."
+    },
+    {
+      "break": "openapi: #/paths/~1api~1v1~1boards~1{boardId}~1element-data~1move: (absent) → {\"post\":{\"parameters\":[{\"in\":\"path\",\"name\":\"boardId\",\"required\":true,\"schema\":{\"format\":\"uuid\",\"type\":\"string\"}}],\"reque…#c20638fd9e44a19e937b05fcbf14b285325e1ee05e3e87463e5c6feb4e641357",
+      "pr": 1043,
+      "why": "New endpoint POST /boards/{boardId}/element-data/move (capability element-data-move); installed clients do not call it. No other route has the two fixed segments element-data/move after /boards/{boardId}."
+    }
+  ]
 }
