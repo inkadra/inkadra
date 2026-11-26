@@ -39,15 +39,32 @@ another board: comments, reactions, review decisions, guest picks and the shooti
 point at a frame or a scene. A scene with any of these on it or on its frames, plans or lists, or
 tied by an arrow or a plan link to a card that stays, or holding a card this version does not
 fully understand (0101), stays on the board; the notice and the dialog say how many and why.
-Nothing is deleted without its copy confirmed by the server first.
+
+**Nothing is lost while it moves, or when it comes back** (decided in review of the first pull
+request, 2026-11-26):
+
+- A scene leaves the board only once the server has its copy, and only as it was copied: each
+  scene, with its frames, plans and lists, is compared with a print taken when it was copied, in
+  the same transaction that removes it. A scene a colleague changed meanwhile, or added a frame
+  to, stays on the board ("changed while moving: try again"), and its copy leaves the storyboard
+  again unless that copy was changed there too, in which case both stay.
+- Undo brings back a scene only while its copy in the storyboard is as the move left it and has
+  no comments, reactions, reviews, picks or shooting days there; the others stay in the
+  storyboard and the notice says how many. The storyboard's card leaves the board only when every
+  scene came back.
+- Undo never deletes a board. A storyboard made for the move goes to the trash, where it can be
+  restored, only when Undo left it empty and nothing of the server's is about it; otherwise it
+  stays.
 
 **Modules.** All of this belongs to the Storyboard module: with it off there is no notice, no
 menu entry and no new scene; the loose scenes stay visible and editable.
 
 ## Consequences
 
-- `canvas-core` gains `planSceneMove` (which scenes move, which stay and why) so the mobile app
-  can offer the same action; no schema change, no API change.
+- `canvas-core` gains `planSceneMove` (which scenes move, which stay and why), `cardPrints` and
+  `unitUnchanged` (what changed meanwhile) and `copyCards` (cards as stored, back where they
+  were), so the mobile app can offer the same action; no schema change, no API change.
 - Moving the server-side data along (so that commented scenes can move too) needs an endpoint and
-  a capability (0120, 0122): a later decision, in its own contract pull request.
+  a capability (0120, 0122): approved by the maintainer as the next step, in its own contract
+  pull request.
 - The "Storyboard" tour says where scenes are made and gains a card about moving them (0078).

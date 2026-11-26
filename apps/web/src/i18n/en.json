@@ -7180,6 +7180,12 @@
     "newScene": "New scene in the storyboard…",
     "newSceneHint": "A new storyboard, its card here",
     "frameHint": "A single card, as a reference",
-    "newSceneFailed": "The scene could not be added to the storyboard."
+    "newSceneFailed": "The scene could not be added to the storyboard.",
+    "changed_one": "1 scene changed while it was moving and stays here: try again.",
+    "changed_other": "{{count}} scenes changed while they were moving and stay here: try again.",
+    "copiesKept_one": "Its copy was changed in the storyboard meanwhile and stays there too.",
+    "copiesKept_other": "{{count}} of their copies were changed in the storyboard meanwhile and stay there too.",
+    "undoPartial_one": "1 scene stays in “{{title}}”: it was changed there or has comments.",
+    "undoPartial_other": "{{count}} scenes stay in “{{title}}”: they were changed there or have comments."
   }
 }

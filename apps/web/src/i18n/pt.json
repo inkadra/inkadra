@@ -7180,6 +7180,12 @@
     "newScene": "Nova cena no storyboard…",
     "newSceneHint": "Um storyboard novo, com o card aqui",
     "frameHint": "Um card avulso, como referência",
-    "newSceneFailed": "Não foi possível adicionar a cena ao storyboard."
+    "newSceneFailed": "Não foi possível adicionar a cena ao storyboard.",
+    "changed_one": "1 cena mudou durante a mudança e fica aqui: tente de novo.",
+    "changed_other": "{{count}} cenas mudaram durante a mudança e ficam aqui: tente de novo.",
+    "copiesKept_one": "A cópia dela foi alterada no storyboard nesse meio-tempo e também fica lá.",
+    "copiesKept_other": "{{count}} das cópias foram alteradas no storyboard nesse meio-tempo e também ficam lá.",
+    "undoPartial_one": "1 cena fica em “{{title}}”: foi alterada lá ou tem comentários.",
+    "undoPartial_other": "{{count}} cenas ficam em “{{title}}”: foram alteradas lá ou têm comentários."
   }
 }

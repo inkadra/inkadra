@@ -94,6 +94,8 @@ describe('scenes live in storyboards (decision 0140)', () => {
       f3: 'server',
       f4: 'server',
       s1: 'days',
+      // Comments on the board itself: the board is not untouched (no Undo trashes it).
+      '#board': 'server',
     });
   });
 

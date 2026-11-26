@@ -19,6 +19,8 @@ export type SceneStayReason = 'server' | 'days' | 'links' | 'foreign';
 export interface SceneMovePlan {
   /** Cards on the board to move: scenes (their frames go with them), their plans and lists. */
   ids: string[];
+  /** The same cards by unit: a scene with its plans and lists, or scenes one plan links. */
+  units: string[][];
   /** The scenes that move, in storyboard order. */
   scenes: SceneElement[];
   /** Frames of those scenes. */
@@ -124,7 +126,7 @@ export function planSceneMove(
     verdict.set(key, reason);
   }
 
-  const plan: SceneMovePlan = { ids: [], scenes: [], frames: 0, stay: [] };
+  const plan: SceneMovePlan = { ids: [], units: [], scenes: [], frames: 0, stay: [] };
   for (const scene of scenes) {
     const reason = verdict.get(find(scene.id));
     if (reason) plan.stay.push({ scene, reason });
@@ -132,19 +134,75 @@ export function planSceneMove(
   }
   for (const [key, members] of units) {
     if (verdict.get(key)) continue;
+    const unit: string[] = [];
     for (const e of all) {
       if (!members.has(e.id)) continue;
       if (e.type === 'frame') plan.frames += 1;
-      else plan.ids.push(e.id);
+      else unit.push(e.id);
     }
+    plan.ids.push(...unit);
+    plan.units.push(unit);
   }
   return plan;
 }
 
+/** Where a card sits: kept when it moves, to put it back exactly where it was. */
+export interface CardPlace {
+  x: number;
+  y: number;
+  z: string;
+  parent: string | null;
+}
+
+/** Where each of these cards (not their children) sits in `doc` now. */
+export function placesOf(doc: Y.Doc, ids: readonly string[]): Map<string, CardPlace> {
+  const places = new Map<string, CardPlace>();
+  for (const e of listElements(doc))
+    if (ids.includes(e.id)) places.set(e.id, { x: e.x, y: e.y, z: e.z, parent: e.parent });
+  return places;
+}
+
 /**
- * Copies the cards of a move plan into `target` as they are stored, ids and authors included,
- * so their links hold: the scenes after the last scene there, everything to the right of what it
- * has. Throws, writing nothing, when an id is already there.
+ * Copies cards with their children from `source` into `target` as they are stored, ids and
+ * authors included, each top card at the place `placeOf` gives. Throws, writing nothing, when
+ * an id is already there or a card is gone from `source`.
+ */
+export function copyCards(
+  source: Y.Doc,
+  target: Y.Doc,
+  ids: readonly string[],
+  placeOf: (id: string) => CardPlace,
+  origin?: unknown,
+): void {
+  const from = roots(source).elements;
+  const to = roots(target).elements;
+  const picked = new Set(ids);
+  const children = [...from.entries()].filter(
+    ([, map]) => typeof map.get('parent') === 'string' && picked.has(map.get('parent') as string),
+  );
+  const all = [...ids, ...children.map(([id]) => id)];
+  if (all.some((id) => to.has(id))) throw new Error('A card is already there.');
+  if (ids.some((id) => !from.has(id))) throw new Error('A card is gone.');
+  const places = ids.map((id) => placeOf(id));
+  target.transact(() => {
+    ids.forEach((id, i) => {
+      const map = from.get(id);
+      const place = places[i];
+      if (!map || !place) return;
+      const copy = cloneMap(map);
+      copy.set('x', Math.round(place.x));
+      copy.set('y', Math.round(place.y));
+      copy.set('z', place.z);
+      copy.set('parent', place.parent);
+      to.set(id, copy);
+    });
+    for (const [id, map] of children) to.set(id, cloneMap(map));
+  }, origin);
+}
+
+/**
+ * Copies the cards of a move plan into `target`: the scenes after the last scene there,
+ * everything to the right of what it has. Throws, writing nothing, when an id is already there.
  */
 export function copySceneCards(
   source: Y.Doc,
@@ -152,48 +210,80 @@ export function copySceneCards(
   plan: Pick<SceneMovePlan, 'ids'>,
   origin?: unknown,
 ): void {
-  const from = roots(source).elements;
-  const to = roots(target).elements;
   const there = listElements(target);
   const picked = new Set(plan.ids);
   const cards = listElements(source)
     .filter((e) => picked.has(e.id))
     .sort(compareZ);
-  const children = [...from.entries()].filter(
-    ([, map]) => typeof map.get('parent') === 'string' && picked.has(map.get('parent') as string),
-  );
-  const ids = [...cards.map((c) => c.id), ...children.map(([id]) => id)];
-  if (ids.some((id) => to.has(id))) throw new Error('A card of the move is already there.');
   const right = there
     .filter((e) => e.parent === null)
     .reduce((m, e) => Math.max(m, e.x + (e.w ?? 0)), Number.NEGATIVE_INFINITY);
   const left = Math.min(...cards.map((c) => c.x));
   const top = Math.min(...cards.map((c) => c.y));
   const dx = (Number.isFinite(right) ? right + 40 : 0) - left;
-  const dy = -top;
   const keys = generateNKeysBetween(keyAtEnd(there, null), null, cards.length);
-  target.transact(() => {
-    cards.forEach((card, i) => {
-      const map = from.get(card.id);
-      if (!map) return;
-      const copy = cloneMap(map);
-      copy.set('x', Math.round(card.x + dx));
-      copy.set('y', Math.round(card.y + dy));
-      copy.set('parent', null);
-      copy.set('z', keys[i] ?? keyAtEnd(there, null));
-      to.set(card.id, copy);
-    });
-    for (const [id, map] of children) to.set(id, cloneMap(map));
-  }, origin);
+  const at = new Map(
+    cards.map((c, i) => [
+      c.id,
+      { x: c.x + dx, y: c.y - top, z: keys[i] ?? keyAtEnd(there, null), parent: null },
+    ]),
+  );
+  copyCards(
+    source,
+    target,
+    cards.map((c) => c.id),
+    (id) => at.get(id) as CardPlace,
+    origin,
+  );
 }
 
-/** Takes the moved cards off the board; false, removing nothing, when it cannot (0062). */
+/** Takes the moved cards off a board; false, removing nothing, when it cannot (0062). */
 export function removeSceneCards(
   doc: Y.Doc,
   plan: Pick<SceneMovePlan, 'ids'>,
   origin?: unknown,
 ): boolean {
   return deleteElements(doc, plan.ids, origin).length === 0;
+}
+
+/** JSON with its keys sorted, so the same content always reads the same. */
+function stable(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object')
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stable((value as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  return JSON.stringify(value) ?? 'null';
+}
+
+/**
+ * A print of each card as stored, with its children (their ids and contents): two prints are
+ * equal only when nobody changed, added or removed anything in it. A card that is gone has none.
+ */
+export function cardPrints(doc: Y.Doc, ids: readonly string[]): Map<string, string> {
+  const elements = roots(doc).elements;
+  const prints = new Map<string, string>();
+  for (const id of ids) {
+    const map = elements.get(id);
+    if (!map) continue;
+    const children = [...elements.entries()]
+      .filter(([, child]) => child.get('parent') === id)
+      .map(([childId, child]) => [childId, child.toJSON()])
+      .sort(([a], [b]) => (String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0));
+    prints.set(id, stable({ card: map.toJSON(), children }));
+  }
+  return prints;
+}
+
+/** Whether every card of a unit is in `doc` exactly as printed. */
+export function unitUnchanged(
+  doc: Y.Doc,
+  unit: readonly string[],
+  prints: ReadonlyMap<string, string>,
+): boolean {
+  const now = cardPrints(doc, unit);
+  return unit.every((id) => prints.has(id) && now.get(id) === prints.get(id));
 }
 
 /** The scenes' place on the board: the top-left corner of the moved cards. */

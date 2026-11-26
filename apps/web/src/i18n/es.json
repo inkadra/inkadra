@@ -7180,6 +7180,12 @@
     "newScene": "Nueva escena en el storyboard…",
     "newSceneHint": "Un storyboard nuevo, con su tarjeta aquí",
     "frameHint": "Una tarjeta suelta, como referencia",
-    "newSceneFailed": "No se pudo añadir la escena al storyboard."
+    "newSceneFailed": "No se pudo añadir la escena al storyboard.",
+    "changed_one": "1 escena cambió mientras se movía y se queda aquí: inténtalo de nuevo.",
+    "changed_other": "{{count}} escenas cambiaron mientras se movían y se quedan aquí: inténtalo de nuevo.",
+    "copiesKept_one": "Su copia se modificó en el storyboard entretanto y también se queda allí.",
+    "copiesKept_other": "{{count}} de sus copias se modificaron en el storyboard entretanto y también se quedan allí.",
+    "undoPartial_one": "1 escena se queda en «{{title}}»: se modificó allí o tiene comentarios.",
+    "undoPartial_other": "{{count}} escenas se quedan en «{{title}}»: se modificaron allí o tienen comentarios."
   }
 }

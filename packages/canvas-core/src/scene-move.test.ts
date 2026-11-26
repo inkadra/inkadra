@@ -1,9 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import { createElement, listElements } from './board.ts';
+import { createElement, listElements, updateElement } from './board.ts';
 import { addFrame, addScene, addStroke, storyboardOf } from './film.ts';
-import { copySceneCards, planSceneMove, removeSceneCards, sceneMoveOrigin } from './scene-move.ts';
+import {
+  type CardPlace,
+  cardPrints,
+  copyCards,
+  copySceneCards,
+  placesOf,
+  planSceneMove,
+  removeSceneCards,
+  sceneMoveOrigin,
+  unitUnchanged,
+} from './scene-move.ts';
 
 const opts = { userId: 'u1' };
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
@@ -119,5 +129,34 @@ describe('copySceneCards and removeSceneCards', () => {
     const count = roots(target).elements.size;
     expect(() => copySceneCards(doc, target, moving)).toThrow();
     expect(roots(target).elements.size).toBe(count);
+  });
+});
+
+describe('prints of a move (decision 0140)', () => {
+  it('changes when a card or anything inside it changes, is added or goes', () => {
+    const { doc, one, two, a } = board();
+    const moving = planSceneMove(doc, none);
+    expect(moving.units).toEqual([[one.id], [two.id]]);
+    const prints = cardPrints(doc, moving.ids);
+    expect(unitUnchanged(doc, [one.id], prints)).toBe(true);
+    updateElement(doc, a.id, { action: 'Train leaves' });
+    expect(unitUnchanged(doc, [one.id], prints)).toBe(false);
+    expect(unitUnchanged(doc, [two.id], prints)).toBe(true);
+    addFrame(doc, two.id, null, {}, opts);
+    expect(unitUnchanged(doc, [two.id], prints)).toBe(false);
+  });
+
+  it('puts cards back where they were, with their children', () => {
+    const { doc, one, a } = board();
+    const target = createBoardDoc(storyboardId);
+    const moving = planSceneMove(doc, none);
+    const places = placesOf(doc, moving.ids);
+    copySceneCards(doc, target, moving);
+    removeSceneCards(doc, moving);
+    copyCards(target, doc, [one.id], (id) => places.get(id) as CardPlace);
+    const back = listElements(doc);
+    expect(back.find((e) => e.id === one.id)).toMatchObject(places.get(one.id) ?? {});
+    expect(back.find((e) => e.id === a.id)?.parent).toBe(one.id);
+    expect(() => copyCards(target, doc, [one.id], (id) => places.get(id) as CardPlace)).toThrow();
   });
 });

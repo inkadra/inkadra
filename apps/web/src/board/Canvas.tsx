@@ -1220,28 +1220,49 @@ export function Canvas({
             ),
         });
         setMoveChoice(null);
-        const { plan, storyboard } = result;
-        const stay = plan.stay.length ? t('scenesMove.stay', { count: plan.stay.length }) : '';
-        if (!storyboard) {
-          if (plan.stay.length)
-            setToast({ text: t('scenesMove.none', { count: plan.stay.length }), undo: false });
-          return;
-        }
-        const moved = t('scenesMove.moved', {
-          scenes: t('screenplay.scenes', { count: plan.scenes.length }),
-          title: storyboard.title,
-        });
+        const { plan, storyboard, moved, changed, copiesKept } = result;
+        // What went, what changed on the board meanwhile, and what stays for the server's data.
+        const parts = [
+          storyboard
+            ? t('scenesMove.moved', {
+                scenes: t('screenplay.scenes', { count: moved }),
+                title: storyboard.title,
+              })
+            : '',
+          changed ? t('scenesMove.changed', { count: changed }) : '',
+          copiesKept ? t('scenesMove.copiesKept', { count: copiesKept }) : '',
+          plan.stay.length
+            ? t(storyboard || changed ? 'scenesMove.stay' : 'scenesMove.none', {
+                count: plan.stay.length,
+              })
+            : '',
+        ].filter(Boolean);
+        if (parts.length === 0) return;
         setToast({
-          text: stay ? `${moved} ${stay}` : moved,
-          ok: true,
-          undo: () =>
-            void result.undo().catch(() =>
-              setToast({
-                text: t('scenesMove.undoFailed', { title: storyboard.title }),
-                undo: false,
-                error: true,
-              }),
-            ),
+          text: parts.join(' '),
+          ok: !!storyboard && !changed,
+          undo: storyboard
+            ? () =>
+                void result
+                  .undo()
+                  .then(({ stayed }) => {
+                    if (stayed)
+                      setToast({
+                        text: t('scenesMove.undoPartial', {
+                          count: stayed,
+                          title: storyboard.title,
+                        }),
+                        undo: false,
+                      });
+                  })
+                  .catch(() =>
+                    setToast({
+                      text: t('scenesMove.undoFailed', { title: storyboard.title }),
+                      undo: false,
+                      error: true,
+                    }),
+                  )
+            : false,
           ...(result.cardId ? { show: [result.cardId] } : {}),
         });
       } catch {
