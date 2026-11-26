@@ -1,6 +1,7 @@
 import {
   PLAN_MAP_LISTS,
   PLAN_PLAIN_LISTS,
+  planListsDuplicated,
   planListsState,
   preparePlanListsOf,
 } from '@inkadra/doc-schema';
@@ -12,7 +13,9 @@ const LIST_KEYS: ReadonlySet<string> = new Set([...PLAN_MAP_LISTS, ...PLAN_PLAIN
  * While a board stays open, a set plan list that arrives missing or as plain JSON (a paste or an
  * edit from a client older than the rule that clients never make plan lists) is prepared by the
  * server right after, as at load (doc-schema preparePlanListsOf), so "reload the board" is never
- * needed while someone keeps it open. Only the plans a transaction touched are looked at; as at
+ * needed while someone keeps it open. So are two entries with one id in a list (two clients
+ * moving the same item into a base at once, issue #1033): the later one is removed, by the server
+ * alone, so no two clients ever race to do it. Only the plans a transaction touched are looked at; as at
  * load, a plan's convertible lists are prepared even when another of its lists cannot be. A
  * failure is handed to `onError` (the board's problem report), never thrown into Yjs. Returns the
  * function that stops watching.
@@ -34,9 +37,16 @@ export function preparePlanListsOnChange(doc: Y.Doc, onError: (err: unknown) => 
         [...keys].some((k) => k !== null && LIST_KEYS.has(k))
       )
         touched.add(type as Y.Map<unknown>);
+      // An entry added to or removed from one of a plan's lists.
+      else if (type instanceof Y.Array && type.parent instanceof Y.Map) {
+        const plan = type.parent as Y.Map<unknown>;
+        if (plan.parent === elements && plan.get('type') === 'plan') touched.add(plan);
+      }
     }
     // Pending, or stuck with other lists still to prepare (preparePlanListsOf skips what cannot be).
-    const due = [...touched].filter((map) => planListsState(map) !== 'ready');
+    const due = [...touched].filter(
+      (map) => planListsState(map) !== 'ready' || planListsDuplicated(map),
+    );
     // After this transaction, as one of the server's own (its observers have all run).
     if (due.length)
       queueMicrotask(() => {

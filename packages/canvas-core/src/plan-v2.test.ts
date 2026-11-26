@@ -10,6 +10,7 @@ import {
   type PlanOpening,
   type PlanShape,
   type PlanWall,
+  preparePlanLists,
   roots,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
@@ -1161,6 +1162,36 @@ describe('review of the editor (pull request 602)', () => {
     undo.undo();
     expect(planOf(doc, base.id).icons ?? []).toEqual([]);
     expect(planOf(doc, setup).icons?.map((i) => i.id)).toEqual([light, stray, light2]);
+  });
+
+  it('leaves one copy in the base when two people move the same item to Set at once (#1033)', () => {
+    const a = createBoardDoc(boardId);
+    const base = createElement(a, 'plan', { x: 0, y: 0 }, {}, { userId: null });
+    const setup = addVariant(a, planOf(a, base.id), 'Sera', { userId: null });
+    const table = addPlanIcon(a, setup, { ...at, kind: 'table' }) as string;
+    const b = new Y.Doc();
+    sync(a, b);
+    for (const doc of [a, b]) transferPlanItems(doc, setup, base.id, [table], () => ({}));
+    sync(a, b);
+    sync(b, a);
+    // Both appended a copy; the server keeps the first, the same one for everyone.
+    expect(planOf(a, base.id).icons?.map((i) => i.id)).toEqual([table, table]);
+    expect(preparePlanLists(a)).toBe(1);
+    expect(preparePlanLists(a)).toBe(0);
+    sync(a, b);
+    for (const doc of [a, b]) {
+      expect(planOf(doc, base.id).icons?.map((i) => i.id)).toEqual([table]);
+      expect(planOf(doc, setup).icons ?? []).toEqual([]);
+    }
+    // An item the base already holds only leaves the setup: no second copy.
+    const chair = addPlanIcon(a, setup, { ...at, kind: 'chair' }) as string;
+    const copy = planOf(a, setup).icons?.find((i) => i.id === chair) as PlanIcon;
+    (roots(a).elements.get(base.id)!.get('icons') as Y.Array<unknown>).push([
+      new Y.Map<unknown>(Object.entries(copy)),
+    ]);
+    expect(transferPlanItems(a, setup, base.id, [chair], () => ({}))).toEqual([chair]);
+    expect(planOf(a, base.id).icons?.map((i) => i.id)).toEqual([table, chair]);
+    expect(planOf(a, setup).icons ?? []).toEqual([]);
   });
 
   it('keeps two people editing two circuits at once', () => {

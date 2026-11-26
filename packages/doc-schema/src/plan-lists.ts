@@ -58,10 +58,38 @@ export function planListsState(map: Y.Map<unknown>): 'ready' | 'pending' | 'stuc
   return pending ? 'pending' : 'ready';
 }
 
+const idOf = (value: unknown) =>
+  value instanceof Y.Map ? value.get('id') : (value as { id?: unknown } | null)?.id;
+
+/**
+ * The places of the entries of a list whose id an earlier entry has: two clients moving the same
+ * item from a setup into its base at once each append a copy (issue #1033). Entries without an id
+ * are never counted.
+ */
+function duplicates(list: Y.Array<unknown>): number[] {
+  const seen = new Set<unknown>();
+  return list.toArray().flatMap((value, index) => {
+    const id = idOf(value);
+    if (typeof id !== 'string') return [];
+    if (seen.has(id)) return [index];
+    seen.add(id);
+    return [];
+  });
+}
+
+/** Whether a list of this plan holds two entries with one id (see preparePlanListsOf). */
+export function planListsDuplicated(map: Y.Map<unknown>): boolean {
+  return LISTS.some((key) => {
+    const list = map.get(key);
+    return list instanceof Y.Array && duplicates(list).length > 0;
+  });
+}
+
 /**
  * Turns the lists of one plan into the Yjs types clients edit, every entry kept: a list left as
  * plain JSON is converted, a missing one made empty. A list that cannot become one (see
- * planListsState) is left as it is. Call it inside a transaction, on a map in a document (for a new
+ * planListsState) is left as it is. Of two entries with one id, the first in the list (the same
+ * on every client) is kept and the later one removed (planListsDuplicated). Call it inside a transaction, on a map in a document (for a new
  * card, in the transaction that adds it: a map not added yet reads as empty). Returns how many
  * lists it changed.
  *
@@ -81,6 +109,13 @@ export function preparePlanListsOf(map: Y.Map<unknown>): number {
     map.set(key, list);
     changed += 1;
   }
+  for (const key of LISTS) {
+    const list = map.get(key);
+    if (!(list instanceof Y.Array)) continue;
+    const extra = duplicates(list);
+    for (const index of extra.reverse()) list.delete(index, 1);
+    if (extra.length) changed += 1;
+  }
   return changed;
 }
 
@@ -92,7 +127,9 @@ export function preparePlanListsOf(map: Y.Map<unknown>): number {
 export function preparePlanLists(doc: Y.Doc): number {
   // Every plan with a list to make or convert, even one with another list that cannot be.
   const plans = [...roots(doc).elements.values()].filter(
-    (map) => map.get('type') === 'plan' && LISTS.some((key) => builder(key, map.get(key))),
+    (map) =>
+      map.get('type') === 'plan' &&
+      (LISTS.some((key) => builder(key, map.get(key))) || planListsDuplicated(map)),
   );
   if (plans.length === 0) return 0;
   let changed = 0;
