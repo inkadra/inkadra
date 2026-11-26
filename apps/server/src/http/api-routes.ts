@@ -10,6 +10,7 @@ import {
   COLLAB_PATH,
   CREW_ONE_ROW_PER_CHARACTER_CAPABILITY,
   DIAGNOSTIC_PROXY_TRUST_CAPABILITY,
+  ELEMENT_DATA_MOVE_CAPABILITY,
   type Health,
   IDEMPOTENT_IMPORT_CAPABILITY,
   type Instance,
@@ -197,6 +198,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         CREW_ONE_ROW_PER_CHARACTER_CAPABILITY,
         // GET /diagnostics may answer the check `proxy_trust_narrow`.
         DIAGNOSTIC_PROXY_TRUST_CAPABILITY,
+        // POST /boards/{id}/element-data/move: a card's comments and reviews follow it (0140).
+        ELEMENT_DATA_MOVE_CAPABILITY,
         // Settings → Server runs the load test (#908): only where a worker can run it.
         ...(deps.jobs.runLoadTest ? [LOAD_TEST_CAPABILITY] : []),
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).
