@@ -21,11 +21,19 @@ const docs = new Map<string, Y.Doc>();
 let meanwhile: (() => void) | null = null;
 /** Connections kept open a little longer: their `end`. */
 const lingering: Array<() => void> = [];
+/**
+ * How the next writes end, one entry per call: `before` fails writing nothing, `after` fails
+ * once the server has it (unconfirmed), `ok` (or nothing left) succeeds.
+ */
+const writesEnd: Array<'ok' | 'before' | 'after'> = [];
 vi.mock('./send-to-storyboard.ts', () => ({
   writeToBoard: async <T>(id: string, write: (doc: Y.Doc) => T, linger?: { end: () => void }) => {
     const doc = docs.get(id);
     if (!doc) throw new Error('No such board');
+    const end = writesEnd.shift() ?? 'ok';
+    if (end === 'before') throw new Error('Offline');
     const value = write(doc);
+    if (end === 'after') throw new Error('Timed out');
     meanwhile?.();
     meanwhile = null;
     if (linger) lingering.push(linger.end);
@@ -105,6 +113,7 @@ function setUp() {
   created.length = 0;
   deleted.length = 0;
   moves.length = 0;
+  writesEnd.length = 0;
   onMove = null;
   outOfReach = [];
   meanwhile = null;
@@ -299,7 +308,10 @@ describe('with the server moving its data along (element-data-move)', () => {
     onMove = () => {
       throw new Error('offline');
     };
-    await expect(move(doc, { id: storyboardId, title: 'Film' })).rejects.toThrow();
+    const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+    expect(error).toBeInstanceOf(SceneMoveError);
+    // Said, not silent: the comments may be on either side.
+    expect(error.split).toEqual({ scenes: 2, comments: 'unknown' });
     expect(ids(doc)).toContain(one.id);
     expect(ids(story)).toContain(one.id);
   });
@@ -379,5 +391,128 @@ describe('with the server moving its data along (element-data-move)', () => {
     expect(again?.ids).toEqual(expect.arrayContaining([one.id, a.id]));
     expect(ids(story)).toContain(one.id);
     expect(ids(doc)).not.toContain(one.id);
+  });
+
+  describe('every step after the data moved completes or is undone, and a split is said', () => {
+    const fromBoard = (call: DataMove) => call.from === boardId;
+    const fromStory = (call: DataMove) => call.from === storyboardId;
+
+    it('move: the data cannot go, the copies cannot leave: a duplicate, nothing apart', async () => {
+      const { doc, one } = setUp();
+      onMove = (call) => {
+        if (fromBoard(call)) throw new Error('offline');
+      };
+      writesEnd.push('ok', 'before');
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error).toBeInstanceOf(SceneMoveError);
+      expect(error.split).toBeNull();
+      expect(ids(doc)).toContain(one.id);
+    });
+
+    it('move: a scene changed meanwhile whose data cannot come back is said to be apart', async () => {
+      const { doc, story, one, a } = setUp();
+      meanwhile = () => updateElement(doc, a.id, { action: 'Edited meanwhile' });
+      onMove = (call) => {
+        if (fromStory(call)) throw new Error('offline');
+      };
+      const result = await move(doc, { id: storyboardId, title: 'Film' });
+      expect(result.split).toEqual({ scenes: 1, comments: 'there' });
+      // Its copy stays with the data; the scene stays here.
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('move: a changed scene’s copy that cannot leave the storyboard is a kept copy', async () => {
+      const { doc, story, one, a } = setUp();
+      meanwhile = () => updateElement(doc, a.id, { action: 'Edited meanwhile' });
+      writesEnd.push('ok', 'before');
+      const result = await move(doc, { id: storyboardId, title: 'Film' });
+      expect(result.copiesKept).toBe(1);
+      expect(result.split).toBeNull();
+      expect(ids(story)).toContain(one.id);
+    });
+
+    const moved = async () => {
+      const set = setUp();
+      const result = await move(set.doc, { id: storyboardId, title: 'Film' });
+      moves.length = 0;
+      return { ...set, result };
+    };
+
+    it('undo: the check before the data cannot run: the board copies go, nothing moved', async () => {
+      const { doc, story, one, result } = await moved();
+      writesEnd.push('ok', 'before');
+      await expect(result.undo()).rejects.toThrow();
+      expect(moves).toEqual([]);
+      expect(ids(doc)).not.toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('undo: the data can neither come back nor be asked back: said, both copies kept', async () => {
+      const { doc, story, one, result } = await moved();
+      onMove = () => {
+        throw new Error('offline');
+      };
+      const error = await result.undo().catch((e) => e);
+      expect(error.split).toEqual({ scenes: 2, comments: 'unknown' });
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('undo: the copies cannot leave the storyboard: their data goes back there', async () => {
+      const { doc, story, one, result } = await moved();
+      writesEnd.push('ok', 'ok', 'before');
+      const error = await result.undo().catch((e) => e);
+      expect(error).toBeInstanceOf(SceneMoveError);
+      expect(error.split).toBeNull();
+      expect(moves.map((m) => m.from)).toEqual([storyboardId, boardId]);
+      expect(ids(doc)).not.toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+      // The storyboard's card stays on the board with its scenes.
+      expect(listElements(doc).some((e) => e.type === 'board')).toBe(true);
+    });
+
+    it('undo: and if that data cannot go back either, both copies stay and it is said', async () => {
+      const { doc, story, one, result } = await moved();
+      writesEnd.push('ok', 'ok', 'before');
+      onMove = (call) => {
+        if (fromBoard(call)) throw new Error('offline');
+      };
+      const error = await result.undo().catch((e) => e);
+      expect(error.split).toEqual({ scenes: 2, comments: 'here' });
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('undo: the removal went through but was not confirmed: the scenes are back', async () => {
+      const { doc, story, one, result } = await moved();
+      writesEnd.push('ok', 'ok', 'after');
+      const { back, split } = await result.undo();
+      expect([back, split]).toEqual([2, null]);
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).not.toContain(one.id);
+      expect(moves.map((m) => m.from)).toEqual([storyboardId]);
+    });
+
+    it('undo: the storyboard cannot be read after an unconfirmed removal: said', async () => {
+      const { doc, one, result } = await moved();
+      writesEnd.push('ok', 'ok', 'before', 'before');
+      const error = await result.undo().catch((e) => e);
+      expect(error.split).toEqual({ scenes: 2, comments: 'here' });
+      expect(ids(doc)).toContain(one.id);
+    });
+
+    it('undo: a copy changed while its data came back, which cannot go back there: said', async () => {
+      const { doc, story, one, a, result } = await moved();
+      onMove = (call) => {
+        if (fromStory(call)) updateElement(story, a.id, { action: 'Drawn meanwhile' });
+        else throw new Error('offline');
+      };
+      const { split } = await result.undo();
+      expect(split).toEqual({ scenes: 1, comments: 'here' });
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+      expect(listElements(doc).some((e) => e.type === 'board')).toBe(true);
+    });
   });
 });

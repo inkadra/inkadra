@@ -49,6 +49,13 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    again right before its data comes back and once more when it leaves the storyboard: one
    changed meanwhile stays in the storyboard, its data sent back there before its copy leaves
    the board; if that fails, both copies stay, the data with the board's.
+   **Every step after the data moved completes or is undone.** When a write to the storyboard
+   cannot be confirmed after the data came back, what is still there gets its data sent back and
+   its board copy goes; what left it is back. When that cannot be done either, both copies stay,
+   and a failure never leaves a scene apart from its comments without saying so: the notice
+   names how many scenes are in both places or apart, and whether their comments are with the
+   copies here, with those in the storyboard, or (when the server could not answer) to check.
+   The storyboard's card leaves the board only once all its scenes are confirmed back.
 7. What still keeps a scene on the board: an arrow or plan link to a card that stays, a plan
    whose sun follows a shooting day, a card this version does not fully understand. The notice
    names these.

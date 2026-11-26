@@ -190,6 +190,7 @@ import {
   moveHolds,
   moveScenes,
   SceneMoveError,
+  type SceneSplit,
   type SceneTarget,
   storyboardName,
 } from './film/scene-move.ts';
@@ -1232,6 +1233,17 @@ export function Canvas({
             }),
         });
         setMoveChoice(null);
+        const splitText = (split: SceneSplit | null, title: string) =>
+          split
+            ? t(
+                split.comments === 'here'
+                  ? 'scenesMove.splitHere'
+                  : split.comments === 'there'
+                    ? 'scenesMove.splitThere'
+                    : 'scenesMove.splitUnknown',
+                { count: split.scenes, title },
+              )
+            : '';
         const {
           plan,
           storyboard,
@@ -1241,6 +1253,7 @@ export function Canvas({
           emptyStoryboard,
           dataMoved,
           guestsUnreached,
+          split,
         } = result;
         // Without the server moving its data, scenes with comments stay (decision 0140).
         const tied = elementDataMoves();
@@ -1256,6 +1269,7 @@ export function Canvas({
           guestsUnreached ? t('scenesMove.guests', { count: guestsUnreached }) : '',
           changed ? t('scenesMove.changed', { count: changed }) : '',
           copiesKept ? t('scenesMove.copiesKept', { count: copiesKept }) : '',
+          splitText(split, storyboard?.title ?? target.title),
           plan.stay.length
             ? t(
                 storyboard || changed
@@ -1278,8 +1292,9 @@ export function Canvas({
             ? () =>
                 void result
                   .undo()
-                  .then(({ stayed, emptyStoryboard: empty }) => {
+                  .then(({ stayed, emptyStoryboard: empty, split: apart }) => {
                     const text = [
+                      splitText(apart, storyboard.title),
                       stayed
                         ? t(tied ? 'scenesMove.undoChanged' : 'scenesMove.undoPartial', {
                             count: stayed,
@@ -1290,11 +1305,15 @@ export function Canvas({
                     ]
                       .filter(Boolean)
                       .join(' ');
-                    if (text) setToast({ text, undo: false });
+                    if (text) setToast({ text, undo: false, ...(apart ? { error: true } : {}) });
                   })
-                  .catch(() =>
+                  .catch((error) =>
                     setToast({
-                      text: t('scenesMove.undoFailed', { title: storyboard.title }),
+                      // Scenes left in both places say where their comments are (0141).
+                      text:
+                        error instanceof SceneMoveError && error.split
+                          ? splitText(error.split, storyboard.title)
+                          : t('scenesMove.undoFailed', { title: storyboard.title }),
                       undo: false,
                       error: true,
                     }),
@@ -1305,9 +1324,16 @@ export function Canvas({
       } catch (error) {
         // A storyboard made for it stays, empty: say so, never delete it (decision 0140).
         const empty = error instanceof SceneMoveError ? error.emptyStoryboard : null;
-        const text = empty
-          ? `${t('scenesMove.failed')} ${t('scenesMove.empty', { title: empty })}`
-          : t('scenesMove.failed');
+        const split = error instanceof SceneMoveError ? error.split : null;
+        // Scenes left apart from their comments, or in both places, say where (0141).
+        const text = split
+          ? t(split.comments === 'there' ? 'scenesMove.splitThere' : 'scenesMove.splitUnknown', {
+              count: split.scenes,
+              title: target.title,
+            })
+          : empty
+            ? `${t('scenesMove.failed')} ${t('scenesMove.empty', { title: empty })}`
+            : t('scenesMove.failed');
         if (fromDialog) setMoveError(text);
         else setToast({ text, undo: false, error: true });
       } finally {
