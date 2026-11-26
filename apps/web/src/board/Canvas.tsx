@@ -187,6 +187,7 @@ import {
   addSceneTo,
   defaultStoryboard,
   moveScenes,
+  SceneMoveError,
   type SceneTarget,
   serverHolds,
   storyboardName,
@@ -1218,9 +1219,22 @@ export function Canvas({
                   .map((e) => store.rectOf(e)),
               ),
             ),
+          measure: (card) => store.rectOf(card),
+          // A colleague's change that arrived late followed the scenes (decision 0140).
+          onLate: ({ scenes, lost }) =>
+            setToast({
+              text: [
+                t('scenesMove.late', { count: scenes }),
+                lost ? t('scenesMove.lateLost', { count: lost }) : '',
+              ]
+                .filter(Boolean)
+                .join(' '),
+              undo: false,
+              ...(lost ? { error: true } : { ok: true }),
+            }),
         });
         setMoveChoice(null);
-        const { plan, storyboard, moved, changed, copiesKept } = result;
+        const { plan, storyboard, moved, changed, copiesKept, emptyStoryboard } = result;
         // What went, what changed on the board meanwhile, and what stays for the server's data.
         const parts = [
           storyboard
@@ -1236,6 +1250,7 @@ export function Canvas({
                 count: plan.stay.length,
               })
             : '',
+          emptyStoryboard ? t('scenesMove.empty', { title: emptyStoryboard }) : '',
         ].filter(Boolean);
         if (parts.length === 0) return;
         setToast({
@@ -1245,15 +1260,16 @@ export function Canvas({
             ? () =>
                 void result
                   .undo()
-                  .then(({ stayed }) => {
-                    if (stayed)
-                      setToast({
-                        text: t('scenesMove.undoPartial', {
-                          count: stayed,
-                          title: storyboard.title,
-                        }),
-                        undo: false,
-                      });
+                  .then(({ stayed, emptyStoryboard: empty }) => {
+                    const text = [
+                      stayed
+                        ? t('scenesMove.undoPartial', { count: stayed, title: storyboard.title })
+                        : '',
+                      empty ? t('scenesMove.empty', { title: empty }) : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ');
+                    if (text) setToast({ text, undo: false });
                   })
                   .catch(() =>
                     setToast({
@@ -1265,9 +1281,14 @@ export function Canvas({
             : false,
           ...(result.cardId ? { show: [result.cardId] } : {}),
         });
-      } catch {
-        if (fromDialog) setMoveError(t('scenesMove.failed'));
-        else setToast({ text: t('scenesMove.failed'), undo: false, error: true });
+      } catch (error) {
+        // A storyboard made for it stays, empty: say so, never delete it (decision 0140).
+        const empty = error instanceof SceneMoveError ? error.emptyStoryboard : null;
+        const text = empty
+          ? `${t('scenesMove.failed')} ${t('scenesMove.empty', { title: empty })}`
+          : t('scenesMove.failed');
+        if (fromDialog) setMoveError(text);
+        else setToast({ text, undo: false, error: true });
       } finally {
         setMoveBusy(false);
       }

@@ -1,8 +1,15 @@
-import { addFrame, addScene, listElements, updateElement } from '@inkadra/canvas-core';
+import {
+  addFrame,
+  addScene,
+  createElement,
+  intersects,
+  listElements,
+  updateElement,
+} from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import type { Board } from '@inkadra/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 
 /**
  * Decision 0140, no data lost: a move only takes off the board what it copied, as it copied it,
@@ -12,13 +19,16 @@ import type * as Y from 'yjs';
 const docs = new Map<string, Y.Doc>();
 /** Runs between the write and the server's answer: what a colleague does meanwhile. */
 let meanwhile: (() => void) | null = null;
+/** Connections kept open a little longer: their `end`. */
+const lingering: Array<() => void> = [];
 vi.mock('./send-to-storyboard.ts', () => ({
-  writeToBoard: async <T>(id: string, write: (doc: Y.Doc) => T) => {
+  writeToBoard: async <T>(id: string, write: (doc: Y.Doc) => T, linger?: { end: () => void }) => {
     const doc = docs.get(id);
     if (!doc) throw new Error('No such board');
     const value = write(doc);
     meanwhile?.();
     meanwhile = null;
+    if (linger) lingering.push(linger.end);
     return value;
   },
 }));
@@ -72,6 +82,7 @@ function setUp() {
   created.length = 0;
   deleted.length = 0;
   meanwhile = null;
+  lingering.length = 0;
   const doc = createBoardDoc(boardId);
   docs.set(boardId, doc);
   const story = createBoardDoc(storyboardId);
@@ -82,8 +93,20 @@ function setUp() {
   const b = addFrame(doc, two.id, null, {}, opts);
   return { doc, story, one, two, a, b };
 }
+const late: Array<{ scenes: number; lost: number }> = [];
 const move = (doc: Y.Doc, target: Parameters<typeof moveScenes>[0]['target']) =>
-  moveScenes({ doc, projectId: 'p', boardId, userId: 'u1', boards, target });
+  moveScenes({
+    doc,
+    projectId: 'p',
+    boardId,
+    userId: 'u1',
+    boards,
+    target,
+    measure: (card) => ({ w: card.w ?? 280, h: card.h ?? 120 }),
+    onLate: (notice) => late.push(notice),
+  });
+const sync = (from: Y.Doc, to: Y.Doc) =>
+  Y.applyUpdate(to, Y.encodeStateAsUpdate(from, Y.encodeStateVector(to)));
 const ids = (doc: Y.Doc) => listElements(doc).map((e) => e.id);
 
 describe('a move never loses what changes meanwhile', () => {
@@ -141,21 +164,63 @@ describe('a move never loses what changes meanwhile', () => {
     expect(ids(story)).toContain(two.id);
   });
 
-  it('never deletes a storyboard: one made for the move goes to the trash only untouched', async () => {
-    const first = setUp();
-    const moved = await move(first.doc, { title: 'New', new: true });
-    await moved.undo();
-    expect(ids(first.doc)).toEqual(expect.arrayContaining([first.one.id, first.two.id]));
-    expect(listElements(first.doc).some((e) => e.type === 'board')).toBe(false);
-    expect(deleted).toEqual([`/boards/${created[0]}`]);
-
-    const second = setUp();
-    const again = await move(second.doc, { title: 'New', new: true });
-    const made = docs.get(created[0] ?? '') as Y.Doc;
-    addScene(made, { number: '9', title: 'Someone else’s' }, opts);
-    await again.undo();
+  it('never deletes nor trashes a storyboard; one made for the move and left empty is named', async () => {
+    const { doc, one, two } = setUp();
+    const moved = await move(doc, { title: 'New', new: true });
+    const { emptyStoryboard } = await moved.undo();
+    expect(ids(doc)).toEqual(expect.arrayContaining([one.id, two.id]));
+    expect(listElements(doc).some((e) => e.type === 'board')).toBe(false);
+    expect(emptyStoryboard).toBe('New');
     expect(deleted).toEqual([]);
-    expect(listElements(made).some((e) => e.type === 'scene' && e.number === '9')).toBe(true);
+  });
+
+  it('puts the scenes back clear of a card that took their place, their layout kept', async () => {
+    const { doc, one, two } = setUp();
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    // Someone put a note where scene one was.
+    createElement(doc, 'note', { x: 0, y: 0 }, { w: 200, h: 200 }, opts);
+    await result.undo();
+    const back = listElements(doc);
+    const a = back.find((e) => e.id === one.id);
+    const b = back.find((e) => e.id === two.id);
+    expect(a && b ? [b.x - a.x, b.y - a.y] : null).toEqual([300, 0]);
+    expect(
+      a && intersects({ x: a.x, y: a.y, w: 280, h: 120 }, { x: 0, y: 0, w: 200, h: 200 }),
+    ).toBe(false);
+  });
+
+  it('carries a colleague’s change that lands after the removal to the storyboard', async () => {
+    const { doc, story, a } = setUp();
+    late.length = 0;
+    const theirs = new Y.Doc();
+    sync(doc, theirs);
+    await move(doc, { id: storyboardId, title: 'Film' });
+    // Their change was sent before they saw the scenes go.
+    updateElement(theirs, a.id, { action: 'Late but kept' });
+    sync(theirs, doc);
+    await Promise.resolve();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(listElements(story).find((e) => e.id === a.id)).toMatchObject({
+      action: 'Late but kept',
+    });
+    expect(late).toEqual([{ scenes: 1, lost: 0 }]);
+  });
+
+  it('carries a change that lands in the storyboard while Undo takes the copies off', async () => {
+    const { doc, story, a } = setUp();
+    late.length = 0;
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    const theirs = new Y.Doc();
+    sync(story, theirs);
+    await result.undo();
+    updateElement(theirs, a.id, { action: 'Drawn while undoing' });
+    sync(theirs, story);
+    await new Promise((r) => setTimeout(r, 0));
+    for (const end of lingering) end();
+    expect(listElements(doc).find((e) => e.id === a.id)).toMatchObject({
+      action: 'Drawn while undoing',
+    });
+    expect(late).toEqual([{ scenes: 1, lost: 0 }]);
   });
 
   it('never trashes a storyboard that was there before', async () => {

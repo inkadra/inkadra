@@ -7186,6 +7186,11 @@
     "copiesKept_one": "Ihre Kopie wurde inzwischen im Storyboard geändert und bleibt auch dort.",
     "copiesKept_other": "{{count}} ihrer Kopien wurden inzwischen im Storyboard geändert und bleiben auch dort.",
     "undoPartial_one": "1 Szene bleibt in „{{title}}“: Sie wurde dort geändert oder hat Kommentare.",
-    "undoPartial_other": "{{count}} Szenen bleiben in „{{title}}“: Sie wurden dort geändert oder haben Kommentare."
+    "undoPartial_other": "{{count}} Szenen bleiben in „{{title}}“: Sie wurden dort geändert oder haben Kommentare.",
+    "late_one": "Jemand hat 1 Szene geändert, während sie verschoben wurde: Die Änderung ist mitgekommen.",
+    "late_other": "Jemand hat {{count}} Szenen geändert, während sie verschoben wurden: Die Änderungen sind mitgekommen.",
+    "lateLost_one": "Ein Teil konnte nicht mitkommen: Prüfe diese Szene.",
+    "lateLost_other": "Teile konnten nicht mitkommen: Prüfe diese {{count}} Szenen.",
+    "empty": "„{{title}}“ ist jetzt leer: Du kannst es löschen."
   }
 }

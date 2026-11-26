@@ -7186,6 +7186,11 @@
     "copiesKept_one": "A cópia dela foi alterada no storyboard nesse meio-tempo e também fica lá.",
     "copiesKept_other": "{{count}} das cópias foram alteradas no storyboard nesse meio-tempo e também ficam lá.",
     "undoPartial_one": "1 cena fica em “{{title}}”: foi alterada lá ou tem comentários.",
-    "undoPartial_other": "{{count}} cenas ficam em “{{title}}”: foram alteradas lá ou têm comentários."
+    "undoPartial_other": "{{count}} cenas ficam em “{{title}}”: foram alteradas lá ou têm comentários.",
+    "late_one": "Alguém alterou 1 cena enquanto ela era movida: a alteração foi junto.",
+    "late_other": "Alguém alterou {{count}} cenas enquanto eram movidas: as alterações foram junto.",
+    "lateLost_one": "Uma parte não pôde ir junto: confira essa cena.",
+    "lateLost_other": "Algumas partes não puderam ir junto: confira essas {{count}} cenas.",
+    "empty": "“{{title}}” agora está vazio: você pode excluí-lo."
   }
 }

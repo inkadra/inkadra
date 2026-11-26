@@ -2,8 +2,10 @@
 import { compareZ, type Element, roots } from '@inkadra/doc-schema';
 import { generateNKeysBetween } from 'fractional-indexing';
 import type * as Y from 'yjs';
+import { freeSpot } from './arrange.ts';
 import { cloneMap, deleteElements, foreignCardsIn, keyAtEnd, listElements } from './board.ts';
 import type { SceneElement } from './film.ts';
+import { boundsOf, intersects, type Rect } from './geometry.ts';
 
 /**
  * Scenes live in storyboards (decision 0140): the loose scenes of an ordinary board move into a
@@ -235,6 +237,44 @@ export function copySceneCards(
     (id) => at.get(id) as CardPlace,
     origin,
   );
+}
+
+/**
+ * Where cards coming back to a board go (decision 0140): where they were, unless something there
+ * now covers them; then the whole group, its layout kept, in the nearest free space, above the
+ * other cards. `cards` are the top cards with their size; a card whose column or tray is gone
+ * comes back on the canvas. `taken`: the cards on the canvas now; `aboveKey`: a key after them.
+ */
+export function placesBack(
+  cards: ReadonlyArray<{ id: string; place: CardPlace; w: number; h: number }>,
+  taken: readonly Rect[],
+  containers: ReadonlySet<string>,
+  aboveKey: string,
+): Map<string, CardPlace> {
+  const out = new Map<string, CardPlace>();
+  const onCanvas = cards.filter((c) => c.place.parent === null || !containers.has(c.place.parent));
+  for (const c of cards) if (!onCanvas.includes(c)) out.set(c.id, c.place);
+  const rects = onCanvas.map((c) => ({ x: c.place.x, y: c.place.y, w: c.w, h: c.h }));
+  const box = boundsOf(rects);
+  if (!box) return out;
+  const free = !rects.some((r) => taken.some((t) => intersects(r, t)));
+  const at = free ? box : freeSpot(box, { w: box.w, h: box.h }, taken);
+  const dx = at.x - box.x;
+  const dy = at.y - box.y;
+  const sorted = [...onCanvas].sort((a, b) =>
+    compareZ({ z: a.place.z, id: a.id }, { z: b.place.z, id: b.id }),
+  );
+  const keys = generateNKeysBetween(aboveKey, null, sorted.length);
+  sorted.forEach((c, i) => {
+    const moved = !free || c.place.parent !== null;
+    out.set(c.id, {
+      x: c.place.x + dx,
+      y: c.place.y + dy,
+      z: moved ? (keys[i] ?? aboveKey) : c.place.z,
+      parent: null,
+    });
+  });
+  return out;
 }
 
 /** Takes the moved cards off a board; false, removing nothing, when it cannot (0062). */

@@ -7186,6 +7186,11 @@
     "copiesKept_one": "Its copy was changed in the storyboard meanwhile and stays there too.",
     "copiesKept_other": "{{count}} of their copies were changed in the storyboard meanwhile and stay there too.",
     "undoPartial_one": "1 scene stays in “{{title}}”: it was changed there or has comments.",
-    "undoPartial_other": "{{count}} scenes stay in “{{title}}”: they were changed there or have comments."
+    "undoPartial_other": "{{count}} scenes stay in “{{title}}”: they were changed there or have comments.",
+    "late_one": "A colleague changed 1 scene while it moved: the change went with it.",
+    "late_other": "A colleague changed {{count}} scenes while they moved: the changes went with them.",
+    "lateLost_one": "Part of it could not follow: check that scene.",
+    "lateLost_other": "Parts of them could not follow: check those {{count}} scenes.",
+    "empty": "“{{title}}” is now empty: you can delete it."
   }
 }

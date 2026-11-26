@@ -9,6 +9,7 @@ export * from './far-look.ts';
 export * from './film.ts';
 export * from './geometry.ts';
 export * from './image-crop.ts';
+export * from './late-edits.ts';
 export * from './moodboard.ts';
 export * from './plan.ts';
 export * from './plan-attach.ts';

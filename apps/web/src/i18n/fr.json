@@ -7186,6 +7186,11 @@
     "copiesKept_one": "Sa copie a été modifiée dans le storyboard entre-temps et y reste aussi.",
     "copiesKept_other": "{{count}} de leurs copies ont été modifiées dans le storyboard entre-temps et y restent aussi.",
     "undoPartial_one": "1 scène reste dans « {{title}} » : elle y a été modifiée ou a des commentaires.",
-    "undoPartial_other": "{{count}} scènes restent dans « {{title}} » : elles y ont été modifiées ou ont des commentaires."
+    "undoPartial_other": "{{count}} scènes restent dans « {{title}} » : elles y ont été modifiées ou ont des commentaires.",
+    "late_one": "Quelqu’un a modifié 1 scène pendant son déplacement : la modification l’a suivie.",
+    "late_other": "Quelqu’un a modifié {{count}} scènes pendant leur déplacement : les modifications les ont suivies.",
+    "lateLost_one": "Une partie n’a pas pu suivre : vérifiez cette scène.",
+    "lateLost_other": "Certaines parties n’ont pas pu suivre : vérifiez ces {{count}} scènes.",
+    "empty": "« {{title}} » est maintenant vide : vous pouvez le supprimer."
   }
 }

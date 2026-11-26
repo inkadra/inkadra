@@ -3,11 +3,13 @@ import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import { createElement, listElements, updateElement } from './board.ts';
 import { addFrame, addScene, addStroke, storyboardOf } from './film.ts';
+import { intersects } from './geometry.ts';
 import {
   type CardPlace,
   cardPrints,
   copyCards,
   copySceneCards,
+  placesBack,
   placesOf,
   planSceneMove,
   removeSceneCards,
@@ -158,5 +160,42 @@ describe('prints of a move (decision 0140)', () => {
     expect(back.find((e) => e.id === one.id)).toMatchObject(places.get(one.id) ?? {});
     expect(back.find((e) => e.id === a.id)?.parent).toBe(one.id);
     expect(() => copyCards(target, doc, [one.id], (id) => places.get(id) as CardPlace)).toThrow();
+  });
+});
+
+describe('placesBack (decision 0140)', () => {
+  const card = (id: string, x: number, y: number, z = 'a0', parent: string | null = null) => ({
+    id,
+    place: { x, y, z, parent },
+    w: 200,
+    h: 100,
+  });
+
+  it('puts cards where they were when that place is still free', () => {
+    const back = placesBack([card('s1', 0, 0), card('s2', 300, 0, 'a1')], [], new Set(), 'a5');
+    expect(back.get('s1')).toEqual({ x: 0, y: 0, z: 'a0', parent: null });
+    expect(back.get('s2')).toEqual({ x: 300, y: 0, z: 'a1', parent: null });
+  });
+
+  it('moves the whole group, its layout kept, clear of what is there now, above the rest', () => {
+    const taken = [{ x: 0, y: 0, w: 320, h: 260 }];
+    const back = placesBack([card('s1', 0, 0), card('s2', 300, 0, 'a1')], taken, new Set(), 'a5');
+    const one = back.get('s1');
+    const two = back.get('s2');
+    expect(two && one ? [two.x - one.x, two.y - one.y] : null).toEqual([300, 0]);
+    for (const p of [one, two])
+      expect(p && intersects({ x: p.x, y: p.y, w: 200, h: 100 }, taken[0] as never)).toBe(false);
+    expect((one?.z ?? '') > 'a5' && (two?.z ?? '') > (one?.z ?? '')).toBe(true);
+  });
+
+  it('keeps a card in its column, and brings one whose column is gone onto the canvas', () => {
+    const back = placesBack(
+      [card('list', 10, 10, 'a0', 'col1'), card('plan', 10, 10, 'a0', 'gone')],
+      [],
+      new Set(['col1']),
+      'a5',
+    );
+    expect(back.get('list')?.parent).toBe('col1');
+    expect(back.get('plan')?.parent).toBeNull();
   });
 });
