@@ -165,6 +165,18 @@ export function placesOf(doc: Y.Doc, ids: readonly string[]): Map<string, CardPl
 }
 
 /**
+ * These cards and their children (a scene's frames), as the server keys what it keeps about
+ * cards: a move takes along the data of every one of them (decision 0140).
+ */
+export function withChildren(doc: Y.Doc, ids: readonly string[]): string[] {
+  const picked = new Set(ids);
+  const children = [...roots(doc).elements.entries()]
+    .filter(([id, map]) => !picked.has(id) && picked.has(map.get('parent') as string))
+    .map(([id]) => id);
+  return [...ids, ...children];
+}
+
+/**
  * Copies cards with their children from `source` into `target` as they are stored, ids and
  * authors included, each top card at the place `placeOf` gives. Throws, writing nothing, when
  * an id is already there or a card is gone from `source`.

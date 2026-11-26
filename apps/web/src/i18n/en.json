@@ -5567,7 +5567,7 @@
           },
           "5": {
             "title": "Scenes outside a storyboard",
-            "text": "Scenes belong in a storyboard: Move takes them there with their frames, and the storyboard’s card stays on the board."
+            "text": "Scenes belong in a storyboard: Move takes them there with their frames and comments, and the storyboard’s card stays on the board."
           }
         },
         "where": "The tour starts on a storyboard with at least one scene: add one and try again."
@@ -7168,6 +7168,10 @@
     "stay_other": "{{count}} scenes stay here: comments, reviews, shooting days or links on this board point at them.",
     "none_one": "The scene stays here: comments, reviews, shooting days or links on this board point at it.",
     "none_other": "The {{count}} scenes stay here: comments, reviews, shooting days or links on this board point at them.",
+    "stayTied_one": "1 scene stays here: a link to this board, the shooting day of one of its plans or a card this version cannot read keeps it here.",
+    "stayTied_other": "{{count}} scenes stay here: links to this board, shooting days of their plans or cards this version cannot read keep them here.",
+    "noneTied_one": "The scene stays here: a link to this board, the shooting day of one of its plans or a card this version cannot read keeps it here.",
+    "noneTied_other": "The {{count}} scenes stay here: links to this board, shooting days of their plans or cards this version cannot read keep them here.",
     "where": "Where",
     "new": "New storyboard",
     "addTo": "Add to “{{title}}”",
@@ -7176,6 +7180,15 @@
     "cancel": "Cancel",
     "confirm": "Move",
     "moved": "{{scenes}} now in “{{title}}”.",
+    "dataMoved": "Their comments, reviews and shooting days went with them.",
+    "guests_one": "{{count}} scene has comments or picks from guests whose current link won’t reach the storyboard.",
+    "guests_other": "{{count}} scenes have comments or picks from guests whose current link won’t reach the storyboard.",
+    "splitHere_one": "{{count}} scene is both here and in “{{title}}”: its comments are with the one here.",
+    "splitHere_other": "{{count}} scenes are both here and in “{{title}}”: their comments are with the ones here.",
+    "splitThere_one": "{{count}} scene stays here, but its comments are with its copy in “{{title}}”.",
+    "splitThere_other": "{{count}} scenes stay here, but their comments are with their copies in “{{title}}”.",
+    "splitUnknown_one": "{{count}} scene may be both here and in “{{title}}”: check where its comments are.",
+    "splitUnknown_other": "{{count}} scenes may be both here and in “{{title}}”: check where their comments are.",
     "failed": "The scenes could not be moved. Nothing changed.",
     "undoFailed": "The move could not be undone: the scenes are still in “{{title}}”.",
     "newScene": "New scene in the storyboard…",
@@ -7188,6 +7201,8 @@
     "copiesKept_other": "{{count}} of their copies were changed in the storyboard meanwhile and stay there too.",
     "undoPartial_one": "1 scene stays in “{{title}}”: it was changed there or has comments.",
     "undoPartial_other": "{{count}} scenes stay in “{{title}}”: they were changed there or have comments.",
+    "undoChanged_one": "1 scene stays in “{{title}}”: it was changed there.",
+    "undoChanged_other": "{{count}} scenes stay in “{{title}}”: they were changed there.",
     "late_one": "A colleague changed 1 scene while it moved: the change went with it.",
     "late_other": "A colleague changed {{count}} scenes while they moved: the changes went with them.",
     "lateLost_one": "Part of it could not follow: check that scene.",

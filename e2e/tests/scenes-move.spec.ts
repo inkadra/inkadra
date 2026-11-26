@@ -6,7 +6,8 @@ import { buildScriptPdf } from '../../apps/web/src/board/film/screenplay/fixture
  * Decision 0140: scenes live in storyboards. Scenes left on an ordinary board (here from a
  * screenplay import with Storyboard off) are offered once to move; they move with their frames
  * in one step that Undo takes back; with several storyboards the dialog asks, the one opened
- * last chosen; the canvas menu makes new scenes in a storyboard.
+ * last chosen; the canvas menu makes new scenes in a storyboard. A scene with a comment moves
+ * too, its comment with it, and comes back with it on Undo.
  */
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.
 test.describe.configure({ mode: 'serial' });
@@ -92,6 +93,15 @@ async function importScenes(page: Page, phone: boolean) {
 
 const scenes = (page: Page) => page.locator('[data-type="scene"]');
 
+/** The cards of a board that have comments. */
+async function commented(page: Page, boardId: string) {
+  const res = await page.request.get(`/api/v1/boards/${boardId}/comment-counts`);
+  expect(res.ok()).toBe(true);
+  return ((await res.json()) as { items: Array<{ elementId: string | null }> }).items.map(
+    (c) => c.elementId,
+  );
+}
+
 for (const width of [1280, 390]) {
   const phone = width < 768;
   test(`loose scenes move to a storyboard, and back (${width} px)`, async ({ page }) => {
@@ -116,8 +126,23 @@ for (const width of [1280, 390]) {
 
       // Turned on later: the board offers once to move them.
       await preferences(page, { modulesOff: [] });
-      await newStoryboard(page, project, 'Ultimo treno');
+      const story = await newStoryboard(page, project, 'Ultimo treno');
       await page.reload();
+      // A comment on a scene: the scene moves all the same, its comment with it.
+      const sceneId = (await scenes(page).first().getAttribute('data-el')) ?? '';
+      expect(sceneId).not.toBe('');
+      await expect
+        .poll(
+          async () =>
+            (
+              await page.request.post(`/api/v1/boards/${project.rootBoardId}/comments`, {
+                headers: { origin: new URL(page.url()).origin },
+                data: { body: 'Più luce qui', elementId: sceneId },
+              })
+            ).status(),
+          { timeout: 15_000 },
+        )
+        .toBe(201);
       const notice = page.locator('.loose-scenes');
       await expect(notice).toContainText(
         /Su questa board ci sono \d+ scene fuori da uno storyboard\./,
@@ -134,12 +159,19 @@ for (const width of [1280, 390]) {
       await expect(scenes(page)).toHaveCount(0);
       await expect(page.locator('[data-type="board"]')).toHaveCount(1);
       await expect(notice).toHaveCount(0);
+      await expect(moved).toContainText(
+        'Commenti, revisioni e giorni di ripresa sono andati con loro.',
+      );
+      expect(await commented(page, story)).toContain(sceneId);
+      expect(await commented(page, project.rootBoardId)).not.toContain(sceneId);
       await shoot(page, 'moved');
 
       // Undo takes everything back: the scenes return, the card goes.
       await moved.getByRole('button', { name: 'Annulla' }).click();
       await expect(scenes(page).first()).toBeVisible({ timeout: 20_000 });
       await expect(page.locator('[data-type="board"]')).toHaveCount(0);
+      await expect.poll(() => commented(page, project.rootBoardId)).toContain(sceneId);
+      expect(await commented(page, story)).not.toContain(sceneId);
       // Answered once: the notice does not come back, the ⋯ menu keeps the action.
       await page.reload();
       await expect(scenes(page).first()).toBeVisible();

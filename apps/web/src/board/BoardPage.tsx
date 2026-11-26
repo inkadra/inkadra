@@ -129,6 +129,7 @@ import { missingOwnedBoard, projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
+import { useSceneMoveBusy } from './film/data-moves.ts';
 
 // The film views, the set plan and the export dialog (with pdf-lib) load when first shown,
 // not with the board (#827). Each waits behind its own Suspense: the rest of the page stays.
@@ -665,6 +666,8 @@ function BoardScreen({
   }, [kind, user, projectId, boardId]);
   /** Scenes of this board that could move to a storyboard, as the canvas counts them. */
   const [looseScenes, setLooseScenes] = useState(0);
+  // One scene move at a time on the board, also while the canvas is not shown (0141).
+  const sceneMoveBusy = useSceneMoveBusy(boardId);
   const moveScenesItem = useCallback(() => {
     if (view !== 'canvas') setView('canvas', beginViewSwitch(view, 'canvas'));
     setParams(
@@ -1016,6 +1019,8 @@ function BoardScreen({
                             icon: 'storyboard' as const,
                             kind: 'storyboard' as const,
                             action: moveScenesItem,
+                            // One move at a time (decision 0141).
+                            disabled: sceneMoveBusy,
                           },
                           { divider: true as const },
                         ]
@@ -1210,6 +1215,7 @@ function BoardScreen({
       outside,
       openOutside,
       looseScenes,
+      sceneMoveBusy,
       moveScenesItem,
       versionable,
       productionLink,

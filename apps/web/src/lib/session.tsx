@@ -1,11 +1,13 @@
 import {
   ASSET_LOOKUP_CAPABILITY,
+  ELEMENT_DATA_MOVE_CAPABILITY,
   type Instance,
   type InstanceVersion,
   type User,
 } from '@inkadra/shared';
 import { type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { setAssetLookup } from '../board/assets.ts';
+import { setElementDataMove } from '../board/film/data-moves.ts';
 import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 import { setSignedInId } from './me.ts';
@@ -61,6 +63,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setEnrollmentRequired(required);
     setVersion(identity?.version);
     setAssetLookup(identity?.capabilities?.includes(ASSET_LOOKUP_CAPABILITY) ?? false);
+    setElementDataMove(identity?.capabilities?.includes(ELEMENT_DATA_MOVE_CAPABILITY) ?? false);
     setInstance(inst);
     setUser(me);
     setSignedInId(me?.id ?? null);
