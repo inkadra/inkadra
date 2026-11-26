@@ -1455,6 +1455,11 @@ export function updatePlanItems(
  * undefined is removed), and keeps its id, so measures and attachments that point at it still
  * find it in the setup's view. An item the target has no room for, or locked on its own
  * (decision 0114), stays where it was. Returns the ids moved.
+ *
+ * One the target already holds (moved there by someone else) only leaves the source. Two people
+ * moving the same item at once each append a copy; the server keeps the first (doc-schema
+ * preparePlanListsOf, issue #1033). The item is moved as this client read it: a change of it made
+ * meanwhile on another client is lost with the source's copy (last writer wins).
  */
 export function transferPlanItems(
   doc: Y.Doc,
@@ -1486,12 +1491,14 @@ export function transferPlanItems(
         .filter(({ stored }) => !itemLocked(stored))
         .slice(0, Math.max(0, LIMITS[kind] - to.length));
       for (const { index } of [...going].reverse()) from.delete(index, 1);
+      const there = new Set(to.toArray().map(idOf));
       for (const { stored } of going) {
+        moved.push(stored.id);
+        if (there.has(stored.id)) continue;
         const next: Record<string, unknown> = { ...stored, ...patch(stored) };
         for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
         if (kind === 'icons') to.push([new Y.Map<unknown>(Object.entries(next))]);
         else to.push([next]);
-        moved.push(stored.id);
       }
     }
   }, origin);

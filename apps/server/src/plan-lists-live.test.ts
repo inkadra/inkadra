@@ -76,3 +76,19 @@ it('prepares the convertible lists of a plan that holds one that cannot be, and 
   expect(errors).toEqual([]);
   stop();
 });
+
+it('removes the second copy two clients moving one item into a list left (#1033)', async () => {
+  const doc = board();
+  roots(doc).elements.get(PLAN)!.set('icons', new Y.Array());
+  const stop = preparePlanListsOnChange(doc, (err) => {
+    throw err;
+  });
+  const icons = () => roots(doc).elements.get(PLAN)!.get('icons') as Y.Array<unknown>;
+  icons().push([new Y.Map<unknown>(Object.entries(lamp))]);
+  await flush();
+  // The other client's copy, arriving later: pushed into the list that is already there.
+  icons().push([new Y.Map<unknown>(Object.entries({ ...lamp, x: 140 }))]);
+  await flush();
+  expect(icons().toJSON()).toEqual([lamp]);
+  stop();
+});
