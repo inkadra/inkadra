@@ -475,6 +475,8 @@ export async function linkIncludesBoard(
   db: Pick<Database, 'select' | 'execute'>,
   link: { boardId: string; includeSubBoards: boolean; createdBy: string | null },
   access: BoardAccess,
+  /** A board card about to be there (a move puts it in place, decision 0141): counted visible. */
+  assume?: { parent: string; child: string },
 ): Promise<boolean> {
   // Guests never reach the Production board (decision 0123).
   if (!link.createdBy || access.board.kind === 'production') return false;
@@ -486,7 +488,8 @@ export async function linkIncludesBoard(
     if (!id || !atLeast((await boardRole(db, { id: link.createdBy }, id))?.role ?? null, 'editor'))
       return false;
     const child = access.chain[i - 1]?.id;
-    if (child && !(await visibleBoardCard(db, id, child))) return false;
+    const assumed = assume?.parent === id && assume.child === child;
+    if (child && !assumed && !(await visibleBoardCard(db, id, child))) return false;
   }
   return true;
 }

@@ -15,6 +15,7 @@ export * from './common.ts';
 export * from './constants.ts';
 export * from './crew.ts';
 export * from './demo.ts';
+export * from './element-data.ts';
 export * from './export-settings.ts';
 export * from './feedback.ts';
 export * from './feedback-redaction.ts';

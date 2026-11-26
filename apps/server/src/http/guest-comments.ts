@@ -31,6 +31,7 @@ import {
 } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { boardRolesForPeople } from '../access.ts';
+import { lockCardData } from '../card-moves.ts';
 import type { Database } from '../db/client.ts';
 import { comment, commentReaction, shareGuest, user } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
@@ -447,20 +448,31 @@ export function registerGuestCommentRoutes(
       );
       throw new HttpError('rate_limited', 'Too many comments: try again later.');
     }
-    const [row] = await db
-      .insert(comment)
-      .values({
-        projectId: ctx.link.projectId,
-        boardId,
-        elementId,
-        threadId,
-        authorGuestId: ctx.guest.id,
-        shareLinkId: ctx.link.id,
-        visibility: 'everyone',
-        body: input.body,
-        pin: threadId ? null : (input.pin ?? null),
-      })
-      .returning();
+    const [row] = await db.transaction(async (tx) => {
+      // Waits for a move of this board's card data; a card or thread that moved is not here.
+      await lockCardData(tx, boardId, threadId ? null : elementId);
+      if (threadId) {
+        const [still] = await tx
+          .select({ id: comment.id })
+          .from(comment)
+          .where(and(eq(comment.id, threadId), eq(comment.boardId, boardId)));
+        if (!still) throw new HttpError('not_found', 'Comment not found.');
+      }
+      return tx
+        .insert(comment)
+        .values({
+          projectId: ctx.link.projectId,
+          boardId,
+          elementId,
+          threadId,
+          authorGuestId: ctx.guest.id,
+          shareLinkId: ctx.link.id,
+          visibility: 'everyone',
+          body: input.body,
+          pin: threadId ? null : (input.pin ?? null),
+        })
+        .returning();
+    });
     if (!row) throw new Error('Comment insert returned nothing');
     await afterWrite({
       kind: 'comment',

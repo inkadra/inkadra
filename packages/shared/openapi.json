@@ -10430,6 +10430,93 @@
           "items"
         ]
       },
+      "ElementDataMoved": {
+        "type": "object",
+        "properties": {
+          "comments": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Comments and replies."
+          },
+          "reactions": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Reactions on the cards themselves."
+          },
+          "reviews": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Review statuses (team and guest links)."
+          },
+          "reviewEvents": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Entries of the review history."
+          },
+          "picks": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Guest picks and stars."
+          },
+          "notifications": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "shootingDays": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Shooting days with a block that pointed at one of the cards. Days of boards in the trash are left as they are."
+          },
+          "guestsOutOfReach": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "description": "Element id in the board document.",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            },
+            "description": "Cards whose moved comments, decisions or picks come from guests of an active link that does not reach the other board: those guests no longer see them."
+          }
+        },
+        "required": [
+          "comments",
+          "reactions",
+          "reviews",
+          "reviewEvents",
+          "picks",
+          "notifications",
+          "shootingDays",
+          "guestsOutOfReach"
+        ]
+      },
+      "MoveElementData": {
+        "type": "object",
+        "properties": {
+          "toBoardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "The board the cards are on now (copied there with the same ids). Another board of the same project, not in the trash."
+          },
+          "elementIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "description": "Element id in the board document.",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            },
+            "minItems": 1,
+            "maxItems": 5000,
+            "description": "1 to 5000 distinct card ids, children (frames) included."
+          }
+        },
+        "required": [
+          "toBoardId",
+          "elementIds"
+        ],
+        "additionalProperties": false
+      },
       "BoardReviews": {
         "type": "object",
         "properties": {
@@ -30310,6 +30397,117 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable: the database is unreachable or busy; retry after `Retry-After` seconds (code `unavailable`, capability `unavailable-errors`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/element-data/move": {
+      "post": {
+        "tags": [
+          "Comments"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Move what the server keeps about some cards to the board they were copied to.",
+        "description": "For cards moved to another board of the same project with the same ids (decision 0140: scenes moving into a storyboard). Comments with their replies, reactions and read marks, reactions on the cards, review statuses and their history, guest picks, notifications about the cards, and the shooting-day blocks that point at them follow the cards to `toBoardId`, in one transaction; nothing is copied or deleted. From then on, comments, reactions, reviews and picks about those cards on the source board answer 404 `not_found` (a move back lifts it). Days of boards in the trash are left as they are. Needs editor on both boards, and on the board of each shooting day it changes. Safe to retry: what is no longer on the source board is not moved again, and a retry of a done move answers zeros. Moving back is the same call the other way. 409 `conflict` when the other board already holds data about one of these cards (nothing moved). Servers that answer advertise `element-data-move` on `GET /instance/version`; an older server answers 404 `not_found`. Open boards on both sides are told with the stateless collab messages `{\"type\":\"comments\"}` and `{\"type\":\"review\"}` and fetch again.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveElementData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "How many rows followed the cards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElementDataMoved"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request: no ids, too many, an id twice, the same board, or a board of another project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in (for a recognised bearer token, details: InvalidToken)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed; also a token whose scope does not cover this route (decision 0137) or an administrator who must set up two-factor first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The other board already holds data about one of these cards",
             "content": {
               "application/json": {
                 "schema": {

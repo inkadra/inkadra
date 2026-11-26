@@ -24,6 +24,7 @@ import {
   boardGrant,
   boardVersion,
   comment,
+  elementMove,
   elementReview,
   elementReviewEvent,
   notification,
@@ -2607,6 +2608,63 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   });
 
   // Proofing --------------------------------------------------------------------------------
+
+  it('waits for a move of the card’s data, then refuses picks about the moved card (0141)', async () => {
+    const path = g(linkA, `/boards/${B.A}/elements/${E.img}/pick`);
+    const pick = (body: unknown) => call({ cookie: anna }, 'PUT', path, body);
+    const mine = and(
+      eq(sharePick.boardId, B.A),
+      eq(sharePick.elementId, E.img),
+      eq(sharePick.guestId, annaId),
+    );
+    const before = await db.select().from(sharePick).where(mine);
+    /** A pick sent while a move of the card's data holds the board, which then commits. */
+    const during = async (body: unknown) => {
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let locked = () => {};
+      const isLocked = new Promise<void>((resolve) => {
+        locked = resolve;
+      });
+      const moving = db.transaction(async (tx) => {
+        await tx.select().from(board).where(eq(board.id, B.A)).for('no key update');
+        await tx.insert(elementMove).values({ boardId: B.A, elementId: E.img, toBoardId: B.A1 });
+        locked();
+        await held;
+      });
+      await isLocked;
+      let settled = false;
+      const res = pick(body).then((r) => {
+        settled = true;
+        return r;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(settled).toBe(false);
+      release();
+      await moving;
+      const out = await res;
+      await db.delete(elementMove);
+      return out;
+    };
+    try {
+      expect((await during({ pick: 'picked' })).status).toBe(404);
+      expect((await pick({ pick: 'picked' })).status).toBe(200);
+      const kept = await db.select().from(sharePick).where(mine);
+      expect(kept).toHaveLength(1);
+      // Taking it back during the move: refused too, the row is left for the move to carry.
+      expect((await during({ pick: null, stars: null })).status).toBe(404);
+      expect(await db.select().from(sharePick).where(mine)).toEqual(kept);
+      // After the move.
+      await db.insert(elementMove).values({ boardId: B.A, elementId: E.img, toBoardId: B.A1 });
+      expect((await pick({ pick: 'rejected' })).status).toBe(404);
+    } finally {
+      await db.delete(elementMove);
+      await db.delete(sharePick).where(mine);
+      if (before.length) await db.insert(sharePick).values(before);
+    }
+  });
 
   it('takes picks and stars on pictures, and sums them up for the team', async () => {
     const path = (link: Link, id: string) => g(link, `/boards/${B.A}/elements/${id}/pick`);

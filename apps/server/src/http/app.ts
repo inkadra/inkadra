@@ -40,6 +40,7 @@ import { registerCrewRoutes } from './crew-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
 import { registerDemoRoutes } from './demo-routes.ts';
 import { registerDiagnostics } from './diagnostics.ts';
+import { registerElementDataRoutes } from './element-data-routes.ts';
 import { errorHandler, HttpError, sendError } from './errors.ts';
 import { registerExportSettingsRoutes } from './export-settings-routes.ts';
 import { registerFeedbackRoutes } from './feedback-routes.ts';
@@ -253,6 +254,7 @@ export async function createApp(deps: AppDeps) {
   registerServerRoutes(app, { ...deps, ...monitor });
   registerLoadTestRoutes(app, { ...deps, store: monitor.store });
   registerCommentRoutes(app, deps);
+  registerElementDataRoutes(app, deps);
   registerReviewRoutes(app, deps);
   registerScheduleRoutes(app, deps);
   registerCrewRoutes(app, deps);

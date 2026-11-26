@@ -81,6 +81,7 @@ import {
   UpdateCrewMember,
 } from './crew.ts';
 import { CreateDemoSandbox, DemoSandbox } from './demo.ts';
+import { ElementDataMoved, MoveElementData } from './element-data.ts';
 import { ExportSettings, UpdateExportSettings } from './export-settings.ts';
 import {
   CreateFeedback,
@@ -2845,6 +2846,43 @@ registry.registerPath({
     'told with the stateless collab message `{"type":"review"}` and fetch again.',
   request: { params: idParam('boardId') },
   responses: { 200: { description: 'Reactions', ...json(ElementReactions) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/boards/{boardId}/element-data/move'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Move what the server keeps about some cards to the board they were copied to.',
+  description:
+    'For cards moved to another board of the same project with the same ids (decision 0140: ' +
+    'scenes moving into a storyboard). Comments with their replies, reactions and read marks, ' +
+    'reactions on the cards, review statuses and their history, guest picks, notifications ' +
+    'about the cards, and the shooting-day blocks that point at them follow the cards to ' +
+    '`toBoardId`, in one transaction; nothing is copied or deleted. From then on, comments, ' +
+    'reactions, reviews and picks about those cards on the source board answer 404 `not_found` ' +
+    '(a move back lifts it). Days of boards in the trash are left as they are. Needs editor on both ' +
+    'boards, and on the board of each shooting day it changes. Safe to retry: what is no longer ' +
+    'on the source board is not moved again, and a retry of a done move answers zeros. Moving ' +
+    'back is the same call the other way. 409 `conflict` when the other board already holds ' +
+    'data about one of these cards (nothing moved). Servers that answer advertise ' +
+    '`element-data-move` on `GET /instance/version`; an older server answers 404 `not_found`. ' +
+    'Open boards on both sides are told with the stateless collab messages ' +
+    '`{"type":"comments"}` and `{"type":"review"}` and fetch again.',
+  request: { params: idParam('boardId'), body: { required: true, ...json(MoveElementData) } },
+  responses: {
+    200: { description: 'How many rows followed the cards', ...json(ElementDataMoved) },
+    ...errors,
+    400: {
+      description:
+        'Invalid request: no ids, too many, an id twice, the same board, or a board of another ' +
+        'project',
+      ...json(ApiError),
+    },
+    409: {
+      description: 'The other board already holds data about one of these cards',
+      ...json(ApiError),
+    },
+  },
 });
 registry.registerPath({
   method: 'put',
