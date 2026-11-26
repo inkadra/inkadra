@@ -7,7 +7,7 @@ import {
 } from '@inkadra/shared';
 import { type ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { setAssetLookup } from '../board/assets.ts';
-import { setElementDataMove } from '../board/film/scene-move.ts';
+import { setElementDataMove } from '../board/film/data-moves.ts';
 import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 import { setSignedInId } from './me.ts';

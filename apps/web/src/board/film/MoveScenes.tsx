@@ -2,7 +2,7 @@
 import { Button, Dialog, DialogActions, RadioGroup } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { elementDataMoves } from './scene-move.ts';
+import { elementDataMoves } from './data-moves.ts';
 import './move-scenes.css';
 
 /**

@@ -36,6 +36,7 @@ import type * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
 import { BOARD_CARD_SIZE } from '../BoardCardPreview.tsx';
 import { createBoard, refreshBoards } from '../boards.ts';
+import { elementDataMoves } from './data-moves.ts';
 import { loadBoardDays } from './production-days.ts';
 import { writeToBoard } from './send-to-storyboard.ts';
 
@@ -114,15 +115,7 @@ export async function serverHolds(
   return held;
 }
 
-/**
- * Whether the server moves what it keeps about cards along with them (capability
- * `element-data-move`): then commented scenes move too, their data re-keyed to the storyboard.
- */
-let dataMoves = false;
-export function setElementDataMove(available: boolean) {
-  dataMoves = available;
-}
-export const elementDataMoves = () => dataMoves;
+export { elementDataMoves, setElementDataMove } from './data-moves.ts';
 
 /**
  * What keeps scenes on the board: the server's data (`serverHolds`), or nothing while the
@@ -132,7 +125,7 @@ export const moveHolds = (
   boardId: string,
   boards: readonly Board[] | null,
 ): Promise<Map<string, 'server' | 'days'>> =>
-  dataMoves ? Promise.resolve(new Map()) : serverHolds(boardId, boards);
+  elementDataMoves() ? Promise.resolve(new Map()) : serverHolds(boardId, boards);
 
 /** Moves what the server keeps about these cards (with their frames) to the other board. */
 const moveData = (from: string, to: string, ids: readonly string[]) =>
@@ -237,6 +230,8 @@ export async function moveScenes(opts: {
 }): Promise<SceneMoveResult> {
   const { doc, projectId, boardId, userId, boards, target, only, spot, onLate } = opts;
   const measure = opts.measure ?? ((card: Element) => ({ w: card.w ?? 240, h: card.h ?? 200 }));
+  // One answer for the whole move and its Undo.
+  const dataMoves = elementDataMoves();
   const held = await moveHolds(boardId, boards);
   const first = planSceneMove(doc, held, only);
   if (first.ids.length === 0)
