@@ -1,19 +1,32 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { Icon, type IconName } from '@inkadra/ui';
+import type { UserSummary } from '@inkadra/shared';
+import { anchorLayer, Icon, type IconName } from '@inkadra/ui';
 import type { Transaction } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { ySyncPluginKey } from '@tiptap/y-tiptap';
-import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStoryboard } from './film/storyboard-data.ts';
 import { toggleSelectedHeading } from './note.tsx';
 import { useReviews } from './review-store.ts';
 import type { BoardStore } from './store.ts';
 import { startUpload } from './uploads.ts';
+import './note-sheet.css';
 
 /**
  * The phone tools of a full-screen note (#110, mockup screen 4): a bar that stays above the
- * on-screen keyboard, the `/` menu (shot, to-do, picture) and `@` mentions.
+ * on-screen keyboard, the `/` menu (shot, to-do, picture) and `@` mentions. A note edited on
+ * the board has the same `@` list, `NoteMentionPicker`.
  */
 
 export interface Trigger {
@@ -59,7 +72,12 @@ function useTrigger(editor: Editor | null) {
   const [dismissed, setDismissed] = useState<number | null>(null);
   useEffect(() => {
     if (!editor) return;
-    const read = () => setFound(editor.isFocused ? findTrigger(editor) : null);
+    const read = () => {
+      const next = editor.isFocused ? findTrigger(editor) : null;
+      setFound(next);
+      // A list closed with Escape opens again for an `@` typed anew in the same place.
+      if (!next) setDismissed(null);
+    };
     editor.on('transaction', read);
     editor.on('focus', read);
     editor.on('blur', read);
@@ -71,6 +89,197 @@ function useTrigger(editor: Editor | null) {
   }, [editor]);
   const open = found && found.from !== dismissed ? found : null;
   return { found: open, dismiss: () => setDismissed(found?.from ?? null) };
+}
+
+/** The people a `@` names: the first six whose name holds what follows it. */
+function mentionItems(editor: Editor, found: Found, people: readonly UserSummary[]): Item[] {
+  const query = found.query.toLocaleLowerCase();
+  return people
+    .filter((p) => p.name.toLocaleLowerCase().includes(query))
+    .slice(0, 6)
+    .map((person) => ({
+      key: person.id,
+      label: person.name,
+      run: () => {
+        editor
+          .chain()
+          .focus()
+          .insertContentAt({ from: found.from, to: found.to }, [
+            { type: 'mention', attrs: { id: person.id, label: person.name } },
+            { type: 'text', text: ' ' },
+          ])
+          .run();
+      },
+    }));
+}
+
+/**
+ * The list of a note's `@` and `/` menus, shown while it is open. The editor keeps the focus (and
+ * a phone its keyboard): its arrows, Enter, Tab and Escape drive the list, which it names to
+ * assistive technology with aria-activedescendant.
+ */
+function NoteMenu({
+  editor,
+  items,
+  label,
+  empty,
+  reset,
+  onEscape,
+  menuRef,
+  className,
+  style,
+  popover,
+}: {
+  editor: Editor;
+  items: Item[];
+  label: string;
+  empty?: string;
+  /** Changes when the list is another one: it starts again at its first item. */
+  reset: string;
+  onEscape: () => void;
+  menuRef?: RefObject<HTMLDivElement | null>;
+  className: string;
+  style?: CSSProperties;
+  popover?: 'manual';
+}) {
+  const id = useId();
+  const [active, setActive] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new list starts at its first item
+  useEffect(() => setActive(0), [reset]);
+  const enabled = items.filter((item) => !item.disabled);
+  const menuId = `${id}-menu`;
+  const activeKey = enabled[active]?.key;
+
+  useEffect(() => {
+    const dom = editor.view.dom;
+    dom.setAttribute('aria-controls', menuId);
+    dom.setAttribute('aria-autocomplete', 'list');
+    if (activeKey) dom.setAttribute('aria-activedescendant', `${id}-item-${activeKey}`);
+    return () => {
+      dom.removeAttribute('aria-controls');
+      dom.removeAttribute('aria-autocomplete');
+      dom.removeAttribute('aria-activedescendant');
+    };
+  }, [editor, menuId, id, activeKey]);
+
+  const onKeyDown = (event: globalThis.KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      onEscape();
+      return;
+    }
+    if (enabled.length === 0) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      event.stopPropagation();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      setActive((n) => (n + step + enabled.length) % enabled.length);
+    } else if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      event.stopPropagation();
+      enabled[active]?.run();
+    }
+  };
+  const keys = useRef(onKeyDown);
+  keys.current = onKeyDown;
+  useEffect(() => {
+    // Captured on the editor's wrapper, so the menu goes before ProseMirror's own keys.
+    const host = editor.view.dom.parentElement;
+    if (!host) return;
+    const listen = (event: globalThis.KeyboardEvent) => keys.current(event);
+    host.addEventListener('keydown', listen, true);
+    return () => host.removeEventListener('keydown', listen, true);
+  }, [editor]);
+
+  return (
+    <div
+      ref={menuRef}
+      id={menuId}
+      className={className}
+      role="listbox"
+      aria-label={label}
+      style={style}
+      popover={popover}
+      // The editor keeps the focus and the phone its keyboard; a finger still scrolls the list.
+      onPointerDown={(e) => e.preventDefault()}
+    >
+      {items.length === 0 && empty && <p className="note-phone-menu__empty">{empty}</p>}
+      {items.map((item) => {
+        const index = enabled.indexOf(item);
+        return (
+          // biome-ignore lint/a11y/useKeyWithClickEvents: the keys are the editor's, which keeps the focus and names this option with aria-activedescendant.
+          <div
+            key={item.key}
+            id={`${id}-item-${item.key}`}
+            role="option"
+            tabIndex={-1}
+            aria-selected={index === active}
+            aria-disabled={item.disabled || undefined}
+            className="note-phone-menu__item"
+            onClick={() => !item.disabled && item.run()}
+          >
+            {item.icon && <Icon name={item.icon} size={18} />}
+            <span>
+              {item.label}
+              {item.hint && <small>{item.hint}</small>}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The `@` list of a note edited on the board or in the desktop side panel, the same as the
+ * phone's. It hangs from the `@` in the top layer, so neither the card nor the floating shell
+ * covers it, at any zoom.
+ */
+export function NoteMentionPicker({ editor }: { editor: Editor }) {
+  const { t } = useTranslation();
+  const people = useReviews((s) => s.people);
+  const { found, dismiss } = useTrigger(editor);
+  const layer = useRef<HTMLDivElement>(null);
+  const items = found?.char === '@' ? mentionItems(editor, found, people) : [];
+  const from = items.length > 0 && found ? found.from : null;
+  const close = useRef(dismiss);
+  close.current = dismiss;
+  useLayoutEffect(() => {
+    const el = layer.current;
+    if (from === null || !el) return;
+    const at = {
+      getBoundingClientRect: () => {
+        const c = editor.view.coordsAtPos(from);
+        return new DOMRect(c.left, c.top, 0, c.bottom - c.top);
+      },
+      contains: () => false,
+    };
+    const release = anchorLayer(el, at, () => close.current());
+    // A pan or a zoom of the board moves the `@` away: the list closes rather than float apart.
+    const canvas = editor.view.dom.closest('.canvas');
+    const moves = new MutationObserver(() => {
+      if (canvas?.classList.contains('canvas--moving')) close.current();
+    });
+    if (canvas) moves.observe(canvas, { attributes: true, attributeFilter: ['class'] });
+    return () => {
+      moves.disconnect();
+      release();
+    };
+  }, [editor, from]);
+  if (from === null || !found) return null;
+  return (
+    <NoteMenu
+      editor={editor}
+      items={items}
+      label={t('board.note.mentions')}
+      reset={found.query}
+      onEscape={dismiss}
+      menuRef={layer}
+      className="note-phone-menu note-mention-layer ink-popover"
+      popover="manual"
+    />
+  );
 }
 
 export function NotePhoneTools({
@@ -89,14 +298,12 @@ export function NotePhoneTools({
   onError: (message: string) => void;
 }) {
   const { t } = useTranslation();
-  const id = useId();
   const file = useRef<HTMLInputElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const people = useReviews((s) => s.people);
   const { frames, labels } = useStoryboard(store);
   const { found, dismiss } = useTrigger(editor);
   const [pickingFrame, setPickingFrame] = useState(false);
-  const [active, setActive] = useState(0);
   const [, rerender] = useState(0);
   useEffect(() => {
     if (!editor) return;
@@ -110,8 +317,6 @@ export function NotePhoneTools({
     };
   }, [editor]);
   const query = found?.query.toLocaleLowerCase() ?? '';
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new menu starts at its first item
-  useEffect(() => setActive(0), [found?.char, query, pickingFrame]);
 
   // The shot list has no trigger in the text to follow, and a phone has no Escape: it closes when
   // this person moves on. Another person's edit also moves the selection, and is no reason to.
@@ -239,76 +444,9 @@ export function NotePhoneTools({
     ].filter((item) => item.label.toLocaleLowerCase().startsWith(query));
   } else if (editor && found?.char === '@') {
     listLabel = t('board.note.mentions');
-    items = people
-      .filter((p) => p.name.toLocaleLowerCase().includes(query))
-      .slice(0, 6)
-      .map((person) => ({
-        key: person.id,
-        label: person.name,
-        run: () => {
-          editor
-            .chain()
-            .focus()
-            .insertContentAt({ from: found.from, to: found.to }, [
-              { type: 'mention', attrs: { id: person.id, label: person.name } },
-              { type: 'text', text: ' ' },
-            ])
-            .run();
-        },
-      }));
+    items = mentionItems(editor, found, people);
   }
   const open = items.length > 0 || pickingFrame;
-  const enabled = items.filter((item) => !item.disabled);
-  const menuId = `${id}-menu`;
-  const activeKey = open ? enabled[active]?.key : undefined;
-
-  // The focus stays in the editor, so the editor tells assistive technology what is highlighted.
-  useEffect(() => {
-    const dom = editor?.view.dom;
-    if (!dom || !open) return;
-    dom.setAttribute('aria-controls', menuId);
-    dom.setAttribute('aria-autocomplete', 'list');
-    if (activeKey) dom.setAttribute('aria-activedescendant', `${id}-item-${activeKey}`);
-    return () => {
-      dom.removeAttribute('aria-controls');
-      dom.removeAttribute('aria-autocomplete');
-      dom.removeAttribute('aria-activedescendant');
-    };
-  }, [editor, open, menuId, id, activeKey]);
-
-  /** Arrow keys, Enter and Escape drive the menu before the editor sees them. */
-  const onKeyDown = (event: globalThis.KeyboardEvent) => {
-    if (!open) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      setPickingFrame(false);
-      dismiss();
-      return;
-    }
-    if (enabled.length === 0) return;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      event.stopPropagation();
-      const step = event.key === 'ArrowDown' ? 1 : -1;
-      setActive((n) => (n + step + enabled.length) % enabled.length);
-    } else if (event.key === 'Enter' || event.key === 'Tab') {
-      event.preventDefault();
-      event.stopPropagation();
-      enabled[active]?.run();
-    }
-  };
-
-  const keys = useRef(onKeyDown);
-  keys.current = onKeyDown;
-  useEffect(() => {
-    // Captured on the editor's wrapper, so the menu goes before ProseMirror's own keys.
-    const host = editor?.view.dom.parentElement;
-    if (!host) return;
-    const listen = (event: globalThis.KeyboardEvent) => keys.current(event);
-    host.addEventListener('keydown', listen, true);
-    return () => host.removeEventListener('keydown', listen, true);
-  }, [editor]);
 
   const tool = (
     key: string,
@@ -340,43 +478,21 @@ export function NotePhoneTools({
 
   return (
     <div className="note-phone-tools">
-      {open && (
-        <div
-          ref={menu}
-          id={menuId}
+      {editor && open && (
+        <NoteMenu
+          editor={editor}
+          items={items}
+          label={listLabel}
+          empty={t('board.note.slash.noFrames')}
+          reset={`${found?.char}:${query}:${pickingFrame}`}
+          onEscape={() => {
+            setPickingFrame(false);
+            dismiss();
+          }}
+          menuRef={menu}
           className="note-phone-menu ink-popover"
-          role="listbox"
-          aria-label={listLabel}
           style={{ transform: `translateY(${-inset}px)` }}
-          // The editor keeps the focus and the phone its keyboard; a finger still scrolls the list.
-          onPointerDown={(e) => e.preventDefault()}
-        >
-          {items.length === 0 && (
-            <p className="note-phone-menu__empty">{t('board.note.slash.noFrames')}</p>
-          )}
-          {items.map((item) => {
-            const index = enabled.indexOf(item);
-            return (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: the keys are the editor's, which keeps the focus and names this option with aria-activedescendant.
-              <div
-                key={item.key}
-                id={`${id}-item-${item.key}`}
-                role="option"
-                tabIndex={-1}
-                aria-selected={index === active}
-                aria-disabled={item.disabled || undefined}
-                className="note-phone-menu__item"
-                onClick={() => !item.disabled && item.run()}
-              >
-                {item.icon && <Icon name={item.icon} size={18} />}
-                <span>
-                  {item.label}
-                  {item.hint && <small>{item.hint}</small>}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        />
       )}
       <div
         className="note-phone-bar"

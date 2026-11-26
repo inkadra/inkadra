@@ -9,6 +9,7 @@ import {
 import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
 import type { Person, ProjectMember } from '@inkadra/shared';
 import { Checkbox, fadeOutCopy, Icon, ProjectGlyph, tokens } from '@inkadra/ui';
+import type { Editor } from '@tiptap/react';
 import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
@@ -53,6 +54,7 @@ import { webUrl } from './links.ts';
 import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
+import { NoteMentionPicker } from './NotePhoneTools.tsx';
 import { NoteBody, NoteEditor } from './note.tsx';
 import { noteColor, SECTION_SURFACES } from './note-format.ts';
 import { useFragment } from './note-text.ts';
@@ -468,26 +470,13 @@ function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) 
 }
 
 function NoteCard({ element, editing }: { element: Of<'note'>; editing: boolean }) {
-  const { store, setEditing, setNoteEditor } = useBoard();
+  const { store } = useBoard();
   const { t } = useTranslation();
   const body = store.map(element.id)?.get('body');
   // Follows the text here too: a note someone else just created is empty until they type.
   useFragment(body instanceof Y.XmlFragment ? body : null);
   if (!(body instanceof Y.XmlFragment)) return null;
-  if (editing) {
-    return (
-      <div className="card__pad" data-no-drag>
-        <NoteEditor
-          fragment={body}
-          onReady={setNoteEditor}
-          onExit={() => {
-            setNoteEditor(null);
-            setEditing(null);
-          }}
-        />
-      </div>
-    );
-  }
+  if (editing) return <NoteCardEditor body={body} />;
   return (
     <div className="card__pad">
       {body.length === 0 ? (
@@ -495,6 +484,32 @@ function NoteCard({ element, editing }: { element: Of<'note'>; editing: boolean 
       ) : (
         <NoteBody fragment={body} />
       )}
+    </div>
+  );
+}
+
+/** The note being written on the board, with the same `@` list as the phone's. */
+function NoteCardEditor({ body }: { body: Y.XmlFragment }) {
+  const { setEditing, setNoteEditor } = useBoard();
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const ready = useCallback(
+    (next: Editor) => {
+      setEditor(next);
+      setNoteEditor(next);
+    },
+    [setNoteEditor],
+  );
+  return (
+    <div className="card__pad" data-no-drag>
+      <NoteEditor
+        fragment={body}
+        onReady={ready}
+        onExit={() => {
+          setNoteEditor(null);
+          setEditing(null);
+        }}
+      />
+      {editor && <NoteMentionPicker editor={editor} />}
     </div>
   );
 }

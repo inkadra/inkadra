@@ -42,9 +42,14 @@ export function swallowOutsidePress(event: Event) {
  * places it with `--ink-layer-left`, `--ink-layer-top` and `--ink-layer-bottom`, and may size it
  * from the field's width, `--ink-layer-anchor-width`. A press outside both calls `onOutside`; on
  * a phone the layer is the scrim around the sheet, and its own click closes it. Returns the
- * cleanup.
+ * cleanup. `box` may also be a place in a text, such as the caret.
  */
-export function anchorLayer(layer: HTMLElement, box: HTMLElement, onOutside: () => void, gap = 6) {
+export function anchorLayer(
+  layer: HTMLElement,
+  box: Pick<HTMLElement, 'getBoundingClientRect' | 'contains'>,
+  onOutside: () => void,
+  gap = 6,
+) {
   layer.showPopover();
   const position = () => {
     const rect = box.getBoundingClientRect();
