@@ -186,10 +186,11 @@ import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import {
   addSceneTo,
   defaultStoryboard,
+  elementDataMoves,
+  moveHolds,
   moveScenes,
   SceneMoveError,
   type SceneTarget,
-  serverHolds,
   storyboardName,
 } from './film/scene-move.ts';
 import { createScreenplayStoryboard, storyboardTitle } from './film/screenplay/new-storyboard.ts';
@@ -1231,7 +1232,9 @@ export function Canvas({
             }),
         });
         setMoveChoice(null);
-        const { plan, storyboard, moved, changed, copiesKept, emptyStoryboard } = result;
+        const { plan, storyboard, moved, changed, copiesKept, emptyStoryboard, dataMoved } = result;
+        // Without the server moving its data, scenes with comments stay (decision 0140).
+        const tied = elementDataMoves();
         // What went, what changed on the board meanwhile, and what stays for the server's data.
         const parts = [
           storyboard
@@ -1240,12 +1243,20 @@ export function Canvas({
                 title: storyboard.title,
               })
             : '',
+          storyboard && dataMoved ? t('scenesMove.dataMoved') : '',
           changed ? t('scenesMove.changed', { count: changed }) : '',
           copiesKept ? t('scenesMove.copiesKept', { count: copiesKept }) : '',
           plan.stay.length
-            ? t(storyboard || changed ? 'scenesMove.stay' : 'scenesMove.none', {
-                count: plan.stay.length,
-              })
+            ? t(
+                storyboard || changed
+                  ? tied
+                    ? 'scenesMove.stayTied'
+                    : 'scenesMove.stay'
+                  : tied
+                    ? 'scenesMove.noneTied'
+                    : 'scenesMove.none',
+                { count: plan.stay.length },
+              )
             : '',
           emptyStoryboard ? t('scenesMove.empty', { title: emptyStoryboard }) : '',
         ].filter(Boolean);
@@ -1260,7 +1271,10 @@ export function Canvas({
                   .then(({ stayed, emptyStoryboard: empty }) => {
                     const text = [
                       stayed
-                        ? t('scenesMove.undoPartial', { count: stayed, title: storyboard.title })
+                        ? t(tied ? 'scenesMove.undoChanged' : 'scenesMove.undoPartial', {
+                            count: stayed,
+                            title: storyboard.title,
+                          })
                         : '',
                       empty ? t('scenesMove.empty', { title: empty }) : '',
                     ]
@@ -1306,9 +1320,14 @@ export function Canvas({
       return runSceneMove(only ? { id: only.id, title: only.title } : { title, new: true });
     setMoveBusy(true);
     try {
-      const plan = planSceneMove(doc, await serverHolds(boardId, boards));
+      const plan = planSceneMove(doc, await moveHolds(boardId, boards));
       if (plan.ids.length === 0) {
-        setToast({ text: t('scenesMove.none', { count: plan.stay.length }), undo: false });
+        setToast({
+          text: t(elementDataMoves() ? 'scenesMove.noneTied' : 'scenesMove.none', {
+            count: plan.stay.length,
+          }),
+          undo: false,
+        });
         return;
       }
       setMoveError(null);

@@ -5567,7 +5567,7 @@
           },
           "5": {
             "title": "Scènes hors d’un storyboard",
-            "text": "Les scènes ont leur place dans un storyboard : Déplacer les y emmène avec leurs plans, et la carte du storyboard reste sur le tableau."
+            "text": "Les scènes ont leur place dans un storyboard : Déplacer les y emmène avec leurs plans et leurs commentaires, et la carte du storyboard reste sur le tableau."
           }
         },
         "where": "La visite commence sur un storyboard avec au moins une scène : ajoutez-en une et réessayez."
@@ -7168,6 +7168,10 @@
     "stay_other": "{{count}} scènes restent ici : des commentaires, des révisions, des jours de tournage ou des liens de ce tableau pointent vers elles.",
     "none_one": "La scène reste ici : des commentaires, des révisions, des jours de tournage ou des liens de ce tableau pointent vers elle.",
     "none_other": "Les {{count}} scènes restent ici : des commentaires, des révisions, des jours de tournage ou des liens de ce tableau pointent vers elles.",
+    "stayTied_one": "1 scène reste ici : un lien avec ce tableau, le jour de tournage d’un de ses plans ou une carte que cette version ne sait pas lire la retient ici.",
+    "stayTied_other": "{{count}} scènes restent ici : des liens avec ce tableau, les jours de tournage de leurs plans ou des cartes que cette version ne sait pas lire les retiennent ici.",
+    "noneTied_one": "La scène reste ici : un lien avec ce tableau, le jour de tournage d’un de ses plans ou une carte que cette version ne sait pas lire la retient ici.",
+    "noneTied_other": "Les {{count}} scènes restent ici : des liens avec ce tableau, les jours de tournage de leurs plans ou des cartes que cette version ne sait pas lire les retiennent ici.",
     "where": "Où",
     "new": "Nouveau storyboard",
     "addTo": "Ajouter à « {{title}} »",
@@ -7176,6 +7180,7 @@
     "cancel": "Annuler",
     "confirm": "Déplacer",
     "moved": "{{scenes}} maintenant dans « {{title}} ».",
+    "dataMoved": "Leurs commentaires, révisions et jours de tournage les ont suivies.",
     "failed": "Impossible de déplacer les scènes. Rien n’a changé.",
     "undoFailed": "Impossible d’annuler le déplacement : les scènes sont toujours dans « {{title}} ».",
     "newScene": "Nouvelle scène dans le storyboard…",
@@ -7188,6 +7193,8 @@
     "copiesKept_other": "{{count}} de leurs copies ont été modifiées dans le storyboard entre-temps et y restent aussi.",
     "undoPartial_one": "1 scène reste dans « {{title}} » : elle y a été modifiée ou a des commentaires.",
     "undoPartial_other": "{{count}} scènes restent dans « {{title}} » : elles y ont été modifiées ou ont des commentaires.",
+    "undoChanged_one": "1 scène reste dans « {{title}} » : elle y a été modifiée.",
+    "undoChanged_other": "{{count}} scènes restent dans « {{title}} » : elles y ont été modifiées.",
     "late_one": "Quelqu’un a modifié 1 scène pendant son déplacement : la modification l’a suivie.",
     "late_other": "Quelqu’un a modifié {{count}} scènes pendant leur déplacement : les modifications les ont suivies.",
     "lateLost_one": "Une partie n’a pas pu suivre : vérifiez cette scène.",

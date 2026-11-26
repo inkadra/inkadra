@@ -5567,7 +5567,7 @@
           },
           "5": {
             "title": "Scene fuori da uno storyboard",
-            "text": "Le scene stanno in uno storyboard: Sposta le porta lì con le loro inquadrature, e sulla board resta la card dello storyboard."
+            "text": "Le scene stanno in uno storyboard: Sposta le porta lì con le loro inquadrature e i commenti, e sulla board resta la card dello storyboard."
           }
         },
         "where": "Il giro parte da uno storyboard con almeno una scena: aggiungila e riprova."
@@ -7168,6 +7168,10 @@
     "stay_other": "{{count}} scene restano qui: commenti, revisioni, giorni di ripresa o collegamenti di questa board puntano a loro.",
     "none_one": "La scena resta qui: commenti, revisioni, giorni di ripresa o collegamenti di questa board puntano a lei.",
     "none_other": "Le {{count}} scene restano qui: commenti, revisioni, giorni di ripresa o collegamenti di questa board puntano a loro.",
+    "stayTied_one": "1 scena resta qui: un collegamento con questa board, il giorno di ripresa di un suo piano o una card che questa versione non legge la tengono qui.",
+    "stayTied_other": "{{count}} scene restano qui: collegamenti con questa board, giorni di ripresa dei loro piani o card che questa versione non legge le tengono qui.",
+    "noneTied_one": "La scena resta qui: un collegamento con questa board, il giorno di ripresa di un suo piano o una card che questa versione non legge la tengono qui.",
+    "noneTied_other": "Le {{count}} scene restano qui: collegamenti con questa board, giorni di ripresa dei loro piani o card che questa versione non legge le tengono qui.",
     "where": "Dove",
     "new": "Nuovo storyboard",
     "addTo": "Aggiungi a «{{title}}»",
@@ -7176,6 +7180,7 @@
     "cancel": "Annulla",
     "confirm": "Sposta",
     "moved": "{{scenes}} ora in «{{title}}».",
+    "dataMoved": "Commenti, revisioni e giorni di ripresa sono andati con loro.",
     "failed": "Non è stato possibile spostare le scene. Non è cambiato nulla.",
     "undoFailed": "Lo spostamento non si può annullare: le scene sono ancora in «{{title}}».",
     "newScene": "Nuova scena nello storyboard…",
@@ -7188,6 +7193,8 @@
     "copiesKept_other": "{{count}} loro copie sono state modificate nello storyboard nel frattempo e restano anche lì.",
     "undoPartial_one": "1 scena resta in «{{title}}»: è stata modificata lì o ha commenti.",
     "undoPartial_other": "{{count}} scene restano in «{{title}}»: sono state modificate lì o hanno commenti.",
+    "undoChanged_one": "1 scena resta in «{{title}}»: è stata modificata lì.",
+    "undoChanged_other": "{{count}} scene restano in «{{title}}»: sono state modificate lì.",
     "late_one": "Un collega ha modificato 1 scena mentre si spostava: la modifica l’ha seguita.",
     "late_other": "Un collega ha modificato {{count}} scene mentre si spostavano: le modifiche le hanno seguite.",
     "lateLost_one": "Una parte non ha potuto seguirla: controlla quella scena.",

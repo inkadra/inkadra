@@ -2,6 +2,7 @@
 import { Button, Dialog, DialogActions, RadioGroup } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { elementDataMoves } from './scene-move.ts';
 import './move-scenes.css';
 
 /**
@@ -83,7 +84,11 @@ export function MoveScenesDialog({
     >
       <p className="move-scenes__lead">{t('scenesMove.lead')}</p>
       {choice.stay > 0 && (
-        <p className="move-scenes__lead">{t('scenesMove.stay', { count: choice.stay })}</p>
+        <p className="move-scenes__lead">
+          {t(elementDataMoves() ? 'scenesMove.stayTied' : 'scenesMove.stay', {
+            count: choice.stay,
+          })}
+        </p>
       )}
       <RadioGroup
         label={t('scenesMove.where')}

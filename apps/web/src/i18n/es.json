@@ -5567,7 +5567,7 @@
           },
           "5": {
             "title": "Escenas fuera de un storyboard",
-            "text": "Las escenas van en un storyboard: Mover las lleva allí con sus planos, y la tarjeta del storyboard queda en el tablero."
+            "text": "Las escenas van en un storyboard: Mover las lleva allí con sus planos y comentarios, y la tarjeta del storyboard queda en el tablero."
           }
         },
         "where": "El recorrido empieza en un storyboard con al menos una escena: añade una y vuelve a intentarlo."
@@ -7168,6 +7168,10 @@
     "stay_other": "{{count}} escenas se quedan aquí: comentarios, revisiones, días de rodaje o enlaces de este tablero apuntan a ellas.",
     "none_one": "La escena se queda aquí: comentarios, revisiones, días de rodaje o enlaces de este tablero apuntan a ella.",
     "none_other": "Las {{count}} escenas se quedan aquí: comentarios, revisiones, días de rodaje o enlaces de este tablero apuntan a ellas.",
+    "stayTied_one": "1 escena se queda aquí: un enlace con este tablero, el día de rodaje de uno de sus planes o una tarjeta que esta versión no puede leer la mantienen aquí.",
+    "stayTied_other": "{{count}} escenas se quedan aquí: enlaces con este tablero, días de rodaje de sus planes o tarjetas que esta versión no puede leer las mantienen aquí.",
+    "noneTied_one": "La escena se queda aquí: un enlace con este tablero, el día de rodaje de uno de sus planes o una tarjeta que esta versión no puede leer la mantienen aquí.",
+    "noneTied_other": "Las {{count}} escenas se quedan aquí: enlaces con este tablero, días de rodaje de sus planes o tarjetas que esta versión no puede leer las mantienen aquí.",
     "where": "Dónde",
     "new": "Nuevo storyboard",
     "addTo": "Añadir a «{{title}}»",
@@ -7176,6 +7180,7 @@
     "cancel": "Cancelar",
     "confirm": "Mover",
     "moved": "{{scenes}} ahora en «{{title}}».",
+    "dataMoved": "Sus comentarios, revisiones y días de rodaje fueron con ellas.",
     "failed": "No se pudieron mover las escenas. No ha cambiado nada.",
     "undoFailed": "No se puede deshacer el movimiento: las escenas siguen en «{{title}}».",
     "newScene": "Nueva escena en el storyboard…",
@@ -7188,6 +7193,8 @@
     "copiesKept_other": "{{count}} de sus copias se modificaron en el storyboard entretanto y también se quedan allí.",
     "undoPartial_one": "1 escena se queda en «{{title}}»: se modificó allí o tiene comentarios.",
     "undoPartial_other": "{{count}} escenas se quedan en «{{title}}»: se modificaron allí o tienen comentarios.",
+    "undoChanged_one": "1 escena se queda en «{{title}}»: se modificó allí.",
+    "undoChanged_other": "{{count}} escenas se quedan en «{{title}}»: se modificaron allí.",
     "late_one": "Alguien cambió 1 escena mientras se movía: el cambio la siguió.",
     "late_other": "Alguien cambió {{count}} escenas mientras se movían: los cambios las siguieron.",
     "lateLost_one": "Una parte no pudo seguirla: revisa esa escena.",

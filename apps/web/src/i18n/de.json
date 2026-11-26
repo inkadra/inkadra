@@ -5567,7 +5567,7 @@
           },
           "5": {
             "title": "Szenen außerhalb eines Storyboards",
-            "text": "Szenen gehören in ein Storyboard: Verschieben bringt sie mit ihren Frames dorthin, und die Karte des Storyboards bleibt auf dem Board."
+            "text": "Szenen gehören in ein Storyboard: Verschieben bringt sie mit ihren Frames und Kommentaren dorthin, und die Karte des Storyboards bleibt auf dem Board."
           }
         },
         "where": "Die Tour beginnt auf einem Storyboard mit mindestens einer Szene: Füge eine hinzu und versuche es erneut."
@@ -7168,6 +7168,10 @@
     "stay_other": "{{count}} Szenen bleiben hier: Kommentare, Reviews, Drehtage oder Verknüpfungen auf diesem Board zeigen auf sie.",
     "none_one": "Die Szene bleibt hier: Kommentare, Reviews, Drehtage oder Verknüpfungen auf diesem Board zeigen auf sie.",
     "none_other": "Die {{count}} Szenen bleiben hier: Kommentare, Reviews, Drehtage oder Verknüpfungen auf diesem Board zeigen auf sie.",
+    "stayTied_one": "1 Szene bleibt hier: Eine Verknüpfung mit diesem Board, der Drehtag eines ihrer Pläne oder eine Karte, die diese Version nicht lesen kann, hält sie hier.",
+    "stayTied_other": "{{count}} Szenen bleiben hier: Verknüpfungen mit diesem Board, Drehtage ihrer Pläne oder Karten, die diese Version nicht lesen kann, halten sie hier.",
+    "noneTied_one": "Die Szene bleibt hier: Eine Verknüpfung mit diesem Board, der Drehtag eines ihrer Pläne oder eine Karte, die diese Version nicht lesen kann, hält sie hier.",
+    "noneTied_other": "Die {{count}} Szenen bleiben hier: Verknüpfungen mit diesem Board, Drehtage ihrer Pläne oder Karten, die diese Version nicht lesen kann, halten sie hier.",
     "where": "Wohin",
     "new": "Neues Storyboard",
     "addTo": "Zu „{{title}}“ hinzufügen",
@@ -7176,6 +7180,7 @@
     "cancel": "Abbrechen",
     "confirm": "Verschieben",
     "moved": "{{scenes}} jetzt in „{{title}}“.",
+    "dataMoved": "Ihre Kommentare, Reviews und Drehtage sind mitgekommen.",
     "failed": "Die Szenen konnten nicht verschoben werden. Nichts wurde geändert.",
     "undoFailed": "Das Verschieben lässt sich nicht rückgängig machen: Die Szenen sind noch in „{{title}}“.",
     "newScene": "Neue Szene im Storyboard…",
@@ -7188,6 +7193,8 @@
     "copiesKept_other": "{{count}} ihrer Kopien wurden inzwischen im Storyboard geändert und bleiben auch dort.",
     "undoPartial_one": "1 Szene bleibt in „{{title}}“: Sie wurde dort geändert oder hat Kommentare.",
     "undoPartial_other": "{{count}} Szenen bleiben in „{{title}}“: Sie wurden dort geändert oder haben Kommentare.",
+    "undoChanged_one": "1 Szene bleibt in „{{title}}“: Sie wurde dort geändert.",
+    "undoChanged_other": "{{count}} Szenen bleiben in „{{title}}“: Sie wurden dort geändert.",
     "late_one": "Jemand hat 1 Szene geändert, während sie verschoben wurde: Die Änderung ist mitgekommen.",
     "late_other": "Jemand hat {{count}} Szenen geändert, während sie verschoben wurden: Die Änderungen sind mitgekommen.",
     "lateLost_one": "Ein Teil konnte nicht mitkommen: Prüfe diese Szene.",

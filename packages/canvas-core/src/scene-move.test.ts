@@ -15,6 +15,7 @@ import {
   removeSceneCards,
   sceneMoveOrigin,
   unitUnchanged,
+  withChildren,
 } from './scene-move.ts';
 
 const opts = { userId: 'u1' };
@@ -197,5 +198,17 @@ describe('placesBack (decision 0140)', () => {
     );
     expect(back.get('list')?.parent).toBe('col1');
     expect(back.get('plan')?.parent).toBeNull();
+  });
+});
+
+describe('withChildren', () => {
+  it('adds the frames of the scenes, once, and leaves other cards out', () => {
+    const { doc, one, two, a, b } = board();
+    const ids = withChildren(doc, [one.id, a.id]);
+    expect(ids.slice(0, 2)).toEqual([one.id, a.id]);
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids).not.toContain(two.id);
+    expect(ids).not.toContain(b.id);
   });
 });

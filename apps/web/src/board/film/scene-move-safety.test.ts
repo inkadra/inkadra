@@ -8,7 +8,7 @@ import {
 } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import type { Board } from '@inkadra/shared';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 
 /**
@@ -45,6 +45,11 @@ vi.mock('../boards.ts', () => ({
   boardsWith: () => null,
 }));
 const deleted: string[] = [];
+/** Calls of the move of the server's data (capability `element-data-move`). */
+type DataMove = { from: string; to: string; ids: string[] };
+const moves: DataMove[] = [];
+/** Runs on each of those calls: throws to fail it. */
+let onMove: ((call: DataMove) => void) | null = null;
 /** Cards the server keeps something about, by board. */
 const comments = new Map<string, string[]>();
 vi.mock('../../lib/api.ts', () => ({
@@ -65,11 +70,26 @@ vi.mock('../../lib/api.ts', () => ({
     delete: async (path: string) => {
       deleted.push(path);
     },
+    post: async (path: string, body: { toBoardId: string; elementIds: string[] }) => {
+      const from = path.split('/')[2] ?? '';
+      const call = { from, to: body.toBoardId, ids: body.elementIds };
+      moves.push(call);
+      if (onMove) onMove(call);
+      return {
+        comments: 1,
+        reactions: 0,
+        reviews: 0,
+        reviewEvents: 0,
+        picks: 0,
+        notifications: 0,
+        shootingDays: 0,
+      };
+    },
   },
   RequestError: class extends Error {},
 }));
 
-const { moveScenes } = await import('./scene-move.ts');
+const { moveScenes, setElementDataMove, SceneMoveError } = await import('./scene-move.ts');
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const storyboardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
@@ -81,6 +101,8 @@ function setUp() {
   comments.clear();
   created.length = 0;
   deleted.length = 0;
+  moves.length = 0;
+  onMove = null;
   meanwhile = null;
   lingering.length = 0;
   const doc = createBoardDoc(boardId);
@@ -228,5 +250,90 @@ describe('a move never loses what changes meanwhile', () => {
     const result = await move(doc, { id: storyboardId, title: 'Film' });
     await result.undo();
     expect(deleted).toEqual([]);
+  });
+});
+
+describe('with the server moving its data along (element-data-move)', () => {
+  beforeEach(() => setElementDataMove(true));
+  afterEach(() => setElementDataMove(false));
+
+  it('moves a commented scene: its data goes after the copy, before the board lets it go', async () => {
+    const { doc, story, one, two, a } = setUp();
+    comments.set(boardId, [a.id]);
+    const seen: Array<[boolean, boolean]> = [];
+    onMove = (call) => {
+      if (call.from === boardId)
+        seen.push([ids(story).includes(one.id), ids(doc).includes(one.id)]);
+    };
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    expect(result.moved).toBe(2);
+    expect(result.plan.stay).toEqual([]);
+    expect(result.dataMoved).toBeGreaterThan(0);
+    // Copied and still on the board when the data moved; then a sweep for late comments.
+    expect(seen[0]).toEqual([true, true]);
+    expect(moves[0]).toMatchObject({ from: boardId, to: storyboardId });
+    expect(moves[0]?.ids).toEqual(expect.arrayContaining([one.id, two.id, a.id]));
+    expect(ids(doc)).not.toContain(one.id);
+  });
+
+  it('keeps the scenes on the board when the data cannot move, and takes the copies back', async () => {
+    const { doc, story, one, two } = setUp();
+    onMove = (call) => {
+      if (call.from === boardId) throw new Error('offline');
+    };
+    await expect(move(doc, { id: storyboardId, title: 'Film' })).rejects.toBeInstanceOf(
+      SceneMoveError,
+    );
+    expect(ids(doc)).toEqual(expect.arrayContaining([one.id, two.id]));
+    expect(ids(story)).toEqual([]);
+    // A lost answer may have moved it all the same: it was asked back.
+    expect(moves.map((m) => m.from)).toEqual([boardId, storyboardId]);
+  });
+
+  it('keeps the copies in the storyboard when the data can neither move nor come back', async () => {
+    const { doc, story, one } = setUp();
+    onMove = () => {
+      throw new Error('offline');
+    };
+    await expect(move(doc, { id: storyboardId, title: 'Film' })).rejects.toThrow();
+    expect(ids(doc)).toContain(one.id);
+    expect(ids(story)).toContain(one.id);
+  });
+
+  it('brings back the data of a scene that changed meanwhile and stays on the board', async () => {
+    const { doc, one, a } = setUp();
+    meanwhile = () => updateElement(doc, a.id, { action: 'Edited meanwhile' });
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    expect(result.changed).toBe(1);
+    const back = moves.find((m) => m.from === storyboardId);
+    expect(back?.to).toBe(boardId);
+    expect(back?.ids).toEqual(expect.arrayContaining([one.id, a.id]));
+  });
+
+  it('Undo brings the data back between the copy on the board and the removal from the storyboard', async () => {
+    const { doc, story, one, a } = setUp();
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    // A comment written in the storyboard no longer keeps a scene there.
+    comments.set(storyboardId, [a.id]);
+    moves.length = 0;
+    const seen: Array<[boolean, boolean]> = [];
+    onMove = () => seen.push([ids(doc).includes(one.id), ids(story).includes(one.id)]);
+    const { back, stayed } = await result.undo();
+    expect([back, stayed]).toEqual([2, 0]);
+    expect(moves[0]).toMatchObject({ from: storyboardId, to: boardId });
+    expect(moves[0]?.ids).toEqual(expect.arrayContaining([one.id, a.id]));
+    expect(seen).toEqual([[true, true]]);
+    expect(ids(story)).toEqual([]);
+  });
+
+  it('Undo leaves the scenes in the storyboard when their data cannot come back', async () => {
+    const { doc, story, one } = setUp();
+    const result = await move(doc, { id: storyboardId, title: 'Film' });
+    onMove = (call) => {
+      if (call.from === storyboardId) throw new Error('offline');
+    };
+    await expect(result.undo()).rejects.toThrow();
+    expect(ids(story)).toContain(one.id);
+    expect(ids(doc)).not.toContain(one.id);
   });
 });

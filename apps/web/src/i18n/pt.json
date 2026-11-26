@@ -5567,7 +5567,7 @@
           },
           "5": {
             "title": "Cenas fora de um storyboard",
-            "text": "Cenas ficam em um storyboard: Mover as leva para lá com os frames, e o card do storyboard fica no quadro."
+            "text": "Cenas ficam em um storyboard: Mover as leva para lá com os frames e os comentários, e o card do storyboard fica no quadro."
           }
         },
         "where": "O tour começa em um storyboard com pelo menos uma cena: adicione uma e tente de novo."
@@ -7168,6 +7168,10 @@
     "stay_other": "{{count}} cenas ficam aqui: comentários, revisões, dias de filmagem ou ligações deste quadro apontam para elas.",
     "none_one": "A cena fica aqui: comentários, revisões, dias de filmagem ou ligações deste quadro apontam para ela.",
     "none_other": "As {{count}} cenas ficam aqui: comentários, revisões, dias de filmagem ou ligações deste quadro apontam para elas.",
+    "stayTied_one": "1 cena fica aqui: uma ligação com este quadro, o dia de filmagem de um dos seus planos ou um card que esta versão não consegue ler a mantém aqui.",
+    "stayTied_other": "{{count}} cenas ficam aqui: ligações com este quadro, dias de filmagem dos seus planos ou cards que esta versão não consegue ler as mantêm aqui.",
+    "noneTied_one": "A cena fica aqui: uma ligação com este quadro, o dia de filmagem de um dos seus planos ou um card que esta versão não consegue ler a mantém aqui.",
+    "noneTied_other": "As {{count}} cenas ficam aqui: ligações com este quadro, dias de filmagem dos seus planos ou cards que esta versão não consegue ler as mantêm aqui.",
     "where": "Onde",
     "new": "Novo storyboard",
     "addTo": "Adicionar a “{{title}}”",
@@ -7176,6 +7180,7 @@
     "cancel": "Cancelar",
     "confirm": "Mover",
     "moved": "{{scenes}} agora em “{{title}}”.",
+    "dataMoved": "Os comentários, revisões e dias de filmagem foram com elas.",
     "failed": "Não foi possível mover as cenas. Nada mudou.",
     "undoFailed": "Não é possível desfazer: as cenas continuam em “{{title}}”.",
     "newScene": "Nova cena no storyboard…",
@@ -7188,6 +7193,8 @@
     "copiesKept_other": "{{count}} das cópias foram alteradas no storyboard nesse meio-tempo e também ficam lá.",
     "undoPartial_one": "1 cena fica em “{{title}}”: foi alterada lá ou tem comentários.",
     "undoPartial_other": "{{count}} cenas ficam em “{{title}}”: foram alteradas lá ou têm comentários.",
+    "undoChanged_one": "1 cena fica em “{{title}}”: foi alterada lá.",
+    "undoChanged_other": "{{count}} cenas ficam em “{{title}}”: foram alteradas lá.",
     "late_one": "Alguém alterou 1 cena enquanto ela era movida: a alteração foi junto.",
     "late_other": "Alguém alterou {{count}} cenas enquanto eram movidas: as alterações foram junto.",
     "lateLost_one": "Uma parte não pôde ir junto: confira essa cena.",
