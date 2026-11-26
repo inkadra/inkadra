@@ -6,23 +6,32 @@ import {
   type ScheduleBlock,
   z,
 } from '@inkadra/shared';
-import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { atLeast, boardAccess, requireBoardRole } from '../access.ts';
+import {
+  atLeast,
+  type BoardAccess,
+  boardAccess,
+  linkIncludesBoard,
+  requireBoardRole,
+} from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
 import {
   board,
   comment,
+  elementMove,
   elementReaction,
   elementReview,
   elementReviewEvent,
   notification,
+  shareLink,
   sharePick,
   shootingDay,
 } from '../db/schema.ts';
 import { afterCommit } from '../notifications.ts';
+import { lockProduction } from '../production.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -62,6 +71,76 @@ export function repointBlocks(
     return next;
   });
   return changed ? out : null;
+}
+
+/** Notifications about a card or its comments, which follow the card. */
+const CARD_NOTIFICATIONS: Array<(typeof notification.$inferSelect)['type']> = [
+  'mention',
+  'reply',
+  'comment',
+  'review',
+  'task_assigned',
+];
+
+/**
+ * The moved cards (now on `to`) with comments, decisions or picks of guests whose link is
+ * active but does not reach `to` (decision 0141): those guests no longer see them. The move puts
+ * the storyboard's card on `from`, so that card counts as there.
+ */
+async function outOfReach(
+  tx: Transaction,
+  ids: string[],
+  from: string,
+  to: string,
+  target: BoardAccess,
+): Promise<string[]> {
+  const rows = [
+    ...(await tx
+      .select({ elementId: comment.elementId, linkId: comment.shareLinkId })
+      .from(comment)
+      .where(
+        and(
+          eq(comment.boardId, to),
+          inArray(comment.elementId, ids),
+          isNotNull(comment.authorGuestId),
+        ),
+      )),
+    ...(await tx
+      .select({ elementId: elementReview.elementId, linkId: elementReview.shareLinkId })
+      .from(elementReview)
+      .where(
+        and(
+          eq(elementReview.boardId, to),
+          inArray(elementReview.elementId, ids),
+          isNotNull(elementReview.shareLinkId),
+        ),
+      )),
+    ...(await tx
+      .select({ elementId: sharePick.elementId, linkId: sharePick.shareLinkId })
+      .from(sharePick)
+      .where(and(eq(sharePick.boardId, to), inArray(sharePick.elementId, ids)))),
+  ];
+  const linkIds = [...new Set(rows.flatMap((r) => (r.linkId ? [r.linkId] : [])))];
+  if (!linkIds.length) return [];
+  const links = await tx
+    .select()
+    .from(shareLink)
+    .where(
+      and(
+        inArray(shareLink.id, linkIds),
+        isNull(shareLink.revokedAt),
+        or(isNull(shareLink.expiresAt), gt(shareLink.expiresAt, new Date())),
+      ),
+    );
+  const lost = new Set<string>();
+  for (const link of links)
+    if (!(await linkIncludesBoard(tx, link, target, { parent: from, child: to })))
+      lost.add(link.id);
+  return [
+    ...new Set(
+      rows.flatMap((r) => (r.elementId && r.linkId && lost.has(r.linkId) ? [r.elementId] : [])),
+    ),
+  ];
 }
 
 /** The ids among `ids` that board `boardId` keeps comments, reactions, reviews or picks about. */
@@ -115,13 +194,52 @@ export function registerElementDataRoutes(app: FastifyInstance, deps: Deps) {
     const ids = new Set(elementIds);
 
     const result = await db.transaction(async (tx) => {
-      // Two moves between the same boards (a move and its Undo) run one after the other.
+      // Lock order, the same as every other writer of these rows: the project's Production
+      // lock (as adoptDays), the two board rows by id, the shooting days by id, then the rows
+      // about the cards. Schedule writers lock only days (by id) and never wait for a board row
+      // in a mode that `no key update` refuses; the writers of comments, reactions, reviews and
+      // picks take the board row `for share` first (lockCardData), so they wait for this move
+      // and then see the card gone. Two moves between the same boards run one after the other.
+      await lockProduction(tx, projectId);
       await tx
         .select({ id: board.id })
         .from(board)
         .where(inArray(board.id, [from, to]))
         .orderBy(asc(board.id))
         .for('no key update');
+
+      // Shooting days whose blocks point at the cards, on boards not in the trash: found first,
+      // then locked by id and read again. Days of a trashed board are left as they are.
+      const candidates = await tx
+        .select({ id: shootingDay.id, boardId: shootingDay.boardId, blocks: shootingDay.blocks })
+        .from(shootingDay)
+        .innerJoin(board, eq(board.id, shootingDay.boardId))
+        .where(and(eq(shootingDay.projectId, projectId), isNull(board.deletedAt)));
+      const affected = candidates
+        .filter((day) => repointBlocks(day.blocks, day.boardId, from, to, ids))
+        .map((day) => day.id);
+      const lockedDays = affected.length
+        ? await tx
+            .select({
+              id: shootingDay.id,
+              boardId: shootingDay.boardId,
+              blocks: shootingDay.blocks,
+            })
+            .from(shootingDay)
+            .where(inArray(shootingDay.id, affected))
+            .orderBy(asc(shootingDay.id))
+            .for('update')
+        : [];
+      const changedDays = lockedDays.flatMap((day) => {
+        const blocks = repointBlocks(day.blocks, day.boardId, from, to, ids);
+        return blocks ? [{ ...day, blocks }] : [];
+      });
+      for (const dayBoard of new Set(changedDays.map((d) => d.boardId))) {
+        const access = await boardAccess(tx, actor, dayBoard);
+        if (!atLeast(access?.role ?? null, 'editor'))
+          throw new HttpError('forbidden', 'A shooting day of these cards needs the editor role.');
+      }
+
       const here = await idsWithData(tx, from, elementIds);
       const moving = elementIds.filter((id) => here.has(id));
       if (moving.length) {
@@ -204,6 +322,9 @@ export function registerElementDataRoutes(app: FastifyInstance, deps: Deps) {
         .where(
           and(
             eq(notification.boardId, from),
+            // Only notifications about a card or its comments: a link opened or a review
+            // submitted is about the board, even when it names a card.
+            inArray(notification.type, CARD_NOTIFICATIONS),
             or(
               and(isNotNull(notification.elementId), inArray(notification.elementId, elementIds)),
               commentIds.length ? inArray(notification.commentId, commentIds) : sql`false`,
@@ -212,28 +333,26 @@ export function registerElementDataRoutes(app: FastifyInstance, deps: Deps) {
         )
         .returning({ id: notification.id });
 
-      // Shooting days whose blocks point at the cards: every board of the project may hold one.
-      const days = await tx
-        .select({ id: shootingDay.id, boardId: shootingDay.boardId, blocks: shootingDay.blocks })
-        .from(shootingDay)
-        .where(eq(shootingDay.projectId, projectId))
-        .orderBy(asc(shootingDay.id))
-        .for('update');
-      const changedDays = days.flatMap((day) => {
-        const blocks = repointBlocks(day.blocks, day.boardId, from, to, ids);
-        return blocks ? [{ ...day, blocks }] : [];
-      });
-      for (const dayBoard of new Set(changedDays.map((d) => d.boardId))) {
-        const access = await boardAccess(tx, actor, dayBoard);
-        if (!atLeast(access?.role ?? null, 'editor'))
-          throw new HttpError('forbidden', 'A shooting day of these cards needs the editor role.');
-      }
       for (const day of changedDays)
         await tx
           .update(shootingDay)
           .set({ blocks: day.blocks, revision: sql`${shootingDay.revision} + 1` })
           .where(eq(shootingDay.id, day.id));
 
+      // From now on, writes about these cards on the source board are refused; a move back
+      // lifts that on the board they return to.
+      await tx
+        .delete(elementMove)
+        .where(and(eq(elementMove.boardId, to), inArray(elementMove.elementId, elementIds)));
+      await tx
+        .insert(elementMove)
+        .values(elementIds.map((elementId) => ({ boardId: from, elementId, toBoardId: to })))
+        .onConflictDoUpdate({
+          target: [elementMove.boardId, elementMove.elementId],
+          set: { toBoardId: to, movedAt: new Date() },
+        });
+
+      const guestsOutOfReach = moving.length ? await outOfReach(tx, moving, from, to, target) : [];
       const moved: ElementDataMoved = {
         comments: comments.length,
         reactions: reactions.length,
@@ -242,6 +361,7 @@ export function registerElementDataRoutes(app: FastifyInstance, deps: Deps) {
         picks: picks.length,
         notifications: notifications.length,
         shootingDays: changedDays.length,
+        guestsOutOfReach,
       };
       return {
         moved,

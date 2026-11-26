@@ -2858,7 +2858,9 @@ registry.registerPath({
     'scenes moving into a storyboard). Comments with their replies, reactions and read marks, ' +
     'reactions on the cards, review statuses and their history, guest picks, notifications ' +
     'about the cards, and the shooting-day blocks that point at them follow the cards to ' +
-    '`toBoardId`, in one transaction; nothing is copied or deleted. Needs editor on both ' +
+    '`toBoardId`, in one transaction; nothing is copied or deleted. From then on, comments, ' +
+    'reactions, reviews and picks about those cards on the source board answer 404 `not_found` ' +
+    '(a move back lifts it). Days of boards in the trash are left as they are. Needs editor on both ' +
     'boards, and on the board of each shooting day it changes. Safe to retry: what is no longer ' +
     'on the source board is not moved again, and a retry of a done move answers zeros. Moving ' +
     'back is the same call the other way. 409 `conflict` when the other board already holds ' +

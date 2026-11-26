@@ -15,6 +15,7 @@ import { type Actor, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
+import { lockCardData } from '../card-moves.ts';
 import type { Database } from '../db/client.ts';
 import { elementReview, elementReviewEvent } from '../db/schema.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
@@ -109,6 +110,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
       isNull(elementReview.shareLinkId),
     );
     const result = await db.transaction(async (tx) => {
+      await lockCardData(tx, boardId, elementId);
       // The team row exists from the first change on; lock it so changes queue up.
       await tx
         .insert(elementReview)

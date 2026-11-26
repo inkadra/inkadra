@@ -2,7 +2,7 @@
   "comment": "Changes to /api/v1 since the base release, and to what packages/* export since the parent commit, each accepted on purpose as the exact line scripts/contract-check.mjs prints, with the PR that made it and why installed clients are safe (or BREAKING). CI fails on any other line, and on an openapi line it no longer prints: remove those once a release containing them is the base.",
   "accepted": [
     {
-      "break": "openapi: #/components/schemas/ElementDataMoved: (absent) → {\"properties\":{\"comments\":{\"minimum\":0,\"type\":\"integer\"},\"notifications\":{\"minimum\":0,\"type\":\"integer\"},\"picks\":{\"minimu…#c5dab4ebf8b1485b5c7f321a11ce3cc67e86538386beebfc0f7c1ba77e0ddff4",
+      "break": "openapi: #/components/schemas/ElementDataMoved: (absent) → {\"properties\":{\"comments\":{\"minimum\":0,\"type\":\"integer\"},\"guestsOutOfReach\":{\"items\":{\"pattern\":\"^[A-Za-z0-9_-]{8,64}$\",…#c9c883c8fa9f328eefdeca52b9e0f5693570b7f067c593e21574011e53882143",
       "pr": 1043,
       "why": "New response schema of the new move endpoint; installed clients never call it."
     },

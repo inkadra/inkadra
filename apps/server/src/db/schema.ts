@@ -966,6 +966,29 @@ export const elementReviewEvent = pgTable(
 );
 
 /**
+ * Cards whose server data moved to another board (decision 0141): from then on, comments,
+ * reactions, reviews and picks about the card on this board are refused, so nothing lands where
+ * the card no longer is. Moving the data back removes the row. Gone with either board.
+ */
+export const elementMove = pgTable(
+  'element_move',
+  {
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id').notNull(),
+    toBoardId: uuid('to_board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    movedAt: timestamp('moved_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.boardId, t.elementId] }),
+    index('element_move_to_board_idx').on(t.toBoardId),
+  ],
+);
+
+/**
  * In-app notifications; email is sent from these rows according to the preference, after
  * checking again that the person can still open the board. The excerpt is not stored: it is
  * rendered from the comment as it is when the notification is read or emailed.

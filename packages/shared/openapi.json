@@ -10465,7 +10465,17 @@
           "shootingDays": {
             "type": "integer",
             "minimum": 0,
-            "description": "Shooting days with a block that pointed at one of the cards."
+            "description": "Shooting days with a block that pointed at one of the cards. Days of boards in the trash are left as they are."
+          },
+          "guestsOutOfReach": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,64}$",
+              "description": "Element id in the board document.",
+              "example": "V1StGXR8_Z5jdHi6B-myT"
+            },
+            "description": "Cards whose moved comments, decisions or picks come from guests of an active link that does not reach the other board: those guests no longer see them."
           }
         },
         "required": [
@@ -10475,7 +10485,8 @@
           "reviewEvents",
           "picks",
           "notifications",
-          "shootingDays"
+          "shootingDays",
+          "guestsOutOfReach"
         ]
       },
       "MoveElementData": {
@@ -30421,7 +30432,7 @@
           }
         ],
         "summary": "Move what the server keeps about some cards to the board they were copied to.",
-        "description": "For cards moved to another board of the same project with the same ids (decision 0140: scenes moving into a storyboard). Comments with their replies, reactions and read marks, reactions on the cards, review statuses and their history, guest picks, notifications about the cards, and the shooting-day blocks that point at them follow the cards to `toBoardId`, in one transaction; nothing is copied or deleted. Needs editor on both boards, and on the board of each shooting day it changes. Safe to retry: what is no longer on the source board is not moved again, and a retry of a done move answers zeros. Moving back is the same call the other way. 409 `conflict` when the other board already holds data about one of these cards (nothing moved). Servers that answer advertise `element-data-move` on `GET /instance/version`; an older server answers 404 `not_found`. Open boards on both sides are told with the stateless collab messages `{\"type\":\"comments\"}` and `{\"type\":\"review\"}` and fetch again.",
+        "description": "For cards moved to another board of the same project with the same ids (decision 0140: scenes moving into a storyboard). Comments with their replies, reactions and read marks, reactions on the cards, review statuses and their history, guest picks, notifications about the cards, and the shooting-day blocks that point at them follow the cards to `toBoardId`, in one transaction; nothing is copied or deleted. From then on, comments, reactions, reviews and picks about those cards on the source board answer 404 `not_found` (a move back lifts it). Days of boards in the trash are left as they are. Needs editor on both boards, and on the board of each shooting day it changes. Safe to retry: what is no longer on the source board is not moved again, and a retry of a done move answers zeros. Moving back is the same call the other way. 409 `conflict` when the other board already holds data about one of these cards (nothing moved). Servers that answer advertise `element-data-move` on `GET /instance/version`; an older server answers 404 `not_found`. Open boards on both sides are told with the stateless collab messages `{\"type\":\"comments\"}` and `{\"type\":\"review\"}` and fetch again.",
         "parameters": [
           {
             "schema": {

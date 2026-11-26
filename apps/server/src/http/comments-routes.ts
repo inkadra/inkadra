@@ -46,6 +46,7 @@ import {
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
+import { lockCardData } from '../card-moves.ts';
 import type { Database } from '../db/client.ts';
 import { comment, commentReaction, commentRead, elementReaction, shareLink } from '../db/schema.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
@@ -362,6 +363,8 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       `comments:${boardId}`,
       input,
       async (tx) => {
+        // Waits for a move of this board's card data, and refuses a card that moved (0141).
+        await lockCardData(tx, boardId, input.parentId ? null : (input.elementId ?? null));
         let thread: Row | undefined;
         if (input.parentId) {
           [thread] = await tx
@@ -652,11 +655,14 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
           throw new HttpError('not_found', 'Card not found.');
         await reactionsPerMinute.require(actor.id, 'Too many reactions: wait a minute.');
         const changed = on
-          ? await db
-              .insert(elementReaction)
-              .values({ boardId, elementId, emoji, userId: actor.id })
-              .onConflictDoNothing()
-              .returning({ id: elementReaction.id })
+          ? await db.transaction(async (tx) => {
+              await lockCardData(tx, boardId, elementId);
+              return tx
+                .insert(elementReaction)
+                .values({ boardId, elementId, emoji, userId: actor.id })
+                .onConflictDoNothing()
+                .returning({ id: elementReaction.id });
+            })
           : await db
               .delete(elementReaction)
               .where(

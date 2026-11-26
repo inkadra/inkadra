@@ -7,7 +7,8 @@ import { Id, z } from './common.ts';
  * storyboard) take along what the server keeps by board and card: comments with their replies,
  * reactions and read marks, reactions on the card, review statuses and their history, guest
  * picks, notifications about the card, and the shooting-day blocks that point at it. Nothing is
- * copied or deleted: the rows are re-keyed to the other board in one transaction.
+ * copied or deleted: the rows are re-keyed to the other board in one transaction. Afterwards the
+ * source board refuses new comments, reactions, reviews and picks about those cards (404).
  */
 
 /** Capability on `GET /instance/version` of servers that answer `POST /boards/{id}/element-data/move`. */
@@ -48,7 +49,14 @@ export const ElementDataMoved = z
     picks: Moved.openapi({ description: 'Guest picks and stars.' }),
     notifications: Moved,
     shootingDays: Moved.openapi({
-      description: 'Shooting days with a block that pointed at one of the cards.',
+      description:
+        'Shooting days with a block that pointed at one of the cards. Days of boards in the ' +
+        'trash are left as they are.',
+    }),
+    guestsOutOfReach: z.array(ElementRef).openapi({
+      description:
+        'Cards whose moved comments, decisions or picks come from guests of an active link that ' +
+        'does not reach the other board: those guests no longer see them.',
     }),
   })
   .openapi('ElementDataMoved');

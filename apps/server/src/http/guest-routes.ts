@@ -29,6 +29,7 @@ import { boardRoles, guestCan } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
+import { lockCardData } from '../card-moves.ts';
 import { readClassifications } from '../classifications.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -901,6 +902,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           await tx.execute(
             sql`select pg_advisory_xact_lock(hashtext(${`review:${boardId}:${elementId}:${linkId}`}))`,
           );
+          await lockCardData(tx, boardId, elementId);
           const rows = await tx
             .select()
             .from(elementReview)
@@ -1008,23 +1010,26 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
             .from(asset)
             .where(and(eq(asset.id, picture), eq(asset.projectId, ctx.link.projectId)));
           const assetId = known?.id ?? null;
-          const [row] = await db
-            .insert(sharePick)
-            .values({
-              guestId: ctx.guest.id,
-              shareLinkId: linkId,
-              boardId,
-              elementId,
-              assetId,
-              pick,
-              stars,
-              updatedAt: now,
-            })
-            .onConflictDoUpdate({
-              target: [sharePick.guestId, sharePick.boardId, sharePick.elementId],
-              set: { pick, stars, assetId, updatedAt: now },
-            })
-            .returning();
+          const [row] = await db.transaction(async (tx) => {
+            await lockCardData(tx, boardId, elementId);
+            return tx
+              .insert(sharePick)
+              .values({
+                guestId: ctx.guest.id,
+                shareLinkId: linkId,
+                boardId,
+                elementId,
+                assetId,
+                pick,
+                stars,
+                updatedAt: now,
+              })
+              .onConflictDoUpdate({
+                target: [sharePick.guestId, sharePick.boardId, sharePick.elementId],
+                set: { pick, stars, assetId, updatedAt: now },
+              })
+              .returning();
+          });
           if (!row) throw new Error('Pick not saved');
           body = {
             boardId,

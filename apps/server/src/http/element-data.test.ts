@@ -1,17 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import type { ElementDataMoved, ScheduleBlock } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   board,
+  boardDoc,
   boardGrant,
   comment,
   commentReaction,
+  elementMove,
   elementReaction,
   elementReview,
   elementReviewEvent,
@@ -111,6 +115,34 @@ describe.skipIf(!url)('POST /boards/{id}/element-data/move', () => {
     });
   const boardOf = async (table: typeof elementReaction | typeof elementReview | typeof sharePick) =>
     (await db.select({ boardId: table.boardId }).from(table)).map((r) => r.boardId);
+
+  /** Stores a board document holding these cards, as the routes that check a card read it. */
+  async function storeDoc(boardId: string, ids: string[]) {
+    const doc = createBoardDoc(boardId);
+    for (const id of ids) {
+      const map = new Y.Map<unknown>();
+      roots(doc).elements.set(id, map);
+      for (const [key, value] of Object.entries({ id, type: 'note', parent: null }))
+        map.set(key, value);
+    }
+    const state = Buffer.from(Y.encodeStateAsUpdate(doc));
+    await db
+      .insert(boardDoc)
+      .values({ boardId, state, size: state.length, schemaVersion: 3 })
+      .onConflictDoUpdate({ target: boardDoc.boardId, set: { state, size: state.length } });
+    doc.destroy();
+  }
+  const post = (who: Who, path: string, method: 'POST' | 'PUT', payload?: unknown) =>
+    app.inject({
+      method,
+      url: `/api/v1${path}`,
+      headers: {
+        cookie: people[who].cookie,
+        origin: config.PUBLIC_URL,
+        ...(payload === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      ...(payload === undefined ? {} : { payload: JSON.stringify(payload) }),
+    });
 
   /** A thread with a reply and a reaction, a card reaction, a review with its history, a pick. */
   async function seed(boardId: string, elementId: string) {
@@ -287,6 +319,36 @@ describe.skipIf(!url)('POST /boards/{id}/element-data/move', () => {
         ],
       })
       .returning();
+    // A day of a board in the trash is left as it is; it points at the old board.
+    const trashed = randomUUID();
+    await db.insert(board).values({
+      id: trashed,
+      projectId,
+      parentBoardId: root,
+      title: 'Old',
+      position: 'a4',
+      deletedAt: new Date(),
+    });
+    const [old] = await db
+      .insert(shootingDay)
+      .values({
+        projectId,
+        boardId: trashed,
+        date: '2026-12-02',
+        callTime: '08:00',
+        location: '',
+        notes: '',
+        blocks: [block({ shotId: frame, shotBoardId: source })],
+      })
+      .returning();
+    // About the board, not the card, although it names one: it stays.
+    await db.insert(notification).values({
+      userId: people.owner.id,
+      type: 'link_opened',
+      projectId,
+      boardId: source,
+      elementId: scene,
+    });
 
     const res = await move('owner', source, { toBoardId: storyboard, elementIds: [scene, frame] });
     expect(res.statusCode, res.body).toBe(200);
@@ -298,7 +360,17 @@ describe.skipIf(!url)('POST /boards/{id}/element-data/move', () => {
       picks: 1,
       notifications: 1,
       shootingDays: 1,
+      // The guest's link is on the source board and does not reach the storyboard.
+      guestsOutOfReach: [scene],
     });
+    const [oldAfter] = await db
+      .select()
+      .from(shootingDay)
+      .where(eq(shootingDay.id, old?.id ?? ''));
+    expect(oldAfter?.blocks[0]?.shotBoardId).toBe(source);
+    expect(oldAfter?.revision).toBe(old?.revision);
+    const notes = await db.select().from(notification);
+    expect(notes.find((n) => n.type === 'link_opened')?.boardId).toBe(source);
 
     const comments = await db.select().from(comment);
     expect(comments.find((c) => c.id === thread.id)?.boardId).toBe(storyboard);
@@ -311,7 +383,7 @@ describe.skipIf(!url)('POST /boards/{id}/element-data/move', () => {
     const [pick] = await db.select().from(sharePick);
     expect(pick?.updatedAt.toISOString()).toBe('2026-01-02T00:00:00.000Z');
     expect((await db.select().from(elementReviewEvent))[0]?.boardId).toBe(storyboard);
-    expect((await db.select().from(notification))[0]?.boardId).toBe(storyboard);
+    expect(notes.find((n) => n.type === 'reply')?.boardId).toBe(storyboard);
     const [after] = await db
       .select()
       .from(shootingDay)
@@ -347,7 +419,16 @@ describe.skipIf(!url)('POST /boards/{id}/element-data/move', () => {
     expect((await move('owner', source, body)).statusCode).toBe(200);
     const again = await move('owner', source, body);
     expect(again.statusCode, again.body).toBe(200);
-    expect(Object.values(again.json<ElementDataMoved>())).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    expect(again.json<ElementDataMoved>()).toEqual({
+      comments: 0,
+      reactions: 0,
+      reviews: 0,
+      reviewEvents: 0,
+      picks: 0,
+      notifications: 0,
+      shootingDays: 0,
+      guestsOutOfReach: [],
+    });
     expect(await boardOf(elementReview)).toEqual([storyboard]);
 
     const back = await move('owner', storyboard, { toBoardId: source, elementIds: [scene] });
@@ -413,5 +494,131 @@ describe.skipIf(!url)('POST /boards/{id}/element-data/move', () => {
     await db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, storyboard));
     expect((await move('owner', source, ok)).statusCode).toBe(404);
     expect(await boardOf(elementReview)).toEqual([source]);
+  });
+
+  it('counts guests reached when the storyboard sits under their link’s board', async () => {
+    await db.update(board).set({ parentBoardId: source }).where(eq(board.id, storyboard));
+    await seed(source, scene);
+    const res = await move('owner', source, { toBoardId: storyboard, elementIds: [scene] });
+    expect(res.json<ElementDataMoved>().guestsOutOfReach).toEqual([]);
+  });
+
+  it('refuses afterwards what would land on the source board about a moved card', async () => {
+    await storeDoc(source, [scene, other]);
+    const { thread } = await seed(source, scene);
+    expect(
+      (await move('owner', source, { toBoardId: storyboard, elementIds: [scene] })).statusCode,
+    ).toBe(200);
+    // The card is still in the source document until the client removes it: refused all the same.
+    const comment1 = await post('owner', `/boards/${source}/comments`, 'POST', {
+      body: 'Late',
+      elementId: scene,
+    });
+    expect(comment1.statusCode, comment1.body).toBe(404);
+    const replied = await post('owner', `/boards/${source}/comments`, 'POST', {
+      body: 'Late reply',
+      parentId: thread.id,
+    });
+    expect(replied.statusCode, replied.body).toBe(404);
+    const thumbs = encodeURIComponent('👍');
+    expect(
+      (await post('owner', `/boards/${source}/elements/${scene}/reactions/${thumbs}`, 'PUT'))
+        .statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await post('owner', `/boards/${source}/elements/${scene}/review`, 'PUT', {
+          status: 'approved',
+        })
+      ).statusCode,
+    ).toBe(404);
+    // Another card of the board is unaffected; moving back lifts the refusal.
+    const fine = await post('owner', `/boards/${source}/comments`, 'POST', {
+      body: 'Fine',
+      elementId: other,
+    });
+    expect(fine.statusCode, fine.body).toBe(201);
+    expect(
+      (await move('owner', storyboard, { toBoardId: source, elementIds: [scene] })).statusCode,
+    ).toBe(200);
+    const again = await post('owner', `/boards/${source}/comments`, 'POST', {
+      body: 'Back',
+      elementId: scene,
+    });
+    expect(again.statusCode, again.body).toBe(201);
+    expect(await db.select().from(elementMove)).toEqual([
+      expect.objectContaining({ boardId: storyboard, elementId: scene, toBoardId: source }),
+    ]);
+  });
+
+  it('makes a comment written during the move wait for it, then refuses it', async () => {
+    await storeDoc(source, [scene]);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let locked = () => {};
+    const isLocked = new Promise<void>((resolve) => {
+      locked = resolve;
+    });
+    // A move in progress: it holds the board row and records the card as moved.
+    const moving = db.transaction(async (tx) => {
+      await tx.select().from(board).where(eq(board.id, source)).for('no key update');
+      await tx
+        .insert(elementMove)
+        .values({ boardId: source, elementId: scene, toBoardId: storyboard });
+      locked();
+      await held;
+    });
+    await isLocked;
+    let settled = false;
+    const write = post('owner', `/boards/${source}/comments`, 'POST', {
+      body: 'During',
+      elementId: scene,
+    }).then((res) => {
+      settled = true;
+      return res;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(settled).toBe(false);
+    release();
+    await moving;
+    expect((await write).statusCode).toBe(404);
+    expect(await db.select().from(comment)).toEqual([]);
+  });
+
+  it('runs alongside a schedule save of the same day without deadlock', async () => {
+    await seed(source, scene);
+    const [day] = await db
+      .insert(shootingDay)
+      .values({
+        projectId,
+        boardId: production,
+        date: '2026-12-01',
+        callTime: '08:00',
+        location: '',
+        notes: '',
+        blocks: [block({ shotId: scene, shotBoardId: source })],
+      })
+      .returning();
+    const save = db.transaction(async (tx) => {
+      await tx
+        .select()
+        .from(shootingDay)
+        .where(eq(shootingDay.id, day?.id ?? ''))
+        .for('update');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await tx
+        .update(shootingDay)
+        .set({ notes: 'Saved', revision: sql`${shootingDay.revision} + 1` })
+        .where(eq(shootingDay.id, day?.id ?? ''));
+    });
+    const res = await move('owner', source, { toBoardId: storyboard, elementIds: [scene] });
+    await save;
+    expect(res.statusCode, res.body).toBe(200);
+    const [after] = await db.select().from(shootingDay);
+    expect(after?.notes).toBe('Saved');
+    expect(after?.blocks[0]?.shotBoardId).toBe(storyboard);
+    expect(after?.revision).toBe((day?.revision ?? 0) + 2);
   });
 });
