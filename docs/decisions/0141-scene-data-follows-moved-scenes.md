@@ -62,7 +62,9 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    Undo leaves the board again only while as it was put there; a copy kept in the storyboard
    counts by scene and is said, never "nothing changed". A refusal of the server (4xx but 408)
    means the data did not move: nothing is asked back. One move, its planning or its Undo runs
-   at a time on a board; the ⋯ menu entry waits meanwhile.
+   at a time on a board, for the whole page (a view switch does not reset it); the ⋯ menu entry
+   waits meanwhile. Whether a storyboard made for the move is now empty is read from the
+   storyboard as the server has it, never from a write it did not confirm.
 7. What still keeps a scene on the board: an arrow or plan link to a card that stays, a plan
    whose sun follows a shooting day, a card this version does not fully understand. The notice
    names these.

@@ -2,6 +2,7 @@ import {
   addFrame,
   addScene,
   createElement,
+  deleteElements,
   intersects,
   listElements,
   updateElement,
@@ -26,6 +27,16 @@ const lingering: Array<() => void> = [];
  * once the server has it (unconfirmed), `ok` (or nothing left) succeeds.
  */
 const writesEnd: Array<'ok' | 'before' | 'after'> = [];
+/** A board that refuses to let cards go (a plan's Set, decision 0062): its deletions fail. */
+let refuseIn: Y.Doc | null = null;
+vi.mock('@inkadra/canvas-core', async (original) => {
+  const actual = await original<typeof import('@inkadra/canvas-core')>();
+  return {
+    ...actual,
+    deleteElements: (doc: Y.Doc, ids: Iterable<string>, origin?: unknown) =>
+      doc === refuseIn ? ['refused'] : actual.deleteElements(doc, ids, origin),
+  };
+});
 vi.mock('./send-to-storyboard.ts', () => ({
   writeToBoard: async <T>(id: string, write: (doc: Y.Doc) => T, linger?: { end: () => void }) => {
     const doc = docs.get(id);
@@ -107,7 +118,9 @@ vi.mock('../../lib/api.ts', () => ({
 const { moveScenes, setElementDataMove, SceneMoveError } = await import('./scene-move.ts');
 const { RequestError } = await import('../../lib/api.ts');
 /** A refusal the server gives on purpose: the data did not move. */
-const conflict = () => new (RequestError as unknown as new (status: number) => Error)(409);
+const status = (code: number) =>
+  new (RequestError as unknown as new (status: number) => Error)(code);
+const conflict = () => status(409);
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const storyboardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
@@ -121,6 +134,7 @@ function setUp() {
   deleted.length = 0;
   moves.length = 0;
   writesEnd.length = 0;
+  refuseIn = null;
   onMove = null;
   outOfReach = [];
   meanwhile = null;
@@ -662,6 +676,113 @@ describe('with the server moving its data along (element-data-move)', () => {
       expect(back).toBe(0);
       expect(moves).toEqual([]);
       expect(ids(doc)).not.toContain(a.id);
+    });
+  });
+
+  describe('the last gaps of the review', () => {
+    const moved = async () => {
+      const set = setUp();
+      const result = await move(set.doc, { id: storyboardId, title: 'Film' });
+      moves.length = 0;
+      return { ...set, result };
+    };
+
+    it.each([408, 500])('asks the data back after a %i (it may have moved)', async (code) => {
+      const { doc } = setUp();
+      onMove = (call) => {
+        if (call.from === boardId) throw status(code);
+      };
+      await move(doc, { id: storyboardId, title: 'Film' }).catch(() => null);
+      expect(moves.map((m) => m.from)).toEqual([boardId, storyboardId]);
+    });
+
+    it.each([400, 403, 404, 409])('asks nothing back after a %i (refused)', async (code) => {
+      const { doc } = setUp();
+      onMove = () => {
+        throw status(code);
+      };
+      await move(doc, { id: storyboardId, title: 'Film' }).catch(() => null);
+      expect(moves).toHaveLength(1);
+    });
+
+    it('move: the storyboard refuses to let the copies go: kept, counted by scene, said', async () => {
+      const { doc, story, one } = setUp();
+      onMove = () => {
+        refuseIn = story;
+        throw conflict();
+      };
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error.split).toEqual({ scenes: 2, comments: 'here' });
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('move: a unit of two scenes partly left in the storyboard counts both scenes', async () => {
+      const { doc, story, one, two } = setUp();
+      // One plan links both scenes: one unit.
+      createElement(doc, 'plan', { x: 0, y: 400 }, { sceneIds: [one.id, two.id] }, opts);
+      onMove = () => {
+        // A colleague removes one of the copies there meanwhile.
+        deleteElements(story, [two.id]);
+        throw conflict();
+      };
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error.split).toEqual({ scenes: 2, comments: 'here' });
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('undo: the storyboard refuses the removal: the data goes back, the board copies go', async () => {
+      const { doc, story, one, result } = await moved();
+      meanwhile = null;
+      onMove = (call) => {
+        if (call.from === storyboardId) refuseIn = story;
+      };
+      const { back, split } = await result.undo();
+      expect([back, split]).toEqual([0, null]);
+      expect(moves.map((m) => m.from)).toEqual([storyboardId, boardId]);
+      expect(ids(story)).toContain(one.id);
+      expect(ids(doc)).not.toContain(one.id);
+    });
+
+    it('undo: refused there and the data cannot go back: both copies stay, said', async () => {
+      const { doc, story, one, result } = await moved();
+      onMove = (call) => {
+        if (call.from === storyboardId) refuseIn = story;
+        else throw new Error('offline');
+      };
+      const { split } = await result.undo();
+      expect(split).toEqual({ scenes: 2, comments: 'here' });
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+    });
+
+    it('undo: an unconfirmed removal never calls “Film” empty while it still holds scenes', async () => {
+      const made = setUp();
+      const result = await move(made.doc, { title: 'Film', new: true });
+      const sb = docs.get(created[0] ?? '') as Y.Doc;
+      moves.length = 0;
+      // The removal reaches the server unconfirmed; a colleague adds a scene there meanwhile.
+      writesEnd.push('ok', 'ok', 'after');
+      meanwhile = null;
+      onMove = (call) => {
+        // Right after the removal is written, before anything confirms it.
+        if (call.from !== boardId)
+          meanwhile = () => addScene(sb, { number: '9', title: 'Theirs' }, opts);
+      };
+      const { emptyStoryboard, back } = await result.undo();
+      expect(back).toBe(2);
+      expect(emptyStoryboard).toBeNull();
+      expect(listElements(sb).some((e) => e.type === 'scene')).toBe(true);
+    });
+
+    it('undo: a board copy a colleague deleted is not said to be still here', async () => {
+      const { doc, one, two, result } = await moved();
+      onMove = () => {
+        deleteElements(doc, [one.id]);
+        throw conflict();
+      };
+      const error = await result.undo().catch((e) => e);
+      expect(error.split).toBeNull();
+      expect(ids(doc)).not.toContain(two.id);
     });
   });
 });

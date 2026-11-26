@@ -602,11 +602,14 @@ export async function moveScenes(opts: {
         /** The board copies go again while as put there; the others stay, said apart. */
         const dropCopies = (units: readonly string[][]) => {
           const put = brought as Map<string, string> | null;
-          if (!units.length || !put) return;
-          const ours = units.filter((unit) => unitUnchanged(doc, unit, put));
+          // A copy a colleague deleted on the board meanwhile is not here any more.
+          const board = roots(doc).elements;
+          const present = units.filter((unit) => unit.some((id) => board.has(id)));
+          if (!present.length || !put) return;
+          const ours = present.filter((unit) => unitUnchanged(doc, unit, put));
           const left = ours.length && deleteElements(doc, ours.flat(), MOVE).length > 0 ? ours : [];
           apart(
-            units.filter((unit) => !ours.includes(unit) || left.includes(unit)),
+            present.filter((unit) => !ours.includes(unit) || left.includes(unit)),
             'there',
           );
         };
@@ -673,10 +676,15 @@ export async function moveScenes(opts: {
             // Not confirmed: what is still in the storyboard gets its data back there and its
             // board copy goes; what left it is back here. If the storyboard cannot be read, or
             // the data cannot go back, both copies stay, the comments with the board's: said.
-            const still = await writeToBoard(storyboard.id, (sb) =>
-              ready.filter((unit) => unit.some((id) => roots(sb).elements.has(id))),
-            ).catch(() => null);
-            if (!still) throw fail({ scenes: scenesIn(plan, ready), comments: 'here' });
+            // Read from the storyboard as the server has it: whether it is empty, too.
+            empty = null;
+            const read = await writeToBoard(storyboard.id, (sb) => ({
+              still: ready.filter((unit) => unit.some((id) => roots(sb).elements.has(id))),
+              empty: emptyOf(made, storyboard.title, sb),
+            })).catch(() => null);
+            if (!read) throw fail({ scenes: scenesIn(plan, ready), comments: 'here' });
+            const { still } = read;
+            empty = read.empty;
             if (still.length && !(await sendBack(still)))
               throw fail({ scenes: scenesIn(plan, still), comments: 'here' });
             gone = ready.filter((unit) => !still.includes(unit));

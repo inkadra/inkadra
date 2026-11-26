@@ -177,7 +177,7 @@ import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
 import { isDesignFile } from './file-kinds.ts';
 import { frameRatio, useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
-import { oneAtATime } from './film/data-moves.ts';
+import { sceneMoveGate, useSceneMoveBusy } from './film/data-moves.ts';
 import { FramePanel } from './film/FramePanel.tsx';
 import { isFrameImageFile, isFrameImageType, moveImageToFrame } from './film/frame-image.ts';
 import { uploadToFrame } from './film/frame-upload.tsx';
@@ -457,8 +457,6 @@ export interface CanvasProps {
   onOpenBoard: (boardId: string, view?: string, el?: string) => void;
   /** Told how many scenes of this board could move to a storyboard (decision 0140). */
   onLooseScenes?: (count: number) => void;
-  /** A scene move, its planning or its Undo is running: the ⋯ menu entry waits (0141). */
-  onSceneMoveBusy?: (busy: boolean) => void;
   /** Told whenever the selection changes. */
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
@@ -491,7 +489,6 @@ export function Canvas({
   peers,
   onOpenBoard,
   onLooseScenes,
-  onSceneMoveBusy,
   onSelectionChange,
   onOpen,
   onExportSelection,
@@ -1190,7 +1187,8 @@ export function Canvas({
     setScenesAnswered(true);
   }, [userId, boardId]);
   const [moveChoice, setMoveChoice] = useState<MoveScenesChoice | null>(null);
-  const [moveBusy, setMoveBusy] = useState(false);
+  // Kept per board for the page, not by this canvas: see sceneMoveGate.
+  const moveBusy = useSceneMoveBusy(boardId);
   const [moveError, setMoveError] = useState<string | null>(null);
   useEffect(() => {
     onLooseScenes?.(movesScenes ? looseScenes.length : 0);
@@ -1199,17 +1197,9 @@ export function Canvas({
    * One move, its planning or its Undo at a time (decision 0141): the notice, the ⋯ menu, the
    * dialog and Undo all check it synchronously, before any await; `moveBusy` mirrors it.
    */
-  const moveGate = useRef(oneAtATime()).current;
-  const claimMove = useCallback(() => {
-    if (!moveGate.claim()) return false;
-    setMoveBusy(true);
-    return true;
-  }, [moveGate]);
-  const releaseMove = useCallback(() => {
-    moveGate.release();
-    setMoveBusy(false);
-  }, [moveGate]);
-  useEffect(() => onSceneMoveBusy?.(moveBusy), [onSceneMoveBusy, moveBusy]);
+  const moveGate = useMemo(() => sceneMoveGate(boardId), [boardId]);
+  const claimMove = useCallback(() => moveGate.claim(), [moveGate]);
+  const releaseMove = useCallback(() => moveGate.release(), [moveGate]);
 
   /** Moves the scenes, then says where they went and what stayed, with Undo. */
   const runSceneMove = useCallback(
