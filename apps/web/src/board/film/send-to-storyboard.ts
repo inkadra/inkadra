@@ -68,16 +68,26 @@ export function addFramesToBoard(
   frames: readonly FrameFields[],
   userId: string,
 ): Promise<void> {
+  return writeToBoard(boardId, (doc) => placeFrames(doc, frames, { userId }));
+}
+
+/**
+ * Writes to another board of the project over a connection of its own, once synced, and
+ * resolves with what `write` returned only once the server has confirmed it. Refused without
+ * edit rights on that board, or when its schema is newer than this build's; a `write` that
+ * throws writes nothing and rejects.
+ */
+export function writeToBoard<T>(boardId: string, write: (doc: Y.Doc) => T): Promise<T> {
   return new Promise((resolve, reject) => {
     const doc = new Y.Doc();
     let readOnly = false;
-    let written = false;
-    const finish = (error?: Error) => {
+    let written: { value: T } | null = null;
+    const finish = (error?: unknown) => {
       clearTimeout(timer);
       provider.destroy();
       doc.destroy();
-      if (error) reject(error);
-      else resolve();
+      if (error || !written) reject(error ?? new Error('Not written'));
+      else resolve(written.value);
     };
     const timer = setTimeout(() => finish(new Error('Timed out')), SEND_TIMEOUT_MS);
     const provider = new HocuspocusProvider({
@@ -94,8 +104,14 @@ export function addFramesToBoard(
           finish(new Error('Read-only'));
           return;
         }
-        written = true;
-        placeFrames(doc, frames, { userId });
+        try {
+          written = { value: write(doc) };
+        } catch (error) {
+          finish(error);
+          return;
+        }
+        // Nothing to send: done at once.
+        if (!provider.hasUnsyncedChanges) finish();
       },
     });
     provider.on('unsyncedChanges', ({ number }: { number: number }) => {

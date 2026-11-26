@@ -35,6 +35,7 @@ export * from './plan-walls.ts';
 export * from './plan-words.ts';
 export * from './production-card.ts';
 export * from './resize.ts';
+export * from './scene-move.ts';
 export * from './snap.ts';
 export * from './table.ts';
 export * from './tags.ts';

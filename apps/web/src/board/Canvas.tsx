@@ -52,12 +52,14 @@ import {
   pinchViewport,
   placeProductionCard,
   planListsReason,
+  planSceneMove,
   type Rect,
   type ResizeCorner,
   type ResizeOptions,
   rectFromPoints,
   refreshArrows,
   resizeFromCorner,
+  scenesOf,
   screenToWorld,
   sectionMembers,
   sendToBack,
@@ -135,8 +137,11 @@ import { ColorPicker } from './ColorPicker.tsx';
 import {
   loadBoardGrid,
   loadCardView,
+  loadLastStoryboard,
+  loadScenesNoticeAnswered,
   loadTidyGap,
   saveBoardGrid,
+  saveScenesNoticeAnswered,
   saveTidyGap,
 } from './canvas-prefs.ts';
 import { ARROW_DIRECTIONS, firstCard, nextCard } from './card-focus.ts';
@@ -175,9 +180,18 @@ import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
 import { isFrameImageFile, isFrameImageType, moveImageToFrame } from './film/frame-image.ts';
 import { uploadToFrame } from './film/frame-upload.tsx';
+import { LooseScenesNotice, type MoveScenesChoice, MoveScenesDialog } from './film/MoveScenes.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryCardPanel } from './film/StoryCardPanel.tsx';
-import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
+import {
+  addSceneTo,
+  defaultStoryboard,
+  moveScenes,
+  type SceneTarget,
+  serverHolds,
+  storyboardName,
+} from './film/scene-move.ts';
+import { createScreenplayStoryboard, storyboardTitle } from './film/screenplay/new-storyboard.ts';
 import { detectScreenplay } from './film/screenplay/parse.ts';
 import { applyImport, type ImportPlan } from './film/screenplay/plan.ts';
 import { ScreenplayImportDialog } from './film/screenplay/ScreenplayImportDialog.tsx';
@@ -432,8 +446,13 @@ export interface CanvasProps {
   initialSelection?: ReadonlySet<string>;
   /** Other people on the board; read only by the parts that draw them. */
   peers: PeerSource;
-  /** Opens a sub-board, on the view its card shows when there is one (decision 0121). */
-  onOpenBoard: (boardId: string, view?: string) => void;
+  /**
+   * Opens a sub-board, on the view its card shows when there is one (decision 0121), and at a
+   * card of it (`el`) when given.
+   */
+  onOpenBoard: (boardId: string, view?: string, el?: string) => void;
+  /** Told how many scenes of this board could move to a storyboard (decision 0140). */
+  onLooseScenes?: (count: number) => void;
   /** Told whenever the selection changes. */
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
@@ -468,6 +487,7 @@ export function Canvas({
   initialSelection = EMPTY_SET,
   peers,
   onOpenBoard,
+  onLooseScenes,
   onSelectionChange,
   onOpen,
   onExportSelection,
@@ -609,6 +629,8 @@ export function Canvas({
     /** The scene picker of a to-do list, opened from its "Scene" item. */
     scenes?: boolean;
     frames?: boolean;
+    /** Which storyboard a new scene goes to, when the project has several (decision 0140). */
+    storyboards?: boolean;
   } | null>(null);
   const [palette, setPalette] = useState(false);
   /** The address field of a new link card, or of a map card (an address or a map link). */
@@ -622,8 +644,8 @@ export function Canvas({
     show?: readonly string[];
     ok?: boolean;
     error?: boolean;
-    /** The one short notice of a module that is off offers to turn it on (decision 0121). */
-    turnOn?: ModuleId;
+    /** One more action, such as Turn on in the one short notice of a module (decision 0121). */
+    action?: { label: string; run: () => void };
   } | null>(null);
   const closeToast = useCallback(() => setToast(null), []);
   /** Turn on, from a dimmed entry of the Canvas menu or a module's notice. */
@@ -1142,9 +1164,183 @@ export function Canvas({
   );
   /** Where the voice note being recorded will go (#327), while the recorder is open. */
   const [recording, setRecording] = useState<Point | null>(null);
+  // Scenes live in storyboards (decision 0140) -----------------------------------------------
+  const boardKind = boards?.find((b) => b.id === boardId)?.kind;
+  const storyboards = useMemo(
+    () => (boards ?? []).filter((b) => b.kind === 'storyboard'),
+    [boards],
+  );
+  /** The loose scenes of an ordinary board; a storyboard's old canvas holds its own. */
+  const looseScenes = useMemo(
+    () => (boardKind === 'board' ? scenesOf([...snap.byId.values()]) : []),
+    [boardKind, snap],
+  );
+  const movesScenes =
+    !readOnly && !guest && !preview && conn.status === 'synced' && offers('tools', 'scene');
+  const [scenesAnswered, setScenesAnswered] = useState(() =>
+    loadScenesNoticeAnswered(userId, boardId),
+  );
+  useEffect(() => setScenesAnswered(loadScenesNoticeAnswered(userId, boardId)), [userId, boardId]);
+  const answerScenesNotice = useCallback(() => {
+    saveScenesNoticeAnswered(userId, boardId);
+    setScenesAnswered(true);
+  }, [userId, boardId]);
+  const [moveChoice, setMoveChoice] = useState<MoveScenesChoice | null>(null);
+  const [moveBusy, setMoveBusy] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  useEffect(() => {
+    onLooseScenes?.(movesScenes ? looseScenes.length : 0);
+  }, [onLooseScenes, movesScenes, looseScenes.length]);
+
+  /** Moves the scenes, then says where they went and what stayed, with Undo. */
+  const runSceneMove = useCallback(
+    async (target: SceneTarget, only?: ReadonlySet<string>, fromDialog = false) => {
+      setMoveBusy(true);
+      setMoveError(null);
+      try {
+        const result = await moveScenes({
+          doc,
+          projectId,
+          boardId,
+          userId,
+          boards,
+          target,
+          only,
+          // Where the scenes were, clear of the cards that stay (a card is taller than a scene).
+          spot: (at, leaving) =>
+            place(
+              freeSpot(
+                at,
+                BOARD_CARD_SIZE,
+                store
+                  .getSnapshot()
+                  .canvas.filter((e) => e.type !== 'arrow' && !leaving.has(e.id))
+                  .map((e) => store.rectOf(e)),
+              ),
+            ),
+        });
+        setMoveChoice(null);
+        const { plan, storyboard } = result;
+        const stay = plan.stay.length ? t('scenesMove.stay', { count: plan.stay.length }) : '';
+        if (!storyboard) {
+          if (plan.stay.length)
+            setToast({ text: t('scenesMove.none', { count: plan.stay.length }), undo: false });
+          return;
+        }
+        const moved = t('scenesMove.moved', {
+          scenes: t('screenplay.scenes', { count: plan.scenes.length }),
+          title: storyboard.title,
+        });
+        setToast({
+          text: stay ? `${moved} ${stay}` : moved,
+          ok: true,
+          undo: () =>
+            void result.undo().catch(() =>
+              setToast({
+                text: t('scenesMove.undoFailed', { title: storyboard.title }),
+                undo: false,
+                error: true,
+              }),
+            ),
+          ...(result.cardId ? { show: [result.cardId] } : {}),
+        });
+      } catch {
+        if (fromDialog) setMoveError(t('scenesMove.failed'));
+        else setToast({ text: t('scenesMove.failed'), undo: false, error: true });
+      } finally {
+        setMoveBusy(false);
+      }
+    },
+    [doc, projectId, boardId, userId, boards, t, place, store],
+  );
+  /** "Move to a storyboard": asks where only when the project has several (decision 0140). */
+  const startSceneMove = useCallback(async () => {
+    answerScenesNotice();
+    const elements = [...store.getSnapshot().byId.values()];
+    const scenes = scenesOf(elements);
+    const at = scenes.length
+      ? { x: Math.min(...scenes.map((e) => e.x)), y: Math.min(...scenes.map((e) => e.y)) }
+      : { x: 0, y: 0 };
+    const title = storyboardName(elements, at, t('film.views.storyboard'));
+    const [only] = storyboards;
+    if (storyboards.length < 2)
+      return runSceneMove(only ? { id: only.id, title: only.title } : { title, new: true });
+    setMoveBusy(true);
+    try {
+      const plan = planSceneMove(doc, await serverHolds(boardId, boards));
+      if (plan.ids.length === 0) {
+        setToast({ text: t('scenesMove.none', { count: plan.stay.length }), undo: false });
+        return;
+      }
+      setMoveError(null);
+      setMoveChoice({
+        storyboards: storyboards.map((b) => ({ id: b.id, title: b.title })),
+        initial: defaultStoryboard(storyboards, loadLastStoryboard(userId, projectId)),
+        newTitle: title,
+        scenes: plan.scenes.length,
+        frames: plan.frames,
+        stay: plan.stay.length,
+      });
+    } catch {
+      setToast({ text: t('scenesMove.failed'), undo: false, error: true });
+    } finally {
+      setMoveBusy(false);
+    }
+  }, [
+    answerScenesNotice,
+    store,
+    storyboards,
+    runSceneMove,
+    doc,
+    boardId,
+    boards,
+    userId,
+    projectId,
+    t,
+  ]);
+  // The board's ⋯ menu asks with ?moveScenes=1.
+  const [moveParam, takeMoveParam] = useTakeParam('moveScenes');
+  useEffect(() => {
+    if (!moveParam || !movesScenes) return;
+    takeMoveParam();
+    void startSceneMove();
+  }, [moveParam, movesScenes, takeMoveParam, startSceneMove]);
+
+  /**
+   * A new scene in a storyboard, which then opens on it (decision 0140); without one, a new
+   * storyboard with its card at `at`.
+   */
+  const newSceneIn = useCallback(
+    async (storyboardId: string | null, at: Point) => {
+      if (readOnly) return;
+      try {
+        let id = storyboardId;
+        if (!id) {
+          id = (await createBoard(projectId, boardId, t('film.views.storyboard'), 'storyboard')).id;
+          store.undo.stopCapturing();
+          createElement(
+            doc,
+            'board',
+            at,
+            { boardId: id, ...BOARD_CARD_SIZE },
+            { userId, origin: LOCAL },
+          );
+          store.undo.stopCapturing();
+          void refreshBoards(projectId);
+        }
+        const sceneId = await addSceneTo(id, userId);
+        onOpenBoard(id, 'storyboard', sceneId);
+      } catch {
+        setToast({ text: t('scenesMove.newSceneFailed'), undo: false, error: true });
+      }
+    },
+    [readOnly, projectId, boardId, t, store, doc, userId, onOpenBoard],
+  );
+
   /**
    * Storyboard off (decision 0121): the scenes arrive on this board as cards, and once per
-   * person one line says what Storyboard would do, with Turn on.
+   * person one line says what Storyboard would do, with Turn on, which moves them into a new
+   * storyboard named after the script (decision 0140).
    */
   const insertScenes = useCallback(
     (plan: ImportPlan) => {
@@ -1158,7 +1354,20 @@ export function Canvas({
           text: t('modules.notice.storyboard', { scenes }),
           // Many cards just landed on the board: the notice can take them back, like the plain one.
           undo: true,
-          turnOn: 'storyboard',
+          action: {
+            label: t('modules.turnOn'),
+            run: () => {
+              setToast(null);
+              void setModule('storyboard', true)
+                .then(() =>
+                  runSceneMove(
+                    { title: storyboardTitle(plan, t('screenplay.untitled')), new: true },
+                    new Set(created.map((scene) => scene.id)),
+                  ),
+                )
+                .catch(() => setToast({ text: t('modules.failed'), undo: false, error: true }));
+            },
+          },
         });
         return;
       }
@@ -1169,7 +1378,7 @@ export function Canvas({
         ok: true,
       });
     },
-    [readOnly, store, doc, userId, t],
+    [readOnly, store, doc, userId, t, runSceneMove],
   );
   /** A storyboard card from a screenplay: the board is filled in the background. */
   const insertScreenplay = useCallback(
@@ -1269,6 +1478,14 @@ export function Canvas({
           setFramePanel(created.id);
           return;
         case 'scene':
+          // On an ordinary board a scene goes to a storyboard (decision 0140); a storyboard's old
+          // canvas is the storyboard.
+          if (boardKind !== 'storyboard') {
+            if (storyboards.length > 1)
+              setMenu({ x: size.w / 2, y: size.h / 2, at: pos, origin: null, storyboards: true });
+            else void newSceneIn(storyboards[0]?.id ?? null, pos);
+            return;
+          }
           created = addScene(doc, {}, opts, pos);
           break;
         case 'character':
@@ -1284,7 +1501,21 @@ export function Canvas({
         setEditing(created.id);
       }
     },
-    [readOnly, center, place, userId, store, doc, select, setEditing, insertCanvas],
+    [
+      readOnly,
+      center,
+      place,
+      userId,
+      store,
+      doc,
+      select,
+      setEditing,
+      insertCanvas,
+      boardKind,
+      storyboards,
+      size,
+      newSceneIn,
+    ],
   );
 
   const uploadFiles = useCallback(
@@ -3252,22 +3483,73 @@ export function Canvas({
         label: t(dots ? 'board.menu.hideGrid' : 'board.menu.showGrid'),
         action: toggleDots,
       };
-      return readOnly
-        ? [grid]
-        : [
-            grid,
-            { divider: true },
-            { label: t('board.menu.newNote'), action: () => void add('note', menu.at) },
-            { label: t('board.menu.newColumn'), action: () => void add('column', menu.at) },
-            {
-              label: t('board.palette.add', { type: t('board.types.frame') }),
-              action: () => void add('frame', menu.at),
-            },
-            {
+      if (readOnly) return [grid];
+      // Which storyboard a new scene goes to, the one opened last first (decision 0140).
+      const last = defaultStoryboard(storyboards, loadLastStoryboard(userId, projectId));
+      if (menu.storyboards)
+        return [
+          { heading: t('moodboard.whichStoryboard') },
+          ...[...storyboards]
+            .sort((a, b) => Number(b.id === last) - Number(a.id === last))
+            .map((b) => ({
+              label: b.title,
+              icon: 'storyboard' as const,
+              kind: 'storyboard' as const,
+              action: () => void newSceneIn(b.id, menu.at),
+            })),
+        ];
+      const [only] = storyboards;
+      const scene: MenuItem =
+        boardKind === 'storyboard'
+          ? {
               label: t('board.palette.add', { type: t('board.types.scene') }),
               action: () => void add('scene', menu.at),
-            },
-          ];
+            }
+          : (() => {
+              // The storyboard it goes to, under the name as in the mockup (decision 0140).
+              const where =
+                storyboards.length > 1 ? null : (only?.title ?? t('scenesMove.newSceneHint'));
+              const label = t('scenesMove.newScene');
+              return {
+                label: where ? `${label} ${where}` : label,
+                content: (
+                  <span className="ink-select__label">
+                    {label}
+                    {where && <small>{where}</small>}
+                  </span>
+                ),
+                action: () =>
+                  storyboards.length > 1
+                    ? setMenu({ ...menu, storyboards: true })
+                    : void newSceneIn(only?.id ?? null, menu.at),
+              };
+            })();
+      return [
+        grid,
+        { divider: true },
+        { label: t('board.menu.newNote'), action: () => void add('note', menu.at) },
+        { label: t('board.menu.newColumn'), action: () => void add('column', menu.at) },
+        ...(offers('tools', 'scene') ? [scene] : []),
+        ...(offers('tools', 'frame')
+          ? [
+              {
+                label: t('board.palette.add', { type: t('board.types.frame') }),
+                ...(boardKind === 'storyboard'
+                  ? {}
+                  : {
+                      label: `${t('board.palette.add', { type: t('board.types.frame') })} ${t('scenesMove.frameHint')}`,
+                      content: (
+                        <span className="ink-select__label">
+                          {t('board.palette.add', { type: t('board.types.frame') })}
+                          <small>{t('scenesMove.frameHint')}</small>
+                        </span>
+                      ),
+                    }),
+                action: () => void add('frame', menu.at),
+              },
+            ]
+          : []),
+      ];
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
@@ -3741,6 +4023,9 @@ export function Canvas({
     openDetectedScript,
     offers,
     todoKinds,
+    storyboards,
+    boardKind,
+    newSceneIn,
   ]);
 
   /** The phone card sheet's own actions (#110), beside the menu's: only with the menu open. */
@@ -4099,6 +4384,35 @@ export function Canvas({
             );
           })()}
         {dropHint && <div className="canvas__drophint">{t('board.dropFiles')}</div>}
+        {/* Scenes outside a storyboard (decision 0140): asked once, then the board's ⋯ menu. */}
+        {movesScenes && looseScenes.length > 0 && !scenesAnswered && !toast && !moveChoice && (
+          <LooseScenesNotice
+            count={looseScenes.length}
+            busy={moveBusy}
+            onMove={() => void startSceneMove()}
+            onLater={answerScenesNotice}
+          />
+        )}
+        {moveChoice && (
+          <MoveScenesDialog
+            choice={moveChoice}
+            busy={moveBusy}
+            error={moveError}
+            onMove={(id) => {
+              const chosen = storyboards.find((b) => b.id === id);
+              void runSceneMove(
+                chosen
+                  ? { id: chosen.id, title: chosen.title }
+                  : { title: moveChoice.newTitle, new: true },
+                undefined,
+                true,
+              );
+            }}
+            onClose={() => {
+              if (!moveBusy) setMoveChoice(null);
+            }}
+          />
+        )}
 
         {/* Starting points (#312): only for people who can edit, gone with the first card. */}
         {snap.canvas.length === 0 &&
@@ -4471,7 +4785,7 @@ export function Canvas({
             />
           ) : (
             <ContextMenu
-              key={menu.scenes ? 'scenes' : 'main'}
+              key={menu.scenes ? 'scenes' : menu.storyboards ? 'storyboards' : 'main'}
               x={menu.x}
               y={menu.y}
               label={t('board.contextMenu')}
@@ -4627,15 +4941,9 @@ export function Canvas({
             ok={toast.ok}
             error={toast.error}
             onShow={
-              toast.turnOn
-                ? () => {
-                    if (toast.turnOn) turnOnModule(toast.turnOn);
-                  }
-                : toast.show
-                  ? () => showCards(toast.show ?? [])
-                  : undefined
+              toast.action?.run ?? (toast.show ? () => showCards(toast.show ?? []) : undefined)
             }
-            showLabel={toast.turnOn ? t('modules.turnOn') : undefined}
+            showLabel={toast.action?.label}
             onUndo={
               toast.undo === true ? () => store.undo.undo() : toast.undo ? toast.undo : undefined
             }

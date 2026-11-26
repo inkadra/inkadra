@@ -5546,7 +5546,7 @@
         "steps": {
           "0": {
             "title": "Szenen und Frames",
-            "text": "Jede Szene sammelt ihre Frames, in Reihenfolge."
+            "text": "Jede Szene sammelt ihre Frames, in Reihenfolge. Neue Szene im Canvas eines Boards fügt sie hier hinzu."
           },
           "1": {
             "title": "Jeder Frame hat seine Daten",
@@ -5563,6 +5563,10 @@
           "4": {
             "title": "Was eine Szene braucht",
             "text": "Kostüm, Requisite und Equipment der Szene, in Listen nach Art. Die Drehtage der Szene sammeln sie unter Mitbringen."
+          },
+          "5": {
+            "title": "Szenen außerhalb eines Storyboards",
+            "text": "Szenen gehören in ein Storyboard: Verschieben bringt sie mit ihren Frames dorthin, und die Karte des Storyboards bleibt auf dem Board."
           }
         },
         "where": "Die Tour beginnt auf einem Storyboard mit mindestens einer Szene: Füge eine hinzu und versuche es erneut."
@@ -6920,7 +6924,7 @@
     "off": "Modul aus.",
     "kindOff": "{{name}}: Modul aus, einschalten",
     "notice": {
-      "storyboard": "{{scenes}} auf dem Board. Mit Storyboard werden daraus Frames."
+      "storyboard": "{{scenes}} auf dem Board. Schalte Storyboard ein, dann kommen sie in ein eigenes Storyboard."
     },
     "offLine": "Modul {{name}} aus: Du kannst dieses Board lesen."
   },
@@ -7148,5 +7152,34 @@
       "loadtest_stopped": "Lasttest gestoppt",
       "loadtest_finished": "Lasttest beendet"
     }
+  },
+  "scenesMove": {
+    "notice_one": "Auf diesem Board liegt 1 Szene außerhalb eines Storyboards.",
+    "notice_other": "Auf diesem Board liegen {{count}} Szenen außerhalb eines Storyboards.",
+    "move": "In ein Storyboard verschieben",
+    "later": "Nicht jetzt",
+    "menu_one": "Szenen in ein Storyboard verschieben ({{count}})",
+    "menu_other": "Szenen in ein Storyboard verschieben ({{count}})",
+    "title_one": "1 Szene in ein Storyboard verschieben",
+    "title_other": "{{count}} Szenen in ein Storyboard verschieben",
+    "lead": "Im Storyboard haben sie Shotlist, Drehplan und Review. An ihrer Stelle bleibt die Karte des Storyboards.",
+    "stay_one": "1 Szene bleibt hier: Kommentare, Reviews, Drehtage oder Verknüpfungen auf diesem Board zeigen auf sie.",
+    "stay_other": "{{count}} Szenen bleiben hier: Kommentare, Reviews, Drehtage oder Verknüpfungen auf diesem Board zeigen auf sie.",
+    "none_one": "Die Szene bleibt hier: Kommentare, Reviews, Drehtage oder Verknüpfungen auf diesem Board zeigen auf sie.",
+    "none_other": "Die {{count}} Szenen bleiben hier: Kommentare, Reviews, Drehtage oder Verknüpfungen auf diesem Board zeigen auf sie.",
+    "where": "Wohin",
+    "new": "Neues Storyboard",
+    "addTo": "Zu „{{title}}“ hinzufügen",
+    "after": "Nach seiner letzten Szene; die Nummern bleiben, wie sie sind",
+    "contents": "{{scenes}}, {{frames}}",
+    "cancel": "Abbrechen",
+    "confirm": "Verschieben",
+    "moved": "{{scenes}} jetzt in „{{title}}“.",
+    "failed": "Die Szenen konnten nicht verschoben werden. Nichts wurde geändert.",
+    "undoFailed": "Das Verschieben lässt sich nicht rückgängig machen: Die Szenen sind noch in „{{title}}“.",
+    "newScene": "Neue Szene im Storyboard…",
+    "newSceneHint": "Ein neues Storyboard, seine Karte hier",
+    "frameHint": "Eine einzelne Karte, als Referenz",
+    "newSceneFailed": "Die Szene konnte nicht zum Storyboard hinzugefügt werden."
   }
 }

@@ -70,6 +70,7 @@ import {
 } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
+import { saveLastStoryboard } from './canvas-prefs.ts';
 import { ContextMenu, type MenuItem } from './chrome.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState, GoneState } from './DeniedState.tsx';
@@ -437,7 +438,7 @@ function BoardScreen({
   const production = productionOf(boards);
   const [view, setView] = useBoardView(board, counts);
   // A storyboard's Schedule and Troupe are the Production board's now: old links follow them.
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const moved = movedView(params.get('view'), board, !!production);
   useEffect(() => {
     if (moved && production)
@@ -658,6 +659,23 @@ function BoardScreen({
     () => setView('canvas', beginViewSwitch(view, 'canvas')),
     [setView, view],
   );
+  // The Move dialog chooses the storyboard opened last first (decision 0140).
+  useEffect(() => {
+    if (kind === 'storyboard' && user) saveLastStoryboard(user.id, projectId, boardId);
+  }, [kind, user, projectId, boardId]);
+  /** Scenes of this board that could move to a storyboard, as the canvas counts them. */
+  const [looseScenes, setLooseScenes] = useState(0);
+  const moveScenesItem = useCallback(() => {
+    if (view !== 'canvas') setView('canvas', beginViewSwitch(view, 'canvas'));
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        next.set('moveScenes', '1');
+        return next;
+      },
+      { replace: true },
+    );
+  }, [view, setView, setParams]);
   // Send to storyboard asks which one when the project has several (decision 0121).
   const storyboards = useMemo(
     () => (boards ?? []).filter((b) => b.kind === 'storyboard' && b.id !== boardId),
@@ -757,13 +775,14 @@ function BoardScreen({
   // The card of a sub-board opens the view it shows (decision 0121); the board page falls back
   // to the board's first view when that one is off.
   const openBoard = useCallback(
-    (id: string, view?: string) => {
+    (id: string, view?: string, el?: string) => {
       const target = boards?.find((b) => b.id === id);
-      navigate(
+      const href =
         target && view && isBoardView(view)
           ? viewHref(projectId, target, view, rootBoardId)
-          : boardPath(projectId, id, rootBoardId),
-      );
+          : boardPath(projectId, id, rootBoardId);
+      // At a card of it: "Go to the card" reads `el` (decision 0121).
+      navigate(el ? `${href}${href.includes('?') ? '&' : '?'}el=${encodeURIComponent(el)}` : href);
     },
     [navigate, projectId, rootBoardId, boards],
   );
@@ -989,6 +1008,18 @@ function BoardScreen({
                           { divider: true as const },
                         ]
                       : []),
+                    // Scenes outside a storyboard (decision 0140), after the notice.
+                    ...(editable && looseScenes > 0
+                      ? [
+                          {
+                            label: t('scenesMove.menu', { count: looseScenes }),
+                            icon: 'storyboard' as const,
+                            kind: 'storyboard' as const,
+                            action: moveScenesItem,
+                          },
+                          { divider: true as const },
+                        ]
+                      : []),
                     ...(outside > 0
                       ? [
                           {
@@ -1178,6 +1209,8 @@ function BoardScreen({
       modulesOff,
       outside,
       openOutside,
+      looseScenes,
+      moveScenesItem,
       versionable,
       productionLink,
       production,
@@ -1294,6 +1327,7 @@ function BoardScreen({
         boards={boards}
         canEdit={canEdit(detail?.myRole ?? projectRole)}
         onOpenBoard={openBoard}
+        onLooseScenes={setLooseScenes}
       />
     );
   return (

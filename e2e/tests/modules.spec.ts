@@ -160,7 +160,7 @@ for (const width of [1280, 390]) {
       };
       await drop();
       const notice = page.locator('.ink-toast', {
-        hasText: 'Con Storyboard diventano inquadrature.',
+        hasText: 'Accendi Storyboard e vanno in uno storyboard tutto loro.',
       });
       await expect(notice).toBeVisible();
       // The scenes just landed on the board as cards: the notice can take them back.
