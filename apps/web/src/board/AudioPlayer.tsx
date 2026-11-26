@@ -58,7 +58,14 @@ const clock = (seconds: number) => {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 };
 
+/** 0:12 / 0:48, or 0:12 alone while the length is unknown. */
+const total = (time: number, duration: number) =>
+  duration > 0 ? `${clock(time)} / ${formatDuration(duration * 1000)}` : clock(time);
+
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+/** How long the player waits for the browser to read a WebM's length before it gives up. */
+export const PROBE_LIMIT_MS = 2000;
 
 /**
  * The themed mini player of an audio card: a round play button, the waveform to scrub (a thin
@@ -89,6 +96,17 @@ export function AudioPlayer({
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(durationMs ? durationMs / 1000 : 0);
   const scrubbing = useRef(false);
+  // A voice note recorded in the browser is a WebM without its length (#26): `duration` is
+  // Infinity until the whole file is read. Seeking past the end makes the browser read it now;
+  // that seek is the player's, never the person's: playing, scrubbing or PROBE_LIMIT_MS end it
+  // at their place. Without a length the chip shows the time played alone.
+  const probing = useRef(false);
+  const probeTimer = useRef(0);
+  // The time shown, for the probe's time limit.
+  const shown = useRef(0);
+  shown.current = time;
+  // Where a scrub or a key without a length asked to go, from the length: applied once known.
+  const wanted = useRef<((length: number) => number) | null>(null);
   const turn = useInlineMedia(id, audio);
 
   useEffect(() => {
@@ -96,20 +114,53 @@ export function AudioPlayer({
     return () => el?.pause();
   }, []);
 
+  // Another file, or the card gone: the probe and a pending place belong to the old one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the source changes
+  useEffect(
+    () => () => {
+      window.clearTimeout(probeTimer.current);
+      probing.current = false;
+      wanted.current = null;
+    },
+    [src],
+  );
+
+  /** Ends the probe of a WebM's length, back at `at` seconds. */
+  function endProbe(el: HTMLAudioElement, at: number) {
+    if (!probing.current) return;
+    probing.current = false;
+    window.clearTimeout(probeTimer.current);
+    el.currentTime = at;
+  }
+
   function toggle() {
     const el = audio.current;
     if (!el) return;
     if (el.paused) {
+      // Playing is the person's choice of place: a scrub made before the length is dropped.
+      wanted.current = null;
+      endProbe(el, time);
       void el.play()?.catch(() => setPlaying(false));
     } else {
       el.pause();
     }
   }
 
-  function seekTo(seconds: number) {
+  /**
+   * Goes to `at(length, from)` seconds, `from` being the place asked for last. Without a length
+   * yet it ends the probe where the person is and keeps the request until the length arrives.
+   */
+  function seek(at: (length: number, from: number) => number) {
     const el = audio.current;
-    if (!el || !(duration > 0)) return;
-    const next = clamp(seconds, 0, duration);
+    if (!el) return;
+    if (!(duration > 0)) {
+      endProbe(el, time);
+      const before = wanted.current;
+      wanted.current = (length) => at(length, before ? before(length) : time);
+      return;
+    }
+    const next = clamp(at(duration, time), 0, duration);
+    probing.current = false;
     el.currentTime = next;
     setTime(next);
   }
@@ -117,7 +168,8 @@ export function AudioPlayer({
   function seekAt(e: PointerEvent<HTMLDivElement>) {
     const box = e.currentTarget.getBoundingClientRect();
     if (box.width <= 0) return;
-    seekTo(((e.clientX - box.left) / box.width) * duration);
+    const share = clamp((e.clientX - box.left) / box.width, 0, 1);
+    seek((length) => share * length);
   }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -154,11 +206,29 @@ export function AudioPlayer({
           setPlaying(false);
         }}
         onTimeUpdate={(e) => {
-          if (!scrubbing.current) setTime(e.currentTarget.currentTime);
+          if (!scrubbing.current && !probing.current) setTime(e.currentTarget.currentTime);
         }}
         onLoadedMetadata={(e) => {
-          const d = e.currentTarget.duration;
-          if (Number.isFinite(d) && d > 0) setDuration(d);
+          const el = e.currentTarget;
+          if (el.duration === Number.POSITIVE_INFINITY && !(duration > 0)) {
+            probing.current = true;
+            el.currentTime = Number.MAX_SAFE_INTEGER;
+            probeTimer.current = window.setTimeout(
+              () => endProbe(el, shown.current),
+              PROBE_LIMIT_MS,
+            );
+          } else if (Number.isFinite(el.duration) && el.duration > 0) setDuration(el.duration);
+        }}
+        onDurationChange={(e) => {
+          const el = e.currentTarget;
+          if (!Number.isFinite(el.duration) || !(el.duration > 0)) return;
+          setDuration(el.duration);
+          endProbe(el, time);
+          if (wanted.current === null) return;
+          const at = clamp(wanted.current(el.duration), 0, el.duration);
+          wanted.current = null;
+          el.currentTime = at;
+          setTime(at);
         }}
       />
       <div
@@ -167,9 +237,12 @@ export function AudioPlayer({
         tabIndex={0}
         aria-label={t('board.file.seek', { name })}
         aria-valuemin={0}
-        aria-valuemax={Math.round(duration)}
+        // Without a length the range ends at the time played, and the text says it is unknown.
+        aria-valuemax={Math.round(duration > 0 ? duration : time)}
         aria-valuenow={Math.round(time)}
-        aria-valuetext={`${clock(time)} / ${formatDuration(duration * 1000)}`}
+        aria-valuetext={
+          duration > 0 ? total(time, duration) : t('board.file.seekUnknown', { time: clock(time) })
+        }
         onPointerDown={(e) => {
           e.stopPropagation();
           scrubbing.current = true;
@@ -188,10 +261,10 @@ export function AudioPlayer({
         }}
         onKeyDown={(e) => {
           const step = e.shiftKey ? 10 : 5;
-          if (e.key === 'ArrowRight') seekTo(time + step);
-          else if (e.key === 'ArrowLeft') seekTo(time - step);
-          else if (e.key === 'Home') seekTo(0);
-          else if (e.key === 'End') seekTo(duration);
+          if (e.key === 'ArrowRight') seek((_, from) => from + step);
+          else if (e.key === 'ArrowLeft') seek((_, from) => from - step);
+          else if (e.key === 'Home') seek(() => 0);
+          else if (e.key === 'End') seek((length) => length);
           else return;
           e.preventDefault();
           e.stopPropagation();
@@ -228,9 +301,7 @@ export function AudioPlayer({
       >
         <Icon name={isPlaying ? 'pause' : 'play'} size={12} />
       </button>
-      <span className="card__duration fcard__audio-time">
-        {clock(time)} / {formatDuration(duration * 1000)}
-      </span>
+      <span className="card__duration fcard__audio-time">{total(time, duration)}</span>
     </div>
   );
 }

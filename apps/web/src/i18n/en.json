@@ -501,6 +501,7 @@
       "play": "Play {{name}}",
       "pause": "Pause {{name}}",
       "seek": "Position in {{name}}",
+      "seekUnknown": "{{time}}, length unknown",
       "sampleText": "Sample text",
       "glyphs_one": "{{count}} glyph",
       "glyphs_other": "{{count}} glyphs",

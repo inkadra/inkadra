@@ -1200,3 +1200,17 @@ function ColumnCard({
     </>
   );
 }
+
+/**
+ * The height a card's content takes at `width` with no height of its own: its player, preview
+ * and footer at their least. Set and restored before the browser paints.
+ */
+export function naturalHeight(card: HTMLElement, width: number): number {
+  const { width: w, height: h } = card.style;
+  card.style.width = `${width}px`;
+  card.style.height = 'auto';
+  const natural = card.offsetHeight;
+  card.style.width = w;
+  card.style.height = h;
+  return natural;
+}

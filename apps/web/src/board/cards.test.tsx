@@ -1,7 +1,7 @@
 import type { Element } from '@inkadra/doc-schema';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { Card } from './cards.tsx';
+import { Card, naturalHeight } from './cards.tsx';
 
 const state = vi.hoisted(() => ({
   preview: null as string | null,
@@ -638,5 +638,22 @@ describe('Vimeo and Instagram link cards', () => {
     expect(html).not.toContain('<iframe');
     state.asset = {};
     vi.unstubAllGlobals();
+  });
+});
+
+describe('natural height (#27)', () => {
+  it('measures the content at the given width with no height, then puts the card back', () => {
+    const style = { width: '360px', height: '90px' };
+    let seen = '';
+    const card = {
+      style,
+      get offsetHeight() {
+        seen = `${style.width} ${style.height}`;
+        return 178;
+      },
+    } as unknown as HTMLElement;
+    expect(naturalHeight(card, 160)).toBe(178);
+    expect(seen).toBe('160px auto');
+    expect(style).toEqual({ width: '360px', height: '90px' });
   });
 });

@@ -501,6 +501,7 @@
       "play": "Lire {{name}}",
       "pause": "Mettre en pause {{name}}",
       "seek": "Position dans {{name}}",
+      "seekUnknown": "{{time}}, durée inconnue",
       "sampleText": "Texte d’exemple",
       "glyphs_one": "{{count}} glyphe",
       "glyphs_other": "{{count}} glyphes",

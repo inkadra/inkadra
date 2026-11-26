@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { MIN_WIDTH } from './board.ts';
 import { type Point, type Rect, snap } from './geometry.ts';
-import type { ResizeCorner, ResizeOptions } from './resize.ts';
+import { MIN_HEIGHT, type ResizeCorner, type ResizeOptions } from './resize.ts';
 
 /** A guide drawn while dragging: a vertical (x) or horizontal (y) line in world units. */
 export interface Guide {
@@ -162,8 +162,6 @@ export function snapPoint(p: Point, grid: number): Point {
   return { x: snap(p.x, grid), y: snap(p.y, grid) };
 }
 
-const MIN_HEIGHT = 40;
-
 /**
  * Puts the edges a resize drags on the world grid; the opposite edges stay where they are.
  * Ratio-locked cards (images) snap the dragged side edge and keep their ratio; cards that only
@@ -173,7 +171,13 @@ export function snapResize(
   rect: Rect,
   corner: ResizeCorner,
   grid: number,
-  { aspectRatio, fixedHeight = 0, widthOnly = false, minWidth = MIN_WIDTH }: ResizeOptions = {},
+  {
+    aspectRatio,
+    fixedHeight = 0,
+    widthOnly = false,
+    minWidth = MIN_WIDTH,
+    minHeight = MIN_HEIGHT,
+  }: ResizeOptions = {},
 ): Rect {
   const west = corner.endsWith('w');
   const north = corner.startsWith('n');
@@ -198,11 +202,11 @@ export function snapResize(
   } else if (!widthOnly) {
     if (north) {
       y = snap(rect.y, grid);
-      while (bottom - y < MIN_HEIGHT) y -= grid;
+      while (bottom - y < minHeight) y -= grid;
       h = bottom - y;
     } else {
       let b = snap(bottom, grid);
-      while (b - rect.y < MIN_HEIGHT) b += grid;
+      while (b - rect.y < minHeight) b += grid;
       h = b - rect.y;
     }
   }

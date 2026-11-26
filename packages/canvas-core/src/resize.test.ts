@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { type ResizeCorner, resizeFromCorner } from './resize.ts';
+import { minCardSize, type ResizeCorner, resizeFromCorner } from './resize.ts';
 import { snapResize } from './snap.ts';
 
 const rect = { x: 100, y: 200, w: 240, h: 180 };
@@ -105,4 +105,37 @@ it('keeps a card at the minimum width it asks for', () => {
   });
   expect(snapResize({ ...card, w: 100 }, 'se', 20, options).w).toBe(160);
   expect(snapResize({ ...card, w: 100 }, 'sw', 20, options).w).toBeGreaterThanOrEqual(160);
+});
+
+describe('minimum size by card type (#27)', () => {
+  it('keeps names readable: 160 wide except pictures and colours', () => {
+    expect(minCardSize('image').w).toBe(80);
+    expect(minCardSize('color').w).toBe(80);
+    for (const type of ['file', 'note', 'link', 'column', 'board', 'map', 'plan'] as const)
+      expect(minCardSize(type).w).toBe(160);
+  });
+
+  it('keeps the header and a row of a table', () => {
+    const table = minCardSize('table');
+    const options = { minWidth: table.w, minHeight: table.h };
+    expect(resizeFromCorner(rect, 'se', { x: -1000, y: -1000 }, options)).toEqual({
+      ...rect,
+      w: 160,
+      h: 64,
+    });
+    const snapped = snapResize({ x: 0, y: 0, w: 161, h: 65 }, 'nw', 22, options);
+    expect(snapped.w).toBeGreaterThanOrEqual(160);
+    expect(snapped.h).toBeGreaterThanOrEqual(64);
+  });
+
+  it('holds the minimum width on ratio-locked cards', () => {
+    const next = resizeFromCorner(
+      rect,
+      'se',
+      { x: -1000, y: -1000 },
+      { aspectRatio: 4 / 3, fixedHeight: 60, minWidth: 160 },
+    );
+    expect(next.w).toBe(160);
+    expect(next.h).toBe(180);
+  });
 });
