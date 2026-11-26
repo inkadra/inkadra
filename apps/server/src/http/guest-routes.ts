@@ -996,49 +996,49 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           eq(sharePick.boardId, boardId),
           eq(sharePick.elementId, elementId),
         );
-        const [existing] = await db.select().from(sharePick).where(key);
-        const pick = input.pick === undefined ? (existing?.pick ?? null) : input.pick;
-        const stars = input.stars === undefined ? (existing?.stars ?? null) : input.stars;
+        const [known] = await db
+          .select({ id: asset.id })
+          .from(asset)
+          .where(and(eq(asset.id, picture), eq(asset.projectId, ctx.link.projectId)));
+        const assetId = known?.id ?? null;
         const now = new Date();
-        let body: GuestPick;
-        if (pick === null && stars === null) {
-          await db.delete(sharePick).where(key);
-          body = { boardId, elementId, pick: null, stars: null, updatedAt: iso(now) };
-        } else {
-          const [known] = await db
-            .select({ id: asset.id })
-            .from(asset)
-            .where(and(eq(asset.id, picture), eq(asset.projectId, ctx.link.projectId)));
-          const assetId = known?.id ?? null;
-          const [row] = await db.transaction(async (tx) => {
-            await lockCardData(tx, boardId, elementId);
-            return tx
-              .insert(sharePick)
-              .values({
-                guestId: ctx.guest.id,
-                shareLinkId: linkId,
-                boardId,
-                elementId,
-                assetId,
-                pick,
-                stars,
-                updatedAt: now,
-              })
-              .onConflictDoUpdate({
-                target: [sharePick.guestId, sharePick.boardId, sharePick.elementId],
-                set: { pick, stars, assetId, updatedAt: now },
-              })
-              .returning();
-          });
+        // One transaction, the board lock first: a pick sent during a move of the card's data
+        // waits for it, then finds the card gone (decision 0141), never writes behind it.
+        const body = await db.transaction(async (tx): Promise<GuestPick> => {
+          await lockCardData(tx, boardId, elementId);
+          const [existing] = await tx.select().from(sharePick).where(key).for('update');
+          const pick = input.pick === undefined ? (existing?.pick ?? null) : input.pick;
+          const stars = input.stars === undefined ? (existing?.stars ?? null) : input.stars;
+          if (pick === null && stars === null) {
+            await tx.delete(sharePick).where(key);
+            return { boardId, elementId, pick: null, stars: null, updatedAt: iso(now) };
+          }
+          const [row] = await tx
+            .insert(sharePick)
+            .values({
+              guestId: ctx.guest.id,
+              shareLinkId: linkId,
+              boardId,
+              elementId,
+              assetId,
+              pick,
+              stars,
+              updatedAt: now,
+            })
+            .onConflictDoUpdate({
+              target: [sharePick.guestId, sharePick.boardId, sharePick.elementId],
+              set: { pick, stars, assetId, updatedAt: now },
+            })
+            .returning();
           if (!row) throw new Error('Pick not saved');
-          body = {
+          return {
             boardId,
             elementId,
             pick: row.pick,
             stars: row.stars,
             updatedAt: iso(row.updatedAt),
           };
-        }
+        });
         return body;
       },
     );

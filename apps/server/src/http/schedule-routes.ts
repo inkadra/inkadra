@@ -26,6 +26,7 @@ import {
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { BoardReader } from '../board-content.ts';
+import { followMovedCards } from '../card-moves.ts';
 import {
   cardBoards,
   castLinksOf,
@@ -177,8 +178,15 @@ export function registerScheduleRoutes(
     inputs: T[],
     team: boolean,
     projectId: string,
+    dayBoardId: string,
   ) => {
-    const clean = inputs.map((input) => ownInput(input, team));
+    // A frame or scene whose data moved to another board is pointed at there (decision 0141).
+    const clean = await Promise.all(
+      inputs.map(async (input) => {
+        const own = ownInput(input, team);
+        return { ...own, blocks: await followMovedCards(tx, dayBoardId, own.blocks) };
+      }),
+    );
     const calls = clean.flatMap((input) => input.calls ?? []);
     const wanted = [...new Set(calls.map((call) => call.crewMemberId))];
     if (!wanted.length) return clean;
@@ -272,7 +280,7 @@ export function registerScheduleRoutes(
       parsed,
       async (tx) => {
         await requireProductionBoardDays(tx, access.board);
-        const [input] = await cleanInputs(tx, [parsed], team, access.board.projectId);
+        const [input] = await cleanInputs(tx, [parsed], team, access.board.projectId, boardId);
         await checkBlockBoards(tx, access.board.projectId, [], parsed.blocks);
         const [created] = await tx
           .insert(shootingDay)
@@ -477,7 +485,7 @@ export function registerScheduleRoutes(
     const { revision, ...input } = UpdateShootingDay.parse(req.body);
     const updatedBy = await savedBy(actor.id);
     const row = await db.transaction(async (tx) => {
-      const [clean] = await cleanInputs(tx, [input], team, access.board.projectId);
+      const [clean] = await cleanInputs(tx, [input], team, access.board.projectId, boardId);
       const projectId = access.board.projectId;
       return updateDay(tx, projectId, boardId, dayId, revision, clean ?? input, updatedBy);
     });
@@ -499,7 +507,7 @@ export function registerScheduleRoutes(
         await requireProductionBoardDays(tx, access.board);
       const inputs = sorted.flatMap((change) => (change.input ? [change.input] : []));
       const cleaned = new Map(
-        (await cleanInputs(tx, inputs, team, access.board.projectId)).map((clean, i) => [
+        (await cleanInputs(tx, inputs, team, access.board.projectId, boardId)).map((clean, i) => [
           inputs[i],
           clean,
         ]),

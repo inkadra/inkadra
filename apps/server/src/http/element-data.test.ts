@@ -27,6 +27,7 @@ import {
   sharePick,
   shootingDay,
 } from '../db/schema.ts';
+import { notify, Recipients } from '../notifications.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 import { repointBlocks } from './element-data-routes.ts';
@@ -620,5 +621,34 @@ describe.skipIf(!url)('POST /boards/{id}/element-data/move', () => {
     expect(after?.notes).toBe('Saved');
     expect(after?.blocks[0]?.shotBoardId).toBe(storyboard);
     expect(after?.revision).toBe((day?.revision ?? 0) + 2);
+  });
+
+  it('sends a notification or a day saved from an older view where the card is now', async () => {
+    await db
+      .insert(elementMove)
+      .values({ boardId: source, elementId: scene, toBoardId: storyboard });
+    await notify(
+      db,
+      { actor: { userId: people.commenter.id }, projectId, boardId: source, elementId: scene },
+      new Recipients(people.commenter.id).add(people.owner.id, 'comment'),
+    );
+    const [note] = await db.select().from(notification);
+    expect(note?.boardId).toBe(storyboard);
+    const res = await post('owner', `/boards/${production}/schedule`, 'POST', {
+      date: '2026-12-03',
+      callTime: '08:00',
+      wrap: null,
+      location: '',
+      notes: '',
+      blocks: [
+        block({ shotId: scene, shotBoardId: source }),
+        block({ shotId: other, shotBoardId: source }),
+      ],
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    expect(res.json().blocks.map((b: ScheduleBlock) => b.shotBoardId)).toEqual([
+      storyboard,
+      source,
+    ]);
   });
 });

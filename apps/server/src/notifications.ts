@@ -9,6 +9,7 @@ import {
 import { and, asc, eq, getTableColumns, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { boardRoles, boardRolesForPeople, touchesProject } from './access.ts';
+import { CARD_NOTIFICATIONS, movedTo } from './card-moves.ts';
 import type { Database } from './db/client.ts';
 import {
   board,
@@ -167,7 +168,18 @@ export async function notify(
       shareLinkId: event.shareLinkId ?? null,
     });
   }
-  if (values.length > 0) await db.insert(notification).values(values);
+  if (values.length === 0) return 0;
+  // A notification about a card whose data moved meanwhile goes where the card is now (0141).
+  const elementId = event.elementId;
+  if (event.boardId && elementId && values.every((v) => CARD_NOTIFICATIONS.includes(v.type))) {
+    const from = event.boardId;
+    await db.transaction(async (tx) => {
+      const to = await movedTo(tx, from, elementId);
+      await tx
+        .insert(notification)
+        .values(to ? values.map((v) => ({ ...v, boardId: to })) : values);
+    });
+  } else await db.insert(notification).values(values);
   return values.length;
 }
 

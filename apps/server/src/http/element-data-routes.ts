@@ -17,6 +17,7 @@ import {
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
+import { CARD_NOTIFICATIONS } from '../card-moves.ts';
 import type { Database } from '../db/client.ts';
 import {
   board,
@@ -72,15 +73,6 @@ export function repointBlocks(
   });
   return changed ? out : null;
 }
-
-/** Notifications about a card or its comments, which follow the card. */
-const CARD_NOTIFICATIONS: Array<(typeof notification.$inferSelect)['type']> = [
-  'mention',
-  'reply',
-  'comment',
-  'review',
-  'task_assigned',
-];
 
 /**
  * The moved cards (now on `to`) with comments, decisions or picks of guests whose link is
