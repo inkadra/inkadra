@@ -90,7 +90,8 @@ export function AudioPlayer({
   const [duration, setDuration] = useState(durationMs ? durationMs / 1000 : 0);
   const scrubbing = useRef(false);
   // A voice note recorded in the browser is a WebM without its length (#26): `duration` is
-  // Infinity until the whole file is read. Seeking past the end makes the browser read it now.
+  // Infinity until the whole file is read. Seeking past the end makes the browser read it now;
+  // that seek is the player's, never the person's: playing or scrubbing ends it at their place.
   const probing = useRef(false);
   const turn = useInlineMedia(id, audio);
 
@@ -99,10 +100,18 @@ export function AudioPlayer({
     return () => el?.pause();
   }, []);
 
+  /** Ends the probe of a WebM's length, back at `at` seconds. */
+  function endProbe(el: HTMLAudioElement, at: number) {
+    if (!probing.current) return;
+    probing.current = false;
+    el.currentTime = at;
+  }
+
   function toggle() {
     const el = audio.current;
     if (!el) return;
     if (el.paused) {
+      endProbe(el, time);
       void el.play()?.catch(() => setPlaying(false));
     } else {
       el.pause();
@@ -113,6 +122,7 @@ export function AudioPlayer({
     const el = audio.current;
     if (!el || !(duration > 0)) return;
     const next = clamp(seconds, 0, duration);
+    probing.current = false;
     el.currentTime = next;
     setTime(next);
   }
@@ -161,7 +171,7 @@ export function AudioPlayer({
         }}
         onLoadedMetadata={(e) => {
           const el = e.currentTarget;
-          if (el.duration === Number.POSITIVE_INFINITY) {
+          if (el.duration === Number.POSITIVE_INFINITY && !(duration > 0)) {
             probing.current = true;
             el.currentTime = Number.MAX_SAFE_INTEGER;
           } else if (Number.isFinite(el.duration) && el.duration > 0) setDuration(el.duration);
@@ -170,10 +180,7 @@ export function AudioPlayer({
           const el = e.currentTarget;
           if (!Number.isFinite(el.duration) || !(el.duration > 0)) return;
           setDuration(el.duration);
-          if (!probing.current) return;
-          probing.current = false;
-          el.currentTime = 0;
-          setTime(0);
+          endProbe(el, time);
         }}
       />
       <div

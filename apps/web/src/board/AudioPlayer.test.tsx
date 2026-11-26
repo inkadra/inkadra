@@ -190,6 +190,79 @@ describe('audio card length', () => {
   });
 });
 
+describe('audio card length probe (#26)', () => {
+  /** A player whose recording has no length yet, in the middle of the probe. */
+  function probing() {
+    const [player] = mount(1, null, null);
+    if (!player) throw new Error('no player');
+    const el = audio(player);
+    const state = { duration: Number.POSITIVE_INFINITY };
+    Object.defineProperty(el, 'duration', { configurable: true, get: () => state.duration });
+    act(() => {
+      el.dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(el.currentTime).toBe(Number.MAX_SAFE_INTEGER);
+    return { player, el, state };
+  }
+
+  it('plays from the start when play is pressed during the probe, and keeps playing', () => {
+    const { player, el, state } = probing();
+    act(() => button(player).click());
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(el.currentTime).toBe(0);
+    // The sound plays on; the length arrives late and does not send it back to 0.
+    el.currentTime = 1.5;
+    act(() => {
+      el.dispatchEvent(new Event('timeupdate'));
+    });
+    state.duration = 4.2;
+    act(() => {
+      el.dispatchEvent(new Event('durationchange'));
+    });
+    expect(el.currentTime).toBe(1.5);
+    expect(chip(player)).toBe('0:01 / 0:05');
+    expect(audio(player).paused).toBe(false);
+  });
+
+  it('keeps a scrub that started during the probe', () => {
+    const { player, el, state } = probing();
+    const scrub = player.querySelector<HTMLDivElement>('[role="slider"]');
+    if (!scrub) throw new Error('no bar');
+    scrub.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 24, right: 200, bottom: 24 }) as DOMRect;
+    act(() => {
+      scrub.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, clientX: 50, pointerId: 1 }),
+      );
+    });
+    state.duration = 4;
+    act(() => {
+      el.dispatchEvent(new Event('durationchange'));
+    });
+    act(() => {
+      scrub.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 100 }));
+    });
+    expect(el.currentTime).toBe(2);
+    // Late events of the probe don't move it either.
+    act(() => {
+      el.dispatchEvent(new Event('durationchange'));
+    });
+    expect(el.currentTime).toBe(2);
+    expect(chip(player)).toBe('0:02 / 0:04');
+  });
+
+  it('does not probe when the server knows the length', () => {
+    const [player] = mount();
+    if (!player) throw new Error('no player');
+    const el = audio(player);
+    Object.defineProperty(el, 'duration', { configurable: true, get: () => Infinity });
+    act(() => {
+      el.dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(el.currentTime).toBe(0);
+  });
+});
+
 describe('audio card waveform (#327)', () => {
   it('groups the stored peaks into as many bars as the card fits', () => {
     expect(waveformBars([10, 50, 20, 80, 0, 30, 90, 40], 4)).toEqual([50, 80, 30, 90]);
