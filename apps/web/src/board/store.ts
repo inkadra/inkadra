@@ -296,8 +296,13 @@ export class BoardStore {
     }
     /** Validated reads by key, each current: a change since then puts its key in stale. */
     const done = new Map<string, Element | null>();
-    /** Changed in the middle of their own read: read in one go next time, so typing ends. */
+    /**
+     * Changed in the middle of their own read, or again after being read twice: read in one go
+     * next time, so typing ends.
+     */
     const interrupted = new Set<string>();
+    /** Changed once after their read: read again cooperatively, as a large sync needs. */
+    const reread = new Set<string>();
     /** Read first, in this order; with `progressive`, published once all are read. */
     const first = new Set<string>();
     if (typeof priority === 'function') {
@@ -319,15 +324,23 @@ export class BoardStore {
     this.hydration = hydration;
     const show = progressive && first.size > 0;
     for (;;) {
-      for (const key of this.stale) done.delete(key);
+      for (const key of this.stale) {
+        if (!done.delete(key)) continue;
+        if (reread.has(key)) interrupted.add(key);
+        else reread.add(key);
+      }
       this.stale.clear();
       const todo: string[] = [];
       for (const key of first) if (!done.has(key)) todo.push(key);
       for (const key of elements.keys()) if (!done.has(key) && !first.has(key)) todo.push(key);
       // Every element is read and current, in this same task: publish.
       if (todo.length === 0) break;
+      // Only cards changed again and again: read them all in this task, without a pause in which
+      // the next edit would make one stale again. Otherwise hydration never ends while an edit
+      // lands at every pause and a slice reads fewer cards than are being edited.
+      const atOnce = todo.every((key) => interrupted.has(key));
       for (const key of todo) {
-        if (due()) await yieldNow();
+        if (!atOnce && due()) await yieldNow();
         if (this.destroyed) return;
         const map = elements.get(key);
         if (done.has(key)) continue;
