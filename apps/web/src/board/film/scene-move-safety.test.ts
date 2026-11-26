@@ -33,9 +33,9 @@ vi.mock('./send-to-storyboard.ts', () => ({
     const end = writesEnd.shift() ?? 'ok';
     if (end === 'before') throw new Error('Offline');
     const value = write(doc);
-    if (end === 'after') throw new Error('Timed out');
     meanwhile?.();
     meanwhile = null;
+    if (end === 'after') throw new Error('Timed out');
     if (linger) lingering.push(linger.end);
     return value;
   },
@@ -438,6 +438,57 @@ describe('with the server moving its data along (element-data-move)', () => {
       moves.length = 0;
       return { ...set, result };
     };
+
+    it('move: the copy written but not confirmed is taken back; nothing else changed', async () => {
+      const { doc, story, one } = setUp();
+      writesEnd.push('after');
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error).toBeInstanceOf(SceneMoveError);
+      expect(error.split).toBeNull();
+      expect(ids(story)).toEqual([]);
+      expect(ids(doc)).toContain(one.id);
+      expect(moves).toEqual([]);
+    });
+
+    it('move: and if the storyboard cannot be read to take it back, it is said', async () => {
+      const { doc, one } = setUp();
+      writesEnd.push('after', 'before');
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error.split).toEqual({ scenes: 2, comments: 'here' });
+      expect(ids(doc)).toContain(one.id);
+    });
+
+    it('undo: the first write fails before anything: the board is as it was', async () => {
+      const { doc, story, one, result } = await moved();
+      writesEnd.push('before');
+      await expect(result.undo()).rejects.toThrow();
+      expect(ids(doc)).not.toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+      expect(moves).toEqual([]);
+    });
+
+    it('undo: copies put on the board but not confirmed go again, nothing moved', async () => {
+      const { doc, story, one, two, result } = await moved();
+      writesEnd.push('after');
+      const error = await result.undo().catch((e) => e);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.split ?? null).toBeNull();
+      expect(ids(doc)).not.toContain(one.id);
+      expect(ids(doc)).not.toContain(two.id);
+      expect(ids(story)).toEqual(expect.arrayContaining([one.id, two.id]));
+      expect(moves).toEqual([]);
+    });
+
+    it('undo: a copy a colleague changed on the board meanwhile stays, and the split is said', async () => {
+      const { doc, story, one, a, result } = await moved();
+      writesEnd.push('after');
+      meanwhile = () => updateElement(doc, a.id, { action: 'Edited on the board' });
+      const error = await result.undo().catch((e) => e);
+      expect(error.split).toEqual({ scenes: 1, comments: 'there' });
+      expect(ids(doc)).toContain(one.id);
+      expect(ids(story)).toContain(one.id);
+      expect(moves).toEqual([]);
+    });
 
     it('undo: the check before the data cannot run: the board copies go, nothing moved', async () => {
       const { doc, story, one, result } = await moved();

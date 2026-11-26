@@ -55,7 +55,10 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    and a failure never leaves a scene apart from its comments without saying so: the notice
    names how many scenes are in both places or apart, and whether their comments are with the
    copies here, with those in the storyboard, or (when the server could not answer) to check.
-   The storyboard's card leaves the board only once all its scenes are confirmed back.
+   The storyboard's card leaves the board only once all its scenes are confirmed back. A first
+   write that is not confirmed (the copies into the storyboard on a move, or back onto the board
+   on Undo) is taken back while the copies are still as written; a copy someone changed
+   meanwhile stays, and the notice says where its comments are.
 7. What still keeps a scene on the board: an arrow or plan link to a card that stays, a plan
    whose sun follows a shooting day, a card this version does not fully understand. The notice
    names these.
