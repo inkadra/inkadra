@@ -50,6 +50,7 @@ it('lists people on @ in a note edited on the board, and Enter writes a real men
     scale: 1,
   } as unknown as BoardContextValue;
   const host = document.createElement('div');
+  host.className = 'canvas';
   document.body.append(host);
   const root = createRoot(host);
   await act(async () =>
@@ -111,6 +112,14 @@ it('lists people on @ in a note edited on the board, and Enter writes a real men
   });
   await act(async () => ready.commands.insertContent('@M'));
   expect(host.querySelector('[role=listbox]')?.textContent).toBe('Marco');
+
+  // A pan or a zoom of the board closes the list, which would float away from the `@`.
+  await act(async () => {
+    host.classList.add('canvas--moving');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  expect(ready.isFocused).toBe(true);
   act(() => root.unmount());
   host.remove();
   store.destroy();

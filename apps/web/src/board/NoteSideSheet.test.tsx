@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
 import { createElement } from '@inkadra/canvas-core';
+import type { Editor } from '@tiptap/react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment } from './note.tsx';
+import { setReviews } from './review-store.ts';
 import { BoardStore } from './store.ts';
 
 vi.mock('react-i18next', () => {
@@ -13,6 +15,12 @@ vi.mock('react-i18next', () => {
     options?.count === undefined ? key : `${key}:${options.count}`;
   return { useTranslation: () => ({ t, i18n: { language: 'en' } }) };
 });
+
+// happy-dom has neither the popover API nor text layout: the list's place is not tested here.
+vi.mock('@inkadra/ui', async (original) => ({
+  ...(await original<typeof import('@inkadra/ui')>()),
+  anchorLayer: () => () => {},
+}));
 
 const disposals: Array<() => void> = [];
 beforeEach(() => {
@@ -177,4 +185,37 @@ it('restores the opener focus when the sheet unmounts', async () => {
   expect(document.activeElement).not.toBe(opener);
   disposals.pop()?.();
   expect(document.activeElement).toBe(opener);
+});
+
+it('lists people on @ in the desktop panel, and Enter writes a mention', async () => {
+  setReviews({
+    people: [{ id: '00000000-0000-4000-8000-000000000002', name: 'Giulia', image: null }],
+  });
+  const { store, note, fragment } = noteWith('');
+  const host = await mount(
+    <NoteSideSheet
+      noteId={note.id}
+      store={store}
+      readOnly={false}
+      breadcrumb={[]}
+      onClose={vi.fn()}
+      onEditOnCanvas={vi.fn()}
+    />,
+  );
+  const dom = host.querySelector('[contenteditable="true"]') as HTMLElement & { editor: Editor };
+  await act(async () => {
+    dom.editor.commands.focus();
+    dom.editor.commands.insertContent('Ask @Gi');
+  });
+  expect(host.querySelector('[role=listbox]')?.textContent).toBe('Giulia');
+  await act(async () => {
+    dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+  });
+  expect(host.querySelector('[role=listbox]')).toBeNull();
+  const mention = (fragment.toArray()[0] as Y.XmlElement)
+    .toArray()
+    .find((n) => n instanceof Y.XmlElement && n.nodeName === 'mention') as Y.XmlElement;
+  expect(mention.getAttribute('label')).toBe('Giulia');
 });

@@ -13,7 +13,7 @@ import * as Y from 'yjs';
 import { useIsPhone } from '../lib/phone.ts';
 import type { ConnectionStatus, SaveStore } from './connection.ts';
 import { syncSummary } from './header-status.tsx';
-import { NotePhoneTools } from './NotePhoneTools.tsx';
+import { NoteMentionPicker, NotePhoneTools } from './NotePhoneTools.tsx';
 import { NoteBody, NoteEditor } from './note.tsx';
 import { plainText } from './note-text.ts';
 import {
@@ -60,6 +60,7 @@ export function NoteSideSheet({
   const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const [editor, setEditor] = useState<Editor | null>(null);
   const phone = useIsPhone();
   const body = store.map(noteId)?.get('body');
   const fragment = body instanceof Y.XmlFragment ? body : null;
@@ -167,7 +168,15 @@ export function NoteSideSheet({
                 (readOnly ? (
                   <NoteBody fragment={fragment} />
                 ) : (
-                  <NoteEditor key={noteId} fragment={fragment} onExit={onClose} />
+                  <>
+                    <NoteEditor
+                      key={noteId}
+                      fragment={fragment}
+                      onExit={onClose}
+                      onReady={setEditor}
+                    />
+                    {editor && <NoteMentionPicker key={noteId} editor={editor} />}
+                  </>
                 ))}
             </article>
           </div>

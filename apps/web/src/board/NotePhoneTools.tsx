@@ -232,8 +232,9 @@ function NoteMenu({
 }
 
 /**
- * The `@` list of a note edited on the board, the same as the phone's. It hangs from the `@` in
- * the top layer, so neither the card nor the floating shell covers it, at any zoom.
+ * The `@` list of a note edited on the board or in the desktop side panel, the same as the
+ * phone's. It hangs from the `@` in the top layer, so neither the card nor the floating shell
+ * covers it, at any zoom.
  */
 export function NoteMentionPicker({ editor }: { editor: Editor }) {
   const { t } = useTranslation();
@@ -247,8 +248,6 @@ export function NoteMentionPicker({ editor }: { editor: Editor }) {
   useLayoutEffect(() => {
     const el = layer.current;
     if (from === null || !el) return;
-    // shortcut: placed when it opens and on a window scroll or resize, not on a board pan while
-    // it is open; follow the board's viewport if that turns out to matter.
     const at = {
       getBoundingClientRect: () => {
         const c = editor.view.coordsAtPos(from);
@@ -256,7 +255,17 @@ export function NoteMentionPicker({ editor }: { editor: Editor }) {
       },
       contains: () => false,
     };
-    return anchorLayer(el, at, () => close.current());
+    const release = anchorLayer(el, at, () => close.current());
+    // A pan or a zoom of the board moves the `@` away: the list closes rather than float apart.
+    const canvas = editor.view.dom.closest('.canvas');
+    const moves = new MutationObserver(() => {
+      if (canvas?.classList.contains('canvas--moving')) close.current();
+    });
+    if (canvas) moves.observe(canvas, { attributes: true, attributeFilter: ['class'] });
+    return () => {
+      moves.disconnect();
+      release();
+    };
   }, [editor, from]);
   if (from === null || !found) return null;
   return (
