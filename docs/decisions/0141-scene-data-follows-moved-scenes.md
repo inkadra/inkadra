@@ -79,8 +79,10 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    back out of the storyboard (the storyboard could not be read) is said as a scene in both
    places with its comments here, not as a copy changed there. A move of more than
    `ELEMENT_DATA_MOVE_MAX` cards (frames included) is sent in calls of at most that many, one
-   after the other: each moves only what is still on the source, so asking all of it back is
-   safe, and a failure after the first call counts as "may have moved", never as a refusal.
+   after the other. A failed move reports exactly what moved or may have moved: the calls before
+   the failing one, plus that one unless the server refused it. Only that is asked back, never a
+   call not sent (which could carry data the other board already had, and is refused with 409
+   both ways); the notice names the side only when nothing moved.
 
 ## Consequences
 

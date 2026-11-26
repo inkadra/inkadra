@@ -129,9 +129,26 @@ export const moveHolds = (
   elementDataMoves() ? Promise.resolve(new Map()) : serverHolds(boardId, boards);
 
 /**
+ * A data move that failed. `sent` are the ids that moved or may have moved, in order: the calls
+ * before the failing one, plus that one unless the server refused it. Empty: nothing moved.
+ */
+class DataMoveError extends Error {
+  constructor(
+    readonly sent: readonly string[],
+    cause: unknown,
+  ) {
+    super('The data could not be moved', { cause });
+  }
+}
+
+/** What a failed data move may have moved: only that is asked back (never calls not sent). */
+const sentBy = (error: unknown, ids: readonly string[]) =>
+  error instanceof DataMoveError ? error.sent : ids;
+
+/**
  * Moves what the server keeps about these cards (with their frames) to the other board, at most
- * `ELEMENT_DATA_MOVE_MAX` per call. A call moves only what is still on `from`, so asking again (or
- * back) is safe. A failure after the first call is never a refusal: part of it has moved.
+ * `ELEMENT_DATA_MOVE_MAX` per call, one after the other. A call moves only what is still on
+ * `from`, so asking again (or back) is safe. Fails with a `DataMoveError`.
  */
 const moveData = async (from: string, to: string, ids: readonly string[]) => {
   const total: ElementDataMoved = {
@@ -151,7 +168,8 @@ const moveData = async (from: string, to: string, ids: readonly string[]) => {
         elementIds: ids.slice(at, at + ELEMENT_DATA_MOVE_MAX),
       })
       .catch((error: unknown) => {
-        throw at === 0 ? error : new Error('Partly moved', { cause: error });
+        const sent = refused(error) ? at : at + ELEMENT_DATA_MOVE_MAX;
+        throw new DataMoveError(ids.slice(0, sent), error);
       });
     for (const key of Object.keys(total) as (keyof ElementDataMoved)[])
       if (key !== 'guestsOutOfReach') total[key] += moved[key];
@@ -170,9 +188,9 @@ const refused = (error: unknown) =>
   error.status < 500 &&
   error.status !== 408;
 
-/** Where comments are after asking them back failed: still `stayed` if refused, else unknown. */
+/** Where comments are after asking them back failed: still `stayed` if nothing moved. */
 const sideAfter = (error: unknown, stayed: 'here' | 'there'): SceneSplit['comments'] =>
-  refused(error) ? stayed : 'unknown';
+  sentBy(error, ['?']).length === 0 ? stayed : 'unknown';
 
 /** Two splits of one step in one: the comments are on both sides when they differ. */
 const joinSplits = (a: SceneSplit | null, b: SceneSplit | null): SceneSplit | null =>
@@ -387,11 +405,12 @@ export async function moveScenes(opts: {
       dataMoved = dataCount(moved);
       guests = new Set(moved.guestsOutOfReach ?? []);
     } catch (error) {
-      // Refused on purpose: nothing moved. Otherwise a lost answer may have moved it all the
-      // same: asked back first. Then the copies go; those that cannot stay, and it is said.
+      // Refused on purpose: nothing moved. Otherwise a lost answer may have moved some of it all
+      // the same: that is asked back first. Then the copies go; those that cannot stay, said.
+      const sent = sentBy(error, unitIds.flat());
       const back =
-        refused(error) ||
-        (await moveData(storyboard.id, boardId, unitIds.flat()).then(
+        sent.length === 0 ||
+        (await moveData(storyboard.id, boardId, sent).then(
           () => true,
           () => false,
         ));
@@ -672,8 +691,8 @@ export async function moveScenes(opts: {
          * Sends the data of these units back to the storyboard, then their board copies go.
          * Resolves with null, or where the comments are when it failed.
          */
-        const sendBack = (units: readonly string[][]) =>
-          moveData(boardId, storyboard.id, idsOf(units)).then(
+        const sendBack = (units: readonly string[][], ids: readonly string[] = idsOf(units)) =>
+          moveData(boardId, storyboard.id, ids).then(
             () => {
               dropCopies(units);
               return null;
@@ -685,12 +704,13 @@ export async function moveScenes(opts: {
             await moveData(storyboard.id, boardId, idsOf(ready));
           } catch (error) {
             // Refused on purpose: nothing moved, the copies go. Otherwise a lost answer may have
-            // moved it all the same: asked back, then the copies go.
-            if (refused(error)) {
+            // moved some of it all the same: that is asked back, then the copies go.
+            const sent = sentBy(error, idsOf(ready));
+            if (!sent.length) {
               dropCopies(ready);
               throw fail();
             }
-            if (!(await sendBack(ready))) throw fail();
+            if (!(await sendBack(ready, sent))) throw fail();
             throw fail({ scenes: scenesIn(plan, ready), comments: 'unknown' });
           }
         }

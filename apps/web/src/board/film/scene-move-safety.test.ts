@@ -82,49 +82,58 @@ const moves: DataMove[] = [];
 let onMove: ((call: DataMove) => void) | null = null;
 /** Cards the server says have data of guests whose link does not reach the storyboard. */
 let outOfReach: string[] = [];
+/**
+ * Cards with data on both boards: the server refuses (409) any move naming one, either way, and
+ * moves nothing of that call.
+ */
+let onBoth: string[] = [];
 /** Cards the server keeps something about, by board. */
 const comments = new Map<string, string[]>();
-vi.mock('../../lib/api.ts', () => ({
-  api: {
-    get: async (path: string) => {
-      const board = path.split('/')[2] ?? '';
-      if (path.endsWith('/comment-counts'))
-        return {
-          items: (comments.get(board) ?? []).map((elementId) => ({
-            elementId,
-            open: 1,
-            resolved: 0,
-          })),
-        };
-      if (path.endsWith('/schedule')) return { items: [] };
-      return { items: [] };
-    },
-    delete: async (path: string) => {
-      deleted.push(path);
-    },
-    post: async (path: string, body: { toBoardId: string; elementIds: string[] }) => {
-      const from = path.split('/')[2] ?? '';
-      const call = { from, to: body.toBoardId, ids: body.elementIds };
-      moves.push(call);
-      if (onMove) onMove(call);
-      return {
-        comments: 1,
-        reactions: 0,
-        reviews: 0,
-        reviewEvents: 0,
-        picks: 0,
-        notifications: 0,
-        shootingDays: 0,
-        guestsOutOfReach: call.ids.filter((id) => outOfReach.includes(id)),
-      };
-    },
-  },
-  RequestError: class extends Error {
+vi.mock('../../lib/api.ts', () => {
+  class RequestError extends Error {
     constructor(readonly status = 500) {
       super(`HTTP ${status}`);
     }
-  },
-}));
+  }
+  return {
+    RequestError,
+    api: {
+      get: async (path: string) => {
+        const board = path.split('/')[2] ?? '';
+        if (path.endsWith('/comment-counts'))
+          return {
+            items: (comments.get(board) ?? []).map((elementId) => ({
+              elementId,
+              open: 1,
+              resolved: 0,
+            })),
+          };
+        if (path.endsWith('/schedule')) return { items: [] };
+        return { items: [] };
+      },
+      delete: async (path: string) => {
+        deleted.push(path);
+      },
+      post: async (path: string, body: { toBoardId: string; elementIds: string[] }) => {
+        const from = path.split('/')[2] ?? '';
+        const call = { from, to: body.toBoardId, ids: body.elementIds };
+        moves.push(call);
+        if (call.ids.some((id) => onBoth.includes(id))) throw new RequestError(409);
+        if (onMove) onMove(call);
+        return {
+          comments: 1,
+          reactions: 0,
+          reviews: 0,
+          reviewEvents: 0,
+          picks: 0,
+          notifications: 0,
+          shootingDays: 0,
+          guestsOutOfReach: call.ids.filter((id) => outOfReach.includes(id)),
+        };
+      },
+    },
+  };
+});
 
 const { moveScenes, setElementDataMove, SceneMoveError } = await import('./scene-move.ts');
 const { RequestError } = await import('../../lib/api.ts');
@@ -148,6 +157,7 @@ function setUp() {
   refuseIn = null;
   onMove = null;
   moveMax = null;
+  onBoth = [];
   outOfReach = [];
   meanwhile = null;
   lingering.length = 0;
@@ -858,25 +868,101 @@ describe('with the server moving its data along (element-data-move)', () => {
       expect(result.guestsUnreached).toBe(2);
     });
 
-    it('a refusal after the first call is not “nothing moved”: all of it is asked back', async () => {
-      const { doc, story, one } = setUp();
-      moveMax = 3;
-      let calls = 0;
+    /** Three scenes with a frame each: six cards, three calls of two. */
+    const three = () => {
+      const set = setUp();
+      const third = addScene(set.doc, { number: '3', title: 'Pier' }, opts, { x: 600, y: 0 });
+      const c = addFrame(set.doc, third.id, null, {}, opts);
+      moveMax = 2;
+      return { ...set, third, c };
+    };
+    /** The calls as [from, ids]. */
+    const calls = () => moves.map((m) => [m.from === boardId ? 'board' : 'story', m.ids]);
+
+    it('no answer to the first call: only that call is asked back, never those not sent', async () => {
+      const { doc, story, one } = three();
       onMove = (call) => {
-        if (call.from === boardId && ++calls === 2) throw conflict();
+        if (call.from === boardId) throw status(500);
       };
       const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
       expect(error).toBeInstanceOf(SceneMoveError);
       expect(error.split).toBeNull();
-      // Two calls there (the second refused), then everything back in two calls.
-      expect(moves.map((m) => [m.from, m.ids.length])).toEqual([
-        [boardId, 3],
-        [boardId, 1],
-        [storyboardId, 3],
-        [storyboardId, 1],
+      const first = moves[0]?.ids ?? [];
+      expect(first).toHaveLength(2);
+      expect(calls()).toEqual([
+        ['board', first],
+        ['story', first],
       ]);
       expect(ids(story)).toEqual([]);
       expect(ids(doc)).toContain(one.id);
+    });
+
+    it('the second call refused (409 both ways): only the first is asked back', async () => {
+      const { doc, story, one, two } = three();
+      // The second call holds `two`: its data is on both boards.
+      onBoth = [two.id];
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error).toBeInstanceOf(SceneMoveError);
+      expect(error.split).toBeNull();
+      const [first, second] = moves.map((m) => m.ids);
+      expect(second).toContain(two.id);
+      expect(calls()).toEqual([
+        ['board', first],
+        ['board', second],
+        ['story', first],
+      ]);
+      expect(ids(story)).toEqual([]);
+      expect(ids(doc)).toContain(one.id);
+    });
+
+    it('no answer to the second call: the first two are asked back, not the third', async () => {
+      const { doc, story } = three();
+      let n = 0;
+      onMove = (call) => {
+        if (call.from === boardId && ++n === 2) throw status(503);
+      };
+      const error = await move(doc, { id: storyboardId, title: 'Film' }).catch((e) => e);
+      expect(error.split).toBeNull();
+      const [first, second] = moves.map((m) => m.ids);
+      expect(calls()).toEqual([
+        ['board', first],
+        ['board', second],
+        ['story', first],
+        ['story', second],
+      ]);
+      expect(ids(story)).toEqual([]);
+    });
+
+    it('undo: the second call refused (409 both ways): only the first goes back, copies go', async () => {
+      const { doc, story, two, third } = three();
+      const result = await move(doc, { id: storyboardId, title: 'Film' });
+      moves.length = 0;
+      onBoth = [two.id];
+      const error = await result.undo().catch((e) => e);
+      expect(error).toBeInstanceOf(SceneMoveError);
+      // Nothing apart: the first call's data went back to the storyboard.
+      expect(error.split).toBeNull();
+      const [first, second] = moves.map((m) => m.ids);
+      expect(second).toContain(two.id);
+      expect(calls()).toEqual([
+        ['story', first],
+        ['story', second],
+        ['board', first],
+      ]);
+      expect(ids(doc)).not.toContain(third.id);
+      expect(ids(story)).toContain(third.id);
+    });
+
+    it('undo: the first call refused: nothing is asked back, the board copies go', async () => {
+      const { doc, story, one, third } = three();
+      const result = await move(doc, { id: storyboardId, title: 'Film' });
+      moves.length = 0;
+      onBoth = [one.id];
+      const error = await result.undo().catch((e) => e);
+      expect(error.split).toBeNull();
+      expect(moves).toHaveLength(1);
+      expect(ids(doc)).not.toContain(third.id);
+      expect(ids(story)).toContain(third.id);
     });
   });
 });
