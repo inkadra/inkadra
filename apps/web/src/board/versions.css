@@ -330,9 +330,11 @@
 .card > .guest-visibility + .card__lock {
   right: 28px;
 }
-/* Cards hidden from guests (own flag or a hidden column) read quieter for editors at a
-   glance (#30): a dashed edge, content at 85% and pictures in grey. 85% keeps primary and
-   secondary text above WCAG AA on the card in light and dark; guests never get these cards. */
+/* Cards hidden from guests (own flag or inside a hidden column) read quieter for editors at
+   a glance (#30): a dashed muted edge, the grey app surface instead of the card's and pictures
+   in grey. Text keeps its colours, so every text token keeps its contrast (no opacity, which
+   took muted text below WCAG AA and would compound inside a hidden column). Tinted notes keep
+   their colour. Guests never get these cards. */
 .card:has(> .guest-visibility, > .column__head > .guest-visibility) {
   border-style: dashed;
 }
@@ -342,9 +344,8 @@
 .card--column[class*="card--accent-"]:has(> .column__head > .guest-visibility) {
   border-top: 3px solid var(--column-accent);
 }
-.card:has(> .guest-visibility) > :not(.guest-visibility),
-.column__head:has(> .guest-visibility) > :not(.guest-visibility) {
-  opacity: 0.85;
+.card:not([class*="card--tint-"]):has(> .guest-visibility) {
+  background: var(--ink-bg-app);
 }
 .card:has(> .guest-visibility) :is(img, video) {
   filter: grayscale(1);
