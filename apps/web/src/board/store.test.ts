@@ -314,12 +314,20 @@ it('reads a large remote move in time linear in the number of cards', () => {
     const doc = new Y.Doc();
     const ids: string[] = [];
     doc.transact(() => {
-      for (let i = 0; i < n; i++) {
-        const at = { x: i, y: 0 };
-        const el =
-          i % 2 === 0
-            ? createElement(doc, 'table', at, core.newTable(2, 2), opts)
-            : createElement(doc, 'note', at, {}, opts);
+      // Not createElement in the loop: it reads every card to place the next one (quadratic),
+      // which took the whole timeout on a loaded machine.
+      const table = createElement(doc, 'table', { x: 0, y: 0 }, core.newTable(2, 2), opts);
+      const note = createElement(doc, 'note', { x: 1, y: 0 }, {}, opts);
+      ids.push(table.id, note.id);
+      const z = core.keysAt([table, note], 2, n - 2);
+      for (let i = 2; i < n; i++) {
+        const el = {
+          ...(i % 2 === 0 ? table : note),
+          id: schema.newElementId(),
+          x: i,
+          z: z[i - 2]!,
+        };
+        addElement(doc, el);
         ids.push(el.id);
       }
     }, LOCAL);
@@ -610,6 +618,106 @@ it.each([
     store.destroy();
   },
 );
+
+it.each([
+  [true, 0],
+  [true, 2],
+  [false, 0],
+  [false, 2],
+])(
+  'finishes hydrating when a priority card is deleted before it is shown (progressive %s, %i edits first)',
+  {
+    timeout: 30_000,
+  },
+  async (progressive, edits) => {
+    fakeClock(1);
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, generateReferenceBoard('small', 3).update);
+    const all = listElements(doc);
+    const note = all.find((el) => el.type === 'note' && el.parent === null)!;
+    const table = all.find((el) => el.type === 'table')!;
+    const scheduler = manualScheduler();
+    const store = BoardStore.hydrate(doc, {
+      budgetMs: 0.5,
+      schedule: () => scheduler.schedule(),
+      priority: [note.id, table.id],
+      progressive,
+    });
+    const views: number[] = [];
+    store.subscribe(() => views.push(store.getSnapshot().byId.size));
+    for (let i = 0; i < 3; i++) await scheduler.step();
+    // Edited after its read, read again, then edited again: it is then read in one go.
+    for (let i = 0; i < edits; i++) {
+      updateElement(doc, note.id, { x: i }, LOCAL);
+      for (let j = 0; j < 3; j++) await scheduler.step();
+    }
+    expect(store.hydrating).toBe(true);
+    expect(views).toEqual([]);
+    core.deleteElements(doc, [note.id], LOCAL);
+    while (store.hydrating && scheduler.calls < 20_000) await scheduler.step();
+    expect(store.hydrating).toBe(false);
+    await store.whenHydrated;
+    expect(store.getSnapshot().byId.has(note.id)).toBe(false);
+    expectSameAsFresh(store, doc);
+    store.destroy();
+  },
+);
+
+it('reads in slices again once a peer stops moving every card', { timeout: 30_000 }, async () => {
+  fakeClock(0.01);
+  const doc = new Y.Doc();
+  doc.transact(() => {
+    const note = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
+    const z = core.keysAt([note], 1, 79);
+    for (let i = 1; i < 80; i++)
+      addElement(doc, { ...note, id: schema.newElementId(), x: i, z: z[i - 1]! });
+  }, LOCAL);
+  const keys = [...roots(doc).elements.keys()];
+  const reads = new Map<string, number>();
+  let slice = 0;
+  const count = (map: Y.Map<unknown>) => {
+    const id = map.get('id') as string;
+    reads.set(id, (reads.get(id) ?? 0) + 1);
+    slice++;
+  };
+  // The store's reads: step by step, and whole.
+  const { readElement, readElementSteps } = schema;
+  vi.spyOn(schema, 'readElementSteps').mockImplementation((map, cooperative) => {
+    count(map);
+    return readElementSteps(map, cooperative);
+  });
+  vi.spyOn(schema, 'readElement').mockImplementation((map) => {
+    count(map);
+    return readElement(map);
+  });
+  const scheduler = manualScheduler();
+  const store = BoardStore.hydrate(doc, { budgetMs: 0.02, schedule: () => scheduler.schedule() });
+  const move = (moved: string[], by: number) =>
+    doc.transact(() => {
+      for (const key of moved) roots(doc).elements.get(key)!.set('x', by);
+    }, 'remote');
+  const readAtLeast = async (some: string[], times: number) => {
+    while (some.some((key) => (reads.get(key) ?? 0) < times)) await scheduler.step();
+    expect(store.hydrating).toBe(true);
+  };
+  // Moved once read, then moved again once read again: these cards are then read whole.
+  await readAtLeast(keys.slice(0, -10), 1);
+  move(keys, 1000);
+  await readAtLeast(keys.slice(0, -20), 2);
+  move(keys.slice(0, -20), 2000);
+  // The peer stopped: the cards it moved are read again in slices, not all in one task.
+  let most = 0;
+  while (store.hydrating && scheduler.calls < 20_000) {
+    slice = 0;
+    await scheduler.step();
+    most = Math.max(most, slice);
+  }
+  vi.restoreAllMocks();
+  expect(store.hydrating).toBe(false);
+  expect(most).toBeLessThan(10);
+  expectSameAsFresh(store, doc);
+  store.destroy();
+});
 
 it('withdraws the progressive view when hydration fails after showing it', {
   timeout: 30_000,

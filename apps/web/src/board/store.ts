@@ -323,6 +323,8 @@ export class BoardStore {
     const hydration = { done, first, firstLeft: new Set(first), shown: false };
     this.hydration = hydration;
     const show = progressive && first.size > 0;
+    /** The last pass read only cards read in one go, and some changed again meanwhile. */
+    let starved = false;
     for (;;) {
       for (const key of this.stale) {
         if (!done.delete(key)) continue;
@@ -335,23 +337,24 @@ export class BoardStore {
       for (const key of elements.keys()) if (!done.has(key) && !first.has(key)) todo.push(key);
       // Every element is read and current, in this same task: publish.
       if (todo.length === 0) break;
-      // Only cards changed again and again: read them all in this task, without a pause in which
-      // the next edit would make one stale again. Otherwise hydration never ends while an edit
-      // lands at every pause and a slice reads fewer cards than are being edited.
-      const atOnce = todo.every((key) => interrupted.has(key));
+      const whole = todo.every((key) => interrupted.has(key));
+      // Only cards changed again and again, and edits kept coming during the last such pass:
+      // read them all in this task, without a pause in which the next edit would make one stale
+      // again. Otherwise hydration never ends while an edit lands at every pause and a slice
+      // reads fewer cards than are being edited. Nothing edits during this pass, so the next one
+      // finds them all current; and it is never followed by another one in one go.
+      const atOnce: boolean = whole && starved;
       for (const key of todo) {
         if (!atOnce && due()) await yieldNow();
         if (this.destroyed) return;
         const map = elements.get(key);
         if (done.has(key)) continue;
-        if (!map) {
-          hydration.firstLeft.delete(key);
-          continue;
-        }
         // From here the read sees the current element; a change during a pause aborts it.
         this.stale.delete(key);
-        const hit = snapshot?.take(key, map);
-        if (hit !== undefined) done.set(key, hit);
+        const hit = map && snapshot?.take(key, map);
+        // Deleted while hydrating: current as nothing, like a deleted card shown.
+        if (!map) done.set(key, null);
+        else if (hit !== undefined) done.set(key, hit);
         else if (interrupted.has(key)) done.set(key, readElement(map));
         else {
           const steps = readElementSteps(map);
@@ -374,6 +377,7 @@ export class BoardStore {
           this.publishPartial();
         }
       }
+      starved = whole && !atOnce && this.stale.size > 0;
     }
     this.hydration = null;
     // Document order, as the synchronous read (a duplicated id keeps the last element).
