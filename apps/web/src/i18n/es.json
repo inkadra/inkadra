@@ -5547,7 +5547,7 @@
         "steps": {
           "0": {
             "title": "Escenas y planos",
-            "text": "Cada escena reúne sus planos, en orden."
+            "text": "Cada escena reúne sus planos, en orden. Nueva escena en el lienzo de un tablero la añade aquí."
           },
           "1": {
             "title": "Cada plano tiene sus datos",
@@ -5564,6 +5564,10 @@
           "4": {
             "title": "Lo que necesita una escena",
             "text": "Vestuario, atrezo y equipamiento de la escena, en listas por tipo. Los días que ruedan la escena los reúnen en Para llevar."
+          },
+          "5": {
+            "title": "Escenas fuera de un storyboard",
+            "text": "Las escenas van en un storyboard: Mover las lleva allí con sus planos, y la tarjeta del storyboard queda en el tablero."
           }
         },
         "where": "El recorrido empieza en un storyboard con al menos una escena: añade una y vuelve a intentarlo."
@@ -6921,7 +6925,7 @@
     "off": "Módulo apagado.",
     "kindOff": "{{name}}: módulo apagado, encender",
     "notice": {
-      "storyboard": "{{scenes}} en el tablero. Con Storyboard se convierten en planos."
+      "storyboard": "{{scenes}} en el tablero. Enciende Storyboard y pasan a un storyboard propio."
     },
     "offLine": "Módulo {{name}} apagado: puedes leer este tablero."
   },
@@ -7149,5 +7153,45 @@
       "loadtest_stopped": "Prueba de carga detenida",
       "loadtest_finished": "Prueba de carga terminada"
     }
+  },
+  "scenesMove": {
+    "notice_one": "En este tablero hay 1 escena fuera de un storyboard.",
+    "notice_other": "En este tablero hay {{count}} escenas fuera de un storyboard.",
+    "move": "Mover a un storyboard",
+    "later": "Ahora no",
+    "menu_one": "Mover las escenas a un storyboard ({{count}})",
+    "menu_other": "Mover las escenas a un storyboard ({{count}})",
+    "title_one": "Mover 1 escena a un storyboard",
+    "title_other": "Mover {{count}} escenas a un storyboard",
+    "lead": "En el storyboard tienen Lista de planos, Plan de rodaje y Revisión. En su lugar queda la tarjeta del storyboard.",
+    "stay_one": "1 escena se queda aquí: comentarios, revisiones, días de rodaje o enlaces de este tablero apuntan a ella.",
+    "stay_other": "{{count}} escenas se quedan aquí: comentarios, revisiones, días de rodaje o enlaces de este tablero apuntan a ellas.",
+    "none_one": "La escena se queda aquí: comentarios, revisiones, días de rodaje o enlaces de este tablero apuntan a ella.",
+    "none_other": "Las {{count}} escenas se quedan aquí: comentarios, revisiones, días de rodaje o enlaces de este tablero apuntan a ellas.",
+    "where": "Dónde",
+    "new": "Nuevo storyboard",
+    "addTo": "Añadir a «{{title}}»",
+    "after": "Después de su última escena; los números quedan como están",
+    "contents": "{{scenes}}, {{frames}}",
+    "cancel": "Cancelar",
+    "confirm": "Mover",
+    "moved": "{{scenes}} ahora en «{{title}}».",
+    "failed": "No se pudieron mover las escenas. No ha cambiado nada.",
+    "undoFailed": "No se puede deshacer el movimiento: las escenas siguen en «{{title}}».",
+    "newScene": "Nueva escena en el storyboard…",
+    "newSceneHint": "Un storyboard nuevo, con su tarjeta aquí",
+    "frameHint": "Una tarjeta suelta, como referencia",
+    "newSceneFailed": "No se pudo añadir la escena al storyboard.",
+    "changed_one": "1 escena cambió mientras se movía y se queda aquí: inténtalo de nuevo.",
+    "changed_other": "{{count}} escenas cambiaron mientras se movían y se quedan aquí: inténtalo de nuevo.",
+    "copiesKept_one": "Su copia se modificó en el storyboard entretanto y también se queda allí.",
+    "copiesKept_other": "{{count}} de sus copias se modificaron en el storyboard entretanto y también se quedan allí.",
+    "undoPartial_one": "1 escena se queda en «{{title}}»: se modificó allí o tiene comentarios.",
+    "undoPartial_other": "{{count}} escenas se quedan en «{{title}}»: se modificaron allí o tienen comentarios.",
+    "late_one": "Alguien cambió 1 escena mientras se movía: el cambio la siguió.",
+    "late_other": "Alguien cambió {{count}} escenas mientras se movían: los cambios las siguieron.",
+    "lateLost_one": "Una parte no pudo seguirla: revisa esa escena.",
+    "lateLost_other": "Algunas partes no pudieron seguirlas: revisa esas {{count}} escenas.",
+    "empty": "«{{title}}» está vacío: puedes eliminarlo."
   }
 }

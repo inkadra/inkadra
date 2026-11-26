@@ -601,7 +601,8 @@ function relinkStoredPlan(copy: Y.Map<unknown>, target: (id: string) => string |
       if (icon instanceof Y.Map) for (const key of ICON_LINKS) relink(icon, key);
 }
 
-function cloneMap(map: Y.Map<unknown>): Y.Map<unknown> {
+/** A detached copy of a stored card, fields this build does not know included (decision 0101). */
+export function cloneMap(map: Y.Map<unknown>): Y.Map<unknown> {
   const m = new Y.Map<unknown>();
   for (const [k, v] of map.entries()) m.set(k, v instanceof Y.AbstractType ? cloneType(v) : v);
   return m;

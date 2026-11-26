@@ -5547,7 +5547,7 @@
         "steps": {
           "0": {
             "title": "Cenas e frames",
-            "text": "Cada cena reúne os seus frames, em ordem."
+            "text": "Cada cena reúne os seus frames, em ordem. Nova cena no canvas de um quadro a adiciona aqui."
           },
           "1": {
             "title": "Cada frame tem os seus dados",
@@ -5564,6 +5564,10 @@
           "4": {
             "title": "O que uma cena precisa",
             "text": "Figurino, objetos de cena e equipamento da cena, em listas por tipo. Os dias que filmam a cena reúnem tudo em A levar."
+          },
+          "5": {
+            "title": "Cenas fora de um storyboard",
+            "text": "Cenas ficam em um storyboard: Mover as leva para lá com os frames, e o card do storyboard fica no quadro."
           }
         },
         "where": "O tour começa em um storyboard com pelo menos uma cena: adicione uma e tente de novo."
@@ -6921,7 +6925,7 @@
     "off": "Módulo desativado.",
     "kindOff": "{{name}}: módulo desativado, ativar",
     "notice": {
-      "storyboard": "{{scenes}} no quadro. Com Storyboard, viram frames."
+      "storyboard": "{{scenes}} no quadro. Ative Storyboard e elas vão para um storyboard próprio."
     },
     "offLine": "Módulo {{name}} desativado: você pode ler este quadro."
   },
@@ -7149,5 +7153,45 @@
       "loadtest_stopped": "Teste de carga parado",
       "loadtest_finished": "Teste de carga concluído"
     }
+  },
+  "scenesMove": {
+    "notice_one": "Neste quadro há 1 cena fora de um storyboard.",
+    "notice_other": "Neste quadro há {{count}} cenas fora de um storyboard.",
+    "move": "Mover para um storyboard",
+    "later": "Agora não",
+    "menu_one": "Mover as cenas para um storyboard ({{count}})",
+    "menu_other": "Mover as cenas para um storyboard ({{count}})",
+    "title_one": "Mover 1 cena para um storyboard",
+    "title_other": "Mover {{count}} cenas para um storyboard",
+    "lead": "No storyboard elas têm Decupagem, Cronograma e Revisão. No lugar delas fica o card do storyboard.",
+    "stay_one": "1 cena fica aqui: comentários, revisões, dias de filmagem ou ligações deste quadro apontam para ela.",
+    "stay_other": "{{count}} cenas ficam aqui: comentários, revisões, dias de filmagem ou ligações deste quadro apontam para elas.",
+    "none_one": "A cena fica aqui: comentários, revisões, dias de filmagem ou ligações deste quadro apontam para ela.",
+    "none_other": "As {{count}} cenas ficam aqui: comentários, revisões, dias de filmagem ou ligações deste quadro apontam para elas.",
+    "where": "Onde",
+    "new": "Novo storyboard",
+    "addTo": "Adicionar a “{{title}}”",
+    "after": "Depois da última cena; os números ficam como estão",
+    "contents": "{{scenes}}, {{frames}}",
+    "cancel": "Cancelar",
+    "confirm": "Mover",
+    "moved": "{{scenes}} agora em “{{title}}”.",
+    "failed": "Não foi possível mover as cenas. Nada mudou.",
+    "undoFailed": "Não é possível desfazer: as cenas continuam em “{{title}}”.",
+    "newScene": "Nova cena no storyboard…",
+    "newSceneHint": "Um storyboard novo, com o card aqui",
+    "frameHint": "Um card avulso, como referência",
+    "newSceneFailed": "Não foi possível adicionar a cena ao storyboard.",
+    "changed_one": "1 cena mudou durante a mudança e fica aqui: tente de novo.",
+    "changed_other": "{{count}} cenas mudaram durante a mudança e ficam aqui: tente de novo.",
+    "copiesKept_one": "A cópia dela foi alterada no storyboard nesse meio-tempo e também fica lá.",
+    "copiesKept_other": "{{count}} das cópias foram alteradas no storyboard nesse meio-tempo e também ficam lá.",
+    "undoPartial_one": "1 cena fica em “{{title}}”: foi alterada lá ou tem comentários.",
+    "undoPartial_other": "{{count}} cenas ficam em “{{title}}”: foram alteradas lá ou têm comentários.",
+    "late_one": "Alguém alterou 1 cena enquanto ela era movida: a alteração foi junto.",
+    "late_other": "Alguém alterou {{count}} cenas enquanto eram movidas: as alterações foram junto.",
+    "lateLost_one": "Uma parte não pôde ir junto: confira essa cena.",
+    "lateLost_other": "Algumas partes não puderam ir junto: confira essas {{count}} cenas.",
+    "empty": "“{{title}}” agora está vazio: você pode excluí-lo."
   }
 }

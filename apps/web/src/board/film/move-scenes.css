@@ -1,0 +1,60 @@
+/* Scenes live in storyboards (decision 0140): the notice above the toolbar and the Move dialog. */
+.loose-scenes {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 560px;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
+  color: var(--ink-text-primary);
+  font-size: 12px;
+}
+.loose-scenes p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+@media (width < 768px) {
+  .loose-scenes {
+    flex-wrap: wrap;
+    bottom: 84px;
+  }
+  .loose-scenes p {
+    flex-basis: 100%;
+  }
+}
+
+.move-scenes__lead {
+  margin: 0 0 8px;
+  color: var(--ink-text-secondary);
+  font-size: 13px;
+}
+.move-scenes__choices .ink-radio-group__options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.move-scenes__choices .ink-radio-group__option {
+  padding: 8px 10px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+}
+.move-scenes__choices .ink-radio-group__option[data-checked] {
+  border-color: var(--ink-accent-primary);
+  background: var(--ink-accent-soft-bg);
+}
+.move-scenes__error {
+  margin: 8px 0 0;
+  color: var(--ink-danger-fg);
+  font-size: 13px;
+}

@@ -5547,7 +5547,7 @@
         "steps": {
           "0": {
             "title": "Scene e inquadrature",
-            "text": "Ogni scena raccoglie le sue inquadrature, in ordine."
+            "text": "Ogni scena raccoglie le sue inquadrature, in ordine. Nuova scena dalla lavagna di una board la aggiunge qui."
           },
           "1": {
             "title": "Ogni inquadratura ha i suoi dati",
@@ -5564,6 +5564,10 @@
           "4": {
             "title": "Da portare della scena",
             "text": "Costumi, attrezzeria e attrezzatura della scena, in liste per tipo. I giorni che girano la scena le raccolgono in Da portare."
+          },
+          "5": {
+            "title": "Scene fuori da uno storyboard",
+            "text": "Le scene stanno in uno storyboard: Sposta le porta lì con le loro inquadrature, e sulla board resta la card dello storyboard."
           }
         },
         "where": "Il giro parte da uno storyboard con almeno una scena: aggiungila e riprova."
@@ -6921,7 +6925,7 @@
     "off": "Modulo spento.",
     "kindOff": "{{name}}: modulo spento, accendi",
     "notice": {
-      "storyboard": "{{scenes}} sulla board. Con Storyboard diventano inquadrature."
+      "storyboard": "{{scenes}} sulla board. Accendi Storyboard e vanno in uno storyboard tutto loro."
     },
     "offLine": "Modulo {{name}} spento: puoi leggere questa board."
   },
@@ -7149,5 +7153,45 @@
       "loadtest_stopped": "Test di carico fermato",
       "loadtest_finished": "Test di carico concluso"
     }
+  },
+  "scenesMove": {
+    "notice_one": "Su questa board c’è 1 scena fuori da uno storyboard.",
+    "notice_other": "Su questa board ci sono {{count}} scene fuori da uno storyboard.",
+    "move": "Sposta in uno storyboard",
+    "later": "Non ora",
+    "menu_one": "Sposta le scene in uno storyboard ({{count}})",
+    "menu_other": "Sposta le scene in uno storyboard ({{count}})",
+    "title_one": "Sposta 1 scena in uno storyboard",
+    "title_other": "Sposta {{count}} scene in uno storyboard",
+    "lead": "Nello storyboard hanno Shot list, Piano riprese e Revisione. Al loro posto resta la card dello storyboard.",
+    "stay_one": "1 scena resta qui: commenti, revisioni, giorni di ripresa o collegamenti di questa board puntano a lei.",
+    "stay_other": "{{count}} scene restano qui: commenti, revisioni, giorni di ripresa o collegamenti di questa board puntano a loro.",
+    "none_one": "La scena resta qui: commenti, revisioni, giorni di ripresa o collegamenti di questa board puntano a lei.",
+    "none_other": "Le {{count}} scene restano qui: commenti, revisioni, giorni di ripresa o collegamenti di questa board puntano a loro.",
+    "where": "Dove",
+    "new": "Nuovo storyboard",
+    "addTo": "Aggiungi a «{{title}}»",
+    "after": "Dopo l’ultima scena; i numeri restano come sono",
+    "contents": "{{scenes}}, {{frames}}",
+    "cancel": "Annulla",
+    "confirm": "Sposta",
+    "moved": "{{scenes}} ora in «{{title}}».",
+    "failed": "Non è stato possibile spostare le scene. Non è cambiato nulla.",
+    "undoFailed": "Lo spostamento non si può annullare: le scene sono ancora in «{{title}}».",
+    "newScene": "Nuova scena nello storyboard…",
+    "newSceneHint": "Un nuovo storyboard, con la card qui",
+    "frameHint": "Una card singola, come riferimento",
+    "newSceneFailed": "Non è stato possibile aggiungere la scena allo storyboard.",
+    "changed_one": "1 scena è cambiata durante lo spostamento e resta qui: riprova.",
+    "changed_other": "{{count}} scene sono cambiate durante lo spostamento e restano qui: riprova.",
+    "copiesKept_one": "La sua copia è stata modificata nello storyboard nel frattempo e resta anche lì.",
+    "copiesKept_other": "{{count}} loro copie sono state modificate nello storyboard nel frattempo e restano anche lì.",
+    "undoPartial_one": "1 scena resta in «{{title}}»: è stata modificata lì o ha commenti.",
+    "undoPartial_other": "{{count}} scene restano in «{{title}}»: sono state modificate lì o hanno commenti.",
+    "late_one": "Un collega ha modificato 1 scena mentre si spostava: la modifica l’ha seguita.",
+    "late_other": "Un collega ha modificato {{count}} scene mentre si spostavano: le modifiche le hanno seguite.",
+    "lateLost_one": "Una parte non ha potuto seguirla: controlla quella scena.",
+    "lateLost_other": "Alcune parti non hanno potuto seguirle: controlla quelle {{count}} scene.",
+    "empty": "«{{title}}» ora è vuoto: puoi eliminarlo."
   }
 }

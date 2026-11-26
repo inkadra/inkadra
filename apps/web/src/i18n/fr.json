@@ -5547,7 +5547,7 @@
         "steps": {
           "0": {
             "title": "Scènes et plans",
-            "text": "Chaque scène regroupe ses plans, dans l’ordre."
+            "text": "Chaque scène regroupe ses plans, dans l’ordre. Nouvelle scène sur le canevas d’un tableau l’ajoute ici."
           },
           "1": {
             "title": "Chaque plan a ses données",
@@ -5564,6 +5564,10 @@
           "4": {
             "title": "Ce qu’il faut à une scène",
             "text": "Costumes, accessoires et matériel de la scène, en listes par type. Les jours qui tournent la scène les rassemblent dans À apporter."
+          },
+          "5": {
+            "title": "Scènes hors d’un storyboard",
+            "text": "Les scènes ont leur place dans un storyboard : Déplacer les y emmène avec leurs plans, et la carte du storyboard reste sur le tableau."
           }
         },
         "where": "La visite commence sur un storyboard avec au moins une scène : ajoutez-en une et réessayez."
@@ -6921,7 +6925,7 @@
     "off": "Module désactivé.",
     "kindOff": "{{name}} : module désactivé, activer",
     "notice": {
-      "storyboard": "{{scenes}} sur le tableau. Avec Storyboard, elles deviennent des plans."
+      "storyboard": "{{scenes}} sur le tableau. Activez Storyboard et elles vont dans un storyboard à elles."
     },
     "offLine": "Module {{name}} désactivé : vous pouvez lire ce tableau."
   },
@@ -7149,5 +7153,45 @@
       "loadtest_stopped": "Test de charge arrêté",
       "loadtest_finished": "Test de charge terminé"
     }
+  },
+  "scenesMove": {
+    "notice_one": "Sur ce tableau, 1 scène est hors d’un storyboard.",
+    "notice_other": "Sur ce tableau, {{count}} scènes sont hors d’un storyboard.",
+    "move": "Déplacer dans un storyboard",
+    "later": "Pas maintenant",
+    "menu_one": "Déplacer les scènes dans un storyboard ({{count}})",
+    "menu_other": "Déplacer les scènes dans un storyboard ({{count}})",
+    "title_one": "Déplacer 1 scène dans un storyboard",
+    "title_other": "Déplacer {{count}} scènes dans un storyboard",
+    "lead": "Dans le storyboard, elles ont la Liste de plans, le Plan de travail et la Révision. La carte du storyboard prend leur place.",
+    "stay_one": "1 scène reste ici : des commentaires, des révisions, des jours de tournage ou des liens de ce tableau pointent vers elle.",
+    "stay_other": "{{count}} scènes restent ici : des commentaires, des révisions, des jours de tournage ou des liens de ce tableau pointent vers elles.",
+    "none_one": "La scène reste ici : des commentaires, des révisions, des jours de tournage ou des liens de ce tableau pointent vers elle.",
+    "none_other": "Les {{count}} scènes restent ici : des commentaires, des révisions, des jours de tournage ou des liens de ce tableau pointent vers elles.",
+    "where": "Où",
+    "new": "Nouveau storyboard",
+    "addTo": "Ajouter à « {{title}} »",
+    "after": "Après sa dernière scène ; les numéros restent tels quels",
+    "contents": "{{scenes}}, {{frames}}",
+    "cancel": "Annuler",
+    "confirm": "Déplacer",
+    "moved": "{{scenes}} maintenant dans « {{title}} ».",
+    "failed": "Impossible de déplacer les scènes. Rien n’a changé.",
+    "undoFailed": "Impossible d’annuler le déplacement : les scènes sont toujours dans « {{title}} ».",
+    "newScene": "Nouvelle scène dans le storyboard…",
+    "newSceneHint": "Un nouveau storyboard, sa carte ici",
+    "frameHint": "Une carte seule, comme référence",
+    "newSceneFailed": "Impossible d’ajouter la scène au storyboard.",
+    "changed_one": "1 scène a changé pendant le déplacement et reste ici : réessayez.",
+    "changed_other": "{{count}} scènes ont changé pendant le déplacement et restent ici : réessayez.",
+    "copiesKept_one": "Sa copie a été modifiée dans le storyboard entre-temps et y reste aussi.",
+    "copiesKept_other": "{{count}} de leurs copies ont été modifiées dans le storyboard entre-temps et y restent aussi.",
+    "undoPartial_one": "1 scène reste dans « {{title}} » : elle y a été modifiée ou a des commentaires.",
+    "undoPartial_other": "{{count}} scènes restent dans « {{title}} » : elles y ont été modifiées ou ont des commentaires.",
+    "late_one": "Quelqu’un a modifié 1 scène pendant son déplacement : la modification l’a suivie.",
+    "late_other": "Quelqu’un a modifié {{count}} scènes pendant leur déplacement : les modifications les ont suivies.",
+    "lateLost_one": "Une partie n’a pas pu suivre : vérifiez cette scène.",
+    "lateLost_other": "Certaines parties n’ont pas pu suivre : vérifiez ces {{count}} scènes.",
+    "empty": "« {{title}} » est maintenant vide : vous pouvez le supprimer."
   }
 }

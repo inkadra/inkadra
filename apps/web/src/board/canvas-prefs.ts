@@ -60,3 +60,32 @@ export function loadCardView(userId: string, elementId: string): string | null {
 export function saveCardView(userId: string, elementId: string, view: string) {
   write(`${own(CARD_VIEW_KEY, userId)}.${elementId}`, view);
 }
+
+const LAST_STORYBOARD_KEY = 'inkadra.canvas.lastStoryboard';
+
+/**
+ * The storyboard of a project this person opened last, which the Move dialog chooses first
+ * (decision 0140). shortcut: per device, not per account; move it to the preferences if people
+ * ask for it to follow them.
+ */
+export function loadLastStoryboard(userId: string, projectId: string): string | null {
+  return read(`${own(LAST_STORYBOARD_KEY, userId)}.${projectId}`);
+}
+
+export function saveLastStoryboard(userId: string, projectId: string, boardId: string) {
+  write(`${own(LAST_STORYBOARD_KEY, userId)}.${projectId}`, boardId);
+}
+
+const SCENES_NOTICE_KEY = 'inkadra.canvas.looseScenesAnswered';
+
+/**
+ * Whether this person answered the notice of the loose scenes of a board (decision 0140): it
+ * shows once, then the board's ⋯ menu keeps the action. shortcut: per device, like the grid.
+ */
+export function loadScenesNoticeAnswered(userId: string, boardId: string): boolean {
+  return read(`${own(SCENES_NOTICE_KEY, userId)}.${boardId}`) === '1';
+}
+
+export function saveScenesNoticeAnswered(userId: string, boardId: string) {
+  write(`${own(SCENES_NOTICE_KEY, userId)}.${boardId}`, '1');
+}

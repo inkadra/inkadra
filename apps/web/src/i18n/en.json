@@ -5547,7 +5547,7 @@
         "steps": {
           "0": {
             "title": "Scenes and frames",
-            "text": "Each scene holds its frames, in order."
+            "text": "Each scene holds its frames, in order. New scene on a board’s canvas adds one here."
           },
           "1": {
             "title": "Every frame has its data",
@@ -5564,6 +5564,10 @@
           "4": {
             "title": "What a scene needs",
             "text": "Wardrobe, props and equipment for the scene, in lists by type. The days that shoot the scene gather them in To bring."
+          },
+          "5": {
+            "title": "Scenes outside a storyboard",
+            "text": "Scenes belong in a storyboard: Move takes them there with their frames, and the storyboard’s card stays on the board."
           }
         },
         "where": "The tour starts on a storyboard with at least one scene: add one and try again."
@@ -6921,7 +6925,7 @@
     "off": "Module off.",
     "kindOff": "{{name}}: module off, turn on",
     "notice": {
-      "storyboard": "{{scenes}} on the board. With Storyboard they become frames."
+      "storyboard": "{{scenes}} on the board. Turn on Storyboard and they move into a storyboard of their own."
     },
     "offLine": "{{name}} module off: you can read this board."
   },
@@ -7149,5 +7153,45 @@
       "loadtest_stopped": "Load test stopped",
       "loadtest_finished": "Load test finished"
     }
+  },
+  "scenesMove": {
+    "notice_one": "There is 1 scene outside a storyboard on this board.",
+    "notice_other": "There are {{count}} scenes outside a storyboard on this board.",
+    "move": "Move to a storyboard",
+    "later": "Not now",
+    "menu_one": "Move scenes to a storyboard ({{count}})",
+    "menu_other": "Move scenes to a storyboard ({{count}})",
+    "title_one": "Move 1 scene to a storyboard",
+    "title_other": "Move {{count}} scenes to a storyboard",
+    "lead": "In the storyboard they get the Shot list, the Schedule and Review. The storyboard’s card takes their place.",
+    "stay_one": "1 scene stays here: comments, reviews, shooting days or links on this board point at it.",
+    "stay_other": "{{count}} scenes stay here: comments, reviews, shooting days or links on this board point at them.",
+    "none_one": "The scene stays here: comments, reviews, shooting days or links on this board point at it.",
+    "none_other": "The {{count}} scenes stay here: comments, reviews, shooting days or links on this board point at them.",
+    "where": "Where",
+    "new": "New storyboard",
+    "addTo": "Add to “{{title}}”",
+    "after": "After its last scene; the numbers stay as they are",
+    "contents": "{{scenes}}, {{frames}}",
+    "cancel": "Cancel",
+    "confirm": "Move",
+    "moved": "{{scenes}} now in “{{title}}”.",
+    "failed": "The scenes could not be moved. Nothing changed.",
+    "undoFailed": "The move could not be undone: the scenes are still in “{{title}}”.",
+    "newScene": "New scene in the storyboard…",
+    "newSceneHint": "A new storyboard, its card here",
+    "frameHint": "A single card, as a reference",
+    "newSceneFailed": "The scene could not be added to the storyboard.",
+    "changed_one": "1 scene changed while it was moving and stays here: try again.",
+    "changed_other": "{{count}} scenes changed while they were moving and stay here: try again.",
+    "copiesKept_one": "Its copy was changed in the storyboard meanwhile and stays there too.",
+    "copiesKept_other": "{{count}} of their copies were changed in the storyboard meanwhile and stay there too.",
+    "undoPartial_one": "1 scene stays in “{{title}}”: it was changed there or has comments.",
+    "undoPartial_other": "{{count}} scenes stay in “{{title}}”: they were changed there or have comments.",
+    "late_one": "A colleague changed 1 scene while it moved: the change went with it.",
+    "late_other": "A colleague changed {{count}} scenes while they moved: the changes went with them.",
+    "lateLost_one": "Part of it could not follow: check that scene.",
+    "lateLost_other": "Parts of them could not follow: check those {{count}} scenes.",
+    "empty": "“{{title}}” is now empty: you can delete it."
   }
 }
