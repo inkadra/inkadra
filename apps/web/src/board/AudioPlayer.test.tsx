@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AudioPlayer, resetAudioPlayers, waveformBars } from './AudioPlayer.tsx';
+import { AudioPlayer, PROBE_LIMIT_MS, resetAudioPlayers, waveformBars } from './AudioPlayer.tsx';
 import { isPlayingInline, playInline } from './inline-player.ts';
 
 vi.mock('react-i18next', () => ({
@@ -173,7 +173,7 @@ describe('audio card length', () => {
     act(() => {
       el.dispatchEvent(new Event('timeupdate'));
     });
-    expect(chip(player)).toBe('0:00 / 0:00');
+    expect(chip(player)).toBe('0:00');
     duration = 4.2;
     act(() => {
       el.dispatchEvent(new Event('durationchange'));
@@ -249,6 +249,68 @@ describe('audio card length probe (#26)', () => {
     });
     expect(el.currentTime).toBe(2);
     expect(chip(player)).toBe('0:02 / 0:04');
+  });
+
+  it('ends the probe on a scrub that never gets a length, and applies it if one comes', () => {
+    vi.useFakeTimers();
+    try {
+      const { player, el, state } = probing();
+      const scrub = player.querySelector<HTMLDivElement>('[role="slider"]');
+      if (!scrub) throw new Error('no bar');
+      scrub.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 200, height: 24, right: 200, bottom: 24 }) as DOMRect;
+      act(() => {
+        scrub.dispatchEvent(
+          new PointerEvent('pointerdown', { bubbles: true, clientX: 150, pointerId: 1 }),
+        );
+        scrub.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 150 }));
+      });
+      // Back at the place shown, and the time moves again.
+      expect(el.currentTime).toBe(0);
+      el.currentTime = 0.6;
+      act(() => {
+        el.dispatchEvent(new Event('timeupdate'));
+        vi.advanceTimersByTime(PROBE_LIMIT_MS * 2);
+      });
+      expect(el.currentTime).toBe(0.6);
+      expect(chip(player)).toBe('0:00');
+      // A length that comes later takes the sound where the scrub asked: three quarters.
+      state.duration = 8;
+      act(() => {
+        el.dispatchEvent(new Event('durationchange'));
+      });
+      expect(el.currentTime).toBe(6);
+      expect(chip(player)).toBe('0:06 / 0:08');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives up the probe after its time limit and still plays, showing the time alone', () => {
+    vi.useFakeTimers();
+    try {
+      const { player, el } = probing();
+      act(() => {
+        vi.advanceTimersByTime(PROBE_LIMIT_MS - 1);
+      });
+      expect(el.currentTime).toBe(Number.MAX_SAFE_INTEGER);
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(el.currentTime).toBe(0);
+      expect(chip(player)).toBe('0:00');
+      act(() => button(player).click());
+      expect(play).toHaveBeenCalledTimes(1);
+      expect(el.currentTime).toBe(0);
+      el.currentTime = 3.2;
+      act(() => {
+        el.dispatchEvent(new Event('timeupdate'));
+      });
+      expect(chip(player)).toBe('0:03');
+      expect(player.querySelector('[role="slider"]')?.getAttribute('aria-valuetext')).toBe('0:03');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not probe when the server knows the length', () => {

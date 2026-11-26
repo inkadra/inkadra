@@ -58,7 +58,14 @@ const clock = (seconds: number) => {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 };
 
+/** 0:12 / 0:48, or 0:12 alone while the length is unknown. */
+const total = (time: number, duration: number) =>
+  duration > 0 ? `${clock(time)} / ${formatDuration(duration * 1000)}` : clock(time);
+
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+/** How long the player waits for the browser to read a WebM's length before it gives up. */
+export const PROBE_LIMIT_MS = 2000;
 
 /**
  * The themed mini player of an audio card: a round play button, the waveform to scrub (a thin
@@ -91,19 +98,30 @@ export function AudioPlayer({
   const scrubbing = useRef(false);
   // A voice note recorded in the browser is a WebM without its length (#26): `duration` is
   // Infinity until the whole file is read. Seeking past the end makes the browser read it now;
-  // that seek is the player's, never the person's: playing or scrubbing ends it at their place.
+  // that seek is the player's, never the person's: playing, scrubbing or PROBE_LIMIT_MS end it
+  // at their place. Without a length the chip shows the time played alone.
   const probing = useRef(false);
+  const probeTimer = useRef(0);
+  // The time shown, for the probe's time limit.
+  const shown = useRef(0);
+  shown.current = time;
+  // Where a scrub without a length asked to go, as a share of the sound: applied once known.
+  const wanted = useRef<number | null>(null);
   const turn = useInlineMedia(id, audio);
 
   useEffect(() => {
     const el = audio.current;
-    return () => el?.pause();
+    return () => {
+      window.clearTimeout(probeTimer.current);
+      el?.pause();
+    };
   }, []);
 
   /** Ends the probe of a WebM's length, back at `at` seconds. */
   function endProbe(el: HTMLAudioElement, at: number) {
     if (!probing.current) return;
     probing.current = false;
+    window.clearTimeout(probeTimer.current);
     el.currentTime = at;
   }
 
@@ -111,6 +129,8 @@ export function AudioPlayer({
     const el = audio.current;
     if (!el) return;
     if (el.paused) {
+      // Playing is the person's choice of place: a scrub made before the length is dropped.
+      wanted.current = null;
       endProbe(el, time);
       void el.play()?.catch(() => setPlaying(false));
     } else {
@@ -120,7 +140,11 @@ export function AudioPlayer({
 
   function seekTo(seconds: number) {
     const el = audio.current;
-    if (!el || !(duration > 0)) return;
+    if (!el) return;
+    if (!(duration > 0)) {
+      endProbe(el, time);
+      return;
+    }
     const next = clamp(seconds, 0, duration);
     probing.current = false;
     el.currentTime = next;
@@ -130,7 +154,9 @@ export function AudioPlayer({
   function seekAt(e: PointerEvent<HTMLDivElement>) {
     const box = e.currentTarget.getBoundingClientRect();
     if (box.width <= 0) return;
-    seekTo(((e.clientX - box.left) / box.width) * duration);
+    const share = clamp((e.clientX - box.left) / box.width, 0, 1);
+    if (!(duration > 0)) wanted.current = share;
+    seekTo(share * duration);
   }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -174,6 +200,10 @@ export function AudioPlayer({
           if (el.duration === Number.POSITIVE_INFINITY && !(duration > 0)) {
             probing.current = true;
             el.currentTime = Number.MAX_SAFE_INTEGER;
+            probeTimer.current = window.setTimeout(
+              () => endProbe(el, shown.current),
+              PROBE_LIMIT_MS,
+            );
           } else if (Number.isFinite(el.duration) && el.duration > 0) setDuration(el.duration);
         }}
         onDurationChange={(e) => {
@@ -181,6 +211,11 @@ export function AudioPlayer({
           if (!Number.isFinite(el.duration) || !(el.duration > 0)) return;
           setDuration(el.duration);
           endProbe(el, time);
+          if (wanted.current === null) return;
+          const at = wanted.current * el.duration;
+          wanted.current = null;
+          el.currentTime = at;
+          setTime(at);
         }}
       />
       <div
@@ -191,7 +226,7 @@ export function AudioPlayer({
         aria-valuemin={0}
         aria-valuemax={Math.round(duration)}
         aria-valuenow={Math.round(time)}
-        aria-valuetext={`${clock(time)} / ${formatDuration(duration * 1000)}`}
+        aria-valuetext={total(time, duration)}
         onPointerDown={(e) => {
           e.stopPropagation();
           scrubbing.current = true;
@@ -250,9 +285,7 @@ export function AudioPlayer({
       >
         <Icon name={isPlaying ? 'pause' : 'play'} size={12} />
       </button>
-      <span className="card__duration fcard__audio-time">
-        {clock(time)} / {formatDuration(duration * 1000)}
-      </span>
+      <span className="card__duration fcard__audio-time">{total(time, duration)}</span>
     </div>
   );
 }
