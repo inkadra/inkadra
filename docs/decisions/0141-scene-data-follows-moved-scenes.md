@@ -73,6 +73,14 @@ the storyboard. On boards that were reviewed, that kept most scenes where they w
    they no longer see the card itself; the notice says so: "N scenes have comments or picks from
    guests whose current link won't reach the storyboard" (the server names those cards in
    `guestsOutOfReach`).
+9. **After the review of #1044.** When asking data back to undo a step fails, the notice names
+   the side only on a refusal (the data stayed where it was); after no answer, a 408 or a 5xx it
+   says to check where the comments are. A copy of a scene changed meanwhile that cannot be taken
+   back out of the storyboard (the storyboard could not be read) is said as a scene in both
+   places with its comments here, not as a copy changed there. A move of more than
+   `ELEMENT_DATA_MOVE_MAX` cards (frames included) is sent in calls of at most that many, one
+   after the other: each moves only what is still on the source, so asking all of it back is
+   safe, and a failure after the first call counts as "may have moved", never as a refusal.
 
 ## Consequences
 

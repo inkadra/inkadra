@@ -27,6 +27,7 @@ import {
   type BoardReviews,
   blockTarget,
   type CommentCounts,
+  ELEMENT_DATA_MOVE_MAX,
   type ElementDataMoved,
   type ElementReactions,
   type ShareLink,
@@ -127,12 +128,37 @@ export const moveHolds = (
 ): Promise<Map<string, 'server' | 'days'>> =>
   elementDataMoves() ? Promise.resolve(new Map()) : serverHolds(boardId, boards);
 
-/** Moves what the server keeps about these cards (with their frames) to the other board. */
-const moveData = (from: string, to: string, ids: readonly string[]) =>
-  api.post<ElementDataMoved>(`/boards/${from}/element-data/move`, {
-    toBoardId: to,
-    elementIds: ids,
-  });
+/**
+ * Moves what the server keeps about these cards (with their frames) to the other board, at most
+ * `ELEMENT_DATA_MOVE_MAX` per call. A call moves only what is still on `from`, so asking again (or
+ * back) is safe. A failure after the first call is never a refusal: part of it has moved.
+ */
+const moveData = async (from: string, to: string, ids: readonly string[]) => {
+  const total: ElementDataMoved = {
+    comments: 0,
+    reactions: 0,
+    reviews: 0,
+    reviewEvents: 0,
+    picks: 0,
+    notifications: 0,
+    shootingDays: 0,
+    guestsOutOfReach: [],
+  };
+  for (let at = 0; at < ids.length; at += ELEMENT_DATA_MOVE_MAX) {
+    const moved = await api
+      .post<ElementDataMoved>(`/boards/${from}/element-data/move`, {
+        toBoardId: to,
+        elementIds: ids.slice(at, at + ELEMENT_DATA_MOVE_MAX),
+      })
+      .catch((error: unknown) => {
+        throw at === 0 ? error : new Error('Partly moved', { cause: error });
+      });
+    for (const key of Object.keys(total) as (keyof ElementDataMoved)[])
+      if (key !== 'guestsOutOfReach') total[key] += moved[key];
+    total.guestsOutOfReach.push(...(moved.guestsOutOfReach ?? []));
+  }
+  return total;
+};
 
 /**
  * A refusal the server gave on purpose (4xx but 408): the data did not move, so there is
@@ -143,6 +169,10 @@ const refused = (error: unknown) =>
   error.status >= 400 &&
   error.status < 500 &&
   error.status !== 408;
+
+/** Where comments are after asking them back failed: still `stayed` if refused, else unknown. */
+const sideAfter = (error: unknown, stayed: 'here' | 'there'): SceneSplit['comments'] =>
+  refused(error) ? stayed : 'unknown';
 
 /** Two splits of one step in one: the comments are on both sides when they differ. */
 const joinSplits = (a: SceneSplit | null, b: SceneSplit | null): SceneSplit | null =>
@@ -453,29 +483,32 @@ export async function moveScenes(opts: {
   // What stayed on the board takes its data back; then its copies leave the storyboard again,
   // unless changed there. Data that cannot come back keeps its copies there, with it.
   let undone = false;
-  const dataBack =
+  /** Where the comments of `stale` are when they could not come back (null: they are here). */
+  const dataApart =
     !dataMoves || !stale.length
-      ? true
+      ? null
       : await moveData(storyboard.id, boardId, idsOf(stale)).then(
           (moved) => {
             dataMoved -= dataCount(moved);
-            return true;
+            return null;
           },
-          () => false,
+          (error: unknown) => sideAfter(error, 'there'),
         );
+  // Their comments could not come back: the scenes stay here, their comments with the copies
+  // (or, after no answer, on either side).
+  let split: SceneSplit | null = dataApart
+    ? { scenes: scenesIn(plan, stale), comments: dataApart }
+    : null;
   // Copies that cannot leave the storyboard stay there: a duplicate, the comments are here.
   const back = !stale.length
     ? null
-    : dataBack
-      ? await takeBack(storyboard.id, stale, copied.copies).catch(() => ({
-          kept: [...stale],
-          empty: false,
-        }))
-      : { kept: [] as string[][], empty: false };
-  // Their comments could not come back: the scenes stay here, their comments with the copies.
-  const split: SceneSplit | null = dataBack
-    ? null
-    : { scenes: scenesIn(plan, stale), comments: 'there' };
+    : dataApart
+      ? { kept: [] as string[][], empty: false }
+      : await takeBack(storyboard.id, stale, copied.copies).catch(() => {
+          // Not a copy changed there: the storyboard could not be read, so they may be there too.
+          split = { scenes: scenesIn(plan, stale), comments: 'here' };
+          return { kept: [] as string[][], empty: false };
+        });
   // A comment written on the board while the scenes moved follows them too (best effort).
   if (dataMoves && going.length)
     await moveData(boardId, storyboard.id, idsOf(going)).then(
@@ -635,14 +668,17 @@ export async function moveScenes(opts: {
           }
           dropCopies(returned.filter((unit) => !ready.includes(unit)));
         }
-        /** Sends the data of these units back to the storyboard, then their board copies go. */
+        /**
+         * Sends the data of these units back to the storyboard, then their board copies go.
+         * Resolves with null, or where the comments are when it failed.
+         */
         const sendBack = (units: readonly string[][]) =>
           moveData(boardId, storyboard.id, idsOf(units)).then(
             () => {
               dropCopies(units);
-              return true;
+              return null;
             },
-            () => false,
+            (error: unknown) => sideAfter(error, 'here'),
           );
         if (ready.length) {
           try {
@@ -654,7 +690,7 @@ export async function moveScenes(opts: {
               dropCopies(ready);
               throw fail();
             }
-            if (await sendBack(ready)) throw fail();
+            if (!(await sendBack(ready))) throw fail();
             throw fail({ scenes: scenesIn(plan, ready), comments: 'unknown' });
           }
         }
@@ -685,8 +721,8 @@ export async function moveScenes(opts: {
             if (!read) throw fail({ scenes: scenesIn(plan, ready), comments: 'here' });
             const { still } = read;
             empty = read.empty;
-            if (still.length && !(await sendBack(still)))
-              throw fail({ scenes: scenesIn(plan, still), comments: 'here' });
+            const side = still.length ? await sendBack(still) : null;
+            if (side) throw fail({ scenes: scenesIn(plan, still), comments: side });
             gone = ready.filter((unit) => !still.includes(unit));
             late = [];
             if (!gone.length) throw fail();
@@ -697,8 +733,9 @@ export async function moveScenes(opts: {
         // there again, then the copy leaves the board. Otherwise both copies stay, the comments
         // with the board's.
         returned = ready.filter((unit) => !late.includes(unit));
-        if (late.length && !(await sendBack(late))) {
-          apart(late, 'here');
+        const side = late.length ? await sendBack(late) : null;
+        if (side) {
+          apart(late, side);
           returned = ready;
         }
         // The storyboard's card leaves the board only once all its scenes are confirmed back,
