@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SceneElement } from '../film.ts';
 import { parseFdx } from './fdx.ts';
 import { parseFountain } from './fountain.ts';
@@ -17,18 +17,46 @@ import {
 import { MAX_XML_DEPTH, MAX_XML_ELEMENTS, parseXml, XmlError } from './xml.ts';
 
 /**
- * Crafted files that used to block the thread for seconds or minutes: each must finish fast or
- * stop with a limit. The bound is generous, so a slow machine passes; quadratic code does not.
+ * Crafted files that used to block the thread for seconds or minutes. No test compares a time
+ * with a fixed bound, which depends on the machine: each counts the work, stops at a limit, or
+ * checks how the time grows when the input grows fourfold. Linear work takes about 4 times as
+ * long, quadratic work 16 times; below 8 passes on a slow or busy machine and fails on quadratic
+ * code. The medians of a few runs, after a warm-up, keep a pause of the collector out.
  */
-const fast = <T>(run: () => T): T => {
-  const start = performance.now();
-  const result = run();
-  expect(performance.now() - start).toBeLessThan(500);
-  return result;
+const SCALE = 4;
+const MAX_RATIO = 8;
+/** Only a guard against a hang, not a measure of speed. */
+const HANG = 10_000;
+
+const median = (run: () => unknown, runs: number) => {
+  const times: number[] = [];
+  for (let i = 0; i < runs; i++) {
+    const start = performance.now();
+    run();
+    const time = performance.now() - start;
+    times.push(time);
+    if (time > HANG) break;
+  }
+  return times.sort((a, b) => a - b)[times.length >> 1] as number;
 };
+
+/** Time with input `n * SCALE` over time with input `n`: the input is built before timing. */
+const growth = <T>(build: (n: number) => T, run: (input: T) => unknown, n: number) => {
+  const small = build(n);
+  const large = build(n * SCALE);
+  run(small);
+  run(small);
+  const a = median(() => run(small), 5);
+  const b = median(() => run(large), 3);
+  expect(b).toBeLessThan(HANG);
+  return b / Math.max(a, 1);
+};
+const linear = <T>(build: (n: number) => T, run: (input: T) => unknown, n: number) =>
+  expect(growth(build, run, n)).toBeLessThan(MAX_RATIO);
+
 const code = (run: () => unknown) => {
   try {
-    fast(run);
+    run();
   } catch (error) {
     if (error instanceof ScriptError) return error.code;
     throw error;
@@ -42,10 +70,14 @@ const page = (lines: string[]): PdfPage => ({
 
 describe('parser worst cases', () => {
   it('reads many namespace prefixes in a deep document without copying them per element', () => {
-    const prefixes = Array.from({ length: 8000 }, (_, i) => `xmlns:p${i}="u"`).join(' ');
     const nested = '<a>'.repeat(MAX_XML_DEPTH - 1) + '</a>'.repeat(MAX_XML_DEPTH - 1);
-    const root = fast(() => parseXml(`<r ${prefixes}>${nested.repeat(300)}</r>`));
-    expect(root.children).toHaveLength(300);
+    // n prefixes and about n elements: copying the prefixes per element is n².
+    const xml = (n: number) => {
+      const prefixes = Array.from({ length: n }, (_, i) => `xmlns:p${i}="u"`).join(' ');
+      return `<r ${prefixes}>${nested.repeat(Math.ceil(n / 98))}</r>`;
+    };
+    linear(xml, parseXml, 3000);
+    expect(parseXml(xml(980)).children).toHaveLength(10);
   });
 
   it('keeps a prefix in scope only inside the element that declares it', () => {
@@ -62,10 +94,9 @@ describe('parser worst cases', () => {
   });
 
   it('moves synopses before a heading in one step', () => {
-    const script = fast(() =>
-      parseFountain(`${'= A synopsis.\n\n'.repeat(80_000)}INT. HALL - DAY\n`),
-    );
-    expect(script.scenes[0]?.blocks).toHaveLength(80_000);
+    const text = (n: number) => `${'= A synopsis.\n\n'.repeat(n)}INT. HALL - DAY\n`;
+    linear(text, parseFountain, 20_000);
+    expect(parseFountain(text(1000)).scenes[0]?.blocks).toHaveLength(1000);
   });
 
   it('moves each synopsis once, to the scene after it', () => {
@@ -77,9 +108,14 @@ describe('parser worst cases', () => {
   });
 
   it('reads a long title page line without a colon in linear time', () => {
-    const long = 'draft '.repeat(50_000);
     const body = page(['INT. HALL - DAY', 'Mara waits.']);
-    fast(() => pdfPagesToFountain([page(['THE TITLE', 'Written by', 'Nora', long]), body]));
+    linear(
+      (n) => [page(['THE TITLE', 'Written by', 'Nora', 'draft '.repeat(n)]), body],
+      (pages) => {
+        for (let i = 0; i < 40; i++) pdfPagesToFountain(pages);
+      },
+      4000,
+    );
     const title = pdfPagesToFountain([
       page(['THE TITLE', 'by', 'Nora', 'First draft: 3 May']),
       body,
@@ -94,9 +130,9 @@ describe('parser worst cases', () => {
 
   it('joins a paragraph that runs over every page in linear time', () => {
     const line = 'and the train goes on through the night and nobody stops it';
-    const pages = Array.from({ length: 2000 }, () => page(Array(40).fill(line)));
-    const text = fast(() => pdfPagesToFountain(pages));
-    expect(text.split('\n').filter(Boolean)).toHaveLength(1);
+    const pages = (n: number) => Array.from({ length: n }, () => page(Array(40).fill(line)));
+    linear(pages, pdfPagesToFountain, 200);
+    expect(pdfPagesToFountain(pages(10)).split('\n').filter(Boolean)).toHaveLength(1);
   });
 
   it('stops at the scene limit', () => {
@@ -111,9 +147,14 @@ describe('parser worst cases', () => {
   });
 
   it('splits a heading full of brackets in linear time', () => {
-    fast(() => {
-      for (let i = 0; i < 2000; i++) parseHeading(`INT. ${'('.repeat(490)} - NIGHT`);
-    });
+    // Headings are cut at 500 characters: the length is what grows, up to 480.
+    linear(
+      (n) => `INT. ${'('.repeat(n)} - NIGHT`,
+      (heading) => {
+        for (let i = 0; i < 5000; i++) parseHeading(heading);
+      },
+      120,
+    );
     expect(parseHeading('INT. HALL - NIGHT (A) (FLASHBACK)')).toEqual({
       heading: 'INT. HALL - NIGHT (A) (FLASHBACK)',
       setting: 'int',
@@ -126,8 +167,15 @@ describe('parser worst cases', () => {
   });
 
   it('reads a centered line with a long run of spaces in linear time', () => {
-    const script = fast(() => parseFountain(`INT. A - DAY\n\n>a${' '.repeat(4_000_000)}b<\n`));
-    expect(script.scenes[0]?.blocks[0]).toEqual({ kind: 'action', text: 'a b' });
+    const text = (n: number) => `INT. A - DAY\n\n>a${' '.repeat(n)}b<\n`;
+    linear(
+      text,
+      (t) => {
+        for (let i = 0; i < 30; i++) parseFountain(t);
+      },
+      20_000,
+    );
+    expect(parseFountain(text(100)).scenes[0]?.blocks[0]).toEqual({ kind: 'action', text: 'a b' });
     expect(parseFountain('INT. A - DAY\n\n> THE END <\n').scenes[0]?.blocks[0]).toEqual({
       kind: 'action',
       text: 'THE END',
@@ -135,17 +183,25 @@ describe('parser worst cases', () => {
   });
 
   it('collects a frame cast of thousands of speakers in linear time', () => {
-    const cues = Array.from({ length: 200_000 }, (_, i) => `@C${i}\na\n\n`).join('');
-    const script = parseFountain(`INT. A - DAY\n\n${cues}`);
-    const plan = fast(() => planImport(script, defaultOptions(script), (names) => names.join()));
-    expect(plan.scenes[0]?.frames[0]?.cast).toHaveLength(30);
-    expect(plan.scenes[0]?.frames[0]?.cast?.[29]).toBe('C29');
+    const script = (n: number) =>
+      parseFountain(
+        `INT. A - DAY\n\n${Array.from({ length: n }, (_, i) => `@C${i}\na\n\n`).join('')}`,
+      );
+    const plan = (s: ReturnType<typeof script>) =>
+      planImport(s, defaultOptions(s), (names) => names.join());
+    linear(script, plan, 20_000);
+    expect(plan(script(100)).scenes[0]?.frames[0]?.cast).toHaveLength(30);
+    expect(plan(script(100)).scenes[0]?.frames[0]?.cast?.[29]).toBe('C29');
   });
 
   it('numbers thousands of unnumbered scenes in linear time', () => {
     const scene = (number?: string) => ({ heading: '', blocks: [], characters: [], number });
-    const scenes: ScriptScene[] = [scene('1'), ...Array.from({ length: 4999 }, () => scene())];
-    const numbers = fast(() => sceneNumbers(scenes));
+    const scenes = (n: number): ScriptScene[] => [
+      scene('1'),
+      ...Array.from({ length: n - 1 }, () => scene()),
+    ];
+    linear(scenes, sceneNumbers, 5000);
+    const numbers = sceneNumbers(scenes(5000));
     expect(numbers.slice(0, 4)).toEqual(['1', '1A', '1B', '1C']);
     expect(new Set(numbers).size).toBe(5000);
     expect(sceneNumbers([scene(), scene('2'), scene(), scene('2A'), scene()])).toEqual([
@@ -178,14 +234,21 @@ describe('parser worst cases', () => {
       n ? `<Paragraph><Text>${nest(n - 1, leaf)}</Text></Paragraph>` : leaf;
     const summary = `<SceneProperties><Summary>${nest(45, 'x'.repeat(1_000_000))}</Summary></SceneProperties>`;
     const fdx = `<FinalDraft><Content><Paragraph Type="Scene Heading"><Text>INT. A - DAY</Text>${summary}</Paragraph></Content></FinalDraft>`;
-    const script = fast(() => parseFdx(fdx));
-    expect(script.scenes[0]?.blocks).toHaveLength(1);
+    // Read once per level, the text was copied 45 times.
+    expect(parseFdx(fdx).scenes[0]?.blocks).toEqual([
+      { kind: 'synopsis', text: 'x'.repeat(1_000_000) },
+    ]);
   });
 
   it('splits thousands of cues full of brackets in linear time', () => {
-    fast(() => {
-      for (let i = 0; i < 26_000; i++) splitCue(`@${'('.repeat(199)}`);
-    });
+    // Cues are cut at 200 characters: the length is what grows, up to 180.
+    linear(
+      (n) => `@${'('.repeat(n)}`,
+      (cue) => {
+        for (let i = 0; i < 20_000; i++) splitCue(cue);
+      },
+      45,
+    );
     expect(splitCue("MARA (V.O.) (CONT'D)")).toEqual({
       character: 'MARA',
       extension: "(V.O.) (CONT'D)",
@@ -207,7 +270,14 @@ describe('parser worst cases', () => {
       (_, i) =>
         ({ id: `s${i}`, title: `Other ${i}`, synopsis: text(i + 1) }) as unknown as SceneElement,
     );
-    const rows = fast(() => matchRevision(draft, scenes));
-    expect(rows.length).toBeGreaterThanOrEqual(500);
+    // The work is counted: each scene's text is split into words once, not once per pair.
+    const split = vi.spyOn(String.prototype, 'split');
+    try {
+      const rows = matchRevision(draft, scenes);
+      expect(split.mock.calls.length).toBeLessThanOrEqual(draft.length + scenes.length);
+      expect(rows.length).toBeGreaterThanOrEqual(500);
+    } finally {
+      split.mockRestore();
+    }
   });
 });
