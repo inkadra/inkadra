@@ -67,6 +67,17 @@ it('previews the script and imports the chosen scenes', async () => {
   expect(onClose).toHaveBeenCalled();
 });
 
+it('shows the first names of a long cast and how many more there are', async () => {
+  await act(async () =>
+    root.render(<ScreenplayImportDialog targets={['new']} onImport={vi.fn()} onClose={vi.fn()} />),
+  );
+  const cues = Array.from({ length: 1000 }, (_, i) => `@C${i}\nHi.\n\n`).join('');
+  await pick(`INT. HALL - DAY\n\n${cues}`, 'cast.fountain');
+  const chips = [...document.querySelectorAll('.script-import__chip')].map((c) => c.textContent);
+  expect(chips).toHaveLength(51);
+  expect(chips.at(-1)).toBe('screenplay.moreCharacters:950');
+});
+
 it('says why a file cannot be read', async () => {
   await act(async () =>
     root.render(<ScreenplayImportDialog targets={['new']} onImport={vi.fn()} onClose={vi.fn()} />),

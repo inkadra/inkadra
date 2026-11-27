@@ -47,6 +47,11 @@ export interface Script {
 }
 
 export const MAX_SCRIPT_BYTES = 5 * 1024 * 1024;
+/**
+ * Ten times the scenes one import lays out (`MAX_IMPORT_SCENES`), so a long script still opens
+ * with the first ones; a file with more is not a screenplay and would only fill memory.
+ */
+export const MAX_SCRIPT_SCENES = 5000;
 
 export class ScriptError extends Error {
   constructor(
@@ -58,7 +63,8 @@ export class ScriptError extends Error {
       | 'empty'
       | 'noText'
       | 'timeout'
-      | 'tooManyPages',
+      | 'tooManyPages'
+      | 'tooManyScenes',
     message = code,
   ) {
     super(message);
@@ -95,14 +101,17 @@ const LATER =
 export function parseHeading(raw: string): Omit<ScriptScene, 'blocks' | 'characters'> {
   let heading = clean(raw).slice(0, 500);
   let number: string | undefined;
-  const num = /\s*#([^#\s]{1,12})#\s*$/.exec(heading);
+  // From the `#`, not from the spaces before it: a run of them was scanned from every start.
+  const num = /#([^#\s]{1,12})#\s*$/.exec(heading);
   if (num) {
     number = num[1];
     heading = heading.slice(0, num.index).trim();
   }
   const scene: Omit<ScriptScene, 'blocks' | 'characters'> = { heading };
   if (number) scene.number = number;
-  let rest = heading;
+  // Split as one line, every run of whitespace one space: the regexes below never backtrack
+  // on a run of line breaks or other spaces. The heading keeps its own.
+  let rest = heading.replace(/\s+/g, ' ');
   for (const [re, setting] of SETTINGS) {
     const m = re.exec(rest);
     if (!m) continue;
@@ -121,17 +130,49 @@ export function parseHeading(raw: string): Omit<ScriptScene, 'blocks' | 'charact
     const text = part.trim().replace(/\.$/, '');
     if (!text) continue;
     // NIGHT (FLASHBACK): the time, and the rest as an extra.
-    const paren = /^(.*?)\s*\(([^)]*)\)$/.exec(text);
-    const time = !scene.time && TIMES.find(([re]) => re.test(paren?.[1] ?? text))?.[1];
+    const paren = trailingParen(text);
+    const time = !scene.time && TIMES.find(([re]) => re.test(paren?.before ?? text))?.[1];
     if (time) {
       scene.time = time;
-      if (paren?.[2]) extra.push(paren[2]);
+      if (paren?.inside) extra.push(paren.inside);
     } else if (scene.time || (location.length > 0 && LATER.test(text))) extra.push(text);
     else location.push(text);
   }
   if (location.length) scene.location = location.join(' – ');
   if (extra.length) scene.extra = extra.join(' – ');
   return scene;
+}
+
+/**
+ * `NIGHT (FLASHBACK)` → the text before the last bracket pair and inside it, found with indexOf:
+ * the regex it replaces backtracked quadratically on a run of `(`.
+ */
+function trailingParen(text: string): { before: string; inside: string } | null {
+  if (!text.endsWith(')')) return null;
+  const open = text.indexOf('(', text.lastIndexOf(')', text.length - 2) + 1);
+  if (open < 0) return null;
+  return { before: text.slice(0, open).trimEnd(), inside: text.slice(open + 1, -1) };
+}
+
+/**
+ * Where the brackets at the end of a cue start, `MARA (V.O.) (CONT'D)` → 5, or -1: a backward
+ * scan, as the regex it replaces (`^(.*?)\s*((?:\([^)]*\)\s*)+)$`) backtracked quadratically
+ * on a run of `(`. Like that regex, the name before the brackets is one line.
+ */
+function bracketTail(text: string): number {
+  let start = -1;
+  let end = text.length;
+  for (;;) {
+    let close = end;
+    while (close > 0 && /\s/.test(text[close - 1] ?? '')) close--;
+    if (text[close - 1] !== ')') break;
+    // The bracket's text has no `)`, so it opens at the first `(` after the `)` before it.
+    const open = text.indexOf('(', text.lastIndexOf(')', close - 2) + 1);
+    if (open < 0 || open >= close - 1) break;
+    start = open;
+    end = open;
+  }
+  return start >= 0 && !/[\n\r\u2028\u2029]/.test(text.slice(0, start).trimEnd()) ? start : -1;
 }
 
 /** Voice and continuity words written after a cue without brackets: GIORGIA V.O., ENEA CONT'D. */
@@ -144,12 +185,12 @@ const BARE_EXTENSION =
  * order written, so the dialogue line can keep them.
  */
 export function splitCue(raw: string): { character: string; extension?: string } {
-  const text = clean(raw)
+  const text = fold(clean(raw))
     .slice(0, 200)
     .replace(/\s*\^$/, '');
-  const m = /^(.*?)\s*((?:\([^)]*\)\s*)+)$/.exec(text);
-  let character = (m ? m[1] : text)?.trim() ?? '';
-  const extensions = m?.[2] ? [m[2].trim()] : [];
+  const tail = bracketTail(text);
+  let character = (tail < 0 ? text : text.slice(0, tail)).trim();
+  const extensions = tail < 0 ? [] : [text.slice(tail).trim()];
   // GIORGIA V.O. (CONT'D): bare words before the brackets, never the whole name.
   for (let bare = BARE_EXTENSION.exec(character); bare; bare = BARE_EXTENSION.exec(character)) {
     extensions.unshift(`(${(bare[1] ?? '').trim()})`);
@@ -158,19 +199,42 @@ export function splitCue(raw: string): { character: string; extension?: string }
   return extensions.length ? { character, extension: extensions.join(' ') } : { character };
 }
 
-/** Whitespace folded, invisible characters removed. */
+/**
+ * Whitespace within a line folded to one space (tabs, no-break and other Unicode spaces too:
+ * a run of them left `\s` regexes downstream backtracking), invisible characters removed.
+ * Line breaks stay.
+ */
 export function clean(text: string): string {
-  return text.replace(/[​-‍﻿]/g, '').replace(/[ \t]/g, ' ').replace(/ {2,}/g, ' ').trim();
+  return text
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[^\S\n\r\u2028\u2029]+/g, ' ')
+    .trim();
 }
 
-/** Collects the characters of each scene and of the script, by first appearance. */
+/** Every run of whitespace as one character: a line break if it holds one, else a space. */
+const fold = (text: string) =>
+  text.replace(/\s+/g, (run) => (/[\n\r\u2028\u2029]/.test(run) ? '\n' : ' '));
+
+/** What a section name and a title page field keep: they are labels, not text. */
+const SECTION = 200;
+const TITLE_FIELD = 2000;
+
+/**
+ * Collects the characters of each scene and of the script, by first appearance, and cuts the
+ * section names and title page fields to what a label shows.
+ */
 export function finishScript(
   format: Script['format'],
   titlePage: Record<string, string>,
   scenes: ScriptScene[],
 ): Script {
   const all = new Map<string, string>();
+  for (const field of Object.keys(titlePage))
+    titlePage[field] = (titlePage[field] ?? '').slice(0, TITLE_FIELD);
   for (const scene of scenes) {
+    // A section names every scene after it: one long line would be copied into each when the
+    // script is sent to a worker or saved.
+    if (scene.section) scene.section = scene.section.slice(0, SECTION);
     const own = new Map<string, string>();
     for (const b of scene.blocks) {
       if (b.kind !== 'dialogue' || !b.character) continue;
@@ -180,7 +244,7 @@ export function finishScript(
     }
     scene.characters = [...own.values()];
   }
-  const title = titlePage.title?.split('\n').map(clean).filter(Boolean).join(' ');
+  const title = titlePage.title?.split('\n').map(clean).filter(Boolean).join(' ').slice(0, 500);
   const script: Script = { format, titlePage, scenes, characters: [...all.values()] };
   if (title) script.title = title;
   return script;

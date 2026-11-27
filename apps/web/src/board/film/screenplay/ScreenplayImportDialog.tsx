@@ -22,6 +22,7 @@ import {
   type FramesMode,
   type ImportOptions,
   type ImportPlan,
+  MAX_IMPORT_CHARACTERS,
   planImport,
   sceneNumbers,
 } from './plan.ts';
@@ -35,6 +36,9 @@ import {
 } from './revision.ts';
 import { type Script, ScriptError } from './script.ts';
 import './screenplay.css';
+
+/** Names shown as chips; a long cast ends with "+N more" rather than thousands of chips. */
+const CAST_CHIPS = 50;
 
 /** `revise` lays a new draft over the storyboard's scenes (decision 0082). */
 export type ImportTarget = 'append' | 'revise' | 'new';
@@ -339,11 +343,18 @@ export function ScreenplayImportDialog({
                 className="script-import__cast"
                 aria-label={count('characters', script.characters.length)}
               >
-                {script.characters.map((c) => (
+                {script.characters.slice(0, CAST_CHIPS).map((c) => (
                   <li key={c} className="script-import__chip">
                     {castName(c)}
                   </li>
                 ))}
+                {script.characters.length > CAST_CHIPS && (
+                  <li className="script-import__chip">
+                    {t('screenplay.moreCharacters', {
+                      count: script.characters.length - CAST_CHIPS,
+                    })}
+                  </li>
+                )}
               </ul>
             )}
             {revision ? (
@@ -489,7 +500,13 @@ export function ScreenplayImportDialog({
                     <Check
                       checked={options.characterCards}
                       onChange={(v) => set('characterCards', v)}
-                      hint={t('screenplay.characterCardsHint')}
+                      hint={[
+                        t('screenplay.characterCardsHint'),
+                        plan?.charactersTruncated &&
+                          t('screenplay.characterCardsCut', { max: MAX_IMPORT_CHARACTERS }),
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
                     >
                       {t('screenplay.characterCards')}
                     </Check>

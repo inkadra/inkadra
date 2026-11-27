@@ -2,6 +2,8 @@
 import {
   clean,
   finishScript,
+  MAX_SCRIPT_BYTES,
+  MAX_SCRIPT_SCENES,
   parseHeading,
   type Script,
   type ScriptBlock,
@@ -9,7 +11,7 @@ import {
   type ScriptScene,
   splitCue,
 } from './script.ts';
-import { descendants, parseXml, textContent, type XmlElement, XmlError } from './xml.ts';
+import { parseXml, textContent, type XmlElement, XmlError } from './xml.ts';
 
 /**
  * Reads a Final Draft file (.fdx, XML). Documents with a DOCTYPE or entity declarations are
@@ -17,6 +19,7 @@ import { descendants, parseXml, textContent, type XmlElement, XmlError } from '.
  * does the rest (`xml.ts`), so the same code reads a file in the browser, Node and Hermes.
  */
 export function parseFdx(source: string): Script {
+  if (source.length > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
   const xml = source.replace(/^﻿/, '');
   if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new ScriptError('unsafe');
   let root: XmlElement;
@@ -39,6 +42,7 @@ export function parseFdx(source: string): Script {
     const text = textOf(p);
     if (type === 'Scene Heading') {
       if (!text) continue;
+      if (scenes.length >= MAX_SCRIPT_SCENES) throw new ScriptError('tooManyScenes');
       const number = p.attributes.get('Number')?.trim();
       scene = { ...parseHeading(text), blocks: [], characters: [] };
       if (number && !scene.number) scene.number = number.slice(0, 12);
@@ -46,7 +50,7 @@ export function parseFdx(source: string): Script {
       scenes.push(scene);
       const props = child(p, 'SceneProperties');
       const summary = props && child(props, 'Summary');
-      for (const s of summary ? descendants(summary, 'Paragraph') : []) {
+      for (const s of summary ? paragraphsIn(summary) : []) {
         const t = textOf(s);
         if (t) push({ kind: 'synopsis', text: t });
       }
@@ -75,7 +79,7 @@ export function parseFdx(source: string): Script {
 function titlePage(root: XmlElement): Record<string, string> {
   const page = child(root, 'TitlePage');
   const content = page && child(page, 'Content');
-  const texts = (content ? descendants(content, 'Paragraph') : []).map(textOf).filter(Boolean);
+  const texts = (content ? paragraphsIn(content) : []).map(textOf).filter(Boolean);
   const fields: Record<string, string> = {};
   const [title] = texts;
   if (title) fields.title = title;
@@ -101,6 +105,23 @@ function* paragraphs(content: XmlElement): Generator<XmlElement> {
   }
 }
 
+/**
+ * Paragraphs under an element, in order, without those inside a `<Text>`: that text already
+ * holds theirs, so each text is read once. Paragraphs nested in a text's runs, which Final Draft
+ * never writes, repeated it once per level.
+ */
+function paragraphsIn(el: XmlElement): XmlElement[] {
+  const found: XmlElement[] = [];
+  const stack = [...el.children].reverse();
+  while (stack.length) {
+    const node = stack.pop() as XmlElement;
+    if (node.name === 'Paragraph') found.push(node);
+    if (node.name === 'Text') continue;
+    for (let j = node.children.length - 1; j >= 0; j--) stack.push(node.children[j] as XmlElement);
+  }
+  return found;
+}
+
 function child(el: XmlElement, name: string): XmlElement | null {
   for (const c of el.children) if (c.name === name) return c;
   return null;
@@ -108,7 +129,7 @@ function child(el: XmlElement, name: string): XmlElement | null {
 
 /** The paragraph's own text runs, joined: formatting splits a line into several <Text>. */
 function textOf(p: XmlElement): string {
-  let text = '';
-  for (const c of p.children) if (c.name === 'Text') text += textContent(c);
-  return clean(text);
+  const text: string[] = [];
+  for (const c of p.children) if (c.name === 'Text') text.push(textContent(c));
+  return clean(text.join(''));
 }

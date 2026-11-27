@@ -4706,10 +4706,14 @@
       "read": "Die Datei konnte nicht gelesen werden.",
       "noText": "Dieses PDF hat keine Textebene",
       "timeout": "Lesen abgebrochen: Dieses PDF dauert zu lange.",
-      "tooManyPages": "Dieses PDF überschreitet das Limit von 300 Seiten."
+      "tooManyPages": "Dieses PDF überschreitet das Limit von 300 Seiten.",
+      "tooManyScenes": "Das Drehbuch hat mehr als 5.000 Szenen."
     },
     "characterCards": "Karten für sprechende Figuren erstellen",
     "characterCardsHint": "Eine Figurenkarte pro Name, mit ihren Szenen; Namen, die schon im Board sind, werden übersprungen.",
+    "characterCardsCut": "Nur die ersten {{max}} Figuren erhalten eine Karte.",
+    "moreCharacters_one": "+{{count}} weitere",
+    "moreCharacters_other": "+{{count}} weitere",
     "detected": "Das sieht nach einem Drehbuch aus",
     "build": "Storyboard erstellen…",
     "buildFromFile": "Storyboard aus diesem Drehbuch erstellen…",

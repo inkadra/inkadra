@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import corpus from './fixtures/fdx-corpus.json';
 import { parseScreenplay } from './parse.ts';
 import { ScriptError } from './script.ts';
+import { MAX_XML_DEPTH } from './xml.ts';
 
 interface Case {
   id: string;
@@ -33,10 +34,12 @@ describe('Final Draft without the DOM', () => {
     },
   );
 
-  it('reads deep nesting without running out of stack', () => {
-    const deep = `<FinalDraft><Content>${'<x>'.repeat(50_000)}${'</x>'.repeat(50_000)}</Content></FinalDraft>`;
-    expect(read('deep.fdx', deep)).toEqual({ error: 'empty' });
-    const text = `<FinalDraft><Content><Paragraph Type="Scene Heading"><Text>${'<b>'.repeat(50_000)}INT. A - DAY${'</b>'.repeat(50_000)}</Text></Paragraph></Content></FinalDraft>`;
-    expect(read('deep.fdx', text)).toMatchObject({ script: { scenes: [{ location: 'A' }] } });
+  it('reads nesting up to its limit and refuses deeper files', () => {
+    const nest = (n: number) =>
+      `<FinalDraft><Content><Paragraph Type="Scene Heading"><Text>${'<b>'.repeat(n)}INT. A - DAY${'</b>'.repeat(n)}</Text></Paragraph></Content></FinalDraft>`;
+    expect(read('deep.fdx', nest(MAX_XML_DEPTH - 4))).toMatchObject({
+      script: { scenes: [{ location: 'A' }] },
+    });
+    expect(read('deep.fdx', nest(50_000))).toEqual({ error: 'invalid' });
   });
 });

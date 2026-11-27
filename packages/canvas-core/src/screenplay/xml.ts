@@ -23,6 +23,11 @@ export interface XmlElement {
 
 export class XmlError extends Error {}
 
+/** Deeper than any Final Draft file nests; bounds the stack of open elements. */
+export const MAX_XML_DEPTH = 100;
+/** About ten times the elements of a long Final Draft script; bounds memory and time. */
+export const MAX_XML_ELEMENTS = 250_000;
+
 /** XML's name characters, written as escapes (joiners left out: a name with one is refused). */
 const NAME_START =
   'A-Za-z_:\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF' +
@@ -101,13 +106,25 @@ export function parseXml(source: string): XmlElement {
 
   let root: XmlElement | undefined;
   const open: XmlElement[] = [];
-  /** Prefixes declared by each open element and its ancestors. */
-  const scopes: Array<ReadonlySet<string>> = [];
-  let text = '';
+  /**
+   * Prefixes in scope, each with how many open elements declare it, and what each open element
+   * declared: one map updated as elements open and close, never a copy per element.
+   */
+  const declared = new Map<string, number>();
+  const declares: string[][] = [];
+  // Counts drop to 0 rather than being deleted: deleting and adding again was slow in V8.
+  const undeclare = (prefixes: string[] = []) => {
+    for (const p of prefixes) declared.set(p, (declared.get(p) ?? 1) - 1);
+  };
+  let elements = 0;
+  // Text between tags, in pieces joined once: appending to a string copies it each time on
+  // engines without ropes (Hermes).
+  let text: string[] = [];
   const flush = () => {
     const parent = open.at(-1);
-    if (text && parent) parent.content.push(text);
-    text = '';
+    const joined = text.join('');
+    if (joined && parent) parent.content.push(joined);
+    text = [];
   };
   do {
     if (at('</')) {
@@ -118,10 +135,10 @@ export function parseXml(source: string): XmlElement {
       i += 1;
       flush();
       open.pop();
-      scopes.pop();
+      undeclare(declares.pop());
     } else if (at('<![CDATA[')) {
       i += 9;
-      text += skipPast(']]>', 'cdata');
+      text.push(skipPast(']]>', 'cdata'));
     } else if (at('<!--') || at('<?')) {
       misc();
     } else if (at('<')) {
@@ -140,13 +157,20 @@ export function parseXml(source: string): XmlElement {
         const value = match(ATTRIBUTE_VALUE) ?? fail('attribute');
         attributes.set(key as string, decode((value[1] ?? value[2] ?? '').replace(/[\t\n]/g, ' ')));
       }
-      const scope = new Set(scopes.at(-1));
-      for (const key of attributes.keys()) if (key.startsWith('xmlns:')) scope.add(key.slice(6));
+      if (++elements > MAX_XML_ELEMENTS) fail('too many elements');
+      const own: string[] = [];
+      for (const key of attributes.keys()) {
+        if (!key.startsWith('xmlns:')) continue;
+        const prefix = key.slice(6);
+        own.push(prefix);
+        declared.set(prefix, (declared.get(prefix) ?? 0) + 1);
+      }
       for (const qualified of [name, ...attributes.keys()]) {
         const parts = qualified.split(':');
         const prefix = parts.length === 2 ? parts[0] : undefined;
         if (parts.length > 2 || parts.some((p) => !p)) fail('name');
-        if (prefix && prefix !== 'xml' && prefix !== 'xmlns' && !scope.has(prefix)) fail('prefix');
+        if (prefix && prefix !== 'xml' && prefix !== 'xmlns' && !declared.get(prefix))
+          fail('prefix');
       }
       const element: XmlElement = { name, attributes, children: [], content: [] };
       flush();
@@ -155,17 +179,20 @@ export function parseXml(source: string): XmlElement {
         parent.children.push(element);
         parent.content.push(element);
       } else root = element;
-      if (at('/>')) i += 2;
-      else {
+      if (at('/>')) {
+        i += 2;
+        undeclare(own);
+      } else {
         i += 1;
+        if (open.length >= MAX_XML_DEPTH) fail('too deep');
         open.push(element);
-        scopes.push(scope);
+        declares.push(own);
       }
     } else {
       const next = s.indexOf('<', i);
       const raw = s.slice(i, next < 0 ? s.length : next);
       if (raw.includes(']]>')) fail('text');
-      text += decode(raw);
+      text.push(decode(raw));
       i += raw.length;
     }
   } while (open.length && i < s.length);
@@ -194,14 +221,14 @@ function decode(text: string): string {
 
 /** The element's text and its descendants', in order: the DOM's `textContent`. */
 export function textContent(element: XmlElement): string {
-  let text = '';
+  const text: string[] = [];
   const stack: Array<XmlElement | string> = [element];
   while (stack.length) {
     const node = stack.pop() as XmlElement | string;
-    if (typeof node === 'string') text += node;
+    if (typeof node === 'string') text.push(node);
     else for (let j = node.content.length - 1; j >= 0; j--) stack.push(node.content[j] ?? '');
   }
-  return text;
+  return text.join('');
 }
 
 /** Descendants with this name, in document order: the DOM's `getElementsByTagName`. */

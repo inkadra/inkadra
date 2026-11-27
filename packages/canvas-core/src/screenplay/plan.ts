@@ -11,6 +11,8 @@ export type FrameCap = (typeof FRAME_CAPS)[number];
 /** Bounds of one import, so a long script cannot bloat a board. */
 export const MAX_IMPORT_SCENES = 500;
 export const MAX_IMPORT_FRAMES = 1500;
+/** Character cards one import creates; the names after these get none. */
+export const MAX_IMPORT_CHARACTERS = 200;
 /** A frame's dialogue is a snippet to recognise the moment, not the whole page. */
 const DIALOGUE_SNIPPET = 600;
 
@@ -34,6 +36,8 @@ export interface ImportPlan {
   truncated: boolean;
   /** Character cards to create: names who speak, with the indexes of their planned scenes. */
   characters: Array<{ name: string; scenes: number[] }>;
+  /** More than `MAX_IMPORT_CHARACTERS` speak: the others get no card. */
+  charactersTruncated?: boolean;
 }
 
 export function defaultOptions(script: Script): ImportOptions {
@@ -77,7 +81,7 @@ export function planImport(
     const synopsis = [
       ...scene.blocks.filter((b) => b.kind === 'synopsis').map((b) => b.text),
       ...(!castInFrames && scene.characters.length
-        ? [characterLine(scene.characters.map(castName))]
+        ? [characterLine(scene.characters.slice(0, MAX_IMPORT_CHARACTERS).map(castName))]
         : []),
     ].join('\n');
     const planned: NewScene = {
@@ -93,6 +97,10 @@ export function planImport(
       for (const who of scene.characters) {
         const name = cut(castName(who), 120);
         const key = name.toLowerCase();
+        if (!speakers.has(key) && speakers.size >= MAX_IMPORT_CHARACTERS) {
+          plan.charactersTruncated = true;
+          continue;
+        }
         const entry = speakers.get(key) ?? { name, scenes: [] };
         entry.scenes.push(plan.scenes.length);
         speakers.set(key, entry);
@@ -136,29 +144,36 @@ function sceneTitle(scene: ScriptScene, prelude: string): string {
 export function sceneNumbers(scenes: readonly ScriptScene[]): Array<string | undefined> {
   if (!scenes.some((s) => s.number)) return scenes.map(() => undefined);
   const taken = new Set(scenes.flatMap((s) => (s.number ? [s.number.toUpperCase()] : [])));
-  const free = (make: (letter: string) => string) => {
-    for (let i = 0; ; i++) {
+  /** Per base, the first letter not tried yet: letters before it are taken, so never retried. */
+  const next = new Map<string, number>();
+  const free = (base: string, make: (letter: string) => string) => {
+    const key = base.toUpperCase();
+    for (let i = next.get(key) ?? 0; ; i++) {
       const candidate = make(frameLetter(i));
       if (!taken.has(candidate.toUpperCase())) {
         taken.add(candidate.toUpperCase());
+        next.set(key, i + 1);
         return candidate;
       }
     }
   };
-  const result: Array<string | undefined> = [];
-  scenes.forEach((scene, i) => {
+  const first = scenes.find((s) => s.number)?.number ?? '1';
+  /** The script's own number before the scene, without its letters: after 2A comes 2B. */
+  let base: string | undefined;
+  const result: string[] = [];
+  for (const scene of scenes) {
     if (scene.number) {
       result.push(scene.number);
-      return;
+      // Only a number the script wrote: one made here (XA) would grow by a letter each scene.
+      base = scene.number.replace(/(\d)[A-Z]+$/i, '$1');
+    } else if (base !== undefined) {
+      const before = base;
+      result.push(free(`${before}-`, (l) => `${before}${l}`));
+    } else {
+      // Scenes ahead of the first number go before it: A1, B1.
+      result.push(free(`-${first}`, (l) => `${l}${first}`));
     }
-    // After 2A comes 2B, not 2AA.
-    const before = result
-      .slice(0, i)
-      .findLast(Boolean)
-      ?.replace(/(\d)[A-Z]+$/i, '$1');
-    const after = scenes.slice(i + 1).find((s) => s.number)?.number;
-    result.push(before ? free((l) => `${before}${l}`) : free((l) => `${l}${after ?? '1'}`));
-  });
+  }
   return result;
 }
 
@@ -213,14 +228,37 @@ type PlannedFrame = NewScene['frames'][number];
 interface Draft {
   action: string[];
   dialogue: string[];
-  cast: string[];
+  /** At most `MAX_FRAME_CAST` names, kept in a set: a scene can have thousands of cues. */
+  cast: Set<string>;
   notes: string[];
+  /** Length of each list once joined: past what `cut` keeps, nothing more is added. */
+  size: { action: number; dialogue: number; notes: number };
 }
+/** What a frame keeps of each text, and what joins its parts. */
+const FRAME_TEXT = { action: 2000, dialogue: DIALOGUE_SNIPPET, notes: 4000 };
+const JOIN = { action: '\n\n', dialogue: '\n', notes: '\n' };
+
+/**
+ * Adds a text to a frame's list while the join is no longer than the frame keeps: past that,
+ * `cut` gives the same text whatever follows, and a scene of a million notes stays small.
+ */
+function gather(d: Draft, field: keyof Draft['size'], text: string) {
+  if (d.size[field] > FRAME_TEXT[field]) return;
+  d.size[field] += (d[field].length ? JOIN[field].length : 0) + text.length;
+  d[field].push(text);
+}
+const MAX_FRAME_CAST = 30;
 
 /** Every scene gets at least one frame to draw on, even one without action. */
 function framesOf(scene: ScriptScene, options: ImportOptions): PlannedFrame[] {
   const drafts: Draft[] = [];
-  const empty = (): Draft => ({ action: [], dialogue: [], cast: [], notes: [] });
+  const empty = (): Draft => ({
+    action: [],
+    dialogue: [],
+    cast: new Set(),
+    notes: [],
+    size: { action: 0, dialogue: 0, notes: 0 },
+  });
   const current = () => {
     if (!drafts.length) drafts.push(empty());
     return drafts.at(-1) as Draft;
@@ -231,23 +269,28 @@ function framesOf(scene: ScriptScene, options: ImportOptions): PlannedFrame[] {
       if (options.frames === 'action' && drafts.length < options.maxFrames) {
         const last = drafts.at(-1);
         // Dialogue before the first action stays on that frame, which the action describes.
-        if (last && last.action.length === 0 && drafts.length === 1) last.action.push(block.text);
-        else drafts.push({ ...empty(), action: [block.text] });
-      } else current().action.push(block.text);
+        if (last && last.action.length === 0 && drafts.length === 1)
+          gather(last, 'action', block.text);
+        else {
+          const d = empty();
+          gather(d, 'action', block.text);
+          drafts.push(d);
+        }
+      } else gather(current(), 'action', block.text);
     } else if (block.kind === 'dialogue') {
       const d = current();
-      d.dialogue.push(cue(block));
-      if (block.character && !d.cast.includes(castName(block.character)))
-        d.cast.push(castName(block.character));
-    } else if (block.kind === 'note') current().notes.push(block.text);
+      if (d.size.dialogue <= FRAME_TEXT.dialogue) gather(d, 'dialogue', cue(block));
+      if (block.character && d.cast.size < MAX_FRAME_CAST) d.cast.add(castName(block.character));
+    } else if (block.kind === 'note') gather(current(), 'notes', block.text);
   }
   if (!drafts.length) drafts.push(empty());
   return drafts.map((d) => {
     const frame: PlannedFrame = {};
-    if (d.action.length) frame.action = cut(d.action.join('\n\n'), 2000);
-    if (d.dialogue.length) frame.dialogue = cut(d.dialogue.join('\n'), DIALOGUE_SNIPPET);
-    if (options.cast && d.cast.length) frame.cast = d.cast.slice(0, 30).map((c) => cut(c, 80));
-    if (d.notes.length) frame.notes = cut(d.notes.join('\n'), 4000);
+    if (d.action.length) frame.action = cut(d.action.join(JOIN.action), FRAME_TEXT.action);
+    if (d.dialogue.length)
+      frame.dialogue = cut(d.dialogue.join(JOIN.dialogue), FRAME_TEXT.dialogue);
+    if (options.cast && d.cast.size) frame.cast = [...d.cast].map((c) => cut(c, 80));
+    if (d.notes.length) frame.notes = cut(d.notes.join(JOIN.notes), FRAME_TEXT.notes);
     return frame;
   });
 }
@@ -283,18 +326,20 @@ const PARTICLES = new Set(
 /** FARO, SCALA A CHIOCCIOLA → Faro, Scala a Chiocciola: a scene name, no title-case "A". */
 export function placeName(name: string): string {
   if (name !== name.toUpperCase()) return name;
-  // Not the first word of the name or of a part after a comma, nor the last. No lookbehind
-  // (decision 0116): the character before the spaces is checked in the whole name. It is taken
-  // as a code point and tested without `$`: V8 14 (Node 26) fails `[\p{L}]$` on astral letters.
-  return castName(name).replace(
-    /(\s+)(\p{L}+)(?=\s)/gu,
-    (all, space: string, word: string, at: number, text: string) => {
-      const before = [...text.slice(Math.max(0, at - 2), at)].pop() ?? '';
-      return /[\p{L}\p{N}]/u.test(before) && PARTICLES.has(word.toLowerCase())
-        ? space + word.toLowerCase()
-        : all;
-    },
-  );
+  // Not the first word of the name or of a part after a comma, nor the last: a word of letters
+  // only, with spaces after it and a letter or digit before its spaces. Split into words and
+  // the spaces between them, in linear time: a regex over the spaces backtracked on a long run.
+  // The character before is taken as a code point and tested without `$`: V8 14 (Node 26)
+  // fails `[\p{L}]$` on astral letters.
+  const parts = castName(name).split(/(\s+)/);
+  const out = [...parts];
+  for (let i = 2; i + 1 < parts.length; i += 2) {
+    const word = parts[i] ?? '';
+    const before = [...(parts[i - 2] ?? '').slice(-2)].pop() ?? '';
+    if (/^\p{L}+$/u.test(word) && /[\p{L}\p{N}]/u.test(before) && PARTICLES.has(word.toLowerCase()))
+      out[i] = word.toLowerCase();
+  }
+  return out.join('');
 }
 
 function cut(text: string, max: number): string {

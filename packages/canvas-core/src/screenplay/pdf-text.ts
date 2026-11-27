@@ -29,7 +29,9 @@ const RUNNING =
 /** A line that credits the writers on a title page ("Written by", "Scritto da"). */
 const CREDIT =
   /^(?:(?:written|story|screenplay|teleplay|created|adapted|a film|scritto|sceneggiatura|soggetto|regia)\b.*\bby|by|di|scritto da|sceneggiatura di)$/i;
-const DRAFT = /^(.*\b(?:draft|revision|bozza|stesura)\b.*?)\s*:\s*(.+)$/i;
+const DRAFT = /\b(?:draft|revision|bozza|stesura)\b/i;
+/** Longer lines are not a title page's: its checks are skipped, as any regex on them would cost. */
+const TITLE_LINE = 300;
 const CONTACT = /@|\bwww\.|\btel\b|\+?\d[\d\s().-]{7,}/i;
 const TITLE_META =
   /\b(?:draft|revision|bozza|stesura|copyright|contact|tel)\b|©|@|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}/i;
@@ -126,6 +128,7 @@ function stripRunning(pages: Line[][]): Line[][] {
 function titlePageOf(first: Line[] | undefined, later: Line[][]): string | null {
   if (!first?.length || first.length > 20) return null;
   const texts = first.map((l) => l.text);
+  if (texts.some((t) => t.length > TITLE_LINE)) return null;
   const credit = texts.findIndex((t) => CREDIT.test(t));
   const hasMeta = texts.some((t) => TITLE_META.test(t));
   if (credit < 0 && !hasMeta) return null;
@@ -142,13 +145,25 @@ function titlePageOf(first: Line[] | undefined, later: Line[][]): string | null 
   if (credit >= 0 && authors.length) out.push(`Author: ${authors.join(', ')}`);
   const notes: string[] = [];
   for (const t of texts.slice(end)) {
-    const draft = DRAFT.exec(t);
-    if (draft) out.push(`Revision: ${draft[1]}`, `Draft date: ${draft[2]}`);
+    const draft = draftOf(t);
+    if (draft) out.push(`Revision: ${draft[0]}`, `Draft date: ${draft[1]}`);
     else if (CONTACT.test(t)) out.push(`Contact: ${t}`);
     else notes.push(t);
   }
   if (notes.length) out.push(`Notes: ${notes.join(' ')}`);
   return out.length ? out.join('\n') : null;
+}
+
+/**
+ * `First draft: 3 May 2026` → revision and date, split at the first colon after the word. One
+ * regex did both and backtracked quadratically on a long line without a colon.
+ */
+function draftOf(text: string): [string, string] | null {
+  const word = DRAFT.exec(text);
+  const colon = word ? text.indexOf(':', word.index + word[0].length) : -1;
+  if (colon < 0) return null;
+  const date = text.slice(colon + 1).trim();
+  return date ? [text.slice(0, colon).trim(), date] : null;
 }
 
 /**
@@ -158,6 +173,10 @@ function titlePageOf(first: Line[] | undefined, later: Line[][]): string | null 
  * action or dialogue paragraph that a page break split.
  */
 export function pdfPagesToFountain(source: PdfPage[]): string {
+  // The text is bounded before it is grouped into lines or read as a title page.
+  let total = 0;
+  for (const page of source) for (const item of page.items) total += item.str.length;
+  if (total > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
   const pages = stripRunning(source.map((p) => linesOf(p.items)));
   const title = titlePageOf(pages[0], pages.slice(1));
   const body = title ? pages.slice(1) : pages;
@@ -166,11 +185,17 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
   const margin = all.reduce((m, l) => Math.min(m, l.x), Infinity);
   const bottom = all.reduce((m, l) => Math.min(m, l.y), Infinity);
 
-  const rows: string[] = title ? [title, ''] : [];
-  let size = 0;
+  // Each row in pieces, joined once at the end: a paragraph that runs over every page is not
+  // copied line by line on engines without ropes (Hermes).
+  const rows: string[][] = title ? [[title], ['']] : [];
+  // What is written, counted as it grows: indents, `> ` and blank lines too.
+  let size = title ? title.length + 2 : 0;
   let previous: Line | undefined;
   // The last row is an action paragraph line that the next wrapped line can be added to.
   let open = false;
+  // The last row is a parenthetical still open: "(a Daniele senza neanche". Kept as a flag, as
+  // testing the row itself on every line was quadratic once lines are joined into a long one.
+  let paren = false;
   body.forEach((page, p) => {
     page.forEach((line, i) => {
       const lead = i === 0 ? previous : page[i - 1];
@@ -179,7 +204,10 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
         (i === 0
           ? continuesAcrossPages(lead, line, margin, bottom)
           : lead.y - line.y <= line.height * 1.5);
-      if (lead && !same) rows.push('');
+      if (lead && !same) {
+        rows.push(['']);
+        size += 1;
+      }
       // A transition is set at the right edge (CUT TO); Fountain wants a leading >.
       const right =
         line.x > (widths[p] ?? 612) * 0.6 &&
@@ -188,23 +216,27 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
         !/\p{Ll}/u.test(line.text);
       const plain = numbered(line.text);
       const flush = !right && line.x < margin + 3;
-      const last = rows.at(-1)?.trim() ?? '';
       // A parenthetical that wraps stays one line: "(a Daniele senza neanche\nguardarlo)".
-      const wraps = same && Math.abs((lead?.x ?? 0) - line.x) < 3 && /^\([^)]*$/.test(last);
+      const wraps = same && Math.abs((lead?.x ?? 0) - line.x) < 3 && paren;
       if ((same && flush && open) || wraps) {
         // Lines of one action paragraph are the page's wrapping, not line breaks.
-        rows[rows.length - 1] += ` ${plain}`;
+        rows.at(-1)?.push(plain);
+        size += plain.length + 1;
+        paren &&= !plain.includes(')');
       } else {
-        const indent = right || flush ? '' : ' '.repeat(Math.min(80, Math.round(line.x / 6)));
-        rows.push(`${indent}${right ? `> ${plain}` : plain}`);
+        const columns = Math.max(0, Math.min(80, Math.round(line.x / 6)));
+        const indent = right || flush ? '' : ' '.repeat(columns);
+        const row = `${indent}${right ? `> ${plain}` : plain}`;
+        rows.push([row]);
+        size += row.length + 1;
         open = flush && !isHeading(line.text) && /\p{Ll}/u.test(plain);
+        paren = /^\([^)]*$/.test(row.trim());
       }
-      size += plain.length + 1;
       if (size > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
       previous = line;
     });
   });
-  return `${rows.join('\n')}\n`;
+  return `${rows.map((row) => row.join(' ')).join('\n')}\n`;
 }
 
 /**

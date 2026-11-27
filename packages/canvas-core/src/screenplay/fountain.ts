@@ -4,9 +4,12 @@ import {
   type DialogueLine,
   finishScript,
   HEADING,
+  MAX_SCRIPT_BYTES,
+  MAX_SCRIPT_SCENES,
   parseHeading,
   type Script,
   type ScriptBlock,
+  ScriptError,
   type ScriptScene,
   splitCue,
 } from './script.ts';
@@ -18,6 +21,8 @@ const TRANSITION =
   /^(?:[^a-z]*\bTO:|FADE (?:IN|OUT)[:.]?|FADE TO BLACK\.?|CUT TO BLACK\.?|DISSOLVENZA[^a-z]*:?|STACCO[^a-z]*:?)$/;
 /** Private-use character marking where a note was taken out. */
 const NOTE_MARK = '\uE000';
+/** A note's mark, with its index; built once, not per line. */
+const NOTE = new RegExp(`${NOTE_MARK}(\\d+)${NOTE_MARK}`, 'g');
 
 /**
  * Reads a Fountain screenplay (fountain.io), also plain-text scripts that follow the usual
@@ -25,8 +30,14 @@ const NOTE_MARK = '\uE000';
  * lines, Windows line endings, stray emphasis marks.
  */
 export function parseFountain(source: string): Script {
+  if (source.length > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
   const notes: string[] = [];
-  const normalised = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  // The note mark is taken out of the text first: a mark written in the file must not stand
+  // for a note, which it would repeat (one note a thousand times, a billion characters).
+  const normalised = source
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n')
+    .replaceAll(NOTE_MARK, '');
   // Boneyard: text the writer left out. Notes may cross lines; a mark keeps their place so
   // they follow their paragraph. Both are found with indexOf, in linear time: an opening mark
   // without its closing one leaves the rest of the text as it is.
@@ -45,18 +56,25 @@ export function parseFountain(source: string): Script {
     const start = lines.findIndex((l) => l.trim());
     let end = start;
     let key = '';
+    // Each field's lines are joined once at the end: appending to a string in a loop copies it
+    // each time on engines without ropes (Hermes).
+    const fields = new Map<string, string[]>();
     for (; end < lines.length; end++) {
       const line = lines[end] ?? '';
       if (!line.trim()) break;
       const field = /^([^\s:][^:]*):\s*(.*)$/.exec(line);
       if (field && !/^\s/.test(line)) {
         key = (field[1] ?? '').trim().toLowerCase();
-        titlePage[key] = inline(field[2] ?? '');
+        fields.set(key, [inline(field[2] ?? '')]);
       } else if (key) {
         const value = inline(line);
-        titlePage[key] = titlePage[key] ? `${titlePage[key]}\n${value}` : value;
+        const parts = fields.get(key) ?? [];
+        // An empty field takes the line as its value, without a line break before it.
+        if (parts.length === 1 && parts[0] === '') parts[0] = value;
+        else parts.push(value);
       }
     }
+    for (const [name, parts] of fields) titlePage[name] = parts.join('\n');
     lines = lines.slice(end);
   }
 
@@ -65,12 +83,17 @@ export function parseFountain(source: string): Script {
   let section: string | undefined;
   let scene: ScriptScene | null = null;
   const push = (block: ScriptBlock) => (scene ? scene.blocks : prelude).push(block);
+  /** Blocks the current scene took from the one before: they stay, so each moves only once. */
+  let own = 0;
   const startScene = (heading: string) => {
     // Synopses written just before a heading describe the scene it opens.
+    if (scenes.length >= MAX_SCRIPT_SCENES) throw new ScriptError('tooManyScenes');
     const previous = scene ? scene.blocks : prelude;
-    const moved: ScriptBlock[] = [];
-    while (previous.at(-1)?.kind === 'synopsis' && (!scene || previous.length > 1))
-      moved.unshift(previous.pop() as ScriptBlock);
+    let start = previous.length;
+    while (start > Math.max(own, scene ? 1 : 0) && previous[start - 1]?.kind === 'synopsis')
+      start--;
+    const moved = previous.splice(start);
+    own = moved.length;
     scene = { ...parseHeading(heading), blocks: moved, characters: [] };
     if (section) scene.section = section;
     scenes.push(scene);
@@ -80,8 +103,10 @@ export function parseFountain(source: string): Script {
     const found: string[] = [];
     const rows = paragraph
       .map((l) =>
-        l.replace(new RegExp(`${NOTE_MARK}(\\d+)${NOTE_MARK}`, 'g'), (_, i: string) => {
+        l.replace(NOTE, (_, i: string) => {
+          // Each note is read once, whatever the text holds.
           found.push(notes[Number(i)] ?? '');
+          notes[Number(i)] = '';
           return '';
         }),
       )
@@ -107,7 +132,13 @@ export function parseFountain(source: string): Script {
     } else if (/^={3,}$/.test(first)) {
       action(rows.slice(1));
     } else if (first.startsWith('>') && first.endsWith('<')) {
-      action(rows.map((r) => r.replace(/^>\s*|\s*<$/g, '')));
+      // Sliced, not a regex: `\s*<$` backtracked quadratically on a long run of spaces.
+      action(
+        rows.map((r) => {
+          const text = r.startsWith('>') ? r.slice(1).trimStart() : r;
+          return text.endsWith('<') ? text.slice(0, -1).trimEnd() : text;
+        }),
+      );
     } else if (first.startsWith('>') || (rows.length === 1 && TRANSITION.test(first))) {
       push({ kind: 'transition', text: inline(first.replace(/^>/, '')) });
       action(rows.slice(1));
@@ -130,15 +161,22 @@ export function parseFountain(source: string): Script {
   }
 
   function dialogue(cue: string, rows: string[]) {
-    const lines: DialogueLine[] = [];
+    // Rows of one spoken line are joined once, not appended to a string row by row.
+    const parts: Array<{ text: string[]; parenthetical?: boolean }> = [];
     for (const row of rows) {
       const text = inline(row.replace(/^~/, ''));
       if (!text) continue;
-      const last = lines.at(-1);
-      if (/^\(.*\)$/.test(text)) lines.push({ text, parenthetical: true });
-      else if (last && !last.parenthetical) last.text = `${last.text} ${text}`;
-      else lines.push({ text });
+      const last = parts.at(-1);
+      if (/^\(.*\)$/.test(text)) parts.push({ text: [text], parenthetical: true });
+      else if (last && !last.parenthetical) last.text.push(text);
+      else parts.push({ text: [text] });
     }
+    const lines = parts.map(
+      (p): DialogueLine =>
+        p.parenthetical
+          ? { text: p.text.join(' '), parenthetical: true }
+          : { text: p.text.join(' ') },
+    );
     push({ kind: 'dialogue', ...splitCue(inline(cue)), lines });
   }
 
@@ -190,7 +228,7 @@ function inline(text: string): string {
       // Underline only between word boundaries: snake_case_names and URLs keep theirs.
       .replace(/(^|[^\p{L}\p{N}_])_(?=\S)([^_\n]*?\S)_(?![\p{L}\p{N}_])/gu, '$1$2')
       .replace(/\\([*_\\])/g, '$1')
-      .replace(new RegExp(`${NOTE_MARK}\\d+${NOTE_MARK}`, 'g'), ''),
+      .replace(NOTE, ''),
   );
 }
 
@@ -201,13 +239,16 @@ function between(
   close: string,
   replace: (inner: string) => string,
 ): string {
-  let out = '';
+  const out: string[] = [];
   let from = 0;
   for (;;) {
     const start = text.indexOf(open, from);
     const end = start < 0 ? -1 : text.indexOf(close, start + open.length);
-    if (end < 0) return out + text.slice(from);
-    out += text.slice(from, start) + replace(text.slice(start + open.length, end));
+    if (end < 0) {
+      out.push(text.slice(from));
+      return out.join('');
+    }
+    out.push(text.slice(from, start), replace(text.slice(start + open.length, end)));
     from = end + close.length;
   }
 }
