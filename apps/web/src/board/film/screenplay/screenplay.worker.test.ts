@@ -38,6 +38,11 @@ it('forwards ScriptError codes', async () => {
     kind: 'screenplay',
     error: 'unsupported',
   });
+  const scenes = Array.from({ length: 5001 }, (_, i) => `INT. ROOM ${i} - DAY`).join('\n\n');
+  expect(await respond(new File([scenes], 'x.fountain'))).toEqual({
+    kind: 'screenplay',
+    error: 'tooManyScenes',
+  });
   const big = { name: 'x.fountain', size: 5 * 1024 * 1024 + 1 } as File;
   expect(await respond(big)).toEqual({ kind: 'screenplay', error: 'tooLarge' });
 });
