@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { mkdtemp, open, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { open, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ThumbnailSize } from '@inkadra/shared';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { tempDir } from '../test-tmpdir.ts';
 import { photoshopFixture } from './fixtures/photoshop.ts';
 import { readPhotoshop } from './photoshop.ts';
 
 let dir: string;
 let seq = 0;
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'inkadra-psd-'));
+  dir = tempDir('inkadra-psd-');
 });
 async function decode(data: Buffer) {
   const file = join(dir, `${seq++}.psd`);

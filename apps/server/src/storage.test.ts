@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { ListMultipartUploadsCommand, S3Client } from '@aws-sdk/client-s3';
@@ -18,6 +17,7 @@ import {
   type Storage,
   variantKey,
 } from './storage.ts';
+import { tempDir } from './test-tmpdir.ts';
 
 const s3Endpoint = process.env.S3_TEST_ENDPOINT;
 
@@ -31,7 +31,7 @@ function contract(name: string, make: () => Storage) {
       expect(await storage.size(key)).toBe(10);
       expect((await readAll(await storage.read(key))).toString()).toBe('0123456789');
       expect((await readAll(await storage.read(key, { start: 2, end: 4 }))).toString()).toBe('234');
-      const copy = await storage.localCopy(key, mkdtempSync(join(tmpdir(), 'inkadra-copy-')));
+      const copy = await storage.localCopy(key, tempDir('inkadra-copy-'));
       expect(copy.path).toBeTruthy();
       await copy.done();
       await storage.remove([key]);
@@ -75,10 +75,10 @@ function contract(name: string, make: () => Storage) {
   });
 }
 
-contract('local storage', () => localStorage(mkdtempSync(join(tmpdir(), 'inkadra-storage-'))));
+contract('local storage', () => localStorage(tempDir('inkadra-storage-')));
 
 it('local storage keeps the previous file when a write fails half-way', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'inkadra-storage-'));
+  const root = tempDir('inkadra-storage-');
   const storage = localStorage(root);
   const key = variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13', '256');
   await storage.write(key, Buffer.from('whole'), 'image/webp');
@@ -149,7 +149,7 @@ it('throws when the bucket refuses the abort, so the record is retried', async (
 });
 
 it('removes only the keys it is given; Office derivatives are listed for Office assets only', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'office-storage-'));
+  const dir = tempDir('office-storage-');
   const storage = localStorage(dir);
   const id = 'office-test';
   await storage.write(`originals/${id}`, Buffer.from('original'), 'text/plain');
@@ -169,7 +169,7 @@ it('removes only the keys it is given; Office derivatives are listed for Office 
 });
 
 it('local storage keeps two writes of one key apart', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'inkadra-storage-'));
+  const root = tempDir('inkadra-storage-');
   const storage = localStorage(root);
   const key = variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13', '256');
   const bodies = ['a'.repeat(1 << 20), 'b'.repeat(1 << 20)];
@@ -195,7 +195,7 @@ describe('signed URLs of the bucket (#839)', () => {
 
   it('exist only with S3_PUBLIC_REDIRECT, and never on the local driver', () => {
     expect(createStorage(config({})).signedUrl).toBeUndefined();
-    expect(localStorage(mkdtempSync(join(tmpdir(), 'ink-sign-'))).signedUrl).toBeUndefined();
+    expect(localStorage(tempDir('ink-sign-')).signedUrl).toBeUndefined();
   });
 
   it('point at the address browsers use and carry the name and type', async () => {
@@ -263,7 +263,7 @@ it('warns at startup about bucket addresses browsers cannot use (#839)', () => {
 });
 
 it('tells a missing file from a storage that does not answer (#794)', async () => {
-  const local = localStorage(mkdtempSync(join(tmpdir(), 'ink-size-')));
+  const local = localStorage(tempDir('ink-size-'));
   expect(await local.size(variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a19', '256'))).toBeNull();
   expect(isNotFound({ name: 'NotFound', $metadata: { httpStatusCode: 404 } })).toBe(true);
   expect(isNotFound({ name: 'InternalError', $metadata: { httpStatusCode: 500 } })).toBe(false);

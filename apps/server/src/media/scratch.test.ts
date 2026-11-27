@@ -1,7 +1,6 @@
 import {
   lstat,
   mkdir,
-  mkdtemp,
   readdir,
   readFile,
   realpath,
@@ -9,9 +8,9 @@ import {
   utimes,
   writeFile,
 } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { tempDir } from '../test-tmpdir.ts';
 import {
   ensureFreeSpace,
   NotEnoughSpace,
@@ -24,7 +23,7 @@ import {
 
 describe('job folders', () => {
   it('gives each job a folder of its own and removes it, even on failure', async () => {
-    const tmp = await mkdtemp(join(tmpdir(), 'inkadra-scratch-'));
+    const tmp = tempDir('inkadra-scratch-');
     let seen = '';
     await expect(
       withJobDir(tmp, async (dir) => {
@@ -37,7 +36,7 @@ describe('job folders', () => {
   });
 
   it('sweeps only job folders a crash left behind', async () => {
-    const tmp = await mkdtemp(join(tmpdir(), 'inkadra-scratch-'));
+    const tmp = tempDir('inkadra-scratch-');
     for (const name of ['job-old', 'job-new', 'clip-old']) await mkdir(join(tmp, name));
     const old = new Date(Date.now() - STALE_JOB_MS - 60_000);
     await utimes(join(tmp, 'job-old'), old, old);
@@ -47,7 +46,7 @@ describe('job folders', () => {
   });
 
   it('reads at most the first bytes of a file', async () => {
-    const tmp = await mkdtemp(join(tmpdir(), 'inkadra-scratch-'));
+    const tmp = tempDir('inkadra-scratch-');
     const file = join(tmp, 'f');
     await writeFile(file, 'abcdefgh');
     expect((await readPrefix(file, 3)).toString()).toBe('abc');
@@ -55,7 +54,7 @@ describe('job folders', () => {
   });
 
   it('refuses a job that would not fit on the volume', async () => {
-    const tmp = await mkdtemp(join(tmpdir(), 'inkadra-scratch-'));
+    const tmp = tempDir('inkadra-scratch-');
     await expect(ensureFreeSpace(tmp, 2 ** 60, 'a test')).rejects.toBeInstanceOf(NotEnoughSpace);
     await expect(ensureFreeSpace(tmp, 1, 'a test')).resolves.toBeUndefined();
   });
@@ -63,7 +62,7 @@ describe('job folders', () => {
   it.skipIf(process.platform === 'win32')(
     'gives the tools a link to the original alone in a private folder',
     async () => {
-      const tmp = await mkdtemp(join(tmpdir(), 'inkadra-scratch-'));
+      const tmp = tempDir('inkadra-scratch-');
       const originals = join(tmp, 'files', 'originals');
       await mkdir(originals, { recursive: true });
       await writeFile(join(originals, 'a'), 'video');

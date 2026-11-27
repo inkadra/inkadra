@@ -2,11 +2,11 @@
 
 import { execFile } from 'node:child_process';
 import { constants, existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { tempDir } from '../test-tmpdir.ts';
 import {
   canDisableUserns,
   convertOffice,
@@ -20,7 +20,7 @@ import { resetMediaTools } from './tools.ts';
 const exec = promisify(execFile);
 const linux = process.platform === 'linux';
 const job = async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'office-sandbox-'));
+  const dir = tempDir('office-sandbox-');
   await Promise.all(['in', 'out', 'render', 'profile'].map((n) => mkdir(join(dir, n))));
   return dir;
 };

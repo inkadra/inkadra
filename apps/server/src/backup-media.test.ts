@@ -1,7 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtempSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, type BackupManifest } from '@inkadra/shared';
 import pino from 'pino';
@@ -9,11 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { archiveToRestore, type BackupRemote, restoreBackupFiles, verifyBackup } from './backup.ts';
 import { loadConfig } from './config.ts';
 import { createStorage, localStorage, readAll, type Storage } from './storage.ts';
+import { tempDir } from './test-tmpdir.ts';
 import { writeZip } from './transfers/zip.ts';
 
 const log = pino({ level: 'silent' });
 const sha = (data: Buffer | string) => createHash('sha256').update(data).digest('hex');
-const folder = (name: string) => mkdtempSync(join(tmpdir(), `${name}-`));
+const folder = (name: string) => tempDir(`${name}-`);
 
 /**
  * An archive of a backup with files, as `runBackup` writes one, without tables: `files.jsonl`

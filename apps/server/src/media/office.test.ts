@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { tempDir } from '../test-tmpdir.ts';
 import { convertOffice, LIBREOFFICE_POLICY, OFFICE_CAPS, officeCommand } from './office.ts';
 import { mediaTools, runTool } from './tools.ts';
 
@@ -56,7 +56,7 @@ describe('Office sandbox', () => {
       ReturnType<typeof mediaTools>
     >);
     vi.mocked(runTool).mockRejectedValue(new Error('timeout'));
-    const dir = await mkdtemp(join(tmpdir(), 'office-timeout-'));
+    const dir = tempDir('office-timeout-');
     const source = join(dir, 'input.csv');
     await writeFile(source, 'a,b');
     await expect(convertOffice(source, dir, 'csv')).rejects.toThrow('timeout');
@@ -89,7 +89,7 @@ it.skipIf(process.platform !== 'linux')(
   'enforces the output file cap in the subprocess',
   async () => {
     const { runTool: actualRun } = await vi.importActual<typeof import('./tools.ts')>('./tools.ts');
-    const dir = await mkdtemp(join(tmpdir(), 'office-file-cap-'));
+    const dir = tempDir('office-file-cap-');
     const out = join(dir, 'oversized');
     await expect(
       actualRun(

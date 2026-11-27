@@ -1,9 +1,9 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { freshDatabase } from '../test-deps.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import { createDatabase, runMigrations } from './client.ts';
 
 const url = process.env.DATABASE_URL;
@@ -45,7 +45,7 @@ describe.skipIf(!url)('runMigrations (needs DATABASE_URL)', () => {
     const journal = JSON.parse(readFileSync(join(folder, 'meta/_journal.json'), 'utf8'));
     // The schema of 0.9.0 (32 migrations), as a restore of its backup builds it first.
     journal.entries = journal.entries.slice(0, 32);
-    const partial = mkdtempSync(join(tmpdir(), 'partial-'));
+    const partial = tempDir('partial-');
     mkdirSync(join(partial, 'meta'));
     writeFileSync(join(partial, 'meta/_journal.json'), JSON.stringify(journal));
     for (const e of journal.entries)

@@ -1,11 +1,11 @@
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { describe, expect, it } from 'vitest';
 import { freshDatabase } from '../test-deps.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import { createDatabase } from './client.ts';
 
 const url = process.env.DATABASE_URL;
@@ -13,7 +13,7 @@ describe.skipIf(!url)('migration 0036 (needs DATABASE_URL)', () => {
   it('turns the old default UTC into an unset zone and keeps every other zone', async () => {
     const folder = fileURLToPath(new URL('../../drizzle', import.meta.url));
     // The migrations up to 0035, as a database made before this one has them.
-    const before = mkdtempSync(join(tmpdir(), 'inkadra-0036-'));
+    const before = tempDir('inkadra-0036-');
     cpSync(folder, before, { recursive: true });
     const journal = JSON.parse(readFileSync(join(before, 'meta/_journal.json'), 'utf8'));
     journal.entries = journal.entries.filter((e: { idx: number }) => e.idx < 36);

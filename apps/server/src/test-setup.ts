@@ -1,6 +1,6 @@
 // Every Fastify instance a test builds checks its answers against the API contract
 // (test-response-contract.ts); the test that made a request fails on a mismatch.
-import { afterAll, afterEach, beforeEach, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, expect, vi } from 'vitest';
 import {
   checkResponses,
   currentOwner,
@@ -8,6 +8,11 @@ import {
   settled,
   takeMismatches,
 } from './test-response-contract.ts';
+import { fileTmpDir, removeTempDirs } from './test-tmpdir.ts';
+
+fileTmpDir(expect.getState().testPath);
+// Registered before the hooks below, so it runs after every other afterAll of the file.
+afterAll(removeTempDirs);
 
 vi.mock('fastify', async (original) => {
   const fastify = await original<typeof import('fastify')>();
