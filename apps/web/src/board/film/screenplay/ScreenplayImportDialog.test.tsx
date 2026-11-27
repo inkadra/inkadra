@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 import { addFrame, addScene, listElements, storyboardOf } from '@inkadra/canvas-core';
 import fountain from '@inkadra/canvas-core/fixtures/last-train.fountain?raw';
+import { parseScreenplay } from '@inkadra/canvas-core/screenplay/parse';
+import { ScriptError } from '@inkadra/canvas-core/screenplay/script';
 import { Dialog } from '@inkadra/ui';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -16,6 +18,24 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => translations,
   Trans: ({ i18nKey }: { i18nKey: string }) => i18nKey,
 }));
+
+// happy-dom has no module workers: the stand-in parses in-process and replies like the worker.
+vi.stubGlobal(
+  'Worker',
+  class {
+    onmessage?: (event: { data: unknown }) => void;
+    async postMessage(file: File) {
+      let data: unknown;
+      try {
+        data = { kind: 'screenplay', script: parseScreenplay(file.name, await file.text()) };
+      } catch (e) {
+        data = { kind: 'screenplay', error: e instanceof ScriptError ? e.code : 'invalid' };
+      }
+      this.onmessage?.({ data });
+    }
+    terminate() {}
+  },
+);
 
 let host: HTMLDivElement;
 let root: Root;
