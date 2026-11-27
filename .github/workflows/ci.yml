@@ -362,6 +362,9 @@ jobs:
         run: &apt-timeouts |
           printf '%s\n' 'Acquire::Retries "5";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' \
             | sudo tee /etc/apt/apt.conf.d/80-ci-timeouts
+          # The runner image lists packages.microsoft.com, which nothing here installs from; when it
+          # answered 403 ("no longer signed"), Playwright's apt-get update failed every shard.
+          sudo grep -lr packages.microsoft.com /etc/apt/sources.list.d/ | xargs -r sudo rm -f --
       - name: Browsers and their system packages
         env:
           BROWSERS: chromium
