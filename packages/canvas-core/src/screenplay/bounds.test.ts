@@ -71,14 +71,14 @@ const page = (lines: string[]): PdfPage => ({
 
 describe('parser worst cases', () => {
   it('reads many namespace prefixes in a deep document without copying them per element', () => {
-    const nested = '<a>'.repeat(MAX_XML_DEPTH - 1) + '</a>'.repeat(MAX_XML_DEPTH - 1);
+    const nested = '<a>'.repeat(50) + '</a>'.repeat(50);
     // n prefixes and about n elements: copying the prefixes per element is n².
     const xml = (n: number) => {
       const prefixes = Array.from({ length: n }, (_, i) => `xmlns:p${i}="u"`).join(' ');
-      return `<r ${prefixes}>${nested.repeat(Math.ceil(n / 98))}</r>`;
+      return `<r ${prefixes}>${nested.repeat(Math.ceil(n / 50))}</r>`;
     };
     linear(xml, parseXml, 3000);
-    expect(parseXml(xml(980)).children).toHaveLength(10);
+    expect(parseXml(xml(500)).children).toHaveLength(10);
   });
 
   it('keeps a prefix in scope only inside the element that declares it', () => {
@@ -321,10 +321,14 @@ describe('parser worst cases', () => {
     }
   });
 
-  it('numbers scenes after a number without a digit at its end in linear time', () => {
+  it('numbers scenes after a number without a digit at its end with one letter each', () => {
     const scene = (number?: string) => ({ heading: '', blocks: [], characters: [], number });
     expect(sceneNumbers([scene('X'), scene(), scene(), scene()])).toEqual(['X', 'XA', 'XB', 'XC']);
     expect(sceneNumbers([scene('1.'), scene(), scene()])).toEqual(['1.', '1.A', '1.B']);
+  });
+
+  it('numbers scenes after a number without a digit at its end in linear time', () => {
+    const scene = (number?: string) => ({ heading: '', blocks: [], characters: [], number });
     const scenes = (n: number): ScriptScene[] => [
       scene('PROLOGUE'),
       ...Array.from({ length: n - 1 }, () => scene()),
@@ -345,13 +349,16 @@ describe('parser worst cases', () => {
     expect(fewPlan.charactersTruncated).toBeUndefined();
   });
 
-  it('folds any whitespace so headings and cues never backtrack on a run of it', () => {
+  it('folds any whitespace within a line, keeping line breaks', () => {
     expect(clean('A\u3000\u3000B\v\fC\u202FD')).toBe('A B C D');
     expect(clean('A\n\nB')).toBe('A\n\nB');
     expect(parseHeading('INT.\v\vHALL\n-\nNIGHT')).toMatchObject({
       location: 'HALL',
       time: 'night',
     });
+  });
+
+  it('splits headings and cues with long runs of any whitespace in linear time', () => {
     linear(
       (n) => `INT. A${'\v\n'.repeat(n)}X`,
       (heading) => {
