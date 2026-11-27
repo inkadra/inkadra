@@ -72,7 +72,8 @@ const linearWork = <T>(
 ) => {
   const small = build(n);
   const large = build(n * SCALE);
-  const limit = MAX_WORK_RATIO * Math.max(work(methods, () => run(small)), 1);
+  const done = work(methods, () => run(small));
+  const limit = MAX_WORK_RATIO * Math.max(done, 1);
   expect(work(methods, () => run(large), limit)).toBeLessThanOrEqual(limit);
 };
 
