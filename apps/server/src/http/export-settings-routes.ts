@@ -176,8 +176,8 @@ async function dropUnusedLogo(tx: Tx, projectId: string, assetId: string): Promi
     )
     .limit(1);
   if (cover || pick || inDoc || inVersion) return [];
-  // Locked, so that a reprocess saving its copies now is read below or finds the row gone.
-  const [file] = await tx.select().from(asset).where(eq(asset.id, assetId)).for('update');
+  // Locked by the caller: a reprocess saving its copies now is read below or finds the row gone.
+  const [file] = await tx.select().from(asset).where(eq(asset.id, assetId));
   if (!file) return [];
   const variants = await tx
     .select({ key: assetVariant.storageKey, size: assetVariant.size })
@@ -225,11 +225,20 @@ export function registerExportSettingsRoutes(app: FastifyInstance, deps: Deps) {
         .where(eq(project.id, projectId))
         .for('update');
       if (!locked) throw new HttpError('not_found', 'Project not found.');
-      if (logoAssetId) await checkLogo(tx, deps.storage, projectId, logoAssetId);
       const [before] = await tx
         .select({ logoAssetId: projectExportSettings.logoAssetId })
         .from(projectExportSettings)
         .where(eq(projectExportSettings.projectId, projectId));
+      // The new logo and the one it replaces, by id, as a deletion locks files (projectFiles).
+      const logos = [logoAssetId, before?.logoAssetId].filter((id): id is string => !!id);
+      if (logos.length > 0)
+        await tx
+          .select({ id: asset.id })
+          .from(asset)
+          .where(inArray(asset.id, logos))
+          .orderBy(asset.id)
+          .for('update');
+      if (logoAssetId) await checkLogo(tx, deps.storage, projectId, logoAssetId);
       const now = new Date();
       await tx
         .insert(projectExportSettings)

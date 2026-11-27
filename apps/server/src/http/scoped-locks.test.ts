@@ -759,6 +759,64 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
     expect((await deletion).statusCode).toBe(204);
   });
 
+  /** A file of `who` in the project `projectId`, as an upload leaves it. */
+  const fileIn = async (projectId: string, who: string) => {
+    const id = randomUUID();
+    await db.insert(asset).values({
+      id,
+      projectId,
+      kind: 'image',
+      mime: 'image/png',
+      filename: 'logo.png',
+      size: 10,
+      storageKey: `originals/${id}`,
+      createdBy: idOf(who),
+    });
+    return id;
+  };
+
+  it('locks a deleted project before its files, as a change of its logo does', async () => {
+    const p = await create('root', 'Con logo');
+    const file = await fileIn(p.id, 'root');
+    let release = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((r) => {
+      held = r;
+    });
+    // What PATCH export-settings does: the project row, then the logo's file.
+    const change = db.transaction(async (tx) => {
+      await tx.execute(sql`select id from project where id = ${p.id} for update`);
+      held();
+      await gate;
+      await tx.execute(sql`select id from asset where id = ${file} for update`);
+    });
+    await holding;
+    const deletion = call('root', 'DELETE', `/projects/${p.id}`);
+    // The deletion waits for the project the change holds, holding none of its files.
+    await untilWaiting(1, deletion);
+    release();
+    await change;
+    expect((await deletion).statusCode).toBe(204);
+  });
+
+  it('deletes a project while its creator deletes their account', async () => {
+    for (let round = 0; round < 4; round++) {
+      const name = `creator${round}`;
+      // Made by them, owned by root: the account deletion clears its creator, root deletes it.
+      const p = await handedOver(name);
+      await fileIn(p.id, name);
+      const results = await Promise.all([
+        call('root', 'DELETE', `/projects/${p.id}`),
+        call(name, 'DELETE', '/me', { password: PASSWORD }),
+      ]);
+      noLockErrors(results.map((r) => r.statusCode));
+      expect(results.map((r) => r.statusCode)).toEqual([204, 204]);
+    }
+  });
+
   it('orders an account deletion with changes to its projects and to the person', async () => {
     for (let round = 0; round < 4; round++) {
       const name = `leaver${round}`;

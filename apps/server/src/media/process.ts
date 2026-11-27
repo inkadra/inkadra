@@ -7,8 +7,16 @@ import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetRendition, assetVariant } from '../db/schema.ts';
+import { recordDeletions, removeDeletedFiles } from '../file-deletions.ts';
 import { withToolLabel } from '../monitor/children.ts';
-import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
+import {
+  animatedVariantKey,
+  officeDerivativeKeys,
+  readAll,
+  type Storage,
+  variantKey,
+  waveformKey,
+} from '../storage.ts';
 import { applyVideoSettings, readVideoSettings, type VideoEnv } from '../video-settings.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
@@ -17,7 +25,7 @@ import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { recipesOf, videoPlan } from './ladder.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
-import { convertOffice, OFFICE_CAPS, officeExtension, officeFiles, officeKey } from './office.ts';
+import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
 import {
   decodeCsv,
   type OfficeSheet,
@@ -205,7 +213,13 @@ export async function processAsset(
   caps = ANIMATED_CAPS,
 ): Promise<ProcessResult> {
   const [row] = await deps.db.select().from(asset).where(eq(asset.id, assetId));
-  if (!row) return { skipped: 'gone' as const };
+  if (!row) {
+    // An earlier attempt may have written files just as the asset was deleted: its save timed
+    // out behind the deletion's locks, or the worker died. A job is rarely queued for an asset
+    // already gone, so this runs on every such pass rather than on retries only.
+    await dropFiles(deps, assetId);
+    return { skipped: 'gone' as const };
+  }
   let result: ProcessResult;
   try {
     // The programs it runs show the file's name on the Server page.
@@ -219,26 +233,34 @@ export async function processAsset(
 }
 
 /**
- * Every file a pass may write for `row`, whatever sizes it ended up at. The rows only come at
- * the end (`save`): if the asset was deleted meanwhile, its deletion recorded none of these.
+ * Every file a pass may write for an asset, whatever sizes it ended up at. The rows only come
+ * at the end (`save`): if the asset was deleted meanwhile, its deletion recorded none of these.
  */
-const derivedKeys = (row: { id: string; filename: string }) => [
-  ...ThumbnailSize.options.map((size) => variantKey(row.id, size)),
-  ...animatedKeys(row.id),
-  waveformKey(row.id),
-  ...officeFiles([row]),
+const derivedKeys = (assetId: string) => [
+  ...ThumbnailSize.options.map((size) => variantKey(assetId, size)),
+  ...animatedKeys(assetId),
+  waveformKey(assetId),
+  ...officeDerivativeKeys(assetId),
 ];
 
 /**
- * True when the asset was deleted while it was processed, after removing what the pass wrote:
- * nothing else would ever find those files. A removal that fails is logged, not thrown.
+ * Removes what passes wrote for a deleted asset: nothing else would ever find those files.
+ * Recorded first, as any deletion (#801): a kept backup may list them (#794), and a removal
+ * that fails is retried by the sweep.
  */
+async function dropFiles(deps: MediaDeps, assetId: string) {
+  const keys = derivedKeys(assetId);
+  await recordDeletions(deps.db, keys);
+  await removeDeletedFiles(deps.db, deps.storage, keys).catch((err) => {
+    deps.log?.warn({ err, assetId }, 'files of a deleted asset left to the deletion sweep');
+  });
+}
+
+/** True when the asset was deleted while it was processed, after dropping what was written. */
 async function removeIfGone(deps: MediaDeps, row: typeof asset.$inferSelect) {
   const [still] = await deps.db.select({ id: asset.id }).from(asset).where(eq(asset.id, row.id));
   if (still) return false;
-  await deps.storage.remove(derivedKeys(row)).catch((err) => {
-    deps.log?.warn({ err, assetId: row.id }, 'files of a deleted asset not removed');
-  });
+  await dropFiles(deps, row.id);
   return true;
 }
 

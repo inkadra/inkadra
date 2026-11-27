@@ -6,12 +6,19 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, like, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, assetRendition, assetVariant, project } from '../db/schema.ts';
+import {
+  asset,
+  assetRendition,
+  assetVariant,
+  instanceBackup,
+  pendingFileDeletion,
+  project,
+} from '../db/schema.ts';
 import { projectFiles } from '../http/projects-routes.ts';
 import { requeueStuckProxies, STUCK_PROXY_MS } from '../queues.ts';
 import {
@@ -1167,6 +1174,15 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       return { written, storage: racing };
     };
 
+    /** The removals still recorded for the asset `id`, left to the sweep. */
+    const recorded = async (id: string) =>
+      (
+        await db
+          .select({ key: pendingFileDeletion.key })
+          .from(pendingFileDeletion)
+          .where(like(pendingFileDeletion.key, `variants/${id}/%`))
+      ).map((r) => r.key);
+
     it('removes the thumbnails and moving copies it wrote', async () => {
       const id = await upload(await animatedGif(3), 'image/gif', 'gone.gif');
       const racing = deleting(id);
@@ -1175,6 +1191,51 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       });
       expect(racing.written).toEqual([variantKey(id, '256'), animatedVariantKey(id, '256')]);
       for (const key of racing.written) expect(await storage.size(key)).toBeNull();
+      expect(await recorded(id)).toEqual([]);
+    });
+
+    it('keeps the files a kept backup may list, recorded for the sweep (#794)', async () => {
+      const id = await upload(await stillPng(), 'image/png', 'backed-up.png');
+      const [backup] = await db
+        .insert(instanceBackup)
+        .values({ trigger: 'manual', status: 'ready' })
+        .returning();
+      try {
+        const racing = deleting(id);
+        expect(await processAsset({ ...deps, storage: racing.storage }, id)).toEqual({
+          skipped: 'gone',
+        });
+        expect(racing.written).toEqual([variantKey(id, '256')]);
+        expect(await storage.size(variantKey(id, '256'))).toBeGreaterThan(0);
+        expect(await recorded(id)).toContain(variantKey(id, '256'));
+      } finally {
+        await db.delete(instanceBackup).where(eq(instanceBackup.id, backup?.id ?? ''));
+      }
+    });
+
+    it('leaves the files to the sweep when storage fails to remove them', async () => {
+      const id = await upload(await stillPng(), 'image/png', 'stuck.png');
+      const racing = deleting(id);
+      const failing = {
+        ...racing.storage,
+        remove: async () => {
+          throw new Error('bucket unavailable');
+        },
+      };
+      expect(await processAsset({ ...deps, storage: failing }, id)).toEqual({ skipped: 'gone' });
+      expect(await storage.size(variantKey(id, '256'))).toBeGreaterThan(0);
+      expect(await recorded(id)).toContain(variantKey(id, '256'));
+    });
+
+    it('removes what an earlier attempt wrote when a retry finds the asset gone', async () => {
+      // The first attempt's save timed out behind the deletion, which then committed.
+      const id = randomUUID();
+      await storage.write(variantKey(id, '512'), Buffer.from('left over'), 'image/webp');
+      await storage.write(officeKey(id, 'manifest.json'), Buffer.from('{}'), 'application/json');
+      expect(await processAsset(deps, id)).toEqual({ skipped: 'gone' });
+      expect(await storage.size(variantKey(id, '512'))).toBeNull();
+      expect(await storage.size(officeKey(id, 'manifest.json'))).toBeNull();
+      expect(await recorded(id)).toEqual([]);
     });
 
     it('removes the Office manifest it wrote, though the save found no row', async () => {

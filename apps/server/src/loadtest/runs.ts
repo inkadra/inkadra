@@ -327,7 +327,14 @@ export async function deleteTestData(
     const projects = [
       ...new Set([...(row.testProjectId ? [row.testProjectId] : []), ...made.map((p) => p.id)]),
     ];
-    // Files first, in one order, as the account deletion does (#879).
+    // The projects, then their files, each in one order, as the account deletion does (#879).
+    if (projects.length)
+      await tx
+        .select({ id: project.id })
+        .from(project)
+        .where(inArray(project.id, projects))
+        .orderBy(project.id)
+        .for('update');
     if (projects.length || row.testUserId)
       await tx
         .select({ id: asset.id })

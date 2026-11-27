@@ -785,16 +785,30 @@ function validateDates(start: string | null, end: string | null) {
 
 /**
  * The stored files of these projects (originals, copies, Office pages), to delete once their
- * rows are gone. Call it inside the deleting transaction: the files' rows are locked, in id order
- * as an account deletion locks them (#879), so a pass of the media job saving its copies right
- * now either commits first, and its copies are read below, or waits for the deletion and then
- * removes what it wrote (media/process.ts).
+ * rows are gone. Call it inside the deleting transaction, after any `user` row it locks: it locks
+ * the projects, their boards and their files in the order of locks.ts, each by id. A file added
+ * meanwhile (its row holds the project's key) is read, or waits; a pass of the media job saving
+ * its copies right now either commits first, and its copies are read below, or waits for the
+ * deletion and then removes what it wrote (media/process.ts).
  */
 export async function projectFiles(
   tx: Pick<Database, 'select'>,
   projectIds: string[],
 ): Promise<string[]> {
   if (projectIds.length === 0) return [];
+  await tx
+    .select({ id: project.id })
+    .from(project)
+    .where(inArray(project.id, projectIds))
+    .orderBy(project.id)
+    .for('update');
+  // A board change holds its board, then a file it shows (a cover, a guest pick).
+  await tx
+    .select({ id: board.id })
+    .from(board)
+    .where(inArray(board.projectId, projectIds))
+    .orderBy(board.id)
+    .for('update');
   const originals = await tx
     .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
     .from(asset)
