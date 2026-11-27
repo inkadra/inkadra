@@ -785,17 +785,30 @@ function validateDates(start: string | null, end: string | null) {
 
 /**
  * The stored files of these projects (originals, copies, Office pages), to delete once their
- * rows are gone.
+ * rows are gone. Call it inside the deleting transaction. It locks the projects, as deleting them
+ * does first anyway, so a file uploaded meanwhile (its row holds the project's key) is read here
+ * or waits; then their files in share mode, by id, so a pass of the media job saving its copies
+ * right now either commits first, and its copies are read below, or waits for the deletion and
+ * then removes what it wrote (media/process.ts). Share mode leaves alone whoever only refers to
+ * a file (a board cover, a guest pick, a comment), as the deletion's cascade did before.
  */
 export async function projectFiles(
   tx: Pick<Database, 'select'>,
   projectIds: string[],
 ): Promise<string[]> {
   if (projectIds.length === 0) return [];
+  await tx
+    .select({ id: project.id })
+    .from(project)
+    .where(inArray(project.id, projectIds))
+    .orderBy(project.id)
+    .for('update');
   const originals = await tx
     .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
     .from(asset)
-    .where(inArray(asset.projectId, projectIds));
+    .where(inArray(asset.projectId, projectIds))
+    .orderBy(asset.id)
+    .for('share');
   const variants = await tx
     .select({
       key: assetVariant.storageKey,

@@ -6,14 +6,29 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, like, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, assetRendition, assetVariant, project } from '../db/schema.ts';
-import { requeueStuckProxies, STUCK_PROXY_MS } from '../queues.ts';
-import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
+import {
+  asset,
+  assetRendition,
+  assetVariant,
+  instanceBackup,
+  pendingFileDeletion,
+  project,
+} from '../db/schema.ts';
+import { projectFiles } from '../http/projects-routes.ts';
+import { requeueStuckProxies, retried, STUCK_PROXY_MS } from '../queues.ts';
+import {
+  animatedVariantKey,
+  officeKey,
+  originalKey,
+  proxyKey,
+  readAll,
+  variantKey,
+} from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { writeZip } from '../transfers/zip.ts';
 import { chooseVideoEncoder, forgetVideoEncoder, readVideoEncoder } from './encoder-setting.ts';
@@ -1141,6 +1156,154 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       const { row, variants } = await load(id);
       expect(row?.status).toBe('ready');
       expect(variants).toHaveLength(0);
+    });
+  });
+
+  describe('an asset deleted while it is processed', () => {
+    /** The storage of `deps`, deleting the asset right after the pass writes its first file. */
+    const deleting = (id: string) => {
+      const written: string[] = [];
+      const racing = {
+        ...storage,
+        write: async (...args: Parameters<typeof storage.write>) => {
+          await storage.write(...args);
+          written.push(args[0]);
+          if (written.length === 1) await db.delete(asset).where(eq(asset.id, id));
+        },
+      };
+      return { written, storage: racing };
+    };
+
+    /** The removals still recorded for the asset `id`, left to the sweep. */
+    const recorded = async (id: string) =>
+      (
+        await db
+          .select({ key: pendingFileDeletion.key })
+          .from(pendingFileDeletion)
+          .where(like(pendingFileDeletion.key, `variants/${id}/%`))
+      ).map((r) => r.key);
+
+    it('removes the thumbnails and moving copies it wrote', async () => {
+      const id = await upload(await animatedGif(3), 'image/gif', 'gone.gif');
+      const racing = deleting(id);
+      expect(await processAsset({ ...deps, storage: racing.storage }, id)).toEqual({
+        skipped: 'gone',
+      });
+      expect(racing.written).toEqual([variantKey(id, '256'), animatedVariantKey(id, '256')]);
+      for (const key of racing.written) expect(await storage.size(key)).toBeNull();
+      expect(await recorded(id)).toEqual([]);
+    });
+
+    it('keeps the files a kept backup may list, recorded for the sweep (#794)', async () => {
+      const id = await upload(await stillPng(), 'image/png', 'backed-up.png');
+      const [backup] = await db
+        .insert(instanceBackup)
+        .values({ trigger: 'manual', status: 'ready' })
+        .returning();
+      try {
+        const racing = deleting(id);
+        expect(await processAsset({ ...deps, storage: racing.storage }, id)).toEqual({
+          skipped: 'gone',
+        });
+        expect(racing.written).toEqual([variantKey(id, '256')]);
+        expect(await storage.size(variantKey(id, '256'))).toBeGreaterThan(0);
+        // A picture: no waveform, no Office pages among the keys.
+        expect((await recorded(id)).sort()).toEqual(
+          ['256', '512', '1024', '2048']
+            .flatMap((size) => [variantKey(id, size), animatedVariantKey(id, size)])
+            .sort(),
+        );
+      } finally {
+        await db.delete(instanceBackup).where(eq(instanceBackup.id, backup?.id ?? ''));
+      }
+    });
+
+    it('leaves the files to the sweep when storage fails to remove them', async () => {
+      const id = await upload(await stillPng(), 'image/png', 'stuck.png');
+      const racing = deleting(id);
+      const failing = {
+        ...racing.storage,
+        remove: async () => {
+          throw new Error('bucket unavailable');
+        },
+      };
+      expect(await processAsset({ ...deps, storage: failing }, id)).toEqual({ skipped: 'gone' });
+      expect(await storage.size(variantKey(id, '256'))).toBeGreaterThan(0);
+      expect(await recorded(id)).toContain(variantKey(id, '256'));
+    });
+
+    it('removes what an earlier attempt wrote when a retry finds the asset gone', async () => {
+      // The first attempt's save timed out behind the deletion, which then committed.
+      const id = randomUUID();
+      await storage.write(variantKey(id, '512'), Buffer.from('left over'), 'image/webp');
+      await storage.write(officeKey(id, 'manifest.json'), Buffer.from('{}'), 'application/json');
+      expect(await processAsset(deps, id)).toEqual({ skipped: 'gone' });
+      expect(await storage.size(variantKey(id, '512'))).toBeNull();
+      expect(await storage.size(officeKey(id, 'manifest.json'))).toBeNull();
+      expect(await recorded(id)).toEqual([]);
+    });
+
+    it('records nothing for a first attempt that finds its asset gone', async () => {
+      // The queued jobs of a project deleted before they started wrote nothing.
+      const id = randomUUID();
+      await storage.write(variantKey(id, '512'), Buffer.from('not ours'), 'image/webp');
+      expect(await processAsset(deps, id, undefined, false)).toEqual({ skipped: 'gone' });
+      expect(await storage.size(variantKey(id, '512'))).toBeGreaterThan(0);
+      expect(await recorded(id)).toEqual([]);
+      await storage.remove([variantKey(id, '512')]);
+    });
+
+    it('tells a retry or a stalled job from a first attempt', () => {
+      const job = { attemptsStarted: 1, attemptsMade: 0, stalledCounter: 0 };
+      expect(retried(job)).toBe(false);
+      expect(retried({ ...job, attemptsStarted: 2 })).toBe(true);
+      expect(retried({ ...job, attemptsMade: 1 })).toBe(true);
+      expect(retried({ ...job, stalledCounter: 1 })).toBe(true);
+    });
+
+    it('removes the Office manifest it wrote, though the save found no row', async () => {
+      const id = await upload(Buffer.from('a,b\n1,2\n'), 'text/csv', 'gone.csv');
+      const racing = deleting(id);
+      expect(await processAsset({ ...deps, storage: racing.storage }, id)).toEqual({
+        skipped: 'gone',
+      });
+      expect(racing.written).toContain(officeKey(id, 'manifest.json'));
+      for (const key of racing.written) expect(await storage.size(key)).toBeNull();
+    });
+
+    it('makes a project deletion wait for a save in progress, and read its copies', async () => {
+      const id = await upload(await stillPng(), 'image/png', 'saving.png');
+      const key = variantKey(id, '256');
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let started = () => {};
+      const saved = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      // A pass of the job inside its `save`: the asset's row and copy written, not committed.
+      const saving = db.transaction(async (tx) => {
+        await tx.update(asset).set({ status: 'ready' }).where(eq(asset.id, id));
+        await tx
+          .insert(assetVariant)
+          .values({ assetId: id, size: '256', width: 1, height: 1, storageKey: key, bytes: 1 });
+        started();
+        await held;
+      });
+      await saved;
+      let files: string[] | null = null;
+      const reading = db
+        .transaction((tx) => projectFiles(tx, [projectId]))
+        .then((f) => {
+          files = f;
+        });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const early = files;
+      release();
+      await Promise.all([saving, reading]);
+      expect(early).toBeNull();
+      expect(files).toContain(key);
     });
   });
 });

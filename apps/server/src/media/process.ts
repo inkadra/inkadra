@@ -7,8 +7,16 @@ import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetRendition, assetVariant } from '../db/schema.ts';
+import { recordDeletions, removeDeletedFiles } from '../file-deletions.ts';
 import { withToolLabel } from '../monitor/children.ts';
-import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
+import {
+  animatedVariantKey,
+  officeDerivativeKeys,
+  readAll,
+  type Storage,
+  variantKey,
+  waveformKey,
+} from '../storage.ts';
 import { applyVideoSettings, readVideoSettings, type VideoEnv } from '../video-settings.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
@@ -203,11 +211,67 @@ export async function processAsset(
   deps: MediaDeps,
   assetId: string,
   caps = ANIMATED_CAPS,
+  /**
+   * Whether an earlier attempt of this job may have run (a retry, a job taken back from a
+   * worker that died). Only then is an asset found gone at the start cleaned up after: the
+   * jobs of a deleted project that never started wrote nothing, and would otherwise record
+   * every possible key of each of their files.
+   */
+  retried = true,
 ): Promise<ProcessResult> {
   const [row] = await deps.db.select().from(asset).where(eq(asset.id, assetId));
-  if (!row) return { skipped: 'gone' as const };
-  // The programs it runs show the file's name on the Server page.
-  return withToolLabel(row.filename, () => processRow(deps, row, caps));
+  if (!row) {
+    // The earlier attempt wrote files just as the asset was deleted: its save timed out behind
+    // the deletion's locks, or the worker died.
+    if (retried) await dropFiles(deps, derivedKeys(assetId), assetId);
+    return { skipped: 'gone' as const };
+  }
+  let result: ProcessResult;
+  try {
+    // The programs it runs show the file's name on the Server page.
+    result = await withToolLabel(row.filename, () => processRow(deps, row, caps));
+  } catch (err) {
+    if (await removeIfGone(deps, row)) return { skipped: 'gone' as const };
+    throw err;
+  }
+  if (await removeIfGone(deps, row)) return { skipped: 'gone' as const };
+  return result;
+}
+
+/**
+ * Every file a pass may write for an asset, whatever sizes it ended up at; when its row is known,
+ * only those of its kind. The rows only come at the end (`save`): if the asset was deleted
+ * meanwhile, its deletion recorded none of these.
+ */
+function derivedKeys(assetId: string, row?: { kind: string; filename: string }) {
+  return [
+    ...ThumbnailSize.options.map((size) => variantKey(assetId, size)),
+    ...animatedKeys(assetId),
+    ...(!row || row.kind === 'audio' ? [waveformKey(assetId)] : []),
+    ...(!row || (row.kind === 'file' && officeExtension(row.filename))
+      ? officeDerivativeKeys(assetId)
+      : []),
+  ];
+}
+
+/**
+ * Removes what passes wrote for a deleted asset: nothing else would ever find those files.
+ * Recorded first, as any deletion (#801): a kept backup may list them (#794), and a removal
+ * that fails is retried by the sweep.
+ */
+async function dropFiles(deps: MediaDeps, keys: string[], assetId: string) {
+  await recordDeletions(deps.db, keys);
+  await removeDeletedFiles(deps.db, deps.storage, keys).catch((err) => {
+    deps.log?.warn({ err, assetId }, 'files of a deleted asset left to the deletion sweep');
+  });
+}
+
+/** True when the asset was deleted while it was processed, after dropping what was written. */
+async function removeIfGone(deps: MediaDeps, row: typeof asset.$inferSelect) {
+  const [still] = await deps.db.select({ id: asset.id }).from(asset).where(eq(asset.id, row.id));
+  if (still) return false;
+  await dropFiles(deps, derivedKeys(row.id, row), row.id);
+  return true;
 }
 
 async function processRow(

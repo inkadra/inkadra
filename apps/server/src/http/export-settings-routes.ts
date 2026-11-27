@@ -116,9 +116,13 @@ async function load(db: Database, projectId: string, canEdit: boolean): Promise<
  * are the first bytes of the stored file, which the worker has read by the time it is ready.
  */
 async function checkLogo(tx: Tx, storage: Storage, projectId: string, assetId: string) {
-  const [file] = await tx.select().from(asset).where(eq(asset.id, assetId)).for('share');
-  if (!file || file.projectId !== projectId)
-    throw new HttpError('bad_request', 'The logo is not an asset of this project.');
+  // Only a file of this project, which the caller has locked already: another project's file
+  // is never locked from here, so this never waits on a deletion that holds it.
+  const [file] = await tx
+    .select()
+    .from(asset)
+    .where(and(eq(asset.id, assetId), eq(asset.projectId, projectId)));
+  if (!file) throw new HttpError('bad_request', 'The logo is not an asset of this project.');
   if (file.status !== 'ready')
     throw new HttpError('bad_request', 'The logo upload is not finished.');
   if (file.kind !== 'image' || !LOGO_TYPES.has(file.mime))
@@ -176,6 +180,7 @@ async function dropUnusedLogo(tx: Tx, projectId: string, assetId: string): Promi
     )
     .limit(1);
   if (cover || pick || inDoc || inVersion) return [];
+  // Locked by the caller (share mode): a reprocess saving copies now is read below or waits.
   const [file] = await tx.select().from(asset).where(eq(asset.id, assetId));
   if (!file) return [];
   const variants = await tx
@@ -224,11 +229,22 @@ export function registerExportSettingsRoutes(app: FastifyInstance, deps: Deps) {
         .where(eq(project.id, projectId))
         .for('update');
       if (!locked) throw new HttpError('not_found', 'Project not found.');
-      if (logoAssetId) await checkLogo(tx, deps.storage, projectId, logoAssetId);
       const [before] = await tx
         .select({ logoAssetId: projectExportSettings.logoAssetId })
         .from(projectExportSettings)
         .where(eq(projectExportSettings.projectId, projectId));
+      // The new logo and the one it replaces, files of this project only, by id and in share
+      // mode, as a deletion locks files (projectFiles): a reprocess saving copies of the one
+      // replaced either commits first or finds it gone.
+      const logos = [logoAssetId, before?.logoAssetId].filter((id): id is string => !!id);
+      if (logos.length > 0)
+        await tx
+          .select({ id: asset.id })
+          .from(asset)
+          .where(and(eq(asset.projectId, projectId), inArray(asset.id, logos)))
+          .orderBy(asset.id)
+          .for('share');
+      if (logoAssetId) await checkLogo(tx, deps.storage, projectId, logoAssetId);
       const now = new Date();
       await tx
         .insert(projectExportSettings)

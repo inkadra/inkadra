@@ -127,13 +127,26 @@ it('routes Office documents to the office queue, read only by workers with Libre
     vi.stubEnv('OFFICE_PREVIEWS', env);
     vi.mocked(officeConverterInstalled).mockResolvedValue(installed);
     const workers = await startWorkers('redis://unused', log, deps);
-    await harness.processors.get('media')?.({ name: 'process', data: { assetId: 'a1' } } as never);
+    await harness.processors.get('media')?.({
+      name: 'process',
+      data: { assetId: 'a1' },
+      attemptsStarted: 1,
+      attemptsMade: 0,
+      stalledCounter: 0,
+    } as never);
     return workers;
   };
 
   // Off everywhere: the media worker reads the document itself (grids, icon) and nothing
   // ever waits on the office queue.
   let workers = await start(undefined, true);
+  // A first attempt: an asset found gone has nothing of this job to clean.
+  expect(vi.mocked(processAsset)).toHaveBeenLastCalledWith(
+    expect.anything(),
+    'a1',
+    undefined,
+    false,
+  );
   expect(depsOf(0)?.enqueueOffice).toBeUndefined();
   expect(harness.processors.has('office')).toBe(false);
   await workers.close();
@@ -154,10 +167,14 @@ it('routes Office documents to the office queue, read only by workers with Libre
   workers = await start('true', true);
   const convert = harness.processors.get('office');
   if (!convert) throw new Error('Office worker missing');
-  await convert({ name: 'convert', data: { assetId: 'a1' } } as never);
+  // A retry: the pass cleans what an earlier attempt may have written if the file is gone.
+  const job = { name: 'convert', data: { assetId: 'a1' }, attemptsStarted: 2, attemptsMade: 1 };
+  await convert({ ...job, stalledCounter: 0 } as never);
   expect(vi.mocked(processAsset)).toHaveBeenLastCalledWith(
     expect.not.objectContaining({ enqueueOffice: expect.anything() }),
     'a1',
+    undefined,
+    true,
   );
   await workers.close();
 });

@@ -14,11 +14,13 @@ import { createDatabase, type Database, runMigrations } from '../db/client.ts';
 import {
   asset,
   auditEvent,
+  board,
   boardGrant,
   creationRequest,
   invitation,
   notification,
   project,
+  projectExportSettings,
   projectMember,
   user,
 } from '../db/schema.ts';
@@ -757,6 +759,120 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
     release();
     await change;
     expect((await deletion).statusCode).toBe(204);
+  });
+
+  /** A file of `who` in the project `projectId`, as an upload leaves it. */
+  const fileIn = async (projectId: string, who: string) => {
+    const id = randomUUID();
+    await db.insert(asset).values({
+      id,
+      projectId,
+      kind: 'image',
+      mime: 'image/png',
+      filename: 'logo.png',
+      size: 10,
+      storageKey: `originals/${id}`,
+      createdBy: idOf(who),
+    });
+    return id;
+  };
+
+  it('locks a deleted project before its files, as a change of its logo does', async () => {
+    const p = await create('root', 'Con logo');
+    const file = await fileIn(p.id, 'root');
+    let release = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((r) => {
+      held = r;
+    });
+    // What PATCH export-settings does: the project row, then the logo's file.
+    const change = db.transaction(async (tx) => {
+      await tx.execute(sql`select id from project where id = ${p.id} for update`);
+      held();
+      await gate;
+      await tx.execute(sql`select id from asset where id = ${file} for update`);
+    });
+    await holding;
+    const deletion = call('root', 'DELETE', `/projects/${p.id}`);
+    // The deletion waits for the project the change holds, holding none of its files.
+    await untilWaiting(1, deletion);
+    release();
+    await change;
+    expect((await deletion).statusCode).toBe(204);
+  });
+
+  it('deletes a project while an editor who made a board and a file in it leaves', async () => {
+    // Root's project; the editor neither made nor owns it, but made a board and a file in it.
+    const editor = await signUp('redattrice');
+    const p = await create('root', 'Di root, con altri');
+    expect(
+      (await call('root', 'PUT', `/projects/${p.id}/members/${editor}`, { role: 'editor' }))
+        .statusCode,
+    ).toBe(200);
+    await db.insert(board).values({
+      projectId: p.id,
+      parentBoardId: p.rootBoardId,
+      title: 'Sua',
+      position: 'a1',
+      createdBy: editor,
+    });
+    await fileIn(p.id, 'redattrice');
+    // The account deletion holds the editor's files and stops at its audit event, before it
+    // clears `created_by` on their board; then the project deletion runs until it waits.
+    const [left, deleted] = await inOrder(
+      () => deleteMe('redattrice'),
+      () => call('root', 'DELETE', `/projects/${p.id}`),
+    );
+    expect([left.statusCode, deleted.statusCode]).toEqual([204, 204]);
+  });
+
+  it('changes a logo to a file of another project while its uploader leaves', async () => {
+    // The person's current logo of one project, and a file of theirs in another project with a
+    // lower id: their account deletion locks their files by id, the second one first.
+    const uploader = await signUp('grafica');
+    const mine = await create('grafica', 'Con logo suo');
+    const other = await create('grafica', 'Altro');
+    const [low, high] = [randomUUID(), randomUUID()].sort();
+    const file = (id: string, projectId: string) => ({
+      id,
+      projectId,
+      kind: 'image' as const,
+      mime: 'image/png',
+      filename: 'logo.png',
+      size: 10,
+      storageKey: `originals/${id}`,
+      status: 'ready' as const,
+      createdBy: uploader,
+    });
+    await db.insert(asset).values([file(high as string, mine.id), file(low as string, other.id)]);
+    await db.insert(projectExportSettings).values({ projectId: mine.id, logoAssetId: high });
+    // What DELETE /me does with their files: the lower id first, then the other.
+    let release = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((r) => {
+      held = r;
+    });
+    const deletion = db.transaction(async (tx) => {
+      await tx.execute(sql`select id from asset where id = ${low} for update`);
+      held();
+      await gate;
+      await tx.execute(sql`select id from asset where id = ${high} for update`);
+    });
+    await holding;
+    // The change locks its project's logo; the file of the other project is only read.
+    const change = call('grafica', 'PATCH', `/projects/${mine.id}/export-settings`, {
+      logoAssetId: low,
+    });
+    await untilWaiting(1, change);
+    release();
+    await deletion;
+    expect((await change).statusCode).toBe(400);
   });
 
   it('orders an account deletion with changes to its projects and to the person', async () => {
