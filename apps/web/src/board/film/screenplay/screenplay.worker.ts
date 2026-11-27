@@ -1,22 +1,37 @@
 import { parseFountain } from '@inkadra/canvas-core/screenplay/fountain';
+import { parseScreenplay } from '@inkadra/canvas-core/screenplay/parse';
 import { type PdfPage, pdfPagesToFountain } from '@inkadra/canvas-core/screenplay/pdf-text';
 import { MAX_SCRIPT_BYTES, ScriptError } from '@inkadra/canvas-core/screenplay/script';
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-GlobalWorkerOptions.workerSrc = workerUrl;
+// Every screenplay (Fountain, FDX, PDF) is parsed in this disposable worker, so a crafted or huge
+// script can't freeze the page: `readScreenplay` terminates it at its deadline.
 // No remote fonts, CMaps, URLs, actions or attachments are read. Only inline PDF bytes.
 // pdf.js runs in its fake-worker mode inside this disposable dedicated worker.
 // Block resource fetches even if a future pdf.js default enables one. Module imports stay local.
 self.fetch = async () => {
   throw new ScriptError('unsafe');
 };
+/** The browser could not read the file's bytes: the dialog says so, not "invalid". */
+const UNREADABLE = Symbol('read');
+const unreadable = () => Promise.reject(UNREADABLE);
+
 self.onmessage = async (event: MessageEvent<File>) => {
   try {
     const file = event.data;
     if (file.size > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      self.postMessage({
+        kind: 'screenplay',
+        script: parseScreenplay(file.name, await file.text().catch(unreadable)),
+      });
+      return;
+    }
+    // pdf.js loads only for a PDF.
+    const { GlobalWorkerOptions, getDocument } = await import('pdfjs-dist');
+    GlobalWorkerOptions.workerSrc = workerUrl;
     const task = getDocument({
-      data: new Uint8Array(await file.arrayBuffer()),
+      data: new Uint8Array(await file.arrayBuffer().catch(unreadable)),
       useSystemFonts: true,
       disableFontFace: true,
       useWorkerFetch: false,
@@ -60,7 +75,7 @@ self.onmessage = async (event: MessageEvent<File>) => {
   } catch (error) {
     self.postMessage({
       kind: 'screenplay',
-      error: error instanceof ScriptError ? error.code : 'invalid',
+      error: error instanceof ScriptError ? error.code : error === UNREADABLE ? 'read' : 'invalid',
     });
   }
 };

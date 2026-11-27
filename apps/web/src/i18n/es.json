@@ -4705,7 +4705,7 @@
       "empty": "No se encontraron escenas en este archivo.",
       "read": "No se pudo leer el archivo.",
       "noText": "Este PDF no tiene capa de texto",
-      "timeout": "Lectura detenida: este PDF tarda demasiado.",
+      "timeout": "Lectura detenida: este archivo tarda demasiado.",
       "tooManyPages": "El PDF supera el límite de 300 páginas.",
       "tooManyScenes": "El guion tiene más de 5.000 escenas."
     },

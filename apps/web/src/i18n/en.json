@@ -4705,7 +4705,7 @@
       "empty": "No scenes found in this file.",
       "read": "The file could not be read.",
       "noText": "This PDF has no text layer",
-      "timeout": "Reading stopped: this PDF takes too long.",
+      "timeout": "Reading stopped: this file takes too long.",
       "tooManyPages": "This PDF exceeds the 300-page limit.",
       "tooManyScenes": "This screenplay has more than 5,000 scenes."
     },

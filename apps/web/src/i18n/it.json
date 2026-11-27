@@ -4705,7 +4705,7 @@
       "empty": "Nessuna scena trovata in questo file.",
       "read": "Non è stato possibile leggere il file.",
       "noText": "Questo PDF non ha un livello di testo",
-      "timeout": "Lettura interrotta: il PDF richiede troppo tempo.",
+      "timeout": "Lettura interrotta: il file richiede troppo tempo.",
       "tooManyPages": "Il PDF supera il limite di 300 pagine.",
       "tooManyScenes": "La sceneggiatura ha più di 5.000 scene."
     },
