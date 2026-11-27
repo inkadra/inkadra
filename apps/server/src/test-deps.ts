@@ -3,9 +3,12 @@ import type { Logger } from 'pino';
 import { createDatabase, type Database } from './db/client.ts';
 import { inlineJobs } from './queues.ts';
 import { localStorage } from './storage.ts';
-import { tempDir } from './test-tmpdir.ts';
+import { settleBeforeRemoving, tempDir } from './test-tmpdir.ts';
 
-/** Storage in a fresh temporary directory, removed after the test file, and jobs run in-process. */
+/**
+ * Storage in a fresh temporary directory, removed after the test file once the jobs, run
+ * in-process, are done: a job still running (the files of a demo sandbox, say) writes there.
+ */
 export function testDeps(db: Database, log: Logger) {
   const root = tempDir('inkadra-test-');
   const storage = localStorage(join(root, 'files'));
@@ -18,6 +21,7 @@ export function testDeps(db: Database, log: Logger) {
     backupRemote: null,
     databaseUrl: process.env.DATABASE_URL ?? '',
   });
+  settleBeforeRemoving(() => jobs.idle(), `the jobs of testDeps() in ${root}`);
   return { root, storage, jobs };
 }
 
