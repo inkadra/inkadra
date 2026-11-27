@@ -118,7 +118,13 @@ export function parseFountain(source: string): Script {
     } else if (/^={3,}$/.test(first)) {
       action(rows.slice(1));
     } else if (first.startsWith('>') && first.endsWith('<')) {
-      action(rows.map((r) => r.replace(/^>\s*|\s*<$/g, '')));
+      // Sliced, not a regex: `\s*<$` backtracked quadratically on a long run of spaces.
+      action(
+        rows.map((r) => {
+          const text = r.startsWith('>') ? r.slice(1).trimStart() : r;
+          return text.endsWith('<') ? text.slice(0, -1).trimEnd() : text;
+        }),
+      );
     } else if (first.startsWith('>') || (rows.length === 1 && TRANSITION.test(first))) {
       push({ kind: 'transition', text: inline(first.replace(/^>/, '')) });
       action(rows.slice(1));

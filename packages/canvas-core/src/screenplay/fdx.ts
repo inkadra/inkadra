@@ -11,7 +11,7 @@ import {
   type ScriptScene,
   splitCue,
 } from './script.ts';
-import { descendants, parseXml, textContent, type XmlElement, XmlError } from './xml.ts';
+import { parseXml, textContent, type XmlElement, XmlError } from './xml.ts';
 
 /**
  * Reads a Final Draft file (.fdx, XML). Documents with a DOCTYPE or entity declarations are
@@ -50,7 +50,7 @@ export function parseFdx(source: string): Script {
       scenes.push(scene);
       const props = child(p, 'SceneProperties');
       const summary = props && child(props, 'Summary');
-      for (const s of summary ? descendants(summary, 'Paragraph') : []) {
+      for (const s of summary ? paragraphsIn(summary) : []) {
         const t = textOf(s);
         if (t) push({ kind: 'synopsis', text: t });
       }
@@ -79,7 +79,7 @@ export function parseFdx(source: string): Script {
 function titlePage(root: XmlElement): Record<string, string> {
   const page = child(root, 'TitlePage');
   const content = page && child(page, 'Content');
-  const texts = (content ? descendants(content, 'Paragraph') : []).map(textOf).filter(Boolean);
+  const texts = (content ? paragraphsIn(content) : []).map(textOf).filter(Boolean);
   const fields: Record<string, string> = {};
   const [title] = texts;
   if (title) fields.title = title;
@@ -103,6 +103,23 @@ function* paragraphs(content: XmlElement): Generator<XmlElement> {
       for (const inner of dual.children) if (inner.name === 'Paragraph') yield inner;
     } else yield p;
   }
+}
+
+/**
+ * Paragraphs under an element, in order, without those inside a `<Text>`: that text already
+ * holds theirs, so each text is read once. Paragraphs nested in a text's runs, which Final Draft
+ * never writes, repeated it once per level.
+ */
+function paragraphsIn(el: XmlElement): XmlElement[] {
+  const found: XmlElement[] = [];
+  const stack = [...el.children].reverse();
+  while (stack.length) {
+    const node = stack.pop() as XmlElement;
+    if (node.name === 'Paragraph') found.push(node);
+    if (node.name === 'Text') continue;
+    for (let j = node.children.length - 1; j >= 0; j--) stack.push(node.children[j] as XmlElement);
+  }
+  return found;
 }
 
 function child(el: XmlElement, name: string): XmlElement | null {

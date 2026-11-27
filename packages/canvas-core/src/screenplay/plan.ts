@@ -136,29 +136,33 @@ function sceneTitle(scene: ScriptScene, prelude: string): string {
 export function sceneNumbers(scenes: readonly ScriptScene[]): Array<string | undefined> {
   if (!scenes.some((s) => s.number)) return scenes.map(() => undefined);
   const taken = new Set(scenes.flatMap((s) => (s.number ? [s.number.toUpperCase()] : [])));
-  const free = (make: (letter: string) => string) => {
-    for (let i = 0; ; i++) {
+  /** Per base, the first letter not tried yet: letters before it are taken, so never retried. */
+  const next = new Map<string, number>();
+  const free = (base: string, make: (letter: string) => string) => {
+    const key = base.toUpperCase();
+    for (let i = next.get(key) ?? 0; ; i++) {
       const candidate = make(frameLetter(i));
       if (!taken.has(candidate.toUpperCase())) {
         taken.add(candidate.toUpperCase());
+        next.set(key, i + 1);
         return candidate;
       }
     }
   };
-  const result: Array<string | undefined> = [];
-  scenes.forEach((scene, i) => {
-    if (scene.number) {
-      result.push(scene.number);
-      return;
+  const result: string[] = [];
+  for (const scene of scenes) {
+    const last = result.at(-1);
+    if (scene.number) result.push(scene.number);
+    else if (last) {
+      // After 2A comes 2B, not 2AA.
+      const before = last.replace(/(\d)[A-Z]+$/i, '$1');
+      result.push(free(`${before}-`, (l) => `${before}${l}`));
+    } else {
+      // Only the first scene has nothing before it: it goes ahead of the first number (A1).
+      const after = scenes.find((s) => s.number)?.number ?? '1';
+      result.push(free(`-${after}`, (l) => `${l}${after}`));
     }
-    // After 2A comes 2B, not 2AA.
-    const before = result
-      .slice(0, i)
-      .findLast(Boolean)
-      ?.replace(/(\d)[A-Z]+$/i, '$1');
-    const after = scenes.slice(i + 1).find((s) => s.number)?.number;
-    result.push(before ? free((l) => `${before}${l}`) : free((l) => `${l}${after ?? '1'}`));
-  });
+  }
   return result;
 }
 
@@ -213,14 +217,16 @@ type PlannedFrame = NewScene['frames'][number];
 interface Draft {
   action: string[];
   dialogue: string[];
-  cast: string[];
+  /** At most `MAX_FRAME_CAST` names, kept in a set: a scene can have thousands of cues. */
+  cast: Set<string>;
   notes: string[];
 }
+const MAX_FRAME_CAST = 30;
 
 /** Every scene gets at least one frame to draw on, even one without action. */
 function framesOf(scene: ScriptScene, options: ImportOptions): PlannedFrame[] {
   const drafts: Draft[] = [];
-  const empty = (): Draft => ({ action: [], dialogue: [], cast: [], notes: [] });
+  const empty = (): Draft => ({ action: [], dialogue: [], cast: new Set(), notes: [] });
   const current = () => {
     if (!drafts.length) drafts.push(empty());
     return drafts.at(-1) as Draft;
@@ -237,8 +243,7 @@ function framesOf(scene: ScriptScene, options: ImportOptions): PlannedFrame[] {
     } else if (block.kind === 'dialogue') {
       const d = current();
       d.dialogue.push(cue(block));
-      if (block.character && !d.cast.includes(castName(block.character)))
-        d.cast.push(castName(block.character));
+      if (block.character && d.cast.size < MAX_FRAME_CAST) d.cast.add(castName(block.character));
     } else if (block.kind === 'note') current().notes.push(block.text);
   }
   if (!drafts.length) drafts.push(empty());
@@ -246,7 +251,7 @@ function framesOf(scene: ScriptScene, options: ImportOptions): PlannedFrame[] {
     const frame: PlannedFrame = {};
     if (d.action.length) frame.action = cut(d.action.join('\n\n'), 2000);
     if (d.dialogue.length) frame.dialogue = cut(d.dialogue.join('\n'), DIALOGUE_SNIPPET);
-    if (options.cast && d.cast.length) frame.cast = d.cast.slice(0, 30).map((c) => cut(c, 80));
+    if (options.cast && d.cast.size) frame.cast = [...d.cast].map((c) => cut(c, 80));
     if (d.notes.length) frame.notes = cut(d.notes.join('\n'), 4000);
     return frame;
   });

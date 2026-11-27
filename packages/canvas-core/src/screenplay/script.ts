@@ -151,6 +151,27 @@ function trailingParen(text: string): { before: string; inside: string } | null 
   return { before: text.slice(0, open).trimEnd(), inside: text.slice(open + 1, -1) };
 }
 
+/**
+ * Where the brackets at the end of a cue start, `MARA (V.O.) (CONT'D)` → 5, or -1: a backward
+ * scan, as the regex it replaces (`^(.*?)\s*((?:\([^)]*\)\s*)+)$`) backtracked quadratically
+ * on a run of `(`. Like that regex, the name before the brackets is one line.
+ */
+function bracketTail(text: string): number {
+  let start = -1;
+  let end = text.length;
+  for (;;) {
+    let close = end;
+    while (close > 0 && /\s/.test(text[close - 1] ?? '')) close--;
+    if (text[close - 1] !== ')') break;
+    // The bracket's text has no `)`, so it opens at the first `(` after the `)` before it.
+    const open = text.indexOf('(', text.lastIndexOf(')', close - 2) + 1);
+    if (open < 0 || open >= close - 1) break;
+    start = open;
+    end = open;
+  }
+  return start >= 0 && !/[\n\r\u2028\u2029]/.test(text.slice(0, start).trimEnd()) ? start : -1;
+}
+
 /** Voice and continuity words written after a cue without brackets: GIORGIA V.O., ENEA CONT'D. */
 const BARE_EXTENSION =
   /\s+(V\.?\s?O\.?|O\.?\s?S\.?|O\.?\s?C\.?|F\.\s?C\.?|CONT(?:['’]?D|\.)?|OFF|OFF[\s-]?SCREEN|VOICE[\s-]?OVER|VOCE(?: FUORI CAMPO| OFF)?|FUORI CAMPO)$/i;
@@ -164,9 +185,9 @@ export function splitCue(raw: string): { character: string; extension?: string }
   const text = clean(raw)
     .slice(0, 200)
     .replace(/\s*\^$/, '');
-  const m = /^(.*?)\s*((?:\([^)]*\)\s*)+)$/.exec(text);
-  let character = (m ? m[1] : text)?.trim() ?? '';
-  const extensions = m?.[2] ? [m[2].trim()] : [];
+  const tail = bracketTail(text);
+  let character = (tail < 0 ? text : text.slice(0, tail)).trim();
+  const extensions = tail < 0 ? [] : [text.slice(tail).trim()];
   // GIORGIA V.O. (CONT'D): bare words before the brackets, never the whole name.
   for (let bare = BARE_EXTENSION.exec(character); bare; bare = BARE_EXTENSION.exec(character)) {
     extensions.unshift(`(${(bare[1] ?? '').trim()})`);

@@ -47,11 +47,21 @@ const words = (s: string) =>
       .filter((w) => w.length > 2),
   );
 
+/** Each scene's words, read once: matching compares every draft scene with every scene. */
+const wordCache = new WeakMap<SceneFields, Set<string>>();
+const wordsOf = (s: SceneFields) => {
+  let found = wordCache.get(s);
+  if (!found) {
+    found = words([s.title, s.location, s.synopsis].filter(Boolean).join(' '));
+    wordCache.set(s, found);
+  }
+  return found;
+};
+
 /** Dice coefficient of the words of two scenes' heading and synopsis, 0 to 1. */
 export function similarity(a: SceneFields, b: SceneFields): number {
-  const text = (s: SceneFields) => [s.title, s.location, s.synopsis].filter(Boolean).join(' ');
-  const x = words(text(a));
-  const y = words(text(b));
+  const x = wordsOf(a);
+  const y = wordsOf(b);
   if (!x.size || !y.size) return 0;
   let shared = 0;
   for (const w of x) if (y.has(w)) shared++;

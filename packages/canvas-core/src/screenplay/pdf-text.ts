@@ -186,7 +186,8 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
   const bottom = all.reduce((m, l) => Math.min(m, l.y), Infinity);
 
   const rows: string[] = title ? [title, ''] : [];
-  let size = 0;
+  // What is written, counted as it grows: indents, `> ` and blank lines too.
+  let size = title ? title.length + 2 : 0;
   let previous: Line | undefined;
   // The last row is an action paragraph line that the next wrapped line can be added to.
   let open = false;
@@ -201,7 +202,10 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
         (i === 0
           ? continuesAcrossPages(lead, line, margin, bottom)
           : lead.y - line.y <= line.height * 1.5);
-      if (lead && !same) rows.push('');
+      if (lead && !same) {
+        rows.push('');
+        size += 1;
+      }
       // A transition is set at the right edge (CUT TO); Fountain wants a leading >.
       const right =
         line.x > (widths[p] ?? 612) * 0.6 &&
@@ -215,15 +219,17 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
       if ((same && flush && open) || wraps) {
         // Lines of one action paragraph are the page's wrapping, not line breaks.
         rows[rows.length - 1] += ` ${plain}`;
+        size += plain.length + 1;
         paren &&= !plain.includes(')');
       } else {
-        const indent = right || flush ? '' : ' '.repeat(Math.min(80, Math.round(line.x / 6)));
+        const columns = Math.max(0, Math.min(80, Math.round(line.x / 6)));
+        const indent = right || flush ? '' : ' '.repeat(columns);
         const row = `${indent}${right ? `> ${plain}` : plain}`;
         rows.push(row);
+        size += row.length + 1;
         open = flush && !isHeading(line.text) && /\p{Ll}/u.test(plain);
         paren = /^\([^)]*$/.test(row.trim());
       }
-      size += plain.length + 1;
       if (size > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
       previous = line;
     });
