@@ -129,7 +129,7 @@ function child(el: XmlElement, name: string): XmlElement | null {
 
 /** The paragraph's own text runs, joined: formatting splits a line into several <Text>. */
 function textOf(p: XmlElement): string {
-  let text = '';
-  for (const c of p.children) if (c.name === 'Text') text += textContent(c);
-  return clean(text);
+  const text: string[] = [];
+  for (const c of p.children) if (c.name === 'Text') text.push(textContent(c));
+  return clean(text.join(''));
 }

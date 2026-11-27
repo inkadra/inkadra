@@ -117,11 +117,14 @@ export function parseXml(source: string): XmlElement {
     for (const p of prefixes) declared.set(p, (declared.get(p) ?? 1) - 1);
   };
   let elements = 0;
-  let text = '';
+  // Text between tags, in pieces joined once: appending to a string copies it each time on
+  // engines without ropes (Hermes).
+  let text: string[] = [];
   const flush = () => {
     const parent = open.at(-1);
-    if (text && parent) parent.content.push(text);
-    text = '';
+    const joined = text.join('');
+    if (joined && parent) parent.content.push(joined);
+    text = [];
   };
   do {
     if (at('</')) {
@@ -135,7 +138,7 @@ export function parseXml(source: string): XmlElement {
       undeclare(declares.pop());
     } else if (at('<![CDATA[')) {
       i += 9;
-      text += skipPast(']]>', 'cdata');
+      text.push(skipPast(']]>', 'cdata'));
     } else if (at('<!--') || at('<?')) {
       misc();
     } else if (at('<')) {
@@ -189,7 +192,7 @@ export function parseXml(source: string): XmlElement {
       const next = s.indexOf('<', i);
       const raw = s.slice(i, next < 0 ? s.length : next);
       if (raw.includes(']]>')) fail('text');
-      text += decode(raw);
+      text.push(decode(raw));
       i += raw.length;
     }
   } while (open.length && i < s.length);
@@ -218,14 +221,14 @@ function decode(text: string): string {
 
 /** The element's text and its descendants', in order: the DOM's `textContent`. */
 export function textContent(element: XmlElement): string {
-  let text = '';
+  const text: string[] = [];
   const stack: Array<XmlElement | string> = [element];
   while (stack.length) {
     const node = stack.pop() as XmlElement | string;
-    if (typeof node === 'string') text += node;
+    if (typeof node === 'string') text.push(node);
     else for (let j = node.content.length - 1; j >= 0; j--) stack.push(node.content[j] ?? '');
   }
-  return text;
+  return text.join('');
 }
 
 /** Descendants with this name, in document order: the DOM's `getElementsByTagName`. */

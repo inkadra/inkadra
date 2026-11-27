@@ -26,10 +26,15 @@ self.onmessage = async (event: MessageEvent<File>) => {
     const pdf = await task.promise;
     if (pdf.numPages > 300) throw new ScriptError('tooManyPages');
     const pages: PdfPage[] = [];
+    // The text is counted while it is read, so a small PDF that inflates to gigabytes of text
+    // stops at the size limit rather than after every page is held.
+    let size = 0;
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
       if (content.items.length > 100_000) throw new ScriptError('tooLarge');
+      for (const item of content.items) if ('str' in item) size += item.str.length;
+      if (size > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
       const [left = 0, , right = 612] = page.view;
       pages.push({
         width: right - left,

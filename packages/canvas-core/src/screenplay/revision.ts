@@ -182,8 +182,10 @@ export function matchRevision(
   for (const { s, d } of open()) {
     if (!placeOf(s)) continue;
     const same = (byHeading.get(headingOf(s)) ?? []).filter(isFree);
-    const best = bestOf(d, same);
-    if (best) pair(d, scene(best.j), same.length > 1 && best.score < SURE);
+    // The only scene with this heading needs no score.
+    if (same.length === 1) pair(d, scene(same[0] as number), false);
+    const best = same.length > 1 ? bestOf(d, same) : null;
+    if (best) pair(d, scene(best.j), best.score < SURE);
   }
   // 3. Text alone: number and heading both changed, so the person checks it.
   for (const { d } of open()) {

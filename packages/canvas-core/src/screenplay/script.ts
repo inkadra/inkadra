@@ -215,14 +215,26 @@ export function clean(text: string): string {
 const fold = (text: string) =>
   text.replace(/\s+/g, (run) => (/[\n\r\u2028\u2029]/.test(run) ? '\n' : ' '));
 
-/** Collects the characters of each scene and of the script, by first appearance. */
+/** What a section name and a title page field keep: they are labels, not text. */
+const SECTION = 200;
+const TITLE_FIELD = 2000;
+
+/**
+ * Collects the characters of each scene and of the script, by first appearance, and cuts the
+ * section names and title page fields to what a label shows.
+ */
 export function finishScript(
   format: Script['format'],
   titlePage: Record<string, string>,
   scenes: ScriptScene[],
 ): Script {
   const all = new Map<string, string>();
+  for (const field of Object.keys(titlePage))
+    titlePage[field] = (titlePage[field] ?? '').slice(0, TITLE_FIELD);
   for (const scene of scenes) {
+    // A section names every scene after it: one long line would be copied into each when the
+    // script is sent to a worker or saved.
+    if (scene.section) scene.section = scene.section.slice(0, SECTION);
     const own = new Map<string, string>();
     for (const b of scene.blocks) {
       if (b.kind !== 'dialogue' || !b.character) continue;
@@ -232,7 +244,7 @@ export function finishScript(
     }
     scene.characters = [...own.values()];
   }
-  const title = titlePage.title?.split('\n').map(clean).filter(Boolean).join(' ');
+  const title = titlePage.title?.split('\n').map(clean).filter(Boolean).join(' ').slice(0, 500);
   const script: Script = { format, titlePage, scenes, characters: [...all.values()] };
   if (title) script.title = title;
   return script;

@@ -185,7 +185,9 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
   const margin = all.reduce((m, l) => Math.min(m, l.x), Infinity);
   const bottom = all.reduce((m, l) => Math.min(m, l.y), Infinity);
 
-  const rows: string[] = title ? [title, ''] : [];
+  // Each row in pieces, joined once at the end: a paragraph that runs over every page is not
+  // copied line by line on engines without ropes (Hermes).
+  const rows: string[][] = title ? [[title], ['']] : [];
   // What is written, counted as it grows: indents, `> ` and blank lines too.
   let size = title ? title.length + 2 : 0;
   let previous: Line | undefined;
@@ -203,7 +205,7 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
           ? continuesAcrossPages(lead, line, margin, bottom)
           : lead.y - line.y <= line.height * 1.5);
       if (lead && !same) {
-        rows.push('');
+        rows.push(['']);
         size += 1;
       }
       // A transition is set at the right edge (CUT TO); Fountain wants a leading >.
@@ -218,14 +220,14 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
       const wraps = same && Math.abs((lead?.x ?? 0) - line.x) < 3 && paren;
       if ((same && flush && open) || wraps) {
         // Lines of one action paragraph are the page's wrapping, not line breaks.
-        rows[rows.length - 1] += ` ${plain}`;
+        rows.at(-1)?.push(plain);
         size += plain.length + 1;
         paren &&= !plain.includes(')');
       } else {
         const columns = Math.max(0, Math.min(80, Math.round(line.x / 6)));
         const indent = right || flush ? '' : ' '.repeat(columns);
         const row = `${indent}${right ? `> ${plain}` : plain}`;
-        rows.push(row);
+        rows.push([row]);
         size += row.length + 1;
         open = flush && !isHeading(line.text) && /\p{Ll}/u.test(plain);
         paren = /^\([^)]*$/.test(row.trim());
@@ -234,7 +236,7 @@ export function pdfPagesToFountain(source: PdfPage[]): string {
       previous = line;
     });
   });
-  return `${rows.join('\n')}\n`;
+  return `${rows.map((row) => row.join(' ')).join('\n')}\n`;
 }
 
 /**

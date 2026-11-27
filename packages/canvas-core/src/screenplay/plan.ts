@@ -326,18 +326,20 @@ const PARTICLES = new Set(
 /** FARO, SCALA A CHIOCCIOLA → Faro, Scala a Chiocciola: a scene name, no title-case "A". */
 export function placeName(name: string): string {
   if (name !== name.toUpperCase()) return name;
-  // Not the first word of the name or of a part after a comma, nor the last. No lookbehind
-  // (decision 0116): the character before the spaces is checked in the whole name. It is taken
-  // as a code point and tested without `$`: V8 14 (Node 26) fails `[\p{L}]$` on astral letters.
-  return castName(name).replace(
-    /(\s+)(\p{L}+)(?=\s)/gu,
-    (all, space: string, word: string, at: number, text: string) => {
-      const before = [...text.slice(Math.max(0, at - 2), at)].pop() ?? '';
-      return /[\p{L}\p{N}]/u.test(before) && PARTICLES.has(word.toLowerCase())
-        ? space + word.toLowerCase()
-        : all;
-    },
-  );
+  // Not the first word of the name or of a part after a comma, nor the last: a word of letters
+  // only, with spaces after it and a letter or digit before its spaces. Split into words and
+  // the spaces between them, in linear time: a regex over the spaces backtracked on a long run.
+  // The character before is taken as a code point and tested without `$`: V8 14 (Node 26)
+  // fails `[\p{L}]$` on astral letters.
+  const parts = castName(name).split(/(\s+)/);
+  const out = [...parts];
+  for (let i = 2; i + 1 < parts.length; i += 2) {
+    const word = parts[i] ?? '';
+    const before = [...(parts[i - 2] ?? '').slice(-2)].pop() ?? '';
+    if (/^\p{L}+$/u.test(word) && /[\p{L}\p{N}]/u.test(before) && PARTICLES.has(word.toLowerCase()))
+      out[i] = word.toLowerCase();
+  }
+  return out.join('');
 }
 
 function cut(text: string, max: number): string {

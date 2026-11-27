@@ -56,18 +56,25 @@ export function parseFountain(source: string): Script {
     const start = lines.findIndex((l) => l.trim());
     let end = start;
     let key = '';
+    // Each field's lines are joined once at the end: appending to a string in a loop copies it
+    // each time on engines without ropes (Hermes).
+    const fields = new Map<string, string[]>();
     for (; end < lines.length; end++) {
       const line = lines[end] ?? '';
       if (!line.trim()) break;
       const field = /^([^\s:][^:]*):\s*(.*)$/.exec(line);
       if (field && !/^\s/.test(line)) {
         key = (field[1] ?? '').trim().toLowerCase();
-        titlePage[key] = inline(field[2] ?? '');
+        fields.set(key, [inline(field[2] ?? '')]);
       } else if (key) {
         const value = inline(line);
-        titlePage[key] = titlePage[key] ? `${titlePage[key]}\n${value}` : value;
+        const parts = fields.get(key) ?? [];
+        // An empty field takes the line as its value, without a line break before it.
+        if (parts.length === 1 && parts[0] === '') parts[0] = value;
+        else parts.push(value);
       }
     }
+    for (const [name, parts] of fields) titlePage[name] = parts.join('\n');
     lines = lines.slice(end);
   }
 
@@ -154,15 +161,22 @@ export function parseFountain(source: string): Script {
   }
 
   function dialogue(cue: string, rows: string[]) {
-    const lines: DialogueLine[] = [];
+    // Rows of one spoken line are joined once, not appended to a string row by row.
+    const parts: Array<{ text: string[]; parenthetical?: boolean }> = [];
     for (const row of rows) {
       const text = inline(row.replace(/^~/, ''));
       if (!text) continue;
-      const last = lines.at(-1);
-      if (/^\(.*\)$/.test(text)) lines.push({ text, parenthetical: true });
-      else if (last && !last.parenthetical) last.text = `${last.text} ${text}`;
-      else lines.push({ text });
+      const last = parts.at(-1);
+      if (/^\(.*\)$/.test(text)) parts.push({ text: [text], parenthetical: true });
+      else if (last && !last.parenthetical) last.text.push(text);
+      else parts.push({ text: [text] });
     }
+    const lines = parts.map(
+      (p): DialogueLine =>
+        p.parenthetical
+          ? { text: p.text.join(' '), parenthetical: true }
+          : { text: p.text.join(' ') },
+    );
     push({ kind: 'dialogue', ...splitCue(inline(cue)), lines });
   }
 
@@ -225,13 +239,16 @@ function between(
   close: string,
   replace: (inner: string) => string,
 ): string {
-  let out = '';
+  const out: string[] = [];
   let from = 0;
   for (;;) {
     const start = text.indexOf(open, from);
     const end = start < 0 ? -1 : text.indexOf(close, start + open.length);
-    if (end < 0) return out + text.slice(from);
-    out += text.slice(from, start) + replace(text.slice(start + open.length, end));
+    if (end < 0) {
+      out.push(text.slice(from));
+      return out.join('');
+    }
+    out.push(text.slice(from, start), replace(text.slice(start + open.length, end)));
     from = end + close.length;
   }
 }

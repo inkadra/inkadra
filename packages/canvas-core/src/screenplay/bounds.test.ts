@@ -4,7 +4,13 @@ import type { SceneElement } from '../film.ts';
 import { parseFdx } from './fdx.ts';
 import { parseFountain } from './fountain.ts';
 import { type PdfPage, pdfPagesToFountain } from './pdf-text.ts';
-import { defaultOptions, MAX_IMPORT_CHARACTERS, planImport, sceneNumbers } from './plan.ts';
+import {
+  defaultOptions,
+  MAX_IMPORT_CHARACTERS,
+  placeName,
+  planImport,
+  sceneNumbers,
+} from './plan.ts';
 import { matchRevision } from './revision.ts';
 import {
   clean,
@@ -22,35 +28,36 @@ import { MAX_XML_DEPTH, MAX_XML_ELEMENTS, parseXml, XmlError } from './xml.ts';
  * with a fixed bound, which depends on the machine: each counts the work, stops at a limit, or
  * checks how the time grows when the input grows fourfold. Linear work takes about 4 times as
  * long, quadratic work 16 times; below 8 passes on a slow or busy machine and fails on quadratic
- * code. The medians of a few runs, after a warm-up, keep a pause of the collector out.
+ * code. Both sizes are warmed up, then timed in turns, and the medians compared: a pause of
+ * the collector or a busy runner slows one run, not the median of either size.
  */
 const SCALE = 4;
 const MAX_RATIO = 8;
 /** Only a guard against a hang, not a measure of speed. */
 const HANG = 10_000;
 
-const median = (run: () => unknown, runs: number) => {
-  const times: number[] = [];
-  for (let i = 0; i < runs; i++) {
-    const start = performance.now();
-    run();
-    const time = performance.now() - start;
-    times.push(time);
-    if (time > HANG) break;
-  }
-  return times.sort((a, b) => a - b)[times.length >> 1] as number;
+const RUNS = 5;
+const timed = (run: () => unknown) => {
+  const start = performance.now();
+  run();
+  return performance.now() - start;
 };
+const median = (times: number[]) => times.sort((a, b) => a - b)[times.length >> 1] as number;
 
 /** Time with input `n * SCALE` over time with input `n`: the input is built before timing. */
 const growth = <T>(build: (n: number) => T, run: (input: T) => unknown, n: number) => {
   const small = build(n);
   const large = build(n * SCALE);
   run(small);
-  run(small);
-  const a = median(() => run(small), 5);
-  const b = median(() => run(large), 3);
-  expect(b).toBeLessThan(HANG);
-  return b / Math.max(a, 1);
+  // The warm-up of the large input is also the guard against a hang.
+  expect(timed(() => run(large))).toBeLessThan(HANG);
+  const a: number[] = [];
+  const b: number[] = [];
+  for (let i = 0; i < RUNS; i++) {
+    a.push(timed(() => run(small)));
+    b.push(timed(() => run(large)));
+  }
+  return median(b) / Math.max(median(a), 1);
 };
 const linear = <T>(build: (n: number) => T, run: (input: T) => unknown, n: number) =>
   expect(growth(build, run, n)).toBeLessThan(MAX_RATIO);
@@ -108,14 +115,25 @@ describe('parser worst cases', () => {
     expect(script.scenes[1]?.blocks[0]).toEqual({ kind: 'synopsis', text: 'two' });
   });
 
-  it('reads a long title page line without a colon in linear time', () => {
+  it('leaves a title page with a line longer than any title page has', () => {
     const body = page(['INT. HALL - DAY', 'Mara waits.']);
+    const long = pdfPagesToFountain([page(['THE TITLE', 'by', 'Nora', 'draft '.repeat(60)]), body]);
+    expect(long).not.toContain('Title:');
+  });
+
+  it('reads title page draft lines without a colon in linear time', () => {
+    const body = page(['INT. HALL - DAY', 'Mara waits.']);
+    // A title page has at most 20 lines of at most 300 characters: these reach the reader of
+    // draft lines, which backtracked quadratically on each one.
     linear(
-      (n) => [page(['THE TITLE', 'Written by', 'Nora', 'draft '.repeat(n)]), body],
+      (n) => [
+        page(['THE TITLE', 'Written by', 'Nora', ...Array(17).fill('draft '.repeat(n))]),
+        body,
+      ],
       (pages) => {
-        for (let i = 0; i < 40; i++) pdfPagesToFountain(pages);
+        for (let i = 0; i < 300; i++) pdfPagesToFountain(pages);
       },
-      4000,
+      12,
     );
     const title = pdfPagesToFountain([
       page(['THE TITLE', 'by', 'Nora', 'First draft: 3 May']),
@@ -172,7 +190,7 @@ describe('parser worst cases', () => {
     linear(
       text,
       (t) => {
-        for (let i = 0; i < 30; i++) parseFountain(t);
+        for (let i = 0; i < 80; i++) parseFountain(t);
       },
       20_000,
     );
@@ -190,7 +208,7 @@ describe('parser worst cases', () => {
       );
     const plan = (s: ReturnType<typeof script>) =>
       planImport(s, defaultOptions(s), (names) => names.join());
-    linear(script, plan, 20_000);
+    linear(script, plan, 50_000);
     expect(plan(script(100)).scenes[0]?.frames[0]?.cast).toHaveLength(30);
     expect(plan(script(100)).scenes[0]?.frames[0]?.cast?.[29]).toBe('C29');
   });
@@ -201,7 +219,7 @@ describe('parser worst cases', () => {
       scene('1'),
       ...Array.from({ length: n - 1 }, () => scene()),
     ];
-    linear(scenes, sceneNumbers, 5000);
+    linear(scenes, sceneNumbers, 10_000);
     const numbers = sceneNumbers(scenes(5000));
     expect(numbers.slice(0, 4)).toEqual(['1', '1A', '1B', '1C']);
     expect(new Set(numbers).size).toBe(5000);
@@ -333,7 +351,7 @@ describe('parser worst cases', () => {
       scene('PROLOGUE'),
       ...Array.from({ length: n - 1 }, () => scene()),
     ];
-    linear(scenes, sceneNumbers, 5000);
+    linear(scenes, sceneNumbers, 10_000);
     expect(Math.max(...sceneNumbers(scenes(5000)).map((n) => n?.length ?? 0))).toBeLessThan(12);
   });
 
@@ -373,5 +391,29 @@ describe('parser worst cases', () => {
       },
       24,
     );
+  });
+
+  it('cuts section names and title page fields to what a label shows', () => {
+    const fountain = parseFountain(
+      `Title: ${'T'.repeat(10_000)}\n\n# ${'A'.repeat(100_000)}\n\nINT. A - DAY\n\nINT. B - DAY\n`,
+    );
+    expect(fountain.scenes.map((s) => s.section?.length)).toEqual([200, 200]);
+    expect(fountain.title?.length).toBe(500);
+    expect(fountain.titlePage.title?.length).toBe(2000);
+    const act = `<Paragraph Type="New Act"><Text>${'A'.repeat(100_000)}</Text></Paragraph>`;
+    const heading = '<Paragraph Type="Scene Heading"><Text>INT. A - DAY</Text></Paragraph>';
+    const fdx = parseFdx(`<FinalDraft><Content>${act}${heading}${heading}</Content></FinalDraft>`);
+    expect(fdx.scenes.map((s) => s.section?.length)).toEqual([200, 200]);
+  });
+
+  it('keeps particles lower case in a place name in linear time', () => {
+    linear(
+      (n) => `${' '.repeat(n)}A DE B`,
+      (name) => {
+        for (let i = 0; i < 400; i++) placeName(name);
+      },
+      5000,
+    );
+    expect(placeName('CASA DI MARA')).toBe('Casa di Mara');
   });
 });
