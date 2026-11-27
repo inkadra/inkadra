@@ -73,7 +73,9 @@ const linearWork = <T>(
   const small = build(n);
   const large = build(n * SCALE);
   const done = work(methods, () => run(small));
-  const limit = MAX_WORK_RATIO * Math.max(done, 1);
+  // None counted: the code no longer goes through these methods, and the test would prove nothing.
+  expect(done).toBeGreaterThan(0);
+  const limit = MAX_WORK_RATIO * done;
   expect(work(methods, () => run(large), limit)).toBeLessThanOrEqual(limit);
 };
 
