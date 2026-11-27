@@ -2,13 +2,11 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readdirSync,
   readFileSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BackupManifest } from '@inkadra/shared';
@@ -32,6 +30,7 @@ import { auditEvent, instanceBackup } from './db/schema.ts';
 import { startingListener } from './http/starting.ts';
 import { localStorage } from './storage.ts';
 import { freshDatabase } from './test-deps.ts';
+import { tempDir } from './test-tmpdir.ts';
 import { readZip } from './transfers/zip.ts';
 
 const url = process.env.DATABASE_URL;
@@ -43,7 +42,7 @@ function migrationsUpTo(count: number, broken = false) {
   const journal = JSON.parse(readFileSync(join(folder, 'meta/_journal.json'), 'utf8'));
   const total = journal.entries.length as number;
   journal.entries = journal.entries.slice(0, count < 0 ? total + count : count);
-  const older = mkdtempSync(join(tmpdir(), 'older-'));
+  const older = tempDir('older-');
   mkdirSync(join(older, 'meta'));
   writeFileSync(join(older, 'meta/_journal.json'), JSON.stringify(journal));
   for (const e of journal.entries)
@@ -60,12 +59,12 @@ const olderFolder = () => migrationsUpTo(-1);
 /** Migrations of releases an upgrade may start from (docs/self-hosting/upgrades.md). */
 const RELEASES = { '0.6.0': 15, '0.8.0': 27 };
 
-function deps(databaseUrl: string, dataDir = mkdtempSync(join(tmpdir(), 'pre-upgrade-'))) {
+function deps(databaseUrl: string, dataDir = tempDir('pre-upgrade-')) {
   return {
     databaseUrl,
     dataDir,
     backupDir: backupsDir(dataDir),
-    storage: localStorage(join(mkdtempSync(join(tmpdir(), 'pre-upgrade-files-')), 'files')),
+    storage: localStorage(join(tempDir('pre-upgrade-files-'), 'files')),
     migrationsFolder: folder,
     remote: null as BackupRemote | null,
     log,
@@ -169,7 +168,7 @@ describe.skipIf(!url)('backup before migrations (#805, needs DATABASE_URL)', () 
     const fresh = await freshDatabase(url ?? '', 'pre_upgrade_failed');
     await runMigrations(fresh, older);
     // The backups folder cannot be made: its parent is a file.
-    const blocked = join(mkdtempSync(join(tmpdir(), 'pre-upgrade-')), 'file');
+    const blocked = join(tempDir('pre-upgrade-'), 'file');
     writeFileSync(blocked, '');
     await expect(
       runMigrations(fresh, folder, {

@@ -1,12 +1,11 @@
-import { mkdir, mkdtemp, rename, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import IORedis from 'ioredis';
 import { describe, expect, it, vi } from 'vitest';
+import { tempDir } from '../test-tmpdir.ts';
 import { beatStatus, repeating } from './health.ts';
 import { jobProblem, technicalText } from './problems.ts';
 import {
-  type GpuReading,
   GpuWindow,
   gpuPercent,
   parseCpuMax,
@@ -542,7 +541,7 @@ drm-engine-capacity-vcs: 2`;
     expect(window.sample(reading(i915(2, 1e9)), 45_000)).toBe(2.5);
   });
   it('reads visible processes once per device/client and tolerates missing files', async () => {
-    const proc = await mkdtemp(join(tmpdir(), 'inkadra-gpu-'));
+    const proc = tempDir('inkadra-gpu-');
     await mkdir(join(proc, '123/fdinfo'), { recursive: true });
     await mkdir(join(proc, '456/fdinfo'), { recursive: true });
     await writeFile(join(proc, '123/fdinfo/1'), i915(1, 100));
@@ -550,9 +549,8 @@ drm-engine-capacity-vcs: 2`;
     await writeFile(join(proc, '456/fdinfo/3'), i915(1, 200, '0000:03:00.0'));
     expect((await readGpu(proc))?.size).toBe(2);
     expect(await readGpu(join(proc, 'missing'))).toBeNull();
-    const idle = await mkdtemp(join(tmpdir(), 'inkadra-gpu-idle-'));
+    const idle = tempDir('inkadra-gpu-idle-');
     expect((await readGpu(idle))?.size).toBe(0);
-    await rename(proc, `${proc}_to_delete`);
   });
   it('preserves worker GPU values and counts each container once, including live values', () => {
     const base: Point = {

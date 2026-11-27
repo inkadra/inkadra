@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { copyFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
@@ -42,6 +41,7 @@ import {
 import { writeBoardIndex } from '../search/index-doc.ts';
 import { readAll } from '../storage.ts';
 import { freshDatabase, testDeps } from '../test-deps.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import { readableElements } from '../transfers/export.ts';
 import { importProject } from '../transfers/import.ts';
 import { runTransfer, transferFile, transfersDir } from '../transfers/service.ts';
@@ -520,7 +520,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     expect(String(download.headers['content-disposition'])).toContain('Last Train');
     archive = download.rawPayload;
 
-    const path = join(await mkdtemp(join(tmpdir(), 'inkadra-export-')), 'a.zip');
+    const path = join(tempDir('inkadra-export-'), 'a.zip');
     await writeFile(path, archive);
     const zip = await readZip(path, { entries: 100, totalBytes: 1e9, compressionRatio: 1e6 });
     const manifest = await zip.json('manifest.json', ProjectArchiveManifest, 1e6);
@@ -720,7 +720,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
 
   it('keeps guest decisions and proofing on a revoked link nobody can open', async () => {
     const importer = await signUp(target.app, 'proofer');
-    const path = join(await mkdtemp(join(tmpdir(), 'inkadra-guests-')), 'a.zip');
+    const path = join(tempDir('inkadra-guests-'), 'a.zip');
     await writeFile(path, archive);
     const { projectId: imported } = await importProject(importDeps(), path, importer.id);
     const [rootB] = await target.db
@@ -811,7 +811,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
 
     // An archive from before guests.json imports as before, without links.
     const zip = await readZip(path, { entries: 100, totalBytes: 1e9, compressionRatio: 1e6 });
-    const older = join(await mkdtemp(join(tmpdir(), 'inkadra-older-')), 'a.zip');
+    const older = join(tempDir('inkadra-older-'), 'a.zip');
     const out = writeZip(older);
     for (const name of zip.names())
       if (name !== 'guests.json') await out.addBuffer(name, await zip.buffer(name, 1e7));
@@ -864,7 +864,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
         .failure;
     };
     const zipOf = async (entries: Record<string, unknown>) => {
-      const path = join(await mkdtemp(join(tmpdir(), 'inkadra-bad-')), 'x.zip');
+      const path = join(tempDir('inkadra-bad-'), 'x.zip');
       const zip = writeZip(path);
       for (const [name, value] of Object.entries(entries))
         await zip.addBuffer(name, Buffer.isBuffer(value) ? value : JSON.stringify(value));
@@ -1253,7 +1253,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       createdAt: 1,
       createdBy: null,
     } as never);
-    const path = join(await mkdtemp(join(tmpdir(), 'inkadra-hand-')), 'a.zip');
+    const path = join(tempDir('inkadra-hand-'), 'a.zip');
     const zip = writeZip(path);
     const json = (name: string, value: unknown) => zip.addJson(name, value);
     if (file.withFile !== false)

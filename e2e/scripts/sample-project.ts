@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -281,24 +281,28 @@ function scriptPdf(): Buffer {
 /** The take of the rushes: a slow push in on the platform still, made with ffmpeg. */
 function platformTake(still: Buffer): Buffer {
   const dir = mkdtempSync(join(tmpdir(), 'inkadra-sample-'));
-  writeFileSync(join(dir, 'still.jpg'), still);
-  execFileSync('ffmpeg', [
-    '-y',
-    '-loglevel',
-    'error',
-    '-loop',
-    '1',
-    '-i',
-    join(dir, 'still.jpg'),
-    '-t',
-    '6',
-    '-vf',
-    "zoompan=z='1+0.001*on':d=150:s=1280x720:fps=25,format=yuv420p",
-    '-c:v',
-    'libx264',
-    join(dir, 'clip.mp4'),
-  ]);
-  return readFileSync(join(dir, 'clip.mp4'));
+  try {
+    writeFileSync(join(dir, 'still.jpg'), still);
+    execFileSync('ffmpeg', [
+      '-y',
+      '-loglevel',
+      'error',
+      '-loop',
+      '1',
+      '-i',
+      join(dir, 'still.jpg'),
+      '-t',
+      '6',
+      '-vf',
+      "zoompan=z='1+0.001*on':d=150:s=1280x720:fps=25,format=yuv420p",
+      '-c:v',
+      'libx264',
+      join(dir, 'clip.mp4'),
+    ]);
+    return readFileSync(join(dir, 'clip.mp4'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 export interface SampleProject {

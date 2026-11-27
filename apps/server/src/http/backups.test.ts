@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { mkdir, readdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -46,6 +45,7 @@ import {
 } from '../db/schema.ts';
 import { createStorage, localStorage, readAll } from '../storage.ts';
 import { freshDatabase, testDeps } from '../test-deps.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import { readZip, streamOf, writeZip } from '../transfers/zip.ts';
 import { createApp } from './app.ts';
 
@@ -74,7 +74,7 @@ describe('COPY streams of postgres.js', () => {
 
 describe('backup folder (#899)', () => {
   it('refuses a folder that cannot be written, naming it', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'backup-dir-'));
+    const root = tempDir('backup-dir-');
     await checkBackupDir(join(root, 'backups'));
     expect(existsSync(join(root, 'backups'))).toBe(true);
     // A file where the folder should be: no system lets a folder be made under it.
@@ -614,9 +614,9 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     const fresh = await freshDatabase(config.DATABASE_URL, 'media');
     await runMigrations(fresh, migrations);
     const admin = postgres(fresh, { max: 1, onnotice: () => {} });
-    const files = localStorage(join(mkdtempSync(join(tmpdir(), 'media-files-')), 'files'));
+    const files = localStorage(join(tempDir('media-files-'), 'files'));
     // Another folder than DATA_DIR/backups: BACKUP_DIR.
-    const backupDir = join(mkdtempSync(join(tmpdir(), 'media-backups-')), 'elsewhere');
+    const backupDir = join(tempDir('media-backups-'), 'elsewhere');
     await checkBackupDir(backupDir);
     const original = Buffer.from('frame 1 of a long take'.repeat(1000));
     const thumb = Buffer.from('a small picture');
@@ -673,7 +673,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       );
 
       // A new server with empty storage: the restore puts the files back.
-      const empty = localStorage(join(mkdtempSync(join(tmpdir(), 'media-empty-')), 'files'));
+      const empty = localStorage(join(tempDir('media-empty-'), 'files'));
       const report = await restoreBackup({
         file,
         databaseUrl: target,
@@ -693,7 +693,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
           file: tampered,
           databaseUrl: untouched,
           migrationsFolder: migrations,
-          storage: localStorage(join(mkdtempSync(join(tmpdir(), 'media-none-')), 'files')),
+          storage: localStorage(join(tempDir('media-none-'), 'files')),
           tmpDir: join(deps.root, 'tmp'),
           log,
         }),

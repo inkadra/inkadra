@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { kindOf } from '../http/uploads.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import { writeZip } from '../transfers/zip.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { runTool } from './tools.ts';
@@ -11,7 +11,7 @@ import { runTool } from './tools.ts';
 vi.mock('./tools.ts', () => ({ runTool: vi.fn() }));
 let dir: string;
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'inkadra-design-'));
+  dir = tempDir('inkadra-design-');
 });
 async function archive(name: string) {
   const path = join(dir, `${Math.random()}.zip`);

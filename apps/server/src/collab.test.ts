@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
@@ -54,6 +53,7 @@ import {
   startBoardWorker,
 } from './queues.ts';
 import { testDeps } from './test-deps.ts';
+import { tempDir } from './test-tmpdir.ts';
 import { issueToken } from './tokens.ts';
 import { directVersionWriter } from './versions.ts';
 
@@ -498,7 +498,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   it('drops a board kept on disk whose board was deleted, without a rejected write', async () => {
     const goneBoard = randomUUID();
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const dir = tempDir('inkadra-unsaved-');
     const doc = new Y.Doc();
     addElement(doc, column('Kept for a deleted board'));
     writeFileSync(join(dir, `${goneBoard}.yupdate`), Y.encodeStateAsUpdate(doc));
@@ -531,7 +531,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     // The board_doc write fails while `down` is set, as when Postgres restarts.
     let down = true;
     const flaky = failingInserts(db, () => down);
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const dir = tempDir('inkadra-unsaved-');
     const other = createCollabServer({
       db: flaky,
       auth,
@@ -1082,7 +1082,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   it('refuses the stores of a collab process a newer one took over from, stops it, and merges what it kept (F-24)', async () => {
     const board = await freshBoard('Two holders');
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const dir = tempDir('inkadra-unsaved-');
     const newerStopped = vi.fn();
     const logged = vi.spyOn(log, 'error');
     let stopping: Promise<void> | undefined;
@@ -1252,7 +1252,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   it('refuses to replay boards kept on disk for a process a newer one took over from', async () => {
     const board = await freshBoard('Replay refused');
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const dir = tempDir('inkadra-unsaved-');
     try {
       const doc = new Y.Doc();
       addElement(doc, column('Kept'));
@@ -1415,7 +1415,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     // The demo's caps, small: one card at most.
     const demo = { freeze: true, maxPayload: 1024 * 1024, elements: 1, stateBytes: 1024 * 1024 };
     const serve = (opts: { db?: typeof db; limits?: typeof demo } = {}) => {
-      dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+      dir = tempDir('inkadra-unsaved-');
       server = createCollabServer({
         db: opts.db ?? db,
         auth,
@@ -1523,7 +1523,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
     it('replays at the next start a file the last run was merging when it stopped', async () => {
       const board = await freshBoard('Merging at the crash');
-      dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+      dir = tempDir('inkadra-unsaved-');
       const card = kept('Being merged');
       writeFileSync(join(dir, `${board.id}.${randomUUID()}.draining`), card.update);
       await replayUnsavedBoards(db, dir, log);
@@ -1550,7 +1550,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
         return typeof value === 'function' ? value.bind(target) : value;
       },
     });
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-unsaved-'));
+    const dir = tempDir('inkadra-unsaved-');
     // Odd periods pick out the server's own intervals among everything else running.
     const periods = [4321, 4322];
     const intervals: unknown[] = [];

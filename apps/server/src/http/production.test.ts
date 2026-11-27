@@ -1,5 +1,3 @@
-import { mkdtemp } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, type Element } from '@inkadra/doc-schema';
@@ -23,6 +21,7 @@ import { board, boardDoc, castLink, crewMember, shareLink, shootingDay } from '.
 import { adoptDays, daysOfBoard, nextShootingDay } from '../production.ts';
 import { DocViews, resolveLink } from '../share-links.ts';
 import { testDeps } from '../test-deps.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import { exportProject } from '../transfers/export.ts';
 import { importProject, remapBlock } from '../transfers/import.ts';
 import { readZip, writeZip } from '../transfers/zip.ts';
@@ -655,7 +654,7 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
   });
 
   const archive = async (projectId: string) => {
-    const path = join(await mkdtemp(join(tmpdir(), 'inkadra-production-')), 'a.zip');
+    const path = join(tempDir('inkadra-production-'), 'a.zip');
     await exportProject({ db, storage: deps.storage }, projectId, path);
     return path;
   };
@@ -711,7 +710,7 @@ describe.skipIf(!url)('the Production board (needs DATABASE_URL)', () => {
     );
     const path = await archive(project.id);
     const zip = await readZip(path, { entries: 100, totalBytes: 1e9, compressionRatio: 1e6 });
-    const older = join(await mkdtemp(join(tmpdir(), 'inkadra-format1-')), 'a.zip');
+    const older = join(tempDir('inkadra-format1-'), 'a.zip');
     const out = writeZip(older);
     for (const name of zip.names()) {
       if (name === 'manifest.json') {

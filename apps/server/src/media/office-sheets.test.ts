@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { tempDir } from '../test-tmpdir.ts';
 import { writeZip } from '../transfers/zip.ts';
 import { decodeCsv, overLimits, parseCsv, readXlsx, SheetLimitError } from './office-sheets.ts';
 
@@ -15,7 +15,7 @@ async function workbook(
   sheet = '<row><c r="A1" t="inlineStr"><is><t>First</t></is></c></row>',
   { styles = '', first = '' } = {},
 ) {
-  const dir = await mkdtemp(join(tmpdir(), 'office-sheet-'));
+  const dir = tempDir('office-sheet-');
   const file = join(dir, 'book.xlsx');
   const zip = writeZip(file);
   await zip.addBuffer(

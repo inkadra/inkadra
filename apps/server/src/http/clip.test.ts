@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import {
   type AddressInfo,
@@ -6,7 +6,6 @@ import {
   createServer as createNetServer,
   type Socket,
 } from 'node:net';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
@@ -45,6 +44,7 @@ import {
 } from '../queues.ts';
 import { fragmentText } from '../search/index-doc.ts';
 import { testDeps } from '../test-deps.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
 import { sweepClipTemp } from './clip-routes.ts';
@@ -106,7 +106,7 @@ async function valkeyProxy(target: string) {
 
 describe('sweepClipTemp', () => {
   it('removes clip folders left for more than an hour, and nothing else', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-sweep-'));
+    const dir = tempDir('inkadra-sweep-');
     const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
     for (const name of ['clip-old', 'clip-new', 'media-old']) mkdirSync(join(dir, name));
     utimesSync(join(dir, 'clip-old'), old, old);
@@ -117,7 +117,7 @@ describe('sweepClipTemp', () => {
   });
 
   it('keeps an old folder whose file is still being received, by another replica', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-sweep-'));
+    const dir = tempDir('inkadra-sweep-');
     const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
     for (const name of ['clip-receiving', 'clip-crashed']) {
       mkdirSync(join(dir, name));
@@ -132,7 +132,7 @@ describe('sweepClipTemp', () => {
   });
 
   it('keeps future timestamps and recent writes despite clock skew between replicas', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'inkadra-sweep-'));
+    const dir = tempDir('inkadra-sweep-');
     const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
     for (const [name, offset] of [
       ['clip-ahead', 5000],

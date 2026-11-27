@@ -1,9 +1,9 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
+import { tempDir } from '../test-tmpdir.ts';
 import { liveOutput } from './live.ts';
 import { mediaTools } from './tools.ts';
 
@@ -12,7 +12,7 @@ const ffmpeg = (await mediaTools()).ffmpeg;
 // The real muxer: an absolute init name made every live session exit with 254 (ENOENT).
 describe.skipIf(!ffmpeg)('liveOutput with ffmpeg', () => {
   it('writes the init segment and the first segment into the session folder', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'inkadra-live-'));
+    const dir = tempDir('inkadra-live-');
     const args = [
       ...['-hide_banner', '-v', 'error', '-y'],
       ...['-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=25:duration=3'],

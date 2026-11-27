@@ -1,13 +1,13 @@
 import type { ChildProcess, spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { mkdir, mkdtemp, readdir, utimes, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readdir, utimes, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { DEFAULT_VIDEO_SETTINGS } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import type { asset } from '../db/schema.ts';
 import type { Storage } from '../storage.ts';
+import { tempDir } from '../test-tmpdir.ts';
 import type { VideoEncoder } from './hwaccel.ts';
 import {
   LiveSessions,
@@ -149,7 +149,7 @@ describe('live playback', () => {
   });
 
   it('starts one ffmpeg for init.mp4 and seg-0 asked at once, and lets the source go', async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), 'inkadra-live-'));
+    const tmpDir = tempDir('inkadra-live-');
     const spawned: string[][] = [];
     const children: EventEmitter[] = [];
     const fake = ((_file: string, argv: string[]) => {
@@ -206,7 +206,7 @@ describe('live playback', () => {
   });
 
   it('clears its own folders at start and only stale ones of other processes', async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), 'inkadra-live-'));
+    const tmpDir = tempDir('inkadra-live-');
     const folder = (parent: string, name: string) => join(tmpDir, parent, name);
     for (const parent of ['live', 'live-src'])
       for (const name of ['p1', 'other', 'gone'])
@@ -222,7 +222,7 @@ describe('live playback', () => {
   });
 
   it('removes a failed copy, and goes back under the cache limit as sessions end', async () => {
-    const tmpDir = await mkdtemp(join(tmpdir(), 'inkadra-live-'));
+    const tmpDir = tempDir('inkadra-live-');
     const storage = {
       copiesToLocal: true,
       async localCopy(key: string, dir: string) {

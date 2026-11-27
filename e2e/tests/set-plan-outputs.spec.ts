@@ -4,8 +4,6 @@
 // Runs after first-run.spec.ts in CI; alone, it signs up.
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { addFrame, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, type PlanIcon, STROKE_GRID } from '@inkadra/doc-schema';
 import { expect, test } from '@playwright/test';
@@ -37,7 +35,7 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
   page,
   baseURL,
   browser,
-}) => {
+}, testInfo) => {
   test.setTimeout(150_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   const cookie = await signIn(baseURL!, account);
@@ -173,7 +171,8 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
       page.waitForEvent('download'),
       dialog.getByRole('button', { name: 'Esporta PDF' }).click(),
     ]);
-    const file = join(tmpdir(), `plan-${Date.now()}.pdf`);
+    // In the test's output folder, which Playwright empties: not a new file in /tmp every run.
+    const file = testInfo.outputPath('plan.pdf');
     await download.saveAs(file);
     const { text, pages } = await pdfText(file);
     // One page per setup.
@@ -258,7 +257,7 @@ test('set plan outputs: card, PDF sheet with legend and power, guest view', asyn
         view.waitForEvent('download'),
         viewer.getByRole('button', { name: 'PDF' }).click(),
       ]);
-      const file = join(tmpdir(), `guest-plan-${Date.now()}.pdf`);
+      const file = testInfo.outputPath('guest-plan.pdf');
       await download.saveAs(file);
       const guestText = (await pdfText(file)).text;
       for (const expected of ['Setup 1 · Base', 'A cam', '32 mm', 'B cam', 'Leo', 'Chiave'])
