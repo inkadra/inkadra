@@ -4706,7 +4706,8 @@
       "read": "The file could not be read.",
       "noText": "This PDF has no text layer",
       "timeout": "Reading stopped: this PDF takes too long.",
-      "tooManyPages": "This PDF exceeds the 300-page limit."
+      "tooManyPages": "This PDF exceeds the 300-page limit.",
+      "tooManyScenes": "This screenplay has more than 5,000 scenes."
     },
     "characterCards": "Create cards for the speaking characters",
     "characterCardsHint": "One character card per name, with its scenes; names already on the board are skipped.",

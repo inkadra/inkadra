@@ -4706,7 +4706,8 @@
       "read": "Não foi possível ler o arquivo.",
       "noText": "Este PDF não tem uma camada de texto",
       "timeout": "Leitura interrompida: este PDF está demorando demais.",
-      "tooManyPages": "O PDF ultrapassa o limite de 300 páginas."
+      "tooManyPages": "O PDF ultrapassa o limite de 300 páginas.",
+      "tooManyScenes": "O roteiro tem mais de 5.000 cenas."
     },
     "characterCards": "Criar cards dos personagens que falam",
     "characterCardsHint": "Um card de personagem por nome, com as cenas dele; os nomes que já estão no quadro são ignorados.",

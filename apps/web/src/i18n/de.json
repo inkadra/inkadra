@@ -4706,7 +4706,8 @@
       "read": "Die Datei konnte nicht gelesen werden.",
       "noText": "Dieses PDF hat keine Textebene",
       "timeout": "Lesen abgebrochen: Dieses PDF dauert zu lange.",
-      "tooManyPages": "Dieses PDF überschreitet das Limit von 300 Seiten."
+      "tooManyPages": "Dieses PDF überschreitet das Limit von 300 Seiten.",
+      "tooManyScenes": "Das Drehbuch hat mehr als 5.000 Szenen."
     },
     "characterCards": "Karten für sprechende Figuren erstellen",
     "characterCardsHint": "Eine Figurenkarte pro Name, mit ihren Szenen; Namen, die schon im Board sind, werden übersprungen.",

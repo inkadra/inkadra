@@ -4706,7 +4706,8 @@
       "read": "No se pudo leer el archivo.",
       "noText": "Este PDF no tiene capa de texto",
       "timeout": "Lectura detenida: este PDF tarda demasiado.",
-      "tooManyPages": "El PDF supera el límite de 300 páginas."
+      "tooManyPages": "El PDF supera el límite de 300 páginas.",
+      "tooManyScenes": "El guion tiene más de 5.000 escenas."
     },
     "characterCards": "Crear tarjetas de los personajes que hablan",
     "characterCardsHint": "Una tarjeta de personaje por nombre, con sus escenas; los nombres que ya están en el tablero se omiten.",

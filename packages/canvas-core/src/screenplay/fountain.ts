@@ -4,9 +4,12 @@ import {
   type DialogueLine,
   finishScript,
   HEADING,
+  MAX_SCRIPT_BYTES,
+  MAX_SCRIPT_SCENES,
   parseHeading,
   type Script,
   type ScriptBlock,
+  ScriptError,
   type ScriptScene,
   splitCue,
 } from './script.ts';
@@ -18,6 +21,8 @@ const TRANSITION =
   /^(?:[^a-z]*\bTO:|FADE (?:IN|OUT)[:.]?|FADE TO BLACK\.?|CUT TO BLACK\.?|DISSOLVENZA[^a-z]*:?|STACCO[^a-z]*:?)$/;
 /** Private-use character marking where a note was taken out. */
 const NOTE_MARK = '\uE000';
+/** A note's mark, with its index; built once, not per line. */
+const NOTE = new RegExp(`${NOTE_MARK}(\\d+)${NOTE_MARK}`, 'g');
 
 /**
  * Reads a Fountain screenplay (fountain.io), also plain-text scripts that follow the usual
@@ -25,6 +30,7 @@ const NOTE_MARK = '\uE000';
  * lines, Windows line endings, stray emphasis marks.
  */
 export function parseFountain(source: string): Script {
+  if (source.length > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
   const notes: string[] = [];
   const normalised = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   // Boneyard: text the writer left out. Notes may cross lines; a mark keeps their place so
@@ -65,12 +71,17 @@ export function parseFountain(source: string): Script {
   let section: string | undefined;
   let scene: ScriptScene | null = null;
   const push = (block: ScriptBlock) => (scene ? scene.blocks : prelude).push(block);
+  /** Blocks the current scene took from the one before: they stay, so each moves only once. */
+  let own = 0;
   const startScene = (heading: string) => {
     // Synopses written just before a heading describe the scene it opens.
+    if (scenes.length >= MAX_SCRIPT_SCENES) throw new ScriptError('tooManyScenes');
     const previous = scene ? scene.blocks : prelude;
-    const moved: ScriptBlock[] = [];
-    while (previous.at(-1)?.kind === 'synopsis' && (!scene || previous.length > 1))
-      moved.unshift(previous.pop() as ScriptBlock);
+    let start = previous.length;
+    while (start > Math.max(own, scene ? 1 : 0) && previous[start - 1]?.kind === 'synopsis')
+      start--;
+    const moved = previous.splice(start);
+    own = moved.length;
     scene = { ...parseHeading(heading), blocks: moved, characters: [] };
     if (section) scene.section = section;
     scenes.push(scene);
@@ -80,7 +91,7 @@ export function parseFountain(source: string): Script {
     const found: string[] = [];
     const rows = paragraph
       .map((l) =>
-        l.replace(new RegExp(`${NOTE_MARK}(\\d+)${NOTE_MARK}`, 'g'), (_, i: string) => {
+        l.replace(NOTE, (_, i: string) => {
           found.push(notes[Number(i)] ?? '');
           return '';
         }),
@@ -190,7 +201,7 @@ function inline(text: string): string {
       // Underline only between word boundaries: snake_case_names and URLs keep theirs.
       .replace(/(^|[^\p{L}\p{N}_])_(?=\S)([^_\n]*?\S)_(?![\p{L}\p{N}_])/gu, '$1$2')
       .replace(/\\([*_\\])/g, '$1')
-      .replace(new RegExp(`${NOTE_MARK}\\d+${NOTE_MARK}`, 'g'), ''),
+      .replace(NOTE, ''),
   );
 }
 

@@ -2,6 +2,8 @@
 import {
   clean,
   finishScript,
+  MAX_SCRIPT_BYTES,
+  MAX_SCRIPT_SCENES,
   parseHeading,
   type Script,
   type ScriptBlock,
@@ -17,6 +19,7 @@ import { descendants, parseXml, textContent, type XmlElement, XmlError } from '.
  * does the rest (`xml.ts`), so the same code reads a file in the browser, Node and Hermes.
  */
 export function parseFdx(source: string): Script {
+  if (source.length > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
   const xml = source.replace(/^﻿/, '');
   if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new ScriptError('unsafe');
   let root: XmlElement;
@@ -39,6 +42,7 @@ export function parseFdx(source: string): Script {
     const text = textOf(p);
     if (type === 'Scene Heading') {
       if (!text) continue;
+      if (scenes.length >= MAX_SCRIPT_SCENES) throw new ScriptError('tooManyScenes');
       const number = p.attributes.get('Number')?.trim();
       scene = { ...parseHeading(text), blocks: [], characters: [] };
       if (number && !scene.number) scene.number = number.slice(0, 12);

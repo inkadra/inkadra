@@ -47,6 +47,11 @@ export interface Script {
 }
 
 export const MAX_SCRIPT_BYTES = 5 * 1024 * 1024;
+/**
+ * Ten times the scenes one import lays out (`MAX_IMPORT_SCENES`), so a long script still opens
+ * with the first ones; a file with more is not a screenplay and would only fill memory.
+ */
+export const MAX_SCRIPT_SCENES = 5000;
 
 export class ScriptError extends Error {
   constructor(
@@ -58,7 +63,8 @@ export class ScriptError extends Error {
       | 'empty'
       | 'noText'
       | 'timeout'
-      | 'tooManyPages',
+      | 'tooManyPages'
+      | 'tooManyScenes',
     message = code,
   ) {
     super(message);
@@ -121,17 +127,28 @@ export function parseHeading(raw: string): Omit<ScriptScene, 'blocks' | 'charact
     const text = part.trim().replace(/\.$/, '');
     if (!text) continue;
     // NIGHT (FLASHBACK): the time, and the rest as an extra.
-    const paren = /^(.*?)\s*\(([^)]*)\)$/.exec(text);
-    const time = !scene.time && TIMES.find(([re]) => re.test(paren?.[1] ?? text))?.[1];
+    const paren = trailingParen(text);
+    const time = !scene.time && TIMES.find(([re]) => re.test(paren?.before ?? text))?.[1];
     if (time) {
       scene.time = time;
-      if (paren?.[2]) extra.push(paren[2]);
+      if (paren?.inside) extra.push(paren.inside);
     } else if (scene.time || (location.length > 0 && LATER.test(text))) extra.push(text);
     else location.push(text);
   }
   if (location.length) scene.location = location.join(' – ');
   if (extra.length) scene.extra = extra.join(' – ');
   return scene;
+}
+
+/**
+ * `NIGHT (FLASHBACK)` → the text before the last bracket pair and inside it, found with indexOf:
+ * the regex it replaces backtracked quadratically on a run of `(`.
+ */
+function trailingParen(text: string): { before: string; inside: string } | null {
+  if (!text.endsWith(')')) return null;
+  const open = text.indexOf('(', text.lastIndexOf(')', text.length - 2) + 1);
+  if (open < 0) return null;
+  return { before: text.slice(0, open).trimEnd(), inside: text.slice(open + 1, -1) };
 }
 
 /** Voice and continuity words written after a cue without brackets: GIORGIA V.O., ENEA CONT'D. */
