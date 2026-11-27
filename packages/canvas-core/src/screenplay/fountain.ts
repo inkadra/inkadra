@@ -32,7 +32,12 @@ const NOTE = new RegExp(`${NOTE_MARK}(\\d+)${NOTE_MARK}`, 'g');
 export function parseFountain(source: string): Script {
   if (source.length > MAX_SCRIPT_BYTES) throw new ScriptError('tooLarge');
   const notes: string[] = [];
-  const normalised = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  // The note mark is taken out of the text first: a mark written in the file must not stand
+  // for a note, which it would repeat (one note a thousand times, a billion characters).
+  const normalised = source
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n')
+    .replaceAll(NOTE_MARK, '');
   // Boneyard: text the writer left out. Notes may cross lines; a mark keeps their place so
   // they follow their paragraph. Both are found with indexOf, in linear time: an opening mark
   // without its closing one leaves the rest of the text as it is.
@@ -92,7 +97,9 @@ export function parseFountain(source: string): Script {
     const rows = paragraph
       .map((l) =>
         l.replace(NOTE, (_, i: string) => {
+          // Each note is read once, whatever the text holds.
           found.push(notes[Number(i)] ?? '');
+          notes[Number(i)] = '';
           return '';
         }),
       )

@@ -101,14 +101,17 @@ const LATER =
 export function parseHeading(raw: string): Omit<ScriptScene, 'blocks' | 'characters'> {
   let heading = clean(raw).slice(0, 500);
   let number: string | undefined;
-  const num = /\s*#([^#\s]{1,12})#\s*$/.exec(heading);
+  // From the `#`, not from the spaces before it: a run of them was scanned from every start.
+  const num = /#([^#\s]{1,12})#\s*$/.exec(heading);
   if (num) {
     number = num[1];
     heading = heading.slice(0, num.index).trim();
   }
   const scene: Omit<ScriptScene, 'blocks' | 'characters'> = { heading };
   if (number) scene.number = number;
-  let rest = heading;
+  // Split as one line, every run of whitespace one space: the regexes below never backtrack
+  // on a run of line breaks or other spaces. The heading keeps its own.
+  let rest = heading.replace(/\s+/g, ' ');
   for (const [re, setting] of SETTINGS) {
     const m = re.exec(rest);
     if (!m) continue;
@@ -182,7 +185,7 @@ const BARE_EXTENSION =
  * order written, so the dialogue line can keep them.
  */
 export function splitCue(raw: string): { character: string; extension?: string } {
-  const text = clean(raw)
+  const text = fold(clean(raw))
     .slice(0, 200)
     .replace(/\s*\^$/, '');
   const tail = bracketTail(text);
@@ -196,10 +199,21 @@ export function splitCue(raw: string): { character: string; extension?: string }
   return extensions.length ? { character, extension: extensions.join(' ') } : { character };
 }
 
-/** Whitespace folded, invisible characters removed. */
+/**
+ * Whitespace within a line folded to one space (tabs, no-break and other Unicode spaces too:
+ * a run of them left `\s` regexes downstream backtracking), invisible characters removed.
+ * Line breaks stay.
+ */
 export function clean(text: string): string {
-  return text.replace(/[​-‍﻿]/g, '').replace(/[ \t]/g, ' ').replace(/ {2,}/g, ' ').trim();
+  return text
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[^\S\n\r\u2028\u2029]+/g, ' ')
+    .trim();
 }
+
+/** Every run of whitespace as one character: a line break if it holds one, else a space. */
+const fold = (text: string) =>
+  text.replace(/\s+/g, (run) => (/[\n\r\u2028\u2029]/.test(run) ? '\n' : ' '));
 
 /** Collects the characters of each scene and of the script, by first appearance. */
 export function finishScript(

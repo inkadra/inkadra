@@ -4,9 +4,10 @@ import type { SceneElement } from '../film.ts';
 import { parseFdx } from './fdx.ts';
 import { parseFountain } from './fountain.ts';
 import { type PdfPage, pdfPagesToFountain } from './pdf-text.ts';
-import { defaultOptions, planImport, sceneNumbers } from './plan.ts';
+import { defaultOptions, MAX_IMPORT_CHARACTERS, planImport, sceneNumbers } from './plan.ts';
 import { matchRevision } from './revision.ts';
 import {
+  clean,
   MAX_SCRIPT_BYTES,
   MAX_SCRIPT_SCENES,
   parseHeading,
@@ -279,5 +280,91 @@ describe('parser worst cases', () => {
     } finally {
       split.mockRestore();
     }
+  });
+
+  it('compares scenes that share one heading folding each scene a few times, not each pair', () => {
+    const at = { location: 'THE HALL!', setting: 'int', time: 'day' } as const;
+    const words = (i: number) => Array.from({ length: 40 }, (_, w) => `w${i}x${w}`).join(' ');
+    const draft = Array.from({ length: 300 }, (_, i) => ({ ...at, synopsis: words(i) }));
+    const scenes = Array.from(
+      { length: 300 },
+      (_, i) => ({ ...at, id: `s${i}`, synopsis: words(i + 1000) }) as unknown as SceneElement,
+    );
+    const replace = vi.spyOn(String.prototype, 'replace');
+    try {
+      const rows = matchRevision(draft, scenes);
+      // Each scene of either side is folded a handful of times; pair by pair it was 270 000.
+      expect(replace.mock.calls.length).toBeLessThan(20 * (draft.length + scenes.length));
+      expect(rows.filter((r) => r.status === 'changed' || r.status === 'same')).toHaveLength(300);
+    } finally {
+      replace.mockRestore();
+    }
+  });
+
+  it('reads each note once, whatever note marks the file holds', () => {
+    const marks = '\uE0000\uE000'.repeat(300);
+    const script = parseFountain(`INT. A - DAY\n\n[[a note]]\n\n${marks}\n\nMara waits.\n`);
+    const blocks = script.scenes.flatMap((s) => s.blocks);
+    expect(blocks.filter((b) => b.kind === 'note')).toEqual([{ kind: 'note', text: 'a note' }]);
+    expect(JSON.stringify(script)).not.toContain('\uE000');
+    // A frame keeps only what it shows: a scene of many notes is not joined whole.
+    const notes = Array.from({ length: 2000 }, (_, i) => `[[note ${i} ${'x'.repeat(100)}]]`);
+    const many = parseFountain(`INT. A - DAY\n\nMara waits.\n\n${notes.join('\n\n')}\n`);
+    const join = vi.spyOn(Array.prototype, 'join');
+    try {
+      const frame = planImport(many, defaultOptions(many), (n) => n.join()).scenes[0]?.frames[0];
+      expect(frame?.notes?.length).toBe(4000);
+      const joined = join.mock.results.map((r) => String(r.value).length);
+      expect(Math.max(...joined)).toBeLessThan(5000);
+    } finally {
+      join.mockRestore();
+    }
+  });
+
+  it('numbers scenes after a number without a digit at its end in linear time', () => {
+    const scene = (number?: string) => ({ heading: '', blocks: [], characters: [], number });
+    expect(sceneNumbers([scene('X'), scene(), scene(), scene()])).toEqual(['X', 'XA', 'XB', 'XC']);
+    expect(sceneNumbers([scene('1.'), scene(), scene()])).toEqual(['1.', '1.A', '1.B']);
+    const scenes = (n: number): ScriptScene[] => [
+      scene('PROLOGUE'),
+      ...Array.from({ length: n - 1 }, () => scene()),
+    ];
+    linear(scenes, sceneNumbers, 5000);
+    expect(Math.max(...sceneNumbers(scenes(5000)).map((n) => n?.length ?? 0))).toBeLessThan(12);
+  });
+
+  it('creates at most MAX_IMPORT_CHARACTERS character cards and says the rest were left out', () => {
+    const cues = Array.from({ length: 1000 }, (_, i) => `@C${i}\na\n\n`).join('');
+    const script = parseFountain(`INT. A - DAY\n\n${cues}`);
+    const options = { ...defaultOptions(script), characterCards: true };
+    const plan = planImport(script, options, (names) => names.join());
+    expect(plan.characters).toHaveLength(MAX_IMPORT_CHARACTERS);
+    expect(plan.charactersTruncated).toBe(true);
+    const few = parseFountain(`INT. A - DAY\n\n@MARA\nHi.\n`);
+    const fewPlan = planImport(few, { ...defaultOptions(few), characterCards: true }, String);
+    expect(fewPlan.charactersTruncated).toBeUndefined();
+  });
+
+  it('folds any whitespace so headings and cues never backtrack on a run of it', () => {
+    expect(clean('A\u3000\u3000B\v\fC\u202FD')).toBe('A B C D');
+    expect(clean('A\n\nB')).toBe('A\n\nB');
+    expect(parseHeading('INT.\v\vHALL\n-\nNIGHT')).toMatchObject({
+      location: 'HALL',
+      time: 'night',
+    });
+    linear(
+      (n) => `INT. A${'\v\n'.repeat(n)}X`,
+      (heading) => {
+        for (let i = 0; i < 2000; i++) parseHeading(heading);
+      },
+      60,
+    );
+    linear(
+      (n) => `MARA${'\v\n'.repeat(n)}X`,
+      (cue) => {
+        for (let i = 0; i < 5000; i++) splitCue(cue);
+      },
+      24,
+    );
   });
 });

@@ -8,6 +8,7 @@ export {
   type FramesMode,
   type ImportOptions,
   type ImportPlan,
+  MAX_IMPORT_CHARACTERS,
   MAX_IMPORT_FRAMES,
   MAX_IMPORT_SCENES,
   placeName,

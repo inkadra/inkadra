@@ -47,36 +47,22 @@ const words = (s: string) =>
       .filter((w) => w.length > 2),
   );
 
-/** Each scene's words, read once: matching compares every draft scene with every scene. */
-const wordCache = new WeakMap<SceneFields, Set<string>>();
-const wordsOf = (s: SceneFields) => {
-  let found = wordCache.get(s);
-  if (!found) {
-    found = words([s.title, s.location, s.synopsis].filter(Boolean).join(' '));
-    wordCache.set(s, found);
-  }
-  return found;
-};
+const wordsOf = (s: SceneFields) =>
+  words([s.title, s.location, s.synopsis].filter(Boolean).join(' '));
+const dice = (shared: number, x: number, y: number) => (x && y ? (2 * shared) / (x + y) : 0);
 
 /** Dice coefficient of the words of two scenes' heading and synopsis, 0 to 1. */
 export function similarity(a: SceneFields, b: SceneFields): number {
   const x = wordsOf(a);
   const y = wordsOf(b);
-  if (!x.size || !y.size) return 0;
   let shared = 0;
   for (const w of x) if (y.has(w)) shared++;
-  return (2 * shared) / (x.size + y.size);
+  return dice(shared, x.size, y.size);
 }
 
-const sameNumber = (a: SceneFields, b: SceneFields) =>
-  !!a.number && fold(a.number) === fold(b.number);
-const sameHeading = (a: SceneFields, b: SceneFields) =>
-  !!fold(a.location || a.title) &&
-  fold(a.location || a.title) === fold(b.location || b.title) &&
-  (a.setting ?? '') === (b.setting ?? '') &&
-  (a.time ?? '') === (b.time ?? '');
-const sameLocation = (a: SceneFields, b: SceneFields) =>
-  fold(a.location || a.title) === fold(b.location || b.title);
+/** What two scenes compare, folded once per scene rather than once per pair. */
+const placeOf = (s: SceneFields) => fold(s.location || s.title);
+const headingOf = (s: SceneFields) => `${placeOf(s)}\u0000${s.setting ?? ''}\u0000${s.time ?? ''}`;
 
 /** Below this a number match whose place also changed is no match; text alone needs the next. */
 const LOW = 0.2;
@@ -120,30 +106,94 @@ export function matchRevision(
     else decided.add(d);
   }
   const open = () => draft.flatMap((s, d) => (decided.has(d) ? [] : [{ s, d }]));
-  const free = () => scenes.filter((s) => !taken.has(s.id));
+  const isFree = (j: number) => !taken.has((scenes[j] as SceneElement).id);
+
+  // Everything compared is read once per scene, in tables local to this call: comparing each
+  // draft scene with each storyboard scene stays cheap for a long script on a long board.
+  const indexBy = (key: (s: SceneElement) => string) => {
+    const lists = new Map<string, number[]>();
+    scenes.forEach((s, j) => {
+      const list = lists.get(key(s));
+      if (list) list.push(j);
+      else lists.set(key(s), [j]);
+    });
+    return lists;
+  };
+  const byNumber = indexBy((s) => fold(s.number));
+  const byHeading = indexBy(headingOf);
+  const places = scenes.map(placeOf);
+  const sceneWords = scenes.map(wordsOf);
+  /** Word → storyboard scenes that have it: only scenes sharing a word are counted. */
+  const byWord = new Map<string, number[]>();
+  sceneWords.forEach((set, j) => {
+    for (const w of set) {
+      const list = byWord.get(w);
+      if (list) list.push(j);
+      else byWord.set(w, [j]);
+    }
+  });
+  /** A draft scene's similarity to every storyboard scene, worked out when first needed. */
+  const scores = new Map<number, Float64Array>();
+  const scoreOf = (d: number) => {
+    let row = scores.get(d);
+    if (!row) {
+      const own = wordsOf(draft[d] as SceneFields);
+      const shared = new Uint32Array(scenes.length);
+      for (const w of own) for (const j of byWord.get(w) ?? []) shared[j] = (shared[j] ?? 0) + 1;
+      row = new Float64Array(scenes.length);
+      for (let j = 0; j < scenes.length; j++)
+        row[j] = dice(shared[j] ?? 0, own.size, sceneWords[j]?.size ?? 0);
+      scores.set(d, row);
+    }
+    return row;
+  };
+  /** The most alike of these scenes, the first one on a tie. */
+  const bestOf = (d: number, candidates: Iterable<number>) => {
+    const row = scoreOf(d);
+    let best: { j: number; score: number } | null = null;
+    for (const j of candidates)
+      if (!best || (row[j] ?? 0) > best.score) best = { j, score: row[j] ?? 0 };
+    return best;
+  };
+  /** The first free scene with this number; taken scenes stay taken, so each is passed once. */
+  const passed = new Map<string, number>();
+  const sameNumber = (s: SceneFields) => {
+    if (!s.number) return undefined;
+    const key = fold(s.number);
+    const list = byNumber.get(key) ?? [];
+    let at = passed.get(key) ?? 0;
+    while (at < list.length && !isFree(list[at] as number)) at++;
+    passed.set(key, at);
+    return list[at];
+  };
+  const freeScenes = function* () {
+    for (let j = 0; j < scenes.length; j++) if (isFree(j)) yield j;
+  };
+  const scene = (j: number) => scenes[j] as SceneElement;
 
   // 1. Number. A number whose location changed and whose text is unlike waits: scenes renumbered.
   for (const { s, d } of open()) {
-    const scene = free().find((e) => sameNumber(s, e));
-    if (!scene) continue;
-    if (!sameLocation(s, scene) && similarity(s, scene) < LOW) continue;
-    pair(d, scene, false);
+    const j = sameNumber(s);
+    if (j === undefined) continue;
+    if (placeOf(s) !== places[j] && (scoreOf(d)[j] ?? 0) < LOW) continue;
+    pair(d, scene(j), false);
   }
   // 2. Heading, the most alike when several scenes share it; sure only when it is the only one.
   for (const { s, d } of open()) {
-    const same = free().filter((e) => sameHeading(s, e));
-    const best = bestOf(s, same);
-    if (best) pair(d, best.scene, same.length > 1 && best.score < SURE);
+    if (!placeOf(s)) continue;
+    const same = (byHeading.get(headingOf(s)) ?? []).filter(isFree);
+    const best = bestOf(d, same);
+    if (best) pair(d, scene(best.j), same.length > 1 && best.score < SURE);
   }
   // 3. Text alone: number and heading both changed, so the person checks it.
-  for (const { s, d } of open()) {
-    const best = bestOf(s, free());
-    if (best && best.score >= TEXT_MATCH) pair(d, best.scene, true);
+  for (const { d } of open()) {
+    const best = bestOf(d, freeScenes());
+    if (best && best.score >= TEXT_MATCH) pair(d, scene(best.j), true);
   }
   // 4. The same number, nothing else alike: still more likely the same scene than new + omitted.
   for (const { s, d } of open()) {
-    const scene = free().find((e) => sameNumber(s, e));
-    if (scene) pair(d, scene, true);
+    const j = sameNumber(s);
+    if (j !== undefined) pair(d, scene(j), true);
   }
 
   const rows: RevisionRow[] = draft.map((s, d) => {
@@ -179,15 +229,6 @@ export function matchRevision(
     ...(i >= 0 ? [rows[i] as RevisionRow] : []),
     ...(inserts.get(i) ?? []),
   ]);
-}
-
-function bestOf(s: SceneFields, candidates: readonly SceneElement[]) {
-  let best: { scene: SceneElement; score: number } | null = null;
-  for (const scene of candidates) {
-    const score = similarity(s, scene);
-    if (!best || score > best.score) best = { scene, score };
-  }
-  return best;
 }
 
 export interface RevisionOptions {

@@ -74,7 +74,8 @@ export function RevisionList({
         before
           ? t('screenplay.revision.after', { number: before.number ?? '' })
           : t('screenplay.revision.atStart'),
-        cast.length ? cast.join(', ').toLocaleUpperCase() : null,
+        // A few names say who is in the scene; a crafted file can have thousands.
+        cast.length ? cast.slice(0, 30).join(', ').toLocaleUpperCase() : null,
       ]
         .filter(Boolean)
         .join(' · ');
