@@ -26,17 +26,69 @@ import { MAX_XML_DEPTH, MAX_XML_ELEMENTS, parseXml, XmlError } from './xml.ts';
 /**
  * Crafted files that used to block the thread for seconds or minutes. No test compares a time
  * with a fixed bound, which depends on the machine: each counts the work, stops at a limit, or
- * checks how the time grows when the input grows fourfold. Linear work takes about 4 times as
- * long, quadratic work 16 times; below 8 passes on a slow or busy machine and fails on quadratic
- * code. Both sizes are warmed up, then timed in turns, and the medians compared: a pause of
- * the collector or a busy runner slows one run, not the median of either size.
+ * checks how the work grows when the input grows.
+ *
+ * Where the slow code went through a method we can watch (copying a set, shifting an array,
+ * trimming a string), the work is counted: each call of those methods, plus the length of the
+ * array or string it ran on. The count is the same on every machine, so the test is exact:
+ * linear work grows 4 times when the input does, quadratic work 16 times.
  */
 const SCALE = 4;
-const MAX_RATIO = 8;
+const MAX_WORK_RATIO = 6;
+
+type Method = [target: object, name: string];
+/** Thrown once the work passes its limit, so slow code fails at once and not minutes later. */
+class OverLimit extends Error {}
+/**
+ * Calls of `methods` while `run` runs, each weighed by the length of what it ran on. The methods
+ * are wrapped by hand: a spy would keep every call, millions of them on slow code.
+ */
+const work = (methods: Method[], run: () => unknown, limit = Infinity) => {
+  let total = 0;
+  const originals = methods.map(([target, name]) => {
+    const original = Reflect.get(target, name) as (...args: unknown[]) => unknown;
+    Reflect.set(target, name, function (this: { length?: unknown }, ...args: unknown[]) {
+      total += 1 + (typeof this?.length === 'number' ? this.length : 0);
+      if (total > limit) throw new OverLimit();
+      return original.apply(this, args);
+    });
+    return original;
+  });
+  try {
+    run();
+  } catch (error) {
+    if (!(error instanceof OverLimit)) throw error;
+  } finally {
+    for (const [i, [target, name]] of methods.entries()) Reflect.set(target, name, originals[i]);
+  }
+  return total;
+};
+/** The work with input `n * SCALE` is at most `MAX_WORK_RATIO` times the work with input `n`. */
+const linearWork = <T>(
+  build: (n: number) => T,
+  run: (input: T) => unknown,
+  methods: Method[],
+  n: number,
+) => {
+  const small = build(n);
+  const large = build(n * SCALE);
+  const limit = MAX_WORK_RATIO * Math.max(work(methods, () => run(small)), 1);
+  expect(work(methods, () => run(large), limit)).toBeLessThanOrEqual(limit);
+};
+
+/**
+ * Regexes that backtracked leave nothing to count: there the time is compared. Both sizes are
+ * warmed up, then timed in turns, and the medians compared: a pause of the collector or a busy
+ * runner slows a few runs, not the median of either size. The input grows 8 times, linear time
+ * about 8 times, quadratic 64: `MAX_RATIO` (16) leaves twice the linear growth for noise, and the
+ * code before the fix grew at least 33 times on each of these inputs.
+ */
+const TIME_SCALE = 8;
+const MAX_RATIO = 16;
 /** Only a guard against a hang, not a measure of speed. */
 const HANG = 10_000;
 
-const RUNS = 5;
+const RUNS = 15;
 const timed = (run: () => unknown) => {
   const start = performance.now();
   run();
@@ -44,10 +96,15 @@ const timed = (run: () => unknown) => {
 };
 const median = (times: number[]) => times.sort((a, b) => a - b)[times.length >> 1] as number;
 
-/** Time with input `n * SCALE` over time with input `n`: the input is built before timing. */
-const growth = <T>(build: (n: number) => T, run: (input: T) => unknown, n: number) => {
+/** Time with input `n * scale` over time with input `n`: the input is built before timing. */
+const growth = <T>(
+  build: (n: number) => T,
+  run: (input: T) => unknown,
+  n: number,
+  scale = TIME_SCALE,
+) => {
   const small = build(n);
-  const large = build(n * SCALE);
+  const large = build(n * scale);
   run(small);
   // The warm-up of the large input is also the guard against a hang.
   expect(timed(() => run(large))).toBeLessThan(HANG);
@@ -77,11 +134,11 @@ const page = (lines: string[]): PdfPage => ({
 });
 
 /**
- * A growth test runs the large input up to six times (a warm-up and five timed runs), each
+ * A growth test runs the large input sixteen times (a warm-up and fifteen timed runs), each
  * stopped by `HANG` only after it ends: the timeout covers them all on a slow runner, where
  * vitest's 5 s default did not.
  */
-const TIMEOUT = 6 * HANG;
+const TIMEOUT = (RUNS + 1) * HANG;
 
 describe('parser worst cases', { timeout: TIMEOUT }, () => {
   it('reads many namespace prefixes in a deep document without copying them per element', () => {
@@ -91,7 +148,16 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
       const prefixes = Array.from({ length: n }, (_, i) => `xmlns:p${i}="u"`).join(' ');
       return `<r ${prefixes}>${nested.repeat(Math.ceil(n / 50))}</r>`;
     };
-    linear(xml, parseXml, 3000);
+    // Copying a set calls its `add` once per prefix.
+    linearWork(
+      xml,
+      parseXml,
+      [
+        [Set.prototype, 'add'],
+        [Map.prototype, 'set'],
+      ],
+      3000,
+    );
     expect(parseXml(xml(500)).children).toHaveLength(10);
   });
 
@@ -110,7 +176,16 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
 
   it('moves synopses before a heading in one step', () => {
     const text = (n: number) => `${'= A synopsis.\n\n'.repeat(n)}INT. HALL - DAY\n`;
-    linear(text, parseFountain, 20_000);
+    // Taking synopses one by one to the front of a list shifted it each time.
+    linearWork(
+      text,
+      parseFountain,
+      [
+        [Array.prototype, 'unshift'],
+        [Array.prototype, 'splice'],
+      ],
+      20_000,
+    );
     expect(parseFountain(text(1000)).scenes[0]?.blocks).toHaveLength(1000);
   });
 
@@ -131,17 +206,22 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
   it('reads title page draft lines without a colon in linear time', () => {
     const body = page(['INT. HALL - DAY', 'Mara waits.']);
     // A title page has at most 20 lines of at most 300 characters: these reach the reader of
-    // draft lines, which backtracked quadratically on each one.
-    linear(
-      (n) => [
-        page(['THE TITLE', 'Written by', 'Nora', ...Array(17).fill('draft '.repeat(n))]),
-        body,
-      ],
-      (pages) => {
-        for (let i = 0; i < 300; i++) pdfPagesToFountain(pages);
-      },
-      12,
-    );
+    // draft lines, which backtracked quadratically on each one. Up to 288 characters a line,
+    // the reading of the rest of the page weighs on both sizes: grown 12 times, the text took
+    // under 3 times as long, and 17 to 20 times before the fix.
+    expect(
+      growth(
+        (n) => [
+          page(['THE TITLE', 'Written by', 'Nora', ...Array(17).fill('draft '.repeat(n))]),
+          body,
+        ],
+        (pages) => {
+          for (let i = 0; i < 300; i++) pdfPagesToFountain(pages);
+        },
+        4,
+        12,
+      ),
+    ).toBeLessThan(7);
     const title = pdfPagesToFountain([
       page(['THE TITLE', 'by', 'Nora', 'First draft: 3 May']),
       body,
@@ -157,7 +237,8 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
   it('joins a paragraph that runs over every page in linear time', () => {
     const line = 'and the train goes on through the night and nobody stops it';
     const pages = (n: number) => Array.from({ length: n }, () => page(Array(40).fill(line)));
-    linear(pages, pdfPagesToFountain, 200);
+    // Testing the joined row on every line trimmed it whole each time.
+    linearWork(pages, pdfPagesToFountain, [[String.prototype, 'trim']], 200);
     expect(pdfPagesToFountain(pages(10)).split('\n').filter(Boolean)).toHaveLength(1);
   });
 
@@ -179,7 +260,7 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
       (heading) => {
         for (let i = 0; i < 5000; i++) parseHeading(heading);
       },
-      120,
+      60,
     );
     expect(parseHeading('INT. HALL - NIGHT (A) (FLASHBACK)')).toEqual({
       heading: 'INT. HALL - NIGHT (A) (FLASHBACK)',
@@ -197,9 +278,9 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
     linear(
       text,
       (t) => {
-        for (let i = 0; i < 80; i++) parseFountain(t);
+        for (let i = 0; i < 800; i++) parseFountain(t);
       },
-      20_000,
+      500,
     );
     expect(parseFountain(text(100)).scenes[0]?.blocks[0]).toEqual({ kind: 'action', text: 'a b' });
     expect(parseFountain('INT. A - DAY\n\n> THE END <\n').scenes[0]?.blocks[0]).toEqual({
@@ -215,7 +296,16 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
       );
     const plan = (s: ReturnType<typeof script>) =>
       planImport(s, defaultOptions(s), (names) => names.join());
-    linear(script, plan, 50_000);
+    // Looking each name up in the list of the names before it.
+    linearWork(
+      script,
+      plan,
+      [
+        [Array.prototype, 'includes'],
+        [Set.prototype, 'add'],
+      ],
+      50_000,
+    );
     expect(plan(script(100)).scenes[0]?.frames[0]?.cast).toHaveLength(30);
     expect(plan(script(100)).scenes[0]?.frames[0]?.cast?.[29]).toBe('C29');
   });
@@ -226,7 +316,16 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
       scene('1'),
       ...Array.from({ length: n - 1 }, () => scene()),
     ];
-    linear(scenes, sceneNumbers, 10_000);
+    // The numbers before each scene were copied, and each letter tried from A again.
+    linearWork(
+      scenes,
+      sceneNumbers,
+      [
+        [Array.prototype, 'slice'],
+        [Set.prototype, 'has'],
+      ],
+      10_000,
+    );
     const numbers = sceneNumbers(scenes(5000));
     expect(numbers.slice(0, 4)).toEqual(['1', '1A', '1B', '1C']);
     expect(new Set(numbers).size).toBe(5000);
@@ -273,7 +372,7 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
       (cue) => {
         for (let i = 0; i < 20_000; i++) splitCue(cue);
       },
-      45,
+      22,
     );
     expect(splitCue("MARA (V.O.) (CONT'D)")).toEqual({
       character: 'MARA',
@@ -358,7 +457,16 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
       scene('PROLOGUE'),
       ...Array.from({ length: n - 1 }, () => scene()),
     ];
-    linear(scenes, sceneNumbers, 10_000);
+    // Each number grew by a letter, and was copied with all the numbers before it.
+    linearWork(
+      scenes,
+      sceneNumbers,
+      [
+        [Array.prototype, 'slice'],
+        [Set.prototype, 'has'],
+      ],
+      10_000,
+    );
     expect(Math.max(...sceneNumbers(scenes(5000)).map((n) => n?.length ?? 0))).toBeLessThan(12);
   });
 
@@ -389,14 +497,14 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
       (heading) => {
         for (let i = 0; i < 2000; i++) parseHeading(heading);
       },
-      60,
+      30,
     );
     linear(
       (n) => `MARA${'\v\n'.repeat(n)}X`,
       (cue) => {
         for (let i = 0; i < 5000; i++) splitCue(cue);
       },
-      24,
+      12,
     );
   });
 
@@ -414,13 +522,15 @@ describe('parser worst cases', { timeout: TIMEOUT }, () => {
   });
 
   it('keeps particles lower case in a place name in linear time', () => {
+    // A run of spaces before a word that ends the name: no particle, after any number of tries.
     linear(
-      (n) => `${' '.repeat(n)}A DE B`,
+      (n) => `A DE${' '.repeat(n)}B`,
       (name) => {
-        for (let i = 0; i < 400; i++) placeName(name);
+        for (let i = 0; i < 2000; i++) placeName(name);
       },
-      5000,
+      500,
     );
     expect(placeName('CASA DI MARA')).toBe('Casa di Mara');
+    expect(placeName(`CASA   DI  MARA`)).toBe('Casa   di  Mara');
   });
 });
