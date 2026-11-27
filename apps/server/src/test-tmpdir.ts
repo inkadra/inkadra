@@ -31,7 +31,8 @@ export default function runTmpDir() {
     if (left.length)
       throw new Error(
         `Tests left temporary files behind: make them with tempDir() from test-tmpdir.ts, or ` +
-          `remove them in afterEach/afterAll (rmSync(dir, { recursive: true, force: true })):\n` +
+          `remove them in afterEach/afterAll (rmSync(dir, { recursive: true, force: true })); ` +
+          `work still writing after the last hook is waited for with settleBeforeRemoving():\n` +
           left.join('\n'),
       );
   };
@@ -41,8 +42,12 @@ export default function runTmpDir() {
 export function leftovers(run: string): string[] {
   return readdirSync(run).flatMap((entry) => {
     if (!entry.startsWith('file-')) return [`(outside a test file) ${entry}`];
-    const left = readdirSync(join(run, entry));
-    return left.length ? [`${entry.slice(5).replaceAll(SEP, '/')}: ${left.join(', ')}`] : [];
+    // The deepest paths name what wrote them (files/variants/… is a media job, say), up to 5.
+    const left = readdirSync(join(run, entry), { recursive: true }).map(String);
+    const deepest = left.filter((p) => !left.some((q) => q.startsWith(p + sep)));
+    return left.length
+      ? [`${entry.slice(5).replaceAll(SEP, '/')}: ${deepest.slice(0, 5).join(', ')}`]
+      : [];
   });
 }
 
@@ -56,6 +61,7 @@ export function fileTmpDir(testPath: string | undefined) {
 }
 
 const made: string[] = [];
+const pending: (() => Promise<unknown>)[] = [];
 
 /** A fresh temporary folder, removed after the test file's last hook (see test-setup.ts). */
 export function tempDir(prefix: string) {
@@ -64,7 +70,16 @@ export function tempDir(prefix: string) {
   return dir;
 }
 
-/** Removes the folders `tempDir` made for this test file. */
-export function removeTempDirs() {
+/**
+ * Background work that may still write into a `tempDir` folder after the test file's hooks (the
+ * in-process jobs of testDeps): waited for before the folders go, or a late write makes one again.
+ */
+export function settleBeforeRemoving(work: () => Promise<unknown>) {
+  pending.push(work);
+}
+
+/** Removes the folders `tempDir` made for this test file, once their background work is done. */
+export async function removeTempDirs() {
+  await Promise.all(pending.splice(0).map((work) => work()));
   for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
 }
