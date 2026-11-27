@@ -785,7 +785,10 @@ function validateDates(start: string | null, end: string | null) {
 
 /**
  * The stored files of these projects (originals, copies, Office pages), to delete once their
- * rows are gone.
+ * rows are gone. Call it inside the deleting transaction: the files' rows are locked, in id order
+ * as an account deletion locks them (#879), so a pass of the media job saving its copies right
+ * now either commits first, and its copies are read below, or waits for the deletion and then
+ * removes what it wrote (media/process.ts).
  */
 export async function projectFiles(
   tx: Pick<Database, 'select'>,
@@ -795,7 +798,9 @@ export async function projectFiles(
   const originals = await tx
     .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
     .from(asset)
-    .where(inArray(asset.projectId, projectIds));
+    .where(inArray(asset.projectId, projectIds))
+    .orderBy(asset.id)
+    .for('update');
   const variants = await tx
     .select({
       key: assetVariant.storageKey,

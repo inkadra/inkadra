@@ -176,7 +176,8 @@ async function dropUnusedLogo(tx: Tx, projectId: string, assetId: string): Promi
     )
     .limit(1);
   if (cover || pick || inDoc || inVersion) return [];
-  const [file] = await tx.select().from(asset).where(eq(asset.id, assetId));
+  // Locked, so that a reprocess saving its copies now is read below or finds the row gone.
+  const [file] = await tx.select().from(asset).where(eq(asset.id, assetId)).for('update');
   if (!file) return [];
   const variants = await tx
     .select({ key: assetVariant.storageKey, size: assetVariant.size })

@@ -12,8 +12,16 @@ import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetRendition, assetVariant, project } from '../db/schema.ts';
+import { projectFiles } from '../http/projects-routes.ts';
 import { requeueStuckProxies, STUCK_PROXY_MS } from '../queues.ts';
-import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
+import {
+  animatedVariantKey,
+  officeKey,
+  originalKey,
+  proxyKey,
+  readAll,
+  variantKey,
+} from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { writeZip } from '../transfers/zip.ts';
 import { chooseVideoEncoder, forgetVideoEncoder, readVideoEncoder } from './encoder-setting.ts';
@@ -1141,6 +1149,77 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       const { row, variants } = await load(id);
       expect(row?.status).toBe('ready');
       expect(variants).toHaveLength(0);
+    });
+  });
+
+  describe('an asset deleted while it is processed', () => {
+    /** The storage of `deps`, deleting the asset right after the pass writes its first file. */
+    const deleting = (id: string) => {
+      const written: string[] = [];
+      const racing = {
+        ...storage,
+        write: async (...args: Parameters<typeof storage.write>) => {
+          await storage.write(...args);
+          written.push(args[0]);
+          if (written.length === 1) await db.delete(asset).where(eq(asset.id, id));
+        },
+      };
+      return { written, storage: racing };
+    };
+
+    it('removes the thumbnails and moving copies it wrote', async () => {
+      const id = await upload(await animatedGif(3), 'image/gif', 'gone.gif');
+      const racing = deleting(id);
+      expect(await processAsset({ ...deps, storage: racing.storage }, id)).toEqual({
+        skipped: 'gone',
+      });
+      expect(racing.written).toEqual([variantKey(id, '256'), animatedVariantKey(id, '256')]);
+      for (const key of racing.written) expect(await storage.size(key)).toBeNull();
+    });
+
+    it('removes the Office manifest it wrote, though the save found no row', async () => {
+      const id = await upload(Buffer.from('a,b\n1,2\n'), 'text/csv', 'gone.csv');
+      const racing = deleting(id);
+      expect(await processAsset({ ...deps, storage: racing.storage }, id)).toEqual({
+        skipped: 'gone',
+      });
+      expect(racing.written).toContain(officeKey(id, 'manifest.json'));
+      for (const key of racing.written) expect(await storage.size(key)).toBeNull();
+    });
+
+    it('makes a project deletion wait for a save in progress, and read its copies', async () => {
+      const id = await upload(await stillPng(), 'image/png', 'saving.png');
+      const key = variantKey(id, '256');
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let started = () => {};
+      const saved = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      // A pass of the job inside its `save`: the asset's row and copy written, not committed.
+      const saving = db.transaction(async (tx) => {
+        await tx.update(asset).set({ status: 'ready' }).where(eq(asset.id, id));
+        await tx
+          .insert(assetVariant)
+          .values({ assetId: id, size: '256', width: 1, height: 1, storageKey: key, bytes: 1 });
+        started();
+        await held;
+      });
+      await saved;
+      let files: string[] | null = null;
+      const reading = db
+        .transaction((tx) => projectFiles(tx, [projectId]))
+        .then((f) => {
+          files = f;
+        });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const early = files;
+      release();
+      await Promise.all([saving, reading]);
+      expect(early).toBeNull();
+      expect(files).toContain(key);
     });
   });
 });

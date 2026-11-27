@@ -17,7 +17,7 @@ import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { recipesOf, videoPlan } from './ladder.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
-import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
+import { convertOffice, OFFICE_CAPS, officeExtension, officeFiles, officeKey } from './office.ts';
 import {
   decodeCsv,
   type OfficeSheet,
@@ -206,8 +206,40 @@ export async function processAsset(
 ): Promise<ProcessResult> {
   const [row] = await deps.db.select().from(asset).where(eq(asset.id, assetId));
   if (!row) return { skipped: 'gone' as const };
-  // The programs it runs show the file's name on the Server page.
-  return withToolLabel(row.filename, () => processRow(deps, row, caps));
+  let result: ProcessResult;
+  try {
+    // The programs it runs show the file's name on the Server page.
+    result = await withToolLabel(row.filename, () => processRow(deps, row, caps));
+  } catch (err) {
+    if (await removeIfGone(deps, row)) return { skipped: 'gone' as const };
+    throw err;
+  }
+  if (await removeIfGone(deps, row)) return { skipped: 'gone' as const };
+  return result;
+}
+
+/**
+ * Every file a pass may write for `row`, whatever sizes it ended up at. The rows only come at
+ * the end (`save`): if the asset was deleted meanwhile, its deletion recorded none of these.
+ */
+const derivedKeys = (row: { id: string; filename: string }) => [
+  ...ThumbnailSize.options.map((size) => variantKey(row.id, size)),
+  ...animatedKeys(row.id),
+  waveformKey(row.id),
+  ...officeFiles([row]),
+];
+
+/**
+ * True when the asset was deleted while it was processed, after removing what the pass wrote:
+ * nothing else would ever find those files. A removal that fails is logged, not thrown.
+ */
+async function removeIfGone(deps: MediaDeps, row: typeof asset.$inferSelect) {
+  const [still] = await deps.db.select({ id: asset.id }).from(asset).where(eq(asset.id, row.id));
+  if (still) return false;
+  await deps.storage.remove(derivedKeys(row)).catch((err) => {
+    deps.log?.warn({ err, assetId: row.id }, 'files of a deleted asset not removed');
+  });
+  return true;
 }
 
 async function processRow(
