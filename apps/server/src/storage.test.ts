@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import fs, { readdirSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { ListMultipartUploadsCommand, S3Client } from '@aws-sdk/client-s3';
+import { FileStore } from '@tus/file-store';
 import { Upload } from '@tus/utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadConfig } from './config.ts';
 import { officeFiles } from './media/office.ts';
 import {
@@ -285,13 +286,21 @@ it('tells a missing file from a storage that does not answer (#794)', async () =
   await expect(unreachable.size('originals/abc')).rejects.toThrow();
 }, 30_000);
 
-it('local storage has made its folders when it returns, with nothing left to make them later', async () => {
+it('local storage has made its folders when it returns, with no mkdir left running', () => {
+  // The override in storage.ts names tus's private method: a rename must fail here, not silently.
+  expect(Object.hasOwn(FileStore.prototype, 'checkOrCreateDirectory')).toBe(true);
+  expect(typeof Reflect.get(FileStore.prototype, 'checkOrCreateDirectory')).toBe('function');
   const root = join(tempDir('storage-'), 'files');
-  const storage = localStorage(root);
+  // A mkdir started here and finished after a test removed its folder made it again (#1052).
+  const callback = vi.spyOn(fs, 'mkdir');
+  const promise = vi.spyOn(fs.promises, 'mkdir');
+  try {
+    expect(localStorage(root).uploads).toBeDefined();
+    expect(callback).not.toHaveBeenCalled();
+    expect(promise).not.toHaveBeenCalled();
+  } finally {
+    callback.mockRestore();
+    promise.mockRestore();
+  }
   expect(readdirSync(root)).toEqual(['originals']);
-  expect(storage.uploads).toBeDefined();
-  // A test's folder removed right away (testDeps in a short test, #1052): nothing makes it again.
-  rmSync(root, { recursive: true, force: true });
-  await new Promise((r) => setTimeout(r, 100));
-  expect(existsSync(root)).toBe(false);
 });

@@ -141,6 +141,9 @@ export function createStorage(config: Config): Storage {
 
 /** A FileStore for a directory made already: it skips the mkdir its constructor starts. */
 class MadeFileStore extends FileStore {}
+// A private method of tus (2.1.2, pinned): fail at start-up rather than run its mkdir again.
+if (typeof Reflect.get(FileStore.prototype, 'checkOrCreateDirectory') !== 'function')
+  throw new Error('@tus/file-store no longer has checkOrCreateDirectory: update MadeFileStore');
 Object.defineProperty(MadeFileStore.prototype, 'checkOrCreateDirectory', { value() {} });
 
 export function localStorage(root: string): Storage {
