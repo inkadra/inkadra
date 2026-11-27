@@ -20,6 +20,7 @@ import {
   invitation,
   notification,
   project,
+  projectExportSettings,
   projectMember,
   user,
 } from '../db/schema.ts';
@@ -826,6 +827,52 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
       () => call('root', 'DELETE', `/projects/${p.id}`),
     );
     expect([left.statusCode, deleted.statusCode]).toEqual([204, 204]);
+  });
+
+  it('changes a logo to a file of another project while its uploader leaves', async () => {
+    // The person's current logo of one project, and a file of theirs in another project with a
+    // lower id: their account deletion locks their files by id, the second one first.
+    const uploader = await signUp('grafica');
+    const mine = await create('grafica', 'Con logo suo');
+    const other = await create('grafica', 'Altro');
+    const [low, high] = [randomUUID(), randomUUID()].sort();
+    const file = (id: string, projectId: string) => ({
+      id,
+      projectId,
+      kind: 'image' as const,
+      mime: 'image/png',
+      filename: 'logo.png',
+      size: 10,
+      storageKey: `originals/${id}`,
+      status: 'ready' as const,
+      createdBy: uploader,
+    });
+    await db.insert(asset).values([file(high as string, mine.id), file(low as string, other.id)]);
+    await db.insert(projectExportSettings).values({ projectId: mine.id, logoAssetId: high });
+    // What DELETE /me does with their files: the lower id first, then the other.
+    let release = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    let held = () => {};
+    const holding = new Promise<void>((r) => {
+      held = r;
+    });
+    const deletion = db.transaction(async (tx) => {
+      await tx.execute(sql`select id from asset where id = ${low} for update`);
+      held();
+      await gate;
+      await tx.execute(sql`select id from asset where id = ${high} for update`);
+    });
+    await holding;
+    // The change locks its project's logo; the file of the other project is only read.
+    const change = call('grafica', 'PATCH', `/projects/${mine.id}/export-settings`, {
+      logoAssetId: low,
+    });
+    await untilWaiting(1, change);
+    release();
+    await deletion;
+    expect((await change).statusCode).toBe(400);
   });
 
   it('orders an account deletion with changes to its projects and to the person', async () => {

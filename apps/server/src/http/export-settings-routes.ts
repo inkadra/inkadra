@@ -116,9 +116,13 @@ async function load(db: Database, projectId: string, canEdit: boolean): Promise<
  * are the first bytes of the stored file, which the worker has read by the time it is ready.
  */
 async function checkLogo(tx: Tx, storage: Storage, projectId: string, assetId: string) {
-  const [file] = await tx.select().from(asset).where(eq(asset.id, assetId)).for('share');
-  if (!file || file.projectId !== projectId)
-    throw new HttpError('bad_request', 'The logo is not an asset of this project.');
+  // Only a file of this project, which the caller has locked already: another project's file
+  // is never locked from here, so this never waits on a deletion that holds it.
+  const [file] = await tx
+    .select()
+    .from(asset)
+    .where(and(eq(asset.id, assetId), eq(asset.projectId, projectId)));
+  if (!file) throw new HttpError('bad_request', 'The logo is not an asset of this project.');
   if (file.status !== 'ready')
     throw new HttpError('bad_request', 'The logo upload is not finished.');
   if (file.kind !== 'image' || !LOGO_TYPES.has(file.mime))

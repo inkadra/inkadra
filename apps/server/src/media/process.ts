@@ -248,7 +248,9 @@ function derivedKeys(assetId: string, row?: { kind: string; filename: string }) 
     ...ThumbnailSize.options.map((size) => variantKey(assetId, size)),
     ...animatedKeys(assetId),
     ...(!row || row.kind === 'audio' ? [waveformKey(assetId)] : []),
-    ...(!row || officeExtension(row.filename) ? officeDerivativeKeys(assetId) : []),
+    ...(!row || (row.kind === 'file' && officeExtension(row.filename))
+      ? officeDerivativeKeys(assetId)
+      : []),
   ];
 }
 
