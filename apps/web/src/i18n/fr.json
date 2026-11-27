@@ -4705,7 +4705,7 @@
       "empty": "Aucune scène trouvée dans ce fichier.",
       "read": "Impossible de lire le fichier.",
       "noText": "Ce PDF n’a pas de couche de texte",
-      "timeout": "Lecture interrompue : ce PDF prend trop de temps.",
+      "timeout": "Lecture interrompue : ce fichier prend trop de temps.",
       "tooManyPages": "Ce PDF dépasse la limite de 300 pages.",
       "tooManyScenes": "Ce scénario compte plus de 5 000 scènes."
     },

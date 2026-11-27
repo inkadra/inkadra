@@ -4705,7 +4705,7 @@
       "empty": "Keine Szenen in dieser Datei gefunden.",
       "read": "Die Datei konnte nicht gelesen werden.",
       "noText": "Dieses PDF hat keine Textebene",
-      "timeout": "Lesen abgebrochen: Dieses PDF dauert zu lange.",
+      "timeout": "Lesen abgebrochen: Diese Datei dauert zu lange.",
       "tooManyPages": "Dieses PDF überschreitet das Limit von 300 Seiten.",
       "tooManyScenes": "Das Drehbuch hat mehr als 5.000 Szenen."
     },

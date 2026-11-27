@@ -41,8 +41,15 @@ it('forwards ScriptError codes', async () => {
   const big = { name: 'x.fountain', size: 5 * 1024 * 1024 + 1 } as File;
   expect(await respond(big)).toEqual({ kind: 'screenplay', error: 'tooLarge' });
 });
+it('reports a file the browser cannot read as a read error', async () => {
+  const unreadable = { name: 'x.fountain', size: 1, text: () => Promise.reject(new Error()) };
+  expect(await respond(unreadable as unknown as File)).toEqual({
+    kind: 'screenplay',
+    error: 'read',
+  });
+});
 it('reports any other failure as invalid', async () => {
-  const broken = { name: 'x.fountain', size: 1, text: () => Promise.reject(new Error()) };
+  const broken = { name: 'x.fountain', size: 1, text: () => Promise.resolve(null) };
   expect(await respond(broken as unknown as File)).toEqual({
     kind: 'screenplay',
     error: 'invalid',

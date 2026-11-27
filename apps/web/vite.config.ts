@@ -48,6 +48,9 @@ export default defineConfig({
     },
   },
   test: { setupFiles: ['./src/test/no-network.ts'] },
+  // Module workers (`{ type: 'module' }`) split their lazy imports: the screenplay worker loads
+  // pdf.js only for a PDF, not for every Fountain, FDX or dropped .txt.
+  worker: { format: 'es' },
   build: {
     outDir: 'dist',
     sourcemap: true,

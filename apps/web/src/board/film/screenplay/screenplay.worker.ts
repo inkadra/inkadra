@@ -12,6 +12,10 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 self.fetch = async () => {
   throw new ScriptError('unsafe');
 };
+/** The browser could not read the file's bytes: the dialog says so, not "invalid". */
+const UNREADABLE = Symbol('read');
+const unreadable = () => Promise.reject(UNREADABLE);
+
 self.onmessage = async (event: MessageEvent<File>) => {
   try {
     const file = event.data;
@@ -19,7 +23,7 @@ self.onmessage = async (event: MessageEvent<File>) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       self.postMessage({
         kind: 'screenplay',
-        script: parseScreenplay(file.name, await file.text()),
+        script: parseScreenplay(file.name, await file.text().catch(unreadable)),
       });
       return;
     }
@@ -27,7 +31,7 @@ self.onmessage = async (event: MessageEvent<File>) => {
     const { GlobalWorkerOptions, getDocument } = await import('pdfjs-dist');
     GlobalWorkerOptions.workerSrc = workerUrl;
     const task = getDocument({
-      data: new Uint8Array(await file.arrayBuffer()),
+      data: new Uint8Array(await file.arrayBuffer().catch(unreadable)),
       useSystemFonts: true,
       disableFontFace: true,
       useWorkerFetch: false,
@@ -71,7 +75,7 @@ self.onmessage = async (event: MessageEvent<File>) => {
   } catch (error) {
     self.postMessage({
       kind: 'screenplay',
-      error: error instanceof ScriptError ? error.code : 'invalid',
+      error: error instanceof ScriptError ? error.code : error === UNREADABLE ? 'read' : 'invalid',
     });
   }
 };
