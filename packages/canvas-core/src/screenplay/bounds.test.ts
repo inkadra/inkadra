@@ -76,7 +76,14 @@ const page = (lines: string[]): PdfPage => ({
   items: lines.map((str, i) => ({ str, x: 108, y: 720 - i * 14, height: 12 })),
 });
 
-describe('parser worst cases', () => {
+/**
+ * A growth test runs the large input up to six times (a warm-up and five timed runs), each
+ * stopped by `HANG` only after it ends: the timeout covers them all on a slow runner, where
+ * vitest's 5 s default did not.
+ */
+const TIMEOUT = 6 * HANG;
+
+describe('parser worst cases', { timeout: TIMEOUT }, () => {
   it('reads many namespace prefixes in a deep document without copying them per element', () => {
     const nested = '<a>'.repeat(50) + '</a>'.repeat(50);
     // n prefixes and about n elements: copying the prefixes per element is n².
