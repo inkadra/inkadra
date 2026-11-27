@@ -31,7 +31,8 @@ export default function runTmpDir() {
     if (left.length)
       throw new Error(
         `Tests left temporary files behind: make them with tempDir() from test-tmpdir.ts, or ` +
-          `remove them in afterEach/afterAll (rmSync(dir, { recursive: true, force: true })):\n` +
+          `remove them in afterEach/afterAll (rmSync(dir, { recursive: true, force: true })); ` +
+          `work still writing after the last hook is waited for with settleBeforeRemoving():\n` +
           left.join('\n'),
       );
   };
@@ -41,8 +42,12 @@ export default function runTmpDir() {
 export function leftovers(run: string): string[] {
   return readdirSync(run).flatMap((entry) => {
     if (!entry.startsWith('file-')) return [`(outside a test file) ${entry}`];
-    const left = readdirSync(join(run, entry));
-    return left.length ? [`${entry.slice(5).replaceAll(SEP, '/')}: ${left.join(', ')}`] : [];
+    // The deepest paths name what wrote them (files/variants/… is a media job, say), up to 5.
+    const left = readdirSync(join(run, entry), { recursive: true }).map(String);
+    const deepest = left.filter((p) => !left.some((q) => q.startsWith(p + sep)));
+    return left.length
+      ? [`${entry.slice(5).replaceAll(SEP, '/')}: ${deepest.slice(0, 5).join(', ')}`]
+      : [];
   });
 }
 
@@ -56,6 +61,9 @@ export function fileTmpDir(testPath: string | undefined) {
 }
 
 const made: string[] = [];
+const pending: { work: () => Promise<unknown>; label: string }[] = [];
+// Well under the hook timeout, so the folders still go and the error says what hung.
+const SETTLE_MS = 10_000;
 
 /** A fresh temporary folder, removed after the test file's last hook (see test-setup.ts). */
 export function tempDir(prefix: string) {
@@ -64,7 +72,47 @@ export function tempDir(prefix: string) {
   return dir;
 }
 
-/** Removes the folders `tempDir` made for this test file. */
-export function removeTempDirs() {
-  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+/**
+ * Background work that may still write into a `tempDir` folder after the test file's hooks (the
+ * in-process jobs of testDeps): waited for before the folders go, or a late write makes one again.
+ */
+export function settleBeforeRemoving(work: () => Promise<unknown>, label: string) {
+  pending.push({ work, label });
+}
+
+/**
+ * Removes the folders `tempDir` made for this test file once their background work is done, or
+ * after SETTLE_MS; the folders go whatever happened, then a failure or a hang is reported.
+ */
+export async function removeTempDirs() {
+  const works = pending.splice(0);
+  const dirs = made.splice(0);
+  const waiting = new Set(works.map((w) => w.label));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const settled = Promise.allSettled(
+      works.map(({ work, label }) =>
+        Promise.resolve()
+          .then(work)
+          .finally(() => waiting.delete(label)),
+      ),
+    );
+    const timeout = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(() => resolve('timeout'), SETTLE_MS);
+      timer.unref?.();
+    });
+    const result = await Promise.race([settled, timeout]);
+    if (result === 'timeout')
+      throw new Error(
+        `Work registered with settleBeforeRemoving() did not finish in ${SETTLE_MS / 1000} s: ` +
+          [...waiting].join(', '),
+      );
+    const errors = result.flatMap((r) => (r.status === 'rejected' ? [r.reason] : []));
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1)
+      throw new AggregateError(errors, 'Work registered with settleBeforeRemoving() failed');
+  } finally {
+    clearTimeout(timer);
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  }
 }
