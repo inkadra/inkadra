@@ -176,7 +176,7 @@ async function dropUnusedLogo(tx: Tx, projectId: string, assetId: string): Promi
     )
     .limit(1);
   if (cover || pick || inDoc || inVersion) return [];
-  // Locked by the caller: a reprocess saving its copies now is read below or finds the row gone.
+  // Locked by the caller (share mode): a reprocess saving copies now is read below or waits.
   const [file] = await tx.select().from(asset).where(eq(asset.id, assetId));
   if (!file) return [];
   const variants = await tx
@@ -229,15 +229,17 @@ export function registerExportSettingsRoutes(app: FastifyInstance, deps: Deps) {
         .select({ logoAssetId: projectExportSettings.logoAssetId })
         .from(projectExportSettings)
         .where(eq(projectExportSettings.projectId, projectId));
-      // The new logo and the one it replaces, by id, as a deletion locks files (projectFiles).
+      // The new logo and the one it replaces, files of this project only, by id and in share
+      // mode, as a deletion locks files (projectFiles): a reprocess saving copies of the one
+      // replaced either commits first or finds it gone.
       const logos = [logoAssetId, before?.logoAssetId].filter((id): id is string => !!id);
       if (logos.length > 0)
         await tx
           .select({ id: asset.id })
           .from(asset)
-          .where(inArray(asset.id, logos))
+          .where(and(eq(asset.projectId, projectId), inArray(asset.id, logos)))
           .orderBy(asset.id)
-          .for('update');
+          .for('share');
       if (logoAssetId) await checkLogo(tx, deps.storage, projectId, logoAssetId);
       const now = new Date();
       await tx

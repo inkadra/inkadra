@@ -20,7 +20,7 @@ import {
   project,
 } from '../db/schema.ts';
 import { projectFiles } from '../http/projects-routes.ts';
-import { requeueStuckProxies, STUCK_PROXY_MS } from '../queues.ts';
+import { requeueStuckProxies, retried, STUCK_PROXY_MS } from '../queues.ts';
 import {
   animatedVariantKey,
   officeKey,
@@ -1207,7 +1207,12 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         });
         expect(racing.written).toEqual([variantKey(id, '256')]);
         expect(await storage.size(variantKey(id, '256'))).toBeGreaterThan(0);
-        expect(await recorded(id)).toContain(variantKey(id, '256'));
+        // A picture: no waveform, no Office pages among the keys.
+        expect((await recorded(id)).sort()).toEqual(
+          ['256', '512', '1024', '2048']
+            .flatMap((size) => [variantKey(id, size), animatedVariantKey(id, size)])
+            .sort(),
+        );
       } finally {
         await db.delete(instanceBackup).where(eq(instanceBackup.id, backup?.id ?? ''));
       }
@@ -1236,6 +1241,24 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       expect(await storage.size(variantKey(id, '512'))).toBeNull();
       expect(await storage.size(officeKey(id, 'manifest.json'))).toBeNull();
       expect(await recorded(id)).toEqual([]);
+    });
+
+    it('records nothing for a first attempt that finds its asset gone', async () => {
+      // The queued jobs of a project deleted before they started wrote nothing.
+      const id = randomUUID();
+      await storage.write(variantKey(id, '512'), Buffer.from('not ours'), 'image/webp');
+      expect(await processAsset(deps, id, undefined, false)).toEqual({ skipped: 'gone' });
+      expect(await storage.size(variantKey(id, '512'))).toBeGreaterThan(0);
+      expect(await recorded(id)).toEqual([]);
+      await storage.remove([variantKey(id, '512')]);
+    });
+
+    it('tells a retry or a stalled job from a first attempt', () => {
+      const job = { attemptsStarted: 1, attemptsMade: 0, stalledCounter: 0 };
+      expect(retried(job)).toBe(false);
+      expect(retried({ ...job, attemptsStarted: 2 })).toBe(true);
+      expect(retried({ ...job, attemptsMade: 1 })).toBe(true);
+      expect(retried({ ...job, stalledCounter: 1 })).toBe(true);
     });
 
     it('removes the Office manifest it wrote, though the save found no row', async () => {

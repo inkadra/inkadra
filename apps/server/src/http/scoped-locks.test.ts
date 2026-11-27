@@ -14,6 +14,7 @@ import { createDatabase, type Database, runMigrations } from '../db/client.ts';
 import {
   asset,
   auditEvent,
+  board,
   boardGrant,
   creationRequest,
   invitation,
@@ -802,19 +803,29 @@ describe.skipIf(!url)('scoped locks and the order per member (needs DATABASE_URL
     expect((await deletion).statusCode).toBe(204);
   });
 
-  it('deletes a project while its creator deletes their account', async () => {
-    for (let round = 0; round < 4; round++) {
-      const name = `creator${round}`;
-      // Made by them, owned by root: the account deletion clears its creator, root deletes it.
-      const p = await handedOver(name);
-      await fileIn(p.id, name);
-      const results = await Promise.all([
-        call('root', 'DELETE', `/projects/${p.id}`),
-        call(name, 'DELETE', '/me', { password: PASSWORD }),
-      ]);
-      noLockErrors(results.map((r) => r.statusCode));
-      expect(results.map((r) => r.statusCode)).toEqual([204, 204]);
-    }
+  it('deletes a project while an editor who made a board and a file in it leaves', async () => {
+    // Root's project; the editor neither made nor owns it, but made a board and a file in it.
+    const editor = await signUp('redattrice');
+    const p = await create('root', 'Di root, con altri');
+    expect(
+      (await call('root', 'PUT', `/projects/${p.id}/members/${editor}`, { role: 'editor' }))
+        .statusCode,
+    ).toBe(200);
+    await db.insert(board).values({
+      projectId: p.id,
+      parentBoardId: p.rootBoardId,
+      title: 'Sua',
+      position: 'a1',
+      createdBy: editor,
+    });
+    await fileIn(p.id, 'redattrice');
+    // The account deletion holds the editor's files and stops at its audit event, before it
+    // clears `created_by` on their board; then the project deletion runs until it waits.
+    const [left, deleted] = await inOrder(
+      () => deleteMe('redattrice'),
+      () => call('root', 'DELETE', `/projects/${p.id}`),
+    );
+    expect([left.statusCode, deleted.statusCode]).toEqual([204, 204]);
   });
 
   it('orders an account deletion with changes to its projects and to the person', async () => {

@@ -263,9 +263,7 @@ export async function endSandbox(
     const [account] = await tx
       .select({ id: user.id })
       .from(user)
-      .where(and(eq(user.id, userId), sandboxes))
-      // The person's row first, then their projects and files (projectFiles), as locks.ts says.
-      .for('no key update');
+      .where(and(eq(user.id, userId), sandboxes));
     if (!account) return [];
     const own = await tx
       .select({ id: projectMember.projectId })

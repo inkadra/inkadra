@@ -154,10 +154,13 @@ it('routes Office documents to the office queue, read only by workers with Libre
   workers = await start('true', true);
   const convert = harness.processors.get('office');
   if (!convert) throw new Error('Office worker missing');
-  await convert({ name: 'convert', data: { assetId: 'a1' } } as never);
+  // A retry: the pass cleans what an earlier attempt may have written if the file is gone.
+  await convert({ name: 'convert', data: { assetId: 'a1' }, attemptsMade: 1 } as never);
   expect(vi.mocked(processAsset)).toHaveBeenLastCalledWith(
     expect.not.objectContaining({ enqueueOffice: expect.anything() }),
     'a1',
+    undefined,
+    true,
   );
   await workers.close();
 });

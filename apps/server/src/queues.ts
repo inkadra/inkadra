@@ -134,6 +134,9 @@ export type JobPayloads = {
 
 const ATTEMPTS = { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } } as const;
 const KEEP = { removeOnComplete: { age: 3600, count: 1000 }, removeOnFail: { age: 7 * 86400 } };
+/** Whether an earlier attempt of `job` may have run: a retry, or a job taken back after a stall. */
+export const retried = (job: Pick<Job, 'attemptsStarted' | 'attemptsMade' | 'stalledCounter'>) =>
+  job.attemptsStarted > 1 || job.attemptsMade > 0 || job.stalledCounter > 0;
 
 export function createRedis(url: string) {
   return new IORedis(url, { maxRetriesPerRequest: null, lazyConnect: true });
@@ -547,7 +550,12 @@ export async function startWorkers(
     async (job) => {
       if (job.name !== 'process') throw new Error(`Unknown job ${job.name}`);
       const { assetId } = job.data as JobPayloads['media:process'];
-      return processAsset({ ...deps, log, enqueueProxy, enqueueOffice }, assetId);
+      return processAsset(
+        { ...deps, log, enqueueProxy, enqueueOffice },
+        assetId,
+        undefined,
+        retried(job),
+      );
     },
     { connection, concurrency: 2, prefix: opts.prefix },
   );
@@ -560,7 +568,7 @@ export async function startWorkers(
         async (job) => {
           if (job.name !== 'convert') throw new Error(`Unknown job ${job.name}`);
           const { assetId } = job.data as JobPayloads['office:convert'];
-          return processAsset({ ...deps, log, enqueueProxy }, assetId);
+          return processAsset({ ...deps, log, enqueueProxy }, assetId, undefined, retried(job));
         },
         { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
       )
@@ -1103,6 +1111,9 @@ export function inlineJobs(
         processAsset(
           { ...deps, log, enqueueProxy: (id) => self.makeProxy?.(id) ?? Promise.resolve() },
           assetId,
+          undefined,
+          // In this process a pass runs once: nothing earlier can have written files.
+          false,
         ).catch(async (err) => {
           await markFailed(deps.db, assetId);
           recordProblem(
