@@ -1097,6 +1097,8 @@ export function inlineJobs(
   // Regenerations queued here and not started yet, and stops so far (decision 0128).
   let regenerations = 0;
   let cancelled = 0;
+  // Backfill steps waiting for their timer, with what runs them.
+  const backfills = new Map<ReturnType<typeof setTimeout>, () => void>();
   const self: Jobs & { idle(): Promise<void> } = {
     async processAsset(assetId) {
       track(
@@ -1147,11 +1149,14 @@ export function inlineJobs(
       track(run);
     },
     async runVideoBackfill(delayMs = 0) {
-      const timer = setTimeout(() => {
+      const run = () => {
+        backfills.delete(timer);
         const step = currentRecipe(deps).then((recipe) => stepBackfill(deps.db, self, recipe));
         track(step.then((again) => (again ? self.runVideoBackfill?.(60_000) : undefined)));
-      }, delayMs);
+      };
+      const timer = setTimeout(run, delayMs);
       timer.unref?.();
+      backfills.set(timer, run);
     },
     async regenerationsWaiting() {
       return regenerations;
@@ -1190,8 +1195,15 @@ export function inlineJobs(
           async scheduleBackups() {},
         }
       : {}),
+    // Every job done, a backfill step still waiting for its timer included: run now, not waited for.
     async idle() {
-      while (running.size > 0) await Promise.all(running);
+      while (running.size > 0 || backfills.size > 0) {
+        for (const [timer, run] of backfills) {
+          clearTimeout(timer);
+          run();
+        }
+        await Promise.all(running);
+      }
     },
   };
   return self;

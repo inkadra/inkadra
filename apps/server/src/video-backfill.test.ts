@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { BoardNotice } from '@inkadra/doc-schema';
 import { sql } from 'drizzle-orm';
+import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { noticeAssetBoards } from './board-notices.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
@@ -15,6 +16,9 @@ import {
 } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { recipesFor } from './media/ladder.ts';
+import { inlineJobs } from './queues.ts';
+import { localStorage } from './storage.ts';
+import { tempDir } from './test-tmpdir.ts';
 import {
   BACKFILL_BLOCK,
   countNeeding,
@@ -148,5 +152,19 @@ describe.skipIf(!url)('video backfill (needs DATABASE_URL)', () => {
     const sent: Array<[string, BoardNotice]> = [];
     await noticeAssetBoards(db, { notify: (b, n) => sent.push([b, n]), recheckAccess() {} }, id);
     expect(sent).toEqual([[shows, { type: 'asset', assetId: id }]]);
+  });
+
+  it('runs a backfill step still waiting for its timer when the in-process jobs go idle', async () => {
+    await db.execute(sql`delete from asset`);
+    const root = tempDir('backfill-');
+    const jobs = inlineJobs(
+      { db, storage: localStorage(root), tmpDir: root, heic: false },
+      pino({ level: 'silent' }),
+    );
+    // Started with nothing to copy: its first step marks it done, but only in a minute.
+    await startBackfill(db, { ...jobs, runVideoBackfill: async () => {} }, 'missing', RECIPE);
+    await jobs.runVideoBackfill?.(60_000);
+    await jobs.idle();
+    expect((await readBackfill(db, jobs))?.status).toBe('done');
   });
 });
