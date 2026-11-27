@@ -1,4 +1,3 @@
-import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Logger } from 'pino';
 import { createDatabase, type Database } from './db/client.ts';
@@ -13,11 +12,6 @@ import { settleBeforeRemoving, tempDir } from './test-tmpdir.ts';
 export function testDeps(db: Database, log: Logger) {
   const root = tempDir('inkadra-test-');
   const storage = localStorage(join(root, 'files'));
-  // localStorage and its upload store make their folders without waiting (originals/, the root):
-  // a test file shorter than that saw them made again after its folder went (CI, #1052).
-  // shortcut: queued after theirs, so once it is done theirs have started (the pool runs in
-  // order) and an mkdir takes microseconds; a storage `ready` would be exact if this ever fails.
-  const made = mkdir(join(root, 'files', 'originals'), { recursive: true });
   const jobs = inlineJobs({ db, storage, tmpDir: join(root, 'tmp'), heic: true }, log, {
     dataDir: root,
     uploadMaxSize: 0,
@@ -27,10 +21,7 @@ export function testDeps(db: Database, log: Logger) {
     backupRemote: null,
     databaseUrl: process.env.DATABASE_URL ?? '',
   });
-  settleBeforeRemoving(async () => {
-    await made;
-    await jobs.idle();
-  }, `the jobs of testDeps() in ${root}`);
+  settleBeforeRemoving(() => jobs.idle(), `the jobs of testDeps() in ${root}`);
   return { root, storage, jobs };
 }
 

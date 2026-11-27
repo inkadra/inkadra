@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, mkdirSync } from 'node:fs';
 import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import type { Readable } from 'node:stream';
@@ -139,6 +139,10 @@ export function createStorage(config: Config): Storage {
     : localStorage(join(config.DATA_DIR, 'files'));
 }
 
+/** A FileStore for a directory made already: it skips the mkdir its constructor starts. */
+class MadeFileStore extends FileStore {}
+Object.defineProperty(MadeFileStore.prototype, 'checkOrCreateDirectory', { value() {} });
+
 export function localStorage(root: string): Storage {
   const base = resolve(root);
   const path = (key: string) => {
@@ -147,12 +151,13 @@ export function localStorage(root: string): Storage {
     if (!full.startsWith(base + sep)) throw new Error(`Invalid storage key ${key}`);
     return full;
   };
-  // FileStore only creates its own directory: the originals/ prefix must exist.
-  const uploads = new FileStore({
+  // The folders exist once this returns: FileStore's own mkdir runs unawaited and throws
+  // uncaught on failure, and one finishing late made a folder removed meanwhile again (#1052).
+  mkdirSync(join(base, 'originals'), { recursive: true });
+  const uploads = new MadeFileStore({
     directory: base,
     expirationPeriodInMilliseconds: UPLOAD_EXPIRY_MS,
   });
-  const ready = mkdir(join(base, 'originals'), { recursive: true });
 
   return {
     uploads,
@@ -166,7 +171,6 @@ export function localStorage(root: string): Storage {
       }
     },
     async read(key, range) {
-      await ready;
       return createReadStream(path(key), range);
     },
     async write(key, body) {
