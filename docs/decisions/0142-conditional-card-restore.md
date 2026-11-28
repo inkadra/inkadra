@@ -1,9 +1,9 @@
 # 0142 · Cards put back only if they are absent
 
-Proposed, 2026-11-28: a draft until the maintainer approves it. Builds on [0101](0101-strict-card-check.md) (how a copy is read),
-[0120](0120-board-writers.md) (who wrote under which client id),
-[0139](0139-collaborative-update-checks.md) (the checks of a client update) and
-[0141](0141-scene-data-follows-moved-scenes.md) (card data that moved).
+Proposed, 2026-11-28: a draft until the maintainer approves it. Builds on
+[0101](0101-strict-card-check.md) (how a copy is read), [0120](0120-board-writers.md) (who wrote
+under which client id), [0139](0139-collaborative-update-checks.md) (the checks of a client update)
+and [0141](0141-scene-data-follows-moved-scenes.md) (card data that moved).
 
 ## Context
 
@@ -35,10 +35,13 @@ it collects garbage. One person's card is lost without anyone being told.
    card is never written against a stale value or into a column that is gone. So, within one
    collab process, two requests for the same cards, or a request and any update that process
    already has, never both put them back: the second reads `present`. Requests for one board run
-   one at a time, in the order they came. The write is applied as an edit of that connection and goes to every client of the
-   board as an ordinary update; the answer goes to the requesting connection alone, after the
-   update was sent, though a client must not rely on that order.
-3. **Answers** (`restoreCardsResult`, `readRestoreCardsResult` in doc-schema):
+   one at a time, in the order they came, except that a request still waiting on the database
+   after 10 s is answered `busy` and the next one proceeds: the abandoned one can no longer write.
+   The write is applied as an edit of that connection and goes to every client of the board as an
+   ordinary update; the answer goes to the requesting connection alone, after the update was
+   sent, though a client must not rely on that order.
+3. **Answers** (`restoreCardsResult`, `readRestoreCardsResult` in doc-schema); a request whose
+   `requestId` cannot be read gets none:
    - `restored`, with `ids` (the cards not inside another card of the copy), `outside` (those put
      on the canvas at `at`) and `own` (every card written, each under its own id);
    - `present`, with the cards of the copy already on the board: nothing was written;
@@ -48,12 +51,12 @@ it collects garbage. One person's card is lost without anyone being told.
      1 MiB of text) or `busy` (more than 30 requests a minute by one person on one board, the
      process is handing its boards over, a request still waiting on the database after 10 s, which
      is then never written, or an error: try again later).
-   A request whose `requestId` cannot be read gets no answer.
 4. **A resend is safe.** A client that never got the answer sends the same request again, with the
    same `requestId` and the same copy and point. For 15 minutes, and for the last 100 requests of a
    board, the server answers a `restored` again with `repeat: true`, writing nothing. The same
-   `requestId` with another copy is another request, checked as new. After a restart of the process it reads
-   `present` instead: the client then keeps its copy, possibly redundant, never lost.
+   `requestId` with another copy is another request, checked as new. After a restart of the
+   process it reads `present` instead: the client then keeps its copy, possibly redundant, never
+   lost.
 5. **Attribution.** The restore's client id is recorded as the requester's (0120), not the
    server's, so naming who wrote a card names the person who put it back.
 6. **Feature detection.** Servers that answer advertise `conditional-restore`
