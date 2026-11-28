@@ -1,6 +1,6 @@
 # 0142 · Cards put back only if they are absent
 
-Accepted, 2026-11-28. Builds on [0101](0101-strict-card-check.md) (how a copy is read),
+Proposed, 2026-11-28: a draft until the maintainer approves it. Builds on [0101](0101-strict-card-check.md) (how a copy is read),
 [0120](0120-board-writers.md) (who wrote under which client id),
 [0139](0139-collaborative-update-checks.md) (the checks of a client update) and
 [0141](0141-scene-data-follows-moved-scenes.md) (card data that moved).
@@ -27,11 +27,15 @@ it collects garbage. One person's card is lost without anyone being told.
    rights (role, schema of 0102, a frozen or full board of 0130, a process handing its boards over
    of 0138), refuses cards whose data moved to another board (0141), and writes the cards in a
    scratch copy of the board with `restoreElements` (canvas-core) under a client id nobody wrote
-   under. The difference gets the checks a client update gets (0139, the caps, task assignments).
-   From the last check to the write there is no await: every other update of the board is wholly
-   before the check or wholly after the write. So two requests for the same cards, or a request
-   and any update already on the server, can never both put them back: the second reads
-   `present`. The write is applied as an edit of that connection and goes to every client of the
+   under. What that write adds (its own items, not the board's past deletions) gets the checks a
+   client update gets (0139, the caps, task assignments). From the last check to the write there
+   is no await: every other update of the board is wholly before the check or wholly after the
+   write. A card key set again during the awaits, or a column or scene the cards go into removed
+   meanwhile, makes the server build the restore again (at most three times, then `busy`), so a
+   card is never written against a stale value or into a column that is gone. So, within one
+   collab process, two requests for the same cards, or a request and any update that process
+   already has, never both put them back: the second reads `present`. Requests for one board run
+   one at a time, in the order they came. The write is applied as an edit of that connection and goes to every client of the
    board as an ordinary update; the answer goes to the requesting connection alone, after the
    update was sent, though a client must not rely on that order.
 3. **Answers** (`restoreCardsResult`, `readRestoreCardsResult` in doc-schema):
@@ -41,12 +45,14 @@ it collects garbage. One person's card is lost without anyone being told.
    - `refused`, with `role`, `schema`, `frozen`, `full`, `moved`, `invalid` (a malformed request,
      or a card that does not validate: a paste leaves such a card out, a restore would lose it),
      `newer` (content of a newer schema than the server's), `tooLarge` (more than 500 cards or
-     1 MiB of text) or `busy` (more than 30 requests a minute on one connection, the process is
-     handing its boards over, or an error: try again later).
+     1 MiB of text) or `busy` (more than 30 requests a minute by one person on one board, the
+     process is handing its boards over, a request still waiting on the database after 10 s, which
+     is then never written, or an error: try again later).
    A request whose `requestId` cannot be read gets no answer.
 4. **A resend is safe.** A client that never got the answer sends the same request again, with the
-   same `requestId`. For 15 minutes, and for the last 100 requests of a board, the server answers a
-   `restored` again with `repeat: true`, writing nothing. After a restart of the process it reads
+   same `requestId` and the same copy and point. For 15 minutes, and for the last 100 requests of a
+   board, the server answers a `restored` again with `repeat: true`, writing nothing. The same
+   `requestId` with another copy is another request, checked as new. After a restart of the process it reads
    `present` instead: the client then keeps its copy, possibly redundant, never lost.
 5. **Attribution.** The restore's client id is recorded as the requester's (0120), not the
    server's, so naming who wrote a card names the person who put it back.
@@ -71,6 +77,17 @@ before a write it has not received. It needs the same card deleted by two people
 by both, one of them offline or in flight. The upgrade is for the server to keep the losing value
 of a concurrent re-set of a card key; that needs its own decision (where the kept card lives, how
 clients show it, a hook on every update).
+
+**A takeover between two collab processes** (0138): for a moment both can hold the same board,
+each with its own copy, until the old one stops and its edits are merged into the new one. A
+request on each can then be answered `restored` by both, and when the copies merge Yjs keeps one
+value per key. The window is the takeover itself.
+
+**A rolling upgrade of a split deployment**: the web role can advertise the capability before the
+collab process that holds the board runs the version that answers. That process ignores the
+request; the client's path for a request without an answer (it keeps the copy, marks it
+unconfirmed and sends the same request again at the next sync of the board) covers it until the
+collab process is upgraded.
 
 The web app's Undo of a delete does not use the request yet: it is online, and its window is a
 few milliseconds.

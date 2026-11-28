@@ -1,6 +1,13 @@
+import { createHash } from 'node:crypto';
 import type { Connection, Document } from '@hocuspocus/server';
-import { type ClipboardData, RestoreRefusedError, restoreElements } from '@inkadra/canvas-core';
 import {
+  type ClipboardData,
+  RestoreRefusedError,
+  type RestoreResult,
+  restoreElements,
+} from '@inkadra/canvas-core';
+import {
+  CONTAINER_TYPES,
   type RestoreCardsRequest,
   type RestoreCardsResult,
   type RestoreRefusal,
@@ -14,26 +21,29 @@ import type { Actor } from './access.ts';
 import { noteWriter, type PendingWriters } from './board-writers.ts';
 import type { Database } from './db/client.ts';
 import { elementMove } from './db/schema.ts';
-import { validateTaskUpdate } from './tasks.ts';
+import { AssignmentRefusedError, validateTaskUpdate } from './tasks.ts';
 import { stillWritable } from './update-shape.ts';
 
 /**
  * Conditional restores (decision 0142): a client asks, on a board's connection, to put cards
  * back only if none of them is on the board. Hocuspocus handles a connection's messages in order,
  * so every update the client sent before the request is on the board when it is read. The cards
- * are written in a scratch copy of the board under a client id of their own, and the difference
- * goes through the checks a client's update gets; then, with no await between the last check and
- * the write, it is applied as an edit of that connection. Two requests, or a request and any
- * update the server already has, can never both put the same card back.
+ * are written in a scratch copy of the board under a client id of their own, and what that write
+ * adds goes through the checks a client's update gets; then, with no await between the last
+ * check and the write, it is applied as an edit of that connection. Within one collab process,
+ * two requests, or a request and any update the process already has, never both put the same
+ * card back.
  */
 
-/** Requests one connection may send in a minute; more are answered `busy`. */
+/** Requests one person may send for one board in a minute; more are answered `busy`. */
 const REQUESTS_PER_MINUTE = 30;
 /** How long, and for how many requests per board, a `restored` answer is kept for a resend. */
 const ANSWER_KEEP_MS = 15 * 60_000;
 const ANSWERS_PER_BOARD = 100;
-/** A card key set again during the checks makes the copy stale: built again this often at most. */
+/** A card key or a column set again during the checks makes the copy stale: built again this often at most. */
 const ATTEMPTS = 3;
+/** A restore still waiting on the database after this long is answered `busy` and never written. */
+const RESTORE_TIMEOUT_MS = 10_000;
 
 interface RestoreContext {
   actor: Actor;
@@ -55,12 +65,15 @@ export interface CardRestoreDeps {
   /** The server's own address, as a paste on its boards is given it (decision 0101). */
   instance?: string;
   now?: () => number;
+  /** Tests shorten it. */
+  timeoutMs?: number;
 }
 
 type Built =
   | { answer: RestoreCardsResult }
   | {
-      result: { ids: string[]; outside: string[]; own: string[] };
+      result: RestoreResult;
+      /** What the restore adds to the board: its own items, without the board's deletions. */
       update: Uint8Array;
       client: number;
       clock: number;
@@ -76,6 +89,12 @@ function holderOf(document: Y.Doc, id: string): Y.ID | null {
 const sameId = (a: Y.ID | null, b: Y.ID | null) =>
   a === b || (!!a && !!b && a.client === b.client && a.clock === b.clock);
 
+/** Whether a card of the board is a live column or scene. */
+function liveContainer(document: Y.Doc, id: string) {
+  const map = roots(document).elements.get(id);
+  return (CONTAINER_TYPES as readonly unknown[]).includes(map?.get('type'));
+}
+
 /** Whether any of the cards' data moved off the board (decision 0141). */
 async function movedAny(db: Database, boardId: string, ids: string[]) {
   const [row] = await db
@@ -86,12 +105,20 @@ async function movedAny(db: Database, boardId: string, ids: string[]) {
   return !!row;
 }
 
+/** A request is the same one sent again only with the same copy and point. */
+const fingerprint = (request: RestoreCardsRequest) =>
+  createHash('sha256')
+    .update(JSON.stringify([request.clipboard, request.at]))
+    .digest('base64url');
+
 export function createCardRestore(deps: CardRestoreDeps) {
   const now = deps.now ?? Date.now;
+  const timeoutMs = deps.timeoutMs ?? RESTORE_TIMEOUT_MS;
   /** One restore at a time per board, in the order the requests came. */
   const chains = new WeakMap<Y.Doc, Promise<void>>();
   const answers = new WeakMap<Y.Doc, Map<string, { answer: RestoreCardsResult; at: number }>>();
-  const rates = new WeakMap<object, { since: number; count: number }>();
+  /** Requests per person and board, whatever connection they come on. */
+  const rates = new WeakMap<Y.Doc, Map<string, { since: number; count: number }>>();
 
   const refused = (requestId: string, reason: RestoreRefusal): RestoreCardsResult => ({
     type: 'restoreCardsResult',
@@ -100,11 +127,13 @@ export function createCardRestore(deps: CardRestoreDeps) {
     reason,
   });
 
-  function busy(connection: object) {
+  function busy(document: Y.Doc, actorId: string) {
     const at = now();
-    const rate = rates.get(connection);
+    const byActor = rates.get(document) ?? new Map();
+    rates.set(document, byActor);
+    const rate = byActor.get(actorId);
     if (!rate || at - rate.since >= 60_000) {
-      rates.set(connection, { since: at, count: 1 });
+      byActor.set(actorId, { since: at, count: 1 });
       return false;
     }
     rate.count += 1;
@@ -143,7 +172,11 @@ export function createCardRestore(deps: CardRestoreDeps) {
     }
     try {
       Y.applyUpdate(scratch, Y.encodeStateAsUpdate(document));
-      let result: ReturnType<typeof restoreElements>;
+      // Only what the restore writes: a diff of the whole copy would carry every deletion the
+      // board ever had.
+      const written: Uint8Array[] = [];
+      scratch.on('update', (update: Uint8Array) => written.push(update));
+      let result: RestoreResult;
       try {
         result = restoreElements(scratch, request.clipboard as ClipboardData, request.at, {
           instance: deps.instance,
@@ -160,7 +193,7 @@ export function createCardRestore(deps: CardRestoreDeps) {
       }
       return {
         result,
-        update: Y.encodeStateAsUpdate(scratch, Y.encodeStateVector(document)),
+        update: written.length === 1 ? (written[0] as Uint8Array) : Y.mergeUpdates(written),
         client: scratch.clientID,
         clock: Y.getState(scratch.store, scratch.clientID) - 1,
         holders: new Map(result.own.map((id) => [id, holderOf(document, id)])),
@@ -174,22 +207,25 @@ export function createCardRestore(deps: CardRestoreDeps) {
     connection: Connection,
     document: Document,
     request: RestoreCardsRequest,
+    /** True once the request was answered `busy` for taking too long: it must not write. */
+    late: () => boolean,
   ): Promise<RestoreCardsResult> {
     const context = connection.context as RestoreContext;
     const { requestId } = request;
-    const key = `${context.actor.id}:${requestId}`;
+    const key = `${context.actor.id}:${requestId}:${fingerprint(request)}`;
     const known = remembered(document, key);
     if (known) return { ...known, repeat: true } as RestoreCardsResult;
     /** Why the connection may not write now; read again after every await. */
     const why = () =>
-      stillWritable({
+      late() ||
+      !stillWritable({
         readOnly: false,
         connected: document.hasConnection(connection),
         socketState: connection.webSocket.readyState,
         documentDestroyed: document.isDestroyed,
       })
-        ? deps.refusal(connection, document)
-        : 'busy';
+        ? 'busy'
+        : deps.refusal(connection, document);
     let checkedMoves = false;
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const early = why();
@@ -197,9 +233,11 @@ export function createCardRestore(deps: CardRestoreDeps) {
       const built = build(document, request);
       if ('answer' in built) return built.answer;
       if (!checkedMoves) {
-        // shortcut: a move of the cards' data that commits after this read is not seen. Data
-        // moves while its cards are still on the board (0141), when this reads `present`; take
-        // the board row as `movedTo` does if a move of absent cards ever matters.
+        // shortcut: a move of the cards' data that commits after this read is not seen. The web
+        // app and the mobile app move data while its cards are still on the board (0141), when
+        // this reads `present`; an API client that calls `POST /element-data/move` for cards
+        // absent from the board during this window is not. Take the board row as `movedTo` does
+        // if that ever matters.
         if (await movedAny(deps.db, context.boardId, built.result.own))
           return refused(requestId, 'moved');
         checkedMoves = true;
@@ -212,21 +250,24 @@ export function createCardRestore(deps: CardRestoreDeps) {
           document,
           built.update,
         );
-      } catch {
-        return refused(requestId, 'role');
+      } catch (err) {
+        if (err instanceof AssignmentRefusedError) return refused(requestId, 'role');
+        throw err;
       }
       // From here to the write there is no await: no other update reaches the board in between.
-      const late = why();
-      if (late) return refused(requestId, late);
+      const refusal = why();
+      if (refusal) return refused(requestId, refusal);
       const { elements } = roots(document);
       const present = built.result.own.filter((id) => elements.has(id));
       if (present.length)
         return { type: 'restoreCardsResult', requestId, outcome: 'present', present };
-      // Set and deleted again during the awaits: the copy would settle against a stale value.
+      // A key set and deleted again, or a column or scene the cards go into removed, during the
+      // awaits: the copy would settle against a stale value, or hide the cards. Built again.
       if (
         built.result.own.some(
           (id) => !sameId(holderOf(document, id), built.holders.get(id) ?? null),
-        )
+        ) ||
+        built.result.parents.some((id) => !liveContainer(document, id))
       )
         continue;
       const admitted = deps.admit(document, built.update);
@@ -237,11 +278,14 @@ export function createCardRestore(deps: CardRestoreDeps) {
       Y.applyUpdate(document, built.update, { source: 'connection', connection });
       // The update goes out before the answer, which clients must still not rely on.
       document.flush();
+      const { ids, outside, own } = built.result;
       const answer: RestoreCardsResult = {
         type: 'restoreCardsResult',
         requestId,
         outcome: 'restored',
-        ...built.result,
+        ids,
+        outside,
+        own,
       };
       remember(document, key, answer);
       return answer;
@@ -256,7 +300,8 @@ export function createCardRestore(deps: CardRestoreDeps) {
   function handle(connection: Connection, document: Document, payload: string) {
     const read = readRestoreCardsRequest(payload);
     if (!read) return null;
-    const boardId = (connection.context as Partial<RestoreContext> | undefined)?.boardId;
+    const context = connection.context as Partial<RestoreContext> | undefined;
+    const boardId = context?.boardId;
     const send = (answer: RestoreCardsResult) => {
       try {
         connection.sendStateless(JSON.stringify(answer));
@@ -269,16 +314,33 @@ export function createCardRestore(deps: CardRestoreDeps) {
       return Promise.resolve();
     }
     const { requestId } = read.request;
-    if (busy(connection)) {
+    if (busy(document, context?.actor?.id ?? '')) {
       send(refused(requestId, 'busy'));
       return Promise.resolve();
     }
-    const run = (chains.get(document) ?? Promise.resolve())
-      .then(() => restore(connection, document, read.request))
-      .then(send, (err: unknown) => {
-        deps.log.error({ err, boardId }, 'card restore failed');
-        send(refused(requestId, 'busy'));
+    const run = (chains.get(document) ?? Promise.resolve()).then(() => {
+      // A request stuck on the database is answered `busy` and gives the board to the next one;
+      // it checks `late` before writing, so it never writes after that answer.
+      let expired = false;
+      let timer: NodeJS.Timeout | undefined;
+      const timeout = new Promise<RestoreCardsResult>((resolve) => {
+        timer = setTimeout(() => {
+          expired = true;
+          resolve(refused(requestId, 'busy'));
+        }, timeoutMs);
       });
+      const work = restore(connection, document, read.request, () => expired);
+      // Its own failure after the timeout is logged, never left unhandled.
+      work.catch((err: unknown) => {
+        if (expired) deps.log.error({ err, boardId }, 'card restore failed after its timeout');
+      });
+      return Promise.race([work, timeout])
+        .finally(() => clearTimeout(timer))
+        .then(send, (err: unknown) => {
+          deps.log.error({ err, boardId }, 'card restore failed');
+          send(refused(requestId, 'busy'));
+        });
+    });
     chains.set(document, run);
     return run;
   }

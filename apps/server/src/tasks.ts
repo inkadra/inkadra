@@ -430,6 +430,9 @@ function assignsOnCopy(document: Y.Doc, update: Uint8Array) {
   }
 }
 
+/** An update assigns a task its sender may not assign (validateTaskUpdate). */
+export class AssignmentRefusedError extends Error {}
+
 /**
  * Refuse a prospective CRDT update only for what its sender may not do. It has to stay that way:
  * a refused update closes the document, and the client resends it forever with all its other edits.
@@ -448,10 +451,10 @@ export async function validateTaskUpdate(
   if (writes === 'full') assigns = assignsOnCopy(document, update);
   else for (const [item, now] of writes) if (assignsTask(taskValues(item), now)) assigns = true;
   if (!assigns) return;
-  if (!actorId) throw new Error('Guests cannot assign tasks');
+  if (!actorId) throw new AssignmentRefusedError('Guests cannot assign tasks');
   const access = await boardRole(db, { id: actorId }, boardId);
   if (!access?.role || !atLeast(access.role, 'editor'))
-    throw new Error('Assignment requires editor access');
+    throw new AssignmentRefusedError('Assignment requires editor access');
 }
 
 /**

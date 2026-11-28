@@ -1026,12 +1026,14 @@ export class RestoreRefusedError extends Error {
 
 /**
  * The cards of the copy that are not inside another card of it, those put on the canvas because
- * their column or scene is not on the board, and every card written, each under its own id.
+ * their column or scene is not on the board, every card written (each under its own id), and the
+ * columns and scenes of the board, not in the copy, that cards were put back into.
  */
 export interface RestoreResult {
   ids: string[];
   outside: string[];
   own: string[];
+  parents: string[];
 }
 
 /** Space between cards put side by side on the canvas. */
@@ -1111,6 +1113,13 @@ export function restoreElements(
     ids: clips.filter((c) => !(c.parent && copied.has(c.parent))).map((c) => c.id),
     outside: outside.map((c) => c.id),
     own: clips.map((c) => c.id),
+    parents: [
+      ...new Set(
+        clips.flatMap((c) =>
+          c.parent && containers.has(c.parent) && !copied.has(c.parent) ? [c.parent] : [],
+        ),
+      ),
+    ],
   };
 }
 

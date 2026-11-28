@@ -121,14 +121,22 @@ export function readRestoreCardsRequest(
   | null {
   // A cheap look first: every other stateless message goes through here.
   if (!payload.includes('"restoreCards"')) return null;
+  const uuid = (id: unknown) => (z.uuid().safeParse(id).success ? (id as string) : null);
+  // Too long to parse: its id read from the text, if it is there.
+  if (payload.length > RESTORE_CARDS_MAX_LENGTH)
+    return {
+      refused: 'tooLarge',
+      requestId: uuid(/"requestId"\s*:\s*"([0-9A-Fa-f-]{36})"/.exec(payload)?.[1]),
+    };
   const value = json(payload);
   if (typeof value !== 'object' || value === null) return null;
   const { type, requestId: id } = value as { type?: unknown; requestId?: unknown };
   if (type !== 'restoreCards') return null;
-  const requestId = z.uuid().safeParse(id).success ? (id as string) : null;
-  if (payload.length > RESTORE_CARDS_MAX_LENGTH) return { refused: 'tooLarge', requestId };
-  // Cards by id: one the copying build did not understand is in both `elements` and `cards`.
+  const requestId = uuid(id);
   const clipboard = (value as { clipboard?: { elements?: unknown; cards?: unknown } }).clipboard;
+  if (Array.isArray(clipboard?.elements) && clipboard.elements.length > RESTORE_CARDS_MAX)
+    return { refused: 'tooLarge', requestId };
+  // Cards by id: one the copying build did not understand is in both `elements` and `cards`.
   const ids = new Set<unknown>(
     Array.isArray(clipboard?.elements)
       ? clipboard.elements.map((e) => (typeof e === 'object' && e !== null ? e.id : e))

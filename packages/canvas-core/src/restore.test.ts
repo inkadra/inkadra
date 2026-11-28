@@ -73,7 +73,7 @@ describe('restoreElements', () => {
     const only = { ...copy, elements: copy.elements.filter((e) => e.id === inside) };
     const other = createElement(doc, 'note', { x: 0, y: 0 }, {}, opts);
     const result = restoreElements(doc, only, at);
-    expect(result).toEqual({ ids: [inside], outside: [inside], own: [inside] });
+    expect(result).toEqual({ ids: [inside], outside: [inside], own: [inside], parents: [] });
     const card = listElements(doc).find((e) => e.id === inside);
     expect(card).toMatchObject({ parent: null, x: at.x, y: at.y });
     expect((card?.z ?? '') > other.z).toBe(true);
@@ -89,6 +89,7 @@ describe('restoreElements', () => {
       at,
     );
     expect(result.outside).toEqual([]);
+    expect(result.parents).toEqual([column]);
     expect(listElements(doc).find((e) => e.id === inside)?.parent).toBe(column);
     const unsorted = createBoardDoc(boardId);
     const loose = createElement(unsorted, 'note', at, { parent: UNSORTED }, opts).id;

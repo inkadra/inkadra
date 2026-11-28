@@ -64,6 +64,18 @@ describe('restore requests', () => {
       refused: 'tooLarge',
       requestId,
     });
+    // Not even parsed: a broken text past the limit is still answered by its id.
+    expect(readRestoreCardsRequest(`${JSON.stringify(long)}}`)).toEqual({
+      refused: 'tooLarge',
+      requestId,
+    });
+    // The same id many times is still that many cards.
+    const repeated = Array.from({ length: RESTORE_CARDS_MAX + 1 }, () => card);
+    const same = { ...request, clipboard: { ...request.clipboard, elements: repeated } };
+    expect(readRestoreCardsRequest(JSON.stringify(same))).toEqual({
+      refused: 'tooLarge',
+      requestId,
+    });
   });
 });
 
