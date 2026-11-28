@@ -22,7 +22,7 @@
     "check:licenses": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.8",
+    "@biomejs/biome": "2.6.9",
     "turbo": "^2.11.13",
     "typescript": "^7.0.2"
   }
